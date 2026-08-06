@@ -2,6 +2,47 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.4.0] — 2026-08-06
+
+Bộ công cụ triển khai để hứng log từ máy chấm công thật, và **hai lỗi chặn ngay bước đầu** phát
+hiện được khi chạy thử đúng đường triển khai.
+
+### Sửa
+
+- **`.env.example` thiếu `POSTGRES_PASSWORD`** — `cp .env.example .env` rồi `docker compose up`
+  là dừng ngay. Đã viết lại `.env.example`: gom 4 giá trị bắt buộc lên đầu, ghi rõ `VITE_API_URL`
+  được nhúng lúc build nên điền `localhost` thì điện thoại và máy khác không gọi được API, và
+  tách hẳn phần chỉ dùng khi chạy không qua Docker.
+- **`docker-compose.yml` không truyền `ADMIN_TEN_DANG_NHAP` / `ADMIN_MAT_KHAU`** vào container,
+  nên `docker compose exec may_chu node dist/csdl/seed.js` không tạo được tài khoản admin đầu
+  tiên.
+- nginx cache font 7 ngày (tên tệp không có băm nên không thể cache 1 năm, nhưng vẫn hơn tải
+  lại 180 KB mỗi lần mở trang).
+
+### Thêm mới
+
+- **`trien_khai/gia_lap_may.mjs`** — giả lập một máy ZKTeco nói giao thức ADMS Push: handshake,
+  báo firmware, đẩy ATTLOG, gửi lại đúng lô đó để kiểm chống trùng, xin lệnh. Kiểm được toàn bộ
+  đường đi của dữ liệu **trước khi có hardware**. Có `--lien-tuc` để chạy như máy đang hoạt động.
+- **`trien_khai/kiem_tra.mjs`** — kiểm máy chủ, CSDL, tài khoản admin, múi giờ, danh sách máy đã
+  khai báo, nhân viên đã gán PIN/ca; rồi in đúng những giá trị phải bấm vào menu máy ZKTeco kèm
+  **IP LAN thật** của máy chủ (nhắc rõ không dùng `localhost`).
+- `npm run kiem_tra_trien_khai` và `npm run gia_lap_may`. Cả hai viết bằng Node nên chạy y hệt
+  trên Windows / Linux / macOS.
+- **`tai_lieu/BAT-DAU-NHANH.md`** — đường ngắn nhất từ `git clone` đến "log máy về tới bảng
+  công", kèm bảng sự cố thường gặp và ba việc bắt buộc để số liệu đúng (gán PIN, gán ca, khai
+  ngày lễ).
+
+### Đã kiểm chứng
+
+Chạy giả lập máy đối chiếu với máy chủ thật: quẹt 08:00 và 17:30 giờ Việt Nam → lưu đúng
+`01:00`/`10:30` UTC → bảng công tự sinh `co_mat`, 450 phút làm (540 phút trong ca trừ 90 phút
+nghỉ), 0 phút muộn, 1 công; gửi lại cùng lô trả `OK: 0` đúng như chống trùng phải làm.
+
+Đường Docker **chưa chạy thử được trong môi trường này** (proxy chặn tải image gốc từ Docker
+Hub). Đã kiểm tĩnh thay thế: nội suy biến của `docker compose config`, toàn bộ đường dẫn `COPY`
+trong hai Dockerfile, và `web/dist/font/` có đủ font sau khi build.
+
 ## [1.3.0] — 2026-08-06
 
 Áp theme **Metronic v9** cho webapp theo demo 11 màn đã duyệt. Từ nay web và app dùng **hai bộ

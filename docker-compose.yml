@@ -41,6 +41,10 @@ services:
       ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
       ERP_WEBHOOK_SECRET: ${ERP_WEBHOOK_SECRET:-}
       TU_DONG_DI_TRU: "1"
+      # Chi lenh seed doc hai bien nay (docker compose exec may_chu node dist/csdl/seed.js).
+      # Thieu chung thi seed KHONG tao duoc tai khoan admin dau tien.
+      ADMIN_TEN_DANG_NHAP: ${ADMIN_TEN_DANG_NHAP:-admin}
+      ADMIN_MAT_KHAU: ${ADMIN_MAT_KHAU:-}
     volumes:
       - anh_cham_cong:/du_lieu/anh_cham_cong
     # May ZKTeco chi noi duoc HTTP thuong (nhieu firmware khong lam TLS),
