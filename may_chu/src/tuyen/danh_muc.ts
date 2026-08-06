@@ -38,7 +38,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         'insert into phong_ban(ten, truong_phong_id) values ($1,$2) returning id',
         [ten, truong_phong_id],
       ),
-      'Ten phong ban da ton tai.',
+      'Tên phòng ban đã tồn tại.',
     );
     return res.code(201).send(dong);
   });
@@ -55,7 +55,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         where id = $1`,
       [id, ten, Object.hasOwn(b, 'truong_phong_id'), truong_phong_id],
     );
-    if (so === 0) throw new LoiKhongTim('Khong tim thay phong ban.');
+    if (so === 0) throw new LoiKhongTim('Không tìm thấy phòng ban.');
     return { ok: true };
   });
 
@@ -92,17 +92,17 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         where id=$1`,
       [id, ...ts],
     );
-    if (so === 0) throw new LoiKhongTim('Khong tim thay ca lam viec.');
+    if (so === 0) throw new LoiKhongTim('Không tìm thấy ca làm việc.');
     // Doi quy tac ca -> bang cong cu da sai. Nhan su phai tinh lai chu dong
     // (POST /api/bang-cong/tinh-lai) vi co the anh huong hang nghin ngay.
-    return { ok: true, luu_y: 'Doi ca khong tu tinh lai bang cong cu. Dung /api/bang-cong/tinh-lai.' };
+    return { ok: true, luu_y: 'Đổi ca không tự tính lại bảng công cũ. Hãy dùng "Tính lại tháng" ở trang Bảng công.' };
   });
 
   app.delete('/ca-lam/:id', { preHandler: can_nhan_su }, async (req) => {
     const id = lay_id(req);
     // Khong xoa that (bang cong cu con tham chieu) — chi vo hieu hoa.
     const so = await thuc_thi('update ca_lam set dang_hoat_dong = false where id = $1', [id]);
-    if (so === 0) throw new LoiKhongTim('Khong tim thay ca lam viec.');
+    if (so === 0) throw new LoiKhongTim('Không tìm thấy ca làm việc.');
     return { ok: true };
   });
 
@@ -141,7 +141,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id`,
         doc_nhan_vien(b, true),
       ),
-      'Ma nhan vien hoac PIN may da duoc dung cho nguoi khac.',
+      'Mã nhân viên hoặc PIN máy đã được dùng cho người khác.',
     );
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tao_nhan_vien', 'nhan_vien',
       dong?.id ?? null, { ma_nv: b['ma_nv'] }, req.ip);
@@ -160,9 +160,9 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
           where id=$1`,
         [id, ...ts],
       ),
-      'Ma nhan vien hoac PIN may da duoc dung cho nguoi khac.',
+      'Mã nhân viên hoặc PIN máy đã được dùng cho người khác.',
     );
-    if (so === 0) throw new LoiKhongTim('Khong tim thay nhan vien.');
+    if (so === 0) throw new LoiKhongTim('Không tìm thấy nhân viên.');
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'sua_nhan_vien', 'nhan_vien', id, null, req.ip);
     return { ok: true };
   });
@@ -180,7 +180,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         where id = $1`,
       [id, ngay_nghi],
     );
-    if (so === 0) throw new LoiKhongTim('Khong tim thay nhan vien.');
+    if (so === 0) throw new LoiKhongTim('Không tìm thấy nhân viên.');
     // Vo hieu hoa luon tai khoan dang nhap cua nguoi do.
     await thuc_thi('update nguoi_dung set dang_hoat_dong = false where nhan_vien_id = $1', [id]);
     await thuc_thi(
@@ -217,7 +217,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         'insert into thiet_bi(serial, ten, vi_tri) values ($1,$2,$3) returning id',
         [serial, ten, vi_tri],
       ),
-      'Serial may nay da duoc khai bao.',
+      'Serial máy này đã được khai báo.',
     );
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'khai_bao_may', 'thiet_bi',
       dong?.id ?? null, { serial }, req.ip);
@@ -235,7 +235,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         where id = $1`,
       [id, chuoi(b, 'ten', { toi_da: 120 }), chuoi(b, 'vi_tri', { toi_da: 120 }), luan_ly(b, 'dang_bat')],
     );
-    if (so === 0) throw new LoiKhongTim('Khong tim thay thiet bi.');
+    if (so === 0) throw new LoiKhongTim('Không tìm thấy thiết bị.');
     return { ok: true };
   });
 
@@ -249,8 +249,8 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       'select pin_may, ho_ten from nhan_vien where id = $1',
       [nhan_vien_id],
     );
-    if (nv === null) throw new LoiKhongTim('Khong tim thay nhan vien.');
-    if (nv.pin_may === null) throw new LoiDauVao('Nhan vien chua co PIN may. Gan PIN truoc.');
+    if (nv === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
+    if (nv.pin_may === null) throw new LoiDauVao('Nhân viên chưa có PIN máy. Hãy gán PIN trước.');
 
     await bat_buoc_co_may(serial);
     // Ten tren may ZKTeco chi hien duoc ASCII — bo dau de khong ra ky tu la.
@@ -259,13 +259,13 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       serial,
       `DATA UPDATE USERINFO PIN=${nv.pin_may}\tName=${ten_may}\tPri=0\tPasswd=\tCard=\tGrp=1\tTZ=0000000000000000`,
     );
-    return { ok: true, lenh_id: id, luu_y: 'May se nhan lenh o lan poll ke tiep (thuong <10 giay).' };
+    return { ok: true, lenh_id: id, luu_y: 'Máy sẽ nhận lệnh ở lần kết nối kế tiếp (thường dưới 10 giây).' };
   });
 
   app.delete('/thiet-bi/:serial/nhan-vien/:pin', { preHandler: can_nhan_su }, async (req) => {
     const serial = lay_serial_param(req);
     const pin = String((req.params as Record<string, string>)['pin'] ?? '').trim();
-    if (pin.length === 0 || pin.length > 32) throw new LoiDauVao('PIN khong hop le.');
+    if (pin.length === 0 || pin.length > 32) throw new LoiDauVao('PIN không hợp lệ.');
     await bat_buoc_co_may(serial);
     const id = await xep_lenh(serial, `DATA DELETE USERINFO PIN=${pin}`);
     return { ok: true, lenh_id: id };
@@ -284,7 +284,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const serial = lay_serial_param(req);
     await bat_buoc_co_may(serial);
     const id = await xep_lenh(serial, 'CHECK');
-    return { ok: true, lenh_id: id, luu_y: 'Ban ghi trung se bi bo qua nho khoa chong trung.' };
+    return { ok: true, lenh_id: id, luu_y: 'Bản ghi trùng sẽ tự bị bỏ qua nhờ khóa chống trùng.' };
   });
 
   app.get('/thiet-bi/:serial/lenh', { preHandler: can_nhan_su }, async (req) => {
@@ -333,7 +333,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         luan_ly(b, 'dang_hoat_dong'),
       ],
     );
-    if (so === 0) throw new LoiKhongTim('Khong tim thay dia diem.');
+    if (so === 0) throw new LoiKhongTim('Không tìm thấy địa điểm.');
     return { ok: true };
   });
 
@@ -366,7 +366,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const p = req.params as Record<string, string>;
     const ng = ngay_bat_buoc({ ngay: p['ngay'] }, 'ngay');
     const so = await thuc_thi('delete from ngay_le where ngay = $1', [ng]);
-    if (so === 0) throw new LoiKhongTim('Khong tim thay ngay le.');
+    if (so === 0) throw new LoiKhongTim('Không tìm thấy ngày lễ.');
     await tinh_lai_khoang(ng, ng);
     return { ok: true };
   });
@@ -386,14 +386,14 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const b = than(req.body);
     const ten_dang_nhap = chuoi_bat_buoc(b, 'ten_dang_nhap', { toi_da: 100, toi_thieu: 3 });
     if (!/^[a-zA-Z0-9._-]+$/.test(ten_dang_nhap)) {
-      throw new LoiDauVao('Ten dang nhap chi duoc gom chu khong dau, so va cac ky tu . _ -');
+      throw new LoiDauVao('Tên đăng nhập chỉ được gồm chữ không dấu, số và các ký tự . _ -');
     }
     const mat_khau = chuoi_bat_buoc(b, 'mat_khau', { toi_da: 200 });
     const vai_tro = trong_tap(b, 'vai_tro', VAI_TRO, { bat_buoc: true }) as typeof VAI_TRO[number];
     const nhan_vien_id = uuid(b, 'nhan_vien_id');
 
     if ((vai_tro === 'nhan_vien' || vai_tro === 'truong_phong') && nhan_vien_id === null) {
-      throw new LoiDauVao('Vai tro nhan_vien / truong_phong phai gan voi mot nhan vien.');
+      throw new LoiDauVao('Vai trò nhân viên / trưởng phòng phải gắn với một nhân viên.');
     }
 
     let hash: string;
@@ -410,7 +410,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
          values ($1,$2,$3,$4) returning id`,
         [ten_dang_nhap, hash, vai_tro, nhan_vien_id],
       ),
-      'Ten dang nhap da ton tai, hoac nhan vien nay da co tai khoan.',
+      'Tên đăng nhập đã tồn tại, hoặc nhân viên này đã có tài khoản.',
     );
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tao_tai_khoan', 'nguoi_dung',
       dong?.id ?? null, { ten_dang_nhap, vai_tro }, req.ip);
@@ -437,7 +437,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         where id = $1`,
       [id, hash],
     );
-    if (so === 0) throw new LoiKhongTim('Khong tim thay tai khoan.');
+    if (so === 0) throw new LoiKhongTim('Không tìm thấy tài khoản.');
     // Cat moi phien dang mo cua nguoi do.
     await thuc_thi(
       'update token_lam_moi set thu_hoi_luc = now() where nguoi_dung_id = $1 and thu_hoi_luc is null',
@@ -456,7 +456,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
 
     // Chan tu khoa chinh minh ra khoi he thong.
     if (id === nd.sub && (dang_hoat_dong === false || (vai_tro !== null && vai_tro !== 'admin'))) {
-      throw new LoiDauVao('Khong the tu vo hieu hoa hoac tu ha quyen tai khoan dang dung.');
+      throw new LoiDauVao('Không thể tự vô hiệu hóa hoặc tự hạ quyền tài khoản đang dùng.');
     }
 
     const so = await thuc_thi(
@@ -466,7 +466,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         where id = $1`,
       [id, dang_hoat_dong, vai_tro],
     );
-    if (so === 0) throw new LoiKhongTim('Khong tim thay tai khoan.');
+    if (so === 0) throw new LoiKhongTim('Không tìm thấy tài khoản.');
     if (dang_hoat_dong === false) {
       await thuc_thi(
         'update token_lam_moi set thu_hoi_luc = now() where nguoi_dung_id = $1 and thu_hoi_luc is null',
@@ -502,13 +502,13 @@ function lay_id(req: { params: unknown }): string {
 function lay_serial_param(req: { params: unknown }): string {
   const p = req.params as Record<string, string>;
   const s = String(p['serial'] ?? '').trim();
-  if (s.length === 0 || s.length > 64) throw new LoiDauVao('Serial may khong hop le.');
+  if (s.length === 0 || s.length > 64) throw new LoiDauVao('Serial máy không hợp lệ.');
   return s;
 }
 
 async function bat_buoc_co_may(serial: string): Promise<void> {
   const may = await truy_van_mot<{ id: string }>('select id from thiet_bi where serial = $1', [serial]);
-  if (may === null) throw new LoiKhongTim('Chua khai bao may co serial nay.');
+  if (may === null) throw new LoiKhongTim('Chưa khai báo máy có serial này.');
 }
 
 /** Doi loi vi pham UNIQUE (23505) thanh LoiXungDot co thong diep de hieu. */
@@ -527,15 +527,15 @@ function doc_ca_lam(b: Record<string, unknown>): unknown[] {
   const nghi_tu = gio(b, 'nghi_tu');
   const nghi_den = gio(b, 'nghi_den');
   if ((nghi_tu === null) !== (nghi_den === null)) {
-    throw new LoiDauVao('Phai khai ca hai moc nghi_tu va nghi_den, hoac de trong ca hai.');
+    throw new LoiDauVao('Phải khai cả hai mốc giờ nghỉ từ và nghỉ đến, hoặc để trống cả hai.');
   }
   if (nghi_tu !== null && nghi_den !== null && nghi_den <= nghi_tu) {
-    throw new LoiDauVao('nghi_den phai lon hon nghi_tu.');
+    throw new LoiDauVao('Giờ nghỉ đến phải lớn hơn giờ nghỉ từ.');
   }
 
   const qua_dem = luan_ly(b, 'qua_dem', gio_ra <= gio_vao) as boolean;
   if (!qua_dem && gio_ra <= gio_vao) {
-    throw new LoiDauVao('gio_ra phai lon hon gio_vao, hoac bat qua_dem cho ca dem.');
+    throw new LoiDauVao('Giờ ra phải lớn hơn giờ vào, hoặc bật "qua đêm" cho ca đêm.');
   }
 
   const cac_ngay_lam = doc_ngay_lam(b['cac_ngay_lam']);
@@ -554,19 +554,19 @@ function doc_ca_lam(b: Record<string, unknown>): unknown[] {
 
 function doc_ngay_lam(v: unknown): number[] {
   if (v === undefined || v === null) return [1, 2, 3, 4, 5];
-  if (!Array.isArray(v)) throw new LoiDauVao('cac_ngay_lam phai la mang so tu 0 den 6.');
+  if (!Array.isArray(v)) throw new LoiDauVao('Các ngày làm phải là danh sách số từ 0 (Chủ nhật) đến 6 (Thứ 7).');
   const ds = v.map((x) => Number(x));
   if (ds.some((x) => !Number.isInteger(x) || x < 0 || x > 6)) {
-    throw new LoiDauVao('cac_ngay_lam chi nhan so tu 0 (CN) den 6 (T7).');
+    throw new LoiDauVao('Các ngày làm chỉ nhận số từ 0 (Chủ nhật) đến 6 (Thứ 7).');
   }
-  if (ds.length === 0) throw new LoiDauVao('cac_ngay_lam phai co it nhat mot ngay.');
+  if (ds.length === 0) throw new LoiDauVao('Ca làm phải có ít nhất một ngày đi làm.');
   return [...new Set(ds)].sort((a, b) => a - b);
 }
 
 function doc_nhan_vien(b: Record<string, unknown>, bat_buoc: boolean): unknown[] {
   const pin = chuoi(b, 'pin_may', { toi_da: 32 });
   if (pin !== null && !/^[0-9]{1,20}$/.test(pin)) {
-    throw new LoiDauVao('PIN may chi gom chu so (dung dung PIN da khai tren may).');
+    throw new LoiDauVao('PIN máy chỉ gồm chữ số (dùng đúng PIN đã khai trên máy).');
   }
   return [
     bat_buoc ? chuoi_bat_buoc(b, 'ma_nv', { toi_da: 40 }) : chuoi(b, 'ma_nv', { toi_da: 40 }),

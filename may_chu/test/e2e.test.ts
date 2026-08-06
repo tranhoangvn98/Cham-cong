@@ -108,7 +108,7 @@ test('dang nhap sai mat khau tra 401 va khong tiet lo ly do', async () => {
     body: { ten_dang_nhap: 'admin', mat_khau: 'sai_mat_khau_1' },
   });
   assert.equal(r.ma, 401);
-  assert.equal(r.body['loi'], 'Ten dang nhap hoac mat khau khong dung.');
+  assert.equal(r.body['loi'], 'Tên đăng nhập hoặc mật khẩu không đúng.');
 });
 
 test('dang nhap tai khoan khong ton tai tra thong diep Y NGUYEN nhu sai mat khau', async () => {
@@ -116,7 +116,7 @@ test('dang nhap tai khoan khong ton tai tra thong diep Y NGUYEN nhu sai mat khau
     body: { ten_dang_nhap: 'khong_ton_tai', mat_khau: 'MatKhau123' },
   });
   assert.equal(r.ma, 401);
-  assert.equal(r.body['loi'], 'Ten dang nhap hoac mat khau khong dung.');
+  assert.equal(r.body['loi'], 'Tên đăng nhập hoặc mật khẩu không đúng.');
 });
 
 test('dang nhap dung tra ve token truy cap va token lam moi', async () => {
@@ -153,7 +153,7 @@ test('token lam moi bi xoay: dung lai lan hai bi tu choi va cat het phien', asyn
 
   const lan_2 = await goi('POST', '/api/xac-thuc/lam-moi', { body: { token_lam_moi: tlm } });
   assert.equal(lan_2.ma, 401, 'dung lai token da xoay phai bi tu choi');
-  assert.match(String(lan_2.body['loi']), /bao mat/);
+  assert.match(String(lan_2.body['loi']), /bảo mật/);
 });
 
 // ============================================================ khai bao he thong
@@ -177,7 +177,7 @@ test('tu choi ca co gio_ra <= gio_vao khi khong bat qua_dem', async () => {
     body: { ten: 'Ca sai', gio_vao: '17:00', gio_ra: '08:00', qua_dem: false },
   });
   assert.equal(r.ma, 400);
-  assert.match(String(r.body['loi']), /qua_dem/);
+  assert.match(String(r.body['loi']), /qua đêm/);
 });
 
 test('tao nhan vien gan PIN may va ca', async () => {
@@ -348,7 +348,7 @@ test('bang cong tra ve dong da tinh', async () => {
 test('tu choi khoang ngay qua dai (chong truy van keo sap CSDL)', async () => {
   const r = await goi('GET', '/api/bang-cong?tu=2020-01-01&den=2026-12-31', { token: token_admin });
   assert.equal(r.ma, 400);
-  assert.match(String(r.body['loi']), /qua dai/);
+  assert.match(String(r.body['loi']), /quá dài/);
 });
 
 test('xuat CSV co BOM UTF-8 va chong CSV injection', async () => {
@@ -366,6 +366,7 @@ test('xuat CSV co BOM UTF-8 va chong CSV injection', async () => {
   assert.equal(res.statusCode, 200);
   assert.match(res.headers['content-type'] as string, /text\/csv/);
   assert.ok(res.body.startsWith('\uFEFF'), 'phai co BOM de Excel doc dung tieng Viet');
+  assert.ok(res.body.includes('Mã NV'), 'tieu de CSV phai co dau tieng Viet');
   assert.ok(
     res.body.includes(",'=SUM(A1:A9)"),
     `cong thuc phai bi vo hieu hoa bang dau nhay dan, nhan duoc: ${res.body.slice(-120)}`,
@@ -632,7 +633,7 @@ test('cham cong dien thoai TRONG pham vi -> ghi nhan ngay va tinh cong', async (
 test('cham cong lien tuc trong 60 giay bi chan', async () => {
   const r = await cham_cong_dien_thoai(token_nhan_vien, 21.0279, 105.8343, '1');
   assert.equal(r.ma, 409);
-  assert.match(String(r.body['loi']), /doi 60 giay/);
+  assert.match(String(r.body['loi']), /đợi 60 giây/);
 });
 
 test('cham cong NGOAI pham vi -> cho nhan su duyet, chua tinh cong', async () => {
@@ -648,7 +649,7 @@ test('cham cong NGOAI pham vi -> cho nhan su duyet, chua tinh cong', async () =>
   const r = await cham_cong_dien_thoai(token_nhan_vien, 21.2000, 105.9000, '0');
   assert.equal(r.ma, 201);
   assert.equal(r.body['trang_thai_duyet'], 'cho_duyet');
-  assert.match(String(r.body['thong_bao']), /ngoai pham vi/);
+  assert.match(String(r.body['thong_bao']), /ngoài phạm vi/);
 
   // Chua duyet thi khong duoc dua vao tinh cong.
   const hom_nay = ngay_dia_phuong(new Date());
@@ -687,7 +688,7 @@ test('nhan vien chua duoc bat cham cong dien thoai thi bi tu choi', async () => 
   });
   const r = await cham_cong_dien_thoai(dn.body['token_truy_cap'] as string, 21.0279, 105.8343, '0');
   assert.equal(r.ma, 403);
-  assert.match(String(r.body['loi']), /chua duoc bat cham cong bang dien thoai/);
+  assert.match(String(r.body['loi']), /chưa được bật chấm công bằng điện thoại/);
 });
 
 test('anh selfie chi chu so huu / nhan su xem duoc', async () => {

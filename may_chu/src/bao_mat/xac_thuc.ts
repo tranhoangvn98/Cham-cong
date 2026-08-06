@@ -26,8 +26,8 @@ function xac_minh(req: FastifyRequest): NoiDungToken | null {
   return nd;
 }
 
-const LOI_401 = { loi: 'Chua dang nhap hoac phien da het han.' };
-const LOI_403 = { loi: 'Ban khong co quyen thuc hien viec nay.' };
+const LOI_401 = { loi: 'Chưa đăng nhập hoặc phiên đã hết hạn.' };
+const LOI_403 = { loi: 'Bạn không có quyền thực hiện việc này.' };
 
 /** Bat buoc dang nhap (moi vai tro). */
 export async function can_dang_nhap(req: FastifyRequest, res: FastifyReply) {

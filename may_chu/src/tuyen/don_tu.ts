@@ -29,7 +29,7 @@ async function bat_buoc_trong_pham_vi(
     [nhan_vien_id, nd.nv],
   );
   if (dong === null || !dong.cung_phong) {
-    throw new LoiKhongTim('Khong tim thay don thuoc pham vi cua ban.');
+    throw new LoiKhongTim('Không tìm thấy đơn thuộc phạm vi của bạn.');
   }
 }
 
@@ -73,9 +73,9 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
          from don_nghi_phep where id = $1`,
       [id],
     );
-    if (don === null) throw new LoiKhongTim('Khong tim thay don nghi phep.');
+    if (don === null) throw new LoiKhongTim('Không tìm thấy đơn nghỉ phép.');
     if (don.trang_thai !== 'cho_duyet') {
-      throw new LoiDauVao(`Don da o trang thai "${don.trang_thai}", khong the quyet lai.`);
+      throw new LoiDauVao(`Đơn đã ở trạng thái "${don.trang_thai}", không thể quyết lại.`);
     }
     await bat_buoc_trong_pham_vi(nd, don.nhan_vien_id);
 
@@ -149,9 +149,9 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
       'select nhan_vien_id, ngay, trang_thai from don_giai_trinh where id = $1',
       [id],
     );
-    if (don === null) throw new LoiKhongTim('Khong tim thay don giai trinh.');
+    if (don === null) throw new LoiKhongTim('Không tìm thấy đơn giải trình.');
     if (don.trang_thai !== 'cho_duyet') {
-      throw new LoiDauVao(`Don da o trang thai "${don.trang_thai}", khong the quyet lai.`);
+      throw new LoiDauVao(`Đơn đã ở trạng thái "${don.trang_thai}", không thể quyết lại.`);
     }
     await bat_buoc_trong_pham_vi(nd, don.nhan_vien_id);
 
@@ -168,7 +168,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     return {
       ok: true,
       da_tinh_lai: kq !== null,
-      luu_y: kq === null ? 'Ngay nay da chot bang cong nen khong tinh lai. Mo chot truoc.' : undefined,
+      luu_y: kq === null ? 'Ngày này đã chốt bảng công nên không tính lại. Hãy mở chốt trước.' : undefined,
     };
   });
 
@@ -178,7 +178,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     const chi_phong_minh = !xem_duoc_tat_ca(nd);
     return truy_van(
       `select lq.id, lq.nhan_vien_id, nv.ma_nv, nv.ho_ten, lq.thoi_diem, lq.trang_thai,
-              lq.vi_do, lq.kinh_do, lq.do_chinh_xac_m, lq.khoang_cach_m,
+              lq.vi_do, lq.kinh_do, lq.do_chinh_xac_m, lq.khoang_cach_m, lq.gps_gia_lap,
               lq.anh_ten_tep, lq.ghi_chu, lq.trang_thai_duyet, dd.ten as dia_diem
          from lan_quet lq
          join nhan_vien nv on nv.id = lq.nhan_vien_id
@@ -202,9 +202,9 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
       'select nhan_vien_id, thoi_diem, trang_thai_duyet from lan_quet where id = $1',
       [id],
     );
-    if (lq === null || lq.nhan_vien_id === null) throw new LoiKhongTim('Khong tim thay lan quet.');
+    if (lq === null || lq.nhan_vien_id === null) throw new LoiKhongTim('Không tìm thấy lần quẹt.');
     if (lq.trang_thai_duyet !== 'cho_duyet') {
-      throw new LoiDauVao('Lan quet nay da duoc xu ly.');
+      throw new LoiDauVao('Lần quẹt này đã được xử lý.');
     }
     await bat_buoc_trong_pham_vi(nd, lq.nhan_vien_id);
 

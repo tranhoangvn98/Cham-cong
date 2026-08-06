@@ -25,7 +25,7 @@ function nhan_vien_cua_toi(req: FastifyRequest): string {
   const nd = nguoi_dung_hien_tai(req);
   if (nd.nv === null) {
     throw new LoiKhongQuyen(
-      'Tai khoan nay khong gan voi nhan vien nao nen khong co du lieu cham cong ca nhan.',
+      'Tài khoản này không gắn với nhân viên nào nên không có dữ liệu chấm công cá nhân.',
     );
   }
   return nd.nv;
@@ -164,10 +164,10 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
          from nhan_vien where id = $1`,
       [nv_id],
     );
-    if (nv === null || !nv.dang_hoat_dong) throw new LoiKhongTim('Khong tim thay nhan vien.');
+    if (nv === null || !nv.dang_hoat_dong) throw new LoiKhongTim('Không tìm thấy nhân viên.');
     if (!nv.duoc_cham_cong_dien_thoai) {
       throw new LoiKhongQuyen(
-        'Tai khoan cua ban chua duoc bat cham cong bang dien thoai. Vui long quet tai may cham cong.',
+        'Tài khoản của bạn chưa được bật chấm công bằng điện thoại. Vui lòng quẹt tại máy chấm công.',
       );
     }
 
@@ -187,18 +187,21 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       }
     }
 
-    if (anh === null) throw new LoiDauVao('Thieu anh selfie.');
+    if (anh === null) throw new LoiDauVao('Thiếu ảnh chụp xác nhận.');
 
     const vi_do = Number(truong['vi_do']);
     const kinh_do = Number(truong['kinh_do']);
     if (!Number.isFinite(vi_do) || vi_do < -90 || vi_do > 90) {
-      throw new LoiDauVao('Toa do vi_do khong hop le. Hay bat quyen vi tri cho ung dung.');
+      throw new LoiDauVao('Không lấy được vĩ độ hợp lệ. Hãy bật quyền vị trí cho ứng dụng.');
     }
     if (!Number.isFinite(kinh_do) || kinh_do < -180 || kinh_do > 180) {
-      throw new LoiDauVao('Toa do kinh_do khong hop le. Hay bat quyen vi tri cho ung dung.');
+      throw new LoiDauVao('Không lấy được kinh độ hợp lệ. Hãy bật quyền vị trí cho ứng dụng.');
     }
     const do_chinh_xac = Number(truong['do_chinh_xac_m']);
     const trang_thai = truong['trang_thai'] === '1' ? 1 : 0;
+    // Android cho biet toa do co do app gia lap vi tri tao ra khong. Day la cach gian lan
+    // pho bien nhat, nen ban ghi co co nay KHONG BAO GIO duoc tu dong tinh cong.
+    const gps_gia_lap = truong['gps_gia_lap'] === 'true' || truong['gps_gia_lap'] === '1';
 
     const bay_gio = new Date();
     const ngay = ngay_dia_phuong(bay_gio);
@@ -215,7 +218,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       && bay_gio.getTime() - gan_nhat.thoi_diem.getTime() < GIAN_CACH_TOI_THIEU_GIAY * 1000
     ) {
       throw new LoiXungDot(
-        `Ban vua cham cong xong. Vui long doi ${GIAN_CACH_TOI_THIEU_GIAY} giay giua hai lan.`,
+        `Bạn vừa chấm công xong. Vui lòng đợi ${GIAN_CACH_TOI_THIEU_GIAY} giây giữa hai lần.`,
       );
     }
 
@@ -224,14 +227,20 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       'select id, ten, vi_do, kinh_do, ban_kinh_m from dia_diem where dang_hoat_dong = true',
     );
     const gf = do_geofence(vi_do, kinh_do, cac_dia_diem);
-    const trang_thai_duyet = gf.trong_pham_vi ? 'tu_dong' : 'cho_duyet';
+    // Trong pham vi VA khong co dau hieu gia lap GPS -> tin ngay. Con lai cho nhan su duyet.
+    const trang_thai_duyet = gf.trong_pham_vi && !gps_gia_lap ? 'tu_dong' : 'cho_duyet';
 
-    // Neu chua khai dia diem nao thi khong the xac minh vi tri -> luon cho duyet.
-    const ghi_chu = cac_dia_diem.length === 0
-      ? 'Chua khai bao dia diem nao de doi chieu GPS'
-      : gf.trong_pham_vi
-        ? `Trong pham vi "${gf.dia_diem?.ten}" (${gf.khoang_cach_m}m)`
-        : `Ngoai pham vi: cach "${gf.dia_diem?.ten}" ${gf.khoang_cach_m}m`;
+    const ly_do: string[] = [];
+    if (gps_gia_lap) ly_do.push('CẢNH BÁO: điện thoại báo tọa độ do app giả lập vị trí tạo ra');
+    if (cac_dia_diem.length === 0) {
+      // Chua khai dia diem nao thi khong co gi de doi chieu -> khong the tin.
+      ly_do.push('Chưa khai báo địa điểm nào để đối chiếu GPS');
+    } else if (gf.trong_pham_vi) {
+      ly_do.push(`Trong phạm vi "${gf.dia_diem?.ten}" (${gf.khoang_cach_m}m)`);
+    } else {
+      ly_do.push(`Ngoài phạm vi: cách "${gf.dia_diem?.ten}" ${gf.khoang_cach_m}m`);
+    }
+    const ghi_chu = ly_do.join('. ');
 
     // --- Luu anh (sau khi da qua moi kiem tra de khong rac dia) ---
     const anh_ten_tep = await luu_anh_selfie(anh, ngay);
@@ -243,14 +252,15 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         `insert into lan_quet
            (nguon, nhan_vien_id, thoi_diem, trang_thai, xac_thuc, khoa_chong_trung,
             vi_do, kinh_do, do_chinh_xac_m, dia_diem_id, khoang_cach_m,
-            anh_ten_tep, trang_thai_duyet, ghi_chu)
-         values ('dien_thoai', $1, $2, $3, 9, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            anh_ten_tep, trang_thai_duyet, ghi_chu, gps_gia_lap)
+         values ('dien_thoai', $1, $2, $3, 9, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          on conflict (khoa_chong_trung) do nothing
          returning id`,
         [
           nv_id, bay_gio, trang_thai, khoa, vi_do, kinh_do,
           Number.isFinite(do_chinh_xac) ? do_chinh_xac : null,
           gf.dia_diem?.id ?? null, gf.khoang_cach_m, anh_ten_tep, trang_thai_duyet, ghi_chu,
+          gps_gia_lap,
         ],
       );
       const d = kq.rows[0];
@@ -273,14 +283,17 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       return d;
     });
 
-    if (dong === null) throw new LoiXungDot('Lan cham cong nay da duoc ghi nhan.');
+    if (dong === null) throw new LoiXungDot('Lần chấm công này đã được ghi nhận.');
 
     // Chi tinh lai cong khi lan quet duoc tin ngay.
     if (trang_thai_duyet === 'tu_dong') await tinh_lai_ngay(nv_id, ngay);
 
     await ghi_nhat_ky(nd.sub, 'cham_cong_dien_thoai', 'lan_quet', dong.id, {
-      trang_thai, khoang_cach_m: gf.khoang_cach_m, trang_thai_duyet,
+      trang_thai, khoang_cach_m: gf.khoang_cach_m, trang_thai_duyet, gps_gia_lap,
     }, req.ip);
+    if (gps_gia_lap) {
+      req.log.warn({ nhan_vien_id: nv_id, lan_quet_id: dong.id }, 'cham cong voi GPS gia lap');
+    }
 
     return res.code(201).send({
       ok: true,
@@ -291,8 +304,12 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       dia_diem: gf.dia_diem?.ten ?? null,
       khoang_cach_m: gf.khoang_cach_m,
       thong_bao: trang_thai_duyet === 'tu_dong'
-        ? `Da cham cong ${trang_thai === 0 ? 'VAO' : 'RA'} thanh cong.`
-        : 'Da ghi nhan nhung ban dang o ngoai pham vi cho phep. Cong se duoc tinh sau khi nhan su duyet.',
+        ? `Đã chấm công ${trang_thai === 0 ? 'VÀO' : 'RA'} thành công.`
+        : gps_gia_lap
+          ? 'Đã ghi nhận. Điện thoại đang bật chế độ giả lập vị trí nên nhân sự phải xác nhận '
+            + 'trước khi tính công. Hãy tắt app giả lập vị trí.'
+          : 'Đã ghi nhận nhưng bạn đang ở ngoài phạm vi cho phép. Công sẽ được tính sau khi '
+            + 'nhân sự duyệt.',
     });
   });
 
@@ -310,7 +327,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         where lq.id = $1`,
       [id],
     );
-    if (lq === null || lq.anh_ten_tep === null) throw new LoiKhongTim('Khong tim thay anh.');
+    if (lq === null || lq.anh_ten_tep === null) throw new LoiKhongTim('Không tìm thấy ảnh.');
 
     if (!xem_duoc_tat_ca(nd)) {
       let duoc_xem = nd.nv !== null && nd.nv === lq.nhan_vien_id;
@@ -322,11 +339,11 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         duoc_xem = cung?.ok === true;
       }
       // Tra 404 thay vi 403 de khong tiet lo anh nay co ton tai.
-      if (!duoc_xem) throw new LoiKhongTim('Khong tim thay anh.');
+      if (!duoc_xem) throw new LoiKhongTim('Không tìm thấy ảnh.');
     }
 
     const anh = await doc_anh_selfie(lq.anh_ten_tep);
-    if (anh === null) throw new LoiKhongTim('Khong tim thay tep anh tren dia.');
+    if (anh === null) throw new LoiKhongTim('Không tìm thấy tệp ảnh trên đĩa.');
 
     return res
       .header('content-type', anh.kieu)
@@ -357,13 +374,13 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     const nua_ngay = luan_ly(b, 'nua_ngay', false) as boolean;
     const ly_do = chuoi(b, 'ly_do', { toi_da: 500 });
 
-    if (den_ngay < tu_ngay) throw new LoiDauVao('Ngay ket thuc phai sau hoac bang ngay bat dau.');
+    if (den_ngay < tu_ngay) throw new LoiDauVao('Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.');
     if (nua_ngay && tu_ngay !== den_ngay) {
-      throw new LoiDauVao('Don nua ngay chi ap dung cho mot ngay duy nhat.');
+      throw new LoiDauVao('Đơn nửa ngày chỉ áp dụng cho một ngày duy nhất.');
     }
     const so_ngay = (Date.parse(`${den_ngay}T00:00:00Z`) - Date.parse(`${tu_ngay}T00:00:00Z`))
       / 86_400_000 + 1;
-    if (so_ngay > 180) throw new LoiDauVao('Mot don khong duoc dai hon 180 ngay.');
+    if (so_ngay > 180) throw new LoiDauVao('Một đơn không được dài hơn 180 ngày.');
 
     // Chan don trum ngay da chot bang cong.
     const da_chot = await truy_van_mot<{ co: boolean }>(
@@ -372,7 +389,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       [nv_id, tu_ngay, den_ngay],
     );
     if (da_chot !== null) {
-      throw new LoiXungDot('Khoang ngay nay da chot bang cong. Vui long lien he nhan su.');
+      throw new LoiXungDot('Khoảng ngày này đã chốt bảng công. Vui lòng liên hệ nhân sự.');
     }
 
     // Chan don trung khoang voi don dang cho / da duyet.
@@ -383,7 +400,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       [nv_id, tu_ngay, den_ngay],
     );
     if (trung !== null) {
-      throw new LoiXungDot('Ban da co don nghi phep trum khoang ngay nay.');
+      throw new LoiXungDot('Bạn đã có đơn nghỉ phép trùm khoảng ngày này.');
     }
 
     const dong = await truy_van_mot<{ id: string }>(
@@ -403,9 +420,9 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       'select trang_thai, tu_ngay, den_ngay from don_nghi_phep where id = $1 and nhan_vien_id = $2',
       [id, nv_id],
     );
-    if (don === null) throw new LoiKhongTim('Khong tim thay don cua ban.');
+    if (don === null) throw new LoiKhongTim('Không tìm thấy đơn của bạn.');
     if (don.trang_thai === 'da_huy') return { ok: true };
-    if (don.trang_thai === 'tu_choi') throw new LoiDauVao('Don da bi tu choi, khong can huy.');
+    if (don.trang_thai === 'tu_choi') throw new LoiDauVao('Đơn đã bị từ chối, không cần hủy.');
 
     await thuc_thi(
       `update don_nghi_phep set trang_thai = 'da_huy', quyet_luc = now() where id = $1`,
@@ -441,10 +458,10 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     const ly_do = chuoi_bat_buoc(b, 'ly_do', { toi_da: 500, toi_thieu: 5 });
 
     if (gio_vao === null && gio_ra === null) {
-      throw new LoiDauVao('Phai de xuat it nhat gio vao hoac gio ra.');
+      throw new LoiDauVao('Phải đề xuất ít nhất giờ vào hoặc giờ ra.');
     }
     if (ngay > ngay_dia_phuong(new Date())) {
-      throw new LoiDauVao('Khong the giai trinh cho ngay trong tuong lai.');
+      throw new LoiDauVao('Không thể giải trình cho ngày trong tương lai.');
     }
 
     const da_chot = await truy_van_mot<{ co: boolean }>(
@@ -452,7 +469,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       [nv_id, ngay],
     );
     if (da_chot !== null) {
-      throw new LoiXungDot('Ngay nay da chot bang cong. Vui long lien he nhan su.');
+      throw new LoiXungDot('Ngày này đã chốt bảng công. Vui lòng liên hệ nhân sự.');
     }
 
     try {
@@ -466,7 +483,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       return res.code(201).send({ ...dong, trang_thai: 'cho_duyet' });
     } catch (loi) {
       if ((loi as { code?: string }).code === '23505') {
-        throw new LoiXungDot('Ban da co don giai trinh cho ngay nay.');
+        throw new LoiXungDot('Bạn đã có đơn giải trình cho ngày này.');
       }
       throw loi;
     }

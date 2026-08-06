@@ -22,14 +22,14 @@ function doc_dinh_dang(du_lieu: Buffer): 'jpg' | 'png' | null {
  * Ten tep do server sinh hoan toan — khong lay bat ky phan nao tu client.
  */
 export async function luu_anh_selfie(du_lieu: Buffer, ngay: string): Promise<string> {
-  if (du_lieu.length === 0) throw new LoiDauVao('Anh rong.');
+  if (du_lieu.length === 0) throw new LoiDauVao('Ảnh rỗng.');
   if (du_lieu.length > cau_hinh.anh_toi_da_byte) {
     const mb = Math.round(cau_hinh.anh_toi_da_byte / (1024 * 1024));
-    throw new LoiDauVao(`Anh qua lon (toi da ${mb} MB).`);
+    throw new LoiDauVao(`Ảnh quá lớn (tối đa ${mb} MB).`);
   }
 
   const dinh_dang = doc_dinh_dang(du_lieu);
-  if (dinh_dang === null) throw new LoiDauVao('Chi nhan anh JPEG hoac PNG.');
+  if (dinh_dang === null) throw new LoiDauVao('Chỉ nhận ảnh JPEG hoặc PNG.');
 
   const thu_muc_con = ngay; // gom theo ngay de khong co thu muc hang tram nghin tep
   await mkdir(join(cau_hinh.thu_muc_anh, thu_muc_con), { recursive: true });

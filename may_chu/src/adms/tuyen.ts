@@ -197,6 +197,6 @@ export async function xep_lenh(serial: string, lenh: string): Promise<number> {
     'insert into lenh_thiet_bi(thiet_bi_serial, lenh) values ($1, $2) returning id',
     [serial, lenh],
   );
-  if (dong === null) throw new Error('Khong xep duoc lenh vao hang doi.');
+  if (dong === null) throw new Error('Không xếp được lệnh vào hàng đợi.');
   return dong.id;
 }

@@ -12,12 +12,13 @@ import {
   LoiDauVao, LoiKhongTim,
 } from '../tien_ich/kiem_tra.ts';
 
+// Nhan hien thi cho ke toan doc trong Excel — co dau day du (tep CSV co BOM UTF-8).
 const NHAN_TRANG_THAI_NGAY: Record<string, string> = {
-  vang: 'Vang',
-  co_mat: 'Co mat',
-  nghi_phep: 'Nghi phep',
-  ngay_le: 'Ngay le',
-  nghi_tuan: 'Nghi tuan',
+  vang: 'Vắng',
+  co_mat: 'Có mặt',
+  nghi_phep: 'Nghỉ phép',
+  ngay_le: 'Ngày lễ',
+  nghi_tuan: 'Nghỉ tuần',
 };
 
 /**
@@ -123,8 +124,8 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
     );
 
     const tieu_de = [
-      'Ma NV', 'Ho ten', 'Phong ban', 'Ngay', 'Trang thai', 'Gio vao', 'Gio ra',
-      'Phut lam', 'Phut muon', 'Phut ve som', 'Phut OT', 'So cong', 'Ghi chu',
+      'Mã NV', 'Họ tên', 'Phòng ban', 'Ngày', 'Trạng thái', 'Giờ vào', 'Giờ ra',
+      'Phút làm', 'Phút muộn', 'Phút về sớm', 'Phút OT', 'Số công', 'Ghi chú',
     ];
     const hang = dong.map((d) => [
       d['ma_nv'], d['ho_ten'], d['phong_ban'], d['ngay'],
@@ -168,7 +169,7 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
     const da_chot = luan_ly(b, 'da_chot');
     const so_cong = b['so_cong'] === undefined ? null : Number(b['so_cong']);
     if (so_cong !== null && (!Number.isFinite(so_cong) || so_cong < 0 || so_cong > 2)) {
-      throw new LoiDauVao('so_cong phai trong khoang 0 den 2.');
+      throw new LoiDauVao('Số công phải trong khoảng 0 đến 2.');
     }
     const phut_ot = so_nguyen(b, 'phut_ot', { min: 0, max: 1440 });
 
@@ -183,7 +184,7 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
         where nhan_vien_id = $1 and ngay = $2`,
       [nhan_vien_id, ng, ghi_chu, da_chot, so_cong, phut_ot],
     );
-    if (so === 0) throw new LoiKhongTim('Chua co dong bang cong cho nhan vien/ngay nay.');
+    if (so === 0) throw new LoiKhongTim('Chưa có dòng bảng công cho nhân viên/ngày này.');
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'sua_bang_cong', 'bang_cong_ngay',
       `${nhan_vien_id}|${ng}`, { so_cong, phut_ot, da_chot, ghi_chu }, req.ip);
@@ -201,7 +202,7 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
     );
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'chot_thang', 'bang_cong_ngay',
       null, { thang, so_dong: so }, req.ip);
-    return { ok: true, so_dong_da_chot: so, luu_y: 'Dong da chot se khong bi tinh lai.' };
+    return { ok: true, so_dong_da_chot: so, luu_y: 'Dòng đã chốt sẽ không bị tính lại.' };
   });
 
   app.post('/bang-cong/mo-chot-thang', { preHandler: can_nhan_su }, async (req) => {
@@ -273,7 +274,7 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
     const nv = await truy_van_mot<{ id: string }>(
       'select id from nhan_vien where id = $1', [nhan_vien_id],
     );
-    if (nv === null) throw new LoiKhongTim('Khong tim thay nhan vien.');
+    if (nv === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
 
     const ngay_anh_huong = await truy_van<{ ngay: string }>(
       `update lan_quet set nhan_vien_id = $2

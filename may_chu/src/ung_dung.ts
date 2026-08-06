@@ -67,13 +67,13 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
     if (ma >= 500) {
       // Loi he thong: ghi day du vao log nhung KHONG tra chi tiet ra ngoai.
       req.log.error({ err: loi }, 'loi khong mong doi');
-      return res.code(500).send({ loi: 'Loi he thong. Vui long thu lai hoac lien he quan tri.' });
+      return res.code(500).send({ loi: 'Lỗi hệ thống. Vui lòng thử lại hoặc liên hệ quản trị.' });
     }
 
     // Fastify tu sinh loi 429 khi vuot rate limit — giu nguyen thong diep cua no.
     if (ma === 429) {
       return res.code(429).send({
-        loi: 'Ban gui qua nhieu yeu cau. Vui long cho mot lat roi thu lai.',
+        loi: 'Bạn gửi quá nhiều yêu cầu. Vui lòng chờ một lát rồi thử lại.',
       });
     }
 
@@ -82,7 +82,7 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   });
 
   app.setNotFoundHandler((req, res) => {
-    res.code(404).send({ loi: `Khong co duong dan ${req.method} ${req.url}.` });
+    res.code(404).send({ loi: `Không có đường dẫn ${req.method} ${req.url}.` });
   });
 
   // -------------------------------------------------------------------- suc khoe

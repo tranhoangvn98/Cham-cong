@@ -17,7 +17,7 @@ export class LoiKhongQuyen extends Error {
 
 function la_doi_tuong(v: unknown): Record<string, unknown> {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) {
-    throw new LoiDauVao('Du lieu gui len phai la mot doi tuong JSON.');
+    throw new LoiDauVao('Dữ liệu gửi lên phải là một đối tượng JSON.');
   }
   return v as Record<string, unknown>;
 }
@@ -34,15 +34,15 @@ export function chuoi(
   const nhan = tuy_chon.nhan ?? khoa;
   const v = nguon[khoa];
   if (v === undefined || v === null || (typeof v === 'string' && v.trim() === '')) {
-    if (tuy_chon.bat_buoc === true) throw new LoiDauVao(`Thieu truong bat buoc: ${nhan}.`);
+    if (tuy_chon.bat_buoc === true) throw new LoiDauVao(`Thiếu trường bắt buộc: ${nhan}.`);
     return null;
   }
-  if (typeof v !== 'string') throw new LoiDauVao(`Truong ${nhan} phai la chuoi.`);
+  if (typeof v !== 'string') throw new LoiDauVao(`Trường ${nhan} phải là chuỗi.`);
   const s = v.trim();
   const toi_da = tuy_chon.toi_da ?? 500;
-  if (s.length > toi_da) throw new LoiDauVao(`Truong ${nhan} qua dai (toi da ${toi_da} ky tu).`);
+  if (s.length > toi_da) throw new LoiDauVao(`Trường ${nhan} quá dài (tối đa ${toi_da} ký tự).`);
   if (tuy_chon.toi_thieu !== undefined && s.length < tuy_chon.toi_thieu) {
-    throw new LoiDauVao(`Truong ${nhan} phai tu ${tuy_chon.toi_thieu} ky tu tro len.`);
+    throw new LoiDauVao(`Trường ${nhan} phải từ ${tuy_chon.toi_thieu} ký tự trở lên.`);
   }
   return s;
 }
@@ -63,16 +63,16 @@ export function so_nguyen(
 ): number | null {
   const v = nguon[khoa];
   if (v === undefined || v === null || v === '') {
-    if (tuy_chon.bat_buoc === true) throw new LoiDauVao(`Thieu truong bat buoc: ${khoa}.`);
+    if (tuy_chon.bat_buoc === true) throw new LoiDauVao(`Thiếu trường bắt buộc: ${khoa}.`);
     return tuy_chon.mac_dinh ?? null;
   }
   const n = typeof v === 'number' ? v : Number(String(v).trim());
-  if (!Number.isInteger(n)) throw new LoiDauVao(`Truong ${khoa} phai la so nguyen.`);
+  if (!Number.isInteger(n)) throw new LoiDauVao(`Trường ${khoa} phải là số nguyên.`);
   if (tuy_chon.min !== undefined && n < tuy_chon.min) {
-    throw new LoiDauVao(`Truong ${khoa} phai >= ${tuy_chon.min}.`);
+    throw new LoiDauVao(`Trường ${khoa} phải lớn hơn hoặc bằng ${tuy_chon.min}.`);
   }
   if (tuy_chon.max !== undefined && n > tuy_chon.max) {
-    throw new LoiDauVao(`Truong ${khoa} phai <= ${tuy_chon.max}.`);
+    throw new LoiDauVao(`Trường ${khoa} phải nhỏ hơn hoặc bằng ${tuy_chon.max}.`);
   }
   return n;
 }
@@ -84,16 +84,16 @@ export function so_thuc(
 ): number | null {
   const v = nguon[khoa];
   if (v === undefined || v === null || v === '') {
-    if (tuy_chon.bat_buoc === true) throw new LoiDauVao(`Thieu truong bat buoc: ${khoa}.`);
+    if (tuy_chon.bat_buoc === true) throw new LoiDauVao(`Thiếu trường bắt buộc: ${khoa}.`);
     return null;
   }
   const n = typeof v === 'number' ? v : Number(String(v).trim());
-  if (!Number.isFinite(n)) throw new LoiDauVao(`Truong ${khoa} phai la so.`);
+  if (!Number.isFinite(n)) throw new LoiDauVao(`Trường ${khoa} phải là số.`);
   if (tuy_chon.min !== undefined && n < tuy_chon.min) {
-    throw new LoiDauVao(`Truong ${khoa} phai >= ${tuy_chon.min}.`);
+    throw new LoiDauVao(`Trường ${khoa} phải lớn hơn hoặc bằng ${tuy_chon.min}.`);
   }
   if (tuy_chon.max !== undefined && n > tuy_chon.max) {
-    throw new LoiDauVao(`Truong ${khoa} phai <= ${tuy_chon.max}.`);
+    throw new LoiDauVao(`Trường ${khoa} phải nhỏ hơn hoặc bằng ${tuy_chon.max}.`);
   }
   return n;
 }
@@ -109,7 +109,7 @@ export function luan_ly(
   const s = String(v).trim().toLowerCase();
   if (s === 'true' || s === '1') return true;
   if (s === 'false' || s === '0') return false;
-  throw new LoiDauVao(`Truong ${khoa} phai la true/false.`);
+  throw new LoiDauVao(`Trường ${khoa} phải là true/false.`);
 }
 
 const RE_NGAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -121,12 +121,12 @@ export function ngay(
 ): string | null {
   const s = chuoi(nguon, khoa, { bat_buoc: tuy_chon.bat_buoc, toi_da: 10 });
   if (s === null) return null;
-  if (!RE_NGAY.test(s)) throw new LoiDauVao(`Truong ${khoa} phai dang YYYY-MM-DD.`);
+  if (!RE_NGAY.test(s)) throw new LoiDauVao(`Trường ${khoa} phải có dạng YYYY-MM-DD.`);
   // Chan ngay khong ton tai (vd 2025-02-30).
   const [y, m, d] = s.split('-').map(Number) as [number, number, number];
   const kt = new Date(Date.UTC(y, m - 1, d));
   if (kt.getUTCMonth() + 1 !== m || kt.getUTCDate() !== d) {
-    throw new LoiDauVao(`Ngay khong ton tai: ${s}.`);
+    throw new LoiDauVao(`Ngày không tồn tại: ${s}.`);
   }
   return s;
 }
@@ -144,7 +144,7 @@ export function gio(
 ): string | null {
   const s = chuoi(nguon, khoa, { bat_buoc: tuy_chon.bat_buoc, toi_da: 8 });
   if (s === null) return null;
-  if (!RE_GIO.test(s)) throw new LoiDauVao(`Truong ${khoa} phai dang HH:MM (24 gio).`);
+  if (!RE_GIO.test(s)) throw new LoiDauVao(`Trường ${khoa} phải có dạng HH:MM (24 giờ).`);
   return s.length === 5 ? `${s}:00` : s;
 }
 
@@ -157,7 +157,7 @@ export function uuid(
 ): string | null {
   const s = chuoi(nguon, khoa, { bat_buoc: tuy_chon.bat_buoc, toi_da: 36 });
   if (s === null) return null;
-  if (!RE_UUID.test(s)) throw new LoiDauVao(`Truong ${khoa} khong phai ma hop le.`);
+  if (!RE_UUID.test(s)) throw new LoiDauVao(`Trường ${khoa} không phải mã hợp lệ.`);
   return s;
 }
 
@@ -175,7 +175,7 @@ export function trong_tap<T extends string>(
   const s = chuoi(nguon, khoa, { bat_buoc: tuy_chon.bat_buoc, toi_da: 40 });
   if (s === null) return tuy_chon.mac_dinh ?? null;
   if (!(tap as readonly string[]).includes(s)) {
-    throw new LoiDauVao(`Truong ${khoa} phai la mot trong: ${tap.join(', ')}.`);
+    throw new LoiDauVao(`Trường ${khoa} phải là một trong: ${tap.join(', ')}.`);
   }
   return s as T;
 }
@@ -187,10 +187,10 @@ export function khoang_ngay(
 ): { tu: string; den: string } {
   const tu = ngay_bat_buoc(nguon, 'tu');
   const den = ngay_bat_buoc(nguon, 'den');
-  if (den < tu) throw new LoiDauVao('Ngay ket thuc phai lon hon hoac bang ngay bat dau.');
+  if (den < tu) throw new LoiDauVao('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.');
   const so_ngay = (Date.parse(`${den}T00:00:00Z`) - Date.parse(`${tu}T00:00:00Z`)) / 86_400_000 + 1;
   if (so_ngay > toi_da_ngay) {
-    throw new LoiDauVao(`Khoang ngay qua dai (toi da ${toi_da_ngay} ngay).`);
+    throw new LoiDauVao(`Khoảng ngày quá dài (tối đa ${toi_da_ngay} ngày).`);
   }
   return { tu, den };
 }

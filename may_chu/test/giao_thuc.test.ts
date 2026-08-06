@@ -20,7 +20,7 @@ test('doc_attlog: doc dung mot dong chuan tab-separated', () => {
   assert.equal(b.pin, '1001');
   assert.equal(b.trang_thai, 0);
   assert.equal(b.xac_thuc, 15);
-  assert.equal(nhan_cach_xac_thuc(b.xac_thuc), 'Khuon mat');
+  assert.equal(nhan_cach_xac_thuc(b.xac_thuc), 'Khuôn mặt');
   // May o mui gio +07 gui gio dia phuong -> 08:03:12 +07 = 01:03:12 UTC
   assert.equal(b.thoi_diem.toISOString(), '2026-08-06T01:03:12.000Z');
 });
@@ -45,7 +45,7 @@ test('doc_attlog: chap nhan CRLF va thieu truong cuoi', () => {
   assert.equal(ban_ghi.length, 2);
   assert.equal(ban_ghi[0]!.trang_thai, 0); // mac dinh khi thieu Status
   assert.equal(ban_ghi[1]!.trang_thai, 1);
-  assert.equal(ban_ghi[0]!.xac_thuc, 9);   // mac dinh 'Khac'
+  assert.equal(ban_ghi[0]!.xac_thuc, 9);   // mac dinh 'Khác'
 });
 
 test('doc_attlog: firmware dung nhieu khoang trang thay TAB', () => {

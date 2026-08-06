@@ -21,31 +21,31 @@ export const TrangThaiQuet = {
 
 /** Ma Verify trong ATTLOG — gia tri co the khac chut theo firmware. */
 export const CACH_XAC_THUC: Record<number, string> = {
-  0: 'Mat khau',
-  1: 'Van tay',
-  2: 'The',
-  3: 'Mat khau',
-  4: 'The',
-  5: 'Van tay + The',
-  6: 'Van tay + Mat khau',
-  7: 'The + Mat khau',
-  8: 'The + Van tay + Mat khau',
-  9: 'Khac',
-  15: 'Khuon mat',
-  25: 'Long ban tay',
+  0: 'Mật khẩu',
+  1: 'Vân tay',
+  2: 'Thẻ',
+  3: 'Mật khẩu',
+  4: 'Thẻ',
+  5: 'Vân tay + Thẻ',
+  6: 'Vân tay + Mật khẩu',
+  7: 'Thẻ + Mật khẩu',
+  8: 'Thẻ + Vân tay + Mật khẩu',
+  9: 'Khác',
+  15: 'Khuôn mặt',
+  25: 'Lòng bàn tay',
 };
 
 export function nhan_cach_xac_thuc(ma: number): string {
-  return CACH_XAC_THUC[ma] ?? 'Khac';
+  return CACH_XAC_THUC[ma] ?? 'Khác';
 }
 
 export const NHAN_TRANG_THAI: Record<number, string> = {
-  0: 'Vao',
+  0: 'Vào',
   1: 'Ra',
-  2: 'Ra nghi',
-  3: 'Vao sau nghi',
-  4: 'Vao tang ca',
-  5: 'Ra tang ca',
+  2: 'Ra nghỉ',
+  3: 'Vào sau nghỉ',
+  4: 'Vào tăng ca',
+  5: 'Ra tăng ca',
 };
 
 export interface BanGhiAttlog {

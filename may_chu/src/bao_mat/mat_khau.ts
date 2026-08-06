@@ -60,17 +60,17 @@ export async function kiem_tra_mat_khau(mat_khau: string, luu: string): Promise<
 /** Yeu cau toi thieu cho mat khau. Nem loi co thong diep tieng Viet de tra ve API. */
 export function kiem_tra_do_manh(mat_khau: string): void {
   if (typeof mat_khau !== 'string' || mat_khau.length < 8) {
-    throw new LoiMatKhau('Mat khau phai tu 8 ky tu tro len.');
+    throw new LoiMatKhau('Mật khẩu phải từ 8 ký tự trở lên.');
   }
   if (mat_khau.length > 200) {
-    throw new LoiMatKhau('Mat khau qua dai (toi da 200 ky tu).');
+    throw new LoiMatKhau('Mật khẩu quá dài (tối đa 200 ký tự).');
   }
   if (!/[0-9]/.test(mat_khau) || !/[a-zA-Z]/.test(mat_khau)) {
-    throw new LoiMatKhau('Mat khau phai co ca chu va so.');
+    throw new LoiMatKhau('Mật khẩu phải có cả chữ và số.');
   }
   const de_doan = ['12345678', 'password', 'matkhau', 'chamcong', '11111111', 'admin123'];
   if (de_doan.includes(mat_khau.toLowerCase())) {
-    throw new LoiMatKhau('Mat khau qua de doan, chon mat khau khac.');
+    throw new LoiMatKhau('Mật khẩu quá dễ đoán, hãy chọn mật khẩu khác.');
   }
 }
 

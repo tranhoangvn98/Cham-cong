@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "Chấm công",
+    "slug": "cham-cong",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "chamcong",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "vn.tranhoang.chamcong",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Ứng dụng dùng camera để chụp ảnh xác nhận khi bạn chấm công bằng điện thoại.",
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng dùng vị trí để xác minh bạn đang ở đúng địa điểm làm việc khi chấm công."
+      }
+    },
+    "android": {
+      "package": "vn.tranhoang.chamcong",
+      "adaptiveIcon": {
+        "backgroundColor": "#1D4ED8",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Ứng dụng dùng camera để chụp ảnh xác nhận khi bạn chấm công.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Ứng dụng dùng vị trí để xác minh bạn đang ở đúng địa điểm làm việc khi chấm công.",
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      "expo-secure-store",
+      "expo-notifications"
+    ],
+    "extra": {
+      "//": "Địa chỉ máy chủ chấm công. Nhân viên tự nhập ở màn hình đăng nhập lần đầu; giá trị này chỉ là gợi ý mặc định. Có thể ghi đè khi build bằng biến môi trường EXPO_PUBLIC_API_URL.",
+      "api_url_mac_dinh": "http://192.168.1.10:8080"
+    }
+  }
+}

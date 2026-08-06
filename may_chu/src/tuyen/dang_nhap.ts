@@ -90,7 +90,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     const nd = await nap_nguoi_dung(ten_dang_nhap);
 
     // Thong diep chung cho moi truong hop sai — khong tiet lo tai khoan co ton tai hay khong.
-    const LOI_CHUNG = { loi: 'Ten dang nhap hoac mat khau khong dung.' };
+    const LOI_CHUNG = { loi: 'Tên đăng nhập hoặc mật khẩu không đúng.' };
 
     if (nd === null) {
       // Van bam mot lan de thoi gian phan hoi khong to ra tai khoan khong ton tai.
@@ -99,13 +99,13 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     }
 
     if (!nd.dang_hoat_dong) {
-      return res.code(403).send({ loi: 'Tai khoan da bi vo hieu hoa.' });
+      return res.code(403).send({ loi: 'Tài khoản đã bị vô hiệu hóa.' });
     }
 
     if (nd.khoa_den !== null && nd.khoa_den.getTime() > Date.now()) {
       const con_phut = Math.ceil((nd.khoa_den.getTime() - Date.now()) / 60000);
       return res.code(429).send({
-        loi: `Tai khoan tam khoa do sai mat khau nhieu lan. Thu lai sau ${con_phut} phut.`,
+        loi: `Tài khoản tạm khóa do sai mật khẩu nhiều lần. Thử lại sau ${con_phut} phút.`,
       });
     }
 
@@ -142,7 +142,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
 
     const nd_token = giai_ma_token(token);
     if (nd_token === null || nd_token.loai !== 'lm') {
-      return res.code(401).send({ loi: 'Token lam moi khong hop le hoac da het han.' });
+      return res.code(401).send({ loi: 'Token làm mới không hợp lệ hoặc đã hết hạn.' });
     }
 
     const hash = bam_token(token);
@@ -173,11 +173,11 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     if (ket_qua.loi === 'da_thu_hoi') {
       req.log.warn({ nguoi_dung: nd_token.sub, ip: req.ip }, 'dung lai token lam moi da thu hoi');
       return res.code(401).send({
-        loi: 'Phien khong hop le. Vi bao mat, tat ca phien da bi dang xuat. Vui long dang nhap lai.',
+        loi: 'Phiên không hợp lệ. Vì bảo mật, tất cả phiên đã bị đăng xuất. Vui lòng đăng nhập lại.',
       });
     }
     if (ket_qua.loi !== null) {
-      return res.code(401).send({ loi: 'Token lam moi khong hop le hoac da het han.' });
+      return res.code(401).send({ loi: 'Token làm mới không hợp lệ hoặc đã hết hạn.' });
     }
 
     const nd = await truy_van_mot<DongNguoiDung>(
@@ -189,7 +189,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
       [nd_token.sub],
     );
     if (nd === null || !nd.dang_hoat_dong) {
-      return res.code(401).send({ loi: 'Tai khoan khong con hieu luc.' });
+      return res.code(401).send({ loi: 'Tài khoản không còn hiệu lực.' });
     }
 
     return res.send(await phat_token(nd, null));
@@ -250,12 +250,12 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
       'select mat_khau_hash from nguoi_dung where id = $1',
       [nd.sub],
     );
-    if (dong === null) return res.code(401).send({ loi: 'Tai khoan khong ton tai.' });
+    if (dong === null) return res.code(401).send({ loi: 'Tài khoản không tồn tại.' });
 
     if (!(await kiem_tra_mat_khau(cu, dong.mat_khau_hash))) {
-      return res.code(400).send({ loi: 'Mat khau hien tai khong dung.' });
+      return res.code(400).send({ loi: 'Mật khẩu hiện tại không đúng.' });
     }
-    if (cu === moi) throw new LoiDauVao('Mat khau moi phai khac mat khau cu.');
+    if (cu === moi) throw new LoiDauVao('Mật khẩu mới phải khác mật khẩu cũ.');
 
     let hash: string;
     try {
@@ -278,6 +278,6 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     });
     await ghi_nhat_ky(nd.sub, 'doi_mat_khau', 'nguoi_dung', nd.sub, null, req.ip);
 
-    return res.send({ ok: true, thong_bao: 'Da doi mat khau. Vui long dang nhap lai.' });
+    return res.send({ ok: true, thong_bao: 'Đã đổi mật khẩu. Vui lòng đăng nhập lại.' });
   });
 }

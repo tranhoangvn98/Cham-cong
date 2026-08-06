@@ -30,3 +30,8 @@ Thumbs.db
 .idea/
 .vscode/
 !.vscode/extensions.json
+
+# Expo
+dien_thoai/.expo/
+dien_thoai/dist/
+dien_thoai/expo-env.d.ts
