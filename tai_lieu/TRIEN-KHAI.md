@@ -171,8 +171,22 @@ Trả HTTP 503 khi không kết nối được cơ sở dữ liệu. Đủ để
 
 Ba việc nên theo dõi:
 
-1. **Máy chấm công mất kết nối** — hiện ngay trên trang Tổng quan của webapp. Máy vẫn lưu
-   log nội bộ nên không mất dữ liệu, nhưng bảng công sẽ chậm cập nhật.
+1. **Máy chấm công mất kết nối** — máy chủ tự phát hiện trong vòng 1 phút và ghi log mức
+   `warn`, đồng thời đẩy sự kiện `thiet_bi.mat_ket_noi` vào hộp thư đi (và
+   `thiet_bi.ket_noi_lai` khi máy báo hiệu lại). Cảnh báo chỉ gửi **một lần** mỗi lần mất
+   kết nối, không lặp lại mỗi chu kỳ. Cũng hiện trên trang Tổng quan của webapp.
+
+   Máy vẫn lưu log nội bộ nên không mất dữ liệu, nhưng bảng công sẽ chậm cập nhật. Muốn báo
+   sang Teams / Zalo thì trỏ `ERP_WEBHOOK_URL` tới một relay và lọc theo `loai_su_kien`:
+
+   ```bash
+   docker compose logs may_chu | grep "mat ket noi"
+   ```
+
+   ```sql
+   -- Máy nào đang được đánh dấu mất kết nối
+   select serial, ten, thay_lan_cuoi from thiet_bi where da_canh_bao_offline;
+   ```
 2. **Bảng công ngày hôm qua đã chốt chưa** — máy chủ tự chạy sau 01:00 giờ Việt Nam.
    Kiểm tra: `select * from cong_viec_da_chay order by chay_luc desc limit 5;`
    Việc này **bắt buộc** phải chạy, vì người vắng cả ngày không có lần quẹt nào nên không

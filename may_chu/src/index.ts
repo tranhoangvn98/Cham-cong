@@ -5,6 +5,7 @@ import { chay_di_tru } from './csdl/di_tru.ts';
 import { dong_pool } from './csdl/ket_noi.ts';
 import { bat_tien_trinh_day, dung_tien_trinh_day } from './su_kien/hop_thu_di.ts';
 import { bat_lich, dung_lich } from './su_kien/lich_chay.ts';
+import { bat_giam_sat_may, dung_giam_sat_may } from './su_kien/giam_sat_may.ts';
 import { dung_ung_dung } from './ung_dung.ts';
 
 const app = await dung_ung_dung();
@@ -19,6 +20,12 @@ try {
   bat_tien_trinh_day();
   // Chot bang cong ngay hom truoc — BAT BUOC de ngay VANG xuat hien tren bang cong.
   bat_lich((s) => app.log.info(s));
+  // Canh bao may mat ket noi. Trang Tong quan co hien trang thai may nhung do la thong
+  // tin bi dong — phai co nguoi mo trang len xem.
+  bat_giam_sat_may((muc, s, t) => {
+    if (muc === 'canh_bao') app.log.warn(t ?? {}, s);
+    else app.log.info(t ?? {}, s);
+  });
 
   await app.listen({ port: cau_hinh.cong, host: '0.0.0.0' });
   app.log.info(
@@ -40,6 +47,7 @@ for (const tin_hieu of ['SIGINT', 'SIGTERM'] as const) {
     app.log.info({ tin_hieu }, 'dang tat may chu');
     dung_tien_trinh_day();
     dung_lich();
+    dung_giam_sat_may();
     app.close()
       .then(() => dong_pool())
       .then(() => process.exit(0))

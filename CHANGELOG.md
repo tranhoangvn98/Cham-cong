@@ -2,6 +2,24 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.2.0] — 2026-08-06
+
+### Thêm mới
+
+- **Cảnh báo máy chấm công mất kết nối** (`su_kien/giam_sat_may.ts`). Trước đây trạng thái máy
+  chỉ hiện trên trang Tổng quan — thông tin **bị động**, phải có người mở trang lên xem. Nay
+  máy chủ kiểm tra mỗi phút, ghi log mức `warn` và đẩy sự kiện `thiet_bi.mat_ket_noi` /
+  `thiet_bi.ket_noi_lai` vào hộp thư đi.
+
+  Cảnh báo **đúng một lần** mỗi lần chuyển online → offline (cột `thiet_bi.da_canh_bao_offline`), không
+  lặp mỗi chu kỳ. Cả hai câu `UPDATE ... where <trạng thái> returning` đều nguyên tử nên nhiều
+  instance chạy song song không gửi trùng. Máy `dang_bat = false` (đã tháo ra) không sinh cảnh
+  báo. Bao gồm cả máy **chưa bao giờ** báo hiệu — khai báo máy mà không nói được với máy chủ là
+  lỗi cấu hình, cần biết ngay.
+- Di trú `005_canh_bao_may.sql`: `thiet_bi.da_canh_bao_offline`.
+- 2 test e2e: mất kết nối phát đúng 1 cảnh báo qua 3 chu kỳ, kết nối lại phát sự kiện phục hồi
+  rồi lần mất kết nối sau lại được cảnh báo; máy đã tắt không sinh cảnh báo.
+
 ## [1.1.0] — 2026-08-06
 
 Áp bộ nhận diện của công ty (theme Compose Boltuix) lên cả web và app, và dựng bộ màn hình

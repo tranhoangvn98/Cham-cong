@@ -9,7 +9,9 @@ import { pool, truy_van, thuc_thi } from '../csdl/ket_noi.ts';
 export type LoaiSuKien =
   | 'lan_quet.da_ghi'
   | 'bang_cong.da_chot'
-  | 'nghi_phep.da_duyet';
+  | 'nghi_phep.da_duyet'
+  | 'thiet_bi.mat_ket_noi'
+  | 'thiet_bi.ket_noi_lai';
 
 /** Ghi su kien vao outbox. Dung `khach` de nam trong cung transaction voi du lieu goc. */
 export async function ghi_su_kien(

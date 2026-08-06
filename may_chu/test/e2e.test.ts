@@ -30,6 +30,7 @@ const { chay_di_tru } = await import('../src/csdl/di_tru.ts');
 const { thuc_thi, truy_van_mot, dong_pool } = await import('../src/csdl/ket_noi.ts');
 const { bam_mat_khau } = await import('../src/bao_mat/mat_khau.ts');
 const { ngay_dia_phuong, cong_ngay } = await import('../src/tien_ich/thoi_gian.ts');
+const { chay_mot_vong: giam_sat_may } = await import('../src/su_kien/giam_sat_may.ts');
 
 let app: FastifyInstance;
 let token_admin = '';
@@ -816,6 +817,71 @@ test('man Luong tra co so tinh cong, KHONG bay so tien nao', async () => {
   for (const k of ['tong_cong', 'tong_phut_lam', 'tong_phut_ot', 'so_ngay_vang']) {
     assert.equal(String(a[k]), String(b[k]), `lech o truong ${k}`);
   }
+});
+
+// ============================================================ giam sat may offline
+test('may mat ket noi -> DUNG MOT canh bao, ket noi lai -> mot su kien phuc hoi', async () => {
+  const dem = async (loai: string): Promise<number> => {
+    const r = await truy_van_mot<{ so: number }>(
+      `select count(*)::int as so from hop_thu_di
+        where loai_su_kien = $1 and du_lieu->>'serial' = $2`,
+      [loai, SERIAL],
+    );
+    return r?.so ?? 0;
+  };
+
+  // Day thay_lan_cuoi ve qua khu xa hon nguong, va dat lai co canh bao.
+  await thuc_thi(
+    `update thiet_bi
+        set thay_lan_cuoi = now() - interval '2 hours', da_canh_bao_offline = false
+      where serial = $1`,
+    [SERIAL],
+  );
+
+  const truoc = await dem('thiet_bi.mat_ket_noi');
+  await giam_sat_may(() => {});
+  assert.equal(await dem('thiet_bi.mat_ket_noi'), truoc + 1, 'vong dau phai phat 1 canh bao');
+
+  // Chay them hai vong nua trong khi may VAN dang offline: khong duoc canh bao lai.
+  await giam_sat_may(() => {});
+  await giam_sat_may(() => {});
+  assert.equal(
+    await dem('thiet_bi.mat_ket_noi'), truoc + 1,
+    'khong duoc canh bao lai moi chu ky khi may van dang mat ket noi',
+  );
+
+  // May bao hieu lai (nhu khi poll /iclock/getrequest) -> co su kien phuc hoi.
+  const truoc_lai = await dem('thiet_bi.ket_noi_lai');
+  await thuc_thi('update thiet_bi set thay_lan_cuoi = now() where serial = $1', [SERIAL]);
+  await giam_sat_may(() => {});
+  assert.equal(await dem('thiet_bi.ket_noi_lai'), truoc_lai + 1);
+
+  // Va lan mat ket noi SAU do lai duoc canh bao (co da duoc dat lai).
+  await thuc_thi(
+    `update thiet_bi set thay_lan_cuoi = now() - interval '2 hours' where serial = $1`,
+    [SERIAL],
+  );
+  await giam_sat_may(() => {});
+  assert.equal(await dem('thiet_bi.mat_ket_noi'), truoc + 2);
+});
+
+test('may dang_bat = false khong sinh canh bao (may da thao ra)', async () => {
+  const nv = await goi('POST', '/api/thiet-bi', {
+    token: token_admin,
+    body: { serial: 'TEST-SN-TAT', ten: 'May da thao', vi_tri: 'Kho' },
+  });
+  assert.equal(nv.ma, 201);
+  await thuc_thi(
+    `update thiet_bi set dang_bat = false, thay_lan_cuoi = now() - interval '2 hours'
+      where serial = 'TEST-SN-TAT'`,
+  );
+
+  await giam_sat_may(() => {});
+  const r = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from hop_thu_di
+      where loai_su_kien = 'thiet_bi.mat_ket_noi' and du_lieu->>'serial' = 'TEST-SN-TAT'`,
+  );
+  assert.equal(r?.so, 0);
 });
 
 // ============================================================ outbox
