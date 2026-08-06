@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { goi } from '../../nguon/api';
 import { dung_mau, kieu } from '../../nguon/kieu';
 import {
-  Chu, DangTai, Dong, Hop, HopLoi, NhanDon, Nhap, Nut, Trong, dung_hanh_dong, dung_nap,
+  Chu, DangTai, Dong, Hop, HopLoi, KyHieu, NhanDon, Nhap, Nut, Trong,
+  dung_hanh_dong, dung_nap,
 } from '../../nguon/thanh_phan';
 import {
   TEN_LOAI_NGHI, TEN_TRANG_THAI_DON, hom_nay, ngay_viet,
@@ -109,7 +110,7 @@ export default function ManDonTu(): ReactNode {
                       <Chu co="bo" mau="nhat">
                         {d.tu_ngay === d.den_ngay
                           ? ngay_viet(d.tu_ngay)
-                          : `${ngay_viet(d.tu_ngay)} → ${ngay_viet(d.den_ngay)}`}
+                          : `${ngay_viet(d.tu_ngay)} – ${ngay_viet(d.den_ngay)}`}
                       </Chu>
                       {d.ly_do !== null && <Chu co="bo" mau="mo">{d.ly_do}</Chu>}
                       {d.ghi_chu_duyet !== null && (
@@ -148,7 +149,7 @@ export default function ManDonTu(): ReactNode {
                     <Chu co="nho" dam>{ngay_viet(d.ngay)}</Chu>
                     <Chu co="bo" mau="nhat" style={kieu.so}>
                       Đề xuất: {d.gio_vao_de_xuat === null ? '—' : d.gio_vao_de_xuat.slice(0, 5)}
-                      {' → '}
+                      {' – '}
                       {d.gio_ra_de_xuat === null ? '—' : d.gio_ra_de_xuat.slice(0, 5)}
                     </Chu>
                     <Chu co="bo" mau="mo">{d.ly_do}</Chu>
@@ -234,8 +235,8 @@ function FormNghiPhep(
                   style={[
                     kieu.nut, kieu.nut_nho,
                     {
-                      backgroundColor: loai === l ? m.chinh : m.nen_the,
-                      borderColor: loai === l ? m.chinh : m.vien,
+                      backgroundColor: loai === l ? m.chinh_dam : m.nen_the,
+                      borderColor: loai === l ? m.chinh_dam : m.vien,
                     },
                   ]}
                 >
@@ -266,12 +267,13 @@ function FormNghiPhep(
             <View
               style={{
                 width: 22, height: 22, borderRadius: 5, borderWidth: 2,
-                borderColor: nua_ngay ? m.chinh : m.vien,
-                backgroundColor: nua_ngay ? m.chinh : 'transparent',
+                borderColor: nua_ngay ? m.chinh_dam : m.vien,
+                backgroundColor: nua_ngay ? m.chinh_dam : 'transparent',
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
-              {nua_ngay && <Chu co="bo" dam style={{ color: m.tren_chinh }}>✓</Chu>}
+              {/* ✓ khong co trong Be Vietnam Pro -> ve bang font he thong, xem KyHieu. */}
+              {nua_ngay && <KyHieu co={13} mau="tren_chinh">✓</KyHieu>}
             </View>
             <Chu co="nho">Chỉ nghỉ nửa ngày</Chu>
           </Pressable>

@@ -1,0 +1,110 @@
+/* Sinh tu thiet_ke/token.json boi thiet_ke/sinh_token.mjs — DUNG SUA TAY.
+   Sua token.json roi chay: npm run sinh_token
+   Bien CSS: mau, font, bo goc, khoang cach. */
+
+@font-face {
+  font-family: 'Be Vietnam Pro';
+  src: url('/font/BeVietnamPro-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Be Vietnam Pro';
+  src: url('/font/BeVietnamPro-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Be Vietnam Pro';
+  src: url('/font/BeVietnamPro-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Be Vietnam Pro';
+  src: url('/font/BeVietnamPro-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --chu-viet: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --trong-thuong: 400;
+  --trong-vua: 500;
+  --trong-dam: 600;
+  --trong-rat-dam: 700;
+
+  --tron-nho: 8px;
+  --tron: 12px;
+  --tron-lon: 16px;
+  --tron-tron: 999px;
+
+  --khoang-rat-nho: 4px;
+  --khoang-nho: 8px;
+  --khoang-vua: 12px;
+  --khoang-lon: 16px;
+  --khoang-rat-lon: 24px;
+
+  --rong-thanh-ben: 232px;
+
+  --chinh: #4285F4;
+  --chinh-nhat: #E8F0FE;
+  --chinh-dam: #1967D2;
+  --nhan: #C1273A;
+  --nhan-nen: #FDEAEC;
+  --nen: #F4F5F7;
+  --nen-the: #FFFFFF;
+  --nen-mo: #EDEEF1;
+  --vien: #EAEAEA;
+  --vien-dam: #C8CBD0;
+  --chu: #101820;
+  --chu-nhat: #6B7076;
+  --chu-mo: #6E737A;
+  --tot: #1A7F37;
+  --tot-nen: #E6F6EC;
+  --canh-bao: #B45309;
+  --canh-bao-nen: #FDF3E3;
+  --xau: #C5221F;
+  --xau-nen: #FDECEA;
+  --lanh: #0C447C;
+  --lanh-nen: #E8F0FE;
+  --tren-chinh: #FFFFFF;
+  --bong: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 10%);
+  --bong-noi: 0 4px 12px rgb(16 24 40 / 12%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --chinh: #8AB4F8;
+    --chinh-nhat: #1B2740;
+    --chinh-dam: #AFC9FA;
+    --nhan: #FF8A95;
+    --nhan-nen: #33191D;
+    --nen: #14171C;
+    --nen-the: #1B1F26;
+    --nen-mo: #22262E;
+    --vien: #2E343D;
+    --vien-dam: #3D444F;
+    --chu: #E7EAEE;
+    --chu-nhat: #A3ABB6;
+    --chu-mo: #98A0AB;
+    --tot: #30D158;
+    --tot-nen: #10291A;
+    --canh-bao: #FF9F0A;
+    --canh-bao-nen: #2B2114;
+    --xau: #FF6259;
+    --xau-nen: #2D1A18;
+    --lanh: #5EA9FF;
+    --lanh-nen: #16243A;
+    --tren-chinh: #0B0F14;
+    --bong: 0 1px 2px rgb(0 0 0 / 30%);
+    --bong-noi: 0 6px 16px rgb(0 0 0 / 45%);
+  }
+}

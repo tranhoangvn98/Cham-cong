@@ -1,12 +1,40 @@
 import { useState, type ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
-import { dung_mau, kieu } from '../../nguon/kieu';
+import { dung_mau, kieu, type BangMau } from '../../nguon/kieu';
 import {
-  Chu, DangTai, Dong, HopLoi, NhanNgay, Nut, The, TheNhan, Trong, dung_nap,
+  Chu, DangTai, Dong, HopLoi, NhanNgay, Nut, OChiSo, The, TheNhan, ThanhTienDo, Trong,
+  dung_nap,
 } from '../../nguon/thanh_phan';
 import {
   TEN_TRANG_THAI_NGAY, doi_thang, gio_ngan, phut_thanh_chu, ten_thang, thang_nay, thu_cua_ngay,
 } from '../../nguon/tien_ich';
+
+const CHU_THU = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+/** Mau o lich theo trang thai ngay. Di muon lam ngay co mat doi sang mau cam. */
+function mau_o_lich(m: BangMau, n: { trang_thai: string; phut_muon: number } | undefined): string {
+  if (n === undefined) return 'transparent';
+  if (n.trang_thai === 'co_mat') return Number(n.phut_muon) > 0 ? m.canh_bao_nen : m.tot_nen;
+  if (n.trang_thai === 'vang') return m.xau_nen;
+  if (n.trang_thai === 'nghi_phep') return m.lanh_nen;
+  if (n.trang_thai === 'ngay_le') return m.canh_bao_nen;
+  return m.nen_mo;
+}
+
+/**
+ * Thu cua ngay mung 1, tinh theo tuan bat dau THU HAI (0 = T2 ... 6 = CN).
+ * Dung Date.UTC de khong bi mui gio may keo ngay lui/tien mot ngay.
+ */
+function lech_dau_thang(thang: string): number {
+  const [nam, t] = thang.split('-').map(Number);
+  const thu = new Date(Date.UTC(nam ?? 1970, (t ?? 1) - 1, 1)).getUTCDay();
+  return thu === 0 ? 6 : thu - 1;
+}
+
+function so_ngay_trong_thang(thang: string): number {
+  const [nam, t] = thang.split('-').map(Number);
+  return new Date(Date.UTC(nam ?? 1970, t ?? 1, 0)).getUTCDate();
+}
 
 interface NgayCong {
   ngay: string;
@@ -30,9 +58,11 @@ interface BangCongThang {
     tong_phut_lam: number;
     tong_phut_ot: number;
     tong_phut_muon: number;
+    so_ngay_co_mat: number;
     so_ngay_vang: number;
     so_ngay_nghi_phep: number;
     so_lan_di_muon: number;
+    so_ngay_phai_lam: number;
   } | null;
   ngay: NgayCong[];
 }
@@ -44,6 +74,7 @@ export default function ManBangCong(): ReactNode {
 
   const th = du_lieu?.tong_hop ?? null;
   const la_thang_nay = thang === thang_nay();
+  const theo_ngay = new Map((du_lieu?.ngay ?? []).map((n) => [n.ngay, n]));
 
   return (
     <ScrollView style={[kieu.man, { backgroundColor: m.nen }]} contentContainerStyle={kieu.cuon}>
@@ -107,6 +138,85 @@ export default function ManBangCong(): ReactNode {
             </View>
           </The>
 
+          {/* ------------------------------------------------ 4 chi so phan loai (Man 2) */}
+          <View style={kieu.luoi_chi_so}>
+            <OChiSo
+              nhan="ĐỦ CÔNG"
+              gia_tri={String(Math.max(0,
+                Number(th?.so_ngay_co_mat ?? 0) - Number(th?.so_lan_di_muon ?? 0)))}
+              phu="ngày"
+              mau="tot"
+            />
+            <OChiSo
+              nhan="ĐI MUỘN"
+              gia_tri={String(Number(th?.so_lan_di_muon ?? 0))}
+              phu="lần"
+              mau={Number(th?.so_lan_di_muon ?? 0) > 0 ? 'canh_bao' : 'chu'}
+            />
+            <OChiSo
+              nhan="NGHỈ PHÉP"
+              gia_tri={String(Number(th?.so_ngay_nghi_phep ?? 0))}
+              phu="ngày"
+              mau="lanh"
+            />
+            <OChiSo
+              nhan="VẮNG"
+              gia_tri={String(Number(th?.so_ngay_vang ?? 0))}
+              phu="ngày"
+              mau={Number(th?.so_ngay_vang ?? 0) > 0 ? 'xau' : 'chu'}
+            />
+          </View>
+
+          {/* ------------------------------------------------ cong chuan / thuc te */}
+          <The>
+            <View style={kieu.hang_deu}>
+              <Chu co="h3">Công thực tế / công chuẩn</Chu>
+              <Chu co="nho" mau="nhat" style={kieu.so}>
+                {Number(th?.tong_cong ?? 0).toFixed(1)}/{Number(th?.so_ngay_phai_lam ?? 0)}
+              </Chu>
+            </View>
+            <ThanhTienDo
+              phan={Number(th?.so_ngay_phai_lam ?? 0) === 0
+                ? 0
+                : Number(th?.tong_cong ?? 0) / Number(th?.so_ngay_phai_lam)}
+              mau={Number(th?.tong_cong ?? 0) >= Number(th?.so_ngay_phai_lam ?? 0) ? 'tot' : 'chinh'}
+            />
+          </The>
+
+          {/* ------------------------------------------------ lich thang dang heatmap */}
+          <The>
+            <Chu co="h3">Lịch tháng</Chu>
+            <View style={kieu.luoi_lich}>
+              {CHU_THU.map((c) => (
+                <View key={c} style={kieu.dau_thu}>
+                  <Chu co="bo" mau="nhat">{c}</Chu>
+                </View>
+              ))}
+              {/* O trong dau thang de mung 1 roi dung cot thu cua no. */}
+              {Array.from({ length: lech_dau_thang(thang) }, (_, i) => (
+                <View key={`trong-${i}`} style={kieu.o_lich} />
+              ))}
+              {Array.from({ length: so_ngay_trong_thang(thang) }, (_, i) => {
+                const ngay = `${thang}-${String(i + 1).padStart(2, '0')}`;
+                const n = theo_ngay.get(ngay);
+                return (
+                  <View key={ngay} style={kieu.o_lich}>
+                    <View style={[kieu.o_lich_trong, { backgroundColor: mau_o_lich(m, n) }]}>
+                      <Chu co="bo" mau={n === undefined ? 'mo' : 'chu'}>{i + 1}</Chu>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={[kieu.hang, { flexWrap: 'wrap', gap: 8 }]}>
+              <TheNhan chu="Đủ công" mau="tot" />
+              <TheNhan chu="Đi muộn / lễ" mau="canh_bao" />
+              <TheNhan chu="Nghỉ phép" mau="lanh" />
+              <TheNhan chu="Vắng" mau="xau" />
+              <TheNhan chu="Nghỉ tuần" mau="mo" />
+            </View>
+          </The>
+
           {/* ------------------------------------------------ tung ngay */}
           <View style={[kieu.the_mong, { backgroundColor: m.nen_the, borderColor: m.vien }]}>
             {du_lieu.ngay.length === 0 ? (
@@ -128,7 +238,7 @@ export default function ManBangCong(): ReactNode {
                     <Chu co="nho" style={kieu.so}>
                       {n.gio_vao === null
                         ? '—'
-                        : `${gio_ngan(n.gio_vao)} → ${n.gio_vao === n.gio_ra ? '?' : gio_ngan(n.gio_ra)}`}
+                        : `${gio_ngan(n.gio_vao)} – ${n.gio_vao === n.gio_ra ? '?' : gio_ngan(n.gio_ra)}`}
                     </Chu>
                     <View style={[kieu.hang, { gap: 6, flexWrap: 'wrap' }]}>
                       <NhanNgay
@@ -160,7 +270,7 @@ export default function ManBangCong(): ReactNode {
           </View>
 
           <Chu co="bo" mau="mo" canh="giua">
-            Thấy sai lệch? Vào tab Đơn từ để gửi giải trình cho nhân sự.
+            Thấy sai lệch? Mở "Nghỉ phép & đơn từ" ở Trang chủ để gửi giải trình cho nhân sự.
           </Chu>
         </>
       )}

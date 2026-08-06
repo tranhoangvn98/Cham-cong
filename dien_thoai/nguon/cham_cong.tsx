@@ -270,9 +270,9 @@ export function NutChamCong(
             alignItems: 'center',
             justifyContent: 'center',
             gap: 4,
-            backgroundColor: la_vao ? m.chinh : m.nen_the,
+            backgroundColor: la_vao ? m.chinh_dam : m.nen_the,
             borderWidth: 1,
-            borderColor: la_vao ? m.chinh : m.vien,
+            borderColor: la_vao ? m.chinh_dam : m.vien,
             opacity: tat === true ? 0.5 : pressed ? 0.85 : 1,
           },
         ]}

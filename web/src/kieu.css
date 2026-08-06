@@ -1,70 +1,13 @@
-/* Bang mau + kieu dung chung. Ho tro ca giao dien sang va toi theo cai dat may. */
-
-:root {
-  --chinh: #1d4ed8;
-  --chinh-nhat: #eef2ff;
-  --chinh-dam: #1e3a8a;
-
-  --nen: #f6f7f9;
-  --nen-the: #ffffff;
-  --nen-mo: #f1f3f5;
-  --vien: #dfe3e8;
-  --vien-dam: #c3c9d0;
-
-  --chu: #1a1d21;
-  --chu-nhat: #5c6570;
-  --chu-mo: #8b949e;
-
-  --tot: #067647;
-  --tot-nen: #e7f6ee;
-  --canh-bao: #b45309;
-  --canh-bao-nen: #fdf3e3;
-  --xau: #b42318;
-  --xau-nen: #fdecea;
-  --lanh: #175cd3;
-  --lanh-nen: #eaf1fd;
-
-  --bong: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 10%);
-  --bong-noi: 0 4px 12px rgb(16 24 40 / 12%);
-  --tron: 8px;
-  --rong-thanh-ben: 232px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --chinh: #6592f5;
-    --chinh-nhat: #1c2438;
-    --chinh-dam: #a8c2fb;
-
-    --nen: #14171c;
-    --nen-the: #1b1f26;
-    --nen-mo: #22262e;
-    --vien: #2e343d;
-    --vien-dam: #3d444f;
-
-    --chu: #e7eaee;
-    --chu-nhat: #a3abb6;
-    --chu-mo: #7b838f;
-
-    --tot: #4ec38a;
-    --tot-nen: #14291f;
-    --canh-bao: #e0a355;
-    --canh-bao-nen: #2b2114;
-    --xau: #f0736a;
-    --xau-nen: #2d1a18;
-    --lanh: #7fabf7;
-    --lanh-nen: #182233;
-
-    --bong: 0 1px 2px rgb(0 0 0 / 30%);
-    --bong-noi: 0 6px 16px rgb(0 0 0 / 45%);
-  }
-}
+/* Kieu dung chung cho webapp.
+   Mau / font / bo goc / khoang cach KHONG dinh nghia o day — lay tu design token
+   dung chung voi app dien thoai. Sua thiet_ke/token.json roi chay `npm run sinh_token`. */
+@import './token_thiet_ke.css';
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--chu-viet);
   font-size: 14px;
   line-height: 1.5;
   color: var(--chu);
@@ -72,12 +15,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-a { color: var(--chinh); text-decoration: none; }
+a { color: var(--chinh-dam); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-h1 { font-size: 20px; margin: 0 0 4px; font-weight: 650; }
-h2 { font-size: 16px; margin: 0 0 12px; font-weight: 650; }
-h3 { font-size: 14px; margin: 0 0 8px; font-weight: 650; }
+h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
+h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
+h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
 
 /* ---------------------------------------------------------------- bo cuc */
 .vo-dang-nhap {
@@ -186,7 +129,7 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 650; }
   padding: 14px 16px;
 }
 .o-so-nhan { font-size: 12px; color: var(--chu-nhat); font-weight: 500; }
-.o-so-gia-tri { font-size: 26px; font-weight: 680; letter-spacing: -0.02em; margin-top: 2px; }
+.o-so-gia-tri { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-top: 2px; }
 .o-so-phu { font-size: 12px; color: var(--chu-mo); }
 
 /* ---------------------------------------------------------------- bang */
@@ -234,7 +177,7 @@ tbody tr:hover { background: var(--nen-mo); }
 /* ---------------------------------------------------------------- nut */
 button, .nut {
   font: inherit;
-  font-weight: 550;
+  font-weight: 500;
   padding: 7px 14px;
   border-radius: 6px;
   border: 1px solid var(--vien-dam);
@@ -249,18 +192,18 @@ button, .nut {
 button:hover:not(:disabled) { background: var(--nen-mo); }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 
-.nut-chinh { background: var(--chinh); border-color: var(--chinh); color: #fff; }
+.nut-chinh { background: var(--chinh-dam); border-color: var(--chinh-dam); color: var(--tren-chinh); }
 .nut-chinh:hover:not(:disabled) { background: var(--chinh-dam); border-color: var(--chinh-dam); }
 .nut-nguy { background: var(--xau); border-color: var(--xau); color: #fff; }
 .nut-nguy:hover:not(:disabled) { filter: brightness(0.92); }
 .nut-nho { padding: 4px 9px; font-size: 12px; }
-.nut-phang { border-color: transparent; background: transparent; color: var(--chinh); }
+.nut-phang { border-color: transparent; background: transparent; color: var(--chinh-dam); }
 .nut-phang:hover:not(:disabled) { background: var(--chinh-nhat); }
 
 .hang-nut { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 /* ---------------------------------------------------------------- nhap lieu */
-label { display: block; font-size: 12.5px; font-weight: 550; margin-bottom: 4px; color: var(--chu-nhat); }
+label { display: block; font-size: 12.5px; font-weight: 500; margin-bottom: 4px; color: var(--chu-nhat); }
 
 input, select, textarea {
   font: inherit;
@@ -311,7 +254,7 @@ textarea { min-height: 66px; resize: vertical; }
   padding: 36px 16px;
   color: var(--chu-nhat);
 }
-.trong-lon { font-size: 15px; font-weight: 550; margin-bottom: 4px; color: var(--chu); }
+.trong-lon { font-size: 15px; font-weight: 500; margin-bottom: 4px; color: var(--chu); }
 
 .dang-tai { padding: 28px; text-align: center; color: var(--chu-nhat); }
 
@@ -330,10 +273,10 @@ textarea { min-height: 66px; resize: vertical; }
   border-radius: 0;
   padding: 9px 14px;
   color: var(--chu-nhat);
-  font-weight: 550;
+  font-weight: 500;
 }
 .hang-tab button:hover { background: var(--nen-mo); }
-.hang-tab button.dang-chon { color: var(--chinh); border-bottom-color: var(--chinh); }
+.hang-tab button.dang-chon { color: var(--chinh-dam); border-bottom-color: var(--chinh); }
 
 .dem-tab {
   background: var(--xau);
@@ -398,7 +341,7 @@ textarea { min-height: 66px; resize: vertical; }
   background: var(--nen-the);
 }
 .o-lich-trong { border-style: dashed; opacity: 0.4; }
-.ngay-lich { font-weight: 650; font-size: 12px; margin-bottom: 2px; }
+.ngay-lich { font-weight: 600; font-size: 12px; margin-bottom: 2px; }
 .o-lich-co-mat { border-left: 3px solid var(--tot); }
 .o-lich-vang { border-left: 3px solid var(--xau); }
 .o-lich-nghi-phep { border-left: 3px solid var(--lanh); }
@@ -406,8 +349,25 @@ textarea { min-height: 66px; resize: vertical; }
 .o-lich-nghi-tuan { background: var(--nen-mo); }
 .dau-thu { font-size: 11px; font-weight: 600; color: var(--chu-nhat); text-align: center; padding-bottom: 4px; }
 
-/* ---------------------------------------------------------------- dien thoai */
-@media (max-width: 860px) {
+/* ---------------------------------------------------------------- responsive
+   F2: bat buoc dung tot o <= 768px va >= 1280px. Bon nguong:
+     >= 1280  may tinh rong  — luoi chi so co dinh 4 cot, le rong hon
+     1024-1279 may tinh hep  — thanh ben thu hep
+     <= 1023  tablet doc     — thanh ben thanh thanh ngang tren dinh
+     <= 768   dien thoai     — le hep, luoi chi so 2 cot, bang chu nho hon
+     <= 420   may nho        — luoi chi so 1 cot, o lich thap hon
+*/
+@media (min-width: 1280px) {
+  .than { padding: 24px 32px 56px; }
+  .luoi-4 { grid-template-columns: repeat(4, 1fr); }
+  .luoi-2 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 1279px) and (min-width: 1024px) {
+  :root { --rong-thanh-ben: 200px; }
+}
+
+@media (max-width: 1023px) {
   .vo-app { flex-direction: column; }
   .thanh-ben {
     width: 100%;
@@ -419,5 +379,44 @@ textarea { min-height: 66px; resize: vertical; }
   }
   .dieu-huong { display: flex; flex-wrap: wrap; gap: 2px; }
   .dieu-huong-nhom { display: none; }
-  .than { padding: 16px 12px 40px; }
+  .than { padding: 16px 16px 40px; }
+}
+
+@media (max-width: 768px) {
+  /* Thanh dieu huong xuong mot HANG cuon ngang. De no tu xuong dong nhu o tablet thi
+     10 muc chiem 340-430px chieu cao, day tieu de trang xuong duoi man hinh. */
+  .dieu-huong {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 6px 8px;
+    scrollbar-width: none;
+  }
+  .dieu-huong::-webkit-scrollbar { display: none; }
+  /* `display: contents` de cac lien ket trong tung nhom nhap vao HANG cua nav thay vi
+     moi nhom la mot khoi doc rieng — khong co no thi ba nhom xep canh nhau, cao 202px. */
+  .dieu-huong-khoi { display: contents; }
+  .dieu-huong a { white-space: nowrap; flex: 0 0 auto; }
+  .thuong-hieu { padding: 10px 12px; }
+  .chan-thanh-ben { padding: 8px 12px; }
+
+  .than { padding: 12px 12px 40px; }
+  .the { padding: 14px; margin-bottom: 12px; }
+  .luoi-4 { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .luoi-2 { grid-template-columns: 1fr; }
+  .o-so { padding: 12px; }
+  .o-so-gia-tri { font-size: 22px; }
+  table { font-size: 12.5px; }
+  thead th, tbody td { padding-left: 9px; padding-right: 9px; }
+  /* Hop thoai chiem gan het man hinh de con cho ban phim ao. */
+  .man-mo { padding: 10px; align-items: start; }
+  .hop-thoai, .hop-thoai-rong { max-width: none; max-height: 92vh; padding: 16px; }
+  .dau-trang { margin-bottom: 12px; }
+  /* Tieu de bang cong dai — cho phep cuon ngang thay vi vo bo cuc. */
+  .vo-bang { margin-inline: -2px; }
+}
+
+@media (max-width: 420px) {
+  .luoi-4 { grid-template-columns: 1fr; }
+  .o-lich { min-height: 52px; padding: 4px; font-size: 11px; }
+  .bieu-do { height: 112px; }
 }

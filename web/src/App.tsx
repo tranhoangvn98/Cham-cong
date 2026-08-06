@@ -107,7 +107,7 @@ function BoCuc(): ReactNode {
 
         <nav className="dieu-huong">
           {nhom_menu.map((nhom) => (
-            <div key={nhom}>
+            <div key={nhom} className="dieu-huong-khoi">
               <div className="dieu-huong-nhom">{nhom}</div>
               {MENU.filter((m) => duoc_xem(m) && m.nhom === nhom).map((m) => (
                 <LienKet

@@ -212,4 +212,5 @@ bảng công sinh ra, gồm cả chống trùng, hàng đợi lệnh, và chấm
 | [`tai_lieu/TRIEN-KHAI.md`](tai_lieu/TRIEN-KHAI.md) | Triển khai VPS, sao lưu, giám sát |
 | [`tai_lieu/BUILD-APP-DIEN-THOAI.md`](tai_lieu/BUILD-APP-DIEN-THOAI.md) | Build APK / iOS bằng EAS |
 | [`tai_lieu/API.md`](tai_lieu/API.md) | Toàn bộ endpoint REST |
+| [`tai_lieu/THIET-KE.md`](tai_lieu/THIET-KE.md) | Design token: màu, font, bo góc, breakpoint |
 | [`CLAUDE.md`](CLAUDE.md) | Quy ước code của dự án |

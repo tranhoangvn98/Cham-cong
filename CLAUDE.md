@@ -6,6 +6,7 @@
 may_chu/      Backend: cổng ADMS cho máy ZKTeco + REST API   (Node + TS + Fastify + PostgreSQL)
 web/          Webapp cho nhân sự                              (React 19 + Vite)
 dien_thoai/   App cho nhân viên                               (Expo SDK 57)
+thiet_ke/     Design token dùng chung web + app               (nguồn: token.json)
 tai_lieu/     Tài liệu vận hành
 ```
 
@@ -35,6 +36,23 @@ Toàn hệ thống neo theo **múi giờ nơi đặt máy chấm công** (`DEVIC
 
 Đây là lỗi đã từng xảy ra: dùng `toLocaleTimeString()` làm bảng công hiển thị 01:00 thay
 vì 08:00 khi xem từ máy đặt múi giờ khác.
+
+### Màu, font, bo góc
+
+Không hard-code màu / font / bo góc ở web hay app. Sửa **`thiet_ke/token.json`** rồi chạy
+`npm run sinh_token`; hai tệp `web/src/token_thiet_ke.css` và
+`dien_thoai/nguon/token_thiet_ke.ts` là **tệp sinh ra**, đừng sửa tay. `npm test` bắt được nếu
+quên sinh lại.
+
+Ba luật đã có tiền lệ (chi tiết ở `tai_lieu/THIET-KE.md`):
+
+- **`chinh` (#4285F4) chỉ tô mảng, không đặt chữ lên** — chỉ đạt 3,56:1 trên nền trắng. Chữ,
+  liên kết và nền nút đặc dùng `chinh_dam`.
+- **App chọn độ đậm bằng `fontFamily`, không bằng `fontWeight`** — Android không suy ra độ đậm
+  từ một họ font, đặt `fontWeight` sẽ ra chữ thường.
+- **Ký hiệu font thiếu glyph phải vẽ qua `<KyHieu>`** (không đặt `fontFamily`). `→` và `✓`
+  không có trong Be Vietnam Pro; trình duyệt tự tìm font dự phòng nên chạy thử trên web
+  **không** thấy, nhưng máy thật ra ô vuông rỗng.
 
 ### Chống trùng dữ liệu
 
@@ -71,9 +89,9 @@ Người **vắng cả ngày không có lần quẹt nào**, nên không có gì
 ## Kiểm thử
 
 ```bash
-npm test                    # 60 test đơn vị: parser ADMS, tính công, JWT, geofence
-npm --workspace may_chu run test_e2e   # 41 test end-to-end (cần DB tên chamcong_test*)
-npm run kiem_tra_kieu       # kiểm tra kiểu cả may_chu và web
+npm test                    # 60 test đơn vị + 8 test design token / phủ glyph font
+npm --workspace may_chu run test_e2e   # 44 test end-to-end (cần DB tên chamcong_test*)
+npm run kiem_tra_kieu       # kiểm tra kiểu may_chu, web và dien_thoai
 ```
 
 Quy tắc: **sửa logic tính công hoặc parser ADMS thì phải thêm test**. Hai phần này sinh ra

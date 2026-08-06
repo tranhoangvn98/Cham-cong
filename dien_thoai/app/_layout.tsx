@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CungCapPhien, dung_phien } from '../nguon/phien';
 import { DangTai } from '../nguon/thanh_phan';
 import { dung_mau, kieu } from '../nguon/kieu';
+import { nap_font } from '../nguon/font';
 
 /** Chuyen huong theo trang thai phien: chua dang nhap -> /dang-nhap, ... */
 function CongXacThuc({ children }: { children: ReactNode }): ReactNode {
@@ -45,6 +46,12 @@ function CongXacThuc({ children }: { children: ReactNode }): ReactNode {
 }
 
 export default function BoCucGoc(): ReactNode {
+  // Cho font xong moi ve giao dien: neu ve truoc, chu hien bang font he thong roi nhay
+  // sang Be Vietnam Pro, thay ro tren man dau tien. Font nam trong app nen cho rat ngan.
+  // Font loi thi VAN ve giao dien (roi ve font he thong) — mat nhan dien con hon app trang.
+  const { xong, loi: loi_font } = nap_font();
+  if (!xong && loi_font === null) return null;
+
   return (
     <SafeAreaProvider>
       <CungCapPhien>

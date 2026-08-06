@@ -182,8 +182,9 @@ quyết được đơn của nhân viên trong phòng mình — ngoài phạm vi
 
 | Method | Đường dẫn | Ghi chú |
 |---|---|---|
-| GET | `/hom-nay` | Bảng công hôm nay + các lần quẹt + thông tin ca |
+| GET | `/hom-nay` | Bảng công hôm nay + lần quẹt + ca + dải tuần T2–CN + tổng hợp tháng + quỹ phép + việc cần chú ý |
 | GET | `/bang-cong?thang=YYYY-MM` | Bảng công tháng của chính mình |
+| GET | `/luong?thang=YYYY-MM` | Cơ sở tính lương của kỳ — xem dưới |
 | GET | `/lan-quet?tu=&den=` | Lần quẹt của chính mình, tối đa 62 ngày |
 | GET | `/dia-diem` | Các địa điểm đang dùng |
 | POST | `/cham-cong` | **multipart** — xem dưới |
@@ -192,6 +193,30 @@ quyết được đơn của nhân viên trong phòng mình — ngoài phạm vi
 | POST | `/nghi-phep/:id/huy` | Hủy đơn của mình |
 | GET / POST | `/giai-trinh` | Xem / gửi đơn giải trình quên quẹt |
 | POST / DELETE | `/token-push` | Đăng ký / bỏ token thông báo đẩy |
+
+### `GET /api/toi/luong`
+
+Trả **dữ liệu chấm công làm căn cứ tính lương**, không trả số tiền:
+
+```json
+{
+  "thang": "2026-08",
+  "co_so_tinh_luong": { "tong_cong": "4.0", "tong_phut_lam": 1800, "tong_phut_ot": 130, "...": "..." },
+  "phep": { "quy": 12, "da_dung": 1, "con_lai": 11, "cho_duyet": 0 },
+  "da_chot": false,
+  "phieu_luong": null,
+  "ghi_chu_ot": "Số phút OT ở đây là OT máy ghi nhận, chưa qua duyệt...",
+  "ly_do_chua_co_phieu_luong": "Phiếu lương sẽ hiển thị sau khi kế toán cấu hình kỳ lương..."
+}
+```
+
+`phieu_luong` là `null` cho tới khi Module C (tính lương + BHXH + thuế TNCN) được triển khai.
+Endpoint này **không** được trả số tiền ước tính — bày số lương sai sinh ra kỳ vọng sai về thu
+nhập, tác hại lớn hơn tiện lợi của một màn hình đầy đủ. Có test e2e chặn việc thêm trường tiền
+lương vào đây.
+
+`co_so_tinh_luong` dùng **cùng một câu truy vấn** với `tong_hop` của `/bang-cong`, nên hai màn
+không bao giờ ra hai con số khác nhau (có test e2e đối chiếu).
 
 ### `POST /api/toi/cham-cong`
 

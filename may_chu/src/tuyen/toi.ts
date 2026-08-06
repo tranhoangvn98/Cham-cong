@@ -9,7 +9,7 @@ import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { do_geofence, type DiaDiem } from '../tien_ich/dia_ly.ts';
 import { doc_anh_selfie, luu_anh_selfie } from '../tien_ich/luu_anh.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
-import { khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
+import { cong_ngay, khoang_thang, ngay_dia_phuong, thu_trong_tuan } from '../tien_ich/thoi_gian.ts';
 import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, khoang_ngay, luan_ly, ngay_bat_buoc, than, trong_tap, uuid,
@@ -20,6 +20,131 @@ const LOAI_NGHI = ['phep_nam', 'khong_luong', 'om', 'thai_san', 'ket_hon', 'hieu
 
 /** Khoang cach toi thieu giua hai lan cham cong bang dien thoai (giay). */
 const GIAN_CACH_TOI_THIEU_GIAY = 60;
+
+/**
+ * Tong hop cong mot thang. Dung cho ca /hom-nay (4 chi so o Trang chu), /bang-cong
+ * (Man Bang cong) va /luong (co so tinh luong) — mot cau truy van, mot dinh nghia.
+ *
+ * `tong_phut_ot` la OT MAY GHI NHAN, chua qua duyet. Khi lam Module C, tien OT chi tra
+ * theo phut OT DA DUYET — xem ghi chu o endpoint /luong.
+ */
+async function tong_hop_thang(nv_id: string, thang: string): Promise<unknown> {
+  const { tu, den } = khoang_thang(thang);
+  return truy_van_mot(
+    `select coalesce(sum(so_cong), 0)        as tong_cong,
+            coalesce(sum(phut_lam), 0)::int  as tong_phut_lam,
+            coalesce(sum(phut_ot), 0)::int   as tong_phut_ot,
+            coalesce(sum(phut_muon), 0)::int as tong_phut_muon,
+            coalesce(sum(phut_ve_som), 0)::int as tong_phut_ve_som,
+            count(*) filter (where trang_thai = 'co_mat')::int    as so_ngay_co_mat,
+            count(*) filter (where trang_thai = 'vang')::int      as so_ngay_vang,
+            count(*) filter (where trang_thai = 'nghi_phep')::int as so_ngay_nghi_phep,
+            count(*) filter (where trang_thai = 'ngay_le')::int   as so_ngay_le,
+            count(*) filter (where phut_muon > 0)::int            as so_lan_di_muon,
+            count(*) filter (where phut_ve_som > 0)::int          as so_lan_ve_som,
+            count(*) filter (where trang_thai not in ('nghi_tuan', 'ngay_le'))::int
+                                                                  as so_ngay_phai_lam,
+            count(*) filter (where da_chot)::int                  as so_ngay_da_chot,
+            count(*)::int                                         as so_ngay_co_du_lieu
+       from bang_cong_ngay
+      where nhan_vien_id = $1 and ngay >= $2 and ngay <= $3`,
+    [nv_id, tu, den],
+  );
+}
+
+/** Quy phep nam cua rieng nhan vien (HR dat theo tham nien / nghe — Dieu 113-114 BLLD). */
+async function quy_phep_cua(nv_id: string): Promise<number> {
+  const r = await truy_van_mot<{ so_ngay_phep_nam: string }>(
+    'select so_ngay_phep_nam from nhan_vien where id = $1',
+    [nv_id],
+  );
+  return Number(r?.so_ngay_phep_nam ?? 12);
+}
+
+/**
+ * Quy phep nam con lai. Chi tru don PHEP NAM da duyet — nghi om/thai san/khong luong
+ * khong tru vao quy phep nam.
+ *
+ * Nua ngay tinh 0,5. Don vat qua hai nam (VD 28/12 -> 03/01) chi tinh phan ngay nam
+ * trong nam dang xet, nen `generate_series` cat theo bien nam thay vi lay ca don.
+ */
+async function quy_phep(nv_id: string, nam: string, quy: number): Promise<{
+  quy: number; da_dung: number; con_lai: number; cho_duyet: number;
+}> {
+  const r = await truy_van_mot<{ da_dung: string; cho_duyet: string }>(
+    `with ngay_nghi as (
+       select d.trang_thai, d.nua_ngay,
+              generate_series(
+                greatest(d.tu_ngay,  make_date($2::int, 1, 1)),
+                least   (d.den_ngay, make_date($2::int, 12, 31)),
+                interval '1 day'
+              )::date as ngay
+         from don_nghi_phep d
+        where d.nhan_vien_id = $1
+          and d.loai = 'phep_nam'
+          and d.trang_thai in ('da_duyet', 'cho_duyet')
+     )
+     select coalesce(sum(case when trang_thai = 'da_duyet'
+                              then (case when nua_ngay then 0.5 else 1 end) end), 0) as da_dung,
+            coalesce(sum(case when trang_thai = 'cho_duyet'
+                              then (case when nua_ngay then 0.5 else 1 end) end), 0) as cho_duyet
+       from ngay_nghi`,
+    [nv_id, nam],
+  );
+  const da_dung = Number(r?.da_dung ?? 0);
+  return {
+    quy,
+    da_dung,
+    con_lai: Math.round((quy - da_dung) * 10) / 10,
+    cho_duyet: Number(r?.cho_duyet ?? 0),
+  };
+}
+
+/**
+ * Muc "Can chu y" o Trang chu. Vi thanh tab chi con 4 tab (Phu luc B), man Don tu khong
+ * nam tren thanh tab nua — so dem o day la duong duy nhat truong phong biet co don cho
+ * minh duyet, nen khong duoc bo.
+ */
+async function viec_can_chu_y(req: FastifyRequest, nv_id: string): Promise<{
+  don_cua_toi_cho_duyet: number;
+  don_cho_toi_duyet: number;
+  hop_dong_sap_het_han: null;
+}> {
+  const nd = nguoi_dung_hien_tai(req);
+
+  const cua_toi = await truy_van_mot<{ so: string }>(
+    `select (select count(*) from don_nghi_phep
+              where nhan_vien_id = $1 and trang_thai = 'cho_duyet')
+          + (select count(*) from don_giai_trinh
+              where nhan_vien_id = $1 and trang_thai = 'cho_duyet') as so`,
+    [nv_id],
+  );
+
+  let cho_toi_duyet = 0;
+  if (nd.vai_tro === 'admin' || nd.vai_tro === 'nhan_su' || nd.vai_tro === 'truong_phong') {
+    const chi_phong_minh = !xem_duoc_tat_ca(nd);
+    const r = await truy_van_mot<{ so: string }>(
+      `select (select count(*) from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id
+                where d.trang_thai = 'cho_duyet' and d.nhan_vien_id <> $2
+                  and (not $1::boolean
+                       or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)))
+            + (select count(*) from don_giai_trinh d join nhan_vien nv on nv.id = d.nhan_vien_id
+                where d.trang_thai = 'cho_duyet' and d.nhan_vien_id <> $2
+                  and (not $1::boolean
+                       or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2))) as so`,
+      [chi_phong_minh, nv_id],
+    );
+    cho_toi_duyet = Number(r?.so ?? 0);
+  }
+
+  return {
+    don_cua_toi_cho_duyet: Number(cua_toi?.so ?? 0),
+    don_cho_toi_duyet: cho_toi_duyet,
+    // Module D (hop dong) chua trien khai — tra null de app biet la "chua co tinh nang",
+    // khong phai "khong co hop dong nao sap het han".
+    hop_dong_sap_het_han: null,
+  };
+}
 
 function nhan_vien_cua_toi(req: FastifyRequest): string {
   const nd = nguoi_dung_hien_tai(req);
@@ -59,20 +184,47 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     );
 
     const nv = await truy_van_mot<{
-      ho_ten: string; ma_nv: string; duoc_cham_cong_dien_thoai: boolean;
+      ho_ten: string; ma_nv: string; ma_erp: string | null;
+      duoc_cham_cong_dien_thoai: boolean; so_ngay_phep_nam: string;
       ca_lam: string | null; ca_gio_vao: string | null; ca_gio_ra: string | null;
     }>(
-      `select nv.ho_ten, nv.ma_nv, nv.duoc_cham_cong_dien_thoai,
+      `select nv.ho_ten, nv.ma_nv, nv.ma_erp, nv.duoc_cham_cong_dien_thoai,
+              nv.so_ngay_phep_nam,
               cl.ten as ca_lam, cl.gio_vao as ca_gio_vao, cl.gio_ra as ca_gio_ra
          from nhan_vien nv left join ca_lam cl on cl.id = nv.ca_lam_id
         where nv.id = $1`,
       [nv_id],
     );
 
+    // Dai tuan T2..CN (Phu luc B Man 1). Tuan bat dau THU HAI theo thoi quen Viet Nam,
+    // khong phai chu nhat nhu mac dinh cua Date.
+    const thu = thu_trong_tuan(hom_nay);
+    const dau_tuan = cong_ngay(hom_nay, thu === 0 ? -6 : 1 - thu);
+    const tuan = await truy_van(
+      `select ngay, trang_thai, phut_muon, phut_lam, so_cong
+         from bang_cong_ngay
+        where nhan_vien_id = $1 and ngay >= $2 and ngay <= $3
+        order by ngay`,
+      [nv_id, dau_tuan, cong_ngay(dau_tuan, 6)],
+    );
+
+    const thang = hom_nay.slice(0, 7);
+    const [thang_tong, phep, can_chu_y] = await Promise.all([
+      tong_hop_thang(nv_id, thang),
+      quy_phep(nv_id, hom_nay.slice(0, 4), Number(nv?.so_ngay_phep_nam ?? 12)),
+      viec_can_chu_y(req, nv_id),
+    ]);
+
     return {
       ngay: hom_nay,
+      dau_tuan,
       nhan_vien: nv,
       bang_cong: cong,
+      tuan,
+      thang,
+      thang_tong_hop: thang_tong,
+      phep,
+      can_chu_y,
       lan_quet: quet.map((q) => ({
         ...q,
         nhan_trang_thai: NHAN_TRANG_THAI[Number((q as Record<string, unknown>)['trang_thai'])] ?? 'Khac',
@@ -97,20 +249,50 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       [nv_id, tu, den],
     );
 
-    const tong = await truy_van_mot(
-      `select coalesce(sum(so_cong), 0)        as tong_cong,
-              coalesce(sum(phut_lam), 0)::int  as tong_phut_lam,
-              coalesce(sum(phut_ot), 0)::int   as tong_phut_ot,
-              coalesce(sum(phut_muon), 0)::int as tong_phut_muon,
-              count(*) filter (where trang_thai = 'vang')::int      as so_ngay_vang,
-              count(*) filter (where trang_thai = 'nghi_phep')::int as so_ngay_nghi_phep,
-              count(*) filter (where phut_muon > 0)::int            as so_lan_di_muon
-         from bang_cong_ngay
-        where nhan_vien_id = $1 and ngay >= $2 and ngay <= $3`,
-      [nv_id, tu, den],
-    );
+    return { thang, tong_hop: await tong_hop_thang(nv_id, thang), ngay: ngay_cong };
+  });
 
-    return { thang, tong_hop: tong, ngay: ngay_cong };
+  // ================================================================ co so tinh luong
+  //
+  // Man "Luong" (Phu luc B Man 3). Module C (tinh luong + BHXH + thue) CHUA trien khai
+  // va theo lo trinh v2 con bi chan cho ke toan/luat su xac nhan tham so phap ly, nen
+  // endpoint nay KHONG tra so tien nao. No tra dung nhung du kien cham cong se la dau
+  // vao cua ky luong, de nhan vien doi chieu truoc khi co phieu luong that.
+  //
+  // Bay so luong uoc tinh o day se sinh ra ky vong sai ve thu nhap — tac hai lon hon
+  // nhieu so voi tien loi cua mot man hinh dep.
+  app.get('/luong', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const q = req.query as Record<string, unknown>;
+    const thang = (chuoi(q, 'thang', { toi_da: 7 }) as string | null)
+      ?? ngay_dia_phuong(new Date()).slice(0, 7);
+    const { tu, den } = khoang_thang(thang);
+
+    const [tong, phep] = await Promise.all([
+      tong_hop_thang(nv_id, thang),
+      quy_phep(nv_id, thang.slice(0, 4), await quy_phep_cua(nv_id)),
+    ]);
+
+    const t = tong as Record<string, unknown>;
+    const da_chot_het = Number(t['so_ngay_da_chot'] ?? 0) > 0
+      && Number(t['so_ngay_da_chot']) === Number(t['so_ngay_co_du_lieu']);
+
+    return {
+      thang,
+      tu,
+      den,
+      co_so_tinh_luong: tong,
+      phep,
+      // Ky cong da chot chua: chua chot thi so lieu con co the doi khi mot lan quet ve muon.
+      da_chot: da_chot_het,
+      phieu_luong: null,
+      ghi_chu_ot:
+        'Số phút OT ở đây là OT máy ghi nhận, chưa qua duyệt. Tiền làm thêm giờ chỉ được '
+        + 'trả theo số phút OT đã có đơn duyệt.',
+      ly_do_chua_co_phieu_luong:
+        'Phiếu lương sẽ hiển thị sau khi kế toán cấu hình kỳ lương và các tham số bảo hiểm, '
+        + 'thuế thu nhập cá nhân. Phần tính lương chưa được triển khai.',
+    };
   });
 
   // ================================================================ lan quet cua toi

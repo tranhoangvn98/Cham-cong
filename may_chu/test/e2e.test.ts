@@ -724,6 +724,100 @@ test('anh selfie chi chu so huu / nhan su xem duoc', async () => {
   assert.equal(nguoi_khac.statusCode, 404);
 });
 
+// ============================================================ trang chu / luong
+test('trang chu tra ve du lieu cho Man 1: dai tuan, tong hop thang, quy phep, can chu y', async () => {
+  const r = await goi('GET', '/api/toi/hom-nay', { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+
+  // dau_tuan phai la THU HAI (tuan Viet Nam bat dau T2, khong phai CN).
+  const dau_tuan = r.body['dau_tuan'] as string;
+  assert.equal(new Date(`${dau_tuan}T00:00:00Z`).getUTCDay(), 1, 'dau_tuan phai la thu Hai');
+
+  const tuan = r.body['tuan'] as { ngay: string }[];
+  assert.ok(Array.isArray(tuan));
+  assert.ok(tuan.length <= 7, 'dai tuan toi da 7 ngay');
+  for (const n of tuan) {
+    assert.ok(n.ngay >= dau_tuan && n.ngay <= cong_ngay(dau_tuan, 6),
+      `${n.ngay} phai nam trong tuan bat dau ${dau_tuan}`);
+  }
+
+  const th = r.body['thang_tong_hop'] as Record<string, unknown>;
+  assert.ok(th !== null && typeof th === 'object');
+  assert.ok('so_ngay_phai_lam' in th, 'can so_ngay_phai_lam de ve thanh chuyen can');
+
+  const ccy = r.body['can_chu_y'] as Record<string, unknown>;
+  // Man Don tu khong con tren thanh tab, so dem nay la duong duy nhat truong phong
+  // biet co don cho duyet — thieu la luong duyet bi chon.
+  assert.ok('don_cho_toi_duyet' in ccy);
+  assert.ok('don_cua_toi_cho_duyet' in ccy);
+  assert.equal(ccy['hop_dong_sap_het_han'], null, 'Module D chua co -> null, khong phai 0');
+});
+
+test('quy phep: chi tru phep nam da duyet, nghi om KHONG tru, nua ngay tinh 0,5', async () => {
+  const dau = await goi('GET', '/api/toi/hom-nay', { token: token_nhan_vien });
+  const p0 = dau.body['phep'] as { quy: number; da_dung: number; con_lai: number };
+  // Test truoc do da duyet 1 ngay phep nam cho nhan vien nay.
+  assert.equal(p0.quy, 12, 'mac dinh 12 ngay/nam theo Dieu 113 BLLD 2019');
+  assert.equal(p0.da_dung, 1);
+  assert.equal(p0.con_lai, 11);
+
+  // Nghi om da duyet -> KHONG tru quy phep nam.
+  const ngay_om = cong_ngay(ngay_dia_phuong(new Date()), 20);
+  const don_om = await goi('POST', '/api/toi/nghi-phep', {
+    token: token_nhan_vien,
+    body: { loai: 'om', tu_ngay: ngay_om, den_ngay: ngay_om, ly_do: 'Cam' },
+  });
+  assert.equal(don_om.ma, 201);
+  await goi('POST', `/api/duyet/nghi-phep/${don_om.body['id'] as string}/quyet`, {
+    token: token_admin, body: { quyet_dinh: 'da_duyet' },
+  });
+
+  const sau_om = await goi('GET', '/api/toi/hom-nay', { token: token_nhan_vien });
+  assert.equal((sau_om.body['phep'] as { da_dung: number }).da_dung, 1,
+    'nghi om khong duoc tru vao quy phep nam');
+
+  // Nua ngay phep nam -> tinh 0,5.
+  const ngay_nua = cong_ngay(ngay_dia_phuong(new Date()), 25);
+  const don_nua = await goi('POST', '/api/toi/nghi-phep', {
+    token: token_nhan_vien,
+    body: { loai: 'phep_nam', tu_ngay: ngay_nua, den_ngay: ngay_nua, nua_ngay: true, ly_do: 'Viec rieng' },
+  });
+  assert.equal(don_nua.ma, 201);
+  await goi('POST', `/api/duyet/nghi-phep/${don_nua.body['id'] as string}/quyet`, {
+    token: token_admin, body: { quyet_dinh: 'da_duyet' },
+  });
+
+  const sau_nua = await goi('GET', '/api/toi/hom-nay', { token: token_nhan_vien });
+  const p1 = sau_nua.body['phep'] as { da_dung: number; con_lai: number };
+  assert.equal(p1.da_dung, 1.5);
+  assert.equal(p1.con_lai, 10.5);
+});
+
+test('man Luong tra co so tinh cong, KHONG bay so tien nao', async () => {
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('GET', `/api/toi/luong?thang=${thang}`, { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+
+  // Module C chua trien khai: tuyet doi khong duoc tra so tien uoc tinh.
+  assert.equal(r.body['phieu_luong'], null);
+  assert.ok(typeof r.body['ly_do_chua_co_phieu_luong'] === 'string');
+  assert.match(r.body['ghi_chu_ot'] as string, /chưa qua duyệt/);
+
+  const tho = JSON.stringify(r.body);
+  for (const cam of ['luong_co_ban', 'thuc_nhan', 'bhxh', 'thue_tncn', 'khau_tru']) {
+    assert.ok(!tho.includes(`"${cam}"`), `khong duoc co truong tien luong: ${cam}`);
+  }
+
+  // Co so tinh luong phai TRUNG KHOP voi bang cong cua cung ky — hai man khac nhau
+  // khong duoc ra hai con so.
+  const bc = await goi('GET', `/api/toi/bang-cong?thang=${thang}`, { token: token_nhan_vien });
+  const a = r.body['co_so_tinh_luong'] as Record<string, unknown>;
+  const b = bc.body['tong_hop'] as Record<string, unknown>;
+  for (const k of ['tong_cong', 'tong_phut_lam', 'tong_phut_ot', 'so_ngay_vang']) {
+    assert.equal(String(a[k]), String(b[k]), `lech o truong ${k}`);
+  }
+});
+
 // ============================================================ outbox
 test('su kien duoc ghi vao hop thu di de dong bo ERP', async () => {
   const dong = await truy_van_mot<{ so: number }>(

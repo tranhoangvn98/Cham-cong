@@ -1,90 +1,45 @@
-// Mau va kieu dung chung. Ho tro giao dien sang/toi theo cai dat cua may.
+// Kieu dung chung cho app. Mau/font/bo goc lay tu design token (thiet_ke/token.json),
+// khong hard-code o day — sua mau thi sua token roi chay `npm run sinh_token` o goc.
 import { StyleSheet, useColorScheme } from 'react-native';
+import { BO_GOC, HO_CHU, KHOANG, SANG, TOI, Y_NGHIA_MAU } from './token_thiet_ke';
+import type { BangMau } from './token_thiet_ke';
 
-export interface BangMau {
-  chinh: string;
-  chinh_nhat: string;
-  nen: string;
-  nen_the: string;
-  nen_mo: string;
-  vien: string;
-  chu: string;
-  chu_nhat: string;
-  chu_mo: string;
-  tot: string;
-  tot_nen: string;
-  canh_bao: string;
-  canh_bao_nen: string;
-  xau: string;
-  xau_nen: string;
-  lanh: string;
-  lanh_nen: string;
-  tren_chinh: string;
-}
-
-const SANG: BangMau = {
-  chinh: '#1d4ed8',
-  chinh_nhat: '#eef2ff',
-  nen: '#f6f7f9',
-  nen_the: '#ffffff',
-  nen_mo: '#f1f3f5',
-  vien: '#dfe3e8',
-  chu: '#1a1d21',
-  chu_nhat: '#5c6570',
-  chu_mo: '#8b949e',
-  tot: '#067647',
-  tot_nen: '#e7f6ee',
-  canh_bao: '#b45309',
-  canh_bao_nen: '#fdf3e3',
-  xau: '#b42318',
-  xau_nen: '#fdecea',
-  lanh: '#175cd3',
-  lanh_nen: '#eaf1fd',
-  tren_chinh: '#ffffff',
-};
-
-const TOI: BangMau = {
-  chinh: '#6592f5',
-  chinh_nhat: '#1c2438',
-  nen: '#14171c',
-  nen_the: '#1b1f26',
-  nen_mo: '#22262e',
-  vien: '#2e343d',
-  chu: '#e7eaee',
-  chu_nhat: '#a3abb6',
-  chu_mo: '#7b838f',
-  tot: '#4ec38a',
-  tot_nen: '#14291f',
-  canh_bao: '#e0a355',
-  canh_bao_nen: '#2b2114',
-  xau: '#f0736a',
-  xau_nen: '#2d1a18',
-  lanh: '#7fabf7',
-  lanh_nen: '#182233',
-  tren_chinh: '#0b0f14',
-};
+export type { BangMau };
+export { HO_CHU, BO_GOC, KHOANG, Y_NGHIA_MAU };
 
 export function dung_mau(): BangMau {
   return useColorScheme() === 'dark' ? TOI : SANG;
 }
 
-/** Kieu khong phu thuoc mau — dinh nghia mot lan de khong tao lai moi lan render. */
+/**
+ * Kieu khong phu thuoc mau — dinh nghia mot lan de khong tao lai moi lan render.
+ *
+ * Do dam chon bang `fontFamily` chu khong phai `fontWeight`: Android khong tu tao do dam
+ * tu mot ho font, dat fontWeight se ra chu thuong. Xem nguon/font.ts.
+ */
 export const kieu = StyleSheet.create({
   man: { flex: 1 },
-  cuon: { padding: 16, paddingBottom: 40, gap: 12 },
-  giua: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
+  cuon: { padding: KHOANG.lon, paddingBottom: 40, gap: KHOANG.vua },
+  giua: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: KHOANG.vua },
 
-  the: { borderRadius: 12, borderWidth: 1, padding: 16, gap: 10 },
-  the_mong: { borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
+  the: { borderRadius: BO_GOC.vua, borderWidth: 1, padding: KHOANG.lon, gap: 10 },
+  the_mong: { borderRadius: BO_GOC.vua, borderWidth: 1, overflow: 'hidden' },
 
-  h1: { fontSize: 24, fontWeight: '700', letterSpacing: -0.3 },
-  h2: { fontSize: 17, fontWeight: '600' },
-  h3: { fontSize: 15, fontWeight: '600' },
-  chu: { fontSize: 15 },
-  chu_nho: { fontSize: 13 },
-  chu_bo: { fontSize: 12 },
-  so_lon: { fontSize: 34, fontWeight: '700', letterSpacing: -1, fontVariant: ['tabular-nums'] },
+  h1: { fontSize: 24, fontFamily: HO_CHU.rat_dam, letterSpacing: -0.3 },
+  h2: { fontSize: 17, fontFamily: HO_CHU.dam },
+  h3: { fontSize: 15, fontFamily: HO_CHU.dam },
+  chu: { fontSize: 15, fontFamily: HO_CHU.thuong },
+  chu_nho: { fontSize: 13, fontFamily: HO_CHU.thuong },
+  chu_bo: { fontSize: 12, fontFamily: HO_CHU.thuong },
+  so_lon: {
+    fontSize: 34,
+    fontFamily: HO_CHU.rat_dam,
+    letterSpacing: -1,
+    fontVariant: ['tabular-nums'],
+  },
   so: { fontVariant: ['tabular-nums'] },
+  dam: { fontFamily: HO_CHU.dam },
+  rat_dam: { fontFamily: HO_CHU.rat_dam },
 
   hang: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   hang_deu: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
@@ -94,34 +49,35 @@ export const kieu = StyleSheet.create({
   nut: {
     paddingVertical: 13,
     paddingHorizontal: 18,
-    borderRadius: 10,
+    borderRadius: BO_GOC.vua,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 8,
+    gap: KHOANG.nho,
   },
-  nut_nho: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
-  nut_chu: { fontSize: 15, fontWeight: '600' },
+  nut_nho: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: BO_GOC.nho },
+  nut_chu: { fontSize: 15, fontFamily: HO_CHU.dam },
 
   nhap: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: BO_GOC.vua,
     paddingHorizontal: 13,
     paddingVertical: 12,
     fontSize: 16,
+    fontFamily: HO_CHU.thuong,
   },
-  nhan: { fontSize: 13, fontWeight: '600', marginBottom: 6 },
+  nhan: { fontSize: 13, fontFamily: HO_CHU.dam, marginBottom: 6 },
 
   the_nhan: {
     paddingHorizontal: 9,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: BO_GOC.tron,
     alignSelf: 'flex-start',
   },
-  the_nhan_chu: { fontSize: 12, fontWeight: '700' },
+  the_nhan_chu: { fontSize: 12, fontFamily: HO_CHU.rat_dam },
 
-  hop: { padding: 12, borderRadius: 10, borderWidth: 1, gap: 4 },
+  hop: { padding: KHOANG.vua, borderRadius: BO_GOC.vua, borderWidth: 1, gap: KHOANG.rat_nho },
 
   dong_bang: {
     flexDirection: 'row',
@@ -132,5 +88,44 @@ export const kieu = StyleSheet.create({
     gap: 10,
   },
 
-  trong: { alignItems: 'center', padding: 28, gap: 4 },
+  trong: { alignItems: 'center', padding: 28, gap: KHOANG.rat_nho },
+
+  // ---------------------------------------------------------------- dai tuan (Man 1)
+  dai_tuan: { flexDirection: 'row', justifyContent: 'space-between', gap: 4 },
+  o_tuan: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: KHOANG.nho,
+    borderRadius: BO_GOC.nho,
+    borderWidth: 1,
+    gap: 3,
+  },
+
+  // ---------------------------------------------------------------- thanh tien do
+  thanh_ngoai: { height: 8, borderRadius: BO_GOC.tron, overflow: 'hidden' },
+  thanh_trong: { height: '100%', borderRadius: BO_GOC.tron },
+
+  // ---------------------------------------------------------------- luoi chi so
+  luoi_chi_so: { flexDirection: 'row', flexWrap: 'wrap', gap: KHOANG.nho },
+  o_chi_so: {
+    flexGrow: 1,
+    flexBasis: '47%',
+    borderRadius: BO_GOC.vua,
+    borderWidth: 1,
+    padding: KHOANG.vua,
+    gap: 2,
+  },
+
+  // ---------------------------------------------------------------- lich thang (Man 2)
+  // Khong dung `gap` o luoi 7 cot: 7 x 14.28% + gap se tran dong. Khoang cach lam bang
+  // padding cua tung o, phan mau nam o lop trong.
+  luoi_lich: { flexDirection: 'row', flexWrap: 'wrap' },
+  o_lich: { width: '14.28%', aspectRatio: 1, padding: 2 },
+  o_lich_trong: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: BO_GOC.nho,
+  },
+  dau_thu: { width: '14.28%', alignItems: 'center', paddingBottom: KHOANG.rat_nho },
 });

@@ -153,7 +153,7 @@ interface TuyChon {
 
 export async function goi<T = unknown>(duong_dan: string, tc: TuyChon = {}): Promise<T> {
   if (goc_may_chu === '') {
-    throw new LoiApi(0, 'Chưa cấu hình địa chỉ máy chủ. Vào Cá nhân → Địa chỉ máy chủ.');
+    throw new LoiApi(0, 'Chưa cấu hình địa chỉ máy chủ. Vào Cá nhân › Địa chỉ máy chủ.');
   }
 
   const gui = async (): Promise<Response> => {

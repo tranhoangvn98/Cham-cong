@@ -13,7 +13,7 @@ export function Chu(
     children: ReactNode;
     co?: 'bo' | 'nho' | 'thuong' | 'h3' | 'h2' | 'h1';
     dam?: boolean;
-    mau?: 'chu' | 'nhat' | 'mo' | 'tot' | 'xau' | 'canh_bao' | 'chinh';
+    mau?: 'chu' | 'nhat' | 'mo' | 'tot' | 'xau' | 'canh_bao' | 'lanh' | 'nhan' | 'chinh';
     canh?: 'trai' | 'giua' | 'phai';
     style?: StyleProp<TextStyle>;
   },
@@ -25,14 +25,17 @@ export function Chu(
   }[co ?? 'thuong'];
   const mau_chu = {
     chu: m.chu, nhat: m.chu_nhat, mo: m.chu_mo,
-    tot: m.tot, xau: m.xau, canh_bao: m.canh_bao, chinh: m.chinh,
+    tot: m.tot, xau: m.xau, canh_bao: m.canh_bao, lanh: m.lanh, nhan: m.nhan,
+    // Chu dung `chinh_dam`: `chinh` (#4285F4) chi dat 3.56:1 tren nen trang nen chi de
+    // to mang, khong dat chu len. Xem thiet_ke/token.json.
+    chinh: m.chinh_dam,
   }[mau ?? 'chu'];
   return (
     <Text
       style={[
         co_kieu,
         { color: mau_chu },
-        dam === true && { fontWeight: '700' },
+        dam === true && kieu.rat_dam,
         canh !== undefined && { textAlign: canh === 'giua' ? 'center' : canh === 'phai' ? 'right' : 'left' },
         style,
       ]}
@@ -40,6 +43,32 @@ export function Chu(
       {children}
     </Text>
   );
+}
+
+// ============================================================ ky hieu
+/**
+ * Ky hieu ve bang FONT HE THONG, khong dat fontFamily.
+ *
+ * Be Vietnam Pro khong co mot so ky hieu (→ U+2192, ✓ U+2713). React Native KHONG tu tim
+ * font du phong nhu trinh duyet: dat fontFamily roi thieu glyph la ra o vuong rong tren
+ * may that, con tren web van hien binh thuong — nen loi nay khong the phat hien bang
+ * chay thu tren trinh duyet. Font he thong cua Android/iOS deu co day du.
+ *
+ * Test `thiet_ke/font.test.mjs` chan viec dat ky hieu thieu glyph vao <Chu>.
+ */
+export function KyHieu(
+  { children, co, mau }: {
+    children: string;
+    co?: number;
+    mau?: 'chu' | 'nhat' | 'mo' | 'tot' | 'xau' | 'canh_bao' | 'lanh' | 'chinh' | 'tren_chinh';
+  },
+): ReactNode {
+  const m = dung_mau();
+  const mau_chu = {
+    chu: m.chu, nhat: m.chu_nhat, mo: m.chu_mo, tot: m.tot, xau: m.xau,
+    canh_bao: m.canh_bao, lanh: m.lanh, chinh: m.chinh_dam, tren_chinh: m.tren_chinh,
+  }[mau ?? 'chu'];
+  return <Text style={{ fontSize: co ?? 15, color: mau_chu }}>{children}</Text>;
 }
 
 // ============================================================ the
@@ -67,9 +96,11 @@ export function Nut(
   const k = kieu_nut ?? 'vien';
   const bi_tat = tat === true || dang_chay === true;
 
-  const nen = k === 'chinh' ? m.chinh : k === 'nguy' ? m.xau : k === 'phang' ? 'transparent' : m.nen_the;
-  const vien = k === 'chinh' ? m.chinh : k === 'nguy' ? m.xau : k === 'phang' ? 'transparent' : m.vien;
-  const chu_mau = k === 'chinh' || k === 'nguy' ? m.tren_chinh : k === 'phang' ? m.chinh : m.chu;
+  // Nut dac dung `chinh_dam` chu khong phai `chinh`: chu trang tren #4285F4 chi dat
+  // 3.56:1, khong du WCAG AA. Xem thiet_ke/token.json.
+  const nen = k === 'chinh' ? m.chinh_dam : k === 'nguy' ? m.xau : k === 'phang' ? 'transparent' : m.nen_the;
+  const vien = k === 'chinh' ? m.chinh_dam : k === 'nguy' ? m.xau : k === 'phang' ? 'transparent' : m.vien;
+  const chu_mau = k === 'chinh' || k === 'nguy' ? m.tren_chinh : k === 'phang' ? m.chinh_dam : m.chu;
 
   return (
     <Pressable
@@ -192,6 +223,46 @@ const MAU_TRANG_THAI_DON: Record<string, 'tot' | 'xau' | 'canh_bao' | 'lanh' | '
 
 export function NhanDon({ trang_thai, chu }: { trang_thai: string; chu: string }): ReactNode {
   return <TheNhan chu={chu} mau={MAU_TRANG_THAI_DON[trang_thai] ?? 'mo'} />;
+}
+
+// ============================================================ thanh tien do
+/**
+ * Thanh tien do (chuyen can, quy phep). Nen dung `chinh` — day la mang mau khong co chu
+ * de len nen 3:1 la du.
+ */
+export function ThanhTienDo(
+  { phan, mau }: { phan: number; mau?: 'chinh' | 'tot' | 'canh_bao' | 'xau' | 'lanh' },
+): ReactNode {
+  const m = dung_mau();
+  const mau_thanh = {
+    chinh: m.chinh, tot: m.tot, canh_bao: m.canh_bao, xau: m.xau, lanh: m.lanh,
+  }[mau ?? 'chinh'];
+  // Ket mien [0..1] de mot con so la (VD nghi vuot quy phep) khong ve tran ra ngoai the.
+  const rong = Math.max(0, Math.min(1, Number.isFinite(phan) ? phan : 0));
+  return (
+    <View style={[kieu.thanh_ngoai, { backgroundColor: m.nen_mo }]}>
+      <View style={[kieu.thanh_trong, { width: `${rong * 100}%`, backgroundColor: mau_thanh }]} />
+    </View>
+  );
+}
+
+// ============================================================ o chi so
+export function OChiSo(
+  { nhan, gia_tri, phu, mau }: {
+    nhan: string;
+    gia_tri: string;
+    phu?: string;
+    mau?: 'chu' | 'tot' | 'xau' | 'canh_bao' | 'lanh';
+  },
+): ReactNode {
+  const m = dung_mau();
+  return (
+    <View style={[kieu.o_chi_so, { backgroundColor: m.nen_the, borderColor: m.vien }]}>
+      <Chu co="bo" mau="nhat">{nhan}</Chu>
+      <Chu co="h2" mau={mau ?? 'chu'} style={kieu.so}>{gia_tri}</Chu>
+      {phu !== undefined && <Chu co="bo" mau="mo">{phu}</Chu>}
+    </View>
+  );
 }
 
 // ============================================================ trang thai tai
