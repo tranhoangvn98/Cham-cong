@@ -62,6 +62,9 @@ async function phat_token(nd: DongNguoiDung, mo_ta_thiet_bi: string | null) {
     token_truy_cap: truy_cap.token,
     token_lam_moi: lam_moi.token,
     het_han_sau_giay: cau_hinh.jwt.access_ttl,
+    // Client PHAI format moc thoi gian theo offset nay, khong dung mui gio may cua nguoi xem:
+    // gio cham cong la gio tai noi dat may, doc tren may khac mui gio se ra so khac.
+    mui_gio_offset_gio: cau_hinh.device_tz_offset_hours,
     nguoi_dung: {
       id: nd.id,
       ten_dang_nhap: nd.ten_dang_nhap,
@@ -90,7 +93,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     const LOI_CHUNG = { loi: 'Ten dang nhap hoac mat khau khong dung.' };
 
     if (nd === null) {
-      // Vẫn bam mot lan de thoi gian phan hoi khong to ra tai khoan khong ton tai.
+      // Van bam mot lan de thoi gian phan hoi khong to ra tai khoan khong ton tai.
       await kiem_tra_mat_khau(mat_khau, 'scrypt$32768$8$1$AAAA$AAAA');
       return res.code(401).send(LOI_CHUNG);
     }
@@ -224,7 +227,13 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
         where nd.id = $1`,
       [nd.sub],
     );
-    return { id: nd.sub, vai_tro: nd.vai_tro, nhan_vien_id: nd.nv, ...chi_tiet };
+    return {
+      id: nd.sub,
+      vai_tro: nd.vai_tro,
+      nhan_vien_id: nd.nv,
+      mui_gio_offset_gio: cau_hinh.device_tz_offset_hours,
+      ...chi_tiet,
+    };
   });
 
   // ------------------------------------------------------------------ doi mat khau
