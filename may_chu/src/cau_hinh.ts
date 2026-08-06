@@ -1,6 +1,7 @@
 // Nap cau hinh tu bien moi truong. Doc mot lan khi khoi dong, fail-fast neu thieu bi mat.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { doc_danh_sach_ip } from './tien_ich/dia_chi_ip.ts';
 
 /** Doc file .env don gian (KEY=VALUE, bo qua dong trong va dong #). Khong ghi de bien da co. */
 function nap_env(duong_dan: string): void {
@@ -95,6 +96,17 @@ export const cau_hinh = {
     .split(',')
     .map((s) => s.trim())
     .filter((s) => s.length > 0),
+
+  /**
+   * Danh sach IP/CIDR duoc phep goi /iclock/* (cong may cham cong).
+   *
+   * RONG = cho phep tat ca — dung khi may chu dat trong LAN. Dat tren VPS thi PHAI dien,
+   * vi cong 8080 con phuc vu /api/* cho dien thoai va may nhan su o moi noi, nen khong
+   * the chan bang tuong lua (tuong lua khong phan biet duong dan).
+   *
+   * VD: ICLOCK_IP_CHO_PHEP=203.0.113.45,192.168.1.0/24
+   */
+  iclock_ip_cho_phep: doc_danh_sach_ip(chu('ICLOCK_IP_CHO_PHEP', '')),
 
   erp: {
     webhook_url: chu('ERP_WEBHOOK_URL', ''),

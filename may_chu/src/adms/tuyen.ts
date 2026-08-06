@@ -18,6 +18,7 @@ import {
   dung_phan_hoi_handshake,
 } from './giao_thuc.ts';
 import { tiep_nhan_attlog } from './tiep_nhan.ts';
+import { ip_duoc_phep } from '../tien_ich/dia_chi_ip.ts';
 
 interface DongThietBi {
   id: string;
@@ -64,6 +65,28 @@ async function cham_thiet_bi(
  *   app.register(tuyen_adms, { prefix: '/iclock' })
  */
 export async function tuyen_adms(app: FastifyInstance): Promise<void> {
+  // ---------------------------------------------------- lop chan theo IP (Task B5)
+  //
+  // Cong nay chi co MOT lop chan la whitelist theo serial. Du khi may chu dat trong LAN,
+  // nhung dat tren VPS thi /iclock phoi ra Internet — serial ma lot ra la bat ky ai cung
+  // POST duoc lan quet gia vao bang cong, tuc la vao co so tinh luong.
+  //
+  // Khong the chan bang tuong lua: cong 8080 con phuc vu /api/* cho dien thoai va may
+  // nhan su o moi noi, ma tuong lua khong phan biet duong dan.
+  //
+  // Chan o day chu khong o tung route: hook cua plugin ap cho MOI route trong /iclock,
+  // ke ca route them sau nay.
+  if (cau_hinh.iclock_ip_cho_phep.length > 0) {
+    app.addHook('onRequest', async (req, res) => {
+      if (!ip_duoc_phep(req.ip, cau_hinh.iclock_ip_cho_phep)) {
+        req.log.warn({ ip: req.ip, url: req.url }, 'chan /iclock: IP khong trong danh sach');
+        // Tra 403 dang text/plain: firmware coi phan hoi khac la loi va se thu lai,
+        // nhung khong duoc lam no tuong da gui thanh cong.
+        return tra_text(res, 'Forbidden\n', 403);
+      }
+    });
+  }
+
   // Body cua may la text tho, KHONG phai JSON. Parser nay chi song trong pham vi plugin.
   app.addContentTypeParser(
     ['text/plain', 'application/x-www-form-urlencoded', 'application/octet-stream'],

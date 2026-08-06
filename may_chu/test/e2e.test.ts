@@ -14,6 +14,9 @@ process.env['JWT_SECRET'] = 'khoa_kiem_thu_du_dai_de_khong_bi_tu_choi_0001';
 process.env['NODE_ENV'] = 'test';
 process.env['DEVICE_TZ_OFFSET_HOURS'] = '7';
 process.env['CORS_ORIGIN'] = 'http://localhost:5173';
+// Bat lop chan IP cho /iclock: cac test hien co goi tu 127.0.0.1 nen van qua,
+// va co test rieng kiem IP ngoai danh sach bi chan.
+process.env['ICLOCK_IP_CHO_PHEP'] = '127.0.0.1,192.168.9.0/24';
 process.env['DATABASE_URL'] ??=
   'postgres://chamcong:chamcong_dev@localhost:5432/chamcong_test';
 
@@ -817,6 +820,51 @@ test('man Luong tra co so tinh cong, KHONG bay so tien nao', async () => {
   for (const k of ['tong_cong', 'tong_phut_lam', 'tong_phut_ot', 'so_ngay_vang']) {
     assert.equal(String(a[k]), String(b[k]), `lech o truong ${k}`);
   }
+});
+
+// ============================================================ chan IP /iclock
+test('/iclock chan IP ngoai danh sach cho phep (Task B5)', async () => {
+  // Cong 8080 con phuc vu /api/* cho dien thoai o moi noi, nen khong chan bang tuong lua
+  // duoc — phai chan theo duong dan o tang ung dung.
+  const la = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=ATTLOG`,
+    headers: { 'content-type': 'text/plain' },
+    remoteAddress: '203.0.113.99',
+    payload: `${PIN}\t${NGAY} 09:00:00\t0\t15\t0\n`,
+  });
+  assert.equal(la.statusCode, 403, 'IP ngoai danh sach phai bi chan');
+  assert.match(la.body, /Forbidden/);
+
+  // Va lan quet do KHONG duoc luu.
+  const co = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from lan_quet
+      where nhan_vien_id = $1 and thoi_diem = ($2 || ' 09:00:00')::timestamp - make_interval(hours => 7)`,
+    [nhan_vien_id, NGAY],
+  );
+  assert.equal(co?.so, 0, 'request bi chan khong duoc ghi du lieu');
+
+  // IP trong dai CIDR thi qua.
+  const trong_dai = await app.inject({
+    method: 'GET',
+    url: `/iclock/cdata?SN=${SERIAL}`,
+    remoteAddress: '192.168.9.50',
+  });
+  assert.equal(trong_dai.statusCode, 200, 'IP trong dai CIDR phai duoc phep');
+
+  // Handshake tu 127.0.0.1 (cac test khac dung) van qua.
+  const noi_bo = await app.inject({ method: 'GET', url: `/iclock/cdata?SN=${SERIAL}` });
+  assert.equal(noi_bo.statusCode, 200);
+});
+
+test('/api KHONG bi lop chan IP cua /iclock (dien thoai goi tu moi noi)', async () => {
+  const r = await app.inject({
+    method: 'POST',
+    url: '/api/xac-thuc/dang-nhap',
+    remoteAddress: '203.0.113.99',
+    payload: { ten_dang_nhap: 'admin', mat_khau: 'ChamCong2026' },
+  });
+  assert.equal(r.statusCode, 200, 'chan IP chi duoc ap cho /iclock, khong duoc lan sang /api');
 });
 
 // ============================================================ giam sat may offline

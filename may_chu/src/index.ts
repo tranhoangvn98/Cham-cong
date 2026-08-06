@@ -35,6 +35,20 @@ try {
   if (cau_hinh.cors_origin.length === 0) {
     app.log.warn('CORS_ORIGIN de trong: webapp o origin khac se KHONG goi duoc API.');
   }
+  if (cau_hinh.iclock_ip_cho_phep.length === 0) {
+    app.log.warn(
+      'ICLOCK_IP_CHO_PHEP de trong: /iclock/* nhan request tu MOI dia chi IP. '
+      + 'Chap nhan duoc khi may chu nam trong LAN kin. Neu may chu co dia chi cong khai, '
+      + 'hay dien IP cong khai cua van phong — neu khong, ai biet serial may cung day duoc '
+      + 'lan quet gia vao bang cong.',
+    );
+  } else {
+    app.log.info(
+      { so_quy_tac: cau_hinh.iclock_ip_cho_phep.length,
+        quy_tac: cau_hinh.iclock_ip_cho_phep.map((q) => q.goc) },
+      'chi cho phep nhung IP nay goi /iclock/*',
+    );
+  }
 } catch (loi) {
   app.log.error({ err: loi }, 'khong khoi dong duoc may chu');
   await dong_pool();

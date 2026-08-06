@@ -11,7 +11,7 @@
     "start": "node dist/index.js",
     "di_tru": "node --experimental-strip-types src/csdl/chay_di_tru.ts",
     "seed": "node --experimental-strip-types src/csdl/seed.ts",
-    "test": "node --experimental-strip-types --test test/giao_thuc.test.ts test/tinh_cong.test.ts test/bao_mat.test.ts",
+    "test": "node --experimental-strip-types --test test/giao_thuc.test.ts test/tinh_cong.test.ts test/bao_mat.test.ts test/dia_chi_ip.test.ts",
     "kiem_tra_kieu": "tsc -p tsconfig.kiem_tra.json",
     "test_e2e": "node --experimental-strip-types --test test/e2e.test.ts",
     "test_tat_ca": "npm test && npm run test_e2e"
