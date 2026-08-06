@@ -1,0 +1,112 @@
+// Nap cau hinh tu bien moi truong. Doc mot lan khi khoi dong, fail-fast neu thieu bi mat.
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+/** Doc file .env don gian (KEY=VALUE, bo qua dong trong va dong #). Khong ghi de bien da co. */
+function nap_env(duong_dan: string): void {
+  let noi_dung: string;
+  try {
+    noi_dung = readFileSync(duong_dan, 'utf8');
+  } catch {
+    return; // khong co .env — chay bang bien moi truong that (Docker/systemd)
+  }
+  for (const dong of noi_dung.split('\n')) {
+    const line = dong.trim();
+    if (line.length === 0 || line.startsWith('#')) continue;
+    const vt = line.indexOf('=');
+    if (vt <= 0) continue;
+    const khoa = line.slice(0, vt).trim();
+    if (process.env[khoa] !== undefined) continue;
+    let gia_tri = line.slice(vt + 1).trim();
+    // Bo comment cuoi dong khi gia tri khong nam trong dau nhay
+    if (!gia_tri.startsWith('"') && !gia_tri.startsWith("'")) {
+      const cmt = gia_tri.indexOf(' #');
+      if (cmt >= 0) gia_tri = gia_tri.slice(0, cmt).trim();
+    } else {
+      gia_tri = gia_tri.slice(1, -1);
+    }
+    process.env[khoa] = gia_tri;
+  }
+}
+
+nap_env(resolve(process.cwd(), '.env'));
+nap_env(resolve(process.cwd(), '../.env'));
+
+function bat_buoc(khoa: string): string {
+  const v = process.env[khoa];
+  if (v === undefined || v.trim() === '') {
+    throw new Error(`Thieu bien moi truong bat buoc: ${khoa}. Xem .env.example.`);
+  }
+  return v.trim();
+}
+
+function so(khoa: string, mac_dinh: number): number {
+  const v = process.env[khoa];
+  if (v === undefined || v.trim() === '') return mac_dinh;
+  const n = Number(v.trim());
+  if (!Number.isFinite(n)) throw new Error(`Bien ${khoa} phai la so, dang nhan: ${v}`);
+  return n;
+}
+
+function chu(khoa: string, mac_dinh: string): string {
+  const v = process.env[khoa];
+  return v === undefined || v.trim() === '' ? mac_dinh : v.trim();
+}
+
+const moi_truong = chu('NODE_ENV', 'development');
+const la_production = moi_truong === 'production';
+
+// JWT_SECRET la khoa ky token — yeu la mat toan bo he thong.
+const jwt_secret = bat_buoc('JWT_SECRET');
+if (la_production) {
+  if (jwt_secret.length < 32) {
+    throw new Error('JWT_SECRET qua ngan (<32 ky tu). Sinh khoa: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'base64url\'))"');
+  }
+  if (jwt_secret.includes('doi_thanh_chuoi')) {
+    throw new Error('JWT_SECRET dang la gia tri mau trong .env.example. Phai doi truoc khi len production.');
+  }
+}
+
+export const cau_hinh = {
+  moi_truong,
+  la_production,
+  cong: so('PORT', 8080),
+  database_url: bat_buoc('DATABASE_URL'),
+
+  jwt: {
+    secret: jwt_secret,
+    /** Thoi song token truy cap (giay). Ngan de giam thiet hai neu bi lo. */
+    access_ttl: so('JWT_ACCESS_TTL', 900),
+    /** Thoi song token lam moi (giay). App dien thoai dung de khong phai dang nhap lai. */
+    refresh_ttl: so('JWT_REFRESH_TTL', 30 * 24 * 3600),
+  },
+
+  /**
+   * May ZKTeco gui gio DIA PHUONG khong kem offset. Ta gan offset nay de dung
+   * moc thoi gian tuyet doi. Doi so nay neu may dat o mui gio khac.
+   */
+  device_tz_offset_hours: so('DEVICE_TZ_OFFSET_HOURS', 7),
+
+  thu_muc_anh: resolve(process.cwd(), chu('THU_MUC_ANH', './du_lieu/anh_cham_cong')),
+  geofence_ban_kinh_m: so('GEOFENCE_BAN_KINH_M', 200),
+  may_offline_sau_giay: so('MAY_OFFLINE_SAU_GIAY', 180),
+
+  cors_origin: chu('CORS_ORIGIN', '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0),
+
+  erp: {
+    webhook_url: chu('ERP_WEBHOOK_URL', ''),
+    webhook_secret: chu('ERP_WEBHOOK_SECRET', ''),
+  },
+
+  /** Bat migration tu dong khi khoi dong (tien cho Docker 1 diem). */
+  tu_dong_di_tru: chu('TU_DONG_DI_TRU', la_production ? '0' : '1') === '1',
+
+  /** Kich thuoc anh selfie toi da (byte). */
+  anh_toi_da_byte: so('ANH_TOI_DA_BYTE', 3 * 1024 * 1024),
+} as const;
+
+/** Offset may cham cong duoi dang milli-giay — dung khi doi gio dia phuong <-> UTC. */
+export const OFFSET_MAY_MS = cau_hinh.device_tz_offset_hours * 3600 * 1000;

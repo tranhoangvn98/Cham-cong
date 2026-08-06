@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+**/dist
+web/dist
+dien_thoai
+.git
+.env
+.env.*
+!.env.example
+du_lieu
+log
+*.log
+tai_lieu
