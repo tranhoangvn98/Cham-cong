@@ -40,7 +40,6 @@ export function TrangNguoiDung(): ReactNode {
     <>
       <div className="dau-trang">
         <div>
-          <h1>Tài khoản</h1>
           <p className="mo-ta">
             Tài khoản nhân viên dùng để đăng nhập app điện thoại. Tạo tài khoản ở trang Nhân viên.
           </p>
@@ -189,7 +188,6 @@ export function TrangNhatKy(): ReactNode {
     <>
       <div className="dau-trang">
         <div>
-          <h1>Nhật ký thao tác</h1>
           <p className="mo-ta">
             Ai đã làm gì với dữ liệu chấm công — cần cho tranh chấp bảng công và lương.
           </p>

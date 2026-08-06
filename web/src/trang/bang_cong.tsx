@@ -84,8 +84,7 @@ export function TrangBangCong(): ReactNode {
     <>
       <div className="dau-trang">
         <div>
-          <h1>Bảng công</h1>
-          <p className="mo-ta">Tổng hợp theo tháng. Bấm vào một dòng để xem chi tiết từng ngày.</p>
+          <p className="mo-ta">Bấm vào một dòng để xem chi tiết từng ngày.</p>
         </div>
         {la_nhan_su() && (
           <div className="hang-nut">

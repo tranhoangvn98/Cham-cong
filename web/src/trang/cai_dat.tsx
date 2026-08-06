@@ -41,7 +41,6 @@ export function TrangCaLam(): ReactNode {
     <>
       <div className="dau-trang">
         <div>
-          <h1>Ca làm việc</h1>
           <p className="mo-ta">
             Ca quyết định cách tính đi muộn, về sớm và OT. Nhân viên không gán ca chỉ được tính tổng
             thời gian có mặt.
@@ -314,7 +313,6 @@ export function TrangDiaDiem(): ReactNode {
     <>
       <div className="dau-trang">
         <div>
-          <h1>Địa điểm chấm công</h1>
           <p className="mo-ta">
             Dùng để đối chiếu GPS khi nhân viên chấm công bằng điện thoại.
           </p>
@@ -498,7 +496,6 @@ export function TrangNgayLe(): ReactNode {
     <>
       <div className="dau-trang">
         <div>
-          <h1>Ngày lễ</h1>
           <p className="mo-ta">
             Thêm/xóa ngày lễ sẽ tính lại bảng công của đúng ngày đó ngay lập tức.
           </p>

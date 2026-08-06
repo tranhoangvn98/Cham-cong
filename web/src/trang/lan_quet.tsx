@@ -48,7 +48,6 @@ export function TrangLanQuet(): ReactNode {
     <>
       <div className="dau-trang">
         <div>
-          <h1>Nhật ký quẹt thẻ</h1>
           <p className="mo-ta">
             Dữ liệu thô từ máy, không bao giờ bị sửa. Dùng để đối chiếu khi nhân viên thắc mắc bảng công.
           </p>

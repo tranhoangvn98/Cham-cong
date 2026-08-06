@@ -44,10 +44,17 @@ Không hard-code màu / font / bo góc ở web hay app. Sửa **`thiet_ke/token.
 `dien_thoai/nguon/token_thiet_ke.ts` là **tệp sinh ra**, đừng sửa tay. `npm test` bắt được nếu
 quên sinh lại.
 
-Ba luật đã có tiền lệ (chi tiết ở `tai_lieu/THIET-KE.md`):
+`token.json` có **hai nhánh**: `web` (Metronic v9 — Inter, `#3B82F6`, bo góc 8px) và
+`mobile` (Compose Boltuix — Be Vietnam Pro, `#4285F4`, bo góc 12px). Đừng gộp lại: kế hoạch v2
+mục 4.5 chốt hai nền tảng dùng hai bộ theme.
 
-- **`chinh` (#4285F4) chỉ tô mảng, không đặt chữ lên** — chỉ đạt 3,56:1 trên nền trắng. Chữ,
-  liên kết và nền nút đặc dùng `chinh_dam`.
+Bốn luật đã có tiền lệ (chi tiết ở `tai_lieu/THIET-KE.md`):
+
+- **`chinh` chỉ tô mảng, không đặt chữ lên** — `#3B82F6` (web) đạt 3,68:1 và `#4285F4`
+  (mobile) đạt 3,56:1 trên nền trắng, đều dưới ngưỡng WCAG AA. Chữ, liên kết và nền nút đặc
+  dùng `chinh_dam`.
+- **Chữ trên `chinh_dam` dùng `var(--tren-chinh)`, không hardcode `#fff`** — ở chế độ tối
+  `chinh_dam` là màu sáng nên chữ trắng chỉ còn 2,3:1.
 - **App chọn độ đậm bằng `fontFamily`, không bằng `fontWeight`** — Android không suy ra độ đậm
   từ một họ font, đặt `fontWeight` sẽ ra chữ thường.
 - **Ký hiệu font thiếu glyph phải vẽ qua `<KyHieu>`** (không đặt `fontFamily`). `→` và `✓`
@@ -89,8 +96,8 @@ Người **vắng cả ngày không có lần quẹt nào**, nên không có gì
 ## Kiểm thử
 
 ```bash
-npm test                    # 60 test đơn vị + 8 test design token / phủ glyph font
-npm --workspace may_chu run test_e2e   # 44 test end-to-end (cần DB tên chamcong_test*)
+npm test                    # 60 test đơn vị + 12 test design token / phủ glyph font
+npm --workspace may_chu run test_e2e   # 46 test end-to-end (cần DB tên chamcong_test*)
 npm run kiem_tra_kieu       # kiểm tra kiểu may_chu, web và dien_thoai
 ```
 

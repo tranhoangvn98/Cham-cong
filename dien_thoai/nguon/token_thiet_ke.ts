@@ -1,6 +1,6 @@
 /* Sinh tu thiet_ke/token.json boi thiet_ke/sinh_token.mjs — DUNG SUA TAY.
    Sua token.json roi chay: npm run sinh_token
-   Bang mau, ho chu, bo goc cho app dien thoai. */
+   Bang mau, ho chu, bo goc cho app dien thoai. Theme: Be Vietnam Pro + Compose Boltuix. */
 
 export interface BangMau {
   chinh: string;
@@ -77,7 +77,12 @@ export const TOI: BangMau = {
   tren_chinh: '#0B0F14',
 };
 
-/** Ten ho chu da dang ky trong nguon/font.ts — chon do dam bang fontFamily, khong bang fontWeight. */
+/**
+ * Ten ho chu da dang ky trong nguon/font.ts.
+ *
+ * Chon do dam bang fontFamily, KHONG bang fontWeight: React Native tren Android
+ * khong suy ra do dam tu mot ho font, dat fontWeight se ra chu thuong.
+ */
 export const HO_CHU = {
   thuong: 'BeVietnamPro-Regular',
   vua: 'BeVietnamPro-Medium',
@@ -100,7 +105,7 @@ export const KHOANG = {
   rat_lon: 24,
 } as const;
 
-/** Trang thai nghiep vu -> khoa mau trong BangMau. */
+/** Trang thai nghiep vu -> khoa mau trong BangMau. Dung chung voi web. */
 export const Y_NGHIA_MAU: Record<string, keyof BangMau> = {
   du_cong: 'tot',
   di_muon: 'canh_bao',

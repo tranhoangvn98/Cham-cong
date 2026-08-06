@@ -50,7 +50,6 @@ export function TrangDashboard(): ReactNode {
     <>
       <div className="dau-trang">
         <div>
-          <h1>Tổng quan hôm nay</h1>
           <p className="mo-ta">
             {thu_cua_ngay(du_lieu.ngay)}, {ngay_viet(du_lieu.ngay)}
           </p>

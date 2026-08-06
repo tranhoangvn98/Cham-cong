@@ -2,6 +2,48 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.3.0] — 2026-08-06
+
+Áp theme **Metronic v9** cho webapp theo demo 11 màn đã duyệt. Từ nay web và app dùng **hai bộ
+theme riêng** như kế hoạch v2 mục 4.5 chốt.
+
+### Thêm mới
+
+- `thiet_ke/token.json` tách thành hai nhánh `web` (Metronic: Inter, `#3B82F6`, bo góc 8px) và
+  `mobile` (Compose Boltuix: Be Vietnam Pro, `#4285F4`, bo góc 12px). Khoảng cách, breakpoint và
+  `y_nghia_mau` vẫn dùng chung để một ngày "đủ công" không ra hai màu ở hai nơi — có test kiểm.
+- **Font Inter tự chứa**, bản biến thiên đã cắt còn trục `wght` 400–700 và ghim `opsz`: một tệp
+  **171 KB** phủ liên tục 400–700, nhỏ hơn 4 tệp tĩnh và độ đậm mượt hơn. Không gọi Google Fonts
+  CDN như demo — chạy được trong LAN kín và không rò rỉ IP nhân viên.
+- **Biểu tượng Tabler Icons cắt subset**: bộ đầy đủ 840 KB cho 5.800 icon → **7,5 KB** cho 33
+  icon đang dùng. Tự chứa thay vì gọi CDN jsDelivr.
+- **Bố cục Metronic**: thanh bên mảng tối cố định 232px + header (tiêu đề động, nút sáng/tối,
+  avatar). Nhóm menu theo demo: nhóm đầu không nhãn · Quản trị nhân sự · Hệ thống.
+- **Nút chuyển sáng/tối** ba trạng thái (theo máy / sáng / tối), lưu ở `localStorage`. Kế hoạch
+  đòi "bật/tắt trên web" nên không thể chỉ dựa vào `prefers-color-scheme`.
+- Ở ≤1023px thanh bên **trượt vào từ bên trái** kèm màn che, thay vì nằm đè trên đỉnh trang.
+
+### Sửa
+
+- Demo đặt chữ/nhãn nút lên `#3B82F6` ở 4 chỗ (`.lnk`, `.btn-p`, `.nav.on`, `.tab.on`) — màu này
+  chỉ đạt **3,68:1** trên nền trắng và chữ trắng trên nó cũng 3,68:1. Đã tách vai trò như bên
+  mobile: `chinh` tô mảng, `chinh_dam` (`#2563EB`, 5,17:1) cho chữ và nền nút đặc.
+- Nhãn nhóm sidebar của demo dùng zinc-600 `#52525B` trên `#18181B` — chỉ **2,29:1**, đọc rất
+  khó. Nâng lên `#8E8E97`.
+- Ở chế độ tối, viền `#27272A` trên thẻ `#18181B` chỉ đạt **1,19:1** nên gần như vô hình. Nâng
+  lên zinc-700.
+- Liên kết trong thanh bên tối dùng `chinh_dam` `#2563EB` trên `#18181B` chỉ **2,3:1** → thêm
+  token `lien_ket_ben` (`#93C5FD`, 9,8:1).
+- Bỏ 13 thẻ `<h1>` trùng: tiêu đề trang nay nằm một chỗ duy nhất trên header. Trang đăng nhập
+  nằm ngoài vỏ app nên giữ nguyên `<h1>`.
+- Test tương phản nay kiểm **cả hai nền tảng × cả hai chế độ**, gồm cặp riêng của thanh bên tối.
+
+### Đã biết còn thiếu
+
+4 trong 11 màn của demo chưa có backend nên chưa đưa vào menu: Bảng lương (Module C), Hợp đồng
+(Module D), Vi phạm (Module G), Cấu hình pháp lý (Module C). Màn Báo cáo mới có xuất CSV. Xem
+`tai_lieu/THIET-KE.md` mục 7.
+
 ## [1.2.0] — 2026-08-06
 
 ### Thêm mới

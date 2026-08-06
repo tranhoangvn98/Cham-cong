@@ -2,6 +2,7 @@
    Mau / font / bo goc / khoang cach KHONG dinh nghia o day — lay tu design token
    dung chung voi app dien thoai. Sua thiet_ke/token.json roi chay `npm run sinh_token`. */
 @import './token_thiet_ke.css';
+@import './icon.css';
 
 * { box-sizing: border-box; }
 
@@ -42,11 +43,13 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
 
 .vo-app { display: flex; min-height: 100vh; }
 
+/* Thanh ben mang TOI co dinh — bo cuc demo1 cua Metronic. Mau sidebar khong doi theo
+   che do sang/toi cua trang (chi dam hon o che do toi), giong demo da duyet. */
 .thanh-ben {
   width: var(--rong-thanh-ben);
   flex: 0 0 var(--rong-thanh-ben);
-  background: var(--nen-the);
-  border-right: 1px solid var(--vien);
+  background: var(--nen-ben);
+  color: var(--chu-ben);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -56,46 +59,124 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
 }
 
 .thuong-hieu {
-  padding: 16px;
-  border-bottom: 1px solid var(--vien);
-  font-weight: 700;
-  font-size: 15px;
+  padding: 4px 8px 16px;
+  margin: 12px;
+  border-bottom: 1px solid var(--vien-ben);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
+.thuong-hieu-o {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--tron);
+  background: var(--chinh-dam);
+  color: var(--tren-chinh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+.thuong-hieu b { color: #fff; font-size: 14px; display: block; line-height: 1.15; }
+.thuong-hieu span { font-size: 11.5px; color: var(--chu-ben); }
 
-.dieu-huong { padding: 8px; flex: 1; }
+.dieu-huong { padding: 0 12px 8px; flex: 1; }
 .dieu-huong-nhom {
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--chu-mo);
-  padding: 12px 10px 4px;
+  letter-spacing: 0.06em;
+  color: var(--chu-ben-mo);
+  padding: 14px 11px 6px;
   font-weight: 600;
 }
 
 .dieu-huong a {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  color: var(--chu-nhat);
+  gap: 11px;
+  padding: 9px 11px;
+  border-radius: var(--tron);
+  color: var(--chu-ben);
   font-weight: 500;
-  margin-bottom: 1px;
+  margin-bottom: 2px;
 }
-.dieu-huong a:hover { background: var(--nen-mo); text-decoration: none; color: var(--chu); }
-.dieu-huong a.dang-chon { background: var(--chinh-nhat); color: var(--chinh-dam); font-weight: 600; }
+.dieu-huong a:hover {
+  background: var(--vien-ben);
+  text-decoration: none;
+  color: var(--chu-ben-sang);
+}
+/* Muc dang chon: to mang bang `chinh-dam` chu khong phai `chinh` — chu trang tren
+   #3B82F6 chi dat 3,68:1, khong du WCAG AA. Xem thiet_ke/token.json. */
+.dieu-huong a.dang-chon {
+  background: var(--chinh-dam);
+  color: var(--tren-chinh);
+  font-weight: 600;
+}
 
 .chan-thanh-ben {
   padding: 12px;
-  border-top: 1px solid var(--vien);
+  margin: 0 12px 8px;
+  border-top: 1px solid var(--vien-ben);
   font-size: 12px;
+  color: var(--chu-ben);
+}
+.chan-thanh-ben .ten-nguoi { font-weight: 600; color: #fff; }
+/* Lien ket trong thanh ben toi phai dung mau rieng: `chinh-dam` (#2563EB) tren
+   #18181B chi dat 2,3:1. */
+.chan-thanh-ben .nut-phang { color: var(--lien-ket-ben); }
+.chan-thanh-ben .nut-phang:hover { background: var(--vien-ben); }
+
+/* ---------------------------------------------------------------- than + header */
+.than { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.dau-app {
+  background: var(--nen-the);
+  border-bottom: 1px solid var(--vien);
+  padding: 13px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.dau-app-tieu-de { font-weight: 600; font-size: 17px; }
+.dau-app-phu { font-size: 12.5px; color: var(--chu-nhat); }
+.dau-app-nut { display: flex; align-items: center; gap: 10px; }
+
+.nut-tron {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--tron);
+  border: 1px solid var(--vien);
+  background: var(--nen-the);
   color: var(--chu-nhat);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+.nut-tron:hover { background: var(--nen-mo); color: var(--chu); }
+
+.anh-dai-dien {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--tron-tron);
+  background: var(--chinh-dam);
+  color: var(--tren-chinh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 12.5px;
+  flex: 0 0 auto;
 }
 
-.than { flex: 1; min-width: 0; padding: 20px 24px 48px; }
+.noi-dung { padding: 22px; max-width: 1280px; flex: 1; }
+
 .dau-trang {
   display: flex;
   align-items: flex-start;
@@ -105,6 +186,11 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
   margin-bottom: 16px;
 }
 .mo-ta { color: var(--chu-nhat); font-size: 13px; margin: 0; }
+/* Trang chi con hang nut (tieu de da len header) — day nut sang phai. */
+.dau-trang > .hang-nut:only-child { margin-left: auto; }
+
+/* Nut mo thanh ben o man nho — chi hien duoi 1023px. */
+.nut-menu { display: none; }
 
 /* ---------------------------------------------------------------- the */
 .the {
@@ -368,38 +454,33 @@ textarea { min-height: 66px; resize: vertical; }
 }
 
 @media (max-width: 1023px) {
-  .vo-app { flex-direction: column; }
+  /* Thanh ben toi truot vao tu ben trai (off-canvas) nhu demo, thay vi nam de tren dinh:
+     mang toi cao 200px tren dinh trang sang trong rat nang. */
   .thanh-ben {
-    width: 100%;
-    flex: none;
-    height: auto;
-    position: static;
-    border-right: none;
-    border-bottom: 1px solid var(--vien);
+    position: fixed;
+    left: calc(-1 * var(--rong-thanh-ben));
+    top: 0;
+    bottom: 0;
+    height: 100vh;
+    z-index: 40;
+    transition: left 0.18s ease;
   }
-  .dieu-huong { display: flex; flex-wrap: wrap; gap: 2px; }
-  .dieu-huong-nhom { display: none; }
-  .than { padding: 16px 16px 40px; }
+  .thanh-ben.mo { left: 0; box-shadow: var(--bong-noi); }
+  .nut-menu { display: flex; }
+  .man-che-ben {
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 45%);
+    z-index: 39;
+    border: 0;
+    padding: 0;
+  }
+  .noi-dung { padding: 16px; }
+  .dau-app { padding: 11px 16px; }
 }
 
 @media (max-width: 768px) {
-  /* Thanh dieu huong xuong mot HANG cuon ngang. De no tu xuong dong nhu o tablet thi
-     10 muc chiem 340-430px chieu cao, day tieu de trang xuong duoi man hinh. */
-  .dieu-huong {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding: 6px 8px;
-    scrollbar-width: none;
-  }
-  .dieu-huong::-webkit-scrollbar { display: none; }
-  /* `display: contents` de cac lien ket trong tung nhom nhap vao HANG cua nav thay vi
-     moi nhom la mot khoi doc rieng — khong co no thi ba nhom xep canh nhau, cao 202px. */
-  .dieu-huong-khoi { display: contents; }
-  .dieu-huong a { white-space: nowrap; flex: 0 0 auto; }
-  .thuong-hieu { padding: 10px 12px; }
-  .chan-thanh-ben { padding: 8px 12px; }
-
-  .than { padding: 12px 12px 40px; }
+  .noi-dung { padding: 12px; }
   .the { padding: 14px; margin-bottom: 12px; }
   .luoi-4 { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
   .luoi-2 { grid-template-columns: 1fr; }
@@ -411,8 +492,8 @@ textarea { min-height: 66px; resize: vertical; }
   .man-mo { padding: 10px; align-items: start; }
   .hop-thoai, .hop-thoai-rong { max-width: none; max-height: 92vh; padding: 16px; }
   .dau-trang { margin-bottom: 12px; }
-  /* Tieu de bang cong dai — cho phep cuon ngang thay vi vo bo cuc. */
-  .vo-bang { margin-inline: -2px; }
+  .dau-app-phu { display: none; }
+  .dau-app-tieu-de { font-size: 15.5px; }
 }
 
 @media (max-width: 420px) {

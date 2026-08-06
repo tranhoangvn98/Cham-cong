@@ -1,49 +1,25 @@
 /* Sinh tu thiet_ke/token.json boi thiet_ke/sinh_token.mjs — DUNG SUA TAY.
    Sua token.json roi chay: npm run sinh_token
-   Bien CSS: mau, font, bo goc, khoang cach. */
+   Bien CSS cho webapp. Theme: Inter + Metronic v9. */
 
 @font-face {
-  font-family: 'Be Vietnam Pro';
-  src: url('/font/BeVietnamPro-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Be Vietnam Pro';
-  src: url('/font/BeVietnamPro-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Be Vietnam Pro';
-  src: url('/font/BeVietnamPro-SemiBold.woff2') format('woff2');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Be Vietnam Pro';
-  src: url('/font/BeVietnamPro-Bold.woff2') format('woff2');
-  font-weight: 700;
+  font-family: 'Inter';
+  src: url('/font/Inter-400-700.woff2') format('woff2-variations');
+  font-weight: 400 700;
   font-style: normal;
   font-display: swap;
 }
 
 :root {
-  --chu-viet: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --chu-viet: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
   --trong-thuong: 400;
   --trong-vua: 500;
   --trong-dam: 600;
   --trong-rat-dam: 700;
 
-  --tron-nho: 8px;
-  --tron: 12px;
-  --tron-lon: 16px;
+  --tron-nho: 6px;
+  --tron: 8px;
+  --tron-lon: 12px;
   --tron-tron: 999px;
 
   --khoang-rat-nho: 4px;
@@ -52,59 +28,109 @@
   --khoang-lon: 16px;
   --khoang-rat-lon: 24px;
 
+  --ngat-dien-thoai: 640px;
+  --ngat-tablet: 768px;
+  --ngat-may-tinh: 1024px;
+  --ngat-rong: 1280px;
+
   --rong-thanh-ben: 232px;
 
-  --chinh: #4285F4;
-  --chinh-nhat: #E8F0FE;
-  --chinh-dam: #1967D2;
-  --nhan: #C1273A;
-  --nhan-nen: #FDEAEC;
-  --nen: #F4F5F7;
+  --chinh: #3B82F6;
+  --chinh-nhat: #EFF6FF;
+  --chinh-dam: #2563EB;
+  --nhan: #B91C1C;
+  --nhan-nen: #FEE2E2;
+  --nen: #F9FAFB;
   --nen-the: #FFFFFF;
-  --nen-mo: #EDEEF1;
-  --vien: #EAEAEA;
-  --vien-dam: #C8CBD0;
-  --chu: #101820;
-  --chu-nhat: #6B7076;
-  --chu-mo: #6E737A;
-  --tot: #1A7F37;
-  --tot-nen: #E6F6EC;
+  --nen-mo: #F4F4F5;
+  --vien: #E4E4E7;
+  --vien-dam: #A1A1AA;
+  --chu: #09090B;
+  --chu-nhat: #52525B;
+  --chu-mo: #71717A;
+  --tot: #15803D;
+  --tot-nen: #DCFCE7;
   --canh-bao: #B45309;
-  --canh-bao-nen: #FDF3E3;
-  --xau: #C5221F;
-  --xau-nen: #FDECEA;
-  --lanh: #0C447C;
-  --lanh-nen: #E8F0FE;
+  --canh-bao-nen: #FEF3C7;
+  --xau: #B91C1C;
+  --xau-nen: #FEE2E2;
+  --lanh: #1D4ED8;
+  --lanh-nen: #DBEAFE;
   --tren-chinh: #FFFFFF;
+  --nen-ben: #18181B;
+  --chu-ben: #A1A1AA;
+  --chu-ben-mo: #8E8E97;
+  --chu-ben-sang: #E4E4E7;
+  --lien-ket-ben: #93C5FD;
+  --vien-ben: #27272A;
   --bong: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 10%);
   --bong-noi: 0 4px 12px rgb(16 24 40 / 12%);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --chinh: #8AB4F8;
-    --chinh-nhat: #1B2740;
-    --chinh-dam: #AFC9FA;
-    --nhan: #FF8A95;
-    --nhan-nen: #33191D;
-    --nen: #14171C;
-    --nen-the: #1B1F26;
-    --nen-mo: #22262E;
-    --vien: #2E343D;
-    --vien-dam: #3D444F;
-    --chu: #E7EAEE;
-    --chu-nhat: #A3ABB6;
-    --chu-mo: #98A0AB;
-    --tot: #30D158;
-    --tot-nen: #10291A;
-    --canh-bao: #FF9F0A;
-    --canh-bao-nen: #2B2114;
-    --xau: #FF6259;
-    --xau-nen: #2D1A18;
-    --lanh: #5EA9FF;
-    --lanh-nen: #16243A;
-    --tren-chinh: #0B0F14;
+  :root:not([data-che-do='sang']) {
+    --chinh: #3B82F6;
+    --chinh-nhat: #0A1E3F;
+    --chinh-dam: #60A5FA;
+    --nhan: #F87171;
+    --nhan-nen: #3B0A0A;
+    --nen: #0B0B0E;
+    --nen-the: #18181B;
+    --nen-mo: #27272A;
+    --vien: #3F3F46;
+    --vien-dam: #52525B;
+    --chu: #FAFAFA;
+    --chu-nhat: #A1A1AA;
+    --chu-mo: #95959F;
+    --tot: #4ADE80;
+    --tot-nen: #052E16;
+    --canh-bao: #FBBF24;
+    --canh-bao-nen: #3A2606;
+    --xau: #F87171;
+    --xau-nen: #3B0A0A;
+    --lanh: #60A5FA;
+    --lanh-nen: #0A1E3F;
+    --tren-chinh: #0B0B0E;
+    --nen-ben: #111113;
+    --chu-ben: #A1A1AA;
+    --chu-ben-mo: #95959F;
+    --chu-ben-sang: #E4E4E7;
+    --lien-ket-ben: #93C5FD;
+    --vien-ben: #27272A;
     --bong: 0 1px 2px rgb(0 0 0 / 30%);
     --bong-noi: 0 6px 16px rgb(0 0 0 / 45%);
   }
+}
+
+:root[data-che-do='toi'] {
+  --chinh: #3B82F6;
+  --chinh-nhat: #0A1E3F;
+  --chinh-dam: #60A5FA;
+  --nhan: #F87171;
+  --nhan-nen: #3B0A0A;
+  --nen: #0B0B0E;
+  --nen-the: #18181B;
+  --nen-mo: #27272A;
+  --vien: #3F3F46;
+  --vien-dam: #52525B;
+  --chu: #FAFAFA;
+  --chu-nhat: #A1A1AA;
+  --chu-mo: #95959F;
+  --tot: #4ADE80;
+  --tot-nen: #052E16;
+  --canh-bao: #FBBF24;
+  --canh-bao-nen: #3A2606;
+  --xau: #F87171;
+  --xau-nen: #3B0A0A;
+  --lanh: #60A5FA;
+  --lanh-nen: #0A1E3F;
+  --tren-chinh: #0B0B0E;
+  --nen-ben: #111113;
+  --chu-ben: #A1A1AA;
+  --chu-ben-mo: #95959F;
+  --chu-ben-sang: #E4E4E7;
+  --lien-ket-ben: #93C5FD;
+  --vien-ben: #27272A;
+  --bong: 0 1px 2px rgb(0 0 0 / 30%);
+  --bong-noi: 0 6px 16px rgb(0 0 0 / 45%);
 }

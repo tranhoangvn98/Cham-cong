@@ -57,7 +57,6 @@ export function TrangThietBi(): ReactNode {
     <>
       <div className="dau-trang">
         <div>
-          <h1>Máy chấm công</h1>
           <p className="mo-ta">
             Chỉ máy có serial khai ở đây mới được nhận dữ liệu — đây là lớp chặn máy lạ.
           </p>

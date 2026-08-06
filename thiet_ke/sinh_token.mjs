@@ -4,6 +4,8 @@
 // dong goi mot cach resolve tep ngoai thu muc goc cua no, cho hai ben cung import mot
 // tep o ngoai la nguon loi cau hinh trien mien. Sinh ra roi commit thi khong ben nao
 // phai biet gi ve ben kia.
+//
+// Web va app dung HAI bo theme khac nhau (Metronic / Compose Boltuix) — xem token.json.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,7 +20,7 @@ export function doc_token() {
   return JSON.parse(readFileSync(join(THU_MUC, 'token.json'), 'utf8'));
 }
 
-/** Bo cac khoa tai lieu (`_doc`, `_ghi_chu`, `_ly_do...`) khoi mot object. */
+/** Bo cac khoa tai lieu (`_doc`, `_ghi_chu`, `_nguon`, `_lech...`) khoi mot object. */
 function chi_gia_tri(o) {
   return Object.fromEntries(Object.entries(o).filter(([k]) => !k.startsWith('_')));
 }
@@ -28,104 +30,121 @@ const DAU_TEP = (ten) =>
   `   Sua token.json roi chay: npm run sinh_token\n` +
   `   ${ten} */\n`;
 
+const ten_tep_font = { thuong: 'Regular', vua: 'Medium', dam: 'SemiBold', rat_dam: 'Bold' };
+
+/** Ten ho font khong dau cach, dung lam ten tep va ten ho dang ky trong React Native. */
+function ho_gon(ho) {
+  return ho.replaceAll(' ', '');
+}
+
 // ---------------------------------------------------------------- web: CSS
 function sinh_css(t) {
-  const bien = (mau, bong) => {
-    const dong = [];
-    for (const [k, v] of Object.entries(chi_gia_tri(mau))) {
-      dong.push(`  --${k.replaceAll('_', '-')}: ${v};`);
-    }
-    dong.push(`  --bong: ${bong.the};`);
-    dong.push(`  --bong-noi: ${bong.noi};`);
+  const w = t.web;
+
+  const bien = (mau, bong, thut) => {
+    const dong = Object.entries(chi_gia_tri(mau))
+      .map(([k, v]) => `${thut}--${k.replaceAll('_', '-')}: ${v};`);
+    dong.push(`${thut}--bong: ${bong.the};`);
+    dong.push(`${thut}--bong-noi: ${bong.noi};`);
     return dong.join('\n');
   };
 
-  const ho_chu = [t.chu_viet.ho, ...t.chu_viet.du_phong]
+  const ho_chu = [w.chu_viet.ho, ...w.chu_viet.du_phong]
     .map((n) => (n.includes(' ') ? `'${n}'` : n))
     .join(', ');
 
-  const bg = t.bo_goc;
-  const kh = t.khoang;
-
   // Tu chua font thay vi goi Google Fonts: khong ro ri IP nhan vien sang ben thu ba,
   // chay duoc trong LAN khong ra Internet, va khong phu thuoc mot dich vu ngoai.
-  const tep = { thuong: 'Regular', vua: 'Medium', dam: 'SemiBold', rat_dam: 'Bold' };
-  const font_face = Object.entries(t.chu_viet.trong_so)
-    .map(([ten, so]) => {
-      const f = `${t.chu_viet.ho.replaceAll(' ', '')}-${tep[ten]}`;
-      return (
-        `@font-face {\n` +
-        `  font-family: '${t.chu_viet.ho}';\n` +
-        `  src: url('/font/${f}.woff2') format('woff2');\n` +
-        `  font-weight: ${so};\n` +
-        `  font-style: normal;\n` +
-        `  font-display: swap;\n` +
-        `}\n`
-      );
-    })
-    .join('\n');
+  const bt = w.chu_viet.bien_thien;
+  const font_face = bt === undefined
+    // Font tinh: mot @font-face cho moi trong so.
+    ? Object.entries(w.chu_viet.trong_so)
+      .map(([ten, so]) => (
+        `@font-face {\n`
+        + `  font-family: '${w.chu_viet.ho}';\n`
+        + `  src: url('/font/${ho_gon(w.chu_viet.ho)}-${ten_tep_font[ten]}.woff2') format('woff2');\n`
+        + `  font-weight: ${so};\n`
+        + `  font-style: normal;\n`
+        + `  font-display: swap;\n`
+        + `}\n`
+      ))
+      .join('\n')
+    // Font bien thien: mot tep, khai bao khoang trong so.
+    : `@font-face {\n`
+      + `  font-family: '${w.chu_viet.ho}';\n`
+      + `  src: url('/font/${bt.tep}.woff2') format('woff2-variations');\n`
+      + `  font-weight: ${bt.tu} ${bt.den};\n`
+      + `  font-style: normal;\n`
+      + `  font-display: swap;\n`
+      + `}\n`;
+
+  const bg = w.bo_goc;
+  const kh = t.khoang;
+  const dn = chi_gia_tri(t.diem_ngat);
 
   return (
-    DAU_TEP('Bien CSS: mau, font, bo goc, khoang cach.') +
-    `\n${font_face}\n` +
-    `:root {\n` +
-    `  --chu-viet: ${ho_chu};\n` +
-    `  --trong-thuong: ${t.chu_viet.trong_so.thuong};\n` +
-    `  --trong-vua: ${t.chu_viet.trong_so.vua};\n` +
-    `  --trong-dam: ${t.chu_viet.trong_so.dam};\n` +
-    `  --trong-rat-dam: ${t.chu_viet.trong_so.rat_dam};\n\n` +
-    `  --tron-nho: ${bg.nho}px;\n` +
-    `  --tron: ${bg.vua}px;\n` +
-    `  --tron-lon: ${bg.lon}px;\n` +
-    `  --tron-tron: ${bg.tron}px;\n\n` +
-    `  --khoang-rat-nho: ${kh.rat_nho}px;\n` +
-    `  --khoang-nho: ${kh.nho}px;\n` +
-    `  --khoang-vua: ${kh.vua}px;\n` +
-    `  --khoang-lon: ${kh.lon}px;\n` +
-    `  --khoang-rat-lon: ${kh.rat_lon}px;\n\n` +
-    `  --rong-thanh-ben: 232px;\n\n` +
-    bien(t.mau.sang, t.bong.sang) +
-    `\n}\n\n` +
-    `@media (prefers-color-scheme: dark) {\n  :root {\n` +
-    bien(t.mau.toi, t.bong.toi).replace(/^ {2}/gm, '    ') +
-    `\n  }\n}\n`
+    DAU_TEP(`Bien CSS cho webapp. Theme: ${w.chu_viet.ho} + Metronic v9.`)
+    + `\n${font_face}\n`
+    + `:root {\n`
+    + `  --chu-viet: ${ho_chu};\n`
+    + Object.entries(w.chu_viet.trong_so)
+      .map(([k, v]) => `  --trong-${k.replaceAll('_', '-')}: ${v};`).join('\n') + '\n\n'
+    + `  --tron-nho: ${bg.nho}px;\n`
+    + `  --tron: ${bg.vua}px;\n`
+    + `  --tron-lon: ${bg.lon}px;\n`
+    + `  --tron-tron: ${bg.tron}px;\n\n`
+    + Object.entries(chi_gia_tri(kh))
+      .map(([k, v]) => `  --khoang-${k.replaceAll('_', '-')}: ${v}px;`).join('\n') + '\n\n'
+    + Object.entries(dn).map(([k, v]) => `  --ngat-${k.replaceAll('_', '-')}: ${v}px;`).join('\n') + '\n\n'
+    + `  --rong-thanh-ben: 232px;\n\n`
+    + bien(w.mau.sang, t.bong.sang, '  ')
+    + `\n}\n\n`
+    // Che do toi: theo cai dat may, NHUNG nguoi dung bam duoc de doi (ke hoach v2 muc
+    // 4.5 doi "bat/tat tren web"). `data-che-do` tren <html> thang moi truong hop.
+    + `@media (prefers-color-scheme: dark) {\n`
+    + `  :root:not([data-che-do='sang']) {\n`
+    + bien(w.mau.toi, t.bong.toi, '    ')
+    + `\n  }\n}\n\n`
+    + `:root[data-che-do='toi'] {\n`
+    + bien(w.mau.toi, t.bong.toi, '  ')
+    + `\n}\n`
   );
 }
 
 // ---------------------------------------------------------------- app: TypeScript
 function sinh_ts(t) {
-  const khoa = Object.keys(chi_gia_tri(t.mau.sang));
-  const doi_tuong = (mau, thut = '  ') =>
-    khoa.map((k) => `${thut}${k}: '${mau[k]}',`).join('\n');
-
-  // React Native tren Android khong tu suy ra do dam tu mot ho font — phai dang ky
-  // rieng tung trong so roi chon bang fontFamily. Xem nguon/font.ts.
-  const ho = t.chu_viet.ho.replaceAll(' ', '');
+  const m = t.mobile;
+  const khoa = Object.keys(chi_gia_tri(m.mau.sang));
+  const doi_tuong = (mau) => khoa.map((k) => `  ${k}: '${mau[k]}',`).join('\n');
+  const ho = ho_gon(m.chu_viet.ho);
 
   return (
-    DAU_TEP('Bang mau, ho chu, bo goc cho app dien thoai.') +
-    `\nexport interface BangMau {\n` +
-    khoa.map((k) => `  ${k}: string;`).join('\n') +
-    `\n}\n\n` +
-    `export const SANG: BangMau = {\n${doi_tuong(t.mau.sang)}\n};\n\n` +
-    `export const TOI: BangMau = {\n${doi_tuong(t.mau.toi)}\n};\n\n` +
-    `/** Ten ho chu da dang ky trong nguon/font.ts — chon do dam bang fontFamily, khong bang fontWeight. */\n` +
-    `export const HO_CHU = {\n` +
-    `  thuong: '${ho}-Regular',\n` +
-    `  vua: '${ho}-Medium',\n` +
-    `  dam: '${ho}-SemiBold',\n` +
-    `  rat_dam: '${ho}-Bold',\n` +
-    `} as const;\n\n` +
-    `export const BO_GOC = {\n` +
-    Object.entries(chi_gia_tri(t.bo_goc)).map(([k, v]) => `  ${k}: ${v},`).join('\n') +
-    `\n} as const;\n\n` +
-    `export const KHOANG = {\n` +
-    Object.entries(chi_gia_tri(t.khoang)).map(([k, v]) => `  ${k}: ${v},`).join('\n') +
-    `\n} as const;\n\n` +
-    `/** Trang thai nghiep vu -> khoa mau trong BangMau. */\n` +
-    `export const Y_NGHIA_MAU: Record<string, keyof BangMau> = {\n` +
-    Object.entries(chi_gia_tri(t.y_nghia_mau)).map(([k, v]) => `  ${k}: '${v}',`).join('\n') +
-    `\n};\n`
+    DAU_TEP(`Bang mau, ho chu, bo goc cho app dien thoai. Theme: ${m.chu_viet.ho} + Compose Boltuix.`)
+    + `\nexport interface BangMau {\n`
+    + khoa.map((k) => `  ${k}: string;`).join('\n')
+    + `\n}\n\n`
+    + `export const SANG: BangMau = {\n${doi_tuong(m.mau.sang)}\n};\n\n`
+    + `export const TOI: BangMau = {\n${doi_tuong(m.mau.toi)}\n};\n\n`
+    + `/**\n`
+    + ` * Ten ho chu da dang ky trong nguon/font.ts.\n`
+    + ` *\n`
+    + ` * Chon do dam bang fontFamily, KHONG bang fontWeight: React Native tren Android\n`
+    + ` * khong suy ra do dam tu mot ho font, dat fontWeight se ra chu thuong.\n`
+    + ` */\n`
+    + `export const HO_CHU = {\n`
+    + Object.keys(m.chu_viet.trong_so)
+      .map((k) => `  ${k}: '${ho}-${ten_tep_font[k]}',`).join('\n')
+    + `\n} as const;\n\n`
+    + `export const BO_GOC = {\n`
+    + Object.entries(chi_gia_tri(m.bo_goc)).map(([k, v]) => `  ${k}: ${v},`).join('\n')
+    + `\n} as const;\n\n`
+    + `export const KHOANG = {\n`
+    + Object.entries(chi_gia_tri(t.khoang)).map(([k, v]) => `  ${k}: ${v},`).join('\n')
+    + `\n} as const;\n\n`
+    + `/** Trang thai nghiep vu -> khoa mau trong BangMau. Dung chung voi web. */\n`
+    + `export const Y_NGHIA_MAU: Record<string, keyof BangMau> = {\n`
+    + Object.entries(chi_gia_tri(t.y_nghia_mau)).map(([k, v]) => `  ${k}: '${v}',`).join('\n')
+    + `\n};\n`
   );
 }
 

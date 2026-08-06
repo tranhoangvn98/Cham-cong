@@ -13,6 +13,9 @@ import { doc_token, noi_dung_du_kien, DUONG_DAN_CSS, DUONG_DAN_TS } from './sinh
 
 const t = doc_token();
 
+/** Hai nen tang, hai bo theme (Metronic cho web, Compose Boltuix cho mobile). */
+const NEN_TANG = ['web', 'mobile'];
+
 // ---------------------------------------------------------------- tuong phan WCAG
 function ve_rgb(hex) {
   const h = hex.replace('#', '');
@@ -54,11 +57,23 @@ const CAP_VIEN = [
   ['vien', 'nen_the', 1.2], ['vien_dam', 'nen_the', 1.5],
 ];
 
-for (const che_do of ['sang', 'toi']) {
-  test(`tuong phan mau dat WCAG AA — che do ${che_do}`, () => {
-    const m = t.mau[che_do];
+// Cap chi co o mot nen tang. Thanh ben cua web la mang TOI co dinh nen mau chu tren no
+// khong the lay tu bang mau chung.
+const CAP_RIENG = {
+  web: [
+    ['chu_ben', 'nen_ben', 4.5],
+    ['chu_ben_mo', 'nen_ben', 4.5],
+    ['chu_ben_sang', 'nen_ben', 4.5],
+    ['lien_ket_ben', 'nen_ben', 4.5],
+  ],
+  mobile: [],
+};
+
+for (const nt of NEN_TANG) for (const che_do of ['sang', 'toi']) {
+  test(`tuong phan mau dat WCAG AA — ${nt} / che do ${che_do}`, () => {
+    const m = t[nt].mau[che_do];
     const loi = [];
-    for (const [chu, nen, toi_thieu] of [...CAP_CHU, ...CAP_VIEN]) {
+    for (const [chu, nen, toi_thieu] of [...CAP_CHU, ...CAP_VIEN, ...CAP_RIENG[nt]]) {
       assert.ok(m[chu] !== undefined, `thieu token mau: ${chu}`);
       assert.ok(m[nen] !== undefined, `thieu token mau: ${nen}`);
       const ty_le = tuong_phan(m[chu], m[nen]);
@@ -70,16 +85,22 @@ for (const che_do of ['sang', 'toi']) {
   });
 }
 
-test('hai che do co cung tap khoa mau', () => {
-  const sang = Object.keys(t.mau.sang).sort();
-  const toi = Object.keys(t.mau.toi).sort();
-  assert.deepEqual(toi, sang);
-});
+for (const nt of NEN_TANG) {
+  test(`hai che do co cung tap khoa mau — ${nt}`, () => {
+    const sang = Object.keys(t[nt].mau.sang).sort();
+    const toi = Object.keys(t[nt].mau.toi).sort();
+    assert.deepEqual(toi, sang);
+  });
+}
 
-test('y_nghia_mau chi tro toi khoa mau co that', () => {
+test('y_nghia_mau dung duoc tren CA HAI nen tang', () => {
+  // Mot ngay "du cong" khong duoc ra hai mau khac nhau o web va app.
   for (const [trang_thai, khoa] of Object.entries(t.y_nghia_mau)) {
     if (trang_thai.startsWith('_')) continue;
-    assert.ok(t.mau.sang[khoa] !== undefined, `y_nghia_mau.${trang_thai} tro toi khoa khong ton tai: ${khoa}`);
+    for (const nt of NEN_TANG) {
+      assert.ok(t[nt].mau.sang[khoa] !== undefined,
+        `y_nghia_mau.${trang_thai} tro toi '${khoa}' — ${nt} khong co khoa nay`);
+    }
   }
 });
 
@@ -93,10 +114,17 @@ test('tep sinh ra khop token.json (da chay npm run sinh_token?)', () => {
 });
 
 // ---------------------------------------------------------------- font
-test('font phai phu du 133 ky tu tieng Viet', () => {
-  // Poppins (token spec v2 de nghi) chi co 471 glyph va thieu 88 ky tu Viet — xem
-  // token.json._ly_do_khong_dung_poppins. Test nay chan viec doi nguoc ve Poppins.
-  assert.notEqual(t.chu_viet.ho, 'Poppins',
-    'Poppins khong ho tro tieng Viet (thieu o u va khoi U+1EA0-1EF9). Xem token.json.');
-  assert.ok(t.chu_viet.du_phong.includes('system-ui'), 'phai co font du phong');
+test('khong quay ve Poppins o bat ky nen tang nao', () => {
+  // Poppins (token spec v2 de nghi cho mobile) chi co 471 glyph va thieu 88 ky tu Viet —
+  // xem token.json. Test nay chan viec doi nguoc lai.
+  for (const nt of NEN_TANG) {
+    assert.notEqual(t[nt].chu_viet.ho, 'Poppins',
+      `${nt}: Poppins khong ho tro tieng Viet (thieu o u va khoi U+1EA0-1EF9).`);
+    assert.ok(t[nt].chu_viet.du_phong.includes('system-ui'), `${nt}: phai co font du phong`);
+  }
+});
+
+test('web va mobile la HAI bo theme khac nhau (dung y ke hoach v2 muc 4.5)', () => {
+  assert.notEqual(t.web.chu_viet.ho, t.mobile.chu_viet.ho, 'hai nen tang phai khac font');
+  assert.notEqual(t.web.mau.sang.chinh, t.mobile.mau.sang.chinh, 'hai nen tang phai khac mau chinh');
 });

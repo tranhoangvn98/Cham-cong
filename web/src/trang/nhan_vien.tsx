@@ -45,7 +45,6 @@ export function TrangNhanVien(): ReactNode {
     <>
       <div className="dau-trang">
         <div>
-          <h1>Nhân viên</h1>
           <p className="mo-ta">
             PIN máy là cầu nối giữa máy chấm công và nhân viên — không có PIN thì log về không biết
             của ai.

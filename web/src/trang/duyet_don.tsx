@@ -90,7 +90,6 @@ export function TrangDuyetDon(): ReactNode {
     <>
       <div className="dau-trang">
         <div>
-          <h1>Duyệt đơn</h1>
           <p className="mo-ta">
             Duyệt xong hệ thống tự tính lại bảng công của những ngày liên quan.
           </p>
