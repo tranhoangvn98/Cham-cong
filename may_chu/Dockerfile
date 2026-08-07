@@ -14,6 +14,12 @@ RUN npm run --workspace may_chu build
 # Bo phu thuoc dev khoi anh cuoi.
 RUN npm prune --omit=dev --workspace may_chu --include-workspace-root
 
+# npm workspaces keo (hoist) phu thuoc len /app/node_modules; /app/may_chu/node_modules
+# CHI ton tai khi co xung dot phien ban buoc phai long vao trong. Voi bo phu thuoc hien
+# tai thi khong co, nen COPY o anh chay se vo. Tao san thu muc rong de COPY luon chay
+# duoc, dong thoi van giu duoc phu thuoc long neu sau nay phat sinh.
+RUN mkdir -p /app/may_chu/node_modules
+
 # ---------------------------------------------------------------- anh chay
 FROM node:22-alpine
 WORKDIR /app

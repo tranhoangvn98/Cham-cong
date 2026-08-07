@@ -2,6 +2,20 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.4.1] — 2026-08-07
+
+### Sửa
+
+- **`docker compose up` hỏng ở bước cuối của ảnh `may_chu`**: `COPY --from=build
+  /app/may_chu/node_modules` báo `"/app/may_chu/node_modules": not found`. npm workspaces kéo
+  (hoist) toàn bộ phụ thuộc lên `node_modules` ở thư mục gốc; thư mục con chỉ tồn tại khi có
+  xung đột phiên bản buộc phải lồng vào trong — bộ phụ thuộc của `may_chu` không có xung đột
+  nào nên thư mục đó **chưa bao giờ được tạo**. Tạo sẵn thư mục rỗng ở tầng build để lệnh COPY
+  luôn chạy được, đồng thời vẫn giữ được phụ thuộc lồng nếu sau này phát sinh. Lỗi lọt lưới vì
+  đường Docker không chạy thử được lúc phát triển (proxy chặn tải image gốc): kiểm tĩnh chỉ đối
+  chiếu đường dẫn `COPY` với **mã nguồn trong repo**, không đối chiếu với thứ tầng build thật
+  sự sinh ra.
+
 ## [1.4.0] — 2026-08-06
 
 Bộ công cụ triển khai để hứng log từ máy chấm công thật, và **hai lỗi chặn ngay bước đầu** phát
