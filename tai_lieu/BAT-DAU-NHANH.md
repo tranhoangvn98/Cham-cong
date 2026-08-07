@@ -4,8 +4,11 @@ Mục tiêu của tài liệu này: **máy ZKTeco đẩy được log về và b
 tốt, để chạy thử trước khi triển khai thật. Vận hành lâu dài (HTTPS, sao lưu, giám sát) xem
 [`TRIEN-KHAI.md`](TRIEN-KHAI.md).
 
-Máy chủ **phải cùng mạng LAN với máy chấm công**. Máy ZKTeco chỉ nói được HTTP thường và không
-đi qua Internet.
+Đặt máy chủ **trong cùng mạng LAN với máy chấm công** là phương án đơn giản và an toàn nhất.
+Chế độ Cloud Server/ADMS vốn cho phép máy đẩy dữ liệu qua Internet lên máy chủ đặt ở xa (VPS),
+và cách đó chạy được — nhưng máy ZKTeco chỉ nói **HTTP thường, không TLS**, nên dữ liệu chấm
+công đi trần. Chọn đường đó thì **bắt buộc** điền `ICLOCK_IP_CHO_PHEP` bằng IP công khai của
+văn phòng, xem mục 5.
 
 ---
 
@@ -89,7 +92,7 @@ Trên máy bấm **Menu › Comm › Cloud Server / ADMS**:
 | Mục | Giá trị |
 |---|---|
 | Server Mode | **ADMS** |
-| Server Address | **IP máy chủ** (ví dụ `192.168.1.10`) — không dùng `localhost` |
+| Server Address | **IP máy chủ** — IP LAN (ví dụ `192.168.1.10`) nếu máy chủ trong văn phòng, hoặc IP công khai của VPS. Không dùng `localhost` |
 | Server Port | **8080** |
 | Enable Proxy | OFF |
 | HTTPS / SSL | OFF |
@@ -104,6 +107,21 @@ sudo ufw allow from 192.168.1.0/24 to any port 8080 proto tcp
 sudo firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=192.168.1.0/24 port port=8080 protocol=tcp accept'
 sudo firewall-cmd --reload
 ```
+
+**Máy chủ đặt ở địa chỉ công khai (VPS) thì bắt buộc thêm một bước:** điền
+`ICLOCK_IP_CHO_PHEP` bằng IP công khai của văn phòng rồi `docker compose up -d` lại. Cổng 8080
+phục vụ cả `/api/*` cho điện thoại ở mọi nơi lẫn `/iclock/*` cho máy chấm công, nên tường lửa
+không tách được hai đường; để trống nghĩa là ai biết serial máy cũng đẩy được lần quẹt giả vào
+bảng công. Lấy IP bằng cách mở `https://api.ipify.org` **từ một máy trong văn phòng** — chạy
+trên chính VPS chỉ ra IP của VPS.
+
+```bash
+sed -i "s|^ICLOCK_IP_CHO_PHEP=.*|ICLOCK_IP_CHO_PHEP=203.0.113.45|" .env
+docker compose up -d
+```
+
+Điền sai định dạng thì máy chủ ném lỗi ngay lúc khởi động chứ không im lặng bỏ qua — gặp
+`may_chu` không lên được sau khi sửa dòng này thì kiểm lại đúng giá trị đã điền.
 
 Chi tiết từng dòng menu theo firmware và cách xử lý sự cố: [`KET-NOI-MAY-ZKTECO.md`](KET-NOI-MAY-ZKTECO.md).
 
@@ -162,7 +180,7 @@ Nạp ba nhóm dữ liệu:
 - **Ca `Hành chính (theo HĐLĐ)`** — T2–T6 `08:00–17:30` nghỉ trưa `12:00–13:30` (480 phút → 1
   công), riêng **T7 `08:00–12:00`** (240 phút → 0,5 công). Tuần 44 giờ, dưới trần 48 giờ/tuần
   của Điều 105 BLLĐ.
-- **22 ngày lễ cho 2026 và 2027** — 11 ngày/năm theo Điều 112 BLLĐ 2019, ngày âm lịch đã quy
+- **23 dòng ngày lễ cho 2026 và 2027** — 11 ngày/năm theo Điều 112 BLLĐ 2019, ngày âm lịch đã quy
   đổi sẵn (Tết Bính Ngọ mùng 1 = 17/02/2026; Tết Đinh Mùi mùng 1 = 06/02/2027; Giỗ Tổ
   26/04/2026 và 16/04/2027). Giỗ Tổ 2026 rơi vào Chủ nhật nên có thêm ngày nghỉ bù 27/04.
 - **8 nhân viên demo** mã `NVDEMO01–08`, PIN `9001–9008`, chia 4 phòng ban — chỉ để xem giao

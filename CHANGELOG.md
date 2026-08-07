@@ -20,7 +20,7 @@ mỗi thứ Bảy là cả công ty bị ghi sai.
     lệ 5,5 công/tuần); để `240` thì tính tròn 1 công.
   - Sửa trực tiếp trên webapp: **Ca làm việc → Sửa → Khung giờ riêng theo thứ**.
 - **`trien_khai/nap_du_lieu_demo.mjs`** (`npm run nap_du_lieu_demo`) — nạp ca theo hợp đồng,
-  **22 ngày lễ cho 2026–2027** (11 ngày/năm theo Điều 112 BLLĐ 2019, ngày âm lịch đã quy đổi:
+  **23 dòng ngày lễ cho 2026–2027** (11 ngày/năm theo Điều 112 BLLĐ 2019, ngày âm lịch đã quy đổi:
   Tết Bính Ngọ mùng 1 = 17/02/2026, Tết Đinh Mùi mùng 1 = 06/02/2027, Giỗ Tổ 26/04/2026 và
   16/04/2027, kèm ngày nghỉ bù 27/04/2026 do Giỗ Tổ rơi vào Chủ nhật), và 8 nhân viên demo
   (`NVDEMO01–08`, PIN `9001–9008`) để xem giao diện có số liệu. Chạy lại nhiều lần được; xoá
