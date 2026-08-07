@@ -18,7 +18,9 @@ function lay(ten, mac_dinh) {
 }
 const co = (ten) => doi_so.includes(`--${ten}`);
 
-const MAY_CHU = lay('may-chu', 'http://localhost:8080').replace(/\/+$/, '');
+// 127.0.0.1 chu khong phai localhost: Node 20 uu tien ::1, ma may chu lang nghe IPv4 —
+// dung localhost se dinh "fetch failed / other side closed" tren mot so may.
+const MAY_CHU = lay('may-chu', 'http://127.0.0.1:8080').replace(/\/+$/, '');
 const TEN_DN = lay('tai-khoan', 'admin');
 const MAT_KHAU = lay('mat-khau', '');
 
@@ -139,6 +141,25 @@ console.log('');
 if (MAT_KHAU === '') {
   loi('thieu --mat-khau');
   tin('node trien_khai/nap_du_lieu_demo.mjs --mat-khau <ADMIN_MAT_KHAU>');
+  process.exit(1);
+}
+
+// Cho may chu san sang: chay ngay sau `docker compose up -d` thi container con dang chay
+// di tru CSDL, ket noi vao se bi dong giua chung.
+let san_sang = false;
+for (let i = 0; i < 30 && !san_sang; i++) {
+  try {
+    const hp = await api('/health');
+    san_sang = hp.ma === 200;
+  } catch { /* chua len — thu lai */ }
+  if (!san_sang) {
+    if (i === 0) tin('dang cho may chu san sang...');
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
+if (!san_sang) {
+  loi(`may chu khong phan hoi sau 60 giay`, MAY_CHU);
+  tin('kiem tra:  docker compose ps  va  docker compose logs --tail 50 may_chu');
   process.exit(1);
 }
 const dn = await api('/api/xac-thuc/dang-nhap', {
