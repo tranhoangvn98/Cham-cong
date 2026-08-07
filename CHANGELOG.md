@@ -2,6 +2,37 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.5.0] — 2026-08-07
+
+Chế độ làm việc **T2–T6 cả ngày + sáng thứ Bảy** — mô hình ca cũ không diễn đạt được, và cứ
+mỗi thứ Bảy là cả công ty bị ghi sai.
+
+### Thêm mới
+
+- **Khung giờ riêng theo thứ cho ca làm** (`ca_lam_theo_thu`). Một ca vốn chỉ có **một** khung
+  giờ dùng chung cho mọi ngày làm. Hợp đồng lao động phổ biến ở Việt Nam lại quy định sáng thứ
+  Bảy **vẫn là giờ chuẩn** (08:00–12:00), nên khai T7 vào ca `08:00–17:30` thì mỗi thứ Bảy toàn
+  bộ nhân viên bị chấm *về sớm 325 phút* — sai cả về kỷ luật lẫn số công. Nay mỗi thứ khai
+  được giờ vào/ra, giờ nghỉ và ngưỡng đủ công riêng; thứ không khai thì dùng khung giờ gốc,
+  tức hành vi y hệt trước đây. Ca qua đêm bị chặn ở cả API lẫn CSDL vì giờ ra thuộc ngày hôm
+  sau nên "thứ" không xác định được.
+  - Số công thứ Bảy điều khiển bằng ô *đủ công*: để `480` thì 240 phút làm ra 0,5 công (thông
+    lệ 5,5 công/tuần); để `240` thì tính tròn 1 công.
+  - Sửa trực tiếp trên webapp: **Ca làm việc → Sửa → Khung giờ riêng theo thứ**.
+- **`trien_khai/nap_du_lieu_demo.mjs`** (`npm run nap_du_lieu_demo`) — nạp ca theo hợp đồng,
+  **22 ngày lễ cho 2026–2027** (11 ngày/năm theo Điều 112 BLLĐ 2019, ngày âm lịch đã quy đổi:
+  Tết Bính Ngọ mùng 1 = 17/02/2026, Tết Đinh Mùi mùng 1 = 06/02/2027, Giỗ Tổ 26/04/2026 và
+  16/04/2027, kèm ngày nghỉ bù 27/04/2026 do Giỗ Tổ rơi vào Chủ nhật), và 8 nhân viên demo
+  (`NVDEMO01–08`, PIN `9001–9008`) để xem giao diện có số liệu. Chạy lại nhiều lần được; xoá
+  nhân viên demo bằng `--xoa-nhan-vien-demo`.
+
+### Đã kiểm chứng
+
+6 test đơn vị cho quy tắc mới + 4 test end-to-end có CSDL thật: khai ca qua API, máy đẩy ATTLOG
+sáng thứ Bảy → bảng công ra `co_mat`, 240 phút làm, **0 phút về sớm**, 0,5 công. Kèm test chặn
+khai khung giờ cho thứ không đi làm và chặn khai trên ca qua đêm. Tổng: 79 test đơn vị + 52
+test e2e + 12 test design token, tất cả xanh.
+
 ## [1.4.1] — 2026-08-07
 
 ### Sửa

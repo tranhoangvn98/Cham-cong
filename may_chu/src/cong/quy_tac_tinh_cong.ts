@@ -12,6 +12,21 @@
 // KHONG tinh di muon/ve som (khong co gio chuan de doi chieu).
 import { moc_thoi_gian, phut_giao_nhau, so_phut, thu_trong_tuan } from '../tien_ich/thoi_gian.ts';
 
+/**
+ * Khung gio rieng cho MOT thu trong tuan. Dung cho che do lam viec pho bien o Viet Nam:
+ * T2-T6 lam ca ngay, rieng sang thu Bay 08:00-12:00 VAN LA GIO CHUAN (khong phai OT).
+ * Thu khong khai o day thi dung khung gio goc cua ca.
+ */
+export interface CaTheoThu {
+  /** 0=CN, 1=T2, ... 6=T7 */
+  thu: number;
+  gio_vao: string;
+  gio_ra: string;
+  nghi_tu: string | null;
+  nghi_den: string | null;
+  phut_du_cong: number;
+}
+
 export interface CaLam {
   gio_vao: string;
   gio_ra: string;
@@ -23,6 +38,29 @@ export interface CaLam {
   qua_dem: boolean;
   phut_du_cong: number;
   cac_ngay_lam: number[];
+  /** Ghi de khung gio theo thu. Rong / thieu = ca dung mot khung gio cho moi ngay lam. */
+  theo_thu?: CaTheoThu[];
+}
+
+/**
+ * Ca hieu luc cho mot ngay cu the: ap khung gio rieng cua thu do neu co khai.
+ *
+ * Chi ghi de gio vao/ra, gio nghi va nguong du cong. Dung sai, nguong OT va danh sach
+ * ngay lam VAN lay tu ca goc — day la chinh sach chung, khong doi theo thu.
+ */
+export function ca_cua_ngay(ca: CaLam | null, ngay: string): CaLam | null {
+  if (ca === null || ca.theo_thu === undefined || ca.theo_thu.length === 0) return ca;
+  const thu = thu_trong_tuan(ngay);
+  const rieng = ca.theo_thu.find((t) => t.thu === thu);
+  if (rieng === undefined) return ca;
+  return {
+    ...ca,
+    gio_vao: rieng.gio_vao,
+    gio_ra: rieng.gio_ra,
+    nghi_tu: rieng.nghi_tu,
+    nghi_den: rieng.nghi_den,
+    phut_du_cong: rieng.phut_du_cong,
+  };
 }
 
 export type TrangThaiNgay = 'vang' | 'co_mat' | 'nghi_phep' | 'ngay_le' | 'nghi_tuan';
@@ -67,7 +105,10 @@ const PHUT_DU_CONG_MAC_DINH = 420;
  * HAN CHE DA BIET: OT qua nua dem cua ca ngay se KHONG duoc tinh vao ngay hom truoc.
  * Muon tinh, nhan su phai khai mot ca 'qua_dem' cho nguoi do.
  */
-export function khoang_lay_quet(ngay: string, ca: CaLam | null): { tu: Date; den: Date } {
+export function khoang_lay_quet(ngay: string, ca_goc: CaLam | null): { tu: Date; den: Date } {
+  // Ca qua dem khong duoc phep khai khung gio rieng theo thu (CSDL chan bang trigger),
+  // nen o day resolve chi de nhat quan — nhanh qua_dem luon dung khung gio goc.
+  const ca = ca_cua_ngay(ca_goc, ngay);
   if (ca !== null && ca.qua_dem) {
     return {
       tu: new Date(moc_thoi_gian(ngay, ca.gio_vao).getTime() - 3 * 3600_000),
@@ -88,7 +129,8 @@ const RONG: Omit<KetQuaTinhCong, 'trang_thai' | 'so_cong' | 'ghi_chu'> = {
 };
 
 export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
-  const ca = dv.ca;
+  // Ap khung gio rieng cua thu (neu ca co khai) TRUOC moi phep tinh phia duoi.
+  const ca = ca_cua_ngay(dv.ca, dv.ngay);
   const ngay_lam = ca?.cac_ngay_lam ?? NGAY_LAM_MAC_DINH;
   const nguong_du_cong = ca?.phut_du_cong ?? PHUT_DU_CONG_MAC_DINH;
 

@@ -1,7 +1,7 @@
 // API danh muc cho webapp HR: phong ban, ca lam, nhan vien, thiet bi, dia diem,
 // ngay le, nguoi dung. Toan bo yeu cau vai tro nhan_su tro len.
 import type { FastifyInstance } from 'fastify';
-import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
+import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { can_admin, can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { bam_mat_khau, LoiMatKhau } from '../bao_mat/mat_khau.ts';
 import { lenh_dong_bo_gio } from '../adms/giao_thuc.ts';
@@ -62,22 +62,36 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   // =====================================================================  CA LAM
   app.get('/ca-lam', { preHandler: can_dang_nhap }, async () =>
     truy_van(
-      `select id, ten, gio_vao, gio_ra, nghi_tu, nghi_den,
-              dung_sai_muon_phut, dung_sai_som_phut, nguong_ot_phut,
-              qua_dem, phut_du_cong, cac_ngay_lam, dang_hoat_dong
-         from ca_lam order by dang_hoat_dong desc, ten`,
+      `select c.id, c.ten, c.gio_vao, c.gio_ra, c.nghi_tu, c.nghi_den,
+              c.dung_sai_muon_phut, c.dung_sai_som_phut, c.nguong_ot_phut,
+              c.qua_dem, c.phut_du_cong, c.cac_ngay_lam, c.dang_hoat_dong,
+              coalesce(
+                (select json_agg(json_build_object(
+                          'thu', t.thu, 'gio_vao', t.gio_vao, 'gio_ra', t.gio_ra,
+                          'nghi_tu', t.nghi_tu, 'nghi_den', t.nghi_den,
+                          'phut_du_cong', t.phut_du_cong) order by t.thu)
+                   from ca_lam_theo_thu t where t.ca_lam_id = c.id),
+                '[]'::json) as theo_thu
+         from ca_lam c order by c.dang_hoat_dong desc, c.ten`,
     ),
   );
 
   app.post('/ca-lam', { preHandler: can_nhan_su }, async (req, res) => {
     const b = than(req.body);
-    const dong = await truy_van_mot<{ id: string }>(
-      `insert into ca_lam
-         (ten, gio_vao, gio_ra, nghi_tu, nghi_den, dung_sai_muon_phut, dung_sai_som_phut,
-          nguong_ot_phut, qua_dem, phut_du_cong, cac_ngay_lam)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
-      doc_ca_lam(b),
-    );
+    const ts = doc_ca_lam(b);
+    const theo_thu = doc_ca_theo_thu(b);
+    const dong = await trong_giao_dich(async (khach) => {
+      const kq = await khach.query<{ id: string }>(
+        `insert into ca_lam
+           (ten, gio_vao, gio_ra, nghi_tu, nghi_den, dung_sai_muon_phut, dung_sai_som_phut,
+            nguong_ot_phut, qua_dem, phut_du_cong, cac_ngay_lam)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
+        ts,
+      );
+      const id = kq.rows[0]?.id as string;
+      await ghi_ca_theo_thu(khach, id, theo_thu);
+      return { id };
+    });
     return res.code(201).send(dong);
   });
 
@@ -85,13 +99,21 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const id = lay_id(req);
     const b = than(req.body);
     const ts = doc_ca_lam(b);
-    const so = await thuc_thi(
-      `update ca_lam set ten=$2, gio_vao=$3, gio_ra=$4, nghi_tu=$5, nghi_den=$6,
-              dung_sai_muon_phut=$7, dung_sai_som_phut=$8, nguong_ot_phut=$9,
-              qua_dem=$10, phut_du_cong=$11, cac_ngay_lam=$12
-        where id=$1`,
-      [id, ...ts],
-    );
+    const theo_thu = doc_ca_theo_thu(b);
+    const so = await trong_giao_dich(async (khach) => {
+      const kq = await khach.query(
+        `update ca_lam set ten=$2, gio_vao=$3, gio_ra=$4, nghi_tu=$5, nghi_den=$6,
+                dung_sai_muon_phut=$7, dung_sai_som_phut=$8, nguong_ot_phut=$9,
+                qua_dem=$10, phut_du_cong=$11, cac_ngay_lam=$12
+          where id=$1`,
+        [id, ...ts],
+      );
+      if (kq.rowCount === 0) return 0;
+      // Thay the toan bo: than yeu cau la nguon su that cho khung gio rieng cua ca nay.
+      await khach.query('delete from ca_lam_theo_thu where ca_lam_id = $1', [id]);
+      await ghi_ca_theo_thu(khach, id, theo_thu);
+      return kq.rowCount ?? 0;
+    });
     if (so === 0) throw new LoiKhongTim('Không tìm thấy ca làm việc.');
     // Doi quy tac ca -> bang cong cu da sai. Nhan su phai tinh lai chu dong
     // (POST /api/bang-cong/tinh-lai) vi co the anh huong hang nghin ngay.
@@ -550,6 +572,99 @@ function doc_ca_lam(b: Record<string, unknown>): unknown[] {
     so_nguyen(b, 'phut_du_cong', { min: 60, max: 1440, mac_dinh: 420 }),
     cac_ngay_lam,
   ];
+}
+
+interface CaTheoThuVao {
+  thu: number;
+  gio_vao: string;
+  gio_ra: string;
+  nghi_tu: string | null;
+  nghi_den: string | null;
+  phut_du_cong: number;
+}
+
+/**
+ * Doc khung gio rieng theo thu tu than yeu cau.
+ *
+ * Truong `theo_thu` VANG MAT khac hoan toan `theo_thu: []`: vang mat = khong doi gi
+ * (nhung o PUT thi than la nguon su that nen vang mat = xoa het, dung nhu cac truong khac).
+ */
+function doc_ca_theo_thu(b: Record<string, unknown>): CaTheoThuVao[] {
+  const v = b['theo_thu'];
+  if (v === undefined || v === null) return [];
+  if (!Array.isArray(v)) throw new LoiDauVao('Khung giờ theo thứ phải là một danh sách.');
+
+  const qua_dem = luan_ly(b, 'qua_dem', false) as boolean;
+  if (qua_dem && v.length > 0) {
+    throw new LoiDauVao('Ca qua đêm không khai được khung giờ riêng theo thứ: giờ ra thuộc ngày hôm sau.');
+  }
+
+  const ngay_lam = doc_ngay_lam(b['cac_ngay_lam']);
+  const da_co = new Set<number>();
+
+  return v.map((x) => {
+    const m = than(x);
+    const thu = so_nguyen(m, 'thu', { min: 0, max: 6, bat_buoc: true }) as number;
+    if (da_co.has(thu)) throw new LoiDauVao(`Khai trùng khung giờ cho ${ten_thu(thu)}.`);
+    da_co.add(thu);
+    // Khai gio cho ngay khong di lam la vo nghia — bat loi thay vi luu roi khong ai dung.
+    if (!ngay_lam.includes(thu)) {
+      throw new LoiDauVao(`${ten_thu(thu)} không nằm trong các ngày đi làm của ca này.`);
+    }
+
+    const gio_vao = gio(m, 'gio_vao', { bat_buoc: true }) as string;
+    const gio_ra = gio(m, 'gio_ra', { bat_buoc: true }) as string;
+    if (gio_ra <= gio_vao) throw new LoiDauVao(`${ten_thu(thu)}: giờ ra phải lớn hơn giờ vào.`);
+
+    const nghi_tu = gio(m, 'nghi_tu');
+    const nghi_den = gio(m, 'nghi_den');
+    if ((nghi_tu === null) !== (nghi_den === null)) {
+      throw new LoiDauVao(`${ten_thu(thu)}: phải khai cả hai mốc giờ nghỉ, hoặc để trống cả hai.`);
+    }
+    if (nghi_tu !== null && nghi_den !== null && nghi_den <= nghi_tu) {
+      throw new LoiDauVao(`${ten_thu(thu)}: giờ nghỉ đến phải lớn hơn giờ nghỉ từ.`);
+    }
+
+    // Mac dinh: dung bang so phut lam that cua khung gio do -> lam du khung la 1 cong.
+    // Muon buoi sang thu Bay tinh 0,5 cong thi khai phut_du_cong gap doi (vd 480).
+    const mac_dinh = phut_giua(gio_vao, gio_ra) - (nghi_tu !== null && nghi_den !== null ? phut_giua(nghi_tu, nghi_den) : 0);
+    return {
+      thu,
+      gio_vao,
+      gio_ra,
+      nghi_tu,
+      nghi_den,
+      phut_du_cong: so_nguyen(m, 'phut_du_cong', { min: 60, max: 1440, mac_dinh }) as number,
+    };
+  });
+}
+
+async function ghi_ca_theo_thu(
+  khach: { query: (sql: string, ts: unknown[]) => Promise<unknown> },
+  ca_lam_id: string,
+  ds: CaTheoThuVao[],
+): Promise<void> {
+  for (const t of ds) {
+    await khach.query(
+      `insert into ca_lam_theo_thu (ca_lam_id, thu, gio_vao, gio_ra, nghi_tu, nghi_den, phut_du_cong)
+       values ($1,$2,$3,$4,$5,$6,$7)`,
+      [ca_lam_id, t.thu, t.gio_vao, t.gio_ra, t.nghi_tu, t.nghi_den, t.phut_du_cong],
+    );
+  }
+}
+
+const TEN_THU = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+function ten_thu(thu: number): string {
+  return TEN_THU[thu] ?? `Thứ ${thu}`;
+}
+
+/** So phut giua hai moc 'HH:MM' trong cung mot ngay. */
+function phut_giua(tu: string, den: string): number {
+  const p = (g: string): number => {
+    const [h, m] = g.split(':');
+    return Number(h) * 60 + Number(m);
+  };
+  return p(den) - p(tu);
 }
 
 function doc_ngay_lam(v: unknown): number[] {

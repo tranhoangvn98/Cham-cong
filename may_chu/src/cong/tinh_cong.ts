@@ -6,6 +6,7 @@ import {
   khoang_lay_quet,
   tinh_cong_ngay,
   type CaLam,
+  type CaTheoThu,
   type KetQuaTinhCong,
 } from './quy_tac_tinh_cong.ts';
 
@@ -18,13 +19,22 @@ interface DongNhanVien {
 
 async function nap_ca(ca_lam_id: string | null): Promise<CaLam | null> {
   if (ca_lam_id === null) return null;
-  return truy_van_mot<CaLam>(
+  const ca = await truy_van_mot<CaLam>(
     `select gio_vao, gio_ra, nghi_tu, nghi_den,
             dung_sai_muon_phut, dung_sai_som_phut, nguong_ot_phut,
             qua_dem, phut_du_cong, cac_ngay_lam
        from ca_lam where id = $1`,
     [ca_lam_id],
   );
+  if (ca === null) return null;
+  // Khung gio rieng theo thu (vd sang thu Bay). Khong co dong nao = ca dung mot khung
+  // gio cho moi ngay lam, y het hanh vi truoc khi co bang nay.
+  ca.theo_thu = await truy_van<CaTheoThu>(
+    `select thu, gio_vao, gio_ra, nghi_tu, nghi_den, phut_du_cong
+       from ca_lam_theo_thu where ca_lam_id = $1 order by thu`,
+    [ca_lam_id],
+  );
+  return ca;
 }
 
 /**

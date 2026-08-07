@@ -145,6 +145,49 @@ Log về được **không có nghĩa** bảng công đã đúng. Ba thứ dư�
 Và một điều về múi giờ: `DEVICE_TZ_OFFSET_HOURS` là múi giờ **nơi đặt máy**, không phải của máy
 chủ. Máy chủ chạy UTC vẫn đúng. Đặt sai làm lệch toàn bộ giờ công.
 
+### Nạp sẵn ca và ngày lễ
+
+Ba việc trên làm bằng tay trên webapp cũng được, nhưng có script nạp sẵn cho chế độ làm việc
+phổ biến nhất ở Việt Nam — **T2–T6 cả ngày + sáng thứ Bảy**:
+
+```bash
+node trien_khai/nap_du_lieu_demo.mjs --mat-khau <ADMIN_MAT_KHAU>
+
+# chỉ nạp ca + ngày lễ, không tạo nhân viên giả
+node trien_khai/nap_du_lieu_demo.mjs --mat-khau <mk> --khong-nhan-vien
+```
+
+Nạp ba nhóm dữ liệu:
+
+- **Ca `Hành chính (theo HĐLĐ)`** — T2–T6 `08:00–17:30` nghỉ trưa `12:00–13:30` (480 phút → 1
+  công), riêng **T7 `08:00–12:00`** (240 phút → 0,5 công). Tuần 44 giờ, dưới trần 48 giờ/tuần
+  của Điều 105 BLLĐ.
+- **22 ngày lễ cho 2026 và 2027** — 11 ngày/năm theo Điều 112 BLLĐ 2019, ngày âm lịch đã quy
+  đổi sẵn (Tết Bính Ngọ mùng 1 = 17/02/2026; Tết Đinh Mùi mùng 1 = 06/02/2027; Giỗ Tổ
+  26/04/2026 và 16/04/2027). Giỗ Tổ 2026 rơi vào Chủ nhật nên có thêm ngày nghỉ bù 27/04.
+- **8 nhân viên demo** mã `NVDEMO01–08`, PIN `9001–9008`, chia 4 phòng ban — chỉ để xem giao
+  diện có số liệu. Xoá bằng `--xoa-nhan-vien-demo` trước khi vào vận hành thật.
+
+**Phải rà soát lại hằng năm:** phương án nghỉ Tết (chọn 5 ngày nào) và ngày liền kề của Quốc
+khánh do Chính phủ thông báo từng năm; doanh nghiệp chọn phương án khác phải thông báo trước
+30 ngày (Điều 112 khoản 3). Ngày lễ trùng ngày nghỉ hằng tuần thì được nghỉ bù ngày làm việc
+kế tiếp (Điều 111 khoản 3) — phải tự thêm dòng nghỉ bù.
+
+### Sáng thứ Bảy: khung giờ riêng theo thứ
+
+Một ca có **một** khung giờ dùng chung cho mọi ngày làm. Công ty làm sáng thứ Bảy mà khai
+`08:00–17:30` cho cả T7 thì mỗi thứ Bảy toàn công ty bị ghi *về sớm 325 phút*.
+
+Vì vậy ca có thêm **khung giờ riêng theo thứ**: webapp → **Ca làm việc** → Sửa → *Khung giờ
+riêng theo thứ* → bật T7 → `08:00–12:00`. Thứ không bật thì dùng khung giờ chung phía trên.
+
+Ô **"Đủ công (phút)"** của dòng T7 quyết định thứ Bảy được tính mấy công: để `480` thì 240
+phút làm thật ra đúng **0,5 công** (thông lệ 5,5 công/tuần); muốn thứ Bảy tính tròn 1 công thì
+để `240`.
+
+Ca qua đêm không dùng được cơ chế này — giờ ra thuộc ngày hôm sau nên "thứ" của khung giờ
+không xác định được một cách không nhập nhằng.
+
 ## Sự cố thường gặp
 
 | Hiện tượng | Nguyên nhân |

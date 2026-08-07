@@ -21,8 +21,21 @@ interface CaLam {
   qua_dem: boolean;
   phut_du_cong: number;
   cac_ngay_lam: number[];
+  theo_thu: CaTheoThu[];
   dang_hoat_dong: boolean;
 }
+
+/** Khung gio rieng cho mot thu — vd sang thu Bay 08:00–12:00 van la gio chuan. */
+interface CaTheoThu {
+  thu: number;
+  gio_vao: string;
+  gio_ra: string;
+  nghi_tu: string | null;
+  nghi_den: string | null;
+  phut_du_cong: number;
+}
+
+const gio5 = (g: string | null | undefined): string => (g ?? '').slice(0, 5);
 
 // ============================================================ CA LAM VIEC
 export function TrangCaLam(): ReactNode {
@@ -83,8 +96,13 @@ export function TrangCaLam(): ReactNode {
                       )}
                     </td>
                     <td className="khong-ngat so">
-                      {c.gio_vao.slice(0, 5)} → {c.gio_ra.slice(0, 5)}
+                      {gio5(c.gio_vao)} → {gio5(c.gio_ra)}
                       {c.qua_dem && <span className="nhan nhan-lanh" style={{ marginLeft: 4 }}>qua đêm</span>}
+                      {(c.theo_thu ?? []).map((t) => (
+                        <div key={t.thu} style={{ fontSize: 12, color: 'var(--chu-mo)' }}>
+                          {TEN_THU_NGAN[t.thu]}: {gio5(t.gio_vao)} → {gio5(t.gio_ra)}
+                        </div>
+                      ))}
                     </td>
                     <td className="khong-ngat so">
                       {c.nghi_tu === null ? '—' : `${c.nghi_tu.slice(0, 5)} → ${c.nghi_den?.slice(0, 5)}`}
@@ -143,6 +161,16 @@ function FormCaLam(
     qua_dem: ca?.qua_dem ?? false,
     cac_ngay_lam: ca?.cac_ngay_lam ?? [1, 2, 3, 4, 5],
   });
+  // Khung gio rieng theo thu, tra ve theo so thu de sua tung dong doc lap.
+  const [theo_thu, dat_theo_thu] = useState<Record<number, CaTheoThu>>(() =>
+    Object.fromEntries((ca?.theo_thu ?? []).map((t) => [t.thu, {
+      ...t,
+      gio_vao: gio5(t.gio_vao),
+      gio_ra: gio5(t.gio_ra),
+      nghi_tu: t.nghi_tu === null ? null : gio5(t.nghi_tu),
+      nghi_den: t.nghi_den === null ? null : gio5(t.nghi_den),
+    }])),
+  );
   const hd = dung_hanh_dong();
 
   const doi = (k: keyof typeof f, v: unknown): void => dat_f((cu) => ({ ...cu, [k]: v }));
@@ -169,6 +197,11 @@ function FormCaLam(
       phut_du_cong: Number(f.phut_du_cong),
       qua_dem: f.qua_dem,
       cac_ngay_lam: f.cac_ngay_lam,
+      // Bo khung gio cua thu da bo chon: giu lai se bi may chu tu choi.
+      theo_thu: f.qua_dem ? [] : f.cac_ngay_lam.flatMap((t) => {
+        const r = theo_thu[t];
+        return r === undefined ? [] : [r];
+      }),
     };
     const ok = await hd.chay(() =>
       ca === null
@@ -248,6 +281,62 @@ function FormCaLam(
             Ngày không chọn được coi là nghỉ tuần — đi làm ngày đó sẽ tính toàn bộ vào OT.
           </div>
         </div>
+
+        {!f.qua_dem && (
+          <div className="o-nhap">
+            <label>Khung giờ riêng theo thứ</label>
+            <div className="goi-y" style={{ marginBottom: 8 }}>
+              Ngày không bật ở đây dùng chung giờ vào/ra phía trên. Dùng cho chế độ làm{' '}
+              <strong>sáng thứ Bảy</strong>: bật T7, đặt 08:00–12:00 và để "đủ công" gấp đôi số
+              phút làm để ngày đó tính 0,5 công.
+            </div>
+            {f.cac_ngay_lam.map((thu) => {
+              const r = theo_thu[thu];
+              const dat = (moi: Partial<CaTheoThu>): void =>
+                dat_theo_thu((cu) => {
+                  const truoc = cu[thu];
+                  return truoc === undefined ? cu : { ...cu, [thu]: { ...truoc, ...moi } };
+                });
+              return (
+                <div key={thu} style={{ marginBottom: 6 }}>
+                  <div className="o-nhap-ngang">
+                    <input id={`tt${thu}`} type="checkbox" checked={r !== undefined}
+                      onChange={(e) => dat_theo_thu((cu) => {
+                        if (!e.target.checked) {
+                          const { [thu]: _bo, ...con_lai } = cu;
+                          return con_lai;
+                        }
+                        return { ...cu, [thu]: {
+                          thu, gio_vao: '08:00', gio_ra: '12:00',
+                          nghi_tu: null, nghi_den: null, phut_du_cong: 480,
+                        } };
+                      })} />
+                    <label htmlFor={`tt${thu}`}>{TEN_THU_DAY[thu]}</label>
+                  </div>
+                  {r !== undefined && (
+                    <div className="luoi luoi-3" style={{ marginLeft: 24 }}>
+                      <div className="o-nhap">
+                        <label htmlFor={`tv${thu}`}>Vào</label>
+                        <input id={`tv${thu}`} type="time" value={r.gio_vao}
+                          onChange={(e) => dat({ gio_vao: e.target.value })} required />
+                      </div>
+                      <div className="o-nhap">
+                        <label htmlFor={`tr${thu}`}>Ra</label>
+                        <input id={`tr${thu}`} type="time" value={r.gio_ra}
+                          onChange={(e) => dat({ gio_ra: e.target.value })} required />
+                      </div>
+                      <div className="o-nhap">
+                        <label htmlFor={`tp${thu}`}>Đủ công (phút)</label>
+                        <input id={`tp${thu}`} type="number" min="60" max="1440" value={r.phut_du_cong}
+                          onChange={(e) => dat({ phut_du_cong: Number(e.target.value) })} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="luoi luoi-2">
           <div className="o-nhap">

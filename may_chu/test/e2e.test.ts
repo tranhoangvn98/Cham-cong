@@ -960,3 +960,91 @@ test('doi mat khau -> thu hoi moi phien cu', async () => {
   const lam_moi = await goi('POST', '/api/xac-thuc/lam-moi', { body: { token_lam_moi: tlm } });
   assert.equal(lam_moi.ma, 401, 'token lam moi cu phai het hieu luc sau khi doi mat khau');
 });
+
+// ============================================================ khung gio rieng theo thu
+// Che do lam viec theo hop dong: T2-T6 ca ngay + SANG THU BAY van la gio chuan.
+// Truoc khi co ca_lam_theo_thu, moi thu Bay ca cong ty bi ghi "ve som ~330 phut".
+const T7 = '2026-08-01'; // Thu Bay
+const PIN_T7 = '5077';
+let ca_t7_id = '';
+
+test('tao ca co khung gio rieng cho thu Bay', async () => {
+  const r = await goi('POST', '/api/ca-lam', {
+    token: token_admin,
+    body: {
+      ten: 'Hanh chinh + sang T7', gio_vao: '08:00', gio_ra: '17:30',
+      nghi_tu: '12:00', nghi_den: '13:30',
+      dung_sai_muon_phut: 5, dung_sai_som_phut: 5, nguong_ot_phut: 30,
+      phut_du_cong: 480, cac_ngay_lam: [1, 2, 3, 4, 5, 6],
+      theo_thu: [{ thu: 6, gio_vao: '08:00', gio_ra: '12:00', phut_du_cong: 480 }],
+    },
+  });
+  assert.equal(r.ma, 201);
+  ca_t7_id = r.body['id'] as string;
+
+  const ds = await goi('GET', '/api/ca-lam', { token: token_admin });
+  const ca = (ds.body as unknown as Record<string, unknown>[]).find((c) => c['id'] === ca_t7_id);
+  const tt = ca?.['theo_thu'] as Record<string, unknown>[];
+  assert.equal(tt.length, 1, 'GET phai tra ve khung gio rieng da luu');
+  assert.equal(tt[0]?.['thu'], 6);
+});
+
+test('tu choi khung gio rieng cho thu KHONG nam trong cac ngay di lam', async () => {
+  const r = await goi('POST', '/api/ca-lam', {
+    token: token_admin,
+    body: {
+      ten: 'Ca sai thu', gio_vao: '08:00', gio_ra: '17:00', cac_ngay_lam: [1, 2, 3, 4, 5],
+      theo_thu: [{ thu: 0, gio_vao: '08:00', gio_ra: '12:00' }],
+    },
+  });
+  assert.equal(r.ma, 400);
+  assert.match(String(r.body['loi']), /Chủ nhật/);
+});
+
+test('tu choi khung gio rieng tren ca qua dem', async () => {
+  const r = await goi('POST', '/api/ca-lam', {
+    token: token_admin,
+    body: {
+      ten: 'Ca dem co thu rieng', gio_vao: '22:00', gio_ra: '06:00', qua_dem: true,
+      cac_ngay_lam: [1, 2, 3, 4, 5, 6],
+      theo_thu: [{ thu: 6, gio_vao: '22:00', gio_ra: '02:00' }],
+    },
+  });
+  assert.equal(r.ma, 400);
+  assert.match(String(r.body['loi']), /qua đêm/);
+});
+
+test('may day log sang thu Bay -> khong ve som, tinh 0,5 cong', async () => {
+  const nv = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: { ma_nv: 'NV077', ho_ten: 'Le Thi Bay', pin_may: PIN_T7, ca_lam_id: ca_t7_id },
+  });
+  assert.equal(nv.ma, 201);
+  const nv_id = nv.body['id'] as string;
+
+  const body = [
+    `${PIN_T7}\t${T7} 07:58:00\t0\t15\t0`,
+    `${PIN_T7}\t${T7} 12:00:00\t1\t15\t0`,
+  ].join('\n') + '\n';
+  const r = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=ATTLOG`,
+    headers: { 'content-type': 'text/plain' },
+    payload: body,
+  });
+  assert.equal(r.body.trim(), 'OK: 2');
+
+  const bc = await truy_van_mot<{
+    trang_thai: string; phut_lam: number; phut_ve_som: number; phut_ot: number; so_cong: number;
+  }>(
+    `select trang_thai, phut_lam, phut_ve_som, phut_ot, so_cong
+       from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2`,
+    [nv_id, T7],
+  );
+  assert.notEqual(bc, null, 'thu Bay phai co dong bang cong');
+  assert.equal(bc!.trang_thai, 'co_mat', 'thu Bay la ngay di lam, khong phai nghi tuan');
+  assert.equal(bc!.phut_lam, 240, 'kep trong khung 08:00-12:00 cua thu Bay');
+  assert.equal(bc!.phut_ve_som, 0, 've 12:00 la dung gio tan ca thu Bay — day la loi cu');
+  assert.equal(bc!.phut_ot, 0);
+  assert.equal(bc!.so_cong, 0.5, '240 phut / nguong 480 -> nua cong');
+});

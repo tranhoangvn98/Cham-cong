@@ -10,7 +10,7 @@ process.env['DEVICE_TZ_OFFSET_HOURS'] ??= '7';
 // vi module cau_hinh doc bien moi truong khi nap.
 import type { CaLam } from '../src/cong/quy_tac_tinh_cong.ts';
 
-const { tinh_cong_ngay, khoang_lay_quet } = await import('../src/cong/quy_tac_tinh_cong.ts');
+const { tinh_cong_ngay, khoang_lay_quet, ca_cua_ngay } = await import('../src/cong/quy_tac_tinh_cong.ts');
 const { moc_thoi_gian } = await import('../src/tien_ich/thoi_gian.ts');
 
 /** Ca hanh chinh 08:00-17:00, nghi trua 12:00-13:30, T2-T6. */
@@ -251,4 +251,81 @@ test('khoang_lay_quet: ca dem mo rong sang ngay hom sau', () => {
   const k = khoang_lay_quet(T5, CA_DEM);
   assert.equal(k.tu.getTime(), moc_thoi_gian(T5, '19:00').getTime(), '3h truoc gio vao');
   assert.equal(k.den.getTime(), moc_thoi_gian(T5, '11:00', 1).getTime(), '5h sau gio ra');
+});
+
+// ==================================================================================
+// Khung gio rieng theo thu — che do T2-T6 ca ngay + SANG THU BAY (hop dong lao dong
+// pho bien o Viet Nam: 08:00-12:00 va 13:30-17:30, thu Bay chi lam buoi sang).
+// Khong co co che nay thi moi thu Bay ca cong ty bi ghi "ve som 330 phut".
+// ==================================================================================
+
+/** Ca theo hop dong: T2-T7, rieng T7 chi 08:00-12:00 va tinh 0,5 cong. */
+const CA_HD = {
+  gio_vao: '08:00', gio_ra: '17:30',
+  nghi_tu: '12:00', nghi_den: '13:30',
+  dung_sai_muon_phut: 5, dung_sai_som_phut: 5, nguong_ot_phut: 30,
+  qua_dem: false, phut_du_cong: 480, cac_ngay_lam: [1, 2, 3, 4, 5, 6],
+  theo_thu: [
+    { thu: 6, gio_vao: '08:00', gio_ra: '12:00', nghi_tu: null, nghi_den: null, phut_du_cong: 480 },
+  ],
+} satisfies CaLam;
+
+test('theo thu: T2-T6 van dung khung gio goc cua ca', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HD, q(T5, '08:00', '17:30')));
+  assert.equal(kq.trang_thai, 'co_mat');
+  assert.equal(kq.phut_lam, 480, '570 phut tho - 90 phut nghi trua');
+  assert.equal(kq.phut_ve_som, 0);
+  assert.equal(kq.so_cong, 1);
+});
+
+test('theo thu: sang T7 lam du 08:00-12:00 -> KHONG ve som, 0,5 cong', () => {
+  const kq = tinh_cong_ngay(co_ban(T7, CA_HD, q(T7, '08:00', '12:00')));
+  assert.equal(kq.trang_thai, 'co_mat', 'T7 nam trong cac_ngay_lam nen la ngay di lam');
+  assert.equal(kq.phut_lam, 240, 'khung gio T7 khong co gio nghi trua');
+  assert.equal(kq.phut_ve_som, 0, 've luc 12:00 la dung gio tan ca cua thu Bay');
+  assert.equal(kq.phut_muon, 0);
+  assert.equal(kq.phut_ot, 0);
+  assert.equal(kq.so_cong, 0.5, '240 phut / nguong 480 -> nua cong');
+});
+
+test('theo thu: T7 ve som that (11:00) van bi ghi nhan ve som', () => {
+  const kq = tinh_cong_ngay(co_ban(T7, CA_HD, q(T7, '08:00', '11:00')));
+  assert.equal(kq.phut_ve_som, 55, '60 phut som - 5 phut dung sai');
+  assert.equal(kq.phut_lam, 180);
+  assert.equal(kq.so_cong, 0, '180 phut chua toi nua nguong 480');
+});
+
+test('theo thu: lam qua trua T7 -> tinh OT theo gio tan ca cua thu Bay', () => {
+  const kq = tinh_cong_ngay(co_ban(T7, CA_HD, q(T7, '08:00', '14:00')));
+  assert.equal(kq.phut_lam, 240, 'kep trong khung ca: chi tinh toi 12:00');
+  assert.equal(kq.phut_ot, 120, '2 tieng sau 12:00, qua nguong 30 phut');
+});
+
+test('theo thu: khong khai thu nao thi ca chay y het truoc day', () => {
+  const khong_khai = { ...CA_HD, theo_thu: [] } satisfies CaLam;
+  const kq = tinh_cong_ngay(co_ban(T7, khong_khai, q(T7, '08:00', '12:00')));
+  assert.equal(kq.phut_ve_som, 325, '17:30 - 12:00 = 330 phut, tru 5 phut dung sai');
+  assert.equal(kq.so_cong, 0.5, '240 phut lam / nguong 480');
+});
+
+test('theo thu: ngay le van uu tien hon khung gio rieng', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T7, CA_HD, q(T7, '08:00', '12:00')),
+    ngay_le: { huong_luong: true },
+  });
+  assert.equal(kq.trang_thai, 'ngay_le');
+  assert.equal(kq.phut_ot, 240, 'lam ngay le -> toan bo vao OT');
+  assert.equal(kq.so_cong, 1);
+});
+
+test('ca_cua_ngay: tra dung khung gio cua thu, khong doi dung sai va ngay lam', () => {
+  const t7 = ca_cua_ngay(CA_HD, T7);
+  assert.equal(t7?.gio_ra, '12:00');
+  assert.equal(t7?.nghi_tu, null);
+  assert.equal(t7?.dung_sai_muon_phut, 5, 'chinh sach chung, khong doi theo thu');
+  assert.deepEqual(t7?.cac_ngay_lam, [1, 2, 3, 4, 5, 6]);
+
+  const t5 = ca_cua_ngay(CA_HD, T5);
+  assert.equal(t5?.gio_ra, '17:30', 'thu khong khai -> khung gio goc');
+  assert.equal(ca_cua_ngay(null, T7), null);
 });

@@ -205,6 +205,7 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
 
 .luoi { display: grid; gap: 12px; }
 .luoi-4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.luoi-3 { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 .luoi-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 
 .o-so {
