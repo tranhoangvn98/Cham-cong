@@ -1,6 +1,16 @@
 // Lop goi API. Giu token trong bo nho + localStorage, tu lam moi khi 401.
 
-const GOC = (import.meta.env['VITE_API_URL'] as string | undefined) ?? '';
+/**
+ * Goc cua API.
+ *
+ *   VITE_API_URL co gia tri -> dung nguyen (vd http://192.168.1.10:8080 khi webapp va API
+ *                              nam o hai origin khac nhau)
+ *   VITE_API_URL de trong   -> cung origin voi webapp, lay them tien to trien khai tu
+ *                              VITE_BASE. Nho vay khi dat duoi /chamcong/ thi loi goi tu
+ *                              di toi /chamcong/api/... , khong phai khai hai lan.
+ */
+const GOC = ((import.meta.env['VITE_API_URL'] as string | undefined) ?? '').replace(/\/+$/, '')
+  || (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
 const KHOA_LUU = 'cham_cong_phien';
 
 export interface NguoiDung {

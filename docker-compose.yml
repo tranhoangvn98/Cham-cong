@@ -69,6 +69,9 @@ services:
         # De TRONG khi dung cong_vao: webapp va API cung mot origin nen goi duong dan
         # tuong doi (/api/...), doi ten mien khong phai build lai.
         VITE_API_URL: ${VITE_API_URL-http://localhost:8080}
+        # Tien to duong dan khi dung chung ten mien voi dich vu khac: /chamcong/
+        # Phai co dau gach cheo o ca hai dau.
+        VITE_BASE: ${VITE_BASE:-/}
     restart: unless-stopped
     depends_on: [may_chu]
     ports:

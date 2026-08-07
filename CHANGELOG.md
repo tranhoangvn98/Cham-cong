@@ -2,6 +2,43 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.7.0] — 2026-08-07
+
+Đặt webapp dưới một **tiền tố đường dẫn** để dùng chung tên miền với dịch vụ khác.
+
+### Thêm mới
+
+- **`VITE_BASE`** — build webapp cho một tiền tố, ví dụ `VITE_BASE=/chamcong/` để chạy ở
+  `https://teams.congty.vn/chamcong/`. Một biến điều khiển cả ba chỗ từng phải sửa tay:
+  đường dẫn tệp tĩnh trong `index.html`, đường dẫn font/icon trong CSS, và tiền tố mà
+  router cùng lớp gọi API tự thêm vào. `VITE_API_URL` để trống là đủ — lớp gọi API lấy
+  tiền tố từ `VITE_BASE` nên tự gọi đúng `/chamcong/api/...`.
+  - Router đọc `import.meta.env.BASE_URL`, cắt tiền tố khi đọc URL và thêm lại khi đẩy
+    `history.pushState`, nên danh sách tuyến bên trong vẫn dùng đường dẫn sạch
+    (`/bang-cong`) và không cần biết nó được đặt ở đâu.
+  - `href` của `<LienKet>` là đường dẫn thật, để Ctrl-click mở tab mới và "sao chép địa chỉ
+    liên kết" vẫn ra đúng URL.
+- **`tai_lieu/TEN-MIEN.md` mục 2b** — cấu hình Caddy dùng chung tên miền, kèm lý do phải bọc
+  trong `route`: ngoài `route`, Caddy tự sắp xếp `handle` theo độ dài đường dẫn và khi trộn
+  với `handle_path` thì thứ tự khó đoán.
+
+### Giới hạn đã biết
+
+`/iclock/*` **không** đặt được dưới tiền tố: firmware ZKTeco chỉ cho khai host và port rồi
+gọi cứng `/iclock/cdata`. Đường này luôn phải nằm ở gốc tên miền.
+
+### Đã kiểm chứng
+
+Chạy Caddy thật với upstream giả, đối chiếu 9 đường dẫn: `/iclock/*` giữ nguyên đường dẫn
+sang máy chủ chấm công; `/chamcong/api/*` và `/chamcong/health` được cắt tiền tố; webapp và
+tệp tĩnh về đúng nginx; `/chamcong` không dấu gạch cuối trả 301; còn `/api/messages`, `/dev/*`
+và `/` vẫn về dịch vụ cũ **không đổi hành vi**. Đường HTTP `/iclock` trả 200 thẳng, không
+chuyển hướng — nếu bị 301 là máy chấm công mất dữ liệu.
+
+Lái Chromium qua bản build `VITE_BASE=/chamcong/`: trang đăng nhập hiện đúng, font tải được
+qua tiền tố, deep link `/chamcong/bang-cong` giữ nguyên tiền tố, `pushState` không nhảy ra
+gốc tên miền, lớp gọi API trỏ tới `/chamcong/api/...`, và không có request nào hỏng.
+
 ## [1.6.0] — 2026-08-07
 
 Chạy trên tên miền + HTTPS, và **vá một lỗ hổng vượt danh sách trắng IP** phát hiện khi rà

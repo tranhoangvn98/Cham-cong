@@ -116,6 +116,106 @@ CONG_WEB=127.0.0.1:8081
 docker compose up -d --build     # --build vì VITE_API_URL nhúng lúc build
 ```
 
+## 2b. Dùng CHUNG một tên miền với dịch vụ khác
+
+Khi không tạo được tên miền con riêng, đặt hệ thống chấm công dưới một tiền tố đường dẫn
+của tên miền đang dùng, ví dụ `https://teams.congty.vn/chamcong/`.
+
+**Một chỗ không nhét vào tiền tố được: `/iclock`.** Firmware ZKTeco chỉ cho khai *host* và
+*port* rồi gọi cứng `/iclock/cdata` — không có ô nào nhập đường dẫn. Nên `/iclock/*` buộc
+phải nằm ở **gốc** tên miền. Chấp nhận được vì dịch vụ khác hiếm khi dùng đường này, nhưng
+phải biết để không đặt nhầm.
+
+### Caddy
+
+```caddyfile
+# HTTP: chỉ phục vụ máy chấm công. KHÔNG chuyển hướng đường này sang HTTPS.
+http://teams.congty.vn {
+	handle /iclock/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle {
+		redir https://{host}{uri} permanent
+	}
+}
+
+teams.congty.vn {
+	encode gzip
+
+	# route giữ ĐÚNG thứ tự viết ở đây, không để Caddy tự sắp xếp theo độ dài đường dẫn.
+	route {
+		# 1. Máy chấm công — firmware gọi cứng /iclock/cdata nên phải ở gốc tên miền.
+		handle /iclock/* {
+			reverse_proxy 127.0.0.1:8080
+		}
+
+		# 2. API chấm công. Bỏ tiền tố rồi mới chuyển tiếp, để máy chủ vẫn thấy /api/...
+		handle /chamcong/api/* {
+			uri strip_prefix /chamcong
+			reverse_proxy 127.0.0.1:8080
+		}
+		handle /chamcong/health {
+			uri strip_prefix /chamcong
+			reverse_proxy 127.0.0.1:8080
+		}
+
+		# 3. Webapp chấm công.
+		redir /chamcong /chamcong/ permanent
+		handle_path /chamcong/* {
+			reverse_proxy 127.0.0.1:8081
+		}
+
+		# 4. Còn lại: dịch vụ cũ — giữ nguyên các khối đang có.
+		handle {
+			reverse_proxy 127.0.0.1:3978
+		}
+	}
+}
+```
+
+`route` là bắt buộc: ngoài `route`, Caddy tự sắp xếp các `handle` theo độ dài đường dẫn, và
+khi trộn `handle` với `handle_path` thì thứ tự khó đoán. Trong `route`, thứ tự đúng như viết.
+
+### `.env`
+
+```bash
+COMPOSE_PROFILES=
+VITE_API_URL=
+VITE_BASE=/chamcong/
+CORS_ORIGIN=
+PROXY_TIN_CAY=172.16.0.0/12
+CONG_MAY_CHU=127.0.0.1:8080
+CONG_WEB=127.0.0.1:8081
+```
+
+`VITE_BASE` phải có dấu gạch chéo ở **cả hai đầu**. Nó quyết định ba thứ cùng lúc, tất cả
+đều nhúng lúc build nên đổi là phải `--build`:
+
+- đường dẫn tệp tĩnh trong `index.html` (`/chamcong/assets/...`)
+- đường dẫn font và icon trong CSS
+- tiền tố mà router và lớp gọi API tự thêm vào
+
+Nhờ vậy `VITE_API_URL` để trống là đủ: lớp gọi API lấy tiền tố từ `VITE_BASE` nên tự gọi
+đúng `/chamcong/api/...`, không phải khai hai lần.
+
+### App điện thoại
+
+```bash
+EXPO_PUBLIC_API_URL=https://teams.congty.vn/chamcong
+```
+
+### Máy chấm công
+
+Server Address là **tên miền gốc**, không kèm tiền tố: `teams.congty.vn`, Port `80`.
+
+### Kiểm tra sau khi reload
+
+```bash
+curl -s https://teams.congty.vn/chamcong/health; echo
+curl -s -o /dev/null -w '%{http_code}\n' "http://teams.congty.vn/iclock/cdata?SN=KHONG-CO-THAT"
+curl -s -o /dev/null -w '%{http_code}\n' https://teams.congty.vn/     # dịch vụ cũ phải còn sống
+```
+
 ## 2. Bật cổng vào (máy chủ chưa có proxy nào)
 
 Trong `.env`:

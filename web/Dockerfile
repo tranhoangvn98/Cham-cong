@@ -11,6 +11,9 @@ COPY web ./web
 # URL API duoc nhung vao ma JS luc BUILD (Vite thay the luc bien dich, khong doc runtime).
 ARG VITE_API_URL=
 ENV VITE_API_URL=$VITE_API_URL
+# Tien to duong dan khi webapp khong nam o goc ten mien (vd /chamcong/).
+ARG VITE_BASE=/
+ENV VITE_BASE=$VITE_BASE
 RUN npm run --workspace web build
 
 # ---------------------------------------------------------------- anh chay
