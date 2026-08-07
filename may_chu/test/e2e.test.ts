@@ -857,6 +857,29 @@ test('/iclock chan IP ngoai danh sach cho phep (Task B5)', async () => {
   assert.equal(noi_bo.statusCode, 200);
 });
 
+test('KHONG gia mao duoc IP nguon bang header X-Forwarded-For', async () => {
+  // Lo hong that: neu tin X-Forwarded-For vo dieu kien thi ICLOCK_IP_CHO_PHEP vo tac dung —
+  // ke tan cong chi can them header ghi IP van phong la day duoc lan quet gia.
+  // PROXY_TIN_CAY de trong trong bo test nay, nen header phai bi bo qua hoan toan.
+  for (const header of ['192.168.9.50', '127.0.0.1', '192.168.9.50, 203.0.113.99']) {
+    const r = await app.inject({
+      method: 'POST',
+      url: `/iclock/cdata?SN=${SERIAL}&table=ATTLOG`,
+      headers: { 'content-type': 'text/plain', 'x-forwarded-for': header },
+      remoteAddress: '203.0.113.99',
+      payload: `${PIN}\t${NGAY} 09:30:00\t0\t15\t0\n`,
+    });
+    assert.equal(r.statusCode, 403, `X-Forwarded-For "${header}" khong duoc dung de vuot danh sach trang`);
+  }
+
+  const co = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from lan_quet
+      where nhan_vien_id = $1 and thoi_diem = ($2 || ' 09:30:00')::timestamp - make_interval(hours => 7)`,
+    [nhan_vien_id, NGAY],
+  );
+  assert.equal(co?.so, 0, 'request gia mao khong duoc ghi du lieu');
+});
+
 test('/api KHONG bi lop chan IP cua /iclock (dien thoai goi tu moi noi)', async () => {
   const r = await app.inject({
     method: 'POST',

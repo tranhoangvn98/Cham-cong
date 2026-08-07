@@ -108,6 +108,21 @@ export const cau_hinh = {
    */
   iclock_ip_cho_phep: doc_danh_sach_ip(chu('ICLOCK_IP_CHO_PHEP', '')),
 
+  /**
+   * Danh sach IP/CIDR cua reverse proxy DUOC PHEP dat X-Forwarded-For.
+   *
+   * RONG = khong tin header chuyen tiep cua bat ky ai; dia chi that cua socket moi la
+   * dia chi client. Day la mac dinh an toan.
+   *
+   * Vi sao phai co: X-Forwarded-For do CLIENT gui len, ai cung dat gia tri tuy y duoc.
+   * Tin no vo dieu kien nghia la ICLOCK_IP_CHO_PHEP bi vo hieu hoan toan — chi can gui
+   * kem "X-Forwarded-For: <ip van phong>" la qua duoc danh sach trang.
+   *
+   * Dat sau Caddy/Nginx thi dien dai mang cua proxy (mang Docker: 172.16.0.0/12),
+   * TUYET DOI khong dien 0.0.0.0/0.
+   */
+  proxy_tin_cay: doc_danh_sach_ip(chu('PROXY_TIN_CAY', ''), 'PROXY_TIN_CAY'),
+
   erp: {
     webhook_url: chu('ERP_WEBHOOK_URL', ''),
     webhook_secret: chu('ERP_WEBHOOK_SECRET', ''),

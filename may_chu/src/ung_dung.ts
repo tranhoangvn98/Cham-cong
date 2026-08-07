@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import { cau_hinh } from './cau_hinh.ts';
+import { ip_duoc_phep } from './tien_ich/dia_chi_ip.ts';
 import { tuyen_adms } from './adms/tuyen.ts';
 import { tuyen_dang_nhap } from './tuyen/dang_nhap.ts';
 import { tuyen_danh_muc } from './tuyen/danh_muc.ts';
@@ -28,8 +29,17 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
     // May ZKTeco gui dong URL rat dai khi day nhieu ban ghi.
     routerOptions: { maxParamLength: 500 },
     bodyLimit: 4 * 1024 * 1024,
-    // Tin X-Forwarded-For khi dat sau Nginx/Caddy de req.ip dung (can cho rate limit).
-    trustProxy: cau_hinh.la_production,
+    // X-Forwarded-For CHI duoc tin khi request den tu proxy da khai trong PROXY_TIN_CAY.
+    //
+    // Truoc day day la `la_production`, tuc tin header cua BAT KY AI khi chay production.
+    // Header nay do client gui len nen ai cung dat duoc: chi can them
+    // "X-Forwarded-For: <ip van phong>" la qua duoc ICLOCK_IP_CHO_PHEP — danh sach trang
+    // coi nhu khong con tac dung. Khong khai PROXY_TIN_CAY thi dung dia chi that cua
+    // socket; dat sau Caddy thi khai dai mang cua proxy.
+    trustProxy:
+      cau_hinh.proxy_tin_cay.length === 0
+        ? false
+        : (dia_chi: string): boolean => ip_duoc_phep(dia_chi, cau_hinh.proxy_tin_cay),
   });
 
   // -------------------------------------------------------------------- CORS

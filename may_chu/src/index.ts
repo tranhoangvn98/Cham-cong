@@ -49,6 +49,27 @@ try {
       'chi cho phep nhung IP nay goi /iclock/*',
     );
   }
+  if (cau_hinh.proxy_tin_cay.length === 0) {
+    app.log.info(
+      'PROXY_TIN_CAY de trong: khong tin X-Forwarded-For, lay dia chi that cua ket noi. '
+      + 'Dat sau Caddy/Nginx thi phai khai dai mang cua proxy, neu khong moi request se '
+      + 'mang IP cua proxy.',
+    );
+  } else {
+    // Tin proxy o dai qua rong = ai cung gia mao duoc IP nguon, tuc ICLOCK_IP_CHO_PHEP
+    // mat tac dung. Canh bao to thay vi im lang cho qua.
+    if (cau_hinh.proxy_tin_cay.some((q) => q.loai === 'ipv4' && q.mat_na === 0)) {
+      app.log.warn(
+        'PROXY_TIN_CAY chua 0.0.0.0/0: tin header chuyen tiep cua MOI nguon, tuc '
+        + 'ICLOCK_IP_CHO_PHEP bi vo hieu — ai cung gia mao duoc IP van phong. '
+        + 'Chi khai dung dai mang cua reverse proxy.',
+      );
+    }
+    app.log.info(
+      { quy_tac: cau_hinh.proxy_tin_cay.map((q) => q.goc) },
+      'chi tin X-Forwarded-For tu nhung dia chi nay',
+    );
+  }
 } catch (loi) {
   app.log.error({ err: loi }, 'khong khoi dong duoc may chu');
   await dong_pool();

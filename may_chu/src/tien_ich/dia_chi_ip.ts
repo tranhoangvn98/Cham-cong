@@ -44,7 +44,7 @@ export interface QuyTacIp {
  * Doc danh sach tu bien moi truong. Bo qua muc rong; nem loi neu mot muc sai dinh dang —
  * cau hinh sai o lop bao mat phai bao ngay luc khoi dong, khong im lang cho qua.
  */
-export function doc_danh_sach_ip(chuoi: string): QuyTacIp[] {
+export function doc_danh_sach_ip(chuoi: string, ten = 'ICLOCK_IP_CHO_PHEP'): QuyTacIp[] {
   const ra: QuyTacIp[] = [];
   for (const tho of chuoi.split(',')) {
     const muc = tho.trim();
@@ -57,7 +57,7 @@ export function doc_danh_sach_ip(chuoi: string): QuyTacIp[] {
     if (so !== null) {
       const tien_to = phan_tien_to === undefined ? 32 : Number(phan_tien_to);
       if (!Number.isInteger(tien_to) || tien_to < 0 || tien_to > 32) {
-        throw new Error(`ICLOCK_IP_CHO_PHEP: tien to CIDR khong hop le trong "${muc}"`);
+        throw new Error(`${ten}: tien to CIDR khong hop le trong "${muc}"`);
       }
       // Dich phai roi dich trai de tranh `<<` voi 32 (JS cho ket qua sai).
       const mat_na = tien_to === 0 ? 0 : (0xffffffff << (32 - tien_to)) >>> 0;
@@ -66,10 +66,10 @@ export function doc_danh_sach_ip(chuoi: string): QuyTacIp[] {
     }
 
     if (phan_tien_to !== undefined) {
-      throw new Error(`ICLOCK_IP_CHO_PHEP: chi ho tro CIDR cho IPv4, "${muc}" khong hop le`);
+      throw new Error(`${ten}: chi ho tro CIDR cho IPv4, "${muc}" khong hop le`);
     }
     if (!ip.includes(':')) {
-      throw new Error(`ICLOCK_IP_CHO_PHEP: "${muc}" khong phai dia chi IP`);
+      throw new Error(`${ten}: "${muc}" khong phai dia chi IP`);
     }
     ra.push({ goc: muc, loai: 'khac', chinh_xac: ip });
   }

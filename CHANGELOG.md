@@ -2,6 +2,38 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.6.0] — 2026-08-07
+
+Chạy trên tên miền + HTTPS, và **vá một lỗ hổng vượt danh sách trắng IP** phát hiện khi rà
+lại phần đặt sau reverse proxy.
+
+### Sửa — bảo mật
+
+- **`X-Forwarded-For` được tin vô điều kiện khi chạy production**, nên `ICLOCK_IP_CHO_PHEP`
+  có thể bị vượt hoàn toàn: chỉ cần gửi kèm `X-Forwarded-For: <IP văn phòng>` là qua được
+  danh sách trắng và đẩy được lần quẹt giả vào bảng công. Header này do phía gửi tự đặt,
+  ai cũng ghi giá trị tuỳ ý được. Ảnh hưởng mọi bản triển khai có cổng 8080 mở ra Internet
+  — đúng cấu hình VPS đang chạy.
+  - Nay có `PROXY_TIN_CAY`: chỉ tin header chuyển tiếp khi request đến từ dải mạng đã khai.
+    Mặc định trống = không tin ai, lấy địa chỉ thật của kết nối.
+  - Máy chủ ghi cảnh báo lúc khởi động nếu `PROXY_TIN_CAY` chứa `0.0.0.0/0`.
+  - 5 test hồi quy trong `test/proxy_tin_cay.test.ts`, gồm chuỗi nhiều chặng
+    `"IP giả, IP thật"`. Đã xác nhận hai trong số đó **thất bại trên mã cũ**.
+
+### Thêm mới
+
+- **Cổng vào Caddy có tên miền và HTTPS tự động** (`cong_vao/Caddyfile`, dịch vụ
+  `cong_vao`). Webapp và API dùng **một origin duy nhất** nên không còn CORS, và
+  `VITE_API_URL` để trống được — webapp gọi đường dẫn tương đối, đổi tên miền không phải
+  build lại. `/iclock/*` giữ HTTP thường và **không** bị chuyển hướng sang HTTPS: firmware
+  ZKTeco không làm được TLS và gặp 301/302 thì nhiều bản bỏ luôn lô dữ liệu.
+- Bật bằng `COMPOSE_PROFILES=ten_mien` trong `.env`, nên mọi lệnh `docker compose` quen
+  thuộc vẫn chạy như cũ.
+- Cổng mở ra ngoài máy nay cấu hình được (`CONG_MAY_CHU`, `CONG_WEB`) để khoá 8080/8081 lại
+  trong máy khi đã có cổng vào.
+- **`tai_lieu/TEN-MIEN.md`** — trỏ DNS, xin chứng chỉ, chuyển máy chấm công sang cổng 80,
+  đổi địa chỉ cho app điện thoại, và bảng sự cố thường gặp.
+
 ## [1.5.0] — 2026-08-07
 
 Chế độ làm việc **T2–T6 cả ngày + sáng thứ Bảy** — mô hình ca cũ không diễn đạt được, và cứ

@@ -39,6 +39,10 @@ services:
       MAY_OFFLINE_SAU_GIAY: ${MAY_OFFLINE_SAU_GIAY:-180}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
       ICLOCK_IP_CHO_PHEP: ${ICLOCK_IP_CHO_PHEP:-}
+      # Chi tin X-Forwarded-For tu dai mang nay. Dat sau cong_vao (Caddy) thi mang Docker
+      # la 172.16.0.0/12. De TRONG khi khong co reverse proxy: tin bua nghia la ai cung
+      # gia mao duoc IP nguon va ICLOCK_IP_CHO_PHEP mat tac dung.
+      PROXY_TIN_CAY: ${PROXY_TIN_CAY:-}
       ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
       ERP_WEBHOOK_SECRET: ${ERP_WEBHOOK_SECRET:-}
       TU_DONG_DI_TRU: "1"
@@ -49,22 +53,49 @@ services:
     volumes:
       - anh_cham_cong:/du_lieu/anh_cham_cong
     # May ZKTeco chi noi duoc HTTP thuong (nhieu firmware khong lam TLS),
-    # nen cong 8080 phai vao duoc tu mang LAN co may cham cong.
+    # nen cong 8080 phai vao duoc tu mang co may cham cong.
+    #
+    # Dung cong_vao (co ten mien) thi nen dat CONG_MAY_CHU=127.0.0.1:8080 de cong nay
+    # chi mo trong may, moi luong vao deu di qua Caddy.
     ports:
-      - "8080:8080"
+      - "${CONG_MAY_CHU:-8080}:8080"
 
   web:
     build:
       context: .
       dockerfile: web/Dockerfile
       args:
-        # URL API ma trinh duyet goi toi — nhung vao luc BUILD.
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+        # URL API ma trinh duyet goi toi — nhung vao luc BUILD, khong doc luc chay.
+        # De TRONG khi dung cong_vao: webapp va API cung mot origin nen goi duong dan
+        # tuong doi (/api/...), doi ten mien khong phai build lai.
+        VITE_API_URL: ${VITE_API_URL-http://localhost:8080}
     restart: unless-stopped
     depends_on: [may_chu]
     ports:
-      - "8081:80"
+      - "${CONG_WEB:-8081}:80"
+
+  # ---------------------------------------------------------------- cong vao (tuy chon)
+  # Chi chay khi .env co COMPOSE_PROFILES=ten_mien. Xem tai_lieu/TEN-MIEN.md.
+  cong_vao:
+    image: caddy:2-alpine
+    profiles: ["ten_mien"]
+    restart: unless-stopped
+    depends_on: [may_chu, web]
+    environment:
+      TEN_MIEN: ${TEN_MIEN:?can dat TEN_MIEN trong .env khi bat profile ten_mien}
+      # Let's Encrypt canh bao ve email nay khi gia han chung chi that bai. Bat buoc:
+      # Caddy gap `email` khong co gia tri se bao loi cu phap kho lan ra nguyen nhan.
+      EMAIL_TLS: ${EMAIL_TLS:?can dat EMAIL_TLS trong .env khi bat profile ten_mien}
+    volumes:
+      - ./cong_vao/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
 
 volumes:
   pgdata:
   anh_cham_cong:
+  caddy_data:
+  caddy_config:
