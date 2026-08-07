@@ -85,10 +85,10 @@ services:
     restart: unless-stopped
     depends_on: [may_chu, web]
     environment:
-      TEN_MIEN: ${TEN_MIEN:?can dat TEN_MIEN trong .env khi bat profile ten_mien}
-      # Let's Encrypt canh bao ve email nay khi gia han chung chi that bai. Bat buoc:
-      # Caddy gap `email` khong co gia tri se bao loi cu phap kho lan ra nguyen nhan.
-      EMAIL_TLS: ${EMAIL_TLS:?can dat EMAIL_TLS trong .env khi bat profile ten_mien}
+      # KHONG dung cu phap ${VAR:?...}: compose noi suy TOAN BO tep truoc khi loc profile,
+      # nen bien thieu se lam hong ca `docker compose up` cua ban trien khai khong dung
+      # profile nay. Thieu gia tri thi Caddy bao loi luc khoi dong, chi anh huong dich vu nay.
+      TEN_MIEN: ${TEN_MIEN:-}
     volumes:
       - ./cong_vao/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

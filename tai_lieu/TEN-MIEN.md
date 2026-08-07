@@ -223,7 +223,6 @@ Trong `.env`:
 ```bash
 COMPOSE_PROFILES=ten_mien
 TEN_MIEN=chamcong.congty.vn
-EMAIL_TLS=it@congty.vn
 
 # Webapp và API cùng origin -> gọi đường dẫn tương đối, không cần CORS
 VITE_API_URL=
