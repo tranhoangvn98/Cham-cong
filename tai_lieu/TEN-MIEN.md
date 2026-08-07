@@ -42,7 +42,81 @@ Bản ghi DNS mới có thể mất vài phút đến vài giờ để lan. Đ�
 Để bật, Cloudflare sẽ chặn `/iclock` vì máy chấm công nói HTTP thường và không có SNI như
 trình duyệt.
 
-## 2. Bật cổng vào
+## 2a. Máy chủ ĐÃ CÓ Caddy/Nginx phục vụ dịch vụ khác
+
+Kiểm tra trước, vì cổng 80/443 chỉ một tiến trình giữ được:
+
+```bash
+ss -tlnp | grep -E ':(80|443)\b'
+```
+
+Có sẵn `caddy` hoặc `nginx` thì **đừng bật profile `ten_mien`** — dựng cổng vào thứ hai sẽ
+không bind được cổng, hoặc cướp cổng và làm chết dịch vụ đang chạy. Thay vào đó thêm một
+khối vào cấu hình sẵn có.
+
+Với Caddy (`/etc/caddy/Caddyfile`), thêm nguyên khối dưới đây, thay `chamcong.congty.vn`
+bằng tên miền của bạn:
+
+```caddyfile
+# ---------------------------------------------------------- he thong cham cong
+# HTTP: chi phuc vu may cham cong. KHONG chuyen huong sang HTTPS — firmware ZKTeco
+# khong lam duoc TLS, va gap 301/302 thi nhieu ban bo luon lo du lieu.
+http://chamcong.congty.vn {
+	handle /iclock/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle {
+		redir https://{host}{uri} permanent
+	}
+}
+
+# HTTPS: webapp va API chung mot origin nen khong can CORS.
+chamcong.congty.vn {
+	encode gzip
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle /health {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle /iclock/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle {
+		reverse_proxy 127.0.0.1:8081
+	}
+}
+```
+
+Sao lưu, kiểm cú pháp, rồi mới nạp lại — nạp file sai cú pháp là **mọi** site trong đó tắt
+theo, kể cả dịch vụ đang chạy:
+
+```bash
+cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak-$(date +%Y%m%d-%H%M%S)
+caddy validate --config /etc/caddy/Caddyfile     # phải in "Valid configuration"
+systemctl reload caddy
+```
+
+Rồi trong `.env` khai như mục 2 nhưng **để `COMPOSE_PROFILES` trống** (không cần cổng vào
+của compose) và khoá hai cổng cũ lại trong máy:
+
+```bash
+COMPOSE_PROFILES=
+VITE_API_URL=
+CORS_ORIGIN=
+PROXY_TIN_CAY=172.16.0.0/12
+CONG_MAY_CHU=127.0.0.1:8080
+CONG_WEB=127.0.0.1:8081
+```
+
+`PROXY_TIN_CAY=172.16.0.0/12` đúng cho cả trường hợp Caddy chạy thẳng trên máy: nó gọi vào
+`127.0.0.1:8080`, và container nhìn thấy nguồn là cổng vào mạng Docker (`172.x.0.1`).
+
+```bash
+docker compose up -d --build     # --build vì VITE_API_URL nhúng lúc build
+```
+
+## 2. Bật cổng vào (máy chủ chưa có proxy nào)
 
 Trong `.env`:
 
