@@ -13,6 +13,15 @@ import { can_dang_nhap, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { chuoi_bat_buoc, LoiDauVao, than } from '../tien_ich/kiem_tra.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
+import {
+  bat_dang_nhap_microsoft,
+  doi_ma_lay_token,
+  kiem_id_token,
+  sinh_chuoi_ngau_nhien,
+  thach_thuc_pkce,
+  url_dang_nhap,
+  LoiMicrosoft,
+} from '../bao_mat/microsoft.ts';
 
 interface DongNguoiDung {
   id: string;
@@ -280,4 +289,176 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
 
     return res.send({ ok: true, thong_bao: 'Đã đổi mật khẩu. Vui lòng đăng nhập lại.' });
   });
+
+  // ================================================================ MICROSOFT (OIDC)
+  //
+  // Luong: webapp -> /microsoft/bat-dau -> trang dang nhap cua Microsoft -> /microsoft/goi-ve
+  //     -> may chu doi ma lay id_token, doi chieu email -> phat token cua he thong
+  //     -> chuyen huong ve webapp kem token trong PHAN NEO (#) cua URL.
+  //
+  // Dung phan neo chu khong phai chuoi truy van: phan neo khong duoc trinh duyet gui len
+  // may chu nen khong bao gio loi vao log truy cap cua Caddy/nginx.
+
+  /** Cho webapp biet co hien nut "Đăng nhập bằng Microsoft" hay khong. */
+  app.get('/cau-hinh', async () => ({
+    dang_nhap_microsoft: bat_dang_nhap_microsoft(),
+  }));
+
+  app.get('/microsoft/bat-dau', async (req, res) => {
+    if (!bat_dang_nhap_microsoft()) {
+      throw new LoiDauVao('Đăng nhập Microsoft chưa được cấu hình trên máy chủ này.');
+    }
+    const q = req.query as Record<string, unknown>;
+    // Chi nhan duong dan noi bo — nhan URL tuyet doi la mo duong chuyen huong mo (open
+    // redirect): ke tan cong gui link "dang nhap" roi day nan nhan sang trang gia.
+    const quay_lai_tho = typeof q['quay_lai'] === 'string' ? q['quay_lai'] : '';
+    const quay_lai = /^\/[^/\\]/.test(quay_lai_tho) ? quay_lai_tho : null;
+
+    const state = sinh_chuoi_ngau_nhien();
+    const nonce = sinh_chuoi_ngau_nhien();
+    const ma_xac_minh = sinh_chuoi_ngau_nhien(48);
+
+    await thuc_thi(
+      `insert into phien_oidc(state, nonce, ma_xac_minh, quay_lai, het_han)
+       values ($1,$2,$3,$4, now() + interval '10 minutes')`,
+      [state, nonce, ma_xac_minh, quay_lai],
+    );
+    // Don phien qua han, khong can tien trinh nen rieng cho mot bang be nhu the nay.
+    await thuc_thi('delete from phien_oidc where het_han < now()');
+
+    return res.redirect(url_dang_nhap(state, nonce, thach_thuc_pkce(ma_xac_minh)), 302);
+  });
+
+  app.get('/microsoft/goi-ve', async (req, res) => {
+    if (!bat_dang_nhap_microsoft()) throw new LoiDauVao('Đăng nhập Microsoft chưa được cấu hình.');
+    const q = req.query as Record<string, unknown>;
+
+    const ve_webapp = (duong: string): string => {
+      const goc = cau_hinh.microsoft.goc_webapp.replace(/\/+$/, '');
+      return `${goc}${duong}`;
+    };
+    const ve_loi = (ly_do: string): string =>
+      ve_webapp(`/#loi_dang_nhap=${encodeURIComponent(ly_do)}`);
+
+    // Nguoi dung bam Huy o man hinh Microsoft, hoac to chuc tu choi cap quyen.
+    if (typeof q['error'] === 'string') {
+      req.log.warn({ loi: q['error'], mo_ta: q['error_description'] }, 'Microsoft tra ve loi uy quyen');
+      return res.redirect(ve_loi('Bạn đã hủy đăng nhập hoặc tổ chức từ chối cấp quyền.'), 302);
+    }
+
+    const ma = typeof q['code'] === 'string' ? q['code'] : '';
+    const state = typeof q['state'] === 'string' ? q['state'] : '';
+    if (ma === '' || state === '') return res.redirect(ve_loi('Thiếu tham số trả về từ Microsoft.'), 302);
+
+    // Lay VA XOA phien trong cung mot cau lenh: state chi dung duoc dung mot lan.
+    const phien = await truy_van_mot<{ nonce: string; ma_xac_minh: string; quay_lai: string | null }>(
+      `delete from phien_oidc
+        where state = $1 and het_han > now()
+        returning nonce, ma_xac_minh, quay_lai`,
+      [state],
+    );
+    if (phien === null) {
+      return res.redirect(ve_loi('Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Hãy thử lại.'), 302);
+    }
+
+    let tt;
+    try {
+      const id_token = await doi_ma_lay_token(ma, phien.ma_xac_minh);
+      tt = await kiem_id_token(id_token, phien.nonce);
+    } catch (loi) {
+      req.log.warn({ err: loi }, 'kiem id_token that bai');
+      const thong_bao = loi instanceof LoiMicrosoft ? loi.message : 'Không xác thực được với Microsoft.';
+      return res.redirect(ve_loi(thong_bao), 302);
+    }
+
+    const nd = await tim_hoac_tao_theo_email(tt.email, tt.ho_ten);
+    if (nd === null) {
+      req.log.warn({ email: tt.email }, 'dang nhap Microsoft: email chua gan tai khoan nao');
+      return res.redirect(
+        ve_loi(`Tài khoản ${tt.email} chưa được khai trong hệ thống chấm công. Liên hệ nhân sự.`),
+        302,
+      );
+    }
+    if (!nd.dang_hoat_dong) {
+      return res.redirect(ve_loi('Tài khoản đã bị vô hiệu hóa.'), 302);
+    }
+
+    // Dang nhap thanh cong -> xoa dem so lan sai va ghi nhan lan dang nhap.
+    await thuc_thi(
+      'update nguoi_dung set so_lan_sai = 0, khoa_den = null, dang_nhap_cuoi = now() where id = $1',
+      [nd.id],
+    );
+    await ghi_nhat_ky(nd.id, 'dang_nhap_microsoft', 'nguoi_dung', nd.id, null, req.ip);
+
+    const phien_moi = await phat_token(nd, 'Microsoft SSO');
+    const neo = new URLSearchParams({
+      token_truy_cap: phien_moi.token_truy_cap,
+      token_lam_moi: phien_moi.token_lam_moi,
+    });
+    return res.redirect(ve_webapp(`${phien.quay_lai ?? '/'}#${neo.toString()}`), 302);
+  });
+}
+
+/**
+ * Doi chieu email Microsoft voi tai khoan trong he thong.
+ *
+ * Thu tu: email da gan san o tai khoan -> email cua ho so nhan vien. Khong khop thi tra
+ * null (tu choi dang nhap), TRU KHI bat MS_TU_DONG_TAO.
+ */
+async function tim_hoac_tao_theo_email(email: string, ho_ten: string | null): Promise<DongNguoiDung | null> {
+  const theo_tai_khoan = await truy_van_mot<DongNguoiDung>(
+    `select nd.id, nd.ten_dang_nhap, nd.mat_khau_hash, nd.vai_tro, nd.nhan_vien_id,
+            nd.dang_hoat_dong, nd.phai_doi_mat_khau, nd.so_lan_sai, nd.khoa_den, nv.ho_ten
+       from nguoi_dung nd
+       left join nhan_vien nv on nv.id = nd.nhan_vien_id
+      where lower(nd.email_microsoft) = lower($1)`,
+    [email],
+  );
+  if (theo_tai_khoan !== null) return theo_tai_khoan;
+
+  const theo_nhan_vien = await truy_van_mot<DongNguoiDung & { nhan_vien_co: string }>(
+    `select nd.id, nd.ten_dang_nhap, nd.mat_khau_hash, nd.vai_tro, nd.nhan_vien_id,
+            nd.dang_hoat_dong, nd.phai_doi_mat_khau, nd.so_lan_sai, nd.khoa_den,
+            nv.ho_ten, nv.id as nhan_vien_co
+       from nhan_vien nv
+       join nguoi_dung nd on nd.nhan_vien_id = nv.id
+      where lower(nv.email) = lower($1) and nv.dang_hoat_dong = true`,
+    [email],
+  );
+  if (theo_nhan_vien !== null) {
+    // Ghi nho de lan sau khoi phai doi chieu vong qua ho so nhan vien.
+    await thuc_thi('update nguoi_dung set email_microsoft = $2 where id = $1', [theo_nhan_vien.id, email]);
+    return theo_nhan_vien;
+  }
+
+  if (!cau_hinh.microsoft.tu_dong_tao) return null;
+
+  // Tu dong tao: chi gan vai tro thap nhat. Ho so nhan vien van phai do nhan su khai —
+  // khong co ho so thi khong co PIN may, khong tinh duoc cong.
+  const nv = await truy_van_mot<{ id: string; ho_ten: string }>(
+    'select id, ho_ten from nhan_vien where lower(email) = lower($1) and dang_hoat_dong = true',
+    [email],
+  );
+  const moi = await truy_van_mot<{ id: string }>(
+    `insert into nguoi_dung(ten_dang_nhap, mat_khau_hash, vai_tro, nhan_vien_id,
+                            email_microsoft, phai_doi_mat_khau)
+     values ($1, $2, 'nhan_vien', $3, $4, false)
+     returning id`,
+    // Bam cua mot chuoi ngau nhien: tai khoan nay chi dang nhap bang Microsoft, khong ai
+    // — ke ca quan tri — biet mat khau de dung duong mat khau.
+    [email, await bam_mat_khau(sinh_chuoi_ngau_nhien(32)), nv?.id ?? null, email],
+  );
+  if (moi === null) return null;
+  return {
+    id: moi.id,
+    ten_dang_nhap: email,
+    mat_khau_hash: '',
+    vai_tro: 'nhan_vien',
+    nhan_vien_id: nv?.id ?? null,
+    dang_hoat_dong: true,
+    phai_doi_mat_khau: false,
+    so_lan_sai: 0,
+    khoa_den: null,
+    ho_ten: nv?.ho_ten ?? ho_ten,
+  };
 }

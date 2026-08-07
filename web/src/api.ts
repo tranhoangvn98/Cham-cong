@@ -53,6 +53,61 @@ function luu_phien(p: Phien | null): void {
   else localStorage.setItem(KHOA_LUU, JSON.stringify(p));
 }
 
+/**
+ * Nhan phien do may chu tra ve qua PHAN NEO cua URL sau khi dang nhap Microsoft.
+ *
+ * Phan neo (#) khong duoc trinh duyet gui len may chu nen token khong loi vao log truy
+ * cap cua reverse proxy. Doc xong xoa ngay khoi thanh dia chi de khong con trong lich su.
+ *
+ * Tra ve thong bao loi neu may chu bao that bai, null neu URL khong co gi.
+ */
+export async function nhan_phien_tu_neo(): Promise<string | null> {
+  const neo = window.location.hash.replace(/^#/, '');
+  if (neo === '') return null;
+  const t = new URLSearchParams(neo);
+  const truy_cap = t.get('token_truy_cap');
+  const lam_moi = t.get('token_lam_moi');
+  const loi = t.get('loi_dang_nhap');
+
+  const don_dia_chi = (): void =>
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+  if (loi !== null) { don_dia_chi(); return loi; }
+  if (truy_cap === null || lam_moi === null) return null;
+
+  don_dia_chi();
+  // Chua co thong tin nguoi dung — lay bang chinh token vua nhan.
+  const res = await fetch(`${GOC}/api/xac-thuc/toi`, {
+    headers: { authorization: `Bearer ${truy_cap}` },
+  });
+  if (!res.ok) return 'Không lấy được thông tin tài khoản sau khi đăng nhập.';
+  const nd = (await res.json()) as NguoiDung & { mui_gio_offset_gio?: number };
+  luu_phien({
+    token_truy_cap: truy_cap,
+    token_lam_moi: lam_moi,
+    mui_gio_offset_gio: nd.mui_gio_offset_gio,
+    nguoi_dung: nd,
+  });
+  return null;
+}
+
+/** Cau hinh cong khai cua may chu — de biet co hien nut Microsoft hay khong. */
+export async function cau_hinh_dang_nhap(): Promise<{ dang_nhap_microsoft: boolean }> {
+  try {
+    const res = await fetch(`${GOC}/api/xac-thuc/cau-hinh`);
+    if (!res.ok) return { dang_nhap_microsoft: false };
+    return (await res.json()) as { dang_nhap_microsoft: boolean };
+  } catch {
+    return { dang_nhap_microsoft: false };
+  }
+}
+
+/** Chuyen sang trang dang nhap cua Microsoft, nho duong dan hien tai de quay lai. */
+export function di_dang_nhap_microsoft(): void {
+  const quay_lai = encodeURIComponent(window.location.pathname.replace(/^\/+/, '/') || '/');
+  window.location.href = `${GOC}/api/xac-thuc/microsoft/bat-dau?quay_lai=${quay_lai}`;
+}
+
 export function nguoi_dung_hien_tai(): NguoiDung | null {
   return phien?.nguoi_dung ?? null;
 }

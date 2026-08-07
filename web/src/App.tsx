@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  da_dang_nhap, dang_xuat, la_admin, la_nhan_su, nguoi_dung_hien_tai,
+  da_dang_nhap, dang_xuat, la_admin, la_nhan_su, nguoi_dung_hien_tai, nhan_phien_tu_neo,
 } from './api.ts';
 import { CungCapTuyen, LienKet, dung_tuyen } from './dinh_tuyen.tsx';
 import { TEN_VAI_TRO } from './thanh_phan.tsx';
@@ -259,10 +259,26 @@ function BoCuc(): ReactNode {
 export function App(): ReactNode {
   // Buoc lai render sau khi dang nhap/dang xuat de doc lai trang thai phien.
   const [lan, dat_lan] = useState(0);
+  // Chua doc xong phan neo cua URL thi chua biet da dang nhap hay chua — ve trang dang
+  // nhap trong luc do se nhap nhay mot nhip roi bien mat.
+  const [dang_doc_neo, dat_dang_doc_neo] = useState(() => window.location.hash !== '');
+  const [loi_sso, dat_loi_sso] = useState<string | null>(null);
+
+  // Quay ve tu Microsoft: token nam trong phan neo cua URL.
+  useEffect(() => {
+    if (!dang_doc_neo) return;
+    void nhan_phien_tu_neo()
+      .then((loi) => { dat_loi_sso(loi); })
+      .catch(() => { dat_loi_sso('Không hoàn tất được đăng nhập Microsoft.'); })
+      .finally(() => { dat_dang_doc_neo(false); dat_lan((n) => n + 1); });
+  }, [dang_doc_neo]);
+
   const nd = nguoi_dung_hien_tai();
 
+  if (dang_doc_neo) return <div className="dang-tai-toan-trang">Đang hoàn tất đăng nhập…</div>;
+
   if (!da_dang_nhap()) {
-    return <TrangDangNhap khi_xong={() => dat_lan(lan + 1)} />;
+    return <TrangDangNhap khi_xong={() => dat_lan(lan + 1)} loi_sso={loi_sso} />;
   }
 
   // Tai khoan moi tao / vua duoc dat lai mat khau: bat buoc doi truoc khi vao he thong.

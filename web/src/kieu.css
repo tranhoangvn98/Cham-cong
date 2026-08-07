@@ -502,3 +502,52 @@ textarea { min-height: 66px; resize: vertical; }
   .o-lich { min-height: 52px; padding: 4px; font-size: 11px; }
   .bieu-do { height: 112px; }
 }
+
+/* ---------------------------------------------------------------- dang nhap Microsoft */
+.nut-microsoft {
+  width: 100%;
+  justify-content: center;
+  gap: 10px;
+  background: var(--nen-the);
+  color: var(--chu);
+  border: 1px solid var(--vien);
+  font-weight: 600;
+}
+.nut-microsoft:hover { background: var(--nen-nhat); }
+
+/* Logo bon o vuong cua Microsoft, ve bang CSS de khong phai tai them tep. */
+.o-microsoft {
+  display: grid;
+  grid-template-columns: repeat(2, 8px);
+  grid-template-rows: repeat(2, 8px);
+  gap: 2px;
+  flex: none;
+}
+.o-microsoft span:nth-child(1) { background: #F25022; }
+.o-microsoft span:nth-child(2) { background: #7FBA00; }
+.o-microsoft span:nth-child(3) { background: #00A4EF; }
+.o-microsoft span:nth-child(4) { background: #FFB900; }
+
+.vach-hoac {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--chu-mo);
+  font-size: 13px;
+}
+.vach-hoac::before,
+.vach-hoac::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--vien);
+}
+
+.dang-tai-toan-trang {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: var(--chu-mo);
+}

@@ -43,6 +43,13 @@ services:
       # la 172.16.0.0/12. De TRONG khi khong co reverse proxy: tin bua nghia la ai cung
       # gia mao duoc IP nguon va ICLOCK_IP_CHO_PHEP mat tac dung.
       PROXY_TIN_CAY: ${PROXY_TIN_CAY:-}
+      # Dang nhap bang tai khoan Microsoft (Entra ID). De trong ca khoi = tat han.
+      MS_TENANT_ID: ${MS_TENANT_ID:-}
+      MS_CLIENT_ID: ${MS_CLIENT_ID:-}
+      MS_CLIENT_SECRET: ${MS_CLIENT_SECRET:-}
+      MS_REDIRECT_URI: ${MS_REDIRECT_URI:-}
+      MS_GOC_WEBAPP: ${MS_GOC_WEBAPP:-}
+      MS_TU_DONG_TAO: ${MS_TU_DONG_TAO:-0}
       ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
       ERP_WEBHOOK_SECRET: ${ERP_WEBHOOK_SECRET:-}
       TU_DONG_DI_TRU: "1"

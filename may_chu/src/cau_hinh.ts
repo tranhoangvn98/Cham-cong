@@ -123,6 +123,27 @@ export const cau_hinh = {
    */
   proxy_tin_cay: doc_danh_sach_ip(chu('PROXY_TIN_CAY', ''), 'PROXY_TIN_CAY'),
 
+  /**
+   * Dang nhap bang tai khoan Microsoft (Entra ID), chuan OpenID Connect.
+   *
+   * Chi bat khi khai DU ca bon gia tri — thieu mot cai la tinh nang tat han, khong chay
+   * nua vach nua voi. Cach dang ky ung dung ben Entra: tai_lieu/DANG-NHAP-MICROSOFT.md
+   *
+   * `tu_dong_tao` MAC DINH TAT: bat len nghia la BAT KY ai trong to chuc dang nhap duoc
+   * cung tu co tai khoan trong he thong cham cong. De tat thi nhan su phai khai email
+   * cho tung nguoi truoc — nguoi chua khai bi tu choi.
+   */
+  microsoft: {
+    tenant_id: chu('MS_TENANT_ID', ''),
+    client_id: chu('MS_CLIENT_ID', ''),
+    client_secret: chu('MS_CLIENT_SECRET', ''),
+    /** Phai khop TUNG KY TU voi Redirect URI khai ben Entra. */
+    redirect_uri: chu('MS_REDIRECT_URI', ''),
+    tu_dong_tao: chu('MS_TU_DONG_TAO', '0') === '1',
+    /** Duong dan webapp de quay ve sau khi dang nhap xong. */
+    goc_webapp: chu('MS_GOC_WEBAPP', ''),
+  },
+
   erp: {
     webhook_url: chu('ERP_WEBHOOK_URL', ''),
     webhook_secret: chu('ERP_WEBHOOK_SECRET', ''),

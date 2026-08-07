@@ -2,6 +2,45 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.8.0] — 2026-08-07
+
+**Đăng nhập bằng tài khoản Microsoft (Entra ID)** — nhân viên dùng chính tài khoản
+Microsoft 365 của công ty, không phải nhớ thêm mật khẩu.
+
+### Thêm mới
+
+- Luồng OpenID Connect **Authorization Code + PKCE**, tự viết thay vì kéo thư viện OIDC:
+  chỉ cần một luồng, và thêm phụ thuộc lớn vào lớp xác thực là thêm bề mặt tấn công.
+- Nút **Đăng nhập bằng Microsoft** trên trang đăng nhập. Máy chủ quyết định có hiện hay
+  không qua `GET /api/xac-thuc/cau-hinh` — chưa khai cấu hình Entra thì ẩn hẳn, thay vì
+  hiện một nút bấm vào chỉ báo lỗi.
+- Đối chiếu người dùng theo **email**: trường đã nối sẵn ở tài khoản, rồi tới email trong
+  hồ sơ nhân viên (khớp lần đầu thì ghi nhớ để lần sau khỏi dò lại). Không khớp ai thì từ
+  chối kèm thông báo rõ, trừ khi bật `MS_TU_DONG_TAO`.
+- **`tai_lieu/DANG-NHAP-MICROSOFT.md`** — đăng ký ứng dụng bên Entra, tạo client secret,
+  bảng sự cố thường gặp, và phần cân nhắc trước khi bật tự động tạo tài khoản.
+
+### Bảo mật
+
+Xác minh `id_token` là chỗ một lỗi nhỏ biến thành "ai cũng đăng nhập được bằng email tùy
+chọn", nên kiểm **chữ ký trước**, mọi trường khác chỉ được tin sau đó. 15 test tự động phủ
+các đường tấn công thật: chữ ký giả, `alg: none`, `alg: HS256` (*algorithm confusion*), sai
+`nonce`, sai `aud`/`tid`/`iss`, token hết hạn, và tình huống Microsoft xoay khóa.
+
+Ngoài ra: PKCE S256, `state` dùng đúng một lần rồi xóa khỏi CSDL trong cùng câu lệnh, token
+trả về qua **phần neo** của URL nên không lọt vào log truy cập của reverse proxy, và tham số
+`quay_lai` chỉ nhận đường dẫn nội bộ để không thành *open redirect*.
+
+`MS_TU_DONG_TAO` mặc định **tắt**: bật lên nghĩa là danh sách người truy cập hệ thống chấm
+công do danh bạ Microsoft quyết định chứ không do nhân sự quyết định nữa.
+
+### Đã kiểm chứng
+
+15 test đơn vị cho phần xác minh token + 3 test e2e cho các đầu mối API. Lái Chromium qua
+trang đăng nhập: nút hiện đúng khi máy chủ báo bật, ẩn khi tắt, bấm vào đi đúng
+`/api/xac-thuc/microsoft/bat-dau`, ô đăng nhập bằng mật khẩu vẫn còn nguyên. Tổng: 94 test
+đơn vị + 5 test proxy + 56 e2e + 12 test design token, tất cả xanh.
+
 ## [1.7.0] — 2026-08-07
 
 Đặt webapp dưới một **tiền tố đường dẫn** để dùng chung tên miền với dịch vụ khác.

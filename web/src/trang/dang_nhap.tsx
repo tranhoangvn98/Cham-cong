@@ -1,15 +1,26 @@
-import { useState, type ReactNode } from 'react';
-import { dang_nhap, doi_mat_khau } from '../api.ts';
+import { useEffect, useState, type ReactNode } from 'react';
+import { cau_hinh_dang_nhap, dang_nhap, di_dang_nhap_microsoft, doi_mat_khau } from '../api.ts';
 import { dung_hanh_dong, HopLoi, HopTot } from '../thanh_phan.tsx';
 
 interface Props {
   khi_xong: () => void;
+  /** Thong bao loi do may chu tra ve sau khi dang nhap Microsoft that bai. */
+  loi_sso?: string | null;
 }
 
-export function TrangDangNhap({ khi_xong }: Props): ReactNode {
+export function TrangDangNhap({ khi_xong, loi_sso }: Props): ReactNode {
   const [ten, dat_ten] = useState('');
   const [mk, dat_mk] = useState('');
+  const [co_microsoft, dat_co_microsoft] = useState(false);
   const hd = dung_hanh_dong();
+
+  // May chu quyet dinh co hien nut hay khong: chua khai cau hinh Entra thi an han di,
+  // hien mot nut bam vao chi bao loi thi to hon la khong co.
+  useEffect(() => {
+    let con_gan = true;
+    void cau_hinh_dang_nhap().then((c) => { if (con_gan) dat_co_microsoft(c.dang_nhap_microsoft); });
+    return () => { con_gan = false; };
+  }, []);
 
   const gui = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -25,7 +36,23 @@ export function TrangDangNhap({ khi_xong }: Props): ReactNode {
           Đăng nhập để quản lý chấm công và bảng công.
         </p>
 
-        <HopLoi loi={hd.loi} />
+        <HopLoi loi={hd.loi ?? loi_sso ?? null} />
+
+        {co_microsoft && (
+          <>
+            <button
+              type="button"
+              className="nut-microsoft"
+              onClick={di_dang_nhap_microsoft}
+            >
+              <span className="o-microsoft" aria-hidden="true">
+                <span /><span /><span /><span />
+              </span>
+              Đăng nhập bằng Microsoft
+            </button>
+            <div className="vach-hoac"><span>hoặc</span></div>
+          </>
+        )}
 
         <div className="o-nhap">
           <label htmlFor="ten">Tên đăng nhập</label>

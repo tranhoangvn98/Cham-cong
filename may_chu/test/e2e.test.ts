@@ -1071,3 +1071,21 @@ test('may day log sang thu Bay -> khong ve som, tinh 0,5 cong', async () => {
   assert.equal(bc!.phut_ot, 0);
   assert.equal(bc!.so_cong, 0.5, '240 phut / nguong 480 -> nua cong');
 });
+
+// ============================================================ dang nhap Microsoft
+test('cau hinh cong khai bao dang nhap Microsoft dang TAT khi chua khai', async () => {
+  const r = await goi('GET', '/api/xac-thuc/cau-hinh');
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['dang_nhap_microsoft'], false, 'chua khai MS_* thi phai bao tat');
+});
+
+test('chua cau hinh thi /microsoft/bat-dau tu choi thay vi chuyen huong di dau do', async () => {
+  const r = await app.inject({ method: 'GET', url: '/api/xac-thuc/microsoft/bat-dau' });
+  assert.equal(r.statusCode, 400);
+  assert.match(String((r.json() as { loi?: string }).loi), /chưa được cấu hình/);
+});
+
+test('/microsoft/goi-ve khong nhan duoc khi tinh nang tat', async () => {
+  const r = await app.inject({ method: 'GET', url: '/api/xac-thuc/microsoft/goi-ve?code=abc&state=xyz' });
+  assert.equal(r.statusCode, 400);
+});
