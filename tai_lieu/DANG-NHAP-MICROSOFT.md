@@ -27,6 +27,16 @@ APP_ID=$(az ad app create \
 
 az ad sp create --id "$APP_ID" >/dev/null      # tạo Enterprise application tương ứng
 
+# az KHÔNG tự thêm quyền mặc định như khi tạo qua giao diện. Thiếu bước này thì đầu mối
+# admin consent trả AADSTS1003031 vì ứng dụng không khai quyền nào để duyệt.
+# Bốn quyền: User.Read, openid, profile, email — đúng những gì hệ thống cần, không hơn.
+az ad app permission add --id "$APP_ID" \
+  --api 00000003-0000-0000-c000-000000000000 --api-permissions \
+  e1fe6dd8-ba31-4d61-89e7-88639da4683d=Scope \
+  37f7f235-527c-4136-accd-4a02d197296e=Scope \
+  14dad69e-099b-42c9-810b-d002981feec1=Scope \
+  64a6cdd6-aab1-4aaf-94b8-3cc8405e90d0=Scope 2>/dev/null
+
 SECRET=$(az ad app credential reset --id "$APP_ID" \
   --display-name "cham-cong-vps" --years 2 \
   --query password -o tsv)
@@ -56,11 +66,20 @@ Microsoft ngừng chạy mà không báo trước.
 ### Ba tuỳ chọn nên cân nhắc thêm
 
 **Bỏ màn hình xin quyền cho nhân viên.** Không làm thì mỗi người đăng nhập lần đầu sẽ thấy
-một màn hình hỏi đồng ý. Cần vai trò Global Administrator:
+một màn hình hỏi đồng ý. Cần vai trò Global Administrator.
 
-```bash
-az ad app permission admin-consent --id "$APP_ID"
+`az ad app permission admin-consent` **không chạy được trong Cloud Shell** (token quản lý
+danh tính của Cloud Shell không hợp với đầu mối consent, báo *"is not a supported MSI token
+audience"*). Đừng chạy `az logout` để chữa — dễ hỏng phiên. Mở đường dẫn này trên trình
+duyệt thay thế:
+
 ```
+https://login.microsoftonline.com/<TENANT_ID>/adminconsent?client_id=<CLIENT_ID>
+```
+
+Bấm **Accept**. Sau đó trình duyệt nhảy về trang chấm công kèm thông báo *"Thiếu tham số
+trả về từ Microsoft"* — bình thường, vì đầu mối consent trả về khác tham số so với luồng
+đăng nhập. Consent vẫn được ghi nhận.
 
 **Chỉ cho người được gán mới đăng nhập được.** Đây là cách chặn ở tầng Microsoft, chặt hơn
 `MS_TU_DONG_TAO=0` vì người không được gán còn không qua nổi màn hình đăng nhập:
@@ -153,8 +172,11 @@ Giá trị này là `MS_CLIENT_SECRET`.
 
 ## 3. Quyền
 
-Mặc định ứng dụng đã có `User.Read` — đủ dùng. Hệ thống chỉ cần `openid profile email`, tất
-cả đều là quyền cơ bản, **không cần admin consent**.
+Ứng dụng tạo **qua giao diện** đã có sẵn `User.Read` — đủ dùng. Ứng dụng tạo **bằng `az`**
+thì không có quyền nào, phải thêm bằng tay (xem khối lệnh ở mục 1).
+
+Hệ thống chỉ cần `openid profile email`. Cả ba đều là quyền cơ bản nên nhân viên tự đồng ý
+được — admin consent chỉ để họ khỏi phải bấm thêm một màn hình.
 
 Không cấp thêm quyền nào khác. Hệ thống không đọc mail, không đọc lịch, không đọc danh bạ.
 
@@ -178,6 +200,16 @@ docker compose up -d
 ```
 
 Không cần `--build`: các biến này đọc lúc chạy, không nhúng vào webapp.
+
+> Đang nâng cấp một bản triển khai **có sẵn** từ phiên bản chưa có tính năng này thì phải
+> lấy mã mới trước, và lần đó thì cần dựng lại ảnh:
+>
+> ```bash
+> git pull && docker compose up -d --build
+> ```
+>
+> Thiếu bước này thì `/api/xac-thuc/microsoft/goi-ve` trả *"Không có đường dẫn"* vì máy chủ
+> đang chạy ảnh cũ.
 
 ## 5. Nối tài khoản với nhân viên
 
