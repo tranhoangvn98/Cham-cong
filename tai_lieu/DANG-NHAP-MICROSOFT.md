@@ -8,7 +8,115 @@ cái là tắt hẳn, không chạy nửa vời.
 
 ---
 
-## 1. Đăng ký ứng dụng bên Entra
+## 1. Đăng ký ứng dụng — bằng dòng lệnh (nhanh hơn)
+
+Mở [shell.azure.com](https://shell.azure.com) (chọn **Bash**) rồi dán nguyên khối dưới đây.
+`az` đã cài sẵn và đã đăng nhập bằng chính tài khoản đang mở Cloud Shell.
+
+```bash
+TEN_MIEN=teams.tranhoangvietnam.com
+DUONG_DAN=/chamcong                 # để trống nếu webapp ở gốc tên miền
+
+REDIRECT="https://$TEN_MIEN$DUONG_DAN/api/xac-thuc/microsoft/goi-ve"
+
+APP_ID=$(az ad app create \
+  --display-name "Cham cong" \
+  --sign-in-audience AzureADMyOrg \
+  --web-redirect-uris "$REDIRECT" \
+  --query appId -o tsv)
+
+az ad sp create --id "$APP_ID" >/dev/null      # tạo Enterprise application tương ứng
+
+SECRET=$(az ad app credential reset --id "$APP_ID" \
+  --display-name "cham-cong-vps" --years 2 \
+  --query password -o tsv)
+
+TENANT=$(az account show --query tenantId -o tsv)
+
+cat <<EOF
+
+===== DÁN KHỐI NÀY VÀO .env TRÊN VPS =====
+MS_TENANT_ID=$TENANT
+MS_CLIENT_ID=$APP_ID
+MS_CLIENT_SECRET=$SECRET
+MS_REDIRECT_URI=$REDIRECT
+MS_GOC_WEBAPP=https://$TEN_MIEN$DUONG_DAN
+MS_TU_DONG_TAO=0
+==========================================
+EOF
+```
+
+`--sign-in-audience AzureADMyOrg` là "chỉ tài khoản trong tổ chức này". `--years 2` là hạn
+dài nhất Entra cho phép — **ghi ngày hết hạn vào lịch**, secret hết hạn thì nút đăng nhập
+Microsoft ngừng chạy mà không báo trước.
+
+> `az ad app credential reset` **thay thế** mọi secret cũ của ứng dụng. Trên ứng dụng vừa
+> tạo thì không sao, nhưng đừng chạy lại lệnh đó trên ứng dụng đang dùng.
+
+### Ba tuỳ chọn nên cân nhắc thêm
+
+**Bỏ màn hình xin quyền cho nhân viên.** Không làm thì mỗi người đăng nhập lần đầu sẽ thấy
+một màn hình hỏi đồng ý. Cần vai trò Global Administrator:
+
+```bash
+az ad app permission admin-consent --id "$APP_ID"
+```
+
+**Chỉ cho người được gán mới đăng nhập được.** Đây là cách chặn ở tầng Microsoft, chặt hơn
+`MS_TU_DONG_TAO=0` vì người không được gán còn không qua nổi màn hình đăng nhập:
+
+```bash
+SP_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv)
+az rest --method PATCH \
+  --url "https://graph.microsoft.com/v1.0/servicePrincipals/$SP_ID" \
+  --body '{"appRoleAssignmentRequired": true}'
+```
+
+Sau đó gán người dùng/nhóm trong Entra → Enterprise applications → **Cham cong** → Users
+and groups.
+
+**Thêm địa chỉ chuyển hướng khi chạy thử ở máy cá nhân:**
+
+```bash
+az ad app update --id "$APP_ID" --web-redirect-uris \
+  "$REDIRECT" "http://localhost:8080/api/xac-thuc/microsoft/goi-ve"
+```
+
+Lệnh này **ghi đè** cả danh sách nên phải liệt kê lại địa chỉ cũ.
+
+### Kiểm tra lại
+
+```bash
+az ad app show --id "$APP_ID" \
+  --query "{ten:displayName, doi_tuong:signInAudience, chuyen_huong:web.redirectUris}" -o yamlc
+```
+
+### Không mở được Cloud Shell?
+
+Cloud Shell cần một subscription Azure. Tổ chức chỉ dùng Microsoft 365 (không có
+subscription) thì chạy `az` ngay trên VPS:
+
+```bash
+# Rocky/Alma/RHEL
+rpm --import https://packages.microsoft.com/keys/microsoft.asc
+dnf install -y https://packages.microsoft.com/config/rhel/9/packages-microsoft-prod.rpm
+dnf install -y azure-cli
+
+az login --allow-no-subscriptions --use-device-code
+```
+
+`--allow-no-subscriptions` là phần bắt buộc với tenant không có subscription. Đăng nhập
+xong thì chạy đúng khối lệnh ở trên.
+
+### Cần quyền gì
+
+Tài khoản chạy các lệnh này phải có vai trò **Application Developer** trở lên (hoặc
+Global Administrator). Thiếu quyền thì `az ad app create` trả
+`Insufficient privileges to complete the operation`.
+
+---
+
+## 1b. Đăng ký ứng dụng — bằng giao diện web
 
 Vào [Microsoft Entra admin center](https://entra.microsoft.com) → **Identity** →
 **Applications** → **App registrations** → **New registration**.
