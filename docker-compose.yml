@@ -35,6 +35,8 @@ services:
       JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-2592000}
       DEVICE_TZ_OFFSET_HOURS: ${DEVICE_TZ_OFFSET_HOURS:-7}
       THU_MUC_ANH: /du_lieu/anh_cham_cong
+      THU_MUC_HO_SO: /du_lieu/ho_so
+      TEP_TOI_DA_BYTE: ${TEP_TOI_DA_BYTE:-15728640}
       GEOFENCE_BAN_KINH_M: ${GEOFENCE_BAN_KINH_M:-200}
       MAY_OFFLINE_SAU_GIAY: ${MAY_OFFLINE_SAU_GIAY:-180}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
@@ -60,6 +62,9 @@ services:
       ADMIN_MAT_KHAU: ${ADMIN_MAT_KHAU:-}
     volumes:
       - anh_cham_cong:/du_lieu/anh_cham_cong
+      # Hop dong scan, bien ban... Phai la volume rieng: mat thu muc nay la mat ban goc
+      # ho so nhan su, khong khoi phuc duoc tu CSDL vi CSDL chi giu sieu du lieu.
+      - ho_so:/du_lieu/ho_so
     # May ZKTeco chi noi duoc HTTP thuong (nhieu firmware khong lam TLS),
     # nen cong 8080 phai vao duoc tu mang co may cham cong.
     #
@@ -108,5 +113,6 @@ services:
 volumes:
   pgdata:
   anh_cham_cong:
+  ho_so:
   caddy_data:
   caddy_config:

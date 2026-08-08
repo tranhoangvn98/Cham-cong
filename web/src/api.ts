@@ -265,6 +265,26 @@ export async function doi_mat_khau(mat_khau_cu: string, mat_khau_moi: string): P
 }
 
 /**
+ * Gui tep len bang multipart.
+ *
+ * KHONG tu dat content-type: trinh duyet phai sinh header do vi con phai kem chuoi
+ * boundary. Dat tay se ra mot header thieu boundary, va may chu khong tach duoc cac phan.
+ */
+export async function gui_tep<T = unknown>(duong_dan: string, du_lieu: FormData): Promise<T> {
+  const res = await fetch(`${GOC}${duong_dan}`, {
+    method: 'POST',
+    headers: phien === null ? {} : { authorization: `Bearer ${phien.token_truy_cap}` },
+    body: du_lieu,
+  });
+  const than: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const loi = (than as { loi?: string } | null)?.loi;
+    throw new LoiApi(res.status, loi ?? `Không tải được tệp lên (lỗi ${res.status}).`);
+  }
+  return than as T;
+}
+
+/**
  * Tai tep (CSV) qua fetch de gan duoc header Authorization —
  * the <a download> thuong khong gui duoc token.
  */

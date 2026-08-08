@@ -13,6 +13,7 @@ import { TrangDuyetDon } from './trang/duyet_don.tsx';
 import { TrangCaLam, TrangDiaDiem, TrangNgayLe } from './trang/cai_dat.tsx';
 import { TrangLanQuet } from './trang/lan_quet.tsx';
 import { TrangNguoiDung, TrangNhatKy } from './trang/nguoi_dung.tsx';
+import { TrangHoSo } from './trang/ho_so.tsx';
 
 interface MucMenu {
   duong_dan: string;
@@ -60,7 +61,13 @@ function duoc_xem(m: MucMenu): boolean {
   return true;
 }
 
+const RE_HO_SO = /^\/nhan-vien\/([0-9a-f-]{36})$/i;
+
 function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
+  // Tuyen co tham so duy nhat cua app. Bat truoc switch vi switch chi so khop chinh xac.
+  const ho_so = RE_HO_SO.exec(duong_dan);
+  if (ho_so !== null) return <TrangHoSo nhan_vien_id={ho_so[1] as string} />;
+
   switch (duong_dan) {
     case '/': return <TrangDashboard />;
     case '/bang-cong': return <TrangBangCong />;

@@ -4,6 +4,7 @@ import {
   DangTai, HopLoi, HopThoai, HopThoaiNhap, TEN_VAI_TRO, Trong,
   dung_hanh_dong, dung_nap, ngay_viet,
 } from '../thanh_phan.tsx';
+import { LienKet } from '../dinh_tuyen.tsx';
 
 /**
  * Tieu de tep mau nhap nhan vien.
@@ -121,7 +122,7 @@ export function TrangNhanVien(): ReactNode {
                   <th>Vào làm</th>
                   <th className="canh-giua">Chấm công ĐT</th>
                   <th className="canh-giua">Tài khoản</th>
-                  {la_nhan_su() && <th></th>}
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -129,7 +130,9 @@ export function TrangNhanVien(): ReactNode {
                   <tr key={n.id} style={n.dang_hoat_dong ? undefined : { opacity: 0.55 }}>
                     <td className="so">{n.ma_nv}</td>
                     <td>
-                      {n.ho_ten}
+                      <LienKet den={`/nhan-vien/${n.id}`} tieu_de="Mở hồ sơ nhân sự">
+                        {n.ho_ten}
+                      </LienKet>
                       {!n.dang_hoat_dong && (
                         <span className="nhan nhan-mo" style={{ marginLeft: 6 }}>đã nghỉ</span>
                       )}
@@ -154,13 +157,16 @@ export function TrangNhanVien(): ReactNode {
                             </button>
                           : <span style={{ color: 'var(--chu-mo)' }}>—</span>}
                     </td>
-                    {la_nhan_su() && (
-                      <td>
-                        <button className="nut-nho nut-phang" onClick={() => dat_dang_sua(n)}>
+                    <td className="khong-ngat">
+                      <LienKet den={`/nhan-vien/${n.id}`} lop="nut nut-nho nut-phang">
+                        Hồ sơ
+                      </LienKet>
+                      {la_nhan_su() && (
+                        <> <button className="nut-nho nut-phang" onClick={() => dat_dang_sua(n)}>
                           Sửa
-                        </button>
-                      </td>
-                    )}
+                        </button></>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

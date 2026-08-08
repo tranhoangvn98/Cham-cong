@@ -2,6 +2,93 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.12.0] — 2026-08-08
+
+**Hồ sơ từng nhân sự** — mở một người ra là thấy đủ: hợp đồng, biên bản, lương, công việc,
+báo cáo, khiếu nại, thiết bị được cấp. Vào từ trang Nhân viên (bấm tên người, hoặc nút
+"Hồ sơ"), địa chỉ `/nhan-vien/<id>`.
+
+### Thêm mới
+
+- **Hợp đồng lao động** — số HĐ, loại, chức danh, nơi làm việc, ngày ký, khoảng hiệu lực,
+  lương ghi trên hợp đồng, trạng thái.
+- **Biên bản / thỏa thuận** — phụ lục, cam kết, kỷ luật, khen thưởng, biên bản họp, bàn giao.
+  Phụ lục gắn được vào một hợp đồng cụ thể; biên bản rời thì để trống.
+- **Lương** — lịch sử các mức lương theo ngày hiệu lực, kèm lý do và số quyết định. Đây là
+  mức lương *theo hợp đồng / quyết định*, không phải bảng lương thực trả hằng tháng (phần đó
+  vẫn do ERP tính, xem cột `nhan_vien.ma_erp`).
+- **Công việc** — giao việc, hạn, ưu tiên, trạng thái, kết quả. Chuyển sang "hoàn thành" thì
+  hệ thống tự đóng mốc thời gian.
+- **Báo cáo** — theo ngày / tuần / tháng / quý / năm / đột xuất, có ô phản hồi của quản lý.
+- **Khiếu nại** — nhân viên tự gửi, phân loại và mức độ, có vòng đời xử lý và phản hồi.
+- **Thiết bị cấp phát** — laptop, điện thoại, SIM, thẻ từ… kèm **số sê-ri, địa chỉ IP và
+  MAC**, ngày cấp, ngày thu hồi, tình trạng.
+- **Tệp đính kèm** cho cả bảy nhóm: PDF, JPG, PNG, DOCX, XLSX tối đa 15 MB.
+
+### Phân quyền — phần quan trọng nhất của thay đổi này
+
+Hồ sơ nhân sự chứa thứ nhạy cảm nhất hệ thống, nên quy tắc được gom vào **một bảng duy nhất**
+(`bao_mat/quyen_ho_so.ts`) có test riêng cho từng ô, thay vì rải rác trong hai chục route.
+Các đường API cũng được sinh từ một bảng đặc tả chung — viết tay bảy lần thì sớm muộn có một
+lần quên gọi kiểm quyền, và cái quên đó im lặng: không lỗi, không test đỏ, chỉ là lương của
+người khác hiện ra trên màn hình ai đó.
+
+- **Trưởng phòng không đọc được khiếu nại**, kể cả của cấp dưới mình. Khiếu nại rất thường
+  nhắm vào chính người quản lý trực tiếp; cho họ đọc được thì không ai dám gửi, và kênh khiếu
+  nại thành một cái hộp rỗng mà nhìn vào tưởng mọi việc đều ổn.
+- **Trưởng phòng không đọc được lương, hợp đồng, biên bản.** Họ cần biết cấp dưới *làm gì*
+  (công việc, báo cáo, thiết bị), không cần biết cấp dưới *được trả bao nhiêu*.
+- **Nhân viên xem được toàn bộ hồ sơ của chính mình** nhưng không tự sửa hợp đồng, lương hay
+  danh sách thiết bị — đó là hồ sơ do công ty lập. Ngược lại họ **phải** tự gửi được khiếu nại
+  và báo cáo, nếu không hai mục đó không còn ý nghĩa gì.
+- Người gửi không tự kết luận khiếu nại của mình là "đã giải quyết", không tự viết phản hồi
+  của công ty, và **không xóa được** — xóa được thì một khiếu nại biến mất không để lại vết.
+- Tổng quan hồ sơ **không đếm** nhóm mà người gọi không được xem: "nhân viên này có 3 khiếu
+  nại" tự nó đã là một thông tin.
+
+### Ràng buộc đặt ở tầng CSDL
+
+Dữ liệu này sống lâu hơn mã nguồn và đường nhập liệu không chỉ có một, nên các ràng buộc nằm
+ở CSDL chứ không chỉ ở ứng dụng:
+
+- Hợp đồng **không xác định thời hạn** không được có ngày hết hạn (BLLĐ 2019 Điều 20) — điền
+  vào là mâu thuẫn pháp lý, không phải chuyện để ứng dụng tự nhớ.
+- Một ngày hiệu lực chỉ được một mức lương; hai dòng cùng ngày thì không ai biết dòng nào
+  đang áp dụng.
+- Hai thiết bị **đang dùng** không được trùng IP tĩnh (trùng IP là lỗi thật trong mạng, không
+  phải chuyện ghi chép); thu hồi máy cũ rồi thì IP dùng lại được. IP lưu kiểu `inet` nên
+  Postgres tự chặn địa chỉ sai định dạng.
+
+### Bảo mật tệp đính kèm
+
+- Loại tệp nhận dạng bằng **magic byte**, không tin `content-type` lẫn đuôi tên: một tệp
+  `.exe` đổi tên thành `.pdf` vẫn là `.exe`.
+- Tải về **luôn** ở dạng `attachment`, kèm `nosniff` và CSP sandbox. Webapp và tệp dùng chung
+  một gốc, nên một PDF mở inline chạy được JavaScript trong ngữ cảnh của chính webapp — tức
+  XSS với đầy đủ quyền của người đang đăng nhập.
+- Quyền của tệp đi theo quyền của nhóm chứa nó, nên không tải vòng qua đường tệp được.
+- Thêm volume Docker `ho_so`: tệp nằm trên đĩa, CSDL chỉ giữ siêu dữ liệu, mất volume là mất
+  bản gốc hợp đồng.
+
+### Sửa
+
+- Biên bản trước đó **bắt buộc** phải gắn vào một hợp đồng, do đọc trường tùy chọn bằng hàm
+  bắt buộc. Form trên web không gửi trường đó nên mọi biên bản đều hỏng. Lái Chromium mới lộ
+  ra — API đọc riêng thì vẫn "đúng".
+- `test/quyen_ho_so.test.ts` lại rơi vào đúng cái bẫy của `csv.test.ts` lần trước: viết xong
+  nhưng không khai trong `npm test` nên không chạy lần nào. Lần này thêm hẳn
+  `test/moi_test_deu_chay.test.ts` tự quét thư mục và bắt lỗi nếu còn tệp nào chưa được khai —
+  đã thử gỡ một tệp ra để chắc là nó thật sự đỏ.
+
+### Đã kiểm chứng
+
+Ngoài test tự động: dựng dữ liệu thật cho một nhân viên đủ bảy nhóm rồi lái Chromium hai lần
+— một lần bằng tài khoản nhân sự (thấy đủ 7 tab), một lần bằng **trưởng phòng cùng phòng ban**
+(chỉ thấy 3 tab: Công việc, Báo cáo, Thiết bị; ô "Lương hiện tại" ghi *không có quyền xem*).
+Ràng buộc CSDL cũng được thử trực tiếp bằng SQL, gồm cả các trường hợp hợp lệ phải đi qua được
+để chắc ràng buộc không quá tay.
+Tổng: 118 test đơn vị + 5 proxy + 91 e2e + 12 design token, tất cả xanh.
+
 ## [1.11.1] — 2026-08-08
 
 ### Tài liệu

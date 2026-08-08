@@ -191,6 +191,79 @@ từng dòng nhưng **không ghi gì**. Phải gọi lại với `xem_truoc: fal
 
 Cả hai đều ghi nhật ký kiểm toán khi ghi thật.
 
+## 3.2. Hồ sơ nhân sự — `/api`
+
+Bảy nhóm dữ liệu gắn với một nhân viên. Đường dẫn theo cùng một khuôn:
+
+| Method | Đường dẫn |
+|---|---|
+| GET | `/nhan-vien/:id/ho-so` — tổng quan: đếm từng nhóm + hợp đồng & lương đang hiệu lực |
+| GET / POST | `/nhan-vien/:id/<nhóm>` |
+| PATCH / DELETE | `/<nhóm>/:ban_ghi_id` |
+
+`<nhóm>` là một trong: `hop-dong`, `bien-ban`, `luong`, `cong-viec`, `bao-cao`,
+`khieu-nai`, `thiet-bi-cap-phat`.
+
+### Bảng phân quyền
+
+Đây là phần quan trọng nhất của nhóm API này. Quy tắc nằm gọn trong
+`bao_mat/quyen_ho_so.ts` và có test đơn vị cho từng ô.
+
+| Nhóm | admin / nhân sự | trưởng phòng (cấp dưới) | chính mình | người ngoài |
+|---|---|---|---|---|
+| Hợp đồng | đọc + sửa | **không** | chỉ đọc | không |
+| Biên bản | đọc + sửa | **không** | chỉ đọc | không |
+| Lương | đọc + sửa | **không** | chỉ đọc | không |
+| Công việc | đọc + sửa | đọc + sửa | đọc + cập nhật tiến độ | không |
+| Báo cáo | đọc + sửa | đọc + sửa | đọc + nộp | không |
+| Khiếu nại | đọc + sửa | **không** | đọc + gửi | không |
+| Thiết bị cấp phát | đọc + sửa | chỉ đọc | chỉ đọc | không |
+
+Hai ô đáng chú ý:
+
+- **Trưởng phòng không đọc được khiếu nại**, kể cả của cấp dưới mình. Khiếu nại rất thường
+  nhắm vào chính người quản lý trực tiếp; cho họ đọc được thì không ai dám gửi, và kênh
+  khiếu nại thành một cái hộp rỗng mà nhìn vào tưởng là mọi việc ổn.
+- **Trưởng phòng không đọc được lương và hợp đồng.** Họ cần biết cấp dưới *làm gì*, không
+  cần biết cấp dưới *được trả bao nhiêu*.
+
+Nhân viên tự sửa được rất ít ô trên bản ghi của chính mình: công việc chỉ `trang_thai` và
+`ket_qua` (không tự đổi hạn), khiếu nại chỉ nội dung (không tự kết luận là đã giải quyết,
+không tự viết phản hồi của công ty). Nhân viên **không xóa được** khiếu nại hay báo cáo của
+mình — nếu xóa được thì một khiếu nại "biến mất" mà không để lại vết nào.
+
+Tổng quan `/ho-so` **không đếm** nhóm mà người gọi không được xem: "nhân viên này có 3 khiếu
+nại" tự nó đã là một thông tin.
+
+### Tệp đính kèm
+
+| Method | Đường dẫn | Ghi chú |
+|---|---|---|
+| POST | `/nhan-vien/:id/tep` | multipart: `tep` + `nhom` + `thuoc_id?` |
+| GET | `/ho-so/tep/:tep_id` | tải về |
+| DELETE | `/ho-so/tep/:tep_id` | xóa cả bản ghi lẫn tệp trên đĩa |
+
+- Nhận PDF, JPG, PNG, DOCX, XLSX; tối đa `TEP_TOI_DA_BYTE` (mặc định 15 MB). Loại tệp nhận
+  dạng bằng **magic byte**, đổi đuôi tên không qua được.
+- Quyền của tệp đi theo quyền của **nhóm** chứa nó: trưởng phòng không đọc được hợp đồng thì
+  cũng không tải được tệp hợp đồng.
+- Tải về **luôn** ở dạng `Content-Disposition: attachment`, kèm `nosniff` và CSP sandbox.
+  Webapp và tệp đính kèm dùng chung một gốc, nên một PDF mở inline chạy được JavaScript
+  trong ngữ cảnh của chính webapp — tức XSS với đầy đủ quyền người đang đăng nhập.
+- Tệp nằm trên đĩa (`THU_MUC_HO_SO`), CSDL chỉ giữ siêu dữ liệu. Trong Docker đó là volume
+  `ho_so`; mất volume là mất bản gốc.
+
+### Ràng buộc nghiệp vụ ở tầng CSDL
+
+Đặt ở CSDL chứ không chỉ ở ứng dụng, vì dữ liệu này sống lâu hơn mã nguồn và đường nhập liệu
+không chỉ có một.
+
+- Hợp đồng **không xác định thời hạn** thì không được có ngày hết hạn (BLLĐ 2019 Điều 20).
+- Một nhân viên chỉ có **một mức lương cho mỗi ngày hiệu lực**.
+- Hai thiết bị **đang dùng** không được trùng địa chỉ IP; thu hồi máy cũ rồi thì IP dùng lại
+  được. IP lưu kiểu `inet` nên Postgres tự chặn địa chỉ sai định dạng.
+- Ngày thu hồi không được trước ngày cấp; ngày hết hạn không được trước ngày hiệu lực.
+
 ## 4. Duyệt đơn — `/api/duyet`
 
 | Method | Đường dẫn | Quyền |

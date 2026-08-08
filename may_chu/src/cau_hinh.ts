@@ -171,6 +171,12 @@ export const cau_hinh = {
 
   /** Kich thuoc anh selfie toi da (byte). */
   anh_toi_da_byte: so('ANH_TOI_DA_BYTE', 3 * 1024 * 1024),
+
+  /** Noi luu tep dinh kem ho so nhan su (hop dong scan, bien ban...). */
+  thu_muc_ho_so: resolve(process.cwd(), chu('THU_MUC_HO_SO', './du_lieu/ho_so')),
+
+  /** Kich thuoc mot tep dinh kem toi da (byte). Hop dong scan nhieu trang thi nang len. */
+  tep_toi_da_byte: so('TEP_TOI_DA_BYTE', 15 * 1024 * 1024),
 } as const;
 
 /** Offset may cham cong duoi dang milli-giay — dung khi doi gio dia phuong <-> UTC. */

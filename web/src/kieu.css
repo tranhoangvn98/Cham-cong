@@ -571,3 +571,39 @@ textarea { min-height: 66px; resize: vertical; }
 .o-chon-vai-tro:hover { background: var(--nen-mo); }
 .o-chon-vai-tro input { margin-top: 3px; flex: none; }
 .o-chon-vai-tro > span { display: flex; flex-direction: column; }
+
+/* ---------------------------------------------------------------- thanh tab ho so */
+.thanh-tab {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--vien);
+  margin-bottom: 14px;
+}
+.thanh-tab .tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 9px 13px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--chu-nhat);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.thanh-tab .tab:hover:not(:disabled) { color: var(--chu); background: var(--nen-mo); }
+.thanh-tab .tab-dang-mo {
+  color: var(--chinh-dam);
+  border-bottom-color: var(--chinh-dam);
+}
+.tab-so {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--nen-mo);
+  font-size: 11px;
+  font-weight: 600;
+}
+.thanh-tab .tab-dang-mo .tab-so { background: var(--chinh-dam); color: #fff; }
