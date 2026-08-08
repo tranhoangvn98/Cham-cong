@@ -1241,3 +1241,168 @@ test('xuat CSV log cham cong: co BOM, dung gio may, chong CSV injection', async 
   const cam = await goi('GET', `/api/lan-quet/xuat-csv?tu=${NGAY}&den=${NGAY}`, { token: token_nhan_vien });
   assert.equal(cam.ma, 403);
 });
+
+// ============================================================ nhap hang loat
+test('nhap nhan vien: xem truoc khong ghi gi, bao dung tung dong', async () => {
+  const csv = [
+    'Mã NV;Họ và tên;PIN máy;Bộ phận;Ngày vào;Email',
+    'NVI001;Nguyễn Thị Nhập;7001;Kinh doanh;05/01/2026;nhap1@congty.vn',
+    'NVI002;Trần Văn Nhập;7002;Kinh doanh;2026-02-10;',
+    'NVI003;Lê Lỗi PIN;abc;Kinh doanh;;',      // PIN co chu -> loi
+    'NVI004;;7004;;;',                          // thieu ho ten -> loi
+    'NVI001;Trùng mã;7005;;;',                  // trung ma trong tep -> loi
+  ].join('\n');
+
+  const xem = await goi('POST', '/api/nhap/nhan-vien', {
+    token: token_admin, body: { noi_dung: csv, xem_truoc: true, tao_thieu: true },
+  });
+  assert.equal(xem.ma, 200);
+  assert.equal(xem.body['se_tao'], 2);
+  assert.equal(xem.body['loi'], 3);
+
+  const chua_ghi = await truy_van_mot<{ so: number }>(
+    "select count(*)::int as so from nhan_vien where ma_nv like 'NVI%'");
+  assert.equal(chua_ghi?.so, 0, 'xem truoc TUYET DOI khong duoc ghi gi');
+});
+
+test('nhap nhan vien: ghi that, ngay doc dung dd/mm/yyyy', async () => {
+  const csv = [
+    'Mã NV;Họ và tên;PIN máy;Bộ phận;Ngày vào',
+    'NVI001;Nguyễn Thị Nhập;7001;Kinh doanh;05/01/2026',
+    'NVI002;Trần Văn Nhập;7002;Kinh doanh;2026-02-10',
+  ].join('\n');
+
+  const r = await goi('POST', '/api/nhap/nhan-vien', {
+    token: token_admin, body: { noi_dung: csv, xem_truoc: false, tao_thieu: true },
+  });
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['se_tao'], 2);
+
+  const a = await truy_van_mot<{ ho_ten: string; pin_may: string; ngay_vao: string }>(
+    "select ho_ten, pin_may, ngay_vao from nhan_vien where ma_nv = 'NVI001'");
+  assert.equal(a?.ho_ten, 'Nguyễn Thị Nhập');
+  assert.equal(a?.pin_may, '7001');
+  // 05/01/2026 la NGAY 5 THANG 1 theo thong le Viet Nam, khong phai 1 thang 5.
+  assert.equal(String(a!.ngay_vao).slice(0, 10), '2026-01-05');
+
+  const pb = await truy_van_mot<{ so: number }>(
+    "select count(*)::int as so from phong_ban where ten = 'Kinh doanh'");
+  assert.equal(pb?.so, 1, 'tao_thieu phai tao phong ban dung mot lan');
+});
+
+test('nhap nhan vien lan hai: cap nhat, o de trong KHONG xoa gia tri cu', async () => {
+  const csv = [
+    'Mã NV;Họ và tên;PIN máy;Ngày vào',
+    'NVI001;Nguyễn Thị Nhập (đã đổi tên);;',   // PIN va ngay de trong
+  ].join('\n');
+
+  const r = await goi('POST', '/api/nhap/nhan-vien', {
+    token: token_admin, body: { noi_dung: csv, xem_truoc: false },
+  });
+  assert.equal(r.ma, 200, `phai thanh cong: ${JSON.stringify(r.body)}`);
+  assert.equal(r.body['se_cap_nhat'], 1);
+
+  const a = await truy_van_mot<{ ho_ten: string; pin_may: string; ngay_vao: string }>(
+    "select ho_ten, pin_may, ngay_vao from nhan_vien where ma_nv = 'NVI001'");
+  assert.match(a!.ho_ten, /đã đổi tên/);
+  assert.equal(a?.pin_may, '7001', 'o de trong = khong doi, KHONG phai xoa');
+  assert.equal(String(a!.ngay_vao).slice(0, 10), '2026-01-05');
+});
+
+test('nhap nhan vien: PIN dang thuoc nguoi khac thi bi tu choi', async () => {
+  const csv = 'Mã NV;Họ và tên;PIN máy\nNVI002;Trần Văn Nhập;7001';
+  const r = await goi('POST', '/api/nhap/nhan-vien', {
+    token: token_admin, body: { noi_dung: csv, xem_truoc: true },
+  });
+  assert.equal(r.body['loi'], 1);
+  const dong = (r.body['dong'] as unknown as Record<string, unknown>[])[0];
+  assert.match(String(dong?.['loi']), /thuộc về một nhân viên khác/);
+});
+
+test('nhap nhan vien: thieu cot bat buoc thi tu choi ca tep', async () => {
+  const r = await goi('POST', '/api/nhap/nhan-vien', {
+    token: token_admin, body: { noi_dung: 'ten;pin\nAn;1', xem_truoc: true },
+  });
+  assert.equal(r.ma, 400);
+  assert.match(String(r.body['loi']), /Mã NV/);
+});
+
+test('nhap lich su cham cong tu CSV co tieu de, ngay va gio o hai cot', async () => {
+  const csv = [
+    'User ID,Ngày,Giờ,Status',
+    '7001,05/08/2026,08:03:00,0',
+    '7001,05/08/2026,17:35:00,1',
+    '7002,05/08/2026,08:10:00,0',
+    'khong-co-gio,05/08/2026,,0',
+  ].join('\n');
+
+  const xem = await goi('POST', '/api/nhap/lan-quet', {
+    token: token_admin, body: { noi_dung: csv, xem_truoc: true },
+  });
+  assert.equal(xem.ma, 200);
+  assert.equal(xem.body['ban_ghi'], 3);
+  assert.equal(xem.body['dong_bo_qua'], 1);
+  assert.equal(xem.body['so_pin'], 2);
+
+  const chua_ghi = await truy_van_mot<{ so: number }>(
+    "select count(*)::int as so from lan_quet where pin_may = '7001'");
+  assert.equal(chua_ghi?.so, 0, 'xem truoc khong duoc ghi');
+
+  const that = await goi('POST', '/api/nhap/lan-quet', {
+    token: token_admin, body: { noi_dung: csv, xem_truoc: false, serial: 'TEP-USB-01' },
+  });
+  assert.equal(that.body['da_nhan'], 3);
+
+  // Nhap lai dung tep do -> chong trung, khong nhan them ban ghi nao.
+  const lai = await goi('POST', '/api/nhap/lan-quet', {
+    token: token_admin, body: { noi_dung: csv, xem_truoc: false, serial: 'TEP-USB-01' },
+  });
+  assert.equal(lai.body['da_nhan'], 0, 'nhap lai cung tep khong duoc nhan doi cong');
+  assert.equal(lai.body['trung'], 3);
+
+  // Va bang cong cua ngay do phai duoc tinh.
+  const nv = await truy_van_mot<{ id: string }>("select id from nhan_vien where ma_nv = 'NVI001'");
+  const bc = await truy_van_mot<{ trang_thai: string; phut_lam: number }>(
+    'select trang_thai, phut_lam from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+    [nv!.id, '2026-08-05']);
+  assert.notEqual(bc, null, 'nhap lich su phai tinh lai bang cong nhu may day truc tiep');
+  assert.equal(bc!.trang_thai, 'co_mat');
+});
+
+test('nhap lich su: xem truoc bao PIN chua gan cho ai — truoc khi ghi, khong phai sau', async () => {
+  const csv = [
+    'PIN;Thời điểm',
+    '7001;07/08/2026 08:00:00',   // NVI001 da nhan
+    '96001;07/08/2026 08:01:00',  // khong ai nhan
+    '96002;07/08/2026 08:02:00',  // khong ai nhan
+  ].join('\n');
+
+  const xem = await goi('POST', '/api/nhap/lan-quet', {
+    token: token_admin, body: { noi_dung: csv, xem_truoc: true },
+  });
+  assert.equal(xem.ma, 200);
+  const chua = [...(xem.body['chua_map_pin'] as string[])].sort();
+  assert.deepEqual(chua, ['96001', '96002'],
+    'PIN da co chu phai duoc loai ra, PIN vo chu phai bao het');
+
+  const da_ghi = await truy_van_mot<{ so: number }>(
+    "select count(*)::int as so from lan_quet where pin_may in ('96001','96002')");
+  assert.equal(da_ghi?.so, 0, 'xem truoc van tuyet doi khong duoc ghi');
+});
+
+test('nhap lich su: chap nhan ca dinh dang ATTLOG tho cua may', async () => {
+  const tho = ['7002\t2026-08-06 08:00:00\t0\t15\t0', '7002\t2026-08-06 17:30:00\t1\t15\t0'].join('\n');
+  const r = await goi('POST', '/api/nhap/lan-quet', {
+    token: token_admin, body: { noi_dung: tho, xem_truoc: false, serial: 'TEP-USB-01' },
+  });
+  assert.equal(r.body['da_nhan'], 2);
+});
+
+test('nhap: nhan vien thuong khong duoc nhap gi', async () => {
+  for (const duong of ['/api/nhap/nhan-vien', '/api/nhap/lan-quet']) {
+    const r = await goi('POST', duong, {
+      token: token_nhan_vien, body: { noi_dung: 'a\n1', xem_truoc: true },
+    });
+    assert.equal(r.ma, 403, `${duong} phai chan nhan vien thuong`);
+  }
+});

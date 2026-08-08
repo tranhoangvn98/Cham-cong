@@ -9,6 +9,7 @@ import { tuyen_adms } from './adms/tuyen.ts';
 import { tuyen_dang_nhap } from './tuyen/dang_nhap.ts';
 import { tuyen_danh_muc } from './tuyen/danh_muc.ts';
 import { tuyen_bang_cong } from './tuyen/bang_cong.ts';
+import { tuyen_nhap_du_lieu } from './tuyen/nhap_du_lieu.ts';
 import { tuyen_don_tu } from './tuyen/don_tu.ts';
 import { tuyen_toi } from './tuyen/toi.ts';
 import { truy_van_mot } from './csdl/ket_noi.ts';
@@ -117,6 +118,7 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   await app.register(tuyen_dang_nhap, { prefix: '/api/xac-thuc' });
   await app.register(tuyen_danh_muc, { prefix: '/api' });
   await app.register(tuyen_bang_cong, { prefix: '/api' });
+  await app.register(tuyen_nhap_du_lieu, { prefix: '/api' });
   await app.register(tuyen_don_tu, { prefix: '/api/duyet' });
   await app.register(tuyen_toi, { prefix: '/api/toi' });
 

@@ -2,10 +2,18 @@
 import { useState, type ReactNode } from 'react';
 import { goi, la_nhan_su, tai_tep } from '../api.ts';
 import {
-  DangTai, HopLoi, HopTot, HopThoai, NhanDon, TEN_NGUON, Trong,
+  DangTai, HopLoi, HopTot, HopThoai, HopThoaiNhap, NhanDon, TEN_NGUON, Trong,
   dung_hanh_dong, dung_nap, hom_nay, ngay_gio,
 } from '../thanh_phan.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
+
+/** Tep mau nhap lich su: dang de doc nhat, may xuat ra dang nao bo doc cung nhan duoc. */
+const MAU_LAN_QUET = [
+  'PIN;Thời điểm;Trạng thái',
+  '1001;01/03/2026 07:52:14;0',
+  '1001;01/03/2026 17:06:41;1',
+  '1002;2026-03-01 08:01:00;0',
+].join('\r\n') + '\r\n';
 
 interface LanQuet {
   id: string;
@@ -45,6 +53,8 @@ export function TrangLanQuet(): ReactNode {
   const [trang_thai_duyet, dat_trang_thai_duyet] = useState('');
   const [so_dong, dat_so_dong] = useState(MOI_TRANG);
   const [gan_lai_pin, dat_gan_lai_pin] = useState<string | null>(null);
+  const [dang_nhap_tep, dat_dang_nhap_tep] = useState(false);
+  const [serial_nhap, dat_serial_nhap] = useState('');
   const hd = dung_hanh_dong();
 
   // Doi bo loc thi quay ve trang dau — giu nguyen so dong da mo rong se hieu nham la
@@ -85,6 +95,9 @@ export function TrangLanQuet(): ReactNode {
             Dữ liệu thô từ máy, không bao giờ bị sửa. Dùng để đối chiếu khi nhân viên thắc mắc bảng công.
           </p>
         </div>
+        {la_nhan_su() && (
+          <button onClick={() => dat_dang_nhap_tep(true)}>Nhập lịch sử từ file</button>
+        )}
       </div>
 
       {la_nhan_su() && (chua_map.du_lieu ?? []).length > 0 && (
@@ -269,6 +282,47 @@ export function TrangLanQuet(): ReactNode {
             </button>
           )}
         </div>
+      )}
+
+      {dang_nhap_tep && (
+        <HopThoaiNhap
+          tieu_de="Nhập lịch sử chấm công từ file"
+          duong_dan="/api/nhap/lan-quet"
+          tep_mau={MAU_LAN_QUET}
+          ten_tep_mau="mau_lich_su_cham_cong.csv"
+          them_than={serial_nhap === '' ? undefined : { serial: serial_nhap }}
+          mo_ta={
+            <>
+              Dùng cho dữ liệu cũ xuất ra từ máy qua USB, hoặc từ ERP đang chạy. File đi qua
+              đúng đường tiếp nhận của máy thật: cùng bộ chống trùng, cùng cách map PIN, và
+              bảng công những ngày liên quan được tính lại ngay.
+              Nhập <strong>lại cùng một file</strong> cũng an toàn — bản ghi trùng bị bỏ qua.
+              Nhận cả file ATTLOG thô của máy lẫn CSV/Excel có dòng tiêu đề (cột ngày và giờ
+              tách riêng cũng được).
+            </>
+          }
+          tuy_chon={
+            <div className="o-nhap">
+              <label htmlFor="snh">Ghi nhận là của máy</label>
+              <select id="snh" value={serial_nhap} onChange={(e) => dat_serial_nhap(e.target.value)}>
+                <option value="">— Nhập từ file (không gắn máy nào) —</option>
+                {(ds_tb.du_lieu ?? []).map((t) => (
+                  <option key={t.serial} value={t.serial}>{t.ten} ({t.serial})</option>
+                ))}
+              </select>
+              <div className="goi-y">
+                Chọn đúng máy nếu file này do chính máy đó xuất ra — nhờ vậy bộ chống trùng
+                nhận ra bản ghi máy đã đẩy lên rồi, không tạo bản sao.
+              </div>
+            </div>
+          }
+          khi_dong={() => dat_dang_nhap_tep(false)}
+          khi_xong={() => {
+            dat_dang_nhap_tep(false);
+            nap_lai();
+            chua_map.nap_lai();
+          }}
+        />
       )}
 
       {gan_lai_pin !== null && (

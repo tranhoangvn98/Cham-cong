@@ -289,3 +289,194 @@ export function dung_hanh_dong(): KetQuaHanhDong {
     },
   };
 }
+
+
+// ============================================================ nhap tu tep
+interface TomTatNhap {
+  tong?: number;
+  se_tao?: number;
+  se_cap_nhat?: number;
+  loi?: number;
+  dong?: { dong: number; ma_nv: string; ho_ten: string; viec: string; loi: string | null }[];
+  ban_ghi?: number;
+  dong_bo_qua?: number;
+  som_nhat?: string | null;
+  muon_nhat?: string | null;
+  so_pin?: number;
+  da_nhan?: number;
+  trung?: number;
+  dong_loi?: number;
+  chua_map_pin?: string[];
+}
+
+/**
+ * Hop thoai nhap tu tep, dung chung cho nhan vien va lich su cham cong.
+ *
+ * Luon di hai buoc: doc tep -> XEM TRUOC (may chu kiem het nhung khong ghi) -> nguoi dung
+ * doc ket qua roi moi bam nhap that. Nhap thang mot phat vao du lieu luong la duong nhanh
+ * nhat den mot bang cong sai ma khong ai biet sai tu dau.
+ */
+export function HopThoaiNhap(
+  { tieu_de, duong_dan, mo_ta, tep_mau, ten_tep_mau, tuy_chon, them_than, khi_dong, khi_xong }: {
+    tieu_de: string;
+    duong_dan: string;
+    mo_ta: ReactNode;
+    tep_mau: string;
+    ten_tep_mau: string;
+    /** O tuy chon rieng cua tung loai nhap, hien ngay tren o chon tep. */
+    tuy_chon?: ReactNode;
+    them_than?: Record<string, unknown>;
+    khi_dong: () => void;
+    khi_xong: () => void;
+  },
+): ReactNode {
+  const [noi_dung, dat_noi_dung] = useState('');
+  const [ten_tep, dat_ten_tep] = useState('');
+  const [xem, dat_xem] = useState<TomTatNhap | null>(null);
+  const [da_nhap, dat_da_nhap] = useState(false);
+  const hd = dung_hanh_dong();
+
+  // Doi tuy chon (vi du bat "tao muc con thieu") thi ket qua xem truoc cu khong con dung
+  // nua — bo di, bat nguoi dung kiem lai. Neu khong ho se bam "Nhap that" dua tren mot ban
+  // xem truoc tinh bang bo tuy chon khac.
+  const khoa_tuy_chon = JSON.stringify(them_than ?? {});
+  useEffect(() => {
+    dat_xem(null);
+    dat_da_nhap(false);
+  }, [khoa_tuy_chon]);
+
+  const chon_tep = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const f = e.target.files?.[0];
+    if (f === undefined) return;
+    dat_ten_tep(f.name);
+    dat_xem(null);
+    dat_da_nhap(false);
+    dat_noi_dung(await f.text());
+  };
+
+  const goi_nhap = async (xem_truoc: boolean): Promise<void> => {
+    // `hd.chay` chi tra ve thanh cong/that bai chu KHONG tra ve than phan hoi, nen phai
+    // bat ket qua ngay trong ham goi. Doc gia tri tra ve cua `chay` roi ep kieu se cho ra
+    // mot object rong ma TypeScript van nhan — hop thoai im lang khong hien gi.
+    let than: TomTatNhap | null = null;
+    const ok = await hd.chay(
+      async () => {
+        than = await goi<TomTatNhap>(duong_dan, {
+          method: 'POST',
+          body: { noi_dung, xem_truoc, ...(them_than ?? {}) },
+        });
+      },
+      xem_truoc ? undefined : 'Đã nhập xong.',
+    );
+    if (!ok || than === null) return;
+    dat_xem(than);
+    if (!xem_truoc) dat_da_nhap(true);
+  };
+
+  const tai_mau = (): void => {
+    // BOM UTF-8 de Excel tren Windows mo ra khong bi vo dau tieng Viet.
+    const blob = new Blob(['\ufeff' + tep_mau], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = ten_tep_mau;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const co_loi = (xem?.loi ?? 0) > 0;
+
+  return (
+    <HopThoai tieu_de={tieu_de} khi_dong={khi_dong}>
+      <HopLoi loi={hd.loi} />
+      <HopTot chu={hd.tot} />
+
+      <div className="mo-ta" style={{ marginBottom: 12 }}>{mo_ta}</div>
+
+      <div className="hang-nut" style={{ marginBottom: 12 }}>
+        <button type="button" onClick={tai_mau}>Tải tệp mẫu</button>
+      </div>
+
+      {tuy_chon}
+
+      <div className="o-nhap">
+        <label htmlFor="tep">Chọn tệp CSV</label>
+        <input id="tep" type="file" accept=".csv,.txt,.dat,text/csv,text/plain"
+          onChange={(e) => void chon_tep(e)} />
+        {ten_tep !== '' && <div className="goi-y">{ten_tep}</div>}
+      </div>
+
+      {xem !== null && (
+        <div className="the" style={{ marginTop: 4 }}>
+          <h3>{da_nhap ? 'Kết quả nhập' : 'Xem trước — chưa ghi gì'}</h3>
+          <div className="hang-nhan">
+            {xem.tong !== undefined && <span className="nhan nhan-mo">{xem.tong} dòng</span>}
+            {xem.se_tao !== undefined && <span className="nhan nhan-tot">{da_nhap ? 'đã tạo' : 'sẽ tạo'} {xem.se_tao}</span>}
+            {xem.se_cap_nhat !== undefined && <span className="nhan nhan-lanh">{da_nhap ? 'đã cập nhật' : 'sẽ cập nhật'} {xem.se_cap_nhat}</span>}
+            {xem.ban_ghi !== undefined && <span className="nhan nhan-mo">{xem.ban_ghi} bản ghi</span>}
+            {xem.so_pin !== undefined && <span className="nhan nhan-mo">{xem.so_pin} PIN</span>}
+            {xem.da_nhan !== undefined && <span className="nhan nhan-tot">nhận {xem.da_nhan}</span>}
+            {xem.trung !== undefined && xem.trung > 0 && <span className="nhan nhan-lanh">trùng {xem.trung} (bỏ qua)</span>}
+            {(xem.loi ?? 0) > 0 && <span className="nhan nhan-xau">lỗi {xem.loi}</span>}
+            {(xem.dong_bo_qua ?? 0) > 0 && <span className="nhan nhan-canh-bao">bỏ qua {xem.dong_bo_qua} dòng</span>}
+          </div>
+
+          {(xem.som_nhat ?? null) !== null && (
+            <div className="goi-y">Khoảng thời gian: {xem.som_nhat} → {xem.muon_nhat}</div>
+          )}
+
+          {(xem.chua_map_pin ?? []).length > 0 && (
+            <div className="hop-thong-bao hop-luu-y" style={{ marginTop: 8 }}>
+              <strong>{(xem.chua_map_pin ?? []).length} PIN chưa gán cho nhân viên nào:</strong>{' '}
+              {(xem.chua_map_pin ?? []).slice(0, 20).join(', ')}
+              {(xem.chua_map_pin ?? []).length > 20 ? '…' : ''}. Log của các PIN này vẫn được lưu
+              nhưng chưa tính vào bảng công ai — khai PIN cho nhân viên rồi bấm "Gán lại" ở trang
+              Log chấm công.
+            </div>
+          )}
+
+          {(xem.dong ?? []).filter((d) => d.viec === 'loi').length > 0 && (
+            <div className="vo-bang" style={{ maxHeight: 220, overflowY: 'auto', marginTop: 8 }}>
+              <table>
+                <thead><tr><th>Dòng</th><th>Mã NV</th><th>Lý do</th></tr></thead>
+                <tbody>
+                  {(xem.dong ?? []).filter((d) => d.viec === 'loi').map((d) => (
+                    <tr key={d.dong}>
+                      <td className="so">{d.dong}</td>
+                      <td>{d.ma_nv || '—'}</td>
+                      <td style={{ color: 'var(--xau)' }}>{d.loi}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {co_loi && !da_nhap && (
+            <div className="hop-thong-bao hop-luu-y" style={{ marginTop: 8 }}>
+              Những dòng lỗi sẽ bị <strong>bỏ qua</strong>, các dòng còn lại vẫn nhập được.
+              Sửa tệp rồi nhập lại nếu muốn đủ.
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="hang-nut">
+        {!da_nhap && (
+          <>
+            <button type="button" onClick={() => void goi_nhap(true)}
+              disabled={hd.dang_chay || noi_dung === ''}>
+              {hd.dang_chay ? 'Đang kiểm…' : 'Kiểm tra tệp'}
+            </button>
+            <button type="button" className="nut-chinh" onClick={() => void goi_nhap(false)}
+              disabled={hd.dang_chay || xem === null}>
+              Nhập thật
+            </button>
+          </>
+        )}
+        <button type="button" onClick={da_nhap ? khi_xong : khi_dong}>
+          {da_nhap ? 'Xong' : 'Hủy'}
+        </button>
+      </div>
+    </HopThoai>
+  );
+}

@@ -151,7 +151,8 @@ Lệnh vào hàng đợi bền vững trong CSDL; máy nhận ở lần poll k�
 | PATCH | `/bang-cong/:nhan_vien_id/:ngay` | nhan_su | Sửa tay `{so_cong?, phut_ot?, ghi_chu?, da_chot?}` |
 | POST | `/bang-cong/chot-thang` | nhan_su | `{thang}` |
 | POST | `/bang-cong/mo-chot-thang` | nhan_su | `{thang}` |
-| GET | `/lan-quet?tu=&den=&nhan_vien_id=` | mọi vai trò | Dữ liệu thô, tối đa 31 ngày |
+| GET | `/lan-quet?tu=&den=&nhan_vien_id=&thiet_bi_serial=&nguon=&trang_thai_duyet=` | mọi vai trò | Dữ liệu thô, tối đa 31 ngày |
+| GET | `/lan-quet/xuat-csv?tu=&den=&...` | nhan_su | CSV có BOM UTF-8, giữ nguyên bộ lọc |
 | GET | `/lan-quet/chua-map` | nhan_su | PIN chưa gán nhân viên nào |
 | POST | `/lan-quet/gan-lai` | nhan_su | `{pin_may, nhan_vien_id}` — gán bù và tính lại |
 | GET | `/dashboard` | mọi vai trò | Tổng quan hôm nay + trạng thái máy |
@@ -160,6 +161,35 @@ Phạm vi dữ liệu tự lọc theo vai trò: `nhan_vien` chỉ thấy của m
 thấy phòng mình.
 
 **Ngày đã chốt (`da_chot = true`) không bị tính lại**, kể cả khi có lần quẹt mới về.
+
+### 3.1. Nhập hàng loạt từ file — `/api`
+
+| Method | Đường dẫn | Quyền | Trần thân yêu cầu |
+|---|---|---|---|
+| POST | `/nhap/nhan-vien` | nhan_su | 6 MB · tối đa 5.000 dòng |
+| POST | `/nhap/lan-quet` | nhan_su | 24 MB |
+
+Thân: `{ noi_dung, xem_truoc, ... }`. `noi_dung` là nguyên văn tệp CSV/TSV/ATTLOG.
+
+**`xem_truoc` mặc định `true`.** Ở chế độ này máy chủ kiểm toàn bộ tệp và trả về kết quả
+từng dòng nhưng **không ghi gì**. Phải gọi lại với `xem_truoc: false` mới ghi thật.
+
+- Bộ đọc tự nhận dấu phân cách (`,` `;` TAB), bỏ BOM, chấp nhận ô bọc trong dấu nháy.
+  Tên cột đối chiếu sau khi bỏ dấu tiếng Việt, nên `Mã NV` / `ma_nv` / `MÃ NV` như nhau.
+- `/nhap/nhan-vien` đối chiếu theo `ma_nv`: có rồi thì cập nhật, chưa có thì tạo — **không
+  bao giờ xóa ai**. Ô để trống nghĩa là *giữ nguyên*, không phải xóa. Bắt buộc có cột mã
+  nhân viên và họ tên. `tao_thieu: true` cho phép tự tạo phòng ban chưa có; ca làm thì
+  luôn phải khai tay vì còn giờ vào/ra.
+  - Trả về: `{tong, se_tao, se_cap_nhat, loi, dong: [...]}`.
+- `/nhap/lan-quet` nhận cả ATTLOG thô của máy lẫn CSV có dòng tiêu đề (ngày và giờ tách
+  làm hai cột cũng được), rồi đẩy qua **đúng đường tiếp nhận của máy thật** — cùng bộ chống
+  trùng, cùng cách map PIN, cùng bước tính lại bảng công. Nhập lại cùng một tệp không nhân
+  đôi công. `serial` (mặc định `NHAP-TU-TEP`) tham gia khóa chống trùng, nên chọn đúng máy
+  nếu tệp do chính máy đó xuất ra.
+  - Xem trước trả về: `{ban_ghi, dong_bo_qua, som_nhat, muon_nhat, so_pin, chua_map_pin}`.
+  - Ghi thật trả về: `{tong, da_nhan, trung, dong_loi, chua_map_pin}`.
+
+Cả hai đều ghi nhật ký kiểm toán khi ghi thật.
 
 ## 4. Duyệt đơn — `/api/duyet`
 

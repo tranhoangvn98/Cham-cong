@@ -2,6 +2,57 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.11.0] — 2026-08-08
+
+**Nhập hàng loạt từ file** — khai từng nhân viên bằng tay thì được vài chục người, không
+được vài trăm; và lịch sử chấm công cũ đang nằm trong file USB / ERP chứ không nằm trong máy.
+
+### Thêm mới
+
+- **Nhập nhân viên từ CSV** (trang Nhân viên → *Nhập từ file*). Đối chiếu theo mã nhân viên:
+  có rồi thì cập nhật, chưa có thì tạo — **không bao giờ xóa ai**, người nghỉ vẫn phải xử lý
+  bằng nút "Cho nghỉ việc" để giữ bảng công cũ. Ô để trống nghĩa là *giữ nguyên* giá trị cũ,
+  không phải xóa: nhân sự hay xuất một phần cột ra sửa rồi nhập lại.
+  - Chặn trước khi ghi: mã lặp trong chính tệp, PIN lặp trong tệp, PIN đang thuộc người khác,
+    ngày không đọc được, phòng ban / ca làm chưa có.
+  - Tự tạo phòng ban chưa có là **tùy chọn, mặc định tắt** — một lỗi chính tả sẽ để lại một
+    phòng ban rác mà không ai để ý. Ca làm thì luôn phải khai tay vì còn giờ vào / ra / nghỉ.
+- **Nhập lịch sử chấm công từ file** (trang Chấm công → *Nhập lịch sử từ file*), cho dữ liệu
+  cũ xuất qua USB hoặc từ ERP đang chạy. Đi qua **đúng đường tiếp nhận của máy thật**: cùng bộ
+  chống trùng, cùng cách map PIN, cùng bước tính lại bảng công — nên nhập file và máy đẩy
+  trực tiếp không thể ra hai kết quả khác nhau. Nhập lại cùng một file không nhân đôi công.
+  - Nhận cả ATTLOG thô của máy lẫn CSV/Excel có dòng tiêu đề, kể cả khi ngày và giờ nằm ở
+    hai cột riêng.
+- **Luôn đi hai bước**: đọc file → *xem trước* (máy chủ kiểm hết nhưng không ghi gì, báo từng
+  dòng sai vì sao) → mới bấm *Nhập thật*. Nhập mù vào dữ liệu lương là đường nhanh nhất đến
+  một bảng công sai mà không ai biết sai từ đâu.
+  - Xem trước lịch sử chấm công **báo sẵn những PIN chưa ai nhận** — biết trước thì khai PIN
+    rồi nhập một lần là xong, thay vì nhập xong mới phải quay lại "Gán lại".
+  - Đổi tùy chọn thì bản xem trước cũ bị bỏ, bắt kiểm lại — nếu không sẽ bấm "Nhập thật" dựa
+    trên một bản xem trước tính bằng bộ tùy chọn khác.
+- **Tải tệp mẫu** ngay trong hộp thoại, có sẵn BOM UTF-8 để Excel trên Windows mở không vỡ dấu.
+
+### Chi tiết dễ vấp đã xử lý
+
+- Excel bản tiếng Việt xuất CSV bằng dấu **chấm phẩy**, không phải dấu phẩy — bộ đọc tự nhận
+  ra cả `,` `;` và TAB.
+- Tên cột đối chiếu sau khi bỏ dấu tiếng Việt và bỏ hoa/thường: `Mã NV`, `ma_nv`, `MÃ NV `
+  ra cùng một cột. Cột không tìm thấy thì báo rõ, **không đoán bừa**.
+- Ngày ưu tiên đọc `dd/mm/yyyy` (thông lệ Việt Nam) trước `mm/dd/yyyy`.
+
+### Sửa
+
+- `test/csv.test.ts` viết ra từ trước nhưng **chưa được khai trong `npm test`** nên chưa hề
+  chạy lần nào. Đã đưa vào; 9 test đó giờ chạy thật.
+
+### Đã kiểm chứng
+
+Lái Chromium qua cả hai hộp thoại: chọn file → xem trước hiện đúng số dòng, đổi tùy chọn thì
+xem trước biến mất, cảnh báo PIN chưa gán hiện đúng, không lỗi JS. Việc lái trình duyệt này
+bắt được một lỗi mà TypeScript không thấy: `dung_hanh_dong().chay` chỉ trả về `true/false`
+chứ không trả thân phản hồi, nên bản xem trước **không bao giờ hiện** — ép kiểu đã che mất.
+Tổng: 103 test đơn vị + 5 proxy + 70 e2e + 12 design token, tất cả xanh.
+
 ## [1.10.0] — 2026-08-08
 
 Trang **Chấm công** trước đây chỉ là chỗ xem: lọc được mỗi khoảng ngày, tối đa 300 dòng, và

@@ -1,8 +1,21 @@
 import { useState, type ReactNode } from 'react';
 import { goi, la_admin, la_nhan_su } from '../api.ts';
 import {
-  DangTai, HopLoi, HopThoai, TEN_VAI_TRO, Trong, dung_hanh_dong, dung_nap, ngay_viet,
+  DangTai, HopLoi, HopThoai, HopThoaiNhap, TEN_VAI_TRO, Trong,
+  dung_hanh_dong, dung_nap, ngay_viet,
 } from '../thanh_phan.tsx';
+
+/**
+ * Tieu de tep mau nhap nhan vien.
+ *
+ * Dung dau CHAM PHAY: Excel ban tieng Viet mac dinh doc/ghi CSV bang dau cham phay, mo tep
+ * dau phay ra se don het vao mot cot. Bo doc phia may chu tu nhan ra ca hai.
+ */
+const MAU_NHAN_VIEN = [
+  'Mã NV;Họ và tên;PIN máy;Phòng ban;Ca làm;Ngày vào;Số điện thoại;Email;Chấm công điện thoại',
+  'NV001;Nguyễn Văn An;1001;Kho;Hành chính;01/03/2024;0901234567;an.nv@congty.vn;',
+  'NV002;Trần Thị Bình;1002;Kinh doanh;Hành chính;15/07/2025;0912345678;binh.tt@congty.vn;x',
+].join('\r\n') + '\r\n';
 
 interface NhanVien {
   id: string;
@@ -31,6 +44,8 @@ export function TrangNhanVien(): ReactNode {
   const [dang_sua, dat_dang_sua] = useState<NhanVien | null>(null);
   const [dang_them, dat_dang_them] = useState(false);
   const [tao_tk_cho, dat_tao_tk_cho] = useState<NhanVien | null>(null);
+  const [dang_nhap_tep, dat_dang_nhap_tep] = useState(false);
+  const [tao_thieu, dat_tao_thieu] = useState(false);
 
   const url = `/api/nhan-vien?chi_dang_lam=${chi_dang_lam}`
     + (tim.trim() === '' ? '' : `&tim=${encodeURIComponent(tim.trim())}`);
@@ -51,7 +66,12 @@ export function TrangNhanVien(): ReactNode {
           </p>
         </div>
         {la_nhan_su() && (
-          <button className="nut-chinh" onClick={() => dat_dang_them(true)}>+ Thêm nhân viên</button>
+          <div className="hang-nut" style={{ marginBottom: 0 }}>
+            <button onClick={() => dat_dang_nhap_tep(true)}>Nhập từ file</button>
+            <button className="nut-chinh" onClick={() => dat_dang_them(true)}>
+              + Thêm nhân viên
+            </button>
+          </div>
         )}
       </div>
 
@@ -162,6 +182,46 @@ export function TrangNhanVien(): ReactNode {
             dat_dang_them(false);
             dat_dang_sua(null);
             nap_lai();
+          }}
+        />
+      )}
+
+      {dang_nhap_tep && (
+        <HopThoaiNhap
+          tieu_de="Nhập nhân viên từ file"
+          duong_dan="/api/nhap/nhan-vien"
+          tep_mau={MAU_NHAN_VIEN}
+          ten_tep_mau="mau_nhan_vien.csv"
+          them_than={{ tao_thieu }}
+          mo_ta={
+            <>
+              Đối chiếu theo <strong>Mã NV</strong>: đã có thì cập nhật, chưa có thì tạo mới.
+              Không bao giờ xóa ai — người nghỉ việc phải xử lý bằng nút "Cho nghỉ việc".
+              Ô để trống nghĩa là <strong>giữ nguyên</strong> giá trị cũ, không phải xóa.
+              Tên cột không cần khớp tuyệt đối (chấp nhận "Mã NV", "ma_nv", "MÃ NV"…) và
+              đọc được cả file phân cách bằng dấu phẩy, chấm phẩy hoặc TAB.
+            </>
+          }
+          tuy_chon={
+            <>
+              <div className="o-nhap-ngang">
+                <input id="tt" type="checkbox" checked={tao_thieu}
+                  onChange={(e) => dat_tao_thieu(e.target.checked)} />
+                <label htmlFor="tt">Tự tạo phòng ban chưa có trong hệ thống</label>
+              </div>
+              <div className="goi-y" style={{ marginTop: -8, marginBottom: 12 }}>
+                Mặc định tắt: một lỗi chính tả trong file sẽ để lại một phòng ban rác mà không
+                ai để ý. Ca làm thì <strong>luôn</strong> phải khai bằng tay, vì còn giờ vào /
+                giờ ra / giờ nghỉ.
+              </div>
+            </>
+          }
+          khi_dong={() => dat_dang_nhap_tep(false)}
+          khi_xong={() => {
+            dat_dang_nhap_tep(false);
+            nap_lai();
+            ca.nap_lai();
+            phong.nap_lai();
           }}
         />
       )}
