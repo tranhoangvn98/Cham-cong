@@ -53,6 +53,32 @@ phải tự tạo — vẫn phải ra máy đăng ký khuôn mặt.
 
 Tên hiển thị trên máy bị bỏ dấu tự động vì màn hình máy ZKTeco chỉ hiện được ASCII.
 
+### Nhiều văn phòng, nhiều máy
+
+Dữ liệu **liên thông sẵn**: máy chỉ đẩy lên PIN + mốc giờ, hệ thống tra PIN ra nhân viên
+trên phạm vi toàn công ty chứ không lọc theo máy; bộ tính công cũng chỉ gom theo nhân viên
+và ngày. Một người vào ca ở VP1 và tan ca ở VP3 vẫn được ghép thành **một ngày công liền
+mạch**. Serial máy chỉ dùng để biết quẹt ở đâu và để chống trùng. Thêm văn phòng = khai
+thêm serial vào bảng Thiết bị, trỏ về cùng tên miền.
+
+Đúng **một điều** phải kiểm soát: **PIN của một người phải giống nhau trên mọi máy.**
+
+PIN chính là danh tính; serial máy không tham gia việc nhận diện. Nếu VP2 khai anh A là
+PIN 1 trong khi VP1 đã có anh B là PIN 1, mọi lần quẹt của anh A ở VP2 sẽ cộng vào công
+của anh B — hệ thống không có cách nào biết. Ràng buộc `pin_may unique` chỉ chặn được việc
+gán trùng *trong phần mềm*, không chặn được người khai máy bấm nhầm.
+
+→ Chia dải PIN theo văn phòng ngay từ đầu: VP1 `1001–1999`, VP2 `2001–2999`, VP3
+`3001–3999`. Người đi công tác giữ nguyên PIN gốc ở mọi máy.
+
+Hai điểm nữa khi mở thêm máy:
+
+- Khuôn mặt / vân tay **không** liên thông — mỗi máy giữ template riêng, nên người làm liên
+  văn phòng phải đăng ký sinh trắc ở từng máy (hoặc copy template bằng phần mềm ZKTeco).
+  Nút "Nạp NV" chạy từng máy một: ba văn phòng là ba lần nạp.
+- Bấm **"Đồng bộ giờ"** cho từng máy. Lệch đồng hồ giữa các máy là nguyên nhân sai công
+  phổ biến nhất, và càng nguy hiểm khi giờ vào / giờ ra do hai máy khác nhau ghi.
+
 ## 4. Các endpoint máy gọi tới
 
 Chỉ để tham khảo khi soi log — người dùng không cần gọi tay.

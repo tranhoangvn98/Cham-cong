@@ -62,7 +62,7 @@ export function TrangNhanVien(): ReactNode {
         <div>
           <p className="mo-ta">
             PIN máy là cầu nối giữa máy chấm công và nhân viên — không có PIN thì log về không biết
-            của ai.
+            của ai. Một PIN dùng chung cho mọi máy ở mọi văn phòng.
           </p>
         </div>
         {la_nhan_su() && (
@@ -200,6 +200,9 @@ export function TrangNhanVien(): ReactNode {
               Ô để trống nghĩa là <strong>giữ nguyên</strong> giá trị cũ, không phải xóa.
               Tên cột không cần khớp tuyệt đối (chấp nhận "Mã NV", "ma_nv", "MÃ NV"…) và
               đọc được cả file phân cách bằng dấu phẩy, chấm phẩy hoặc TAB.
+              {' '}<strong>Cột PIN máy phải là số đã khai trên máy ZKTeco</strong>, và mỗi người
+              chỉ một PIN dùng chung cho mọi văn phòng — nhiều văn phòng thì chia dải PIN
+              (VP1 1001–1999, VP2 2001–2999…) để không ai khai trùng.
             </>
           }
           tuy_chon={
@@ -325,6 +328,9 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
             inputMode="numeric" placeholder="1001" />
           <div className="goi-y">
             Phải trùng đúng số ID đã khai trên máy ZKTeco. Chỉ gồm chữ số.
+            {' '}<strong>Nhiều văn phòng thì dùng CHUNG một số PIN cho cả ba máy</strong> — PIN
+            chính là danh tính, máy nào quẹt cũng ra đúng người. Khai mỗi nơi một số thì hệ thống
+            hiểu thành ba người khác nhau.
           </div>
         </div>
 

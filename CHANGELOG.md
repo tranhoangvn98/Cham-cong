@@ -2,6 +2,24 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.11.1] — 2026-08-08
+
+### Tài liệu
+
+- Nói rõ quy tắc **nhiều văn phòng** ở đúng chỗ người ta sẽ khai sai: ô nhập PIN trong hồ sơ
+  nhân viên, hộp thoại nhập hàng loạt, và mục mới "Nhiều văn phòng, nhiều máy" trong
+  `KET-NOI-MAY-ZKTECO.md`.
+
+  Dữ liệu giữa các máy vốn đã liên thông — đã dựng ba máy khác serial cho cùng một PIN quẹt
+  trong một ngày và xác nhận cả ba đều ra đúng một người, bảng công gộp thành một ngày công
+  liền mạch (vào 08:02 ở máy 1, ra 17:41 ở máy 3 → `co_mat`, 579 phút, 1 công).
+
+  Nhưng liên thông đó đứng trên một giả định chưa hề được viết ra ở đâu: **PIN của một người
+  phải giống nhau trên mọi máy**. PIN là danh tính, serial máy không tham gia nhận diện — nếu
+  VP2 khai anh A là PIN 1 trong khi VP1 đã có anh B là PIN 1, công của anh A sẽ chạy sang anh
+  B mà không có gì báo. `pin_may unique` chỉ chặn gán trùng trong phần mềm, không chặn được
+  người khai máy bấm nhầm. Kèm khuyến nghị chia dải PIN theo văn phòng.
+
 ## [1.11.0] — 2026-08-08
 
 **Nhập hàng loạt từ file** — khai từng nhân viên bằng tay thì được vài chục người, không
