@@ -18,11 +18,21 @@ interface TaiKhoan {
   ma_nv: string | null;
   /** Email Microsoft đã nối. Trống = tài khoản này chỉ đăng nhập bằng mật khẩu. */
   email_microsoft: string | null;
+  duyet_luc: string | null;
+  duyet_boi_ten: string | null;
 }
+
+const VAI_TRO_CAP: { ma: string; ten: string; mo_ta: string }[] = [
+  { ma: 'admin', ten: 'Quản trị', mo_ta: 'Toàn quyền, gồm quản lý tài khoản và phân quyền' },
+  { ma: 'nhan_su', ten: 'Nhân sự (HR)', mo_ta: 'Quản trị chấm công: nhân viên, ca, thiết bị, bảng công' },
+  { ma: 'truong_phong', ten: 'Trưởng phòng', mo_ta: 'Duyệt đơn của phòng mình, xem công nhân viên phòng mình' },
+  { ma: 'nhan_vien', ten: 'Nhân viên', mo_ta: 'Chỉ xem dữ liệu của chính mình' },
+];
 
 export function TrangNguoiDung(): ReactNode {
   const [dat_lai_cho, dat_dat_lai_cho] = useState<TaiKhoan | null>(null);
   const [noi_ms_cho, dat_noi_ms_cho] = useState<TaiKhoan | null>(null);
+  const [phan_quyen_cho, dat_phan_quyen_cho] = useState<TaiKhoan | null>(null);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<TaiKhoan[]>('/api/nguoi-dung');
   const hd = dung_hanh_dong();
   const toi = nguoi_dung_hien_tai();
@@ -83,7 +93,16 @@ export function TrangNguoiDung(): ReactNode {
                       {tk.ho_ten ?? <span style={{ color: 'var(--chu-mo)' }}>—</span>}
                       {tk.ma_nv !== null && <div className="o-so-phu">{tk.ma_nv}</div>}
                     </td>
-                    <td>{TEN_VAI_TRO[tk.vai_tro] ?? tk.vai_tro}</td>
+                    <td>
+                      {tk.vai_tro === 'cho_duyet'
+                        ? <span className="nhan nhan-canh-bao">chờ phân quyền</span>
+                        : TEN_VAI_TRO[tk.vai_tro] ?? tk.vai_tro}
+                      {tk.duyet_luc !== null && tk.duyet_boi_ten !== null && (
+                        <div className="o-so-phu">
+                          {tk.duyet_boi_ten} cấp {ngay_gio(tk.duyet_luc)}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ fontSize: 12 }}>
                       {tk.email_microsoft === null
                         ? <span style={{ color: 'var(--chu-mo)' }}>chưa nối</span>
@@ -103,6 +122,12 @@ export function TrangNguoiDung(): ReactNode {
                     </td>
                     <td>
                       <div className="hang-nut">
+                        <button
+                          className={tk.vai_tro === 'cho_duyet' ? 'nut-nho nut-chinh' : 'nut-nho nut-phang'}
+                          onClick={() => dat_phan_quyen_cho(tk)}
+                        >
+                          {tk.vai_tro === 'cho_duyet' ? 'Phân quyền' : 'Đổi vai trò'}
+                        </button>
                         <button className="nut-nho nut-phang" onClick={() => dat_dat_lai_cho(tk)}>
                           Đặt lại mật khẩu
                         </button>
@@ -129,6 +154,14 @@ export function TrangNguoiDung(): ReactNode {
           tai_khoan={dat_lai_cho}
           khi_dong={() => dat_dat_lai_cho(null)}
           khi_xong={() => { dat_dat_lai_cho(null); nap_lai(); }}
+        />
+      )}
+
+      {phan_quyen_cho !== null && (
+        <FormPhanQuyen
+          tai_khoan={phan_quyen_cho}
+          khi_dong={() => dat_phan_quyen_cho(null)}
+          khi_xong={() => { dat_phan_quyen_cho(null); nap_lai(); }}
         />
       )}
 
@@ -313,5 +346,75 @@ export function TrangNhatKy(): ReactNode {
         )}
       </div>
     </>
+  );
+}
+
+
+/** Cấp vai trò cho một tài khoản — gồm cả tài khoản đang chờ phân quyền. */
+function FormPhanQuyen(
+  { tai_khoan, khi_dong, khi_xong }:
+  { tai_khoan: TaiKhoan; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [vai_tro, dat_vai_tro] = useState(
+    tai_khoan.vai_tro === 'cho_duyet' ? 'nhan_vien' : tai_khoan.vai_tro,
+  );
+  const hd = dung_hanh_dong();
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    const ok = await hd.chay(
+      () => goi(`/api/nguoi-dung/${tai_khoan.id}`, { method: 'PATCH', body: { vai_tro } }),
+      'Đã cấp quyền. Người dùng đăng nhập lại là vào được.',
+    );
+    if (ok) setTimeout(khi_xong, 900);
+  };
+
+  return (
+    <HopThoai tieu_de={`Phân quyền: ${tai_khoan.ten_dang_nhap}`} khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+        <HopTot chu={hd.tot} />
+
+        {tai_khoan.vai_tro === 'cho_duyet' && (
+          <div className="hop-thong-bao hop-luu-y">
+            Tài khoản này đã xác thực bằng Microsoft nhưng <strong>chưa có quyền gì</strong>.
+            Chọn vai trò để cho vào hệ thống.
+          </div>
+        )}
+
+        <div className="o-nhap">
+          <label>Vai trò</label>
+          {VAI_TRO_CAP.map((v) => (
+            <label key={v.ma} className="o-chon-vai-tro">
+              <input
+                type="radio"
+                name="vai_tro"
+                value={v.ma}
+                checked={vai_tro === v.ma}
+                onChange={() => dat_vai_tro(v.ma)}
+              />
+              <span>
+                <strong>{v.ten}</strong>
+                <span className="o-so-phu">{v.mo_ta}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+
+        {tai_khoan.nhan_vien_id === null && (vai_tro === 'nhan_vien' || vai_tro === 'truong_phong') && (
+          <div className="hop-thong-bao hop-luu-y">
+            Tài khoản này chưa gắn hồ sơ nhân viên nên hai vai trò này sẽ bị máy chủ từ chối.
+            Tạo hồ sơ ở trang <strong>Nhân viên</strong> (điền đúng email công ty) rồi quay lại.
+          </div>
+        )}
+
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>
+            {hd.dang_chay ? 'Đang lưu…' : 'Cấp quyền'}
+          </button>
+          <button type="button" onClick={khi_dong}>Hủy</button>
+        </div>
+      </form>
+    </HopThoai>
   );
 }

@@ -4,7 +4,7 @@ import {
 } from './api.ts';
 import { CungCapTuyen, LienKet, dung_tuyen } from './dinh_tuyen.tsx';
 import { TEN_VAI_TRO } from './thanh_phan.tsx';
-import { TrangDangNhap, TrangDoiMatKhau } from './trang/dang_nhap.tsx';
+import { TrangChoDuyet, TrangDangNhap, TrangDoiMatKhau } from './trang/dang_nhap.tsx';
 import { TrangDashboard } from './trang/dashboard.tsx';
 import { TrangBangCong } from './trang/bang_cong.tsx';
 import { TrangNhanVien } from './trang/nhan_vien.tsx';
@@ -279,6 +279,13 @@ export function App(): ReactNode {
 
   if (!da_dang_nhap()) {
     return <TrangDangNhap khi_xong={() => dat_lan(lan + 1)} loi_sso={loi_sso} />;
+  }
+
+  // Da xac thuc nhung chua duoc phan quyen: khong vao duoc man nao ca.
+  if (nd !== null && nd.vai_tro === 'cho_duyet') {
+    return <TrangChoDuyet ten={nd.ho_ten ?? nd.ten_dang_nhap} khi_thoat={() => {
+      dang_xuat(); dat_lan(lan + 1);
+    }} />;
   }
 
   // Tai khoan moi tao / vua duoc dat lai mat khau: bat buoc doi truoc khi vao he thong.

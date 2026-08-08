@@ -1,5 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { cau_hinh_dang_nhap, dang_nhap, di_dang_nhap_microsoft, doi_mat_khau } from '../api.ts';
+import {
+  cau_hinh_dang_nhap, dang_nhap, di_dang_nhap_microsoft, doi_mat_khau,
+  lam_moi_phien, nguoi_dung_hien_tai,
+} from '../api.ts';
 import { dung_hanh_dong, HopLoi, HopTot } from '../thanh_phan.tsx';
 
 interface Props {
@@ -151,6 +154,59 @@ export function TrangDoiMatKhau({ bat_buoc, khi_xong }: { bat_buoc: boolean; khi
           {hd.dang_chay ? 'Đang đổi…' : 'Đổi mật khẩu'}
         </button>
       </form>
+    </div>
+  );
+}
+
+
+/**
+ * Da xac thuc bang Microsoft nhung admin chua phan vai tro.
+ *
+ * Man hinh nay co that su chan duoc gi khong? Co: may chu tu choi moi API nghiep vu voi
+ * tai khoan `cho_duyet`, nen day chi la cach giai thich cho nguoi dung, khong phai lop bao
+ * ve duy nhat.
+ */
+export function TrangChoDuyet({ ten, khi_thoat }: { ten: string; khi_thoat: () => void }): ReactNode {
+  const [dang_kiem, dat_dang_kiem] = useState(false);
+  const [chua_co, dat_chua_co] = useState(false);
+
+  // Vai tro nam trong token nen sau khi admin cap quyen, token dang cam van la cho_duyet.
+  // Nut nay lam moi token de khoi phai dang xuat rooi dang nhap lai.
+  const kiem_lai = async (): Promise<void> => {
+    dat_dang_kiem(true);
+    dat_chua_co(false);
+    const ok = await lam_moi_phien();
+    dat_dang_kiem(false);
+    if (ok && nguoi_dung_hien_tai()?.vai_tro !== 'cho_duyet') window.location.reload();
+    else dat_chua_co(true);
+  };
+
+  return (
+    <div className="vo-dang-nhap">
+      <div className="the-dang-nhap" style={{ textAlign: 'center' }}>
+        <div className="o-cho-duyet" aria-hidden="true">⏳</div>
+        <h1>Chờ phân quyền</h1>
+        <p className="mo-ta" style={{ marginBottom: 20 }}>
+          Xin chào <strong>{ten}</strong>. Tài khoản của bạn đã xác thực thành công bằng
+          Microsoft, nhưng <strong>chưa được quản trị viên phân quyền</strong> nên chưa vào
+          được hệ thống.
+        </p>
+        <div className="hop-thong-bao hop-luu-y" style={{ textAlign: 'left' }}>
+          Hãy báo bộ phận nhân sự để được cấp quyền. Sau khi được cấp, bạn chỉ cần đăng nhập
+          lại là dùng được ngay.
+        </div>
+        {chua_co && (
+          <div className="hop-thong-bao hop-loi" style={{ textAlign: 'left' }}>
+            Vẫn chưa được cấp quyền. Thử lại sau khi nhân sự báo đã xong.
+          </div>
+        )}
+        <div className="hang-nut" style={{ justifyContent: 'center' }}>
+          <button type="button" className="nut-chinh" onClick={() => void kiem_lai()} disabled={dang_kiem}>
+            {dang_kiem ? 'Đang kiểm tra…' : 'Tôi đã được cấp quyền — kiểm tra lại'}
+          </button>
+          <button type="button" onClick={khi_thoat}>Đăng xuất</button>
+        </div>
+      </div>
     </div>
   );
 }

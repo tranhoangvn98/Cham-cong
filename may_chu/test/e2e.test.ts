@@ -1122,3 +1122,66 @@ test('admin noi va go email Microsoft cho tai khoan', async () => {
   const dong2 = (cuoi.body as unknown as Record<string, unknown>[]).find((t) => t['id'] === id);
   assert.equal(dong2?.['email_microsoft'], null, 'chuoi rong phai go lien ket');
 });
+
+// ============================================================ tai khoan cho duyet
+test('tai khoan cho_duyet: dang nhap duoc nhung bi chan khoi moi API nghiep vu', async () => {
+  // Tao truc tiep trong CSDL dung nhu luong Microsoft tu tao khi email thuoc ten mien.
+  const nd = await truy_van_mot<{ id: string }>(
+    `insert into nguoi_dung(ten_dang_nhap, mat_khau_hash, vai_tro, email_microsoft, phai_doi_mat_khau)
+     values ('nguoi.moi@congty.vn', $1, 'cho_duyet', 'nguoi.moi@congty.vn', false)
+     returning id`,
+    [await bam_mat_khau('MatKhauTam2026')],
+  );
+  assert.ok(nd);
+
+  const dn = await goi('POST', '/api/xac-thuc/dang-nhap', {
+    body: { ten_dang_nhap: 'nguoi.moi@congty.vn', mat_khau: 'MatKhauTam2026' },
+  });
+  assert.equal(dn.ma, 200, 'van dang nhap duoc — chi la chua co quyen');
+  const token = dn.body['token_truy_cap'] as string;
+
+  // /toi phai qua duoc, de webapp biet ma hien man hinh cho duyet.
+  const toi = await goi('GET', '/api/xac-thuc/toi', { token });
+  assert.equal(toi.ma, 200);
+  assert.equal(toi.body['vai_tro'], 'cho_duyet');
+
+  // Moi duong nghiep vu deu 403, ke ca duong chi doc.
+  for (const duong of ['/api/nhan-vien', '/api/bang-cong?tu=2026-08-01&den=2026-08-02',
+                       '/api/ca-lam', '/api/thiet-bi', '/api/toi/bang-cong?thang=2026-08']) {
+    const r = await goi('GET', duong, { token });
+    assert.equal(r.ma, 403, `${duong} phai tu choi tai khoan cho duyet`);
+    assert.equal(r.body['cho_duyet'], true, 'phan hoi phai noi ro ly do de webapp xu ly');
+  }
+
+  // Admin phan quyen -> vao duoc.
+  const cap = await goi('PATCH', `/api/nguoi-dung/${nd!.id}`, {
+    token: token_admin, body: { vai_tro: 'nhan_su' },
+  });
+  assert.equal(cap.ma, 200);
+
+  // Token CU van mang vai tro cu — vai tro nam trong token, khong tra CSDL moi request.
+  const van_cu = await goi('GET', '/api/nhan-vien', { token });
+  assert.equal(van_cu.ma, 403, 'token phat truoc khi duoc cap quyen thi van la cho_duyet');
+
+  // Lam moi token -> may chu doc lai vai tro tu CSDL -> vao duoc.
+  const lm = await goi('POST', '/api/xac-thuc/lam-moi', {
+    body: { token_lam_moi: dn.body['token_lam_moi'] },
+  });
+  assert.equal(lm.ma, 200, `lam moi phai duoc: ${JSON.stringify(lm.body)}`);
+  const sau = await goi('GET', '/api/nhan-vien', { token: lm.body['token_truy_cap'] as string });
+  assert.equal(sau.ma, 200, 'duoc cap quyen roi thi vao duoc');
+
+  // Va co ghi lai ai duyet.
+  const ds = await goi('GET', '/api/nguoi-dung', { token: token_admin });
+  const dong = (ds.body as unknown as Record<string, unknown>[]).find((t) => t['id'] === nd!.id);
+  assert.notEqual(dong?.['duyet_luc'], null, 'phai ghi lai thoi diem phan quyen');
+  assert.equal(dong?.['duyet_boi_ten'], 'admin');
+});
+
+test('khong tao duoc tai khoan cho_duyet bang tay qua API', async () => {
+  const r = await goi('POST', '/api/nguoi-dung', {
+    token: token_admin,
+    body: { ten_dang_nhap: 'ai_do', mat_khau: 'MatKhau2026xyz', vai_tro: 'cho_duyet' },
+  });
+  assert.equal(r.ma, 400, 'cho_duyet la trang thai do he thong dat, khong phai vai tro de cap');
+});

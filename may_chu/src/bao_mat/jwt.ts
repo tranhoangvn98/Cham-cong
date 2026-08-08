@@ -3,7 +3,11 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { cau_hinh } from '../cau_hinh.ts';
 
-export type VaiTro = 'admin' | 'nhan_su' | 'truong_phong' | 'nhan_vien';
+/**
+ * `cho_duyet` KHONG phai mot muc quyen — la trang thai "da xac thuc, chua duoc phan quyen".
+ * Tai khoan o trang thai nay dang nhap duoc nhung moi hook phan quyen deu tu choi.
+ */
+export type VaiTro = 'admin' | 'nhan_su' | 'truong_phong' | 'nhan_vien' | 'cho_duyet';
 
 export interface NoiDungToken {
   /** id nguoi_dung */

@@ -9,7 +9,7 @@ import {
   type VaiTro,
 } from '../bao_mat/jwt.ts';
 import { bam_mat_khau, kiem_tra_mat_khau, LoiMatKhau } from '../bao_mat/mat_khau.ts';
-import { can_dang_nhap, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
+import { can_dang_nhap_ke_ca_cho_duyet, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { chuoi_bat_buoc, LoiDauVao, than } from '../tien_ich/kiem_tra.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
@@ -218,7 +218,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
   });
 
   // ------------------------------------------------------------------ thong tin phien
-  app.get('/toi', { preHandler: can_dang_nhap }, async (req) => {
+  app.get('/toi', { preHandler: can_dang_nhap_ke_ca_cho_duyet }, async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     const chi_tiet = await truy_van_mot<{
       ten_dang_nhap: string;
@@ -247,7 +247,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
 
   // ------------------------------------------------------------------ doi mat khau
   app.post('/doi-mat-khau', {
-    preHandler: can_dang_nhap,
+    preHandler: can_dang_nhap_ke_ca_cho_duyet,
     config: { rateLimit: { max: 5, timeWindow: '5 minutes' } },
   }, async (req, res) => {
     const nd = nguoi_dung_hien_tai(req);
@@ -431,29 +431,39 @@ async function tim_hoac_tao_theo_email(email: string, ho_ten: string | null): Pr
     return theo_nhan_vien;
   }
 
-  if (!cau_hinh.microsoft.tu_dong_tao) return null;
+  // Chua co tai khoan: chi tu tao khi email thuoc ten mien cua cong ty.
+  const ten_mien = email.split('@')[1]?.toLowerCase() ?? '';
+  const ds_ten_mien = cau_hinh.microsoft.ten_mien_cho_phep;
+  if (ds_ten_mien.length === 0 || !ds_ten_mien.includes(ten_mien)) return null;
 
-  // Tu dong tao: chi gan vai tro thap nhat. Ho so nhan vien van phai do nhan su khai —
-  // khong co ho so thi khong co PIN may, khong tinh duoc cong.
+  // Vai tro `cho_duyet`: dang nhap duoc nhung MOI hook phan quyen deu tu choi, cho toi khi
+  // admin phan vai tro. Bat MS_TU_DONG_TAO=1 thi bo qua buoc duyet, cap luon `nhan_vien`.
+  const vai_tro: VaiTro = cau_hinh.microsoft.tu_dong_tao ? 'nhan_vien' : 'cho_duyet';
+
+  // Ho so nhan vien van phai do nhan su khai — khong co ho so thi khong co PIN may,
+  // khong tinh duoc cong. Co san thi gan luon cho do phai noi tay.
   const nv = await truy_van_mot<{ id: string; ho_ten: string }>(
     'select id, ho_ten from nhan_vien where lower(email) = lower($1) and dang_hoat_dong = true',
     [email],
   );
+  // Vai tro `nhan_vien` bat buoc co ho so; khong co thi phai de o `cho_duyet`.
+  const vai_tro_that: VaiTro = vai_tro === 'nhan_vien' && nv === null ? 'cho_duyet' : vai_tro;
+
   const moi = await truy_van_mot<{ id: string }>(
     `insert into nguoi_dung(ten_dang_nhap, mat_khau_hash, vai_tro, nhan_vien_id,
                             email_microsoft, phai_doi_mat_khau)
-     values ($1, $2, 'nhan_vien', $3, $4, false)
+     values ($1, $2, $3, $4, $5, false)
      returning id`,
     // Bam cua mot chuoi ngau nhien: tai khoan nay chi dang nhap bang Microsoft, khong ai
     // — ke ca quan tri — biet mat khau de dung duong mat khau.
-    [email, await bam_mat_khau(sinh_chuoi_ngau_nhien(32)), nv?.id ?? null, email],
+    [email, await bam_mat_khau(sinh_chuoi_ngau_nhien(32)), vai_tro_that, nv?.id ?? null, email],
   );
   if (moi === null) return null;
   return {
     id: moi.id,
     ten_dang_nhap: email,
     mat_khau_hash: '',
-    vai_tro: 'nhan_vien',
+    vai_tro: vai_tro_that,
     nhan_vien_id: nv?.id ?? null,
     dang_hoat_dong: true,
     phai_doi_mat_khau: false,

@@ -14,7 +14,10 @@ import {
   than, trong_tap, uuid, LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
 
-const VAI_TRO = ['admin', 'nhan_su', 'truong_phong', 'nhan_vien'] as const;
+// 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
+// KHONG duoc dung khi tao tai khoan moi bang tay (xem POST /nguoi-dung).
+const VAI_TRO = ['admin', 'nhan_su', 'truong_phong', 'nhan_vien', 'cho_duyet'] as const;
+const VAI_TRO_TAO_MOI = ['admin', 'nhan_su', 'truong_phong', 'nhan_vien'] as const;
 
 export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   // =====================================================================  PHONG BAN
@@ -397,10 +400,13 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   app.get('/nguoi-dung', { preHandler: can_admin }, async () =>
     truy_van(
       `select nd.id, nd.ten_dang_nhap, nd.vai_tro, nd.dang_hoat_dong, nd.phai_doi_mat_khau,
-              nd.dang_nhap_cuoi, nd.nhan_vien_id, nd.email_microsoft, nv.ho_ten, nv.ma_nv
+              nd.dang_nhap_cuoi, nd.nhan_vien_id, nd.email_microsoft, nd.duyet_luc,
+              nv.ho_ten, nv.ma_nv, nd2.ten_dang_nhap as duyet_boi_ten
          from nguoi_dung nd
          left join nhan_vien nv on nv.id = nd.nhan_vien_id
-        order by nd.ten_dang_nhap`,
+         left join nguoi_dung nd2 on nd2.id = nd.duyet_boi
+        -- Cho duyet len dau: day la viec admin can lam, khong phai thu de lan trong danh sach.
+        order by (nd.vai_tro = 'cho_duyet') desc, nd.ten_dang_nhap`,
     ),
   );
 
@@ -411,7 +417,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       throw new LoiDauVao('Tên đăng nhập chỉ được gồm chữ không dấu, số và các ký tự . _ -');
     }
     const mat_khau = chuoi_bat_buoc(b, 'mat_khau', { toi_da: 200 });
-    const vai_tro = trong_tap(b, 'vai_tro', VAI_TRO, { bat_buoc: true }) as typeof VAI_TRO[number];
+    const vai_tro = trong_tap(b, 'vai_tro', VAI_TRO_TAO_MOI, { bat_buoc: true }) as typeof VAI_TRO_TAO_MOI[number];
     const nhan_vien_id = uuid(b, 'nhan_vien_id');
 
     if ((vai_tro === 'nhan_vien' || vai_tro === 'truong_phong') && nhan_vien_id === null) {
@@ -489,9 +495,14 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         `update nguoi_dung
             set dang_hoat_dong = coalesce($2, dang_hoat_dong),
                 vai_tro = coalesce($3, vai_tro),
-                email_microsoft = case when $4 then $5 else email_microsoft end
+                email_microsoft = case when $4 then $5 else email_microsoft end,
+                -- Ghi lai ai phan quyen, luc nao: chi khi vua thoat khoi trang thai cho duyet.
+                duyet_boi = case when vai_tro = 'cho_duyet' and $3::text is not null
+                                  and $3 <> 'cho_duyet' then $6::uuid else duyet_boi end,
+                duyet_luc = case when vai_tro = 'cho_duyet' and $3::text is not null
+                                  and $3 <> 'cho_duyet' then now() else duyet_luc end
           where id = $1`,
-        [id, dang_hoat_dong, vai_tro, co_doi_email, email_microsoft],
+        [id, dang_hoat_dong, vai_tro, co_doi_email, email_microsoft, nd.sub],
       ),
       'Email Microsoft này đã gán cho tài khoản khác.',
     );

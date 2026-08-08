@@ -28,9 +28,27 @@ function xac_minh(req: FastifyRequest): NoiDungToken | null {
 
 const LOI_401 = { loi: 'Chưa đăng nhập hoặc phiên đã hết hạn.' };
 const LOI_403 = { loi: 'Bạn không có quyền thực hiện việc này.' };
+const LOI_CHO_DUYET = {
+  loi: 'Tài khoản của bạn chưa được quản trị viên phân quyền. Hãy liên hệ bộ phận nhân sự.',
+  cho_duyet: true,
+};
 
-/** Bat buoc dang nhap (moi vai tro). */
+/**
+ * Bat buoc dang nhap va DA DUOC PHAN QUYEN.
+ *
+ * Tai khoan `cho_duyet` xac thuc duoc nhung chua co quyen gi — chan o day de khong route
+ * nghiep vu nao phai tu nho kiem tra. Chi vai duong cua chinh lop xac thuc (xem
+ * `can_dang_nhap_ke_ca_cho_duyet`) cho phep ho di qua, du de webapp hien man hinh cho duyet.
+ */
 export async function can_dang_nhap(req: FastifyRequest, res: FastifyReply) {
+  const nd = xac_minh(req);
+  if (nd === null) return res.code(401).send(LOI_401);
+  if (nd.vai_tro === 'cho_duyet') return res.code(403).send(LOI_CHO_DUYET);
+  req.nguoi_dung = nd;
+}
+
+/** Nhu tren nhung CHO PHEP tai khoan cho duyet — chi dung cho /toi va doi mat khau. */
+export async function can_dang_nhap_ke_ca_cho_duyet(req: FastifyRequest, res: FastifyReply) {
   const nd = xac_minh(req);
   if (nd === null) return res.code(401).send(LOI_401);
   req.nguoi_dung = nd;

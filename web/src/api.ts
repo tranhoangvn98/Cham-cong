@@ -16,7 +16,7 @@ const KHOA_LUU = 'cham_cong_phien';
 export interface NguoiDung {
   id: string;
   ten_dang_nhap: string;
-  vai_tro: 'admin' | 'nhan_su' | 'truong_phong' | 'nhan_vien';
+  vai_tro: 'admin' | 'nhan_su' | 'truong_phong' | 'nhan_vien' | 'cho_duyet';
   nhan_vien_id: string | null;
   ho_ten: string | null;
   phai_doi_mat_khau: boolean;
@@ -106,6 +106,16 @@ export async function cau_hinh_dang_nhap(): Promise<{ dang_nhap_microsoft: boole
 export function di_dang_nhap_microsoft(): void {
   const quay_lai = encodeURIComponent(window.location.pathname.replace(/^\/+/, '/') || '/');
   window.location.href = `${GOC}/api/xac-thuc/microsoft/bat-dau?quay_lai=${quay_lai}`;
+}
+
+/**
+ * Lam moi phien de lay lai vai tro tu may chu.
+ *
+ * Vai tro nam trong token nen sau khi admin phan quyen, token dang cam van la `cho_duyet`
+ * cho toi khi het han. Ham nay de nguoi dung khong phai dang xuat rooi dang nhap lai.
+ */
+export async function lam_moi_phien(): Promise<boolean> {
+  return lam_moi_token();
 }
 
 export function nguoi_dung_hien_tai(): NguoiDung | null {

@@ -242,20 +242,52 @@ Nó chỉ thay chỗ **xác thực danh tính**. Còn lại giữ nguyên:
 Bốn vai trò: `admin` (toàn quyền, gồm quản lý tài khoản), `nhan_su` (quản trị chấm công),
 `truong_phong` (duyệt đơn của phòng mình), `nhan_vien` (chỉ xem dữ liệu của chính mình).
 
-## 6. `MS_TU_DONG_TAO` — cân nhắc kỹ
+## 6. Cho cả công ty đăng nhập, nhưng phải qua bước duyệt
 
-Bật lên (`=1`) thì **bất kỳ ai trong tổ chức Microsoft của bạn** đăng nhập lần đầu cũng tự
-có tài khoản, vai trò `nhan_vien`, chỉ xem được dữ liệu của chính mình.
+Khai `MS_TEN_MIEN_CHO_PHEP` bằng tên miền email của công ty:
 
-Tiện khi công ty đông và mọi người đều cần xem bảng công của mình. Nhưng nghĩa là danh sách
-người truy cập hệ thống chấm công do danh bạ Microsoft quyết định, không do nhân sự quyết
-định nữa. Người mới vào công ty, tài khoản khách, hộp thư dùng chung — tất cả đều vào được
-nếu chúng đăng nhập được vào Microsoft 365.
+```bash
+MS_TEN_MIEN_CHO_PHEP=congty.vn
+```
 
-Để `0` thì nhân sự kiểm soát hoàn toàn: ai được khai mới vào được.
+Khi đó ai có email thuộc tên miền đó cũng **xác thực được**, và hệ thống tự tạo cho họ một
+tài khoản ở trạng thái **chờ phân quyền**: đăng nhập xong thấy màn hình *"Tài khoản của bạn
+chưa được quản trị viên phân quyền"* và **không vào được màn nào**. Máy chủ từ chối mọi API
+nghiệp vụ với tài khoản này, kể cả đường chỉ đọc — màn hình kia chỉ để giải thích, không
+phải lớp bảo vệ.
 
-Dù bật hay tắt, tài khoản tự tạo **không** có hồ sơ nhân viên nếu email không khớp ai — tức
-không có PIN máy, không tính được công. Nó chỉ đăng nhập được vào chỗ trống.
+Người ngoài tên miền vẫn bị từ chối ngay, không tạo tài khoản.
+
+### Admin phân quyền
+
+Webapp → **Tài khoản**. Tài khoản chờ duyệt được đẩy lên đầu danh sách và có nhãn *chờ phân
+quyền*. Bấm **Phân quyền**, chọn một trong bốn cấp:
+
+| Cấp | Làm được gì |
+|---|---|
+| **Quản trị** | Toàn quyền, gồm quản lý tài khoản và phân quyền |
+| **Nhân sự (HR)** | Quản trị chấm công: nhân viên, ca, thiết bị, bảng công, đơn từ |
+| **Trưởng phòng** | Duyệt đơn của phòng mình, xem công nhân viên phòng mình |
+| **Nhân viên** | Chỉ xem dữ liệu của chính mình |
+
+Hệ thống ghi lại **ai cấp quyền và lúc nào**, hiện ngay dưới vai trò trong danh sách.
+
+Hai vai trò *Trưởng phòng* và *Nhân viên* bắt buộc gắn với một hồ sơ nhân viên — chưa có
+thì phải tạo ở trang **Nhân viên** (điền đúng email công ty) rồi mới cấp được.
+
+Người vừa được cấp quyền không phải đăng xuất: trên màn hình chờ có nút **"Tôi đã được cấp
+quyền — kiểm tra lại"**. Vai trò nằm trong token nên token đang cầm vẫn là `cho_duyet` cho
+tới khi làm mới; nút đó làm đúng việc đó.
+
+### Bỏ hẳn bước duyệt
+
+`MS_TU_DONG_TAO=1` thì tài khoản tự tạo được cấp luôn vai trò `nhan_vien`. Nhanh, nhưng
+danh sách người vào được hệ thống chấm công sẽ do danh bạ Microsoft quyết định chứ không do
+nhân sự nữa — tài khoản khách và hộp thư dùng chung cũng vào được. Vẫn cần
+`MS_TEN_MIEN_CHO_PHEP` để giới hạn tên miền.
+
+Người không có hồ sơ nhân viên khớp email thì dù bật cờ này vẫn rơi về trạng thái chờ duyệt,
+vì vai trò `nhan_vien` bắt buộc có hồ sơ.
 
 ## 7. Kiểm tra
 

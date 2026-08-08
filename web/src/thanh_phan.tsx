@@ -215,6 +215,7 @@ export const TEN_VAI_TRO: Record<string, string> = {
   nhan_su: 'Nhân sự',
   truong_phong: 'Trưởng phòng',
   nhan_vien: 'Nhân viên',
+  cho_duyet: 'Chờ phân quyền',
 };
 
 export const TEN_NGUON: Record<string, string> = {

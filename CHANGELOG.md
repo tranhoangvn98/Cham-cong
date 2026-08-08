@@ -2,6 +2,44 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.9.0] — 2026-08-08
+
+**Cả công ty đăng nhập được, nhưng phải qua bước duyệt** — cùng tên miền thì xác thực được,
+còn vào được hệ thống hay không do admin quyết định.
+
+### Thêm mới
+
+- **Trạng thái `cho_duyet`.** Khai `MS_TEN_MIEN_CHO_PHEP=congty.vn` thì ai có email thuộc
+  tên miền đó cũng đăng nhập được, và hệ thống tự tạo tài khoản ở trạng thái chờ. Tài khoản
+  đó **không vào được màn nào**: máy chủ từ chối mọi API nghiệp vụ, kể cả đường chỉ đọc.
+  Người ngoài tên miền vẫn bị từ chối ngay, không tạo tài khoản.
+  - Chặn ở **một chỗ duy nhất** (`can_dang_nhap`) nên không route nghiệp vụ nào phải tự nhớ
+    kiểm tra. Chỉ `/toi` và đổi mật khẩu cho tài khoản chờ đi qua, đủ để webapp hiện màn
+    hình giải thích.
+  - Phản hồi 403 kèm cờ `cho_duyet: true` để webapp phân biệt với "không đủ quyền".
+- **Trang phân quyền cho admin.** Tài khoản chờ được đẩy lên đầu danh sách **Tài khoản**,
+  có nhãn *chờ phân quyền* và nút **Phân quyền** chọn một trong bốn cấp: Quản trị → Nhân sự
+  (HR) → Trưởng phòng → Nhân viên, mỗi cấp kèm mô tả làm được gì. Hệ thống ghi lại **ai cấp
+  và lúc nào**, hiện ngay dưới vai trò.
+- **Nút "Tôi đã được cấp quyền — kiểm tra lại"** trên màn hình chờ. Vai trò nằm trong token
+  nên token đang cầm vẫn là `cho_duyet` cho tới khi làm mới; nút này làm mới thay vì bắt
+  người dùng đăng xuất rồi đăng nhập lại.
+
+### Ràng buộc giữ nguyên
+
+`cho_duyet` **không phải một cấp quyền** mà là trạng thái chưa có quyền, nên API tạo tài
+khoản từ chối nếu ai đó cố đặt vai trò này bằng tay. Hai vai trò *Trưởng phòng* và *Nhân
+viên* vẫn bắt buộc gắn hồ sơ nhân viên — người tự tạo mà không khớp hồ sơ nào thì ở lại
+trạng thái chờ, kể cả khi bật `MS_TU_DONG_TAO`.
+
+### Đã kiểm chứng
+
+Test e2e đi hết vòng đời: tài khoản chờ đăng nhập được, `/toi` qua được, **5 đường nghiệp vụ
+khác nhau đều trả 403** kèm cờ lý do; admin cấp quyền; token cũ **vẫn bị chặn** (vai trò nằm
+trong token); làm mới token thì vào được; và bản ghi *ai duyệt, lúc nào* đúng. Kèm test chặn
+tạo tài khoản `cho_duyet` bằng tay. Tổng: 94 test đơn vị + 5 proxy + 59 e2e + 12 design
+token, tất cả xanh.
+
 ## [1.8.1] — 2026-08-08
 
 ### Sửa

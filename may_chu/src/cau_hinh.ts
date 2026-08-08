@@ -139,6 +139,23 @@ export const cau_hinh = {
     client_secret: chu('MS_CLIENT_SECRET', ''),
     /** Phai khop TUNG KY TU voi Redirect URI khai ben Entra. */
     redirect_uri: chu('MS_REDIRECT_URI', ''),
+    /**
+     * Ten mien email duoc phep tu tao tai khoan, phan tach bang dau phay.
+     *
+     * RONG = chi nguoi da duoc nhan su khai truoc moi dang nhap duoc.
+     *
+     * Co gia tri = ai co email thuoc ten mien do deu XAC THUC duoc, va he thong tu tao cho
+     * ho mot tai khoan o trang thai `cho_duyet`: dang nhap duoc nhung CHUA vao duoc he
+     * thong, cho toi khi admin phan vai tro. Nguoi ngoai ten mien van bi tu choi.
+     */
+    ten_mien_cho_phep: chu('MS_TEN_MIEN_CHO_PHEP', '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase().replace(/^@/, ''))
+      .filter((s) => s.length > 0),
+    /**
+     * 1 = tai khoan tu tao duoc cap luon vai tro `nhan_vien`, khong qua buoc duyet.
+     * 0 (mac dinh) = vao trang thai `cho_duyet`, admin phai phan quyen.
+     */
     tu_dong_tao: chu('MS_TU_DONG_TAO', '0') === '1',
     /** Duong dan webapp de quay ve sau khi dang nhap xong. */
     goc_webapp: chu('MS_GOC_WEBAPP', ''),

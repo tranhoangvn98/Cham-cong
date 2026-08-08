@@ -551,3 +551,23 @@ textarea { min-height: 66px; resize: vertical; }
   min-height: 100vh;
   color: var(--chu-mo);
 }
+
+.o-cho-duyet {
+  font-size: 40px;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.o-chon-vai-tro {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+.o-chon-vai-tro:hover { background: var(--nen-mo); }
+.o-chon-vai-tro input { margin-top: 3px; flex: none; }
+.o-chon-vai-tro > span { display: flex; flex-direction: column; }
