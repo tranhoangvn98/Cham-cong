@@ -2,6 +2,30 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.10.0] — 2026-08-08
+
+Trang **Chấm công** trước đây chỉ là chỗ xem: lọc được mỗi khoảng ngày, tối đa 300 dòng, và
+không xuất được gì. Nay thành chỗ quản lý được log thật.
+
+### Thêm mới
+
+- **Bốn bộ lọc** ngoài khoảng ngày: nhân viên, máy chấm công, nguồn (máy / điện thoại /
+  nhập tay), và trạng thái duyệt. Máy chủ từ chối giá trị lạ thay vì im lặng bỏ qua bộ lọc —
+  bỏ qua âm thầm thì người dùng tưởng đã lọc mà thực ra đang xem tất cả.
+- **Xem thêm** theo từng 200 dòng, thay cho trần cứng 300 dòng.
+- **Xuất CSV** toàn bộ khoảng đã chọn (trần 50.000 dòng), kèm cả bộ lọc đang áp. Có BOM
+  UTF-8 để Excel đọc đúng tiếng Việt và chặn CSV injection như bản xuất bảng công.
+  - Mốc thời gian xuất theo **giờ nơi đặt máy**, không phải giờ máy chủ. Máy chủ chạy UTC
+    vẫn ra đúng con số nhìn thấy trên máy chấm công.
+  - Chỉ nhân sự trở lên xuất được.
+
+### Đã kiểm chứng
+
+Test e2e cho từng bộ lọc (gồm trường hợp lọc ra rỗng và giá trị lạ bị từ chối), và cho bản
+CSV: có BOM, mốc giờ đúng giờ máy, nhân viên thường bị chặn. Lái Chromium qua trang: bốn ô
+lọc hiện đủ, lọc theo nguồn cắt đúng số dòng, khối cảnh báo PIN chưa gán vẫn nguyên, không
+lỗi JS. Tổng: 94 test đơn vị + 5 proxy + 61 e2e + 12 design token, tất cả xanh.
+
 ## [1.9.0] — 2026-08-08
 
 **Cả công ty đăng nhập được, nhưng phải qua bước duyệt** — cùng tên miền thì xác thực được,

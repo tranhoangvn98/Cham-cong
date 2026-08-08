@@ -1,6 +1,6 @@
 // Nhat ky quet tho: nguon su that de doi chieu khi co tranh chap bang cong.
 import { useState, type ReactNode } from 'react';
-import { goi, la_nhan_su } from '../api.ts';
+import { goi, la_nhan_su, tai_tep } from '../api.ts';
 import {
   DangTai, HopLoi, HopTot, HopThoai, NhanDon, TEN_NGUON, Trong,
   dung_hanh_dong, dung_nap, hom_nay, ngay_gio,
@@ -34,15 +34,48 @@ interface ChuaMap {
   lan_cuoi: string;
 }
 
+const MOI_TRANG = 200;
+
 export function TrangLanQuet(): ReactNode {
   const [tu, dat_tu] = useState(hom_nay());
   const [den, dat_den] = useState(hom_nay());
+  const [nhan_vien_id, dat_nhan_vien_id] = useState('');
+  const [thiet_bi_serial, dat_thiet_bi_serial] = useState('');
+  const [nguon, dat_nguon] = useState('');
+  const [trang_thai_duyet, dat_trang_thai_duyet] = useState('');
+  const [so_dong, dat_so_dong] = useState(MOI_TRANG);
   const [gan_lai_pin, dat_gan_lai_pin] = useState<string | null>(null);
+  const hd = dung_hanh_dong();
 
-  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<LanQuet[]>(
-    `/api/lan-quet?tu=${tu}&den=${den}&gioi_han=300`,
-  );
+  // Doi bo loc thi quay ve trang dau — giu nguyen so dong da mo rong se hieu nham la
+  // "khong co them du lieu" trong khi thuc ra dang xem ket qua cua bo loc cu.
+  const doi_loc = (dat: (v: string) => void) => (v: string): void => {
+    dat(v);
+    dat_so_dong(MOI_TRANG);
+  };
+
+  const chuoi_loc = [
+    `tu=${tu}`, `den=${den}`, `gioi_han=${so_dong}`,
+    nhan_vien_id === '' ? '' : `nhan_vien_id=${nhan_vien_id}`,
+    thiet_bi_serial === '' ? '' : `thiet_bi_serial=${encodeURIComponent(thiet_bi_serial)}`,
+    nguon === '' ? '' : `nguon=${nguon}`,
+    trang_thai_duyet === '' ? '' : `trang_thai_duyet=${trang_thai_duyet}`,
+  ].filter((x) => x !== '').join('&');
+
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<LanQuet[]>(`/api/lan-quet?${chuoi_loc}`);
   const chua_map = dung_nap<ChuaMap[]>(la_nhan_su() ? '/api/lan-quet/chua-map' : null);
+  const ds_nv = dung_nap<NhanVien[]>(la_nhan_su() ? '/api/nhan-vien' : null);
+  const ds_tb = dung_nap<{ serial: string; ten: string }[]>(la_nhan_su() ? '/api/thiet-bi' : null);
+
+  const xuat = async (): Promise<void> => {
+    await hd.chay(
+      () => tai_tep(
+        `/api/lan-quet/xuat-csv?${chuoi_loc.replace(/&?gioi_han=\d+/, '')}`,
+        `lan_quet_${tu}_${den}.csv`,
+      ),
+      'Đã tải tệp CSV.',
+    );
+  };
 
   return (
     <>
@@ -97,16 +130,78 @@ export function TrangLanQuet(): ReactNode {
       <div className="bo-loc">
         <div className="o-nhap">
           <label htmlFor="tu">Từ ngày</label>
-          <input id="tu" type="date" value={tu} onChange={(e) => dat_tu(e.target.value)} />
+          <input id="tu" type="date" value={tu}
+            onChange={(e) => doi_loc(dat_tu)(e.target.value)} />
         </div>
         <div className="o-nhap">
           <label htmlFor="den">Đến ngày</label>
-          <input id="den" type="date" value={den} onChange={(e) => dat_den(e.target.value)} />
+          <input id="den" type="date" value={den}
+            onChange={(e) => doi_loc(dat_den)(e.target.value)} />
         </div>
-        <div className="goi-y" style={{ marginBottom: 6 }}>Tối đa 31 ngày, 300 dòng gần nhất.</div>
+
+        {la_nhan_su() && (
+          <>
+            <div className="o-nhap">
+              <label htmlFor="lnv">Nhân viên</label>
+              <select id="lnv" value={nhan_vien_id}
+                onChange={(e) => doi_loc(dat_nhan_vien_id)(e.target.value)}>
+                <option value="">Tất cả</option>
+                {(ds_nv.du_lieu ?? []).map((n) => (
+                  <option key={n.id} value={n.id}>{n.ho_ten} ({n.ma_nv})</option>
+                ))}
+              </select>
+            </div>
+            <div className="o-nhap">
+              <label htmlFor="ltb">Máy chấm công</label>
+              <select id="ltb" value={thiet_bi_serial}
+                onChange={(e) => doi_loc(dat_thiet_bi_serial)(e.target.value)}>
+                <option value="">Tất cả</option>
+                {(ds_tb.du_lieu ?? []).map((t) => (
+                  <option key={t.serial} value={t.serial}>{t.ten} ({t.serial})</option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
+        <div className="o-nhap">
+          <label htmlFor="lng">Nguồn</label>
+          <select id="lng" value={nguon} onChange={(e) => doi_loc(dat_nguon)(e.target.value)}>
+            <option value="">Tất cả</option>
+            <option value="may">Máy chấm công</option>
+            <option value="dien_thoai">Điện thoại</option>
+            <option value="thu_cong">Nhập tay</option>
+          </select>
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="ltt">Trạng thái duyệt</label>
+          <select id="ltt" value={trang_thai_duyet}
+            onChange={(e) => doi_loc(dat_trang_thai_duyet)(e.target.value)}>
+            <option value="">Tất cả</option>
+            <option value="tu_dong">Tự động (máy)</option>
+            <option value="cho_duyet">Chờ duyệt</option>
+            <option value="da_duyet">Đã duyệt</option>
+            <option value="tu_choi">Từ chối</option>
+          </select>
+        </div>
+
+        {la_nhan_su() && (
+          <div className="o-nhap" style={{ justifyContent: 'flex-end' }}>
+            <button type="button" onClick={() => void xuat()} disabled={hd.dang_chay}>
+              {hd.dang_chay ? 'Đang xuất…' : 'Xuất CSV'}
+            </button>
+          </div>
+        )}
+
+        <div className="goi-y" style={{ marginBottom: 6 }}>
+          Tối đa 31 ngày mỗi lần xem. Bản CSV xuất hết khoảng đã chọn, không giới hạn số dòng
+          hiển thị.
+        </div>
       </div>
 
       <HopLoi loi={loi} />
+      <HopLoi loi={hd.loi} />
+      <HopTot chu={hd.tot} />
 
       <div className="the the-mong">
         {dang_tai ? <DangTai /> : (du_lieu ?? []).length === 0 ? (
@@ -162,6 +257,19 @@ export function TrangLanQuet(): ReactNode {
           </div>
         )}
       </div>
+
+      {(du_lieu ?? []).length > 0 && (
+        <div className="hang-nut" style={{ justifyContent: 'center', marginBottom: 16 }}>
+          <span className="mo-ta">Đang hiện {(du_lieu ?? []).length} dòng</span>
+          {/* Day du MOI_TRANG dong nghia la con nua — chua chac, nhung dung mot truy van
+              dem rieng cho mot bang co the rat lon thi khong dang. */}
+          {(du_lieu ?? []).length >= so_dong && (
+            <button type="button" onClick={() => dat_so_dong(so_dong + MOI_TRANG)}>
+              Xem thêm {MOI_TRANG} dòng
+            </button>
+          )}
+        </div>
+      )}
 
       {gan_lai_pin !== null && (
         <FormGanLai

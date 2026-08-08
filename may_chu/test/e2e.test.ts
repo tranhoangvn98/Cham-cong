@@ -1185,3 +1185,59 @@ test('khong tao duoc tai khoan cho_duyet bang tay qua API', async () => {
   });
   assert.equal(r.ma, 400, 'cho_duyet la trang thai do he thong dat, khong phai vai tro de cap');
 });
+
+// ============================================================ quan ly log cham cong
+test('loc log cham cong theo nhan vien, may, nguon, trang thai duyet', async () => {
+  const chung = `tu=${NGAY}&den=${NGAY}`;
+
+  const tat_ca = await goi('GET', `/api/lan-quet?${chung}`, { token: token_admin });
+  assert.equal(tat_ca.ma, 200);
+  const so_tat_ca = (tat_ca.body as unknown as unknown[]).length;
+  assert.ok(so_tat_ca > 0, 'phai co du lieu de loc');
+
+  const theo_may = await goi('GET', `/api/lan-quet?${chung}&thiet_bi_serial=${SERIAL}`,
+    { token: token_admin });
+  assert.ok((theo_may.body as unknown as unknown[]).length > 0);
+
+  const may_khac = await goi('GET', `/api/lan-quet?${chung}&thiet_bi_serial=KHONG-CO-THAT`,
+    { token: token_admin });
+  assert.equal((may_khac.body as unknown as unknown[]).length, 0, 'may khac phai ra rong');
+
+  const theo_nguon = await goi('GET', `/api/lan-quet?${chung}&nguon=may`, { token: token_admin });
+  assert.ok((theo_nguon.body as unknown as Record<string, unknown>[]).every((d) => d['nguon'] === 'may'));
+
+  const dien_thoai = await goi('GET', `/api/lan-quet?${chung}&nguon=dien_thoai`, { token: token_admin });
+  assert.ok((dien_thoai.body as unknown as Record<string, unknown>[])
+    .every((d) => d['nguon'] === 'dien_thoai'), 'loc nguon phai loai het ban ghi tu may');
+
+  const theo_nv = await goi('GET', `/api/lan-quet?${chung}&nhan_vien_id=${nhan_vien_id}`,
+    { token: token_admin });
+  assert.ok((theo_nv.body as unknown as Record<string, unknown>[])
+    .every((d) => d['nhan_vien_id'] === nhan_vien_id));
+
+  // Gia tri khong hop le bi tu choi thay vi im lang bo qua bo loc.
+  const sai = await goi('GET', `/api/lan-quet?${chung}&nguon=linh_tinh`, { token: token_admin });
+  assert.equal(sai.ma, 400);
+});
+
+test('xuat CSV log cham cong: co BOM, dung gio may, chong CSV injection', async () => {
+  const r = await app.inject({
+    method: 'GET',
+    url: `/api/lan-quet/xuat-csv?tu=${NGAY}&den=${NGAY}`,
+    headers: { authorization: `Bearer ${token_admin}` },
+  });
+  assert.equal(r.statusCode, 200);
+  assert.match(r.headers['content-type'] as string, /text\/csv/);
+  assert.match(r.headers['content-disposition'] as string, /lan_quet_/);
+  assert.ok(r.body.startsWith('﻿'), 'phai co BOM UTF-8 de Excel doc dung tieng Viet');
+
+  const dong = r.body.split('\r\n');
+  assert.match(dong[0] ?? '', /Thời điểm/);
+  // Moc thoi gian phai theo gio noi dat may (UTC+7), khong phai gio may chu.
+  assert.ok(dong.slice(1).some((d) => d.includes(`${NGAY} 08:12:03`)),
+    `phai co moc 08:12:03 theo gio may. Nhan duoc:\n${dong.slice(1, 4).join('\n')}`);
+
+  // Nhan vien thuong khong duoc xuat.
+  const cam = await goi('GET', `/api/lan-quet/xuat-csv?tu=${NGAY}&den=${NGAY}`, { token: token_nhan_vien });
+  assert.equal(cam.ma, 403);
+});

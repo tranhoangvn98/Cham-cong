@@ -2,13 +2,13 @@
 import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
-import { cau_hinh } from '../cau_hinh.ts';
+import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
 import {
-  chuoi, khoang_ngay, luan_ly, ngay_bat_buoc, phan_trang, so_nguyen, than, uuid,
+  chuoi, khoang_ngay, luan_ly, ngay_bat_buoc, phan_trang, so_nguyen, than, trong_tap, uuid,
   LoiDauVao, LoiKhongTim,
 } from '../tien_ich/kiem_tra.ts';
 
@@ -223,9 +223,9 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
     const nd = nguoi_dung_hien_tai(req);
     const q = req.query as Record<string, unknown>;
     const { tu, den } = khoang_ngay(q, 31);
-    const nhan_vien_id = uuid(q, 'nhan_vien_id');
+    const loc = doc_loc_lan_quet(q);
     const { gioi_han, bo_qua } = phan_trang(q, 200, 1000);
-    const pv = pham_vi_nhan_vien(nd, 'nv', 6);
+    const pv = pham_vi_nhan_vien(nd, 'nv', 9);
 
     const dong = await truy_van<Record<string, unknown>>(
       `select lq.id, lq.nguon, lq.thiet_bi_serial, lq.pin_may, lq.thoi_diem,
@@ -237,12 +237,11 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
          left join nhan_vien nv on nv.id = lq.nhan_vien_id
          left join dia_diem  dd on dd.id = lq.dia_diem_id
          left join thiet_bi  tb on tb.serial = lq.thiet_bi_serial
-        where lq.thoi_diem >= $1::date and lq.thoi_diem < ($2::date + 1)
-          and ($3::uuid is null or lq.nhan_vien_id = $3)
-          and (lq.nhan_vien_id is null or ${pv.sql})
+        ${DIEU_KIEN_LAN_QUET(pv.sql)}
         order by lq.thoi_diem desc
-        limit $4 offset $5`,
-      [tu, den, nhan_vien_id, gioi_han, bo_qua, ...pv.tham_so],
+        limit $7 offset $8`,
+      [tu, den, loc.nhan_vien_id, loc.thiet_bi_serial, loc.nguon, loc.trang_thai_duyet,
+       gioi_han, bo_qua, ...pv.tham_so],
     );
 
     return dong.map((d) => ({
@@ -250,6 +249,54 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
       nhan_trang_thai: NHAN_TRANG_THAI[Number(d['trang_thai'])] ?? 'Khac',
       nhan_xac_thuc: nhan_cach_xac_thuc(Number(d['xac_thuc'])),
     }));
+  });
+
+  /**
+   * Xuat log cham cong tho ra CSV — de doi chieu voi ERP hoac gui kem khi giai trinh.
+   *
+   * Khong gioi han 300 dong nhu tren giao dien: xuat het khoang ngay da chon, tran 50.000
+   * dong de mot cu bam khong keo sap CSDL.
+   */
+  app.get('/lan-quet/xuat-csv', { preHandler: can_nhan_su }, async (req, res) => {
+    const q = req.query as Record<string, unknown>;
+    const { tu, den } = khoang_ngay(q, 92);
+    const loc = doc_loc_lan_quet(q);
+
+    const dong = await truy_van<Record<string, unknown>>(
+      `select lq.thoi_diem, nv.ma_nv, nv.ho_ten, lq.pin_may, lq.trang_thai, lq.xac_thuc,
+              lq.nguon, lq.trang_thai_duyet, lq.thiet_bi_serial, tb.ten as thiet_bi,
+              dd.ten as dia_diem, lq.khoang_cach_m, lq.ghi_chu
+         from lan_quet lq
+         left join nhan_vien nv on nv.id = lq.nhan_vien_id
+         left join dia_diem  dd on dd.id = lq.dia_diem_id
+         left join thiet_bi  tb on tb.serial = lq.thiet_bi_serial
+        ${DIEU_KIEN_LAN_QUET('true')}
+        order by lq.thoi_diem
+        limit 50000`,
+      [tu, den, loc.nhan_vien_id, loc.thiet_bi_serial, loc.nguon, loc.trang_thai_duyet],
+    );
+
+    const tieu_de = [
+      'Thời điểm', 'Mã NV', 'Họ tên', 'PIN máy', 'Loại', 'Cách xác thực', 'Nguồn',
+      'Trạng thái duyệt', 'Serial máy', 'Tên máy', 'Địa điểm', 'Khoảng cách (m)', 'Ghi chú',
+    ];
+    const hang = dong.map((d) => [
+      moc_gio_may(d['thoi_diem']),
+      d['ma_nv'], d['ho_ten'], d['pin_may'],
+      NHAN_TRANG_THAI[Number(d['trang_thai'])] ?? d['trang_thai'],
+      nhan_cach_xac_thuc(Number(d['xac_thuc'])),
+      d['nguon'], d['trang_thai_duyet'], d['thiet_bi_serial'], d['thiet_bi'],
+      d['dia_diem'], d['khoang_cach_m'], d['ghi_chu'],
+    ]);
+
+    const csv = '\ufeff' + [tieu_de, ...hang].map((r) => r.map(o_csv).join(',')).join('\r\n');
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xuat_lan_quet', 'lan_quet',
+      null, { tu, den, so_dong: hang.length }, req.ip);
+
+    return res
+      .header('content-type', 'text/csv; charset=utf-8')
+      .header('content-disposition', `attachment; filename="lan_quet_${tu}_${den}.csv"`)
+      .send(csv);
   });
 
   /** PIN tu may nhung chua gan cho nhan vien nao — nhan su phai xu ly. */
@@ -364,12 +411,48 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
   });
 }
 
+/** Cac bo loc dung chung cho danh sach va ban xuat CSV. */
+function doc_loc_lan_quet(q: Record<string, unknown>) {
+  return {
+    nhan_vien_id: uuid(q, 'nhan_vien_id'),
+    thiet_bi_serial: chuoi(q, 'thiet_bi_serial', { toi_da: 64 }),
+    nguon: trong_tap(q, 'nguon', ['may', 'dien_thoai', 'thu_cong'] as const),
+    trang_thai_duyet: trong_tap(q, 'trang_thai_duyet',
+      ['tu_dong', 'cho_duyet', 'da_duyet', 'tu_choi'] as const),
+  };
+}
+
+/**
+ * Menh de where dung chung. Tham so 1..6 co dinh; `pham_vi` la dieu kien gioi han theo
+ * vai tro (truong phong chi thay phong minh) hoac 'true' khi da chan bang can_nhan_su.
+ */
+const DIEU_KIEN_LAN_QUET = (pham_vi: string): string => `
+        where lq.thoi_diem >= $1::date and lq.thoi_diem < ($2::date + 1)
+          and ($3::uuid is null or lq.nhan_vien_id = $3)
+          and ($4::text is null or lq.thiet_bi_serial = $4)
+          and ($5::text is null or lq.nguon = $5)
+          and ($6::text is null or lq.trang_thai_duyet = $6)
+          and (lq.nhan_vien_id is null or ${pham_vi})`;
+
 function o_csv(v: unknown): string {
   if (v === null || v === undefined) return '';
   const s = String(v);
   // Chan CSV injection: Excel/Sheets coi o bat dau bang = + - @ la cong thuc.
   const an_toan = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
   return /[",\r\n]/.test(an_toan) ? `"${an_toan.replace(/"/g, '""')}"` : an_toan;
+}
+
+/**
+ * Moc thoi gian theo gio NOI DAT MAY, dang 'YYYY-MM-DD HH:MM:SS'.
+ *
+ * KHONG dung toLocaleString: no format theo mui gio cua may chay may chu. Gio cham cong la
+ * gio tai noi dat may — xuat tren may chu chay UTC phai ra dung so nhu nhin tren may.
+ */
+function moc_gio_may(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  const t = new Date(v as string | Date);
+  if (Number.isNaN(t.getTime())) return '';
+  return new Date(t.getTime() + OFFSET_MAY_MS).toISOString().replace('T', ' ').slice(0, 19);
 }
 
 function gio_hhmm(v: unknown): string {
