@@ -16,10 +16,13 @@ interface TaiKhoan {
   nhan_vien_id: string | null;
   ho_ten: string | null;
   ma_nv: string | null;
+  /** Email Microsoft đã nối. Trống = tài khoản này chỉ đăng nhập bằng mật khẩu. */
+  email_microsoft: string | null;
 }
 
 export function TrangNguoiDung(): ReactNode {
   const [dat_lai_cho, dat_dat_lai_cho] = useState<TaiKhoan | null>(null);
+  const [noi_ms_cho, dat_noi_ms_cho] = useState<TaiKhoan | null>(null);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<TaiKhoan[]>('/api/nguoi-dung');
   const hd = dung_hanh_dong();
   const toi = nguoi_dung_hien_tai();
@@ -61,6 +64,7 @@ export function TrangNguoiDung(): ReactNode {
                   <th>Tên đăng nhập</th>
                   <th>Nhân viên</th>
                   <th>Vai trò</th>
+                  <th>Đăng nhập Microsoft</th>
                   <th>Trạng thái</th>
                   <th>Đăng nhập cuối</th>
                   <th></th>
@@ -80,6 +84,11 @@ export function TrangNguoiDung(): ReactNode {
                       {tk.ma_nv !== null && <div className="o-so-phu">{tk.ma_nv}</div>}
                     </td>
                     <td>{TEN_VAI_TRO[tk.vai_tro] ?? tk.vai_tro}</td>
+                    <td style={{ fontSize: 12 }}>
+                      {tk.email_microsoft === null
+                        ? <span style={{ color: 'var(--chu-mo)' }}>chưa nối</span>
+                        : tk.email_microsoft}
+                    </td>
                     <td>
                       {!tk.dang_hoat_dong
                         ? <span className="nhan nhan-mo">vô hiệu</span>
@@ -96,6 +105,9 @@ export function TrangNguoiDung(): ReactNode {
                       <div className="hang-nut">
                         <button className="nut-nho nut-phang" onClick={() => dat_dat_lai_cho(tk)}>
                           Đặt lại mật khẩu
+                        </button>
+                        <button className="nut-nho nut-phang" onClick={() => dat_noi_ms_cho(tk)}>
+                          {tk.email_microsoft === null ? 'Nối Microsoft' : 'Sửa email MS'}
                         </button>
                         {tk.id !== toi?.id && (
                           <button className="nut-nho nut-phang" onClick={() => bat_tat(tk)}>
@@ -119,7 +131,75 @@ export function TrangNguoiDung(): ReactNode {
           khi_xong={() => { dat_dat_lai_cho(null); nap_lai(); }}
         />
       )}
+
+      {noi_ms_cho !== null && (
+        <FormNoiMicrosoft
+          tai_khoan={noi_ms_cho}
+          khi_dong={() => dat_noi_ms_cho(null)}
+          khi_xong={() => { dat_noi_ms_cho(null); nap_lai(); }}
+        />
+      )}
     </>
+  );
+}
+
+/** Nối/gỡ tài khoản Microsoft cho một tài khoản đăng nhập. */
+function FormNoiMicrosoft(
+  { tai_khoan, khi_dong, khi_xong }:
+  { tai_khoan: TaiKhoan; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [email, dat_email] = useState(tai_khoan.email_microsoft ?? '');
+  const hd = dung_hanh_dong();
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    const ok = await hd.chay(
+      () => goi(`/api/nguoi-dung/${tai_khoan.id}`, {
+        method: 'PATCH',
+        // Chuỗi rỗng = gỡ liên kết.
+        body: { email_microsoft: email.trim() },
+      }),
+      email.trim() === '' ? 'Đã gỡ liên kết Microsoft.' : 'Đã nối tài khoản Microsoft.',
+    );
+    if (ok) setTimeout(khi_xong, 700);
+  };
+
+  return (
+    <HopThoai tieu_de={`Đăng nhập Microsoft: ${tai_khoan.ten_dang_nhap}`} khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+        <HopTot chu={hd.tot} />
+
+        <div className="o-nhap">
+          <label htmlFor="ems">Email Microsoft</label>
+          <input
+            id="ems"
+            type="email"
+            value={email}
+            onChange={(e) => dat_email(e.target.value)}
+            placeholder="ten.nhanvien@congty.vn"
+            autoFocus
+          />
+          <div className="goi-y">
+            Người đăng nhập bằng tài khoản Microsoft này sẽ vào với vai trò{' '}
+            <strong>{TEN_VAI_TRO[tai_khoan.vai_tro] ?? tai_khoan.vai_tro}</strong>. Để trống rồi
+            lưu là gỡ liên kết — tài khoản quay lại chỉ đăng nhập được bằng mật khẩu.
+          </div>
+        </div>
+
+        <div className="hop-thong-bao hop-luu-y">
+          Không cần khai ở đây nếu hồ sơ <strong>Nhân viên</strong> đã có đúng email công ty —
+          hệ thống tự đối chiếu và ghi nhớ ở lần đăng nhập đầu.
+        </div>
+
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>
+            {hd.dang_chay ? 'Đang lưu…' : 'Lưu'}
+          </button>
+          <button type="button" onClick={khi_dong}>Hủy</button>
+        </div>
+      </form>
+    </HopThoai>
   );
 }
 

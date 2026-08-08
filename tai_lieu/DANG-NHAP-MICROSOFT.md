@@ -224,6 +224,24 @@ Nên làm: nhân sự điền đúng email công ty vào hồ sơ từng nhân v
 nhập cho họ. Người chưa có tài khoản trong hệ thống sẽ bị từ chối kèm thông báo rõ ràng —
 đây là chủ ý, không phải lỗi.
 
+Nối tay khi cần (email Microsoft khác email trong hồ sơ, hoặc muốn kiểm soát từng tài
+khoản): webapp → **Tài khoản** → cột *Đăng nhập Microsoft* → nút **Nối Microsoft**. Để
+trống rồi lưu là gỡ liên kết, tài khoản quay lại chỉ đăng nhập được bằng mật khẩu.
+
+### Đăng nhập Microsoft KHÔNG thay đổi phân quyền
+
+Nó chỉ thay chỗ **xác thực danh tính**. Còn lại giữ nguyên:
+
+| Thứ | Do đâu quyết định |
+|---|---|
+| Ai được vào hệ thống | Phải có tài khoản khớp email; không khớp thì bị từ chối |
+| Vai trò | Trường `vai_tro` của tài khoản đó, nhân sự đặt |
+| Bật/tắt một người | Nút *Vô hiệu hóa* ở trang Tài khoản — chặn cả hai đường đăng nhập |
+| Xem được dữ liệu của ai | Theo vai trò, y như đăng nhập bằng mật khẩu |
+
+Bốn vai trò: `admin` (toàn quyền, gồm quản lý tài khoản), `nhan_su` (quản trị chấm công),
+`truong_phong` (duyệt đơn của phòng mình), `nhan_vien` (chỉ xem dữ liệu của chính mình).
+
 ## 6. `MS_TU_DONG_TAO` — cân nhắc kỹ
 
 Bật lên (`=1`) thì **bất kỳ ai trong tổ chức Microsoft của bạn** đăng nhập lần đầu cũng tự

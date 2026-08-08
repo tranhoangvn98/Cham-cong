@@ -1089,3 +1089,36 @@ test('/microsoft/goi-ve khong nhan duoc khi tinh nang tat', async () => {
   const r = await app.inject({ method: 'GET', url: '/api/xac-thuc/microsoft/goi-ve?code=abc&state=xyz' });
   assert.equal(r.statusCode, 400);
 });
+
+test('admin noi va go email Microsoft cho tai khoan', async () => {
+  const ds = await goi('GET', '/api/nguoi-dung', { token: token_admin });
+  const admin = (ds.body as unknown as Record<string, unknown>[])
+    .find((t) => t['ten_dang_nhap'] === 'admin');
+  assert.ok(admin, 'phai co tai khoan admin');
+  assert.equal(admin?.['email_microsoft'], null, 'moi tao thi chua noi');
+  const id = admin?.['id'] as string;
+
+  const noi = await goi('PATCH', `/api/nguoi-dung/${id}`, {
+    token: token_admin, body: { email_microsoft: 'sep@congty.vn' },
+  });
+  assert.equal(noi.ma, 200);
+
+  const sau = await goi('GET', '/api/nguoi-dung', { token: token_admin });
+  const dong = (sau.body as unknown as Record<string, unknown>[]).find((t) => t['id'] === id);
+  assert.equal(dong?.['email_microsoft'], 'sep@congty.vn');
+
+  // Email khong hop le bi tu choi.
+  const sai = await goi('PATCH', `/api/nguoi-dung/${id}`, {
+    token: token_admin, body: { email_microsoft: 'khong-phai-email' },
+  });
+  assert.equal(sai.ma, 400);
+
+  // Chuoi rong = go lien ket.
+  const go = await goi('PATCH', `/api/nguoi-dung/${id}`, {
+    token: token_admin, body: { email_microsoft: '' },
+  });
+  assert.equal(go.ma, 200);
+  const cuoi = await goi('GET', '/api/nguoi-dung', { token: token_admin });
+  const dong2 = (cuoi.body as unknown as Record<string, unknown>[]).find((t) => t['id'] === id);
+  assert.equal(dong2?.['email_microsoft'], null, 'chuoi rong phai go lien ket');
+});

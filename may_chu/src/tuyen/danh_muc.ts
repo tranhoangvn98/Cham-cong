@@ -397,7 +397,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   app.get('/nguoi-dung', { preHandler: can_admin }, async () =>
     truy_van(
       `select nd.id, nd.ten_dang_nhap, nd.vai_tro, nd.dang_hoat_dong, nd.phai_doi_mat_khau,
-              nd.dang_nhap_cuoi, nd.nhan_vien_id, nv.ho_ten, nv.ma_nv
+              nd.dang_nhap_cuoi, nd.nhan_vien_id, nd.email_microsoft, nv.ho_ten, nv.ma_nv
          from nguoi_dung nd
          left join nhan_vien nv on nv.id = nd.nhan_vien_id
         order by nd.ten_dang_nhap`,
@@ -475,18 +475,25 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const b = than(req.body);
     const dang_hoat_dong = luan_ly(b, 'dang_hoat_dong');
     const vai_tro = trong_tap(b, 'vai_tro', VAI_TRO);
+    // Chuoi rong = go lien ket voi Microsoft; vang mat = khong doi.
+    const co_doi_email = Object.hasOwn(b, 'email_microsoft');
+    const email_microsoft = co_doi_email ? doc_email_microsoft(b) : null;
 
     // Chan tu khoa chinh minh ra khoi he thong.
     if (id === nd.sub && (dang_hoat_dong === false || (vai_tro !== null && vai_tro !== 'admin'))) {
       throw new LoiDauVao('Không thể tự vô hiệu hóa hoặc tự hạ quyền tài khoản đang dùng.');
     }
 
-    const so = await thuc_thi(
-      `update nguoi_dung
-          set dang_hoat_dong = coalesce($2, dang_hoat_dong),
-              vai_tro = coalesce($3, vai_tro)
-        where id = $1`,
-      [id, dang_hoat_dong, vai_tro],
+    const so = await ghi_bat_trung(
+      () => thuc_thi(
+        `update nguoi_dung
+            set dang_hoat_dong = coalesce($2, dang_hoat_dong),
+                vai_tro = coalesce($3, vai_tro),
+                email_microsoft = case when $4 then $5 else email_microsoft end
+          where id = $1`,
+        [id, dang_hoat_dong, vai_tro, co_doi_email, email_microsoft],
+      ),
+      'Email Microsoft này đã gán cho tài khoản khác.',
     );
     if (so === 0) throw new LoiKhongTim('Không tìm thấy tài khoản.');
     if (dang_hoat_dong === false) {
@@ -665,6 +672,21 @@ function phut_giua(tu: string, den: string): number {
     return Number(h) * 60 + Number(m);
   };
   return p(den) - p(tu);
+}
+
+/**
+ * Doc email Microsoft de noi tai khoan. Chuoi rong -> null (go lien ket).
+ *
+ * Chi kiem dinh dang co ban: nguon su that la id_token do Microsoft ky, khong phai o nhap
+ * nay. Kiem qua chat chi lam nhan su khong khai duoc dia chi hop le kieu la.
+ */
+function doc_email_microsoft(b: Record<string, unknown>): string | null {
+  const v = chuoi(b, 'email_microsoft', { toi_da: 200 });
+  if (v === null) return null;
+  if (!v.includes('@') || v.includes(' ')) {
+    throw new LoiDauVao('Email Microsoft không hợp lệ.');
+  }
+  return v;
 }
 
 function doc_ngay_lam(v: unknown): number[] {

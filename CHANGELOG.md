@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.8.1] — 2026-08-08
+
+### Sửa
+
+- **Không nối được tài khoản Microsoft từ giao diện.** Cột `email_microsoft` có trong CSDL
+  nhưng không lộ ra API lẫn webapp, nên cách duy nhất để nối một tài khoản cụ thể là chạy
+  `UPDATE` thẳng vào CSDL. Nay trang **Tài khoản** có cột *Đăng nhập Microsoft* và nút
+  **Nối Microsoft**; để trống rồi lưu là gỡ liên kết. Email trùng với tài khoản khác bị từ
+  chối kèm thông báo rõ thay vì lỗi CSDL.
+- Tài liệu bổ sung mục nói rõ đăng nhập Microsoft **không** thay đổi phân quyền: nó chỉ
+  thay chỗ xác thực danh tính, còn vai trò và quyền vào hệ thống vẫn do tài khoản trong hệ
+  thống quyết định.
+
 ## [1.8.0] — 2026-08-07
 
 **Đăng nhập bằng tài khoản Microsoft (Entra ID)** — nhân viên dùng chính tài khoản
