@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.12.2] — 2026-08-10
+
+### Tài liệu
+
+- `.env.example`: cảnh báo **không bật `COMPOSE_PROFILES=ten_mien` khi máy chủ đã có sẵn
+  reverse proxy riêng**. Caddy trong compose cũng đòi cổng 80/443 mà proxy của máy chủ đang
+  giữ; Docker không cướp được cổng đang bị chiếm nên `cong_vao` chỉ đơn giản là không khởi
+  động được ("port is already allocated") — dịch vụ kia vẫn sống, nhưng lần triển khai thất
+  bại giữa chừng. Kèm chỉ dẫn cách đúng: để proxy của máy chủ dẫn vào `CONG_MAY_CHU` /
+  `CONG_WEB`.
+- Nói rõ vẫn **nên điền `TEN_MIEN` dù không bật profile**: một mình nó không khởi động gì,
+  chỉ để `trien_khai/cap_nhat_vps.sh` biết đường mà kiểm tra sau khi cập nhật. Bản triển
+  khai thật không có dòng này nên lần chạy đầu tiên đã bỏ qua cả ba phép kiểm tra qua tên
+  miền, gồm cả phép so sánh trạng thái chatbot trước/sau.
+
 ## [1.12.1] — 2026-08-08
 
 ### Thêm mới
