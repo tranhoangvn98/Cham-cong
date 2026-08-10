@@ -2,6 +2,32 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.13.1] — 2026-08-10
+
+### Sửa
+
+- **Hộp thoại phân quyền vỡ bố cục.** Quy tắc chung `input { width: 100% }` — vốn dành cho ô
+  nhập văn bản — áp cả vào **radio và checkbox**, nên nút tròn chiếm trọn một hàng và đẩy chữ
+  ra ngoài khung: ô cao ngoẵng, rỗng ruột, chữ bị ép xuống hai ký tự mỗi dòng và hộp thoại
+  tràn ngang. Sửa ở gốc (`input[type="radio"], input[type="checkbox"] { width: auto }`) thay
+  vì vá riêng hộp thoại này — có **11 chỗ** dùng nút chọn và tất cả đều đang dính.
+- **Cấp quyền trả "Lỗi hệ thống".** Vai trò `nhan_vien` / `truong_phong` bắt buộc gắn với một
+  hồ sơ nhân viên (phạm vi dữ liệu của họ tính từ đó). Câu UPDATE đi thẳng xuống CSDL, ràng
+  buộc CHECK nổ ra lỗi `23514` không ai bắt, và người dùng nhận thông báo lỗi hệ thống cho
+  một tình huống hoàn toàn đoán trước được. Nay kiểm trước khi ghi và trả 400 kèm hướng dẫn,
+  có nêu đúng email cần khai.
+- **Hướng dẫn trên màn hình vốn sai.** Nó bảo "tạo hồ sơ ở trang Nhân viên rồi quay lại",
+  nhưng tài khoản Microsoft **đã tồn tại** thì không bao giờ được nối vào hồ sơ tạo sau —
+  luồng đăng nhập tìm thấy tài khoản theo `email_microsoft` là trả về luôn. Làm đúng hướng
+  dẫn vẫn tắc. Nay nối được ở **cả hai đường**:
+  - Lúc cấp quyền: tự đối chiếu email của tài khoản với email nhân viên; cũng nhận
+    `nhan_vien_id` chỉ định thẳng.
+  - Lúc đăng nhập: tài khoản chưa gắn hồ sơ sẽ được nối lại nếu tìm thấy nhân viên trùng
+    email — rất hay gặp vì người ta đăng nhập lần đầu trước khi nhân sự kịp khai hồ sơ.
+- **Thông báo trùng khóa nói sai lý do.** Mọi lỗi `23505` trên bảng `nguoi_dung` đều trả
+  "Email Microsoft này đã gán cho tài khoản khác", kể cả khi thật ra **nhân viên đó đã có
+  tài khoản** — sửa mãi không ra. Nay nhận dạng theo tên ràng buộc.
+
 ## [1.13.0] — 2026-08-10
 
 **Hồ sơ nhân sự cho đủ checklist HCNS–BHXH.** Bổ sung theo đặc tả của phòng HCNS: thông tin

@@ -1914,3 +1914,80 @@ test('tong quan ho so: co tien do tai lieu, va truong phong khong thay tien do d
   const tp = await goi('GET', `/api/nhan-vien/${hs_nv_a}/ho-so`, { token: hs_token_tp });
   assert.equal(tp.body['tien_do_tai_lieu'], null);
 });
+
+// ============================================================ PHAN QUYEN TAI KHOAN
+test('phan quyen: vai tro can ho so ma tai khoan chua co -> 400 co huong dan, KHONG phai 500', async () => {
+  // Truoc day cau UPDATE di thang xuong CSDL, rang buoc CHECK no ra 23514 khong ai bat, va
+  // nguoi dung nhan "Loi he thong" cho mot tinh huong hoan toan doan truoc duoc.
+  // Tao GIONG luong dang nhap Microsoft: ghi thang vao CSDL voi ten_dang_nhap la email va
+  // vai tro `cho_duyet`. Duong POST /nguoi-dung khong nhan ky tu '@' trong ten dang nhap,
+  // nen goi qua do se khong tai hien dung tinh huong that.
+  await thuc_thi(
+    `insert into nguoi_dung(ten_dang_nhap, mat_khau_hash, vai_tro, email_microsoft,
+                            phai_doi_mat_khau)
+     values ($1, 'x', 'cho_duyet', $1, false)`,
+    ['chua.co.hoso@congty.vn'],
+  );
+  const tk = (await truy_van_mot<{ id: string }>(
+    "select id from nguoi_dung where ten_dang_nhap = 'chua.co.hoso@congty.vn'"))?.id as string;
+
+  const r = await goi('PATCH', `/api/nguoi-dung/${tk}`, {
+    token: token_admin, body: { vai_tro: 'truong_phong' },
+  });
+  assert.equal(r.ma, 400, 'phai la loi dau vao, khong phai loi he thong');
+  assert.match(String(r.body['loi']), /hồ sơ nhân viên/);
+  assert.match(String(r.body['loi']), /chua\.co\.hoso@congty\.vn/, 'phai chi ro email can khai');
+});
+
+test('phan quyen: tao ho so nhan vien dung email roi cap quyen lai thi TU NOI', async () => {
+  const tk = (await truy_van_mot<{ id: string }>(
+    "select id from nguoi_dung where ten_dang_nhap = 'chua.co.hoso@congty.vn'"))?.id;
+
+  const nv = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: { ma_nv: 'NVLINK1', ho_ten: 'Người Được Nối', email: 'chua.co.hoso@congty.vn' },
+  });
+  assert.equal(nv.ma, 201, JSON.stringify(nv.body));
+
+  const r = await goi('PATCH', `/api/nguoi-dung/${tk}`, {
+    token: token_admin, body: { vai_tro: 'truong_phong' },
+  });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+
+  const sau = await truy_van_mot<{ nhan_vien_id: string | null; vai_tro: string }>(
+    'select nhan_vien_id, vai_tro from nguoi_dung where id = $1', [tk]);
+  assert.equal(sau?.vai_tro, 'truong_phong');
+  assert.equal(sau?.nhan_vien_id, nv.body['id'], 'phai tu noi vao dung ho so vua tao');
+});
+
+test('phan quyen: chi dinh thang nhan_vien_id cung duoc', async () => {
+  const nv = await goi('POST', '/api/nhan-vien', {
+    token: token_admin, body: { ma_nv: 'NVLINK2', ho_ten: 'Người Chỉ Định' },
+  });
+  const tao = await goi('POST', '/api/nguoi-dung', {
+    token: token_admin,
+    body: { ten_dang_nhap: 'chi.dinh', mat_khau: 'ChiDinh@2026', vai_tro: 'nhan_su' },
+  });
+  assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+  const r = await goi('PATCH', `/api/nguoi-dung/${tao.body['id']}`, {
+    token: token_admin, body: { vai_tro: 'nhan_vien', nhan_vien_id: nv.body['id'] },
+  });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+  const sau = await truy_van_mot<{ nhan_vien_id: string }>(
+    'select nhan_vien_id from nguoi_dung where id = $1', [tao.body['id']]);
+  assert.equal(sau?.nhan_vien_id, nv.body['id']);
+});
+
+test('phan quyen: nhan vien da co tai khoan thi bao dung ly do, khong bao nham email', async () => {
+  // Truoc day moi loi trung khoa deu tra "Email Microsoft nay da gan cho tai khoan khac",
+  // ke ca khi that ra la nhan vien do da co tai khoan — sua mai khong ra.
+  const tao = await goi('POST', '/api/nguoi-dung', {
+    token: token_admin,
+    body: { ten_dang_nhap: 'trung.nv', mat_khau: 'TrungNV@2026', vai_tro: 'nhan_su' },
+  });
+  const r = await goi('PATCH', `/api/nguoi-dung/${tao.body['id']}`, {
+    token: token_admin, body: { vai_tro: 'nhan_vien', nhan_vien_id: hs_nv_b },
+  });
+  assert.equal(r.ma, 409);
+  assert.match(String(r.body['loi']), /đã có một tài khoản khác/);
+});

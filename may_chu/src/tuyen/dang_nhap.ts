@@ -414,7 +414,25 @@ async function tim_hoac_tao_theo_email(email: string, ho_ten: string | null): Pr
       where lower(nd.email_microsoft) = lower($1)`,
     [email],
   );
-  if (theo_tai_khoan !== null) return theo_tai_khoan;
+  if (theo_tai_khoan !== null) {
+    // Tai khoan da co nhung CHUA gan ho so nhan vien: thu noi lai theo email.
+    //
+    // Rat hay gap — nguoi ta dang nhap lan dau truoc khi nhan su kip khai ho so. Truoc day
+    // nhanh nay tra ve luon, nen ho so tao sau khong bao gio duoc noi vao, va quan tri
+    // khong cap duoc vai tro nhan_vien / truong_phong cho ho du da lam dung huong dan.
+    if (theo_tai_khoan.nhan_vien_id === null) {
+      const nv = await truy_van_mot<{ id: string; ho_ten: string }>(
+        'select id, ho_ten from nhan_vien where lower(email) = lower($1) and dang_hoat_dong = true',
+        [email],
+      );
+      if (nv !== null) {
+        await thuc_thi('update nguoi_dung set nhan_vien_id = $2 where id = $1',
+          [theo_tai_khoan.id, nv.id]);
+        return { ...theo_tai_khoan, nhan_vien_id: nv.id, ho_ten: nv.ho_ten };
+      }
+    }
+    return theo_tai_khoan;
+  }
 
   const theo_nhan_vien = await truy_van_mot<DongNguoiDung & { nhan_vien_co: string }>(
     `select nd.id, nd.ten_dang_nhap, nd.mat_khau_hash, nd.vai_tro, nd.nhan_vien_id,

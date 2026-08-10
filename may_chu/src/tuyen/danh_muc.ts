@@ -490,11 +490,49 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       throw new LoiDauVao('Không thể tự vô hiệu hóa hoặc tự hạ quyền tài khoản đang dùng.');
     }
 
+    // Vai tro `nhan_vien` va `truong_phong` BAT BUOC gan voi mot ho so nhan vien: pham vi
+    // du lieu cua ho duoc tinh tu ho so do (xem `pham_vi_nhan_vien`). Khong gan thi khong
+    // biet ho duoc xem cua ai. CSDL cung co rang buoc CHECK cho viec nay.
+    //
+    // Truoc day cho di thang xuong CSDL: rang buoc no ra loi 23514, khong ai bat, va nguoi
+    // dung nhan "Loi he thong" — mot loi hoan toan doan truoc duoc lai hien ra nhu su co.
+    let nhan_vien_gan: string | null = null;
+    if (vai_tro === 'nhan_vien' || vai_tro === 'truong_phong') {
+      const hien = await truy_van_mot<{ nhan_vien_id: string | null; ten: string; email_ms: string | null }>(
+        `select nhan_vien_id, ten_dang_nhap as ten, email_microsoft as email_ms
+           from nguoi_dung where id = $1`, [id]);
+      if (hien === null) throw new LoiKhongTim('Không tìm thấy tài khoản.');
+
+      if (hien.nhan_vien_id === null) {
+        // Cho phep chi dinh thang, hoac tu doi chieu theo email — dung cach he thong van
+        // noi tai khoan Microsoft voi ho so nhan vien luc tao.
+        nhan_vien_gan = uuid(b, 'nhan_vien_id');
+        if (nhan_vien_gan === null) {
+          const theo_email = await truy_van_mot<{ id: string }>(
+            `select id from nhan_vien
+              where dang_hoat_dong = true
+                and lower(email) in (lower($1), lower(coalesce($2, '')))
+              limit 1`,
+            [hien.ten, hien.email_ms],
+          );
+          nhan_vien_gan = theo_email?.id ?? null;
+        }
+        if (nhan_vien_gan === null) {
+          throw new LoiDauVao(
+            'Vai trò này cần một hồ sơ nhân viên để biết người đó được xem dữ liệu của ai. '
+            + `Hãy tạo nhân viên ở trang Nhân viên với email đúng bằng "${hien.ten}", `
+            + 'rồi cấp quyền lại — hệ thống sẽ tự nối.',
+          );
+        }
+      }
+    }
+
     const so = await ghi_bat_trung(
       () => thuc_thi(
         `update nguoi_dung
             set dang_hoat_dong = coalesce($2, dang_hoat_dong),
                 vai_tro = coalesce($3, vai_tro),
+                nhan_vien_id = coalesce($7::uuid, nhan_vien_id),
                 email_microsoft = case when $4 then $5 else email_microsoft end,
                 -- Ghi lai ai phan quyen, luc nao: chi khi vua thoat khoi trang thai cho duyet.
                 duyet_boi = case when vai_tro = 'cho_duyet' and $3::text is not null
@@ -502,7 +540,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
                 duyet_luc = case when vai_tro = 'cho_duyet' and $3::text is not null
                                   and $3 <> 'cho_duyet' then now() else duyet_luc end
           where id = $1`,
-        [id, dang_hoat_dong, vai_tro, co_doi_email, email_microsoft, nd.sub],
+        [id, dang_hoat_dong, vai_tro, co_doi_email, email_microsoft, nd.sub, nhan_vien_gan],
       ),
       'Email Microsoft này đã gán cho tài khoản khác.',
     );
@@ -552,12 +590,26 @@ async function bat_buoc_co_may(serial: string): Promise<void> {
 }
 
 /** Doi loi vi pham UNIQUE (23505) thanh LoiXungDot co thong diep de hieu. */
+/**
+ * Doi loi trung khoa cua Postgres thanh thong diep nguoi dung hieu duoc.
+ *
+ * Nhan dang theo TEN RANG BUOC chu khong gan chung mot thong diep cho moi loi 23505: bang
+ * `nguoi_dung` co nhieu khoa duy nhat, va bao "email Microsoft da duoc dung" khi that ra
+ * nhan vien do da co tai khoan khac thi nguoi dung sua mai khong ra.
+ */
 async function ghi_bat_trung<T>(ham: () => Promise<T>, thong_diep: string): Promise<T> {
   try {
     return await ham();
   } catch (loi) {
-    if ((loi as { code?: string }).code === '23505') throw new LoiXungDot(thong_diep);
-    throw loi;
+    if ((loi as { code?: string }).code !== '23505') throw loi;
+    const rb = (loi as { constraint?: string }).constraint ?? '';
+    if (rb.includes('nhan_vien_id')) {
+      throw new LoiXungDot('Nhân viên này đã có một tài khoản khác. Mỗi nhân viên chỉ một tài khoản.');
+    }
+    if (rb.includes('ten_dang_nhap')) {
+      throw new LoiXungDot('Tên đăng nhập này đã tồn tại.');
+    }
+    throw new LoiXungDot(thong_diep);
   }
 }
 

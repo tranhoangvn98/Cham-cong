@@ -403,8 +403,11 @@ function FormPhanQuyen(
 
         {tai_khoan.nhan_vien_id === null && (vai_tro === 'nhan_vien' || vai_tro === 'truong_phong') && (
           <div className="hop-thong-bao hop-luu-y">
-            Tài khoản này chưa gắn hồ sơ nhân viên nên hai vai trò này sẽ bị máy chủ từ chối.
-            Tạo hồ sơ ở trang <strong>Nhân viên</strong> (điền đúng email công ty) rồi quay lại.
+            Tài khoản này chưa gắn hồ sơ nhân viên. Hai vai trò này cần một hồ sơ để biết
+            người đó được xem dữ liệu của ai. Hãy tạo nhân viên ở trang{' '}
+            <strong>Nhân viên</strong> với email đúng bằng{' '}
+            <strong>{tai_khoan.ten_dang_nhap}</strong>, rồi cấp quyền lại — hệ thống sẽ tự
+            nối hai bên.
           </div>
         )}
 

@@ -310,6 +310,21 @@ input[type="checkbox"] { width: auto; }
 textarea { min-height: 66px; resize: vertical; }
 
 .o-nhap { margin-bottom: 12px; }
+/*
+ * Nut chon phai giu kich thuoc that cua no.
+ *
+ * Quy tac `input { width: 100% }` o tren la danh cho o nhap van ban. Ap vao radio va
+ * checkbox thi nut tron chiem tron ca hang, day nhan chu ra ngoai khung — o chon vai tro
+ * bi vo dung kieu do: khung cao ngoang, rong ruot, chu bi ep xuong hai ky tu moi dong.
+ * Dat o day thay vi va tung cho de moi nut chon them ve sau khong dinh lai.
+ */
+input[type="radio"],
+input[type="checkbox"] {
+  width: auto;
+  flex: none;
+  padding: 0;
+}
+
 .o-nhap-ngang { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .o-nhap-ngang label { margin: 0; }
 .goi-y { font-size: 11.5px; color: var(--chu-mo); margin-top: 3px; }
@@ -570,7 +585,8 @@ textarea { min-height: 66px; resize: vertical; }
 }
 .o-chon-vai-tro:hover { background: var(--nen-mo); }
 .o-chon-vai-tro input { margin-top: 3px; flex: none; }
-.o-chon-vai-tro > span { display: flex; flex-direction: column; }
+/* min-width: 0 — mac dinh flex item khong co nho hon noi dung, chu dai se lam tran khung. */
+.o-chon-vai-tro > span { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 
 /* ---------------------------------------------------------------- thanh tab ho so */
 .thanh-tab {
