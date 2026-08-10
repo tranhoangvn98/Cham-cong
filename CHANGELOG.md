@@ -2,6 +2,28 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.14.1] — 2026-08-10
+
+**Tài liệu kết nối máy ZKTeco: bổ sung trường hợp máy chủ đặt trên VPS.**
+
+Bản trước chỉ mô tả kiểu triển khai máy chủ nằm cùng LAN với máy chấm công. Thực tế đang
+chạy là máy chủ trên VPS, máy chấm công ở văn phòng gọi ra Internet — làm theo tài liệu cũ
+thì máy không kết nối được.
+
+### Sửa
+
+- `tai_lieu/KET-NOI-MAY-ZKTECO.md` mục 1: bảng cấu hình tách thành **hai cột** (LAN / VPS).
+  Khác biệt quan trọng: qua tên miền thì `Enable Domain Name` phải **bật** (bản cũ ghi tắt,
+  làm theo là máy không phân giải DNS và im lặng không gọi được), và cổng là **80** chứ
+  không phải 8080 — 8080 chỉ tồn tại bên trong VPS, bên ngoài là reverse proxy.
+- Mục 2: nói rõ số sê ri phải lấy ở **Menu › Thông tin thiết bị › Số sê ri** trên máy, không
+  lấy số dán sau lưng máy hay số trên hộp. Hai số này khác nhau ở nhiều lô máy, mà ADMS chỉ
+  gửi lên số sê ri firmware — khai nhầm thì máy nhận 401 vĩnh viễn.
+- Mục 6: bản cũ chỉ có một lời khuyên "đừng mở cổng ra Internet", vô dụng với triển khai VPS
+  vì ở đó `/iclock/*` **bắt buộc** phải mở. Nay ghi thẳng rủi ro (log đi qua Internet không
+  mã hóa; ai đoán đúng số sê ri là đẩy được bản ghi giả) và chốt chặn thật là
+  `ICLOCK_IP_CHO_PHEP`, kèm cảnh báo nó chỉ có tác dụng khi `PROXY_TIN_CAY` đặt hẹp.
+
 ## [1.14.0] — 2026-08-10
 
 **Xem nhanh tệp đính kèm và bảng truy xuất kho tệp.**
