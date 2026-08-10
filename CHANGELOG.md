@@ -2,6 +2,26 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.12.1] — 2026-08-08
+
+### Thêm mới
+
+- **`trien_khai/cap_nhat_vps.sh`** — một lệnh duy nhất để cập nhật VPS: sao lưu → kéo mã →
+  dựng lại ảnh → chờ máy chủ lên → kiểm tra. Viết thành script thay vì để dán từng lệnh, vì
+  hai lần trước đã có sự cố do dán nhầm (một lần dán nguyên chuỗi giữ chỗ
+  `<mật khẩu admin>`, một lần dán `<ip văn phòng>` vào `ICLOCK_IP_CHO_PHEP` làm máy chủ
+  không khởi động được). Script không có chỗ để dán nhầm.
+  - Đo mã HTTP của **chatbot Teams trước và sau** khi cập nhật rồi báo động nếu con số đổi —
+    hai dịch vụ dùng chung tên miền nên đây là rủi ro thật, và phải biết ngay chứ không đợi
+    người dùng phát hiện.
+  - Sao lưu **cả volume `ho_so`**, không chỉ CSDL: hợp đồng scan nằm trên đĩa, dump CSDL
+    không cứu được.
+  - In sẵn mã bản cũ để lùi lại.
+- **`tai_lieu/TRIEN-KHAI-TU-POWERSHELL.md`** — hướng dẫn cập nhật từ máy Windows, bắt đầu
+  bằng ba cái bẫy hay mất thời gian nhất: `curl` trong PowerShell 5.1 là bí danh của
+  `Invoke-WebRequest` chứ không phải curl thật, `&&` không chạy trên 5.1, và nháy kép nuốt
+  mất `$` khi truyền lệnh bash qua `ssh`.
+
 ## [1.12.0] — 2026-08-08
 
 **Hồ sơ từng nhân sự** — mở một người ra là thấy đủ: hợp đồng, biên bản, lương, công việc,
