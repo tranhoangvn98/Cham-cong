@@ -1,0 +1,118 @@
+# Trien khai 1 lenh: docker compose up -d
+# Truoc khi chay: cp .env.example .env roi dien gia tri that (nhat la JWT_SECRET, mat khau DB).
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: chamcong
+      POSTGRES_USER: chamcong
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?can dat POSTGRES_PASSWORD trong .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chamcong -d chamcong"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # KHONG mo cong 5432 ra ngoai. Muon truy cap tu may ban:
+    # ssh -L 5432:localhost:5432 user@vps
+
+  may_chu:
+    build:
+      context: .
+      dockerfile: may_chu/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      DATABASE_URL: postgres://chamcong:${POSTGRES_PASSWORD}@postgres:5432/chamcong
+      JWT_SECRET: ${JWT_SECRET:?can dat JWT_SECRET trong .env}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-900}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-2592000}
+      DEVICE_TZ_OFFSET_HOURS: ${DEVICE_TZ_OFFSET_HOURS:-7}
+      THU_MUC_ANH: /du_lieu/anh_cham_cong
+      THU_MUC_HO_SO: /du_lieu/ho_so
+      TEP_TOI_DA_BYTE: ${TEP_TOI_DA_BYTE:-15728640}
+      GEOFENCE_BAN_KINH_M: ${GEOFENCE_BAN_KINH_M:-200}
+      MAY_OFFLINE_SAU_GIAY: ${MAY_OFFLINE_SAU_GIAY:-180}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+      ICLOCK_IP_CHO_PHEP: ${ICLOCK_IP_CHO_PHEP:-}
+      # Chi tin X-Forwarded-For tu dai mang nay. Dat sau cong_vao (Caddy) thi mang Docker
+      # la 172.16.0.0/12. De TRONG khi khong co reverse proxy: tin bua nghia la ai cung
+      # gia mao duoc IP nguon va ICLOCK_IP_CHO_PHEP mat tac dung.
+      PROXY_TIN_CAY: ${PROXY_TIN_CAY:-}
+      # Dang nhap bang tai khoan Microsoft (Entra ID). De trong ca khoi = tat han.
+      MS_TENANT_ID: ${MS_TENANT_ID:-}
+      MS_CLIENT_ID: ${MS_CLIENT_ID:-}
+      MS_CLIENT_SECRET: ${MS_CLIENT_SECRET:-}
+      MS_REDIRECT_URI: ${MS_REDIRECT_URI:-}
+      MS_GOC_WEBAPP: ${MS_GOC_WEBAPP:-}
+      MS_TEN_MIEN_CHO_PHEP: ${MS_TEN_MIEN_CHO_PHEP:-}
+      MS_TU_DONG_TAO: ${MS_TU_DONG_TAO:-0}
+      ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
+      ERP_WEBHOOK_SECRET: ${ERP_WEBHOOK_SECRET:-}
+      TU_DONG_DI_TRU: "1"
+      # Chi lenh seed doc hai bien nay (docker compose exec may_chu node dist/csdl/seed.js).
+      # Thieu chung thi seed KHONG tao duoc tai khoan admin dau tien.
+      ADMIN_TEN_DANG_NHAP: ${ADMIN_TEN_DANG_NHAP:-admin}
+      ADMIN_MAT_KHAU: ${ADMIN_MAT_KHAU:-}
+    volumes:
+      - anh_cham_cong:/du_lieu/anh_cham_cong
+      # Hop dong scan, bien ban... Phai la volume rieng: mat thu muc nay la mat ban goc
+      # ho so nhan su, khong khoi phuc duoc tu CSDL vi CSDL chi giu sieu du lieu.
+      - ho_so:/du_lieu/ho_so
+    # May ZKTeco chi noi duoc HTTP thuong (nhieu firmware khong lam TLS),
+    # nen cong 8080 phai vao duoc tu mang co may cham cong.
+    #
+    # Dung cong_vao (co ten mien) thi nen dat CONG_MAY_CHU=127.0.0.1:8080 de cong nay
+    # chi mo trong may, moi luong vao deu di qua Caddy.
+    ports:
+      - "${CONG_MAY_CHU:-8080}:8080"
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        # URL API ma trinh duyet goi toi — nhung vao luc BUILD, khong doc luc chay.
+        # De TRONG khi dung cong_vao: webapp va API cung mot origin nen goi duong dan
+        # tuong doi (/api/...), doi ten mien khong phai build lai.
+        VITE_API_URL: ${VITE_API_URL-http://localhost:8080}
+        # Tien to duong dan khi dung chung ten mien voi dich vu khac: /chamcong/
+        # Phai co dau gach cheo o ca hai dau.
+        VITE_BASE: ${VITE_BASE:-/}
+    restart: unless-stopped
+    depends_on: [may_chu]
+    ports:
+      - "${CONG_WEB:-8081}:80"
+
+  # ---------------------------------------------------------------- cong vao (tuy chon)
+  # Chi chay khi .env co COMPOSE_PROFILES=ten_mien. Xem tai_lieu/TEN-MIEN.md.
+  cong_vao:
+    image: caddy:2-alpine
+    profiles: ["ten_mien"]
+    restart: unless-stopped
+    depends_on: [may_chu, web]
+    environment:
+      # KHONG dung cu phap ${VAR:?...}: compose noi suy TOAN BO tep truoc khi loc profile,
+      # nen bien thieu se lam hong ca `docker compose up` cua ban trien khai khong dung
+      # profile nay. Thieu gia tri thi Caddy bao loi luc khoi dong, chi anh huong dich vu nay.
+      TEN_MIEN: ${TEN_MIEN:-}
+    volumes:
+      - ./cong_vao/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+
+volumes:
+  pgdata:
+  anh_cham_cong:
+  ho_so:
+  caddy_data:
+  caddy_config:

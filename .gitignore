@@ -1,0 +1,40 @@
+# Phu thuoc
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+web/dist/
+dien_thoai/.expo/
+dien_thoai/android/
+dien_thoai/ios/
+
+# Bi mat — TUYET DOI khong commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Du lieu chay / PII — khong commit
+du_lieu/
+anh_cham_cong/
+log/
+*.log
+
+# He dieu hanh / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+!.vscode/extensions.json
+
+# Expo
+dien_thoai/.expo/
+dien_thoai/dist/
+dien_thoai/expo-env.d.ts
+
+# Ban sao luu sinh ra tren VPS (trien_khai/cap_nhat_vps.sh) — khong bao gio commit.
+sao_luu/

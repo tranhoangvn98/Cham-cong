@@ -1,0 +1,70 @@
+/* Bieu tuong Tabler Icons (MIT) — CAT SUBSET con dung 33 icon dung trong app.
+   Bo day du la 840 KB cho 5.800 icon; ban cat con 7,5 KB.
+
+   Cach tao lai khi can them icon:
+     npm pack @tabler/icons-webfont@3.11.0
+     # lay ma icon tu dist/tabler-icons.min.css (dang .ti-<ten>:before{content:"\xxxx"})
+     python3 -m fontTools.subset dist/fonts/tabler-icons.woff2 \
+       --unicodes=U+EA06,U+EE20,... --flavor=woff2 --output-file=tabler-cham-cong.woff2
+
+   Tu chua thay vi goi CDN jsDelivr nhu demo: chay duoc trong LAN khong ra Internet va
+   khong ro ri IP nhan vien sang ben thu ba. Giay phep o web/public/font/Tabler-LICENSE.txt.
+   Giu ten icon y nguyen cua Tabler de tra cuu duoc tren tabler.io/icons. */
+
+@font-face {
+  font-family: 'tabler-icons';
+  src: url('/font/tabler-cham-cong.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+.bt {
+  font-family: 'tabler-icons';
+  font-size: 18px;
+  line-height: 1;
+  font-style: normal;
+  font-variant: normal;
+  text-transform: none;
+  speak: never;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.bt-alert-triangle::before { content: "\ea06"; }
+.bt-calendar-stats::before { content: "\ee20"; }
+.bt-chart-bar::before { content: "\ea59"; }
+.bt-check::before { content: "\ea5e"; }
+.bt-chevron-left::before { content: "\ea60"; }
+.bt-chevron-right::before { content: "\ea61"; }
+.bt-circle-check::before { content: "\ea67"; }
+.bt-circle-x::before { content: "\ea6a"; }
+.bt-clock::before { content: "\ea70"; }
+.bt-clock-exclamation::before { content: "\f847"; }
+.bt-device-desktop::before { content: "\ea89"; }
+.bt-download::before { content: "\ea96"; }
+.bt-file-text::before { content: "\eaa2"; }
+.bt-fingerprint::before { content: "\ebd1"; }
+.bt-key::before { content: "\eac7"; }
+.bt-layout-dashboard::before { content: "\f02c"; }
+.bt-list-details::before { content: "\ef40"; }
+.bt-lock::before { content: "\eae2"; }
+.bt-logout::before { content: "\eba8"; }
+.bt-map-pin::before { content: "\eae8"; }
+.bt-menu-2::before { content: "\ec42"; }
+.bt-moon::before { content: "\eaf8"; }
+.bt-plane-departure::before { content: "\eb9a"; }
+.bt-plus::before { content: "\eb0b"; }
+.bt-receipt-2::before { content: "\edfa"; }
+.bt-refresh::before { content: "\eb13"; }
+.bt-search::before { content: "\eb1c"; }
+.bt-settings::before { content: "\eb20"; }
+.bt-star::before { content: "\eb2e"; }
+.bt-sun::before { content: "\eb30"; }
+.bt-user-check::before { content: "\eb49"; }
+.bt-users::before { content: "\ebf2"; }
+.bt-x::before { content: "\eb55"; }

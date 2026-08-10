@@ -1,0 +1,24 @@
+{
+  "name": "@cham-cong/web",
+  "version": "1.14.0",
+  "private": true,
+  "type": "module",
+  "description": "Webapp cho nhan su: dashboard, bang cong, duyet don, quan ly may cham cong",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "xem_thu": "vite preview",
+    "kiem_tra_kieu": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
+}

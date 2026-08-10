@@ -1,0 +1,54 @@
+# Cong vao cho ban trien khai co TEN MIEN. Caddy tu xin va gia han chung chi Let's Encrypt.
+#
+# Mot origin duy nhat cho ca webapp lan API:
+#   https://<ten mien>/          -> webapp
+#   https://<ten mien>/api/*     -> may chu
+# Nho vay khong con CORS, va VITE_API_URL de TRONG (webapp goi duong dan tuong doi) nen
+# doi ten mien khong phai build lai webapp.
+#
+# Duong /iclock/* la ngoai le: may ZKTeco khong lam duoc TLS nen phai giu HTTP thuong.
+
+# Khong khai khoi tuy chon toan cuc: Caddy xin duoc chung chi ma khong can email, va
+# `email` voi gia tri rong la loi cu phap. Muon nhan canh bao het han thi them tay:
+#
+#   {
+#       email it@congty.vn
+#   }
+
+# ---------------------------------------------------------------- HTTP (cong 80)
+http://{$TEN_MIEN} {
+	# May cham cong: giu nguyen HTTP, KHONG chuyen huong sang HTTPS.
+	# Firmware ZKTeco gap 301/302 se coi la loi va bo luon lo du lieu.
+	handle /iclock/* {
+		reverse_proxy may_chu:8080
+	}
+
+	# Moi thu con lai vao bang trinh duyet -> ep sang HTTPS.
+	handle {
+		redir https://{host}{uri} permanent
+	}
+}
+
+# ---------------------------------------------------------------- HTTPS (cong 443)
+https://{$TEN_MIEN} {
+	encode gzip
+
+	handle /api/* {
+		reverse_proxy may_chu:8080
+	}
+
+	# Kiem tra suc khoe, tien cho giam sat ben ngoai.
+	handle /health {
+		reverse_proxy may_chu:8080
+	}
+
+	# May cham cong khong dung duong nay (khong lam duoc TLS), nhung mo san de test
+	# bang curl cho tien.
+	handle /iclock/* {
+		reverse_proxy may_chu:8080
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}
