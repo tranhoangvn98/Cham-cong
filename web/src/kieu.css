@@ -365,6 +365,7 @@ input[type="checkbox"] {
   color: var(--chu-nhat);
 }
 .trong-lon { font-size: 15px; font-weight: 500; margin-bottom: 4px; color: var(--chu); }
+.trong-hanh-dong { margin-top: 14px; display: flex; justify-content: center; gap: 8px; }
 
 .dang-tai { padding: 28px; text-align: center; color: var(--chu-nhat); }
 
@@ -596,11 +597,64 @@ input[type="checkbox"] {
 /* min-width: 0 — mac dinh flex item khong co nho hon noi dung, chu dai se lam tran khung. */
 .o-chon-vai-tro > span { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 
+/* ---------------------------------------------------------------- dau trang ho so */
+.the-ho-so {
+  background: var(--nen-the);
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  box-shadow: var(--bong);
+  padding: 18px 20px 0;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.ho-so-danh-tinh {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 18px;
+}
+/* min-width: 0 de ten dai khong day nut sang phai ra khoi the. */
+.ho-so-danh-tinh > .ten { flex: 1; min-width: 180px; }
+.ho-so-danh-tinh h1 { margin: 0 0 3px; }
+
+.anh-dai-dien-lon {
+  width: 60px;
+  height: 60px;
+  font-size: 21px;
+  letter-spacing: 0.02em;
+}
+/* JS chi dat --av-hue (suy tu ma nhan vien). Do dam / do sang / mau chu lay tu token theo
+   giao dien, vi khong co cap (S, L) nao doc duoc o ca hai: nen toi du tuong phan voi chu
+   trang thi lai lan vao the o giao dien toi. Xem token_thiet_ke.css. */
+.anh-dai-dien-mau {
+  background: hsl(var(--av-hue) var(--av-s) var(--av-l));
+  color: var(--av-chu);
+}
+
+/* Dai chi so nam sat day the.
+   Duong ke ve bang box-shadow tren tung o (mot vach trai + mot vach tren) chu KHONG bang
+   thu "gap: 1px + nen mau vien": cach do lam o luoi con trong o dong cuoi hien ra thanh mot
+   khoi xam khi so o khong chia het cho so cot. box-shadow chi ve quanh o co that. */
+.ho-so-chi-so {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin: 0 -20px;
+  border-top: 1px solid var(--vien);
+}
+.ho-so-chi-so > div {
+  padding: 11px 20px 13px;
+  box-shadow: -1px 0 0 var(--vien), 0 -1px 0 var(--vien);
+}
+.ho-so-chi-so .o-so-gia-tri { font-size: 19px; margin-top: 1px; }
+
 /* ---------------------------------------------------------------- thanh tab ho so */
+/* flex-wrap chu khong overflow-x: 11 tab thi thanh cuon ngang vua xau vua de bo sot tab
+   cuoi. Xuong dong thi luon thay het. */
 .thanh-tab {
   display: flex;
-  gap: 4px;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  gap: 2px 4px;
   border-bottom: 1px solid var(--vien);
   margin-bottom: 14px;
 }

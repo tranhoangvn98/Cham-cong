@@ -3,7 +3,7 @@
 // May chu la nguon su that ve quyen: no tra ve `nhom_xem_duoc` / `nhom_sua_duoc`, o day chi
 // ve theo. Trang nay KHONG tu suy ra quyen tu vai tro — neu suy o hai noi thi som muon hai
 // noi lech nhau, va cai lech nguy hiem la ben giao dien "de" hon ben may chu.
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { goi, gui_tep, tai_tep } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, HopThoaiXemTep, HopTot, Trong,
@@ -56,6 +56,17 @@ const TEN_NHOM: Record<Nhom, string> = {
   bao_cao: 'Báo cáo',
   khieu_nai: 'Khiếu nại',
   thiet_bi: 'Thiết bị cấp phát',
+};
+
+/**
+ * Ten ngan chi dung cho thanh tab. TEN_NHOM van giu ten day du vi no con dung cho tieu de
+ * hop thoai va cau "+ Thêm ..." — o do can day du. Rieng thanh tab thi 11 nhan day du cong
+ * lai vuot be rong khung, phai xuong hai dong; cat ba nhan dai nhat la vua mot dong.
+ */
+const TEN_TAB: Partial<Record<Nhom, string>> = {
+  hop_dong: 'Hợp đồng',
+  bien_ban: 'Biên bản',
+  thiet_bi: 'Thiết bị',
 };
 
 const DUONG_NHOM: Record<Nhom, string> = {
@@ -193,50 +204,59 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
 
   return (
     <>
-      <div className="dau-trang">
-        <div>
-          <h1 style={{ marginBottom: 2 }}>{nv.ho_ten}</h1>
-          <p className="mo-ta">
-            {nv.ma_nv}
-            {co(nv['phong_ban']) !== '—' && <> · {String(nv['phong_ban'])}</>}
-            {co(nv['ca_lam']) !== '—' && <> · ca {String(nv['ca_lam'])}</>}
-            {nv['dang_hoat_dong'] === false && <> · <span className="nhan nhan-xau">đã nghỉ việc</span></>}
-          </p>
+      <div className="the-ho-so">
+        <div className="ho-so-danh-tinh">
+          <AnhDaiDien ho_ten={nv.ho_ten} khoa={nv.ma_nv} />
+          <div className="ten">
+            <h1>{nv.ho_ten}</h1>
+            <p className="mo-ta">
+              {nv.ma_nv}
+              {co(nv['chuc_danh']) !== '—' && <> · {String(nv['chuc_danh'])}</>}
+              {co(nv['phong_ban']) !== '—' && <> · {String(nv['phong_ban'])}</>}
+              {co(nv['ca_lam']) !== '—' && <> · ca {String(nv['ca_lam'])}</>}
+              {nv['dang_hoat_dong'] === false && <> · <span className="nhan nhan-xau">đã nghỉ việc</span></>}
+            </p>
+          </div>
+          <LienKet den="/nhan-vien" lop="nut">← Danh sách nhân viên</LienKet>
         </div>
-        <LienKet den="/nhan-vien" lop="nut">← Danh sách nhân viên</LienKet>
-      </div>
 
-      <div className="luoi luoi-4" style={{ marginBottom: 16 }}>
-        <ODoc nhan="PIN máy" gia_tri={co(nv['pin_may'])} />
-        <ODoc nhan="Ngày vào" gia_tri={nv['ngay_vao'] === null ? '—' : ngay_viet(String(nv['ngay_vao']))} />
-        <ODoc
-          nhan="Hợp đồng hiện tại"
-          gia_tri={d.hop_dong_hien_tai === null
-            ? '—'
-            : TEN['loai_hop_dong']?.[String(d.hop_dong_hien_tai['loai'])] ?? '—'}
-          phu={d.hop_dong_hien_tai === null
-            ? (d.nhom_xem_duoc.includes('hop_dong') ? 'chưa có hợp đồng hiệu lực' : 'không có quyền xem')
-            : `đến ${d.hop_dong_hien_tai['hieu_luc_den'] === null
-              ? 'vô thời hạn' : ngay_viet(String(d.hop_dong_hien_tai['hieu_luc_den']))}`}
-        />
-        <ODoc
-          nhan="Hồ sơ tài liệu"
-          gia_tri={d.tien_do_tai_lieu === null || d.tien_do_tai_lieu === undefined
-            ? '—'
-            : `${d.tien_do_tai_lieu.da_du}/${d.tien_do_tai_lieu.can_co}`}
-          phu={d.tien_do_tai_lieu === null || d.tien_do_tai_lieu === undefined
-            ? 'không có quyền xem'
-            : d.tien_do_tai_lieu.da_du >= d.tien_do_tai_lieu.can_co
-              ? 'đã đủ hồ sơ bắt buộc'
-              : `còn thiếu ${d.tien_do_tai_lieu.can_co - d.tien_do_tai_lieu.da_du} tài liệu bắt buộc`}
-        />
-        <ODoc
-          nhan="Lương hiện tại"
-          gia_tri={d.luong_hien_tai === null ? '—' : tien(d.luong_hien_tai['luong_co_ban'])}
-          phu={d.luong_hien_tai === null
-            ? (d.nhom_xem_duoc.includes('luong') ? 'chưa có quyết định lương' : 'không có quyền xem')
-            : `phụ cấp ${tien(d.luong_hien_tai['phu_cap'])}`}
-        />
+        <div className="ho-so-chi-so">
+          <ODoc nhan="PIN máy" gia_tri={co(nv['pin_may'])}
+            phu={co(nv['pin_may']) === '—' ? 'chưa gán PIN' : 'trùng số ID trên máy'} />
+          <ODoc nhan="Ngày vào" gia_tri={nv['ngay_vao'] === null ? '—' : ngay_viet(String(nv['ngay_vao']))}
+            phu={nv['ngay_chinh_thuc'] === null || nv['ngay_chinh_thuc'] === undefined
+              ? undefined
+              : `chính thức ${ngay_viet(String(nv['ngay_chinh_thuc']))}`} />
+          <ODoc
+            nhan="Hợp đồng hiện tại"
+            gia_tri={d.hop_dong_hien_tai === null
+              ? '—'
+              : TEN['loai_hop_dong']?.[String(d.hop_dong_hien_tai['loai'])] ?? '—'}
+            phu={d.hop_dong_hien_tai === null
+              ? (d.nhom_xem_duoc.includes('hop_dong') ? 'chưa có hợp đồng hiệu lực' : 'không có quyền xem')
+              : `đến ${d.hop_dong_hien_tai['hieu_luc_den'] === null
+                ? 'vô thời hạn' : ngay_viet(String(d.hop_dong_hien_tai['hieu_luc_den']))}`}
+          />
+          <ODoc
+            nhan="Hồ sơ tài liệu"
+            gia_tri={d.tien_do_tai_lieu === null || d.tien_do_tai_lieu === undefined
+              ? '—'
+              : `${d.tien_do_tai_lieu.da_du}/${d.tien_do_tai_lieu.can_co}`}
+            phu={d.tien_do_tai_lieu === null || d.tien_do_tai_lieu === undefined
+              ? 'không có quyền xem'
+              : d.tien_do_tai_lieu.da_du >= d.tien_do_tai_lieu.can_co
+                ? 'đã đủ hồ sơ bắt buộc'
+                : `còn thiếu ${d.tien_do_tai_lieu.can_co - d.tien_do_tai_lieu.da_du} tài liệu bắt buộc`}
+            tien_do={d.tien_do_tai_lieu ?? undefined}
+          />
+          <ODoc
+            nhan="Lương hiện tại"
+            gia_tri={d.luong_hien_tai === null ? '—' : tien(d.luong_hien_tai['luong_co_ban'])}
+            phu={d.luong_hien_tai === null
+              ? (d.nhom_xem_duoc.includes('luong') ? 'chưa có quyết định lương' : 'không có quyền xem')
+              : `phụ cấp ${tien(d.luong_hien_tai['phu_cap'])}`}
+          />
+        </div>
       </div>
 
       {xem_duoc.length < THU_TU.length && (
@@ -254,7 +274,7 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
             className={n === dang_mo ? 'tab tab-dang-mo' : 'tab'}
             onClick={() => dat_nhom(n)}
           >
-            {TEN_NHOM[n]}
+            {TEN_TAB[n] ?? TEN_NHOM[n]}
             {(d.dem[n] ?? 0) > 0 && <span className="tab-so">{d.dem[n]}</span>}
           </button>
         ))}
@@ -276,12 +296,54 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
   );
 }
 
-function ODoc({ nhan, gia_tri, phu }: { nhan: string; gia_tri: string; phu?: string }): ReactNode {
+function ODoc(
+  { nhan, gia_tri, phu, tien_do }: {
+    nhan: string;
+    gia_tri: string;
+    phu?: string;
+    tien_do?: { can_co: number; da_du: number };
+  },
+): ReactNode {
+  const du = tien_do !== undefined && tien_do.da_du >= tien_do.can_co;
   return (
-    <div className="o-so">
+    <div>
       <div className="o-so-nhan">{nhan}</div>
-      <div className="o-so-gia-tri" style={{ fontSize: 20 }}>{gia_tri}</div>
+      <div className="o-so-gia-tri">{gia_tri}</div>
+      {tien_do !== undefined && tien_do.can_co > 0 && (
+        <div className="thanh-tien-do" style={{ height: 5, margin: '5px 0 4px' }}>
+          <div
+            className={du ? 'thanh-tien-do-day du' : 'thanh-tien-do-day'}
+            style={{ width: `${Math.min(100, (tien_do.da_du / tien_do.can_co) * 100)}%` }}
+          />
+        </div>
+      )}
       {phu !== undefined && <div className="o-so-phu">{phu}</div>}
+    </div>
+  );
+}
+
+/**
+ * Anh dai dien tu chu cai dau. Chua co truong anh nhan vien trong CSDL nen khong ve anh that
+ * — nhung de tron mot mau xam giong het nhau thi mo ho so nhieu nguoi khong phan biet duoc
+ * ai. Mau suy tu ma nhan vien: cung mot nguoi luon ra dung mot mau, va do lech mau giup nhan
+ * ra minh dang mo dung ho so hay khong.
+ *
+ * Chi dat HUE o day. Do dam / do sang / mau chu do CSS quyet dinh theo giao dien sang hay
+ * toi — dat cung mot mau cho ca hai thi mot ben chac chan truot nguong tuong phan.
+ */
+function AnhDaiDien({ ho_ten, khoa }: { ho_ten: string; khoa: string }): ReactNode {
+  const chu_dau = ho_ten
+    .split(' ').filter((t) => t.length > 0).slice(-2).map((t) => t[0]).join('').toUpperCase();
+  let bam = 0;
+  for (const k of khoa) bam = (bam * 31 + k.charCodeAt(0)) % 360;
+  return (
+    <div
+      className="anh-dai-dien anh-dai-dien-lon anh-dai-dien-mau"
+      style={{ '--av-hue': String(bam) } as CSSProperties}
+      title={ho_ten}
+      aria-hidden="true"
+    >
+      {chu_dau === '' ? '?' : chu_dau}
     </div>
   );
 }
@@ -897,10 +959,10 @@ function PanelThongTin({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {
         </div>
       )}
 
-      {du_lieu?.sua_duoc === true && (
+      {du_lieu?.sua_duoc === true && h !== null && (
         <div className="hang-nut">
           <button type="button" className="nut-chinh" onClick={() => dat_dang_sua(true)}>
-            {h === null ? '+ Khai thông tin cá nhân' : 'Sửa thông tin'}
+            Sửa thông tin
           </button>
         </div>
       )}
@@ -910,6 +972,11 @@ function PanelThongTin({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {
           <Trong
             tieu_de="Chưa khai thông tin cá nhân"
             mo_ta="Cần CCCD, ngày sinh, mã số thuế và số BHXH để làm thủ tục bảo hiểm và thuế."
+            hanh_dong={du_lieu?.sua_duoc === true ? (
+              <button type="button" className="nut-chinh" onClick={() => dat_dang_sua(true)}>
+                + Khai thông tin cá nhân
+              </button>
+            ) : undefined}
           />
         </div>
       ) : (

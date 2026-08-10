@@ -84,11 +84,18 @@ export function HopTot({ chu }: { chu: string | null }): ReactNode {
   return <div className="hop-thong-bao hop-tot">{chu}</div>;
 }
 
-export function Trong({ tieu_de, mo_ta }: { tieu_de: string; mo_ta?: string }): ReactNode {
+/**
+ * Khoi "chua co gi". `hanh_dong` de dat luon nut tao ngay giua khoi — nut noi mo mot khung
+ * rong doc de hon la nut tha o tren roi khung rong o duoi khong dinh gi den nhau.
+ */
+export function Trong(
+  { tieu_de, mo_ta, hanh_dong }: { tieu_de: string; mo_ta?: string; hanh_dong?: ReactNode },
+): ReactNode {
   return (
     <div className="trong">
       <div className="trong-lon">{tieu_de}</div>
       {mo_ta !== undefined && <div>{mo_ta}</div>}
+      {hanh_dong !== undefined && <div className="trong-hanh-dong">{hanh_dong}</div>}
     </div>
   );
 }

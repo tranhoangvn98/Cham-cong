@@ -2,6 +2,37 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.14.2] — 2026-08-10
+
+**Dựng lại đầu trang hồ sơ nhân sự.**
+
+### Sửa
+
+- **Thanh cuộn ngang dưới hàng tab** biến mất. 11 tab cộng lại vượt bề rộng khung nên trước
+  đây trang mọc ra một thanh cuộn: vừa xấu, vừa dễ bỏ sót tab cuối (ảnh người dùng gửi bị cắt
+  ở "Thiết bị cấ…"). Nay tab **xuống dòng** thay vì cuộn, và ba nhãn dài nhất rút gọn riêng
+  cho thanh tab (`Hợp đồng`, `Biên bản`, `Thiết bị`) — đủ để nằm gọn **một dòng** từ 1170px
+  trở lên. Tên đầy đủ vẫn giữ ở tiêu đề hộp thoại và câu "+ Thêm …".
+- **Gộp phần đầu trang thành một thẻ**: tên + chức danh + phòng ban ở trên, dải năm chỉ số
+  (PIN máy, Ngày vào, Hợp đồng, Hồ sơ tài liệu, Lương) chạy sát đáy thẻ. Trước đây năm ô rời
+  nằm trong lưới bốn cột nên ô thứ năm rớt xuống một dòng gần như trống — chiếm cả một hàng
+  cho một ô.
+- **Ô "Hồ sơ tài liệu" có thanh tiến độ** thay vì chỉ con số `0/7`.
+- **Khối rỗng chứa luôn nút tạo** ở giữa. Trước đây nút "+ Khai thông tin cá nhân" nằm trên,
+  khung rỗng nằm dưới, hai thứ không dính gì đến nhau.
+
+### Thêm mới
+
+- **Ảnh đại diện** cạnh tên nhân sự: chữ cái đầu trên nền màu suy từ mã nhân viên, nên cùng
+  một người luôn ra đúng một màu và mở nhầm hồ sơ thì nhận ra ngay. Chưa có trường ảnh trong
+  CSDL nên chưa vẽ ảnh thật.
+  - Màu **đổi theo giao diện**: giao diện sáng dùng nền tối + chữ trắng, giao diện tối dùng
+    nền sáng + chữ đậm. Không có cặp (độ đậm, độ sáng) nào dùng được cho cả hai — quét đủ
+    360 màu thì nền đủ tối để chữ trắng đạt ngưỡng lại lẫn vào thẻ ở giao diện tối (tương
+    phản chỉ 1.35). Hai cặp hiện tại đạt 4.9 và 4.7, trên ngưỡng WCAG AA 4.5.
+- API `GET /nhan-vien/:id/ho-so` trả thêm `chuc_danh` và `ngay_chinh_thuc` (di trú 010 đã có
+  cột nhưng truy vấn tổng quan chưa lấy).
+
 ## [1.14.1] — 2026-08-10
 
 **Hướng dẫn kết nối máy ZKTeco: bổ sung trường hợp máy chủ đặt trên VPS.**
