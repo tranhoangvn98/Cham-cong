@@ -10,18 +10,19 @@
 // chung, khong the bo sot.
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
-import { can_dang_nhap, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
+import { can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import {
   cac_nhom_doc_duoc, chi_duoc_sua_o, doc_duoc, sua_duoc,
   type BoiCanh, type NhomHoSo, type NguoiXem,
 } from '../bao_mat/quyen_ho_so.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { che_ho_so, duoc_xem_day_du } from '../bao_mat/che_du_lieu.ts';
+import { trich_theo_duoi } from '../tien_ich/doc_office.ts';
 import { doc_tep_ho_so, lam_sach_ten, luu_tep_ho_so, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import {
-  chuoi, chuoi_bat_buoc, luan_ly, ngay, ngay_bat_buoc, so_thuc, than, trong_tap, uuid,
-  uuid_bat_buoc,
+  chuoi, chuoi_bat_buoc, luan_ly, ngay, ngay_bat_buoc, phan_trang, so_thuc, than, trong_tap,
+  uuid, uuid_bat_buoc,
   LoiDauVao, LoiKhongQuyen, LoiKhongTim,
 } from '../tien_ich/kiem_tra.ts';
 
@@ -803,22 +804,7 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
 
   /** Tai tep ve. */
   app.get('/ho-so/tep/:tep_id', { preHandler: can_dang_nhap }, async (req, res) => {
-    const nd = nguoi_xem(req);
-    const tep_id = doc_id(req, 'tep_id');
-    const t = await truy_van_mot<{
-      nhan_vien_id: string; nhom: NhomHoSo; ten_goc: string; ten_luu: string; kieu_mime: string;
-    }>(
-      'select nhan_vien_id, nhom, ten_goc, ten_luu, kieu_mime from ho_so_tep where id = $1',
-      [tep_id],
-    );
-    if (t === null) throw new LoiKhongTim('Không tìm thấy tệp.');
-
-    const { bc } = await nap_boi_canh(nd, t.nhan_vien_id);
-    const dac = THEO_NHOM.get(t.nhom);
-    bat_buoc_doc(nd, t.nhom, bc, dac?.ten ?? t.nhom);
-
-    const du_lieu = await doc_tep_ho_so(t.ten_luu);
-    if (du_lieu === null) throw new LoiKhongTim('Tệp không còn trên máy chủ.');
+    const { t, du_lieu } = await nap_tep_da_kiem(req);
 
     // LUON tra ve dang tai xuong, khong bao gio mo trong tab.
     //
@@ -831,6 +817,83 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       .header('content-security-policy', "default-src 'none'; sandbox")
       .header('content-disposition', `attachment; filename*=UTF-8''${encodeURIComponent(t.ten_goc)}`)
       .send(du_lieu);
+  });
+
+  /**
+   * Xem nhanh: tra tep de trinh duyet VE TRUC TIEP, chi cho anh va PDF.
+   *
+   * Duong tai xuong (`/ho-so/tep/:id`) van giu `attachment` — day la duong RIENG, co y thuc
+   * la dang mo trong khung. An toan nam o hai cho:
+   *   - Chi anh va PDF di qua day. HTML, DOCX, XLSX khong bao gio duoc tra inline.
+   *   - Header CSP `sandbox` bat trinh duyet dat noi dung vao mot goc rieng, khong phai goc
+   *     cua webapp. Mot PDF co nhung JavaScript se khong voi duoc token hay cookie cua
+   *     nguoi dang dang nhap. Ben giao dien con long them mot lop iframe `sandbox`.
+   */
+  app.get('/ho-so/tep/:tep_id/xem', { preHandler: can_dang_nhap }, async (req, res) => {
+    const { t, du_lieu } = await nap_tep_da_kiem(req);
+
+    const cho_xem_inline = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (!cho_xem_inline.includes(t.kieu_mime)) {
+      throw new LoiDauVao('Định dạng này không mở trực tiếp được. Hãy tải về hoặc dùng xem nhanh.');
+    }
+
+    return res
+      .header('content-type', t.kieu_mime)
+      .header('x-content-type-options', 'nosniff')
+      .header('content-security-policy', "default-src 'none'; img-src 'self' data:; object-src 'none'; sandbox")
+      .header('content-disposition', `inline; filename*=UTF-8''${encodeURIComponent(t.ten_goc)}`)
+      .send(du_lieu);
+  });
+
+  /**
+   * Xem nhanh tep Office: tra ve NOI DUNG DA BOC (van ban / bang), khong tra tep.
+   *
+   * Trinh duyet khong ve duoc DOCX/XLSX. Boc chu ra o may chu roi tra JSON thi giao dien chi
+   * ve chu — khong co duong nao de tep chay duoc thu gi.
+   */
+  app.get('/ho-so/tep/:tep_id/trich', { preHandler: can_dang_nhap }, async (req) => {
+    const { t, du_lieu } = await nap_tep_da_kiem(req);
+    const kq = trich_theo_duoi(du_lieu, t.ten_luu);
+    if (kq === null) {
+      throw new LoiDauVao('Chỉ bóc được nội dung tệp DOCX và XLSX.');
+    }
+    return { ten_goc: t.ten_goc, ...kq };
+  });
+
+  /**
+   * Ban truy xuat: toan bo tep dinh kem kem DUONG DAN da luu tren dia.
+   *
+   * Duong dan hien ra de doi chieu khi sao luu hay khi phuc hoi — CSDL chi giu sieu du lieu,
+   * ban goc nam tren dia, va hai ben lech nhau thi phai tra ra duoc cho lech.
+   */
+  app.get('/ho-so/tep', { preHandler: can_nhan_su }, async (req) => {
+    const q = than(req.query);
+    const nhan_vien_id = uuid(q, 'nhan_vien_id');
+    const nhom = chuoi(q, 'nhom', { toi_da: 30 });
+    const { gioi_han, bo_qua } = phan_trang(q, 100, 500);
+
+    const dong = await truy_van(
+      `select t.id, t.nhom, t.ten_goc, t.ten_luu, t.kieu_mime, t.kich_thuoc, t.tao_luc,
+              t.nhan_vien_id, nv.ma_nv, nv.ho_ten, nd.ten_dang_nhap as tai_len_boi
+         from ho_so_tep t
+         join nhan_vien nv on nv.id = t.nhan_vien_id
+         left join nguoi_dung nd on nd.id = t.tai_len_boi
+        where ($1::uuid is null or t.nhan_vien_id = $1)
+          and ($2::text is null or t.nhom = $2)
+        order by t.tao_luc desc
+        limit $3 offset $4`,
+      [nhan_vien_id, nhom, gioi_han, bo_qua],
+    );
+
+    const tong = await truy_van_mot<{ so: number; byte: string }>(
+      `select count(*)::int as so, coalesce(sum(kich_thuoc), 0)::text as byte
+         from ho_so_tep
+        where ($1::uuid is null or nhan_vien_id = $1)
+          and ($2::text is null or nhom = $2)`,
+      [nhan_vien_id, nhom],
+    );
+
+    return { danh_sach: dong, tong, thu_muc_goc: cau_hinh.thu_muc_ho_so };
   });
 
   app.delete('/ho-so/tep/:tep_id', { preHandler: can_dang_nhap }, async (req) => {
@@ -853,6 +916,35 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
 }
 
 // ==================================================================== tien ich
+
+interface TepDaKiem {
+  t: { nhan_vien_id: string; nhom: NhomHoSo; ten_goc: string; ten_luu: string; kieu_mime: string };
+  du_lieu: Buffer;
+}
+
+/**
+ * Nap tep va kiem quyen MOT LAN cho ca ba duong (tai ve, xem, boc noi dung).
+ *
+ * Quyen cua tep di theo quyen cua NHOM chua no. Viet chung o day de khong co duong nao
+ * quen kiem — them mot duong xem moi ma quen thi coi nhu mo cua sau cho ca kho tep.
+ */
+async function nap_tep_da_kiem(req: FastifyRequest): Promise<TepDaKiem> {
+  const nd = nguoi_xem(req);
+  const tep_id = doc_id(req, 'tep_id');
+  const t = await truy_van_mot<TepDaKiem['t']>(
+    'select nhan_vien_id, nhom, ten_goc, ten_luu, kieu_mime from ho_so_tep where id = $1',
+    [tep_id],
+  );
+  if (t === null) throw new LoiKhongTim('Không tìm thấy tệp.');
+
+  const { bc } = await nap_boi_canh(nd, t.nhan_vien_id);
+  const dac = THEO_NHOM.get(t.nhom);
+  bat_buoc_doc(nd, t.nhom, bc, dac?.ten ?? t.nhom);
+
+  const du_lieu = await doc_tep_ho_so(t.ten_luu);
+  if (du_lieu === null) throw new LoiKhongTim('Tệp không còn trên máy chủ.');
+  return { t, du_lieu };
+}
 
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

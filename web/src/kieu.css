@@ -659,3 +659,25 @@ input[type="checkbox"] {
   background: var(--nen-mo);
   color: var(--chinh-dam);
 }
+
+/* ---------------------------------------------------------------- xem nhanh tệp */
+.khung-xem-tep {
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  background: var(--nen-mo);
+  padding: 10px;
+  margin-bottom: 12px;
+  max-height: 62vh;
+  overflow: auto;
+}
+.anh-xem-tep { display: block; max-width: 100%; margin: 0 auto; border-radius: 6px; }
+.khung-pdf { width: 100%; height: 58vh; border: none; background: #fff; border-radius: 6px; }
+.xem-van-ban { font-size: 13.5px; line-height: 1.6; }
+.xem-van-ban p { margin: 0 0 8px; }
+.khung-xem-tep table { background: var(--nen-the); }
+.khung-xem-tep table th,
+.khung-xem-tep table td {
+  border: 1px solid var(--vien);
+  text-align: left;
+  white-space: pre-wrap;
+}

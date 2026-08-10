@@ -6,7 +6,7 @@
 import { useState, type ReactNode } from 'react';
 import { goi, gui_tep, tai_tep } from '../api.ts';
 import {
-  DangTai, HopLoi, HopThoai, HopTot, Trong,
+  DangTai, HopLoi, HopThoai, HopThoaiXemTep, HopTot, Trong,
   dung_hanh_dong, dung_nap, ngay_viet, ngay_gio,
 } from '../thanh_phan.tsx';
 import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
@@ -519,6 +519,7 @@ function DanhSachTep(
   { tep, sua_duoc, khi_doi }: { tep: TepDinhKem[]; sua_duoc: boolean; khi_doi: () => void },
 ): ReactNode {
   const hd = dung_hanh_dong();
+  const [dang_xem, dat_dang_xem] = useState<TepDinhKem | null>(null);
   if (tep.length === 0) return null;
 
   const tai = async (t: TepDinhKem): Promise<void> => {
@@ -546,6 +547,7 @@ function DanhSachTep(
                 </td>
                 <td className="khong-ngat" style={{ fontSize: 12 }}>{ngay_gio(t.tao_luc)}</td>
                 <td className="khong-ngat">
+                  <button className="nut-nho nut-phang" onClick={() => dat_dang_xem(t)}>Xem</button>{' '}
                   <button className="nut-nho" onClick={() => void tai(t)}>Tải về</button>
                   {sua_duoc && (
                     <> <button className="nut-nho nut-nguy" onClick={() => void xoa(t)}>Xóa</button></>
@@ -556,6 +558,14 @@ function DanhSachTep(
           </tbody>
         </table>
       </div>
+
+      {dang_xem !== null && (
+        <HopThoaiXemTep
+          tep_id={dang_xem.id}
+          ten_goc={dang_xem.ten_goc}
+          khi_dong={() => dat_dang_xem(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1177,14 +1187,23 @@ function TepDaNop(
   { tep_id, ten }: { nhan_vien_id: string; tep_id: string; ten: string },
 ): ReactNode {
   const hd = dung_hanh_dong();
+  const [dang_xem, dat_dang_xem] = useState(false);
   return (
     <>
+      {/* Bam vao ten tep la XEM chu khong phai tai ve: doi chieu ho so thi nguoi ta muon
+          liec qua, tai ve moi lan mot tep la doi thao tac lay ra ca thu muc rac. */}
+      <button className="nut-nho nut-phang" onClick={() => dat_dang_xem(true)} title="Xem nhanh">
+        {ten}
+      </button>{' '}
       <button className="nut-nho" onClick={() => void hd.chay(
         () => tai_tep(`/api/ho-so/tep/${tep_id}`, ten), 'Đã tải tệp.',
-      )}>
-        {ten}
+      )} title="Tải về">
+        ↓
       </button>
       <HopLoi loi={hd.loi} />
+      {dang_xem && (
+        <HopThoaiXemTep tep_id={tep_id} ten_goc={ten} khi_dong={() => dat_dang_xem(false)} />
+      )}
     </>
   );
 }

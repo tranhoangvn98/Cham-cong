@@ -1,6 +1,6 @@
 // Thanh phan dung chung cho toan bo webapp.
 import { useEffect, useState, type ReactNode } from 'react';
-import { goi, LoiApi, mui_gio_offset_gio } from './api.ts';
+import { goi, tai_blob, tai_tep, LoiApi, mui_gio_offset_gio } from './api.ts';
 
 /** Doi phut thanh dang '7h 30p' cho de doc. */
 export function phut_thanh_chu(phut: number | null | undefined): string {
@@ -476,6 +476,162 @@ export function HopThoaiNhap(
         <button type="button" onClick={da_nhap ? khi_xong : khi_dong}>
           {da_nhap ? 'Xong' : 'Hủy'}
         </button>
+      </div>
+    </HopThoai>
+  );
+}
+
+// ============================================================ xem nhanh tệp đính kèm
+
+interface TrichNoiDung {
+  loai: 'van_ban' | 'bang';
+  ten_goc: string;
+  doan?: string[];
+  hang?: string[][];
+  cat_bot: boolean;
+}
+
+/** Đoán cách xem theo tên tệp. Máy chủ vẫn là bên quyết định cuối cùng. */
+function cach_xem(ten: string): 'anh' | 'pdf' | 'office' | 'khac' {
+  const duoi = (ten.split('.').pop() ?? '').toLowerCase();
+  if (['jpg', 'jpeg', 'png'].includes(duoi)) return 'anh';
+  if (duoi === 'pdf') return 'pdf';
+  if (['docx', 'xlsx'].includes(duoi)) return 'office';
+  return 'khac';
+}
+
+/**
+ * Popup xem nhanh tệp đính kèm: ảnh, PDF, Word, Excel.
+ *
+ * Ba đường khác nhau vì ba loại rủi ro khác nhau:
+ *   - Ảnh: nạp về blob rồi vẽ bằng <img>. Ảnh không chạy được mã.
+ *   - PDF: nhúng trong <iframe sandbox>. Máy chủ đã gắn CSP sandbox; thẻ này là lớp thứ
+ *     hai. Không có `allow-same-origin` nên khung nằm ở một gốc riêng — một PDF có
+ *     JavaScript không với được token của người đang đăng nhập.
+ *   - Word/Excel: trình duyệt không vẽ được, nên máy chủ bóc chữ ra và ở đây chỉ hiển thị
+ *     chữ. Không có tệp nào được nhúng vào trang.
+ */
+export function HopThoaiXemTep(
+  { tep_id, ten_goc, khi_dong }: { tep_id: string; ten_goc: string; khi_dong: () => void },
+): ReactNode {
+  const [url, dat_url] = useState<string | null>(null);
+  const [trich, dat_trich] = useState<TrichNoiDung | null>(null);
+  const [loi, dat_loi] = useState<unknown>(null);
+  const [dang_tai, dat_dang_tai] = useState(true);
+  const kieu = cach_xem(ten_goc);
+  const hd = dung_hanh_dong();
+
+  useEffect(() => {
+    let bo_url: string | null = null;
+    let con_song = true;
+
+    void (async () => {
+      try {
+        if (kieu === 'anh' || kieu === 'pdf') {
+          const b = await tai_blob(`/api/ho-so/tep/${tep_id}/xem`);
+          if (!con_song) { URL.revokeObjectURL(b.url); return; }
+          bo_url = b.url;
+          dat_url(b.url);
+        } else if (kieu === 'office') {
+          dat_trich(await goi<TrichNoiDung>(`/api/ho-so/tep/${tep_id}/trich`));
+        }
+      } catch (e) {
+        if (con_song) dat_loi(e);
+      } finally {
+        if (con_song) dat_dang_tai(false);
+      }
+    })();
+
+    // Thu hoi blob khi đóng, nếu không nó nằm lại trong bộ nhớ tab cho tới khi tải lại trang.
+    return () => {
+      con_song = false;
+      if (bo_url !== null) URL.revokeObjectURL(bo_url);
+    };
+  }, [tep_id, kieu]);
+
+  return (
+    <HopThoai tieu_de={ten_goc} khi_dong={khi_dong} rong>
+      <HopLoi loi={loi} />
+      <HopLoi loi={hd.loi} />
+      <HopTot chu={hd.tot} />
+
+      {dang_tai ? <DangTai chu="Đang mở tệp…" /> : (
+        <div className="khung-xem-tep">
+          {kieu === 'anh' && url !== null && (
+            <img src={url} alt={ten_goc} className="anh-xem-tep" />
+          )}
+
+          {kieu === 'pdf' && url !== null && (
+            <iframe
+              src={url}
+              title={ten_goc}
+              className="khung-pdf"
+              // KHÔNG đặt `sandbox` ở đây — và đây là một đánh đổi có chủ ý.
+              //
+              // Đã đo trên Chromium: `sandbox=""` lẫn `sandbox="allow-scripts"` đều làm
+              // `contentDocument` thành null và khung chỉ hiện icon tài liệu hỏng, dù
+              // `navigator.pdfViewerEnabled` là true. Bộ đọc PDF dựng sẵn bị sandbox chặn
+              // hoàn toàn. Giữ sandbox nghĩa là bỏ hẳn tính năng xem PDF.
+              //
+              // Cái thay thế nó không phải là hy vọng:
+              //   1. Máy chủ nhận dạng tệp bằng magic byte, nên thứ nằm ở đây CHẮC CHẮN là
+              //      PDF. Rủi ro kinh điển — HTML đội lốt .pdf rồi chạy script trong gốc của
+              //      webapp — bị chặn từ lúc tải lên.
+              //   2. PDF được vẽ bởi tiến trình xem PDF riêng của trình duyệt. JavaScript
+              //      trong PDF (nếu có) chạy trong bộ máy đó và không với được DOM, cookie
+              //      hay localStorage của trang bọc ngoài.
+              //   3. Đường tải xuống vẫn là `attachment`, và đường xem trực tiếp trên máy chủ
+              //      vẫn gắn CSP `sandbox` cho trường hợp có ai mở thẳng địa chỉ.
+            />
+          )}
+
+          {kieu === 'office' && trich !== null && trich.loai === 'van_ban' && (
+            <div className="xem-van-ban">
+              {(trich.doan ?? []).map((d, i) => <p key={i}>{d}</p>)}
+              {(trich.doan ?? []).length === 0 && (
+                <p className="mo-ta">Tệp không có nội dung chữ để hiển thị.</p>
+              )}
+            </div>
+          )}
+
+          {kieu === 'office' && trich !== null && trich.loai === 'bang' && (
+            <div className="vo-bang">
+              <table>
+                <tbody>
+                  {(trich.hang ?? []).map((h, i) => (
+                    <tr key={i}>
+                      {h.map((o, j) => (
+                        i === 0 ? <th key={j}>{o}</th> : <td key={j}>{o}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {kieu === 'khac' && (
+            <Trong
+              tieu_de="Định dạng này không xem nhanh được"
+              mo_ta="Tải tệp về để mở bằng phần mềm trên máy."
+            />
+          )}
+
+          {trich?.cat_bot === true && (
+            <div className="hop-thong-bao hop-luu-y">
+              Bản xem nhanh đã cắt bớt cho gọn. Tải tệp về để xem đầy đủ.
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="hang-nut">
+        <button type="button" className="nut-chinh" onClick={() => void hd.chay(
+          () => tai_tep(`/api/ho-so/tep/${tep_id}`, ten_goc), 'Đã tải tệp về.',
+        )}>
+          Tải về
+        </button>
+        <button type="button" onClick={khi_dong}>Đóng</button>
       </div>
     </HopThoai>
   );

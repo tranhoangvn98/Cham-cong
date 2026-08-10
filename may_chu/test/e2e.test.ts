@@ -1991,3 +1991,110 @@ test('phan quyen: nhan vien da co tai khoan thi bao dung ly do, khong bao nham e
   assert.equal(r.ma, 409);
   assert.match(String(r.body['loi']), /đã có một tài khoản khác/);
 });
+
+// ============================================================ XEM NHANH TEP
+test('xem nhanh: PDF tra inline nhung van bi nhot trong sandbox', async () => {
+  const t = await truy_van_mot<{ id: string }>(
+    "select id from ho_so_tep where kieu_mime = 'application/pdf' limit 1");
+  const res = await app.inject({
+    method: 'GET', url: `/api/ho-so/tep/${t?.id}/xem`,
+    headers: { authorization: `Bearer ${token_admin}` },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.match(String(res.headers['content-disposition']), /^inline;/);
+  assert.equal(res.headers['x-content-type-options'], 'nosniff');
+  // `sandbox` dat noi dung vao mot goc rieng — mot PDF co JavaScript khong voi duoc token
+  // cua nguoi dang dang nhap.
+  assert.match(String(res.headers['content-security-policy']), /sandbox/);
+  assert.match(String(res.headers['content-security-policy']), /default-src 'none'/);
+});
+
+test('xem nhanh: duong tai ve VAN giu attachment, khong bi lay theo', async () => {
+  const t = await truy_van_mot<{ id: string }>(
+    "select id from ho_so_tep where kieu_mime = 'application/pdf' limit 1");
+  const res = await app.inject({
+    method: 'GET', url: `/api/ho-so/tep/${t?.id}`,
+    headers: { authorization: `Bearer ${token_admin}` },
+  });
+  assert.match(String(res.headers['content-disposition']), /^attachment;/);
+});
+
+test('xem nhanh: quyen di theo NHOM chua tep, ke ca duong xem moi', async () => {
+  // Them mot duong xem ma quen kiem quyen la mo cua sau cho ca kho tep.
+  const t = await truy_van_mot<{ id: string }>(
+    "select id from ho_so_tep where nhom = 'hop_dong' limit 1");
+  for (const duong of ['xem', 'trich']) {
+    const r = await goi('GET', `/api/ho-so/tep/${t?.id}/${duong}`, { token: hs_token_tp });
+    assert.equal(r.ma, 403, `/${duong} phai chan nguoi khong doc duoc nhom hop_dong`);
+  }
+});
+
+test('xem nhanh: boc noi dung DOCX ra van ban', async () => {
+  const { deflateRawSync } = await import('node:zlib');
+  // Dung mot DOCX toi thieu that (ZIP + word/document.xml).
+  const xml = Buffer.from(
+    '<w:body><w:p><w:r><w:t>PHỤ LỤC HỢP ĐỒNG</w:t></w:r></w:p></w:body>', 'utf8');
+  const nen = deflateRawSync(xml);
+  const ten = Buffer.from('word/document.xml', 'utf8');
+  const h = Buffer.alloc(30);
+  h.writeUInt32LE(0x04034b50, 0); h.writeUInt16LE(8, 8);
+  h.writeUInt32LE(nen.length, 18); h.writeUInt32LE(xml.length, 22);
+  h.writeUInt16LE(ten.length, 26);
+  const c = Buffer.alloc(46);
+  c.writeUInt32LE(0x02014b50, 0); c.writeUInt16LE(8, 10);
+  c.writeUInt32LE(nen.length, 20); c.writeUInt32LE(xml.length, 24);
+  c.writeUInt16LE(ten.length, 28); c.writeUInt32LE(0, 42);
+  const cuc_bo = Buffer.concat([h, ten, nen]);
+  const tt = Buffer.concat([c, ten]);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0); eocd.writeUInt16LE(1, 8); eocd.writeUInt16LE(1, 10);
+  eocd.writeUInt32LE(tt.length, 12); eocd.writeUInt32LE(cuc_bo.length, 16);
+  const docx = Buffer.concat([cuc_bo, tt, eocd]);
+
+  const rg = '----docx';
+  const than = Buffer.concat([
+    Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="nhom"\r\n\r\nbien_ban\r\n`),
+    Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="tep"; filename="phu-luc.docx"\r\n\r\n`),
+    docx,
+    Buffer.from(`\r\n--${rg}--\r\n`),
+  ]);
+  const len = await app.inject({
+    method: 'POST', url: `/api/nhan-vien/${hs_nv_a}/tep`,
+    headers: {
+      authorization: `Bearer ${token_admin}`,
+      'content-type': `multipart/form-data; boundary=${rg}`,
+    },
+    payload: than,
+  });
+  assert.equal(len.statusCode, 201, len.body);
+
+  const r = await goi('GET', `/api/ho-so/tep/${len.json()['id']}/trich`, { token: token_admin });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+  assert.equal(r.body['loai'], 'van_ban');
+  assert.deepEqual(r.body['doan'], ['PHỤ LỤC HỢP ĐỒNG']);
+});
+
+test('xem nhanh: DOCX KHONG duoc tra inline du da boc duoc noi dung', async () => {
+  // Boc chu ra thi an toan; tra nguyen tep inline thi trinh duyet co the doan nham kieu.
+  const t = await truy_van_mot<{ id: string }>(
+    "select id from ho_so_tep where ten_goc like '%.docx' limit 1");
+  const r = await goi('GET', `/api/ho-so/tep/${t?.id}/xem`, { token: token_admin });
+  assert.equal(r.ma, 400);
+});
+
+test('ban truy xuat tep: co duong dan da luu tren dia va tong dung luong', async () => {
+  const r = await goi('GET', '/api/ho-so/tep', { token: token_admin });
+  assert.equal(r.ma, 200);
+  const ds = r.body['danh_sach'] as Record<string, unknown>[];
+  assert.ok(ds.length > 0);
+  assert.match(String(ds[0]?.['ten_luu']), /^\d{4}-\d{2}\/[0-9a-f-]{36}\./,
+    'phai tra ve duong dan tuong doi da luu trong CSDL');
+  assert.ok(String(ds[0]?.['ma_nv']).length > 0, 'phai biet tep cua ai');
+  assert.ok(Number((r.body['tong'] as Record<string, unknown>)['so']) > 0);
+  assert.ok(String(r.body['thu_muc_goc']).length > 0, 'phai cho biet thu muc goc tren dia');
+});
+
+test('ban truy xuat tep: nhan vien thuong khong duoc xem', async () => {
+  const r = await goi('GET', '/api/ho-so/tep', { token: hs_token_a });
+  assert.equal(r.ma, 403);
+});

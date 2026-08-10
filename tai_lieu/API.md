@@ -286,7 +286,10 @@ cần nhìn thấy là những gì *còn thiếu*; một danh sách chỉ hiện
 | Method | Đường dẫn | Ghi chú |
 |---|---|---|
 | POST | `/nhan-vien/:id/tep` | multipart: `tep` + `nhom` + `thuoc_id?` |
-| GET | `/ho-so/tep/:tep_id` | tải về |
+| GET | `/ho-so/tep/:tep_id` | tải về (`Content-Disposition: attachment`) |
+| GET | `/ho-so/tep/:tep_id/xem` | xem trực tiếp — **chỉ** JPG, PNG, PDF |
+| GET | `/ho-so/tep/:tep_id/trich` | bóc nội dung DOCX / XLSX ra JSON |
+| GET | `/ho-so/tep?nhan_vien_id=&nhom=` | bảng truy xuất, kèm đường dẫn đã lưu (nhan_su) |
 | DELETE | `/ho-so/tep/:tep_id` | xóa cả bản ghi lẫn tệp trên đĩa |
 
 - Nhận PDF, JPG, PNG, DOCX, XLSX; tối đa `TEP_TOI_DA_BYTE` (mặc định 15 MB). Loại tệp nhận
@@ -296,8 +299,43 @@ cần nhìn thấy là những gì *còn thiếu*; một danh sách chỉ hiện
 - Tải về **luôn** ở dạng `Content-Disposition: attachment`, kèm `nosniff` và CSP sandbox.
   Webapp và tệp đính kèm dùng chung một gốc, nên một PDF mở inline chạy được JavaScript
   trong ngữ cảnh của chính webapp — tức XSS với đầy đủ quyền người đang đăng nhập.
-- Tệp nằm trên đĩa (`THU_MUC_HO_SO`), CSDL chỉ giữ siêu dữ liệu. Trong Docker đó là volume
-  `ho_so`; mất volume là mất bản gốc.
+- Tệp nằm trên đĩa (`THU_MUC_HO_SO`), CSDL chỉ giữ siêu dữ liệu — cột `ho_so_tep.ten_luu`
+  giữ đường dẫn tương đối dạng `YYYY-MM/<uuid>.<đuôi>`. Trong Docker đó là volume `ho_so`;
+  mất volume là mất bản gốc. Màn hình **Kho tệp hồ sơ** hiện cả đường dẫn này lẫn thư mục
+  gốc trên máy chủ, để đối chiếu khi sao lưu hoặc phục hồi.
+- Bốn đường trên dùng **chung một hàm kiểm quyền**. Thêm một đường xem mới mà quên kiểm là
+  mở cửa sau cho cả kho tệp, nên chỗ đó chỉ có một.
+
+### Xem nhanh — ba đường cho ba loại rủi ro
+
+| Loại | Cách hiển thị | Vì sao |
+|---|---|---|
+| JPG / PNG | tải về blob rồi vẽ bằng `<img>` | ảnh không chạy được mã |
+| PDF | blob nhúng trong `<iframe>` **không sandbox** | xem bên dưới |
+| DOCX / XLSX | máy chủ bóc chữ, giao diện chỉ vẽ chữ | trình duyệt không vẽ được, và không tệp nào được nhúng vào trang |
+| Khác | chỉ tải về | |
+
+**Vì sao `<iframe>` xem PDF không đặt `sandbox`** — đây là đánh đổi có chủ ý, không phải sót.
+Đã đo trên Chromium: `sandbox=""` và `sandbox="allow-scripts"` đều làm `contentDocument`
+thành `null` và khung chỉ hiện icon tài liệu hỏng, dù `navigator.pdfViewerEnabled` là `true`.
+Bộ đọc PDF dựng sẵn bị sandbox chặn hoàn toàn, nên giữ sandbox nghĩa là bỏ hẳn tính năng.
+
+Thứ thay thế nó:
+
+1. Máy chủ nhận dạng tệp bằng **magic byte** lúc tải lên, nên thứ nằm trong khung chắc chắn
+   là PDF. Rủi ro kinh điển — HTML đội lốt `.pdf` rồi chạy script trong gốc của webapp — bị
+   chặn ngay từ cửa vào.
+2. PDF được vẽ bởi **tiến trình xem PDF riêng** của trình duyệt. JavaScript trong PDF chạy
+   trong bộ máy đó, không với được DOM, cookie hay `localStorage` của trang bọc ngoài.
+3. Đường tải xuống vẫn `attachment`, và `/xem` vẫn gắn CSP `sandbox` cho trường hợp có ai
+   mở thẳng địa chỉ.
+
+DOCX và XLSX **không** được trả về dạng inline dù đã bóc được nội dung: bóc chữ ra thì an
+toàn, trả nguyên tệp inline thì trình duyệt có thể đoán nhầm kiểu.
+
+Bộ bóc nội dung tự đọc ZIP bằng `node:zlib`, không kéo thư viện Office — chỉ cần chữ để
+người dùng liếc qua, còn một thư viện đầy đủ kéo theo hàng chục MB vào ảnh Docker. Có chặn
+zip bomb (trần giải nén 40 MB, tối đa 500 mục) và cắt bớt ở 400 đoạn / 200 dòng.
 
 ### Ràng buộc nghiệp vụ ở tầng CSDL
 

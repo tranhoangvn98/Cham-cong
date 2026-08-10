@@ -2,6 +2,65 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.14.0] — 2026-08-10
+
+**Xem nhanh tệp đính kèm và bảng truy xuất kho tệp.**
+
+### Thêm mới
+
+- **Popup xem nhanh** ngay trong hồ sơ: bấm tên tệp là mở xem, không phải tải về rồi mở bằng
+  phần mềm ngoài. Ba đường cho ba loại rủi ro khác nhau:
+  - **Ảnh** (JPG/PNG): tải về blob rồi vẽ bằng `<img>`.
+  - **PDF**: nhúng trong khung, dùng bộ đọc dựng sẵn của trình duyệt.
+  - **Word / Excel**: trình duyệt không vẽ được, nên **máy chủ bóc chữ ra** và giao diện chỉ
+    vẽ chữ — DOCX thành các đoạn văn, XLSX thành bảng. Không tệp nào được nhúng vào trang.
+- **Kho tệp hồ sơ** (menu Hệ thống, nhân sự trở lên): bảng truy xuất toàn bộ tệp đính kèm kèm
+  **đường dẫn đã lưu trên đĩa** (`ho_so_tep.ten_luu`), thư mục gốc trên máy chủ, dung lượng,
+  ai tải lên và lúc nào. Dùng để đối chiếu hai bên khi sao lưu hoặc phục hồi — cơ sở dữ liệu
+  chỉ giữ đường dẫn, bản gốc nằm trên đĩa, và lệch nhau thì phải tra ra được chỗ lệch.
+- Bộ bóc nội dung Office **tự đọc ZIP bằng `node:zlib`**, không kéo thư viện Office: chỉ cần
+  chữ để liếc qua, còn một thư viện đầy đủ kéo theo hàng chục MB vào ảnh Docker. Có chặn zip
+  bomb (trần giải nén 40 MB, tối đa 500 mục) và cắt bớt ở 400 đoạn / 200 dòng.
+
+### Một đánh đổi về bảo mật, nói rõ ra
+
+Khung xem PDF **không đặt `sandbox`**. Đã đo trên Chromium: cả `sandbox=""` lẫn
+`sandbox="allow-scripts"` đều làm `contentDocument` thành `null` và khung chỉ hiện icon tài
+liệu hỏng, dù `navigator.pdfViewerEnabled` là `true` — bộ đọc PDF dựng sẵn bị sandbox chặn
+hoàn toàn. Giữ sandbox nghĩa là bỏ hẳn tính năng xem PDF.
+
+Thứ thay thế nó không phải là hy vọng:
+
+1. Máy chủ nhận dạng tệp bằng **magic byte** lúc tải lên, nên thứ nằm trong khung chắc chắn
+   là PDF. Rủi ro kinh điển — HTML đội lốt `.pdf` rồi chạy script trong gốc của webapp — bị
+   chặn ngay từ cửa vào.
+2. PDF được vẽ bởi **tiến trình xem PDF riêng** của trình duyệt; JavaScript trong PDF không
+   với được DOM, cookie hay `localStorage` của trang bọc ngoài.
+3. Đường tải xuống vẫn `attachment`, và `/xem` vẫn gắn CSP `sandbox` cho trường hợp có ai mở
+   thẳng địa chỉ.
+
+DOCX/XLSX vẫn **không** được trả inline dù đã bóc được nội dung: bóc chữ thì an toàn, trả
+nguyên tệp inline thì trình duyệt có thể đoán nhầm kiểu.
+
+### Sửa
+
+- Bộ bóc DOCX **giải mã thực thể XML hai lần**, nên `&amp;amp;lt;` ra `&lt;` thay vì
+  `&amp;lt;`. Một test viết riêng cho đúng bẫy này đã bắt được ngay lần chạy đầu.
+- Bốn đường tệp (tải về, xem, bóc nội dung, xóa) nay dùng **chung một hàm kiểm quyền**. Trước
+  đó đường tải về tự kiểm riêng; thêm đường mới mà quên kiểm là mở cửa sau cho cả kho tệp.
+
+### Đã kiểm chứng
+
+Dựng tệp thật cho cả bốn định dạng — PNG, PDF hợp lệ có bảng xref, DOCX và XLSX ZIP thật —
+rồi lái Chromium mở từng cái: ảnh vẽ được, khung PDF nạp được bộ đọc, DOCX ra đúng hai đoạn
+văn, XLSX ra đúng bảng với ô trống giữ nguyên vị trí cột. Kho tệp hiện đúng đường dẫn dạng
+`YYYY-MM/<uuid>.<đuôi>`.
+
+Lần chạy đầu PDF hiện icon hỏng; đã tách hai nguyên nhân bằng thí nghiệm riêng (PDF thiếu
+xref, hay sandbox chặn) thay vì đoán — hóa ra là cả hai, và chỉ sau khi loại trừ cái thứ nhất
+mới kết luận được về sandbox.
+Tổng: 142 test đơn vị + 5 proxy + 115 e2e + 12 design token, tất cả xanh.
+
 ## [1.13.1] — 2026-08-10
 
 ### Sửa

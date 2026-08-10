@@ -302,6 +302,28 @@ export async function tai_tep(duong_dan: string, ten_tep: string): Promise<void>
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Tai noi dung tep ve dang blob URL de nhung vao <img> hoac <iframe>.
+ *
+ * Khong dat thang duong dan API vao `src`: the <img>/<iframe> khong gui duoc header
+ * Authorization. Tai bang fetch roi doi sang blob: URL thi vua gui duoc token, vua khong
+ * phai nhet token vao thanh dia chi (noi no se nam lai trong lich su va log proxy).
+ *
+ * Nho goi `URL.revokeObjectURL` khi dong — neu khong blob nam lai trong bo nho tab.
+ */
+export async function tai_blob(duong_dan: string): Promise<{ url: string; kieu: string }> {
+  const res = await fetch(`${GOC}${duong_dan}`, {
+    headers: phien === null ? {} : { authorization: `Bearer ${phien.token_truy_cap}` },
+  });
+  if (!res.ok) {
+    const than: unknown = await res.json().catch(() => null);
+    const loi = (than as { loi?: string } | null)?.loi;
+    throw new LoiApi(res.status, loi ?? `Không mở được tệp (lỗi ${res.status}).`);
+  }
+  const blob = await res.blob();
+  return { url: URL.createObjectURL(blob), kieu: blob.type };
+}
+
 /** URL anh selfie kem token — dung cho thuoc tinh src cua <img>. */
 export function url_anh(lan_quet_id: string): string {
   return `${GOC}/api/toi/anh/${lan_quet_id}`;
