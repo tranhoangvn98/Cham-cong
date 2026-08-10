@@ -32,7 +32,25 @@ cùng giao thức nên thường chạy được, nhưng nên chạy thử một
   cấu hình hay gặp nhất khi chuyển từ LAN sang VPS.
 - Cổng ở cột B là **80**, không phải 8080: reverse proxy trên VPS nghe cổng 80 rồi chuyển
   tiếp `/iclock/*` vào máy chủ chấm công. Cổng 8080 chỉ tồn tại bên trong VPS.
+- `Enable Proxy Server` phải **tắt**. Bật lên thì máy không gửi thẳng tới `Server Address`
+  nữa mà đẩy toàn bộ qua proxy đã khai — mà ô proxy thường để trống thành `0.0.0.0`, tức
+  là không đi đâu cả. Triệu chứng giống hệt cấu hình đúng: máy im lặng, không báo lỗi, và
+  máy chủ không nhận được gì. Bản dịch tiếng Việt ghi là "Cho phép máy chủ ủy nhiệm".
 - HTTPS luôn tắt, kể cả cột B — xem mục 6 để biết vì sao và bù lại bằng cách nào.
+
+Firmware cài tiếng Việt đặt tên khác, màn hình tên là **"Cài đặt máy chủ đám mây"**:
+
+| Trên bảng ở trên | Firmware tiếng Việt |
+|---|---|
+| Server Mode = ADMS | Kiểu máy chủ = **Tự động tải dữ liệu** |
+| Enable Domain Name | Khởi động tên miền |
+| Server Address | Địa chỉ máy chủ |
+| Server Port | Cổng máy chủ |
+| Enable Proxy Server | Cho phép máy chủ ủy nhiệm |
+
+Khi `Khởi động tên miền` bật, nhiều firmware **tự thêm** `http://` và dấu `/` vào ô địa chỉ
+rồi hiển thị nguyên URL (`http://chamcong.congty.vn/`). Đó là bình thường — chỉ gõ phần tên
+miền, để firmware tự ghép, đừng gõ tay `http://`.
 
 **Menu › Comm › Ethernet** (hoặc Wi-Fi): đặt IP tĩnh hoặc DHCP reservation cho máy, để
 địa chỉ máy không đổi sau khi mất điện.

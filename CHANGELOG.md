@@ -19,6 +19,12 @@ thì máy không kết nối được, mà máy **không báo lỗi gì cả**, 
   ở máy đọc màn hình này chứ không đọc file `.md`, nên đây mới là chỗ phải đúng trước.
 - **Trang Thiết bị**, gợi ý ô "Serial máy" khi khai báo: sửa "số serial dán sau lưng máy"
   thành `Menu › Hệ thống › Thông tin thiết bị › Số sê ri`.
+- Nói rõ hậu quả của `Enable Proxy Server` — bật lên là máy đẩy hết qua proxy đã khai (ô này
+  thường bỏ trống thành `0.0.0.0`) nên không bao giờ tới được máy chủ, mà triệu chứng giống
+  hệt lúc cấu hình đúng: máy im lặng, không báo lỗi. Gặp thật khi đấu nối máy đầu tiên.
+- Tài liệu bổ sung **bảng đối chiếu tên mục của firmware tiếng Việt** ("Cài đặt máy chủ đám
+  mây", "Khởi động tên miền", "Cho phép máy chủ ủy nhiệm"…) và ghi chú rằng firmware tự thêm
+  `http://` với dấu `/` vào ô địa chỉ — nhìn thấy nguyên URL là bình thường, không phải lỗi.
 
 - `tai_lieu/KET-NOI-MAY-ZKTECO.md` mục 1: bảng cấu hình tách thành **hai cột** (LAN / VPS).
   Khác biệt quan trọng: qua tên miền thì `Enable Domain Name` phải **bật** (bản cũ ghi tắt,

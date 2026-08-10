@@ -384,7 +384,15 @@ function HuongDanCauHinh(): ReactNode {
               )}
             </td>
           </tr>
-          <tr><td>Enable Proxy Server</td><td><strong>Tắt</strong></td></tr>
+          <tr>
+            <td>Enable Proxy Server</td>
+            <td><strong>Tắt</strong>{' '}
+              <span className="goi-y">
+                bật lên là máy đẩy hết qua proxy đã khai (thường bỏ trống thành 0.0.0.0) và
+                không bao giờ tới được máy chủ
+              </span>
+            </td>
+          </tr>
           <tr>
             <td>HTTPS</td>
             <td><strong>Tắt</strong>{' '}
