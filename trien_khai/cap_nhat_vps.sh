@@ -30,7 +30,10 @@ fi
 
 NHANH=$(git rev-parse --abbrev-ref HEAD)
 TRUOC=$(git rev-parse --short HEAD)
-TEN_MIEN=$(grep -E '^TEN_MIEN=' .env | cut -d= -f2- | tr -d '"' | tr -d "'" || true)
+# `tail -1`: tep .env that hay co khoa bi khai lap (them tay nhieu lan). Docker Compose
+# lay dong CUOI, nen o day lam y het — khong co `tail` thi bien nay om ca hai dong ke ca
+# ky tu xuong dong, va moi URL dung no deu hong.
+TEN_MIEN=$(grep -E '^TEN_MIEN=' .env | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true)
 
 echo
 xanh "=== 1/6. Trang thai hien tai ==="

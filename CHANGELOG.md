@@ -2,7 +2,14 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
-## [1.12.2] — 2026-08-10
+## [1.12.3] — 2026-08-10
+
+### Sửa
+
+- `cap_nhat_vps.sh` đọc `TEN_MIEN` bằng `grep` nên nếu `.env` có khóa đó **khai lặp** (rất
+  dễ xảy ra khi thêm tay nhiều lần) thì biến ôm cả hai dòng kèm ký tự xuống dòng, và mọi URL
+  dựng từ nó đều hỏng — ba phép kiểm tra sau cập nhật đều trả `loi` mà không rõ vì sao. Nay
+  lấy dòng **cuối**, đúng như cách Docker Compose xử lý khóa trùng.
 
 ### Tài liệu
 
