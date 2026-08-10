@@ -4,13 +4,21 @@ Theo [SemVer](https://semver.org/lang/vi/).
 
 ## [1.14.1] — 2026-08-10
 
-**Tài liệu kết nối máy ZKTeco: bổ sung trường hợp máy chủ đặt trên VPS.**
+**Hướng dẫn kết nối máy ZKTeco: bổ sung trường hợp máy chủ đặt trên VPS.**
 
 Bản trước chỉ mô tả kiểu triển khai máy chủ nằm cùng LAN với máy chấm công. Thực tế đang
-chạy là máy chủ trên VPS, máy chấm công ở văn phòng gọi ra Internet — làm theo tài liệu cũ
-thì máy không kết nối được.
+chạy là máy chủ trên VPS, máy chấm công ở văn phòng gọi ra Internet — làm theo hướng dẫn cũ
+thì máy không kết nối được, mà máy **không báo lỗi gì cả**, chỉ im lặng không gọi lên.
 
 ### Sửa
+
+- **Trang Thiết bị**: khối "Cấu hình trên máy ZKTeco" trước đây in cứng một đoạn chỉ đúng cho
+  kiểu LAN (IP + cổng 8080 + `Enable Domain Name` tắt). Nay dựng thành bảng và **tự đổi theo
+  địa chỉ đang mở webapp**: mở bằng tên miền thì hiện đúng tên miền đó, cổng `80`,
+  `Enable Domain Name` = **Bật**; mở bằng IP thì giữ nguyên hướng dẫn LAN cũ. Người đứng
+  ở máy đọc màn hình này chứ không đọc file `.md`, nên đây mới là chỗ phải đúng trước.
+- **Trang Thiết bị**, gợi ý ô "Serial máy" khi khai báo: sửa "số serial dán sau lưng máy"
+  thành `Menu › Hệ thống › Thông tin thiết bị › Số sê ri`.
 
 - `tai_lieu/KET-NOI-MAY-ZKTECO.md` mục 1: bảng cấu hình tách thành **hai cột** (LAN / VPS).
   Khác biệt quan trọng: qua tên miền thì `Enable Domain Name` phải **bật** (bản cũ ghi tắt,
