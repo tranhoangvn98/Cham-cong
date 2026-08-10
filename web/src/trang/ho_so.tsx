@@ -13,7 +13,9 @@ import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
 
 // ==================================================================== kieu du lieu
 
-type Nhom = 'hop_dong' | 'bien_ban' | 'luong' | 'cong_viec' | 'bao_cao' | 'khieu_nai' | 'thiet_bi';
+type Nhom =
+  | 'thong_tin' | 'tai_lieu' | 'hop_dong' | 'bien_ban' | 'luong'
+  | 'nguoi_phu_thuoc' | 'bhxh' | 'cong_viec' | 'bao_cao' | 'khieu_nai' | 'thiet_bi';
 
 interface TongQuan {
   nhan_vien: Record<string, unknown> & { id: string; ma_nv: string; ho_ten: string };
@@ -22,6 +24,7 @@ interface TongQuan {
   dem: Partial<Record<Nhom, number>>;
   hop_dong_hien_tai: Record<string, unknown> | null;
   luong_hien_tai: Record<string, unknown> | null;
+  tien_do_tai_lieu: { can_co: number; da_du: number } | null;
 }
 
 interface TepDinhKem {
@@ -42,6 +45,10 @@ interface KetQuaNhom {
 // ==================================================================== nhan hien thi
 
 const TEN_NHOM: Record<Nhom, string> = {
+  thong_tin: 'Thông tin chung',
+  tai_lieu: 'Tài liệu',
+  nguoi_phu_thuoc: 'Người phụ thuộc',
+  bhxh: 'BHXH – BHYT',
   hop_dong: 'Hợp đồng lao động',
   bien_ban: 'Biên bản / thỏa thuận',
   luong: 'Lương',
@@ -52,6 +59,10 @@ const TEN_NHOM: Record<Nhom, string> = {
 };
 
 const DUONG_NHOM: Record<Nhom, string> = {
+  thong_tin: 'thong-tin',
+  tai_lieu: 'tai-lieu',
+  nguoi_phu_thuoc: 'nguoi-phu-thuoc',
+  bhxh: 'bhxh',
   hop_dong: 'hop-dong',
   bien_ban: 'bien-ban',
   luong: 'luong',
@@ -61,7 +72,10 @@ const DUONG_NHOM: Record<Nhom, string> = {
   thiet_bi: 'thiet-bi-cap-phat',
 };
 
-const THU_TU: Nhom[] = ['hop_dong', 'bien_ban', 'luong', 'cong_viec', 'bao_cao', 'khieu_nai', 'thiet_bi'];
+const THU_TU: Nhom[] = [
+  'thong_tin', 'tai_lieu', 'hop_dong', 'bien_ban', 'luong',
+  'nguoi_phu_thuoc', 'bhxh', 'cong_viec', 'bao_cao', 'khieu_nai', 'thiet_bi',
+];
 
 const TEN: Record<string, Record<string, string>> = {
   loai_hop_dong: {
@@ -100,6 +114,25 @@ const TEN: Record<string, Record<string, string>> = {
     may_tinh_bang: 'Máy tính bảng', sim: 'SIM', the_tu: 'Thẻ từ', xe: 'Xe',
     dong_phuc: 'Đồng phục', cong_cu: 'Công cụ', khac: 'Khác',
   },
+  quan_he_npt: {
+    con: 'Con', vo_chong: 'Vợ / chồng', cha: 'Cha', me: 'Mẹ',
+    anh_chi_em: 'Anh chị em', khac: 'Khác',
+  },
+  loai_bhxh: {
+    bao_tang: 'Báo tăng', bao_giam: 'Báo giảm', dieu_chinh: 'Điều chỉnh', chot_so: 'Chốt sổ',
+    cap_the_bhyt: 'Cấp thẻ BHYT', om_dau: 'Ốm đau', thai_san: 'Thai sản',
+    duong_suc: 'Dưỡng sức', tai_nan_lao_dong: 'Tai nạn lao động',
+  },
+  tt_bhxh: {
+    moi: 'Mới', da_nop: 'Đã nộp', co_quan_duyet: 'Cơ quan duyệt',
+    tu_choi: 'Từ chối', hoan_thanh: 'Hoàn thành',
+  },
+  tt_tai_lieu: {
+    thieu: 'Thiếu', da_co_du_lieu: 'Đã có dữ liệu', da_so_hoa: 'Đã số hóa',
+    da_len_phan_mem: 'Đã lên phần mềm',
+  },
+  gioi_tinh: { nam: 'Nam', nu: 'Nữ', khac: 'Khác' },
+  hon_nhan: { doc_than: 'Độc thân', da_ket_hon: 'Đã kết hôn', khac: 'Khác' },
   tinh_trang_tb: {
     dang_dung: 'Đang dùng', da_thu_hoi: 'Đã thu hồi', bao_hong: 'Báo hỏng',
     mat: 'Mất', dang_sua: 'Đang sửa',
@@ -107,6 +140,10 @@ const TEN: Record<string, Record<string, string>> = {
 };
 
 const MAU_NHAN: Record<string, string> = {
+  da_len_phan_mem: 'nhan-tot', hoan_thanh_bh: 'nhan-tot',
+  thieu: 'nhan-xau', da_co_du_lieu: 'nhan-canh-bao', da_so_hoa: 'nhan-lanh',
+  bao_tang: 'nhan-tot', bao_giam: 'nhan-canh-bao', chot_so: 'nhan-lanh',
+  da_nop: 'nhan-lanh', co_quan_duyet: 'nhan-tot',
   hieu_luc: 'nhan-tot', hoan_thanh: 'nhan-tot', da_giai_quyet: 'nhan-tot', dang_dung: 'nhan-tot',
   het_han: 'nhan-xau', da_huy: 'nhan-xau', mat: 'nhan-xau', khan: 'nhan-xau', tu_choi: 'nhan-xau',
   moi: 'nhan-canh-bao', dang_lam: 'nhan-lanh', dang_xu_ly: 'nhan-canh-bao', cao: 'nhan-canh-bao',
@@ -183,6 +220,17 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
               ? 'vô thời hạn' : ngay_viet(String(d.hop_dong_hien_tai['hieu_luc_den']))}`}
         />
         <ODoc
+          nhan="Hồ sơ tài liệu"
+          gia_tri={d.tien_do_tai_lieu === null || d.tien_do_tai_lieu === undefined
+            ? '—'
+            : `${d.tien_do_tai_lieu.da_du}/${d.tien_do_tai_lieu.can_co}`}
+          phu={d.tien_do_tai_lieu === null || d.tien_do_tai_lieu === undefined
+            ? 'không có quyền xem'
+            : d.tien_do_tai_lieu.da_du >= d.tien_do_tai_lieu.can_co
+              ? 'đã đủ hồ sơ bắt buộc'
+              : `còn thiếu ${d.tien_do_tai_lieu.can_co - d.tien_do_tai_lieu.da_du} tài liệu bắt buộc`}
+        />
+        <ODoc
           nhan="Lương hiện tại"
           gia_tri={d.luong_hien_tai === null ? '—' : tien(d.luong_hien_tai['luong_co_ban'])}
           phu={d.luong_hien_tai === null
@@ -212,7 +260,11 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
         ))}
       </div>
 
-      {dang_mo !== null && (
+      {dang_mo === 'thong_tin' ? (
+        <PanelThongTin nhan_vien_id={nhan_vien_id} />
+      ) : dang_mo === 'tai_lieu' ? (
+        <PanelTaiLieu nhan_vien_id={nhan_vien_id} khi_doi={() => tq.nap_lai()} />
+      ) : dang_mo !== null && (
         <BangNhom
           key={dang_mo}
           nhom={dang_mo}
@@ -411,6 +463,38 @@ const COT: Record<Nhom, Cot[]> = {
     { nhan: 'Trạng thái', ve: (r) => <Nhan ma={r['trang_thai']} bang="tt_khieu_nai" /> },
     { nhan: 'Phản hồi', ve: (r) => <div style={{ maxWidth: 260, whiteSpace: 'pre-wrap' }}>{co(r['phan_hoi'])}</div> },
   ],
+  nguoi_phu_thuoc: [
+    { nhan: 'Họ tên', ve: (r) => <strong>{co(r['ho_ten'])}</strong> },
+    { nhan: 'Quan hệ', ve: (r) => TEN['quan_he_npt']?.[String(r['quan_he'])] ?? '—' },
+    { nhan: 'Ngày sinh', ve: (r) => <span className="khong-ngat">{r['ngay_sinh'] === null ? '—' : ngay_viet(String(r['ngay_sinh']))}</span> },
+    { nhan: 'MST', ve: (r) => <span className="so">{co(r['ma_so_thue'])}</span> },
+    {
+      nhan: 'Giảm trừ từ',
+      ve: (r) => (
+        <span className="khong-ngat">
+          {r['tu_thang'] === null ? '—' : ngay_viet(String(r['tu_thang']))}
+          {r['den_thang'] === null ? '' : ` → ${ngay_viet(String(r['den_thang']))}`}
+        </span>
+      ),
+    },
+    {
+      nhan: 'Đăng ký',
+      ve: (r) => (r['da_dang_ky'] === true
+        ? <span className="nhan nhan-tot">đã đăng ký</span>
+        : <span className="nhan nhan-canh-bao">chưa</span>),
+    },
+  ],
+  bhxh: [
+    { nhan: 'Tháng', ve: (r) => <span className="khong-ngat so">{ngay_viet(String(r['thang']))}</span> },
+    { nhan: 'Loại', ve: (r) => <Nhan ma={r['loai']} bang="loai_bhxh" /> },
+    { nhan: 'Mức đóng', ve: (r) => <span className="canh-phai so">{tien(r['muc_dong'])}</span> },
+    { nhan: 'Số hồ sơ', ve: (r) => <span className="so">{co(r['so_ho_so'])}</span> },
+    { nhan: 'Trạng thái', ve: (r) => <Nhan ma={r['trang_thai']} bang="tt_bhxh" /> },
+    { nhan: 'Ngày nộp', ve: (r) => <span className="khong-ngat">{r['ngay_nop'] === null ? '—' : ngay_viet(String(r['ngay_nop']))}</span> },
+    { nhan: 'Ghi chú', ve: (r) => <div style={{ maxWidth: 240 }}>{co(r['ghi_chu'])}</div> },
+  ],
+  thong_tin: [],
+  tai_lieu: [],
   thiet_bi: [
     { nhan: 'Loại', ve: (r) => TEN['loai_thiet_bi']?.[String(r['loai'])] ?? '—' },
     { nhan: 'Thiết bị', ve: (r) => (
@@ -588,6 +672,28 @@ const O_FORM: Record<Nhom, OForm[]> = {
     { ten: 'trang_thai', nhan: 'Trạng thái', kieu: 'chon', chon: 'tt_khieu_nai' },
     { ten: 'phan_hoi', nhan: 'Phản hồi của công ty', kieu: 'van_ban', rong: true },
   ],
+  nguoi_phu_thuoc: [
+    { ten: 'ho_ten', nhan: 'Họ tên', bat_buoc: true, rong: true },
+    { ten: 'quan_he', nhan: 'Quan hệ', kieu: 'chon', chon: 'quan_he_npt' },
+    { ten: 'ngay_sinh', nhan: 'Ngày sinh', kieu: 'date' },
+    { ten: 'ma_so_thue', nhan: 'Mã số thuế' },
+    { ten: 'so_cccd', nhan: 'Số CCCD / giấy khai sinh' },
+    { ten: 'tu_thang', nhan: 'Giảm trừ từ tháng', kieu: 'date' },
+    { ten: 'den_thang', nhan: 'Đến tháng', kieu: 'date', goi_y: 'Để trống nếu còn hiệu lực.' },
+    { ten: 'ghi_chu', nhan: 'Ghi chú', kieu: 'van_ban', rong: true },
+  ],
+  bhxh: [
+    { ten: 'loai', nhan: 'Loại hồ sơ', kieu: 'chon', chon: 'loai_bhxh', bat_buoc: true },
+    { ten: 'thang', nhan: 'Tháng áp dụng', kieu: 'date', bat_buoc: true },
+    { ten: 'muc_dong', nhan: 'Mức đóng (₫)', kieu: 'so' },
+    { ten: 'so_ho_so', nhan: 'Số hồ sơ' },
+    { ten: 'trang_thai', nhan: 'Trạng thái', kieu: 'chon', chon: 'tt_bhxh' },
+    { ten: 'ngay_nop', nhan: 'Ngày nộp', kieu: 'date' },
+    { ten: 'ngay_ket_qua', nhan: 'Ngày có kết quả', kieu: 'date' },
+    { ten: 'ghi_chu', nhan: 'Ghi chú', kieu: 'van_ban', rong: true },
+  ],
+  thong_tin: [],
+  tai_lieu: [],
   thiet_bi: [
     { ten: 'loai', nhan: 'Loại', kieu: 'chon', chon: 'loai_thiet_bi' },
     { ten: 'ten', nhan: 'Tên thiết bị', bat_buoc: true, rong: true },
@@ -699,4 +805,505 @@ export function dung_id_ho_so(): string | null {
   const { duong_dan } = dung_tuyen();
   const m = /^\/nhan-vien\/([0-9a-f-]{36})$/i.exec(duong_dan);
   return m?.[1] ?? null;
+}
+
+// ==================================================================== tab Thông tin chung
+
+interface KetQuaThongTin {
+  ho_so: (Record<string, unknown> & { da_che: boolean }) | null;
+  sua_duoc: boolean;
+  xem_day_du: boolean;
+}
+
+/** Nhóm ô để đọc theo mắt người, không theo thứ tự cột trong CSDL. */
+const KHOI_THONG_TIN: { tieu_de: string; o: { ten: string; nhan: string; kieu?: string; chon?: string }[] }[] = [
+  {
+    tieu_de: 'Căn cước & nhân thân',
+    o: [
+      { ten: 'cccd_so', nhan: 'Số CCCD' },
+      { ten: 'cccd_ngay_cap', nhan: 'Ngày cấp', kieu: 'date' },
+      { ten: 'cccd_noi_cap', nhan: 'Nơi cấp' },
+      { ten: 'ngay_sinh', nhan: 'Ngày sinh', kieu: 'date' },
+      { ten: 'gioi_tinh', nhan: 'Giới tính', kieu: 'chon', chon: 'gioi_tinh' },
+      { ten: 'noi_sinh', nhan: 'Nơi sinh' },
+      { ten: 'dan_toc', nhan: 'Dân tộc' },
+      { ten: 'quoc_tich', nhan: 'Quốc tịch' },
+      { ten: 'tinh_trang_hon_nhan', nhan: 'Tình trạng hôn nhân', kieu: 'chon', chon: 'hon_nhan' },
+    ],
+  },
+  {
+    tieu_de: 'Liên hệ',
+    o: [
+      { ten: 'dia_chi_thuong_tru', nhan: 'Địa chỉ thường trú' },
+      { ten: 'dia_chi_hien_tai', nhan: 'Địa chỉ hiện tại' },
+      { ten: 'lien_he_khan_ten', nhan: 'Người liên hệ khẩn cấp' },
+      { ten: 'lien_he_khan_quan_he', nhan: 'Quan hệ' },
+      { ten: 'lien_he_khan_sdt', nhan: 'SĐT khẩn cấp' },
+    ],
+  },
+  {
+    tieu_de: 'Thuế & ngân hàng',
+    o: [
+      { ten: 'ma_so_thue', nhan: 'Mã số thuế' },
+      { ten: 'ngan_hang', nhan: 'Ngân hàng' },
+      { ten: 'so_tai_khoan', nhan: 'Số tài khoản' },
+    ],
+  },
+  {
+    tieu_de: 'Bảo hiểm',
+    o: [
+      { ten: 'so_bhxh', nhan: 'Số BHXH' },
+      { ten: 'so_the_bhyt', nhan: 'Số thẻ BHYT' },
+      { ten: 'co_quan_bhxh', nhan: 'Cơ quan BHXH' },
+      { ten: 'noi_kham_chua_benh', nhan: 'Nơi KCB ban đầu' },
+    ],
+  },
+  {
+    tieu_de: 'Sức khỏe',
+    o: [
+      { ten: 'kham_suc_khoe_ngay', nhan: 'Ngày khám gần nhất', kieu: 'date' },
+      { ten: 'kham_suc_khoe_noi', nhan: 'Cơ sở khám' },
+      { ten: 'kham_suc_khoe_ket_luan', nhan: 'Kết luận' },
+    ],
+  },
+];
+
+function PanelThongTin({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {
+  const duong = `/api/nhan-vien/${nhan_vien_id}/thong-tin`;
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<KetQuaThongTin>(duong, [nhan_vien_id]);
+  const [dang_sua, dat_dang_sua] = useState(false);
+
+  if (dang_tai) return <DangTai />;
+  const h = du_lieu?.ho_so ?? null;
+
+  return (
+    <>
+      <HopLoi loi={loi} />
+
+      {du_lieu?.xem_day_du === false && (
+        <div className="hop-thong-bao hop-luu-y">
+          Một số ô đang <strong>che bớt</strong> vì vai trò của bạn không được xem bản đầy đủ.
+          Đây là dữ liệu cá nhân theo Nghị định 13/2023/NĐ-CP.
+        </div>
+      )}
+
+      {du_lieu?.sua_duoc === true && (
+        <div className="hang-nut">
+          <button type="button" className="nut-chinh" onClick={() => dat_dang_sua(true)}>
+            {h === null ? '+ Khai thông tin cá nhân' : 'Sửa thông tin'}
+          </button>
+        </div>
+      )}
+
+      {h === null ? (
+        <div className="the the-mong">
+          <Trong
+            tieu_de="Chưa khai thông tin cá nhân"
+            mo_ta="Cần CCCD, ngày sinh, mã số thuế và số BHXH để làm thủ tục bảo hiểm và thuế."
+          />
+        </div>
+      ) : (
+        <div className="luoi luoi-2">
+          {KHOI_THONG_TIN.map((k) => (
+            <div className="the" key={k.tieu_de}>
+              <h3>{k.tieu_de}</h3>
+              <div className="vo-bang">
+                <table>
+                  <tbody>
+                    {k.o.map((o) => (
+                      <tr key={o.ten}>
+                        <td style={{ color: 'var(--chu-nhat)', width: '45%' }}>{o.nhan}</td>
+                        <td className={o.kieu === undefined ? 'so' : undefined}>
+                          {o.kieu === 'date'
+                            ? (h[o.ten] === null ? '—' : ngay_viet(String(h[o.ten])))
+                            : o.kieu === 'chon'
+                              ? (TEN[o.chon ?? '']?.[String(h[o.ten])] ?? '—')
+                              : co(h[o.ten])}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {dang_sua && (
+        <FormThongTin
+          nhan_vien_id={nhan_vien_id}
+          ban_dau={h}
+          khi_dong={() => dat_dang_sua(false)}
+          khi_xong={() => { dat_dang_sua(false); nap_lai(); }}
+        />
+      )}
+    </>
+  );
+}
+
+function FormThongTin(
+  { nhan_vien_id, ban_dau, khi_dong, khi_xong }: {
+    nhan_vien_id: string;
+    ban_dau: Record<string, unknown> | null;
+    khi_dong: () => void;
+    khi_xong: () => void;
+  },
+): ReactNode {
+  const moi_o = KHOI_THONG_TIN.flatMap((k) => k.o);
+  const [f, dat_f] = useState<Record<string, string>>(() => {
+    const kd: Record<string, string> = {};
+    for (const o of moi_o) {
+      const v = ban_dau?.[o.ten];
+      kd[o.ten] = v === null || v === undefined ? '' : String(v);
+    }
+    return kd;
+  });
+  const hd = dung_hanh_dong();
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    const than: Record<string, unknown> = {};
+    for (const o of moi_o) than[o.ten] = (f[o.ten] ?? '') === '' ? null : f[o.ten];
+    const ok = await hd.chay(
+      () => goi(`/api/nhan-vien/${nhan_vien_id}/thong-tin`, { method: 'PUT', body: than }),
+      'Đã lưu thông tin cá nhân.',
+    );
+    if (ok) setTimeout(khi_xong, 600);
+  };
+
+  return (
+    <HopThoai tieu_de="Thông tin cá nhân" khi_dong={khi_dong} rong>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+        <HopTot chu={hd.tot} />
+
+        <div className="hop-thong-bao hop-tin">
+          Đây là dữ liệu cá nhân theo <strong>Nghị định 13/2023/NĐ-CP</strong>. Mỗi lần có người
+          xem bản đầy đủ của người khác đều được ghi vào nhật ký thao tác.
+        </div>
+
+        {KHOI_THONG_TIN.map((k) => (
+          <div key={k.tieu_de}>
+            <h3 style={{ marginTop: 14 }}>{k.tieu_de}</h3>
+            <div className="luoi luoi-2">
+              {k.o.map((o) => (
+                <div className="o-nhap" key={o.ten}>
+                  <label htmlFor={o.ten}>{o.nhan}</label>
+                  {o.kieu === 'chon' ? (
+                    <select id={o.ten} value={f[o.ten] ?? ''}
+                      onChange={(e) => dat_f((c) => ({ ...c, [o.ten]: e.target.value }))}>
+                      <option value="">— Chọn —</option>
+                      {Object.entries(TEN[o.chon ?? ''] ?? {}).map(([ma, ten]) => (
+                        <option key={ma} value={ma}>{ten}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input id={o.ten} type={o.kieu === 'date' ? 'date' : 'text'}
+                      value={f[o.ten] ?? ''}
+                      onChange={(e) => dat_f((c) => ({ ...c, [o.ten]: e.target.value }))} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>
+            {hd.dang_chay ? 'Đang lưu…' : 'Lưu'}
+          </button>
+          <button type="button" onClick={khi_dong}>Hủy</button>
+        </div>
+      </form>
+    </HopThoai>
+  );
+}
+
+// ==================================================================== tab Tài liệu (checklist)
+
+interface DongTaiLieu {
+  danh_muc_id: string;
+  ma: string;
+  ten: string;
+  nhom: string;
+  mo_ta: string | null;
+  bat_buoc: boolean;
+  chi_khi_nghi_viec: boolean;
+  tam_mien: boolean;
+  id: string | null;
+  trang_thai: string | null;
+  nguoi_phu_trach: string | null;
+  han_hoan_thanh: string | null;
+  ghi_chu: string | null;
+  tep_id: string | null;
+  tep_ten: string | null;
+  tep_kich_thuoc: number | null;
+}
+
+interface KetQuaTaiLieu {
+  danh_sach: DongTaiLieu[];
+  dang_nghi_viec: boolean;
+  tien_do: { can_co: number; da_du: number };
+  sua_duoc: boolean;
+}
+
+function PanelTaiLieu(
+  { nhan_vien_id, khi_doi }: { nhan_vien_id: string; khi_doi: () => void },
+): ReactNode {
+  const duong = `/api/nhan-vien/${nhan_vien_id}/tai-lieu`;
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<KetQuaTaiLieu>(duong, [nhan_vien_id]);
+  const [dang_sua, dat_dang_sua] = useState<DongTaiLieu | null>(null);
+  const hd = dung_hanh_dong();
+
+  if (dang_tai) return <DangTai />;
+  const ds = du_lieu?.danh_sach ?? [];
+  const td = du_lieu?.tien_do ?? { can_co: 0, da_du: 0 };
+  const sua_duoc = du_lieu?.sua_duoc ?? false;
+  const phan_tram = td.can_co === 0 ? 100 : Math.round((td.da_du / td.can_co) * 100);
+
+  /**
+   * Nhận tệp thả vào một dòng: tải lên rồi gắn ngay vào đúng dòng đó.
+   *
+   * Làm hai bước trong một thao tác vì tách ra thì người dùng phải nhớ "tải lên xong rồi
+   * gắn vào mục nào" — và cái nhớ đó là chỗ hồ sơ bị gắn nhầm mục.
+   */
+  const nhan_tep = async (d: DongTaiLieu, tep: File): Promise<void> => {
+    const fd = new FormData();
+    fd.append('nhom', 'tai_lieu');
+    fd.append('tep', tep);
+    const ok = await hd.chay(async () => {
+      const len = await gui_tep<{ id: string }>(`/api/nhan-vien/${nhan_vien_id}/tep`, fd);
+      await goi(`/api/nhan-vien/${nhan_vien_id}/tai-lieu/${d.ma}`, {
+        method: 'PUT',
+        body: {
+          trang_thai: 'da_len_phan_mem',
+          tep_id: len.id,
+          nguoi_phu_trach: d.nguoi_phu_trach,
+          han_hoan_thanh: d.han_hoan_thanh,
+          ghi_chu: d.ghi_chu,
+        },
+      });
+    }, `Đã nhận "${tep.name}" cho mục ${d.ten}.`);
+    if (ok) { nap_lai(); khi_doi(); }
+  };
+
+  return (
+    <>
+      <HopLoi loi={loi} />
+      <HopLoi loi={hd.loi} />
+      <HopTot chu={hd.tot} />
+
+      <div className="the">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <h3 style={{ margin: 0 }}>Tiến độ hồ sơ bắt buộc</h3>
+          <strong className="so">{td.da_du}/{td.can_co}</strong>
+        </div>
+        <div className="thanh-tien-do" style={{ marginTop: 8 }}>
+          <div className={phan_tram >= 100 ? 'thanh-tien-do-day du' : 'thanh-tien-do-day'}
+            style={{ width: `${phan_tram}%` }} />
+        </div>
+        <div className="goi-y" style={{ marginTop: 6 }}>
+          Chỉ tính là đủ khi tài liệu đã ở mức <strong>"Đã lên phần mềm"</strong>.
+          {!(du_lieu?.dang_nghi_viec ?? false) && ' Tài liệu chỉ phát sinh khi nghỉ việc được tạm miễn.'}
+        </div>
+      </div>
+
+      <div className="the the-mong">
+        <div className="vo-bang">
+          <table>
+            <thead>
+              <tr>
+                <th>Tài liệu</th>
+                <th>Trạng thái</th>
+                <th>Người phụ trách</th>
+                <th>Hạn</th>
+                <th style={{ minWidth: 240 }}>Tệp</th>
+                {sua_duoc && <th></th>}
+              </tr>
+            </thead>
+            <tbody>
+              {ds.map((d) => (
+                <tr key={d.ma} style={d.tam_mien ? { opacity: 0.6 } : undefined}>
+                  <td>
+                    <strong>{d.ten}</strong>
+                    {d.bat_buoc && !d.tam_mien && <span style={{ color: 'var(--xau)' }}> *</span>}
+                    {d.tam_mien && <span className="nhan nhan-mo" style={{ marginLeft: 6 }}>khi nghỉ việc</span>}
+                    {d.mo_ta !== null && <div className="o-so-phu" style={{ maxWidth: 300 }}>{d.mo_ta}</div>}
+                  </td>
+                  <td>
+                    {d.trang_thai === null || d.trang_thai === 'thieu'
+                      ? (d.bat_buoc && !d.tam_mien
+                        ? <span className="nhan nhan-xau">Thiếu (bắt buộc)</span>
+                        : <span className="nhan nhan-mo">Chưa có</span>)
+                      : <Nhan ma={d.trang_thai} bang="tt_tai_lieu" />}
+                  </td>
+                  <td>{co(d.nguoi_phu_trach)}</td>
+                  <td className="khong-ngat">
+                    {d.han_hoan_thanh === null ? '—' : ngay_viet(d.han_hoan_thanh)}
+                  </td>
+                  <td>
+                    {d.tep_id !== null ? (
+                      <TepDaNop nhan_vien_id={nhan_vien_id} tep_id={d.tep_id} ten={d.tep_ten ?? 'tệp'} />
+                    ) : sua_duoc ? (
+                      <OKeoTha khi_nhan={(tep) => void nhan_tep(d, tep)} ma={d.ma} />
+                    ) : '—'}
+                  </td>
+                  {sua_duoc && (
+                    <td>
+                      <button className="nut-nho" onClick={() => dat_dang_sua(d)}>Sửa</button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {dang_sua !== null && (
+        <FormDongTaiLieu
+          nhan_vien_id={nhan_vien_id}
+          dong={dang_sua}
+          khi_dong={() => dat_dang_sua(null)}
+          khi_xong={() => { dat_dang_sua(null); nap_lai(); khi_doi(); }}
+        />
+      )}
+    </>
+  );
+}
+
+function TepDaNop(
+  { tep_id, ten }: { nhan_vien_id: string; tep_id: string; ten: string },
+): ReactNode {
+  const hd = dung_hanh_dong();
+  return (
+    <>
+      <button className="nut-nho" onClick={() => void hd.chay(
+        () => tai_tep(`/api/ho-so/tep/${tep_id}`, ten), 'Đã tải tệp.',
+      )}>
+        {ten}
+      </button>
+      <HopLoi loi={hd.loi} />
+    </>
+  );
+}
+
+/** Ô kéo-thả cho từng dòng tài liệu, đúng như bản demo. */
+function OKeoTha(
+  { khi_nhan, ma }: { khi_nhan: (tep: File) => void; ma: string },
+): ReactNode {
+  const [dang_ke, dat_dang_ke] = useState(false);
+
+  return (
+    <label
+      htmlFor={`tep_${ma}`}
+      className={dang_ke ? 'o-keo-tha dang-ke' : 'o-keo-tha'}
+      onDragOver={(e) => { e.preventDefault(); dat_dang_ke(true); }}
+      onDragLeave={() => dat_dang_ke(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        dat_dang_ke(false);
+        const tep = e.dataTransfer.files?.[0];
+        if (tep !== undefined) khi_nhan(tep);
+      }}
+    >
+      Kéo thả hoặc bấm để tải lên
+      <input
+        id={`tep_${ma}`}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const tep = e.target.files?.[0];
+          if (tep !== undefined) khi_nhan(tep);
+          e.target.value = '';
+        }}
+      />
+    </label>
+  );
+}
+
+function FormDongTaiLieu(
+  { nhan_vien_id, dong, khi_dong, khi_xong }: {
+    nhan_vien_id: string;
+    dong: DongTaiLieu;
+    khi_dong: () => void;
+    khi_xong: () => void;
+  },
+): ReactNode {
+  const [f, dat_f] = useState({
+    trang_thai: dong.trang_thai ?? 'thieu',
+    nguoi_phu_trach: dong.nguoi_phu_trach ?? '',
+    han_hoan_thanh: dong.han_hoan_thanh ?? '',
+    ghi_chu: dong.ghi_chu ?? '',
+  });
+  const hd = dung_hanh_dong();
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    const ok = await hd.chay(
+      () => goi(`/api/nhan-vien/${nhan_vien_id}/tai-lieu/${dong.ma}`, {
+        method: 'PUT',
+        body: {
+          trang_thai: f.trang_thai,
+          tep_id: dong.tep_id,
+          nguoi_phu_trach: f.nguoi_phu_trach === '' ? null : f.nguoi_phu_trach,
+          han_hoan_thanh: f.han_hoan_thanh === '' ? null : f.han_hoan_thanh,
+          ghi_chu: f.ghi_chu === '' ? null : f.ghi_chu,
+        },
+      }),
+      'Đã cập nhật.',
+    );
+    if (ok) setTimeout(khi_xong, 600);
+  };
+
+  return (
+    <HopThoai tieu_de={dong.ten} khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+        <HopTot chu={hd.tot} />
+
+        <div className="o-nhap">
+          <label htmlFor="tt">Trạng thái</label>
+          <select id="tt" value={f.trang_thai}
+            onChange={(e) => dat_f((c) => ({ ...c, trang_thai: e.target.value }))}>
+            {Object.entries(TEN['tt_tai_lieu'] ?? {}).map(([ma, ten]) => (
+              <option key={ma} value={ma}>{ten}</option>
+            ))}
+          </select>
+          <div className="goi-y">
+            Ba mức theo checklist HCNS: đã có dữ liệu → đã số hóa → đã lên phần mềm.
+            Chỉ mức cuối mới tính vào tiến độ.
+          </div>
+        </div>
+
+        <div className="luoi luoi-2">
+          <div className="o-nhap">
+            <label htmlFor="npt">Người phụ trách</label>
+            <input id="npt" value={f.nguoi_phu_trach}
+              onChange={(e) => dat_f((c) => ({ ...c, nguoi_phu_trach: e.target.value }))} />
+          </div>
+          <div className="o-nhap">
+            <label htmlFor="hht">Hạn hoàn thành</label>
+            <input id="hht" type="date" value={f.han_hoan_thanh}
+              onChange={(e) => dat_f((c) => ({ ...c, han_hoan_thanh: e.target.value }))} />
+          </div>
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="gc">Ghi chú</label>
+          <textarea id="gc" rows={2} value={f.ghi_chu}
+            onChange={(e) => dat_f((c) => ({ ...c, ghi_chu: e.target.value }))} />
+        </div>
+
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>
+            {hd.dang_chay ? 'Đang lưu…' : 'Lưu'}
+          </button>
+          <button type="button" onClick={khi_dong}>Hủy</button>
+        </div>
+      </form>
+    </HopThoai>
+  );
 }

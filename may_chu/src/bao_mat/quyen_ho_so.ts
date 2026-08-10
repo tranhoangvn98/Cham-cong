@@ -12,10 +12,15 @@ export type NhomHoSo =
   | 'cong_viec'
   | 'bao_cao'
   | 'khieu_nai'
-  | 'thiet_bi';
+  | 'thiet_bi'
+  | 'thong_tin'      // thong tin ca nhan: CCCD, MST, so BHXH, lien he khan cap
+  | 'tai_lieu'       // checklist ho so bat buoc theo HCNS
+  | 'nguoi_phu_thuoc'
+  | 'bhxh';
 
 export const CAC_NHOM: readonly NhomHoSo[] = [
-  'hop_dong', 'bien_ban', 'luong', 'cong_viec', 'bao_cao', 'khieu_nai', 'thiet_bi',
+  'thong_tin', 'tai_lieu', 'hop_dong', 'bien_ban', 'luong',
+  'nguoi_phu_thuoc', 'bhxh', 'cong_viec', 'bao_cao', 'khieu_nai', 'thiet_bi',
 ] as const;
 
 export interface NguoiXem {
@@ -50,6 +55,7 @@ function la_nhan_su(nd: NguoiXem): boolean {
  *   bao_cao     | co            | co                      | co         | khong
  *   khieu_nai   | co            | KHONG                   | co         | khong
  *   thiet_bi    | co            | co                      | co         | khong
+ *   thong_tin   | co            | co NHUNG DA CHE         | co         | khong
  *
  * Hai o dang chu y:
  *
@@ -63,7 +69,12 @@ export function doc_duoc(nd: NguoiXem, nhom: NhomHoSo, bc: BoiCanh): boolean {
   if (la_nhan_su(nd)) return true;
   if (bc.la_chinh_minh) return true;
   if (nd.vai_tro === 'truong_phong' && bc.la_cap_tren) {
-    return nhom === 'cong_viec' || nhom === 'bao_cao' || nhom === 'thiet_bi';
+    // `thong_tin` doc duoc nhung o dang DA CHE (xem bao_mat/che_du_lieu.ts): truong phong
+    // can lien he khan cap cua cap duoi khi co su co, con so CCCD / so tai khoan / ket
+    // luan suc khoe thi khong. Neu chan han ca nhom nay thi lop che tro thanh code chet —
+    // moi nguoi doc duoc deu la nguoi duoc xem ban day du.
+    return nhom === 'cong_viec' || nhom === 'bao_cao' || nhom === 'thiet_bi'
+      || nhom === 'thong_tin';
   }
   return false;
 }
@@ -93,6 +104,9 @@ export function sua_duoc(nd: NguoiXem, nhom: NhomHoSo, bc: BoiCanh): boolean {
     return nhom === 'cong_viec' || nhom === 'bao_cao';
   }
   if (bc.la_chinh_minh) {
+    // Thong tin ca nhan, tai lieu, nguoi phu thuoc, BHXH deu KHONG nam trong day: do la
+    // ho so phap ly do cong ty lap va nop cho co quan nha nuoc. Nhan vien bao sai thi bao
+    // nhan su sua, chu tu sua duoc thi so BHXH va ma so thue thanh thu tuy nguoi khai.
     return nhom === 'cong_viec' || nhom === 'bao_cao' || nhom === 'khieu_nai';
   }
   return false;

@@ -607,3 +607,39 @@ textarea { min-height: 66px; resize: vertical; }
   font-weight: 600;
 }
 .thanh-tab .tab-dang-mo .tab-so { background: var(--chinh-dam); color: #fff; }
+
+/* ---------------------------------------------------------------- checklist hồ sơ */
+.thanh-tien-do {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--nen-mo);
+  overflow: hidden;
+}
+.thanh-tien-do-day {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--chinh-dam);
+  transition: width 0.25s ease;
+}
+.thanh-tien-do-day.du { background: var(--tot); }
+
+.o-keo-tha {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px dashed var(--vien);
+  border-radius: var(--tron);
+  font-size: 12.5px;
+  color: var(--chu-nhat);
+  text-align: center;
+  cursor: pointer;
+}
+.o-keo-tha:hover { border-color: var(--chinh-dam); color: var(--chinh-dam); }
+.o-keo-tha.dang-ke {
+  border-color: var(--chinh-dam);
+  background: var(--nen-mo);
+  color: var(--chinh-dam);
+}

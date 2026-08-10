@@ -43,6 +43,19 @@ test('truong phong doc duoc cong viec, bao cao, thiet bi cua cap duoi', () => {
   }
 });
 
+test('truong phong doc duoc thong tin ca nhan cua cap duoi — nhung o dang DA CHE', () => {
+  // Ho can lien he khan cap khi co su co. Con che den dau la viec cua che_du_lieu.ts;
+  // o day chi khang dinh ho KHONG bi chan han, neu khong lop che thanh code chet.
+  assert.equal(doc_duoc(TRUONG_PHONG, 'thong_tin', CAP_DUOI), true);
+  assert.equal(sua_duoc(TRUONG_PHONG, 'thong_tin', CAP_DUOI), false, 'doc duoc nhung khong sua');
+});
+
+test('truong phong KHONG doc duoc tai lieu, nguoi phu thuoc, BHXH cua cap duoi', () => {
+  for (const nhom of ['tai_lieu', 'nguoi_phu_thuoc', 'bhxh'] as NhomHoSo[]) {
+    assert.equal(doc_duoc(TRUONG_PHONG, nhom, CAP_DUOI), false, `${nhom} khong duoc lo ra`);
+  }
+});
+
 test('truong phong KHONG dong nghia voi doc duoc moi nguoi trong cong ty', () => {
   for (const nhom of CAC_NHOM) {
     assert.equal(doc_duoc(TRUONG_PHONG, nhom, NGUOI_LA), false,

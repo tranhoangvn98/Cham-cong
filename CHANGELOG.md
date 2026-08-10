@@ -2,6 +2,78 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.13.0] — 2026-08-10
+
+**Hồ sơ nhân sự cho đủ checklist HCNS–BHXH.** Bổ sung theo đặc tả của phòng HCNS: thông tin
+cá nhân, checklist tài liệu bắt buộc, người phụ thuộc, và hồ sơ BHXH — kèm hai lớp bảo vệ dữ
+liệu cá nhân theo Nghị định 13/2023/NĐ-CP.
+
+### Thêm mới
+
+- **Tab Thông tin chung** (Nhóm A + C + E): CCCD (số, ngày cấp, nơi cấp), ngày sinh, giới
+  tính, dân tộc, quốc tịch, tình trạng hôn nhân, địa chỉ thường trú / hiện tại, **người liên
+  hệ khẩn cấp**, mã số thuế, ngân hàng và số tài khoản, **số BHXH / thẻ BHYT / nơi KCB ban
+  đầu**, và đợt khám sức khỏe gần nhất.
+- **Tab Tài liệu — checklist hồ sơ** (Nhóm A): mỗi tài liệu một dòng có **ô kéo-thả riêng**,
+  mục bắt buộc đánh dấu `*`, thanh tiến độ "x/y tài liệu bắt buộc". Ba mức trạng thái đúng
+  theo checklist gốc (*đã có dữ liệu → đã số hóa → đã lên phần mềm*), kèm **người phụ trách**
+  và **hạn hoàn thành**.
+  - Thả tệp vào một dòng là **tải lên và gắn vào đúng mục đó trong một thao tác**. Tách hai
+    bước thì người dùng phải nhớ "tải xong rồi gắn vào mục nào", và cái nhớ đó chính là chỗ
+    hồ sơ bị gắn nhầm mục.
+  - Danh mục nằm trong bảng `danh_muc_tai_lieu`, **không hard-code** — HCNS tự thêm bớt được
+    khi quy định đổi. Đã nạp sẵn 14 mục theo checklist.
+- **Người phụ thuộc** (Nhóm C): quan hệ, ngày sinh, MST, khoảng thời gian giảm trừ, đã đăng
+  ký hay chưa.
+- **Hồ sơ BHXH – BHYT** (Nhóm E): báo tăng / báo giảm / điều chỉnh / chốt sổ / cấp thẻ, và
+  các chế độ ốm đau – thai sản – dưỡng sức – tai nạn lao động. Lưu dạng **bản ghi theo thời
+  gian**, không ghi đè: có tranh chấp với cơ quan BHXH thì phải chứng minh được từng mốc.
+- **Nhóm B**: chức danh, người quản lý trực tiếp, ngày chính thức (hết thử việc).
+
+### Bảo vệ dữ liệu cá nhân — Nghị định 13/2023/NĐ-CP
+
+- **Che ở máy chủ, không phải ở giao diện.** Che ở giao diện là che giả: dữ liệu đầy đủ vẫn
+  đi qua đường truyền và vẫn hiện trong tab Network của trình duyệt.
+  - Số hiệu (CCCD, MST, số BHXH, số tài khoản): giữ vài ký tự cuối, còn lại thay bằng dấu chấm.
+  - Địa chỉ và kết luận sức khỏe: **ẩn hẳn**. Che một nửa địa chỉ thì vẫn đoán ra được, còn
+    kết luận sức khỏe không có "một phần" nào vô hại — đây là dữ liệu cá nhân *nhạy cảm*.
+  - Chuỗi quá ngắn để che cho tử tế thì che hết, kể cả độ dài.
+- **Ghi nhật ký** mỗi lần ai đó đọc bản đầy đủ **của người khác**. Đọc hồ sơ của chính mình,
+  hoặc đọc bản đã che, thì không ghi — ghi cả thì nhật ký đầy rác và thứ cần truy vết chìm mất.
+- **Trưởng phòng đọc được bản đã che** của cấp dưới: họ cần người liên hệ khẩn cấp khi có sự
+  cố, nhưng không cần số CCCD hay số tài khoản. Còn tài liệu, người phụ thuộc và BHXH thì
+  không đọc được.
+
+### Sửa
+
+- Lớp che dữ liệu ban đầu là **code chết**: mọi vai trò đọc được `thong_tin` đều nằm trong
+  nhóm được xem bản đầy đủ, nên nhánh che không bao giờ chạy. Phát hiện khi lái trình duyệt
+  và đối chiếu lại bảng phân quyền. Đã mở cho trưởng phòng đọc bản đã che — vừa đúng nhu cầu
+  thật, vừa làm lớp che trở thành mã sống có test.
+- Một test cũ đếm cứng "đúng 7 nhóm hồ sơ"; nay đối chiếu thẳng với danh sách nhóm trong mã
+  nguồn nên thêm nhóm mới không phải sửa test theo.
+
+### Ràng buộc ở tầng CSDL
+
+- Một số CCCD / mã số thuế / số BHXH chỉ thuộc về **một người**. Trùng nhau gần như chắc chắn
+  là nhập nhầm, mà nhầm ở đây thì bảo hiểm và thuế đều sai theo.
+- `ho_so_ca_nhan` tách khỏi `nhan_vien` **vì phân quyền chứ không phải vì chuẩn hóa**: để
+  chung thì mọi truy vấn nhân viên (danh sách, bảng công, log quẹt) đều kéo theo dữ liệu cá
+  nhân và sớm muộn lộ ra một chỗ nào đó.
+
+### Còn để lại đợt sau
+
+Chấm điểm, KPI, Thu nhập (phiếu lương) và báo cáo thống kê Nhóm G — cần chốt công thức tính
+với HCNS trước khi dựng, làm mò thì ra một cái vòng tròn phần trăm không ai tin.
+
+### Đã kiểm chứng
+
+Lái Chromium bằng hai vai trò: nhân sự thấy `001199987654` và toàn bộ 11 tab; **trưởng phòng
+cùng phòng ban** thấy `••••••••7654`, số tài khoản và kết luận sức khỏe hiện "(đã ẩn)", nhưng
+người liên hệ khẩn cấp vẫn đọc được — đúng thứ họ cần khi có sự cố. Checklist hiển thị đủ 14
+mục kèm 14 ô kéo-thả, tiến độ 1/7 (đã trừ tài liệu chỉ phát sinh khi nghỉ việc).
+Tổng: 132 test đơn vị + 5 proxy + 104 e2e + 12 design token, tất cả xanh.
+
 ## [1.12.3] — 2026-08-10
 
 ### Sửa

@@ -202,7 +202,16 @@ Bảy nhóm dữ liệu gắn với một nhân viên. Đường dẫn theo cùn
 | PATCH / DELETE | `/<nhóm>/:ban_ghi_id` |
 
 `<nhóm>` là một trong: `hop-dong`, `bien-ban`, `luong`, `cong-viec`, `bao-cao`,
-`khieu-nai`, `thiet-bi-cap-phat`.
+`khieu-nai`, `thiet-bi-cap-phat`, `nguoi-phu-thuoc`, `bhxh`.
+
+Hai nhóm có hình dạng riêng, không theo khuôn trên:
+
+| Method | Đường dẫn | Ghi chú |
+|---|---|---|
+| GET / PUT | `/nhan-vien/:id/thong-tin` | Bản ghi 1–1; GET trả bản **đã che** nếu không đủ quyền |
+| GET | `/nhan-vien/:id/tai-lieu` | Checklist đầy đủ + tiến độ |
+| PUT | `/nhan-vien/:id/tai-lieu/:ma` | Cập nhật một dòng checklist |
+| GET | `/danh-muc-tai-lieu` | Danh mục tài liệu dùng chung |
 
 ### Bảng phân quyền
 
@@ -218,6 +227,10 @@ Bảy nhóm dữ liệu gắn với một nhân viên. Đường dẫn theo cùn
 | Báo cáo | đọc + sửa | đọc + sửa | đọc + nộp | không |
 | Khiếu nại | đọc + sửa | **không** | đọc + gửi | không |
 | Thiết bị cấp phát | đọc + sửa | chỉ đọc | chỉ đọc | không |
+| Thông tin cá nhân | đọc + sửa | **đọc bản ĐÃ CHE** | chỉ đọc | không |
+| Tài liệu (checklist) | đọc + sửa | **không** | chỉ đọc | không |
+| Người phụ thuộc | đọc + sửa | **không** | chỉ đọc | không |
+| BHXH – BHYT | đọc + sửa | **không** | chỉ đọc | không |
 
 Hai ô đáng chú ý:
 
@@ -234,6 +247,39 @@ mình — nếu xóa được thì một khiếu nại "biến mất" mà không
 
 Tổng quan `/ho-so` **không đếm** nhóm mà người gọi không được xem: "nhân viên này có 3 khiếu
 nại" tự nó đã là một thông tin.
+
+### Dữ liệu cá nhân — Nghị định 13/2023/NĐ-CP
+
+CCCD, mã số thuế, số BHXH, số thẻ BHYT, số tài khoản, SĐT khẩn cấp, địa chỉ và kết luận sức
+khỏe là **dữ liệu cá nhân**; riêng thông tin sức khỏe là dữ liệu cá nhân **nhạy cảm**. Hai lớp
+bảo vệ:
+
+1. **Che ở máy chủ**, không phải ở giao diện. Che ở giao diện là che giả: dữ liệu đầy đủ vẫn
+   đi qua đường truyền và vẫn hiện trong tab Network của trình duyệt.
+   - Số hiệu (CCCD, MST, BHXH, tài khoản): giữ vài ký tự cuối, phần còn lại thay bằng dấu chấm.
+   - Địa chỉ và kết luận sức khỏe: **ẩn hẳn** — che một nửa địa chỉ thì vẫn đoán ra được, còn
+     kết luận sức khỏe không có "một phần" nào vô hại.
+   - Chuỗi quá ngắn để che cho tử tế thì che hết, kể cả độ dài.
+2. **Ghi nhật ký** mỗi lần ai đó đọc bản đầy đủ **của người khác** (`ho_so.xem_thong_tin_ca_nhan`).
+   Đọc hồ sơ của chính mình, hoặc đọc bản đã che, thì không ghi — nếu ghi cả thì nhật ký đầy
+   rác và thứ cần truy vết chìm mất trong đó.
+
+Trưởng phòng đọc được bản **đã che** của cấp dưới: họ cần người liên hệ khẩn cấp khi có sự cố,
+nhưng không cần số CCCD hay số tài khoản.
+
+### Checklist tài liệu (Nhóm A theo HCNS)
+
+`GET /nhan-vien/:id/tai-lieu` trả về **toàn bộ danh mục** chứ không chỉ những dòng đã có — thứ
+cần nhìn thấy là những gì *còn thiếu*; một danh sách chỉ hiện thứ đã nộp thì lúc nào cũng sạch.
+
+- Ba mức trạng thái theo đúng checklist gốc: `da_co_du_lieu` → `da_so_hoa` → `da_len_phan_mem`.
+  **Chỉ mức cuối** mới tính vào tiến độ.
+- Tài liệu gắn cờ `chi_khi_nghi_viec` (ví dụ Quyết định nghỉ việc) được **tạm miễn** với người
+  đang làm; tính vào mẫu số thì tiến độ không bao giờ đầy được.
+- Danh mục nằm trong bảng `danh_muc_tai_lieu` chứ không hard-code, để HCNS tự thêm bớt theo
+  quy định mới.
+- Gắn tệp vào một dòng thì tệp **phải thuộc đúng nhân viên đó** — nếu không thì gắn được tệp
+  của người khác vào hồ sơ mình đang mở, và đọc được nội dung tệp đó.
 
 ### Tệp đính kèm
 
