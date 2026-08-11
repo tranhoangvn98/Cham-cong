@@ -212,6 +212,51 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
     if (sn.length > 0) await cham_thiet_bi(sn, null, req.ip);
     return tra_text(res, 'OK\n');
   });
+
+  // -------------------------------------------------- dang ky may (PUSH >= 2.x)
+  //
+  // Firmware doi moi (SenseFace/SpeedFace, pushver 3.x, DeviceType=acc) mo phien bang
+  // POST /iclock/registry TRUOC khi chiu lam viec. Khong tra loi duoc thi may coi nhu dang
+  // ky that bai va lam lai tu dau sau moi ErrorDelay giay — vong lap vo tan
+  // "GET /cdata -> POST /registry -> cho -> lap lai", khong bao gio sang getrequest hay day
+  // ATTLOG. Gap dung tinh huong nay khi dau noi may NYU7261300256 (lap lai moi 15 giay).
+  //
+  // May chi can mot dong "RegistryCode=<ma>". Dung luon serial lam ma: no on dinh qua cac
+  // lan khoi dong lai nen may khong phai dang ky lai, va khong them mot cot CSDL chi de
+  // sinh so ngau nhien.
+  app.post('/registry', async (req, res) => {
+    const sn = lay_serial(req);
+    const may = await may_hop_le(sn);
+    if (may === null) {
+      req.log.warn({ sn }, 'may chua khai bao goi registry');
+      return tra_text(res, 'Unauthorized\n', 401);
+    }
+    // Than tin nhan mang thong tin may (kieu may, firmware...) — ghi lai de con doi chieu.
+    const tt = doc_thong_tin_may(typeof req.body === 'string' ? req.body : '');
+    await cham_thiet_bi(sn, tt['firmver'] ?? tt['fwversion'] ?? null, req.ip);
+    req.log.info({ sn, thong_tin: tt }, 'may dang ky (registry)');
+    return tra_text(res, `RegistryCode=${sn}\n`);
+  });
+
+  // -------------------------------------------------- endpoint chua ho tro
+  //
+  // Fastify tra 404 kem body JSON cho duong dan la. Voi may ZKTeco day la loi CAM: may chi
+  // thu lai mai, con phia may chu khong co dau vet nao ngoai dong log request tho — dung
+  // mot endpoint thieu ma mat nhieu gio moi lan ra.
+  //
+  // Bat lai o day de ghi RO endpoint nao con thieu, va tra text/plain thay vi JSON.
+  app.setNotFoundHandler(async (req, res) => {
+    req.log.error(
+      {
+        url: req.url,
+        method: req.method,
+        sn: lay_serial(req),
+        than: String(req.body ?? '').slice(0, 500),
+      },
+      'may goi endpoint /iclock chua ho tro — can bo sung',
+    );
+    return tra_text(res, 'Not Found\n', 404);
+  });
 }
 
 /** Dua mot lenh vao hang doi cho may. Tra ve id lenh de theo dau ket qua. */

@@ -2,6 +2,32 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.14.3] — 2026-08-11
+
+**Máy đời mới (PUSH 3.x) kết nối được — bổ sung endpoint `registry`.**
+
+Máy SenseFace 2A đầu tiên (`NYU7261300256`) sau khi thông mạng thì gọi được tới máy chủ,
+nhưng **lặp vô tận** mỗi 15 giây và không bao giờ đẩy chấm công:
+
+```
+GET  /iclock/cdata?SN=…&pushver=3.1.2&DeviceType=acc&PushOptionsFlag=1
+POST /iclock/registry?SN=…            <- 404, chưa có endpoint này
+   … chờ 15s rồi lặp lại từ đầu
+```
+
+### Sửa
+
+- Thêm **`POST /iclock/registry`**. Firmware PUSH 3.x mở phiên bằng lệnh này *trước* khi
+  chịu làm việc; không trả lời được thì máy coi như đăng ký thất bại và làm lại từ đầu sau
+  mỗi `ErrorDelay` giây, không bao giờ sang `getrequest` hay đẩy `ATTLOG`. Máy chỉ cần một
+  dòng `RegistryCode=<mã>`; dùng luôn serial làm mã vì nó ổn định qua các lần khởi động lại
+  nên máy không phải đăng ký lại. Vẫn chặn theo serial như mọi endpoint khác — máy lạ nhận
+  401.
+- **Đường dẫn `/iclock/*` chưa hỗ trợ nay ghi log mức `error`** kèm URL, serial và phần đầu
+  thân tin nhắn, và trả `text/plain` thay vì body JSON mặc định của Fastify. Chính lỗi này
+  làm mất nhiều giờ dò: máy chỉ im lặng thử lại, còn phía máy chủ không có dấu vết nào ngoài
+  dòng log request thô. Lần sau thiếu endpoint nào sẽ đọc ra ngay.
+
 ## [1.14.2] — 2026-08-10
 
 **Dựng lại đầu trang hồ sơ nhân sự.**

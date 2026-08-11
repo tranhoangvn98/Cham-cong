@@ -238,6 +238,48 @@ test('handshake tra ve block cau hinh co Realtime=1', async () => {
   assert.match(r.tho, new RegExp(`GET OPTION FROM: ${SERIAL}`));
 });
 
+// Firmware PUSH 3.x mo phien bang POST /iclock/registry. Thieu endpoint nay thi may lap vo
+// tan "GET /cdata -> POST /registry -> cho -> lap lai" va khong bao gio day ATTLOG. Da gap
+// that voi may SenseFace 2A NYU7261300256.
+test('registry: may da khai bao nhan duoc RegistryCode', async () => {
+  const r = await app.inject({
+    method: 'POST',
+    url: `/iclock/registry?SN=${SERIAL}`,
+    headers: { 'content-type': 'text/plain' },
+    payload: '~DeviceType=acc,FirmVer=Ver 8.0.4.1',
+  });
+  assert.equal(r.statusCode, 200);
+  assert.match(r.headers['content-type'] ?? '', /text\/plain/);
+  assert.match(r.body, /^RegistryCode=/m);
+});
+
+test('registry: ma khong doi qua nhieu lan goi (may khong phai dang ky lai)', async () => {
+  const goi_registry = async (): Promise<string> => (await app.inject({
+    method: 'POST',
+    url: `/iclock/registry?SN=${SERIAL}`,
+    headers: { 'content-type': 'text/plain' },
+    payload: '~DeviceType=acc',
+  })).body;
+  assert.equal(await goi_registry(), await goi_registry());
+});
+
+test('registry: may LA van bi tu choi 401', async () => {
+  const r = await app.inject({
+    method: 'POST',
+    url: '/iclock/registry?SN=MAY-LA-999',
+    headers: { 'content-type': 'text/plain' },
+    payload: '~DeviceType=acc',
+  });
+  assert.equal(r.statusCode, 401);
+});
+
+test('endpoint /iclock la tra text/plain chu khong phai JSON cua Fastify', async () => {
+  const r = await app.inject({ method: 'GET', url: `/iclock/khong-co-that?SN=${SERIAL}` });
+  assert.equal(r.statusCode, 404);
+  assert.match(r.headers['content-type'] ?? '', /text\/plain/);
+  assert.doesNotMatch(r.body, /\{/);
+});
+
 test('may bao thong tin thiet bi (table=OPTIONS) -> luu firmware', async () => {
   const r = await app.inject({
     method: 'POST',

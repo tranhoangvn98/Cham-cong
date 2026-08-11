@@ -120,11 +120,18 @@ Chỉ để tham khảo khi soi log — người dùng không cần gọi tay.
 
 | Endpoint | Ý nghĩa |
 |---|---|
+| `POST /iclock/registry?SN=..` | Đăng ký máy. Chỉ firmware PUSH 3.x gọi — xem ghi chú dưới |
 | `GET /iclock/cdata?SN=..&options=all` | Handshake. Máy chủ trả block cấu hình + `Realtime=1` |
 | `POST /iclock/cdata?SN=..&table=ATTLOG` | Đẩy log chấm công |
 | `POST /iclock/cdata?SN=..&table=OPTIONS` | Báo thông tin máy (firmware, IP) |
 | `GET /iclock/getrequest?SN=..` | Máy hỏi có lệnh gì không |
 | `POST /iclock/devicecmd?SN=..` | Máy báo kết quả thực thi lệnh |
+
+> **Firmware PUSH 3.x** (chuỗi truy vấn có `pushver=3.x` và `DeviceType=acc` — dòng SenseFace
+> 2A chẳng hạn) **bắt buộc** gọi `POST /iclock/registry` thành công trước khi chịu làm việc.
+> Máy chủ trả `RegistryCode=<mã>`. Thiếu endpoint này thì máy lặp vô tận
+> `cdata → registry → chờ → lặp lại` mỗi `ErrorDelay` giây và **không bao giờ đẩy ATTLOG** —
+> nhìn log chỉ thấy máy gọi đều đặn nên rất dễ tưởng là đã chạy tốt.
 
 Dữ liệu ATTLOG là **text thô phân tách bằng TAB**, không phải JSON:
 
