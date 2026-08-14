@@ -215,5 +215,6 @@ bảng công sinh ra, gồm cả chống trùng, hàng đợi lệnh, và chấm
 | [`tai_lieu/BUILD-APP-DIEN-THOAI.md`](tai_lieu/BUILD-APP-DIEN-THOAI.md) | Build APK / iOS bằng EAS |
 | [`tai_lieu/API.md`](tai_lieu/API.md) | Toàn bộ endpoint REST |
 | [`tai_lieu/THIET-KE.md`](tai_lieu/THIET-KE.md) | Design token: màu, font, bo góc, breakpoint |
-| [`tai_lieu/CONG-CHUNG.md`](tai_lieu/CONG-CHUNG.md) | **Thiết kế** cổng chung gộp bốn hệ thống thành một giao diện — chưa triển khai |
+| [`tai_lieu/CONG-CHUNG.md`](tai_lieu/CONG-CHUNG.md) | **Thiết kế** cổng chung: kiến trúc mô-đun, đăng nhập và phân quyền tập trung — chưa triển khai |
+| [`tai_lieu/KET-NOI-MODUN.md`](tai_lieu/KET-NOI-MODUN.md) | Hợp đồng để nối một service mới vào cổng chung |
 | [`CLAUDE.md`](CLAUDE.md) | Quy ước code của dự án |

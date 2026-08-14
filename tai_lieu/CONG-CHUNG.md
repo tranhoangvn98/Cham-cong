@@ -1,230 +1,469 @@
-# Cổng chung: gộp bốn hệ thống thành một giao diện
+# Cổng chung: kiến trúc mô-đun
 
-Tài liệu **thiết kế**, chưa phải hướng dẫn đã kiểm chứng trên VPS. Đọc và duyệt trước, rồi
-mới làm theo mục 7.
+Tài liệu **thiết kế**, chưa triển khai. Đọc và duyệt trước, rồi mới làm theo mục 15.
 
-Mục tiêu: nhân viên mở **một địa chỉ**, đăng nhập **một lần**, thấy **một thanh điều hướng**
-dẫn sang mọi hệ thống nội bộ — thay vì nhớ bốn địa chỉ và bốn tài khoản.
+Người viết một service mới chỉ cần đọc [`KET-NOI-MODUN.md`](KET-NOI-MODUN.md) — tài liệu này
+dành cho người thiết kế và vận hành chính cái cổng.
 
-| Hệ thống | Kho mã | Trạng thái giao diện hôm nay |
+> **Vị trí tạm.** Tài liệu này đang nằm trong kho `Cham-cong` vì kho của cổng chưa tồn tại.
+> Khi dựng kho `cong-noi-bo` (mục 11), chuyển cả hai tệp sang đó — cổng không được là tài
+> sản của một module.
+
+---
+
+## 0. Mục tiêu
+
+Nhân viên mở **một địa chỉ**, đăng nhập **một lần**, thấy **một thanh điều hướng**. Bên
+dưới là nhiều service độc lập, và thêm một service mới **không phải sửa service nào đang
+chạy**.
+
+Cổng chịu trách nhiệm **đăng nhập, phân quyền, phát hành và thu hồi token**. Module chỉ
+nhận token, xác minh, rồi làm việc của nó.
+
+Đó là ranh giới. Mọi quyết định dưới đây suy ra từ nó.
+
+### Hiện trạng bốn hệ thống
+
+| Hệ thống | Mã module | Trạng thái hôm nay |
 |---|---|---|
-| Chấm công | `Cham-cong` | Web 12 trang (React + Vite) + app Expo. **Có thật.** |
-| AI Agent | `ai_agent` | Python CLI + systemd timer. **Không có giao diện web** — giao diện của nó là chat Teams qua `openclaw`. |
-| RF-ID | `RF-ID` | Chỉ có `README.md`. |
-| TOOL | `TOOL` | Chỉ có `README.md`. |
+| Chấm công | `chamcong` | Web 12 trang + app Expo. **Đang tự làm đăng nhập** — phải chuyển thành module. |
+| AI Agent | `agent` | Python CLI + bot Teams. Chưa có giao diện web. Trang quản trị: xem `ai_agent/tai_lieu/TRANG-QUAN-TRI.md`. |
+| RF-ID | `rfid` | Chỉ có `README.md`. |
+| TOOL | `tool` | Chỉ có `README.md`. |
 
-Nói thẳng ngay từ đầu để không ai kỳ vọng sai: việc này là **dựng khung cổng và gắn Chấm
-công vào**, chừa sẵn chỗ cho ba hệ còn lại. Bấm vào mục RF-ID hay TOOL hôm nay sẽ không ra
-gì, vì hai kho đó chưa có dòng mã nào.
+Việc trước mắt là **dựng cổng và biến Chấm công thành module đầu tiên**. Nếu Chấm công
+không chuyển được sang mô hình này thì mô hình sai — nó là phép thử thật, không phải ví dụ.
 
 ---
 
-## 1. Phần khó đã làm xong rồi
+## 1. Ranh giới trách nhiệm
 
-Không phải bắt đầu từ số không. Bốn mảnh nền tảng đã có sẵn:
+| Việc | Cổng | Module |
+|---|:--:|:--:|
+| Màn hình đăng nhập | ✅ | ❌ |
+| Nói chuyện với Entra ID (OAuth, PKCE) | ✅ | ❌ |
+| Lưu mật khẩu / băm mật khẩu | ✅ | ❌ |
+| Ký và phát hành token | ✅ | ❌ |
+| Làm mới, thu hồi token | ✅ | ❌ |
+| Giữ khóa **riêng** | ✅ | ❌ |
+| Sổ đăng ký module + thanh điều hướng | ✅ | ❌ |
+| Cấp vai trò cho người dùng ở từng module | ✅ | ❌ |
+| **Xác minh** token bằng khóa công khai | ❌ | ✅ |
+| Quyết định vai trò đó được làm gì | ❌ | ✅ |
+| Dữ liệu nghiệp vụ và CSDL riêng | ❌ | ✅ |
 
-| Đã có | Ở đâu |
+Hai luật rút ra, không có ngoại lệ:
+
+1. **Module không bao giờ nhận khóa riêng.** Nó chỉ có khóa công khai, chỉ **xác minh**
+   được, không **ký** được. Đây là lý do mục 4 tồn tại.
+2. **Cổng không biết gì về nghiệp vụ của module.** Cổng biết "người này có vai trò
+   `nhan_su` ở module `chamcong`". Vai trò đó xem được bảng công của ai là việc của Chấm
+   công.
+
+---
+
+## 2. Sơ đồ đường dẫn
+
+```
+https://<tên miền>/
+  /                     trang chủ cổng                    [cổng]
+  /cong/dang-nhap       màn hình đăng nhập                [cổng]
+  /cong/api/*           API danh tính + quản trị          [cổng]
+  /cong/.well-known/jwks.json   khóa công khai            [cổng]
+  /chung/*              thanh điều hướng + CSS dùng chung [cổng]
+
+  /chamcong/*           module Chấm công        -> 127.0.0.1:8081
+  /chamcong/api/*                               -> 127.0.0.1:8080
+  /agent/*              module AI Agent         -> (chưa có)
+  /rfid/*  /tool/*      chỗ trống
+
+  /api/messages         webhook bot Teams       -> 127.0.0.1:3978   KHÔNG qua cổng
+  /dev/*                webhook bot dev         -> 127.0.0.1:3979   KHÔNG qua cổng
+
+http://<tên miền>/
+  /iclock/*             máy chấm công ZKTeco    -> 127.0.0.1:8080   KHÔNG qua cổng
+```
+
+Thêm module = thêm một tiền tố đường dẫn + một dòng trong sổ đăng ký. Không đụng module nào
+khác.
+
+### Vì sao chung một origin
+
+Phiên đăng nhập nằm trong `localStorage`, mà `localStorage` phân vùng theo **origin**, không
+theo đường dẫn. Cùng origin nghĩa là mọi module đọc được cùng một phiên — đăng nhập một lần
+là xong, không phải viết dòng nào.
+
+Đi subdomain riêng thì phải đổi sang cookie `HttpOnly` `Domain=`, viết lại tầng token của
+web lẫn app điện thoại, mở CORS trở lại, và xin thêm chứng chỉ cho từng subdomain.
+
+**Cái giá:** chung origin thì trong trình duyệt **không còn ranh giới bảo mật** giữa các
+module. Một lỗ XSS ở `/tool` đọc được token của cả cụm. Chấp nhận được khi mọi module do
+cùng một đội viết và cùng một quy trình rà soát. **Module do bên thứ ba viết, hoặc module
+nhúng mã của bên thứ ba, phải ra subdomain riêng** — lúc đó nó dùng cookie thay vì
+`localStorage`, và đó là ngoại lệ có chủ đích chứ không phải mặc định.
+
+---
+
+## 3. Cổng là nơi cấp danh tính duy nhất
+
+Luồng đăng nhập:
+
+```
+Người dùng -> /cong/dang-nhap
+           -> Entra ID (OAuth 2.0 + PKCE)
+           -> /cong/api/xac-thuc/microsoft/goi-ve
+           -> cổng tra sổ đăng ký, dựng token, chuyển về đường dẫn ban đầu
+```
+
+Module không tham gia vào luồng này. Nó chỉ làm một việc khi không thấy token hợp lệ:
+
+```
+chuyển sang  /cong/dang-nhap?quay_lai=<đường dẫn hiện tại>
+```
+
+`quay_lai` phải được cổng kiểm là **đường dẫn nội bộ** (bắt đầu bằng `/`, không phải `//`,
+không có sơ đồ giao thức). Không kiểm là có open redirect: kẻ tấn công gửi link "đăng nhập"
+thật rồi đẩy nạn nhân sang trang giả. Chấm công đã có sẵn phần kiểm này trong
+`may_chu/src/tuyen/dang_nhap.ts`, chuyển nguyên sang cổng.
+
+---
+
+## 4. Khóa bất đối xứng — thay đổi quan trọng nhất
+
+Chấm công hôm nay ký JWT bằng **HS256** (`may_chu/src/bao_mat/jwt.ts`): một bí mật chung
+vừa dùng để ký vừa dùng để xác minh.
+
+Mô hình đó **không dùng được** cho cổng. Muốn module xác minh được token thì phải đưa nó
+`JWT_SECRET`; mà có `JWT_SECRET` thì module **tự ký được token quản trị cho chính mình**.
+Bốn module là bốn bản sao của một bí mật mở được mọi thứ — mất một bản là mất cả cụm.
+
+**Cổng dùng RS256.** Cổng giữ khóa riêng và là nơi duy nhất ký được. Module tải khóa công
+khai, chỉ xác minh được.
+
+```
+GET /cong/.well-known/jwks.json
+
+{ "keys": [
+  { "kty":"RSA", "use":"sig", "alg":"RS256", "kid":"2026-08", "n":"...", "e":"AQAB" }
+] }
+```
+
+Vì sao RS256 chứ không phải EdDSA: EdDSA nhỏ và nhanh hơn, nhưng RS256 được **mọi** thư viện
+JWT hỗ trợ. Mục tiêu của cả tài liệu này là service sau nối vào dễ — chọn thuật toán tương
+thích rộng nhất. Nếu chắc chắn mọi module đều là Node hoặc Python thì EdDSA cũng được, đổi
+sau được nhờ cơ chế `kid` ở dưới.
+
+### Xoay khóa
+
+Mỗi khóa có `kid`. Khi xoay, cổng **công bố cả hai khóa** trong JWKS và ký bằng khóa mới.
+Sau khi mọi access token cũ hết hạn (15 phút) thì gỡ khóa cũ.
+
+Module phải:
+
+- cache JWKS (gợi ý 1 giờ),
+- **tải lại ngay khi gặp `kid` lạ** — không có bước này thì xoay khóa làm chết cả cụm,
+- có giới hạn tần suất tải lại, để token rác với `kid` bịa không thành đòn DoS lên cổng.
+
+### Ba luật khi xác minh — thiếu một cái là lỗ hổng
+
+1. **Chỉ chấp nhận `alg` nằm trong danh sách trắng.** Đọc `alg` từ header rồi tin theo là
+   mở đường cho `alg: none` và cho đòn "đưa khóa công khai RSA vào làm bí mật HMAC". Chấm
+   công đã chặn đúng cách trong `giai_ma_token`; giữ nguyên tinh thần đó.
+2. **Kiểm `iss`** đúng địa chỉ cổng.
+3. **Kiểm `aud`** chứa `cong-noi-bo`.
+
+---
+
+## 5. Hợp đồng token
+
+Access token, TTL **15 phút** (giữ nguyên `JWT_ACCESS_TTL=900` đang dùng):
+
+```json
+{
+  "iss": "https://<tên miền>/cong",
+  "aud": "cong-noi-bo",
+  "sub": "0f8b2c1e-...",
+  "oid": "7c3a...-aad-object-id",
+  "email": "an.nv@tranhoangvietnam.com",
+  "ten": "Nguyễn Văn An",
+  "quyen": {
+    "chamcong": ["nhan_su"],
+    "agent":    ["su_dung"],
+    "rfid":     []
+  },
+  "loai": "tc",
+  "kid":  "2026-08",
+  "jti":  "...",
+  "iat":  1755168000,
+  "exp":  1755168900
+}
+```
+
+| Trường | Ý nghĩa |
 |---|---|
-| Một tên miền, một Caddy giữ cổng 80/443 | `ai_agent/openclaw-teams/caddy/Caddyfile` — `teams.tranhoangvietnam.com`, `/dev/*` → 3979, còn lại → 3978 |
-| Chấm công chạy được dưới tiền tố đường dẫn | `web/vite.config.ts` (`base`), `web/src/dinh_tuyen.tsx` (hằng `GOC`), `web/src/api.ts` — `VITE_API_URL` để trống thì API tự đi tới `/chamcong/api/...` |
-| Đăng nhập bằng Microsoft Entra ID | `may_chu/src/bao_mat/microsoft.ts`; redirect trong `tai_lieu/DANG-NHAP-MICROSOFT.md` đã là `https://teams.tranhoangvietnam.com/chamcong/api/xac-thuc/microsoft/goi-ve` |
-| Phiên đăng nhập + 5 vai trò | `may_chu/src/bao_mat/jwt.ts`, `may_chu/src/bao_mat/xac_thuc.ts` |
+| `sub` | Id tài khoản **trên cổng**. Ổn định vĩnh viễn. Đây là khóa module dùng để móc sang bản ghi của mình. |
+| `oid` | AAD object id của Entra. Có mặt vì dữ liệu sử dụng bot đã khóa theo trường này (`phien.aad_object_id`, `requests.aad_object_id`) — thiếu nó thì trang thống kê AI Agent không nối được người dùng với lượt hỏi. |
+| `email` | Tiện cho hiển thị và đối soát. **Không dùng làm khóa** — email đổi được. |
+| `quyen` | Vai trò theo **từng** module. Mảng rỗng hoặc thiếu khóa = đã đăng nhập nhưng chưa được cấp quyền ở module đó. |
+| `loai` | `tc` = truy cập · `lm` = làm mới · `dv` = token dịch vụ (mục 8). |
 
-Thứ còn thiếu chỉ là **một trang chủ** và **một thanh điều hướng dùng chung**.
+Ba điểm bắt buộc:
 
----
+- **Module chỉ đọc `quyen[<mã module của mình>]`.** Đọc của module khác là vượt ranh giới.
+- **Không có trạng thái `cho_duyet` riêng nữa.** Chấm công hôm nay có vai trò `cho_duyet`
+  nghĩa là "đã xác thực, chưa được phân quyền". Trong mô hình mới nó là `quyen.chamcong` rỗng
+  — cùng ý nghĩa, nhưng tổng quát cho mọi module và không tốn một vai trò đặc biệt.
+- **Không nhét `nhan_vien_id` vào token.** Đó là khái niệm của Chấm công, không phải của
+  cổng. Module tự giữ bảng ánh xạ `cong_id` → thực thể của nó (mục 12). Cổng nhét khái niệm
+  của một module vào token là bắt đầu phá chính ranh giới nó dựng ra.
 
-## 2. Kiến trúc: một origin, chia theo đường dẫn
+### Token có nên phình khi có nhiều module không
 
-```
-https://teams.tranhoangvietnam.com/
-  /                     trang chủ cổng                        (mới, tệp tĩnh)
-  /chung/*              thanh điều hướng + CSS dùng chung     (mới, tệp tĩnh)
-  /chamcong/*           webapp chấm công        -> 127.0.0.1:8081   (đã có)
-  /chamcong/api/*       API chấm công           -> 127.0.0.1:8080   (đã có)
-  /chamcong/health      kiểm tra sức khỏe       -> 127.0.0.1:8080   (đã có)
-  /agent/*              xem báo cáo AI Agent                  (giai đoạn 3)
-  /rfid/*  /tool/*      chỗ trống                             (chưa có nội dung)
-  /dev/*                bot Teams bản dev       -> 127.0.0.1:3979   (GIỮ NGUYÊN)
-  còn lại               bot Teams production    -> 127.0.0.1:3978   (GIỮ NGUYÊN)
-
-http://teams.tranhoangvietnam.com/
-  /iclock/*             máy chấm công ZKTeco    -> 127.0.0.1:8080   (HTTP thường)
-  còn lại               chuyển hướng sang HTTPS
-```
-
-### Vì sao chung một origin, không phải mỗi hệ một subdomain
-
-Chấm công lưu phiên trong `localStorage` khóa `cham_cong_phien` (`web/src/api.ts`).
-`localStorage` phân vùng theo **origin**, không theo đường dẫn. Cùng origin nghĩa là mọi app
-trên cổng đọc được cùng một phiên: **đăng nhập một lần là xong, không phải viết thêm dòng
-nào.**
-
-Đi subdomain riêng (`chamcong.…`, `agent.…`) thì mỗi origin một kho `localStorage`, phải:
-
-- đổi Chấm công sang cookie `HttpOnly` `Domain=.tranhoangvietnam.com`,
-- viết lại tầng token của **cả** web lẫn app điện thoại (`dien_thoai/nguon/api.ts`),
-- mở CORS trở lại — thứ mà `cong_vao/Caddyfile` cố tình bỏ được nhờ chung origin,
-- xin thêm chứng chỉ và thêm redirect URI cho từng subdomain.
-
-Không đáng, ở quy mô bốn hệ nội bộ.
-
-### Cái giá phải trả — phải biết trước khi duyệt
-
-Chung origin thì trong trình duyệt **không còn ranh giới bảo mật** giữa các app. Một lỗ XSS ở
-`/tool` đọc được token chấm công của cả cụm, và token đó mở được hồ sơ nhân sự.
-
-Chấp nhận được khi cả bốn app do cùng một đội viết và cùng một quy trình rà soát. **Không**
-chấp nhận được nếu sau này có app do bên thứ ba viết hoặc nhúng mã của bên thứ ba — lúc đó
-app ấy phải ra subdomain riêng, không được vào chung origin.
-
-Ghi nhớ kèm theo: `web/nginx.conf` đang đặt CSP `default-src 'self'`. Thanh điều hướng chung
-phải phục vụ **cùng origin** thì mới tải được — thêm một lý do nữa để không tách subdomain.
+Với 4–15 module thì `quyen` vẫn nhỏ hơn 1 KB, không thành vấn đề. Nếu một ngày vượt xa mức
+đó, đường thoát là để token chỉ mang `sub` và module gọi `POST /cong/api/gioi-thieu-token`
+để hỏi quyền. Đổi được về sau mà không phải viết lại giao diện — **đừng làm bây giờ**, nó đặt
+cổng vào đường đi của mọi request.
 
 ---
 
-## 3. Danh tính và phiên đăng nhập
+## 6. Mô hình quyền
 
-**Chấm công làm nơi cấp danh tính cho cả cụm.** Nó là hệ duy nhất đã có bảng `nguoi_dung`,
-bảng vai trò, luồng Entra ID hoàn chỉnh và cơ chế thu hồi token làm mới.
+Mỗi module **tự khai** các mức quyền của nó khi đăng ký. Cổng không có một danh sách vai trò
+toàn cục, vì "trưởng phòng" ở Chấm công và "trưởng phòng" ở RF-ID không nhất thiết cùng nghĩa.
 
-Luồng của một app bất kỳ trên cổng:
+| Module | Các mức nó khai |
+|---|---|
+| `chamcong` | `admin`, `nhan_su`, `truong_phong`, `nhan_vien` |
+| `agent` | `quan_tri`, `su_dung` |
+| `rfid` | *(khai khi có mã)* |
 
-1. Đọc `localStorage['cham_cong_phien']`. Không có → chuyển sang `/chamcong/` để đăng nhập,
-   kèm `?quay_lai=` đường dẫn hiện tại.
-2. Có → gọi `GET /chamcong/api/xac-thuc/toi` với `Authorization: Bearer <token_truy_cap>`.
-3. Nhận về `vai_tro` (`admin` / `nhan_su` / `truong_phong` / `nhan_vien` / `cho_duyet`) rồi
-   tự quyết hiển thị gì.
+Cổng chỉ làm ba việc: giữ danh sách đó, gán cho người dùng, nhét vào token.
 
-Không app nào tự xác minh chữ ký JWT. Chỉ Chấm công giữ `JWT_SECRET`; các app khác **hỏi**
-nó. Như vậy đổi khóa, thu hồi phiên, khóa tài khoản chỉ làm ở một chỗ.
+Một người có thể là `admin` ở Chấm công và không có quyền gì ở AI Agent. Đó là điểm chính
+của việc tách quyền theo module.
 
-> **Không chia sẻ `JWT_SECRET` sang app khác.** Đưa khóa ký đi là biến mỗi app thành một nơi
-> có thể tự phát hành token quản trị. Bốn bản sao của một bí mật thì mất một bản là mất cả
-> bốn.
-
-### Vì sao không dùng thẳng token của Entra ID
-
-Đúng chuẩn hơn thì mỗi app tự xác minh `id_token` của Entra bằng JWKS (RS256). Nhưng như vậy
-phải viết lại xác thực ở mọi ngôn ngữ trong cụm — kể cả Python cho AI Agent — và Entra không
-biết gì về vai trò `truong_phong` hay ánh xạ tài khoản sang `nhan_vien_id`. Chưa đáng ở quy
-mô này. Nếu sau này số app tăng hoặc có app ngoài đội, đây là bước nâng cấp tiếp theo, và
-đổi được mà không phải viết lại giao diện.
+**Ai cấp quyền:** người có vai trò `quan_tri` trên chính module `cong`. Cổng là một module
+của chính nó, quản trị bằng đúng cơ chế đó — không có đường tắt "siêu quản trị" nằm ngoài mô
+hình.
 
 ---
 
-## 4. Thanh điều hướng dùng chung
+## 7. Sổ đăng ký module
 
-Một tệp JavaScript thuần (không framework) phục vụ tại `/chung/thanh_dieu_huong.js`, kèm
-`/chung/thanh_dieu_huong.css`. Mỗi app chèn đúng một thẻ `<script defer>`.
+```sql
+create table module (
+  ma        text primary key,              -- 'chamcong'
+  ten       text        not null,          -- 'Chấm công'
+  mo_ta     text        not null default '',
+  tien_to   text        not null unique,   -- '/chamcong'
+  icon      text        not null,          -- tên icon Tabler
+  thu_tu    int         not null default 100,
+  bat       boolean     not null default true,
+  vai_tro   jsonb       not null,          -- ['admin','nhan_su',...] module tự khai
+  tao_luc   timestamptz not null default now()
+);
 
-Script tự làm hết: đọc phiên → gọi `/chamcong/api/xac-thuc/toi` → vẽ thanh trên cùng với các
-mục đúng vai trò → đánh dấu mục đang mở theo `location.pathname`. Sửa menu một lần, cả cụm
-đổi theo.
-
-Viết bằng JS thuần chứ không phải component React vì AI Agent (Python) và hai hệ chưa có mã
-gần như chắc chắn không dùng React. Một component React chỉ dùng lại được ở đúng một app.
-
-### CSS phải sinh từ `token.json`, không viết tay
-
-CLAUDE.md cấm hard-code màu / font / bo góc. Thanh điều hướng cũng không ngoại lệ. Nghĩa là
-`thiet_ke/sinh_token.mjs` phải sinh thêm tệp thứ ba, và `thiet_ke/token.test.mjs` phải kiểm
-tệp đó — nếu không, quên chạy `npm run sinh_token` sẽ trôi qua mà test vẫn xanh.
-
-Dùng nhánh `web` của `token.json` (Inter, `#3B82F6`, bo góc 8px): thanh điều hướng chỉ chạy
-trên trình duyệt. Nhánh `mobile` giữ nguyên cho app Expo, không đụng tới.
-
-Bốn luật màu ở `tai_lieu/THIET-KE.md` vẫn áp dụng nguyên vẹn — đặc biệt là **`chinh` chỉ tô
-mảng, chữ dùng `chinh_dam`**, và **chữ trên `chinh_dam` dùng `var(--tren-chinh)`**.
-
-### Vì sao không dùng iframe
-
-Nhúng mỗi app vào một iframe nghe có vẻ nhanh hơn, nhưng:
-
-- `web/nginx.conf` đang đặt `X-Frame-Options: DENY` và CSP `frame-ancestors 'none'`. Nhúng
-  iframe sẽ ra khung trắng. Muốn làm được thì phải tự tay gỡ một lớp phòng thủ chống
-  clickjacking — đổi một lớp bảo mật lấy một trải nghiệm tệ hơn.
-- Vỡ deep link: gửi cho đồng nghiệp đường dẫn tới hồ sơ một nhân viên sẽ ra trang chủ.
-- Vỡ nút Back của trình duyệt.
-- Tải tệp hồ sơ và mở ảnh chấm công trong iframe lồng nhau là nguồn lỗi triền miên.
-
----
-
-## 5. Bốn hệ thống gắn vào cổng thế nào
-
-### Chấm công — gắn được ngay
-
-Đổi biến build và Caddy, không sửa mã nguồn:
-
-```
-VITE_BASE=/chamcong/
-VITE_API_URL=            # để TRỐNG — api.ts tự lấy tiền tố từ BASE_URL
-CONG_MAY_CHU=127.0.0.1:8080
-CONG_WEB=127.0.0.1:8081
-PROXY_TIN_CAY=172.16.0.0/12
-MS_REDIRECT_URI=https://teams.tranhoangvietnam.com/chamcong/api/xac-thuc/microsoft/goi-ve
-MS_GOC_WEBAPP=https://teams.tranhoangvietnam.com/chamcong
+create table quyen_nguoi_dung (
+  nguoi_dung_id uuid        not null references nguoi_dung(id) on delete cascade,
+  module_ma     text        not null references module(ma)     on delete cascade,
+  vai_tro       text        not null,
+  cap_boi       uuid        references nguoi_dung(id),
+  cap_luc       timestamptz not null default now(),
+  primary key (nguoi_dung_id, module_ma, vai_tro)
+);
 ```
 
-Việc duy nhất phải sửa mã: thêm bộ chuyển app vào đầu sidebar (`web/src/App.tsx`, mảng
-`MENU`) để từ Chấm công nhảy sang hệ khác được.
+Thanh điều hướng dựng từ bảng `module`, lọc theo `quyen` của người đang đăng nhập. Module có
+`bat = false` biến khỏi thanh điều hướng mà không phải sửa mã hay dựng lại gì.
 
-### AI Agent — **đừng** làm lại giao diện
-
-Nó đã có giao diện rồi: chat Teams. Dựng thêm một trang hỏi đáp trên web là làm hai lần cùng
-một việc, và bản web sẽ luôn tụt lại sau bản Teams.
-
-Mục đúng cho nó trên cổng là **"Báo cáo"**: liệt kê những báo cáo mà
-`ma_nguon/agent_vps/agent/reporting.py` đã sinh ra, cho xem lại và tải về, kèm nút mở cuộc
-chat Teams. Việc này cần thêm một tầng HTTP mỏng vào `ai_agent` — hôm nay `grep` không tìm
-thấy `fastapi`, `flask`, `uvicorn` hay `aiohttp` nào trong kho.
-
-Giữ nguyên hai điều bất biến của `openclaw-teams`: cổng bind `127.0.0.1`, `tools.profile` =
-`messaging`. Cổng chung không được nới hai thứ này.
-
-### RF-ID và TOOL — chỗ trống có chủ đích
-
-Chưa có mã thì chưa có gì để gắn. Hai lựa chọn, chọn một và ghi rõ vào trang chủ:
-
-1. **Không hiện mục nào** cho tới khi có nội dung — đúng với tiền lệ đã ghi trong
-   `web/src/App.tsx`: *"một mục menu dẫn tới trang trống thì tệ hơn là không có mục đó"*.
-2. Hiện mục kèm nhãn **"Đang xây dựng"**, bấm vào ra một trang nói rõ trạng thái.
-
-Đề xuất: lựa chọn 1. Tiền lệ trong chính kho này đã chốt như vậy khi bỏ 4 màn hình chưa có
-backend ra khỏi menu.
+**Module chưa có nội dung thì không hiện.** Đây là tiền lệ đã ghi trong `web/src/App.tsx`:
+*một mục menu dẫn tới trang trống thì tệ hơn là không có mục đó*. `RF-ID` và `TOOL` để
+`bat = false` cho tới khi có mã thật.
 
 ---
 
-## 6. Caddyfile hợp nhất
+## 8. Token dịch vụ (máy với máy)
 
-Thay `/etc/caddy/Caddyfile` trên VPS (bản hiện tại nằm ở
-`ai_agent/openclaw-teams/caddy/Caddyfile`). Caddy chạy trực tiếp trên máy chủ, không trong
-Docker — mọi đích đến đều là `127.0.0.1`.
+Không phải lời gọi nào cũng có người ngồi sau. Timer của AI Agent chạy 17:30 mỗi ngày cần
+đọc API Chấm công mà không có ai đăng nhập.
+
+```
+POST /cong/api/token-dich-vu
+     { "ma_dich_vu": "agent-bao-cao", "bi_mat": "..." }
+  -> { "token_truy_cap": "...", "het_han_sau": 3600 }
+```
+
+- `loai: "dv"`, `sub` = mã dịch vụ, TTL 1 giờ.
+- `quyen` là **phạm vi hẹp nhất đủ dùng** — `{"chamcong": ["doc_bang_cong"]}`, không phải
+  `admin`.
+- Bí mật lưu **đã băm** trong CSDL cổng (`scrypt`, cùng cách đang dùng cho mật khẩu).
+- Xoay được, thu hồi được, có nhật ký lần dùng cuối.
+- **Không bao giờ đặt trong URL** — chỉ trong header `Authorization`. URL lọt vào log của
+  reverse proxy, vào lịch sử trình duyệt, vào `Referer`.
+
+Module phân biệt bằng `loai`: token `dv` không có người thật đằng sau, nên đừng ghi nhật ký
+thao tác dưới tên một nhân viên nào.
+
+---
+
+## 9. Vòng đời và thu hồi
+
+| | TTL | Thu hồi được? |
+|---|---|---|
+| Access (`tc`) | 15 phút | Không — hết hạn là cách thu hồi |
+| Làm mới (`lm`) | 30 ngày | Có — lưu đã băm trong CSDL cổng |
+| Dịch vụ (`dv`) | 1 giờ | Có — vô hiệu hóa bí mật |
+
+Module **không** hỏi cổng ở mỗi request. Nó xác minh chữ ký cục bộ. Đổi lại, khóa một tài
+khoản có độ trễ tối đa 15 phút — chấp nhận được, và đây là đánh đổi tiêu chuẩn.
+
+Cần chặn tức thì (nhân viên nghỉ việc trong tình huống nhạy cảm) thì thu hồi token làm mới
+**và** khóa tài khoản ở Entra ID. Đừng dựng danh sách thu hồi cho access token: nó đặt cổng
+vào đường đi của mọi request, tức là đúng cái mà toàn bộ thiết kế này tránh.
+
+Chấm công đã có bảng token làm mới lưu băm + cột `thu_hoi_luc` — chuyển nguyên sang cổng.
+
+---
+
+## 10. Ba đường KHÔNG đi qua cổng
+
+Nhận diện sớm để không ai "thống nhất" nhầm rồi làm hỏng dữ liệu thật.
+
+| Đường | Vì sao ngoại lệ |
+|---|---|
+| `/iclock/*` | Máy ZKTeco nói giao thức ADMS, không biết HTTP header `Authorization`, không làm được TLS. Xác thực bằng serial + danh sách IP. Ép nó qua cổng là **mất dữ liệu chấm công**, tức là sai lương. |
+| `/api/messages` | Webhook Bot Framework của Microsoft gọi vào. Xác thực bằng chữ ký của Microsoft, không phải token cổng. |
+| `/cong/.well-known/jwks.json` | Khóa công khai, cố ý mở. Không có gì bí mật để bảo vệ. |
+
+Hai đường đầu đã có cơ chế xác thực riêng phù hợp với bên gọi. Ranh giới bảo mật vẫn còn, chỉ
+là không phải ranh giới của cổng.
+
+---
+
+## 11. Cổng nằm ở kho nào
+
+**Kho riêng — `cong-noi-bo`.** Chưa tồn tại, cần tạo.
+
+Đặt cổng trong kho `Cham-cong` sẽ làm "triển khai cổng" và "triển khai Chấm công" dính vào
+nhau — đúng cái ràng buộc mà cả thiết kế này muốn gỡ. Và mọi module còn lại sẽ phải phụ thuộc
+vào kho của một module.
+
+Đường tắt nếu muốn chạy nhanh: dựng `cong/` thành workspace thứ ba trong kho `Cham-cong`,
+tuyệt đối **không import gì từ `may_chu/`**, rồi tách ra kho riêng khi RF-ID xuất hiện. Đường
+tắt này chỉ an toàn nếu ranh giới không import được giữ nghiêm — mà thứ đó không có gì cưỡng
+chế ngoài kỷ luật. Tôi khuyên tạo kho riêng ngay.
+
+Cổng cần CSDL riêng (`nguoi_dung`, `module`, `quyen_nguoi_dung`, `token_lam_moi`,
+`dich_vu`, `nhat_ky_dang_nhap`). Dùng chung instance PostgreSQL với Chấm công thì được,
+nhưng **khác database**, khác tài khoản kết nối — module không được đọc bảng người dùng của
+cổng bằng SQL.
+
+---
+
+## 12. Chấm công: từ nơi cấp danh tính thành module
+
+Đây là phần rủi ro nhất, vì Chấm công đang chạy thật và trả lương thật.
+
+### Cái gì chuyển sang cổng
+
+| Tệp hiện tại | Số phận |
+|---|---|
+| `may_chu/src/bao_mat/microsoft.ts` | **Chuyển** sang cổng |
+| `may_chu/src/bao_mat/mat_khau.ts` | **Chuyển** sang cổng |
+| `may_chu/src/bao_mat/jwt.ts` | **Chuyển** sang cổng, đổi HS256 → RS256 |
+| `may_chu/src/tuyen/dang_nhap.ts` | **Chuyển** sang cổng |
+| `may_chu/src/bao_mat/xac_thuc.ts` | **Ở lại**, đổi ruột: xác minh bằng JWKS thay vì bí mật chung |
+| `may_chu/src/bao_mat/quyen_ho_so.ts` | **Ở lại nguyên vẹn** — quyết định nghiệp vụ là việc của module |
+
+Sau khi chuyển, `xac_thuc.ts` giữ nguyên bề mặt hàm (`can_dang_nhap`, `can_nhan_su`,
+`can_admin`, `nguoi_dung_hien_tai`). **Không route nghiệp vụ nào phải sửa** — đó là phần
+thưởng cho việc trước đây đã gom xác thực vào một chỗ.
+
+### Tài khoản chuyển thế nào
+
+Cổng dựng `nguoi_dung` từ bảng của Chấm công: khớp theo AAD object id với tài khoản
+Microsoft, theo tên đăng nhập với tài khoản cục bộ. Băm mật khẩu chép nguyên — cùng thuật
+toán `scrypt` nên không ai phải đặt lại mật khẩu.
+
+Bảng `nguoi_dung` của Chấm công **giữ lại**, thêm một cột:
+
+```sql
+alter table nguoi_dung add column cong_id uuid unique;
+```
+
+Đó là toàn bộ mối nối. Chấm công tra `cong_id = token.sub` để tìm bản ghi của mình, rồi mọi
+thứ khác chạy như cũ. Vai trò trong bảng cũ trở thành dữ liệu chết, dọn ở giai đoạn C.
+
+### Ba giai đoạn, không có ngày nào gãy
+
+**A — Cổng chạy song song.** Cổng phát token RS256. Chấm công **chấp nhận cả hai**: token
+RS256 của cổng và token HS256 của chính nó. Đăng nhập cũ vẫn hoạt động. Không ai thấy gì
+khác.
+
+**B — Chuyển đường đăng nhập.** Web và app điện thoại trỏ sang `/cong/dang-nhap`. Người dùng
+đăng nhập qua cổng. Token HS256 cũ vẫn được chấp nhận cho tới khi hết hạn — 30 ngày cho token
+làm mới, nên **giai đoạn này phải kéo dài hơn 30 ngày** hoặc chấp nhận cho mọi người đăng
+nhập lại một lần. Chọn cách nào cũng được, nhưng phải chọn trước, không phát hiện giữa chừng.
+
+**C — Dọn.** Gỡ đường đăng nhập cũ, gỡ mã HS256, xóa `JWT_SECRET` khỏi `.env` của Chấm công,
+xóa cột vai trò cũ.
+
+Chỉ được sang giai đoạn sau khi giai đoạn trước đã chạy ổn định trọn một chu kỳ tính lương.
+
+---
+
+## 13. App điện thoại
+
+`dien_thoai` đăng nhập bằng cách gửi tên đăng nhập/mật khẩu tới Chấm công. Sau khi chuyển,
+nó phải nói chuyện với cổng, và app native có ba ràng buộc khác web:
+
+- **Không có `localStorage`.** Token vào `expo-secure-store` (Keychain / Keystore), không
+  phải `AsyncStorage`.
+- **OAuth phải mở trình duyệt hệ thống** (`expo-web-browser`), không phải WebView nhúng.
+  Entra ID từ chối WebView nhúng, và làm thế cũng là dạy người dùng gõ mật khẩu công ty vào
+  một khung không kiểm chứng được.
+- **Cần redirect URI riêng** dạng deep link cho app, thêm vào Entra bên cạnh URI của web.
+
+Việc này đủ lớn để làm thành một giai đoạn riêng, sau khi web đã chạy ổn.
+
+---
+
+## 14. Caddyfile hợp nhất
+
+Caddy chạy trực tiếp trên máy chủ (không trong Docker), nên mọi đích đến là `127.0.0.1`.
 
 ```caddyfile
 # ---------------------------------------------------------------- HTTP (cổng 80)
 # CHỈ phục vụ máy chấm công. Firmware ZKTeco không làm được TLS, và gặp 301/302 thì
-# nhiều bản coi là lỗi rồi bỏ luôn cả lô dữ liệu — nên đường này KHÔNG chuyển hướng.
-http://teams.tranhoangvietnam.com {
+# nhiều bản coi là lỗi rồi bỏ luôn cả lô dữ liệu — đường này KHÔNG chuyển hướng.
+http://<tên miền> {
 	handle /iclock/* {
 		reverse_proxy 127.0.0.1:8080
 	}
-	# Mọi thứ còn lại vào bằng trình duyệt -> ép sang HTTPS.
 	handle {
 		redir https://{host}{uri} permanent
 	}
 }
 
 # ---------------------------------------------------------------- HTTPS (cổng 443)
-teams.tranhoangvietnam.com {
+<tên miền> {
 	encode gzip
 
-	# ---- Bot Teams bản dev: GIỮ NGUYÊN ----
+	# ---- Webhook bot Teams: GIỮ NGUYÊN, không qua cổng ----
 	handle_path /dev/* {
 		reverse_proxy 127.0.0.1:3979
 	}
 
-	# ---- Chấm công: API ----
+	# ---- Cổng ----
+	handle /cong/* {
+		reverse_proxy 127.0.0.1:8090
+	}
+	handle_path /chung/* {
+		root * /srv/cong/chung
+		file_server
+	}
+
+	# ---- Module: Chấm công ----
 	# Chỉ cắt '/chamcong', GIỮ LẠI '/api' vì máy chủ đăng ký route ở tiền tố đó.
 	# Dùng handle_path ở đây là sai: nó cắt cả '/api' và mọi lời gọi thành 404.
 	handle /chamcong/api/* {
@@ -235,176 +474,180 @@ teams.tranhoangvietnam.com {
 		uri strip_prefix /chamcong
 		reverse_proxy 127.0.0.1:8080
 	}
-
-	# ---- Chấm công: webapp tĩnh ----
-	# nginx trong container phục vụ ở gốc, còn Vite đã nhúng sẵn tiền tố vào đường dẫn
-	# tệp tĩnh, nên ở đây cắt cả tiền tố là đúng.
+	# Webapp tĩnh: nginx trong container phục vụ ở gốc, còn Vite đã nhúng sẵn tiền tố
+	# vào đường dẫn tệp tĩnh — ở đây cắt cả tiền tố là đúng.
 	handle_path /chamcong/* {
 		reverse_proxy 127.0.0.1:8081
 	}
-	# Vào '/chamcong' thiếu gạch chéo cuối thì đường dẫn tương đối của Vite trỏ sai chỗ.
+	# Thiếu gạch chéo cuối thì đường dẫn tương đối của Vite trỏ sai chỗ.
 	redir /chamcong /chamcong/ permanent
+
+	# ---- Module: AI Agent (khi có) ----
+	# handle /agent/api/* { uri strip_prefix /agent
+	#                       reverse_proxy 127.0.0.1:8091 }
+	# handle_path /agent/* { reverse_proxy 127.0.0.1:8092 }
 
 	# ---- Máy chấm công gọi bằng HTTPS: chỉ để thử bằng curl ----
 	handle /iclock/* {
 		reverse_proxy 127.0.0.1:8080
 	}
 
-	# ---- Tài nguyên dùng chung của cổng ----
-	handle_path /chung/* {
-		root * /srv/cong/chung
-		file_server
-	}
-
-	# ---- Trang chủ cổng (khớp đúng '/', không khớp gì khác) ----
+	# ---- Trang chủ cổng (khớp đúng '/') ----
 	handle / {
-		root * /srv/cong
-		file_server
+		reverse_proxy 127.0.0.1:8090
 	}
 
-	# ---- Còn lại: bot Teams production (/api/messages, ...) GIỮ NGUYÊN ----
+	# ---- Còn lại: webhook bot Teams production. GIỮ NGUYÊN ----
 	handle {
 		reverse_proxy 127.0.0.1:3978
 	}
 }
 ```
 
-Ba điểm cần kiểm bằng mắt sau khi dán:
+Ba điểm phải kiểm bằng mắt:
 
 - `handle /chamcong/api/*` phải thắng `handle_path /chamcong/*`. Caddy xếp các khối `handle`
-  theo độ cụ thể của đường dẫn (dài hơn thắng), nên đúng theo lý thuyết — nhưng **vẫn phải
-  kiểm bằng `curl`** ở mục 7, đừng tin suông.
-- Khối `http://` làm **tắt** cơ chế tự chuyển HTTP → HTTPS của Caddy cho toàn bộ site. Vì
-  thế phải tự viết lại `redir` — thiếu dòng đó là bot Teams và webapp bị phục vụ qua HTTP
-  thường.
-- `PROXY_TIN_CAY=172.16.0.0/12` chứ không phải `127.0.0.1/32`: Caddy chạy trên máy chủ nối
-  vào cổng đã publish của Docker, nên container thấy địa chỉ nguồn là gateway của mạng
-  Docker. Khai sai thì `ICLOCK_IP_CHO_PHEP` mất tác dụng vì mọi request trông như đến từ
-  cùng một IP.
+  theo độ cụ thể của đường dẫn nên đúng theo lý thuyết — **vẫn phải kiểm bằng `curl`** ở
+  mục 15.
+- Khối `http://` làm **tắt** cơ chế tự chuyển HTTP → HTTPS cho toàn site, nên phải tự viết
+  lại `redir`. Thiếu dòng đó là webapp bị phục vụ qua HTTP thường.
+- `PROXY_TIN_CAY=172.16.0.0/12`, không phải `127.0.0.1/32`: Caddy chạy trên máy chủ nối vào
+  cổng đã publish của Docker, nên container thấy địa chỉ nguồn là gateway của mạng Docker.
+  Khai sai thì `ICLOCK_IP_CHO_PHEP` mất tác dụng vì mọi request trông như cùng một IP.
 
 ---
 
-## 7. Runbook triển khai
+## 15. Runbook giai đoạn A
 
-Làm tuần tự. Mỗi bước có điều kiện hoàn thành (DoD) và cách lùi lại.
+Mỗi bước có điều kiện hoàn thành (DoD) và cách lùi.
 
-### Bước 0 — Ghi nhớ trạng thái bot trước khi đụng gì
+### Bước 0 — Ghi nhớ trạng thái trước khi đụng gì
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://teams.tranhoangvietnam.com/
+curl -s -o /dev/null -w '%{http_code}\n' https://<tên miền>/
 cp /etc/caddy/Caddyfile /root/Caddyfile.truoc-cong-chung
-ss -tlnp | grep -E ':(80|443|3978|3979|8080|8081)\b'
+ss -tlnp | grep -E ':(80|443|3978|3979|8080|8081|8090)\b'
 ```
 
-Ghi lại mã HTTP của bot. Cuối mỗi bước đối chiếu lại — bot Teams đang phục vụ người thật,
-làm hỏng nó là hỏng ngay lập tức chứ không đợi ai phát hiện.
+Bot Teams đang phục vụ người thật. Làm hỏng nó là hỏng ngay, không đợi ai phát hiện.
 
-`trien_khai/cap_nhat_vps.sh` đã có sẵn đoạn đo này; đọc lại phần đầu script để làm cho đúng.
-
-### Bước 1 — Thêm redirect URI vào Entra ID
-
-`az ad app update --web-redirect-uris` **ghi đè cả danh sách**, phải liệt kê lại địa chỉ cũ:
+### Bước 1 — Sinh cặp khóa của cổng
 
 ```bash
-az ad app update --id "<APP_ID>" --web-redirect-uris \
-  "https://teams.tranhoangvietnam.com/chamcong/api/xac-thuc/microsoft/goi-ve" \
-  "<mọi địa chỉ cũ đang dùng>"
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out cong-2026-08.key
+chmod 600 cong-2026-08.key
 ```
 
-**DoD:** `az ad app show --id "<APP_ID>" --query "web.redirectUris"` in ra đủ cả cũ lẫn mới.
-**Lùi:** chạy lại lệnh trên với đúng danh sách cũ.
+**DoD:** khóa riêng chỉ `root` đọc được, **không** nằm trong bất kỳ kho mã nào, đã có trong
+danh sách sao lưu.
+**Lùi:** không có gì để lùi, chưa ai dùng.
 
-### Bước 2 — Build lại webapp với tiền tố
+### Bước 2 — Dựng cổng, chưa nối vào đâu
 
-`VITE_BASE` là biến lúc **build**, Vite thay thế lúc biên dịch chứ không đọc lúc chạy. Sửa
-`.env` rồi restart là không đủ:
+Chạy cổng ở `127.0.0.1:8090`. Nhập tài khoản từ Chấm công (mục 12).
 
+**DoD:**
 ```bash
-docker compose build web
-docker compose up -d may_chu web
+curl -s http://127.0.0.1:8090/cong/.well-known/jwks.json | grep -q '"kid"'
 ```
+và đăng nhập thử bằng một tài khoản thật, nhận được token giải mã ra đúng `quyen`.
+**Lùi:** dừng service. Chưa ai dùng.
 
-**DoD:** `docker compose exec web grep -o '/chamcong/assets' /usr/share/nginx/html/index.html`
-có kết quả.
-**Lùi:** đặt lại `VITE_BASE=/`, build lại.
+### Bước 3 — Chấm công chấp nhận cả hai loại token
 
-### Bước 3 — Đổi Caddyfile
+Sửa `may_chu/src/bao_mat/xac_thuc.ts`: thử RS256 qua JWKS trước, không được thì rơi về HS256.
+
+**DoD:** `npm test` và `npm --workspace may_chu run test_e2e` xanh; đăng nhập bằng đường cũ
+vẫn hoạt động; token của cổng cũng gọi được API.
+**Lùi:** revert commit, dựng lại `may_chu`.
+
+### Bước 4 — Đổi Caddyfile
 
 ```bash
-caddy validate --config /etc/caddy/Caddyfile     # kiểm cú pháp TRƯỚC khi nạp
+caddy validate --config /etc/caddy/Caddyfile
 systemctl reload caddy
 ```
 
-**DoD** — cả sáu lệnh phải đúng:
+**DoD** — cả bảy lệnh phải đúng:
 
 ```bash
-curl -s -o /dev/null -w 'bot        %{http_code}\n' https://teams.tranhoangvietnam.com/
-curl -s -o /dev/null -w 'webapp     %{http_code}\n' https://teams.tranhoangvietnam.com/chamcong/
-curl -s -o /dev/null -w 'assets     %{http_code}\n' https://teams.tranhoangvietnam.com/chamcong/assets/
-curl -s              -w '\nhealth   %{http_code}\n' https://teams.tranhoangvietnam.com/chamcong/health
-curl -s -o /dev/null -w 'iclock     %{http_code}\n' http://teams.tranhoangvietnam.com/iclock/cdata
-curl -s -o /dev/null -w 'redir 80   %{http_code}\n' http://teams.tranhoangvietnam.com/chamcong/
+curl -s -o /dev/null -w 'bot        %{http_code}\n' https://<tên miền>/api/messages
+curl -s -o /dev/null -w 'cong       %{http_code}\n' https://<tên miền>/cong/dang-nhap
+curl -s              -w '\njwks     %{http_code}\n' https://<tên miền>/cong/.well-known/jwks.json
+curl -s -o /dev/null -w 'webapp     %{http_code}\n' https://<tên miền>/chamcong/
+curl -s              -w '\nhealth   %{http_code}\n' https://<tên miền>/chamcong/health
+curl -s -o /dev/null -w 'iclock     %{http_code}\n' http://<tên miền>/iclock/cdata
+curl -s -o /dev/null -w 'redir 80   %{http_code}\n' http://<tên miền>/chamcong/
 ```
 
-`health` phải trả JSON `{"trang_thai":"ok",...}` — nếu trả HTML của bot thì thứ tự khối
-`handle` sai, quay lại mục 6. `redir 80` phải là 301, `iclock` **không** được là 301.
+`health` phải trả JSON `{"trang_thai":"ok",...}` — trả HTML của bot nghĩa là thứ tự khối
+`handle` sai. `redir 80` phải là 301, `iclock` **không** được là 301.
 
 **Lùi:** `cp /root/Caddyfile.truoc-cong-chung /etc/caddy/Caddyfile && systemctl reload caddy`.
 
-### Bước 4 — Kiểm bằng người thật
+### Bước 5 — Kiểm bằng người thật
 
 Đăng nhập bằng tài khoản Microsoft, mở bảng công, mở một hồ sơ nhân viên, tải một tệp đính
-kèm. Bốn việc này đi qua bốn cơ chế khác nhau (OAuth redirect, API thường, route có tham số,
-route phục vụ tệp có phân quyền).
+kèm. Bốn việc này đi qua bốn cơ chế khác nhau: OAuth redirect, API thường, route có tham số,
+route phục vụ tệp có phân quyền.
 
-### Bước 5 — Xác nhận máy chấm công vẫn đẩy log
+### Bước 6 — Xác nhận máy chấm công vẫn đẩy log
 
-Đây là bước hay bị quên và hỏng âm thầm nhất: máy ZKTeco không báo lỗi, chỉ là bảng công
-thiếu dữ liệu, và vài ngày sau mới có người phát hiện.
+Bước hay bị quên và hỏng âm thầm nhất. Máy ZKTeco không báo lỗi, chỉ là bảng công thiếu dữ
+liệu, và vài ngày sau mới có người phát hiện.
 
 ```bash
-node trien_khai/kiem_tra.mjs --may-chu http://teams.tranhoangvietnam.com
-node trien_khai/gia_lap_may.mjs --may-chu http://teams.tranhoangvietnam.com
+node trien_khai/kiem_tra.mjs   --may-chu http://<tên miền>
+node trien_khai/gia_lap_may.mjs --may-chu http://<tên miền>
 ```
 
-**DoD:** lần quẹt giả lập hiện trên trang `/chamcong/lan-quet`.
+**DoD:** lần quẹt giả lập hiện trên `/chamcong/lan-quet`.
 
 ---
 
-## 8. Rủi ro đã biết
+## 16. Rủi ro đã biết
 
 | # | Rủi ro | Vì sao xảy ra | Cách chặn |
 |---|---|---|---|
-| 1 | Đụng đường `/api` | Caddyfile của bot đang `handle { reverse_proxy 3978 }` bắt tất, kể cả `/api/*`. Chấm công cũng dùng `/api/*`. | Chấm công **bắt buộc** nằm dưới `/chamcong/api/*`. Kiểm bằng lệnh `health` ở bước 3. |
-| 2 | `handle_path` cắt nhầm | `handle_path /chamcong/api/*` cắt cả `/api`, máy chủ trả 404 cho mọi lời gọi. | Dùng `handle` + `uri strip_prefix /chamcong` cho đường API. |
-| 3 | Máy chấm công ngừng đẩy log | Thêm khối `http://` tắt chuyển hướng tự động; hoặc `/iclock` vô tình bị ép sang HTTPS. | Bước 5. `iclock` phải trả 200, không phải 301. |
-| 4 | Nút "Đăng nhập bằng Microsoft" chết | `--web-redirect-uris` ghi đè cả danh sách. | Bước 1, liệt kê lại địa chỉ cũ. |
-| 5 | Đổi tiền tố mà không build lại | `VITE_BASE` là biến lúc build. | Bước 2 và DoD của nó. |
-| 6 | Tranh cổng 80/443 | Bật `COMPOSE_PROFILES=ten_mien` của Chấm công sẽ dựng Caddy thứ hai, cướp cổng và làm chết bot. | **Không bao giờ** bật profile đó trên VPS này. Dùng Caddy đang chạy. |
-| 7 | `ICLOCK_IP_CHO_PHEP` mất tác dụng | Khai sai `PROXY_TIN_CAY` thì mọi request trông như đến từ cùng một IP. | `PROXY_TIN_CAY=172.16.0.0/12`. |
-| 8 | XSS ở một app lộ token cả cụm | Hệ quả trực tiếp của việc chung origin (mục 2). | Không cho app bên thứ ba vào chung origin. Giữ CSP `default-src 'self'`. |
-| 9 | Secret Entra hết hạn | `--years 2` là hạn dài nhất Entra cho phép, hết hạn thì đăng nhập chết không báo trước. | Ghi ngày hết hạn vào lịch ngay khi làm bước 1. |
+| 1 | Module tự ký được token quản trị | Dùng HS256 và chia bí mật cho module | RS256 + JWKS (mục 4). Khóa riêng không rời khỏi cổng. |
+| 2 | `alg=none` / nhầm khóa công khai thành bí mật HMAC | Đọc `alg` từ header rồi tin theo | Danh sách trắng `alg` cứng trong mã (mục 4) |
+| 3 | Xoay khóa làm chết cả cụm | Module cache JWKS mà không tải lại khi gặp `kid` lạ | Bắt buộc trong hợp đồng module + kiểm khi nghiệm thu |
+| 4 | Cổng chết là cả cụm chết | Mọi đăng nhập đi qua một chỗ | Token sống 15 phút nên cổng chết vẫn dùng tiếp được ~15 phút. Healthcheck + autoheal như `openclaw`. |
+| 5 | Open redirect qua `quay_lai` | Không kiểm đích chuyển hướng | Chỉ nhận đường dẫn nội bộ (mục 3) |
+| 6 | Đụng đường `/api` | Caddyfile của bot `handle { reverse_proxy 3978 }` bắt tất, kể cả `/api/*` | Module bắt buộc nằm dưới tiền tố riêng. Kiểm bằng lệnh `health` ở bước 4. |
+| 7 | `handle_path` cắt nhầm tiền tố | `handle_path /chamcong/api/*` cắt cả `/api`, máy chủ trả 404 | `handle` + `uri strip_prefix` cho đường API |
+| 8 | Máy chấm công ngừng đẩy log | `/iclock` bị ép sang HTTPS hoặc bị kéo vào cổng | Bước 6. `iclock` phải trả 200, không phải 301. |
+| 9 | Đổi tiền tố mà không dựng lại | `VITE_BASE` là biến lúc **build**, Vite thay lúc biên dịch | Dựng lại image `web`, không chỉ restart |
+| 10 | Tranh cổng 80/443 | Bật `COMPOSE_PROFILES=ten_mien` của Chấm công sẽ dựng Caddy thứ hai, cướp cổng, giết bot | **Không bao giờ** bật profile đó trên VPS này |
+| 11 | XSS ở một module lộ token cả cụm | Hệ quả của việc chung origin (mục 2) | Module bên thứ ba phải ra subdomain riêng. Giữ CSP `default-src 'self'`. |
+| 12 | Mọi người bị đăng xuất giữa kỳ lương | Giai đoạn B ngắn hơn hạn 30 ngày của token làm mới | Chọn trước: kéo dài giai đoạn B > 30 ngày, hoặc báo trước sẽ đăng nhập lại một lần |
+| 13 | Secret Entra hết hạn | `--years 2` là hạn dài nhất, hết hạn thì đăng nhập chết không báo trước | Ghi ngày hết hạn vào lịch ngay khi tạo |
 
 ---
 
-## 9. Khối lượng
+## 17. Khối lượng
 
 | GĐ | Nội dung | Ước lượng |
 |---|---|---|
-| 1 | Caddyfile hợp nhất, đưa Chấm công lên `/chamcong`, redirect URI Entra, trang chủ cổng tối giản | 1–2 ngày |
-| 2 | Thanh điều hướng chung (`/chung/*`), sinh CSS từ `token.json` + test, bộ chuyển app trong sidebar Chấm công | 2–3 ngày |
-| 3 | Trang `/agent` xem báo cáo (cần thêm tầng HTTP mỏng cho `ai_agent`) | tùy phạm vi |
-| — | `/rfid`, `/tool` | khi hai kho có nội dung |
+| 1 | Cổng: đăng nhập Entra, RS256 + JWKS, sổ đăng ký module, cấp quyền, trang chủ | 5–8 ngày |
+| 2 | Thanh điều hướng chung `/chung/*`, sinh CSS từ `token.json` + test | 2–3 ngày |
+| 3 | Chấm công thành module (giai đoạn A → C ở mục 12) | 4–6 ngày + thời gian chờ giữa các giai đoạn |
+| 4 | App điện thoại chuyển sang cổng (mục 13) | 3–4 ngày |
+| 5 | Module AI Agent — xem `ai_agent/tai_lieu/TRANG-QUAN-TRI.md` | tài liệu riêng |
+| — | `rfid`, `tool` | khi hai kho có nội dung |
+
+Giai đoạn 1 và 2 làm được song song với việc khác. Giai đoạn 3 thì không: nó đụng vào hệ
+đang trả lương, làm một mình và làm chậm.
 
 ---
 
-## 10. Còn phải quyết
+## 18. Còn phải quyết
 
-1. **Tên miền của cổng.** `teams.tranhoangvietnam.com` là tên của bot, không phải tên của
-   một cổng nội bộ. Đổi sang `noibo.` hoặc `portal.` thì rõ nghĩa hơn — nhưng phải thêm bản
-   ghi DNS, thêm redirect URI, và cấu hình lại webhook Teams. Đề xuất: giữ nguyên ở giai
-   đoạn 1, đổi tên ở giai đoạn 3 khi đã có đủ ba mục để cổng đáng có tên riêng.
-2. **RF-ID và TOOL** — ẩn hẳn hay hiện kèm nhãn "Đang xây dựng" (mục 5).
-3. **Sổ tay của `openclaw-teams`** ghi Caddyfile là tài sản có version. Đổi nó thì phải cập
-   nhật `ai_agent/openclaw-teams/caddy/Caddyfile` trong kho `ai_agent` cho khớp bản live,
-   nếu không lần chạy `scripts/drift.sh` tiếp theo sẽ báo lệch.
+1. **Tạo kho `cong-noi-bo` hay dựng tạm trong `Cham-cong`?** (mục 11 — tôi khuyên kho riêng)
+2. **Tên miền của cổng.** `teams.tranhoangvietnam.com` là tên của bot. Cổng nội bộ nên có
+   tên riêng (`noibo.` / `portal.`), nhưng đổi thì phải thêm DNS, thêm redirect URI, cấu
+   hình lại webhook Teams. Đề xuất: giữ nguyên ở giai đoạn 1, đổi khi đã có đủ ba module.
+3. **Giai đoạn B kéo dài hơn 30 ngày, hay chấp nhận cho mọi người đăng nhập lại một lần?**
+4. **Cổng dùng chung instance PostgreSQL với Chấm công hay instance riêng?**
+5. Sửa `/etc/caddy/Caddyfile` thì phải cập nhật bản trong kho `ai_agent` cho khớp, nếu không
+   `scripts/drift.sh` sẽ báo lệch.
