@@ -2,6 +2,36 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.16.3] — 2026-08-14
+
+**Biến khai trong `.env` nhưng không vào được container.**
+
+Bản 1.16.2 thêm `API_GOC_CONG_KHAI`, khai đúng vào `.env` trên VPS, triển khai lại — spec
+vẫn thiếu `servers`. Nguyên nhân: `docker-compose.yml` khai `environment:` **tường minh**
+chứ không dùng `env_file`, nên biến nào không có tên trong danh sách đó thì Docker bỏ qua,
+dù `.env` có. Ứng dụng không báo lỗi, nó chạy bằng giá trị mặc định — lặng lẽ sai.
+
+### Sửa
+
+- **Thêm `API_GOC_CONG_KHAI` và `API_TAI_LIEU_CONG_KHAI`** vào khối `environment:` của
+  service `may_chu`. Biến thứ hai có từ 1.16.0 và cũng chưa bao giờ dùng được — công tắc
+  tắt trang Swagger UI thực tế không tắt được gì.
+- **Thêm `ANH_TOI_DA_BYTE`** — do rào chắn mới bên dưới tìm ra. Giới hạn dung lượng ảnh
+  selfie chấm công chưa bao giờ chỉnh được ở production, luôn kẹt ở mặc định 3 MB.
+- **`TU_DONG_DI_TRU` nay đọc được từ `.env`** thay vì bị ghi cứng `"1"` trong compose. Mặc
+  định không đổi.
+- **Token màu ảnh đại diện chuyển về `thiet_ke/token.json`.** `web/src/token_thiet_ke.css`
+  là tệp **sinh ra**; bản 1.16.0 sửa tay thẳng vào đó, nên lần chạy `npm run sinh_token`
+  kế tiếp sẽ xoá sạch `--av-s` / `--av-l` / `--av-chu` và ảnh đại diện mất màu. Giá trị giữ
+  nguyên, chỉ đổi nơi khai; ghi chú về phép quét 360 hue cũng dời sang `token.json`.
+
+### Thêm
+
+- **Rào chắn biến môi trường** (`may_chu/test/bien_moi_truong.test.ts`). Mọi biến
+  `cau_hinh.ts` đọc phải có tên trong `docker-compose.yml` **và** được tả trong
+  `.env.example`, nếu không thì `npm test` đỏ. Đây đúng là lỗi vừa mắc: thêm biến vào mã
+  nguồn mà quên compose thì không có gì báo, phải chờ tới lúc chạy thật mới lộ.
+
 ## [1.16.2] — 2026-08-14
 
 **Ba khiếm khuyết của spec, phát hiện khi chạy thật bộ sinh client.**

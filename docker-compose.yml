@@ -26,6 +26,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Danh sach TUONG MINH: bien chi vao duoc container khi co ten o day. Khai them bien
+    # trong .env ma quen dong tuong ung ben duoi thi ung dung van chay bang gia tri mac
+    # dinh — khong bao loi, chi lang le sai. Them bien moi vao cau_hinh.ts thi them ca o day.
     environment:
       NODE_ENV: production
       PORT: 8080
@@ -37,6 +40,8 @@ services:
       THU_MUC_ANH: /du_lieu/anh_cham_cong
       THU_MUC_HO_SO: /du_lieu/ho_so
       TEP_TOI_DA_BYTE: ${TEP_TOI_DA_BYTE:-15728640}
+      # Anh selfie moi lan quet — chat hon TEP_TOI_DA_BYTE nhieu vi gui rat thuong xuyen.
+      ANH_TOI_DA_BYTE: ${ANH_TOI_DA_BYTE:-3145728}
       GEOFENCE_BAN_KINH_M: ${GEOFENCE_BAN_KINH_M:-200}
       MAY_OFFLINE_SAU_GIAY: ${MAY_OFFLINE_SAU_GIAY:-180}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
@@ -55,7 +60,15 @@ services:
       MS_TU_DONG_TAO: ${MS_TU_DONG_TAO:-0}
       ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
       ERP_WEBHOOK_SECRET: ${ERP_WEBHOOK_SECRET:-}
-      TU_DONG_DI_TRU: "1"
+      # Trang Swagger UI (/api/v1/tai-lieu). Dat 0 de tat han.
+      API_TAI_LIEU_CONG_KHAI: ${API_TAI_LIEU_CONG_KHAI:-1}
+      # Dia chi cong khai cua API, vi du https://ten-mien/chamcong. May chu nam sau reverse
+      # proxy nen tu no khong biet duong dan ben ngoai. De trong thi ban mo ta OpenAPI khong
+      # co muc `servers`, va cong cu sinh client se mac dinh ve http://localhost.
+      API_GOC_CONG_KHAI: ${API_GOC_CONG_KHAI:-}
+      # Bat o day (khac mac dinh production) vi anh Docker luon mang dung ban di tru hop
+      # voi ma nguon trong no — deploy la len phien ban moi ngay, khong co buoc thu cong.
+      TU_DONG_DI_TRU: ${TU_DONG_DI_TRU:-1}
       # Chi lenh seed doc hai bien nay (docker compose exec may_chu node dist/csdl/seed.js).
       # Thieu chung thi seed KHONG tao duoc tai khoan admin dau tien.
       ADMIN_TEN_DANG_NHAP: ${ADMIN_TEN_DANG_NHAP:-admin}

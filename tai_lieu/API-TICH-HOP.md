@@ -66,6 +66,9 @@ Postman và Insomnia nhập trực tiếp được URL spec, không cần Java l
 > tự suy ra được** địa chỉ công khai: bên ngoài gọi `/chamcong/api/v1/...` còn bên trong
 > container chỉ thấy `/api/v1/...`. Để trống thì spec không có `servers`, và client sinh ra
 > mặc định trỏ về `http://localhost` — không gọi được gì cho tới khi người ta sửa tay.
+>
+> Sửa `.env` xong phải `docker compose up -d` để dựng lại container thì biến mới có hiệu lực;
+> `restart` không đọc lại biến môi trường.
 
 **Tài liệu sinh từ chính mã nguồn, không viết tay.** Thêm đường dẫn mới vào `/api/v1` mà quên
 mô tả thì **máy chủ không khởi động** — nên spec không thể trôi khỏi thực tế.

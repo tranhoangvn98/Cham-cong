@@ -63,10 +63,6 @@
   --chu-ben-sang: #E4E4E7;
   --lien-ket-ben: #93C5FD;
   --vien-ben: #27272A;
-  /* Anh dai dien sinh mau tu ma nhan vien: chi HUE la do JS dat, con do dam / do sang va
-     mau chu do day quyet dinh, vi cung mot cap (S, L) khong the doc duoc o ca hai giao dien.
-     Cap nay chon bang cach quet ca 360 hue: nen toi + chu trang, chu/nen dat 4.92 (WCAG AA
-     can 4.5) va avatar/the-sang dat 4.92. */
   --av-s: 52%;
   --av-l: 30%;
   --av-chu: #FFFFFF;
@@ -104,8 +100,6 @@
     --chu-ben-sang: #E4E4E7;
     --lien-ket-ben: #93C5FD;
     --vien-ben: #27272A;
-    /* Giao dien toi thi dao lai: avatar SANG mau + chu dam. Quet 360 hue: chu/nen 4.67,
-       avatar/the-toi 4.67. Giu nen toi nhu giao dien sang thi vong tron lan vao the (1.35). */
     --av-s: 55%;
     --av-l: 66%;
     --av-chu: #18181B;
@@ -125,9 +119,6 @@
   --nen-mo: #27272A;
   --vien: #3F3F46;
   --vien-dam: #52525B;
-  --av-s: 55%;
-  --av-l: 66%;
-  --av-chu: #18181B;
   --chu: #FAFAFA;
   --chu-nhat: #A1A1AA;
   --chu-mo: #95959F;
@@ -146,6 +137,9 @@
   --chu-ben-sang: #E4E4E7;
   --lien-ket-ben: #93C5FD;
   --vien-ben: #27272A;
+  --av-s: 55%;
+  --av-l: 66%;
+  --av-chu: #18181B;
   --bong: 0 1px 2px rgb(0 0 0 / 30%);
   --bong-noi: 0 6px 16px rgb(0 0 0 / 45%);
 }
