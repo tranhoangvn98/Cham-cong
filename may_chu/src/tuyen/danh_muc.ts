@@ -9,9 +9,11 @@ import { xep_lenh } from '../adms/tuyen.ts';
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
+import { PHAM_VI, la_pham_vi, sinh_khoa } from '../bao_mat/khoa_api.ts';
+import { doc_danh_sach_ip } from '../tien_ich/dia_chi_ip.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, luan_ly, ngay, ngay_bat_buoc, so_nguyen, so_thuc,
-  than, trong_tap, uuid, LoiDauVao, LoiKhongTim, LoiXungDot,
+  than, trong_tap, uuid, uuid_bat_buoc, LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
 
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
@@ -310,6 +312,90 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     await bat_buoc_co_may(serial);
     const id = await xep_lenh(serial, 'CHECK');
     return { ok: true, lenh_id: id, luu_y: 'Bản ghi trùng sẽ tự bị bỏ qua nhờ khóa chống trùng.' };
+  });
+
+  // ------------------------------------------------------------ khoa API tich hop
+  //
+  // Chi admin. Khoa API mo duong vao du lieu cham cong va ho so nhan su cua ca cong ty
+  // bang mot chuoi ky tu — cap cho ai la mot quyet dinh ngang voi cap tai khoan quan tri.
+  app.get('/khoa-api', { preHandler: can_admin }, async () => truy_van(
+    `select k.id, k.ten, k.tien_to, k.pham_vi, k.dang_bat, k.het_han, k.ip_cho_phep,
+            k.ghi_chu, k.tao_luc, k.dung_lan_cuoi, k.so_lan_dung, nd.ten_dang_nhap as tao_boi
+       from khoa_api k
+       left join nguoi_dung nd on nd.id = k.tao_boi
+      order by k.tao_luc desc`,
+  ));
+
+  app.post('/khoa-api', { preHandler: can_admin }, async (req, res) => {
+    const b = than(req.body);
+    const ten = chuoi_bat_buoc(b, 'ten', { toi_da: 100 });
+    const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
+    const ip_cho_phep = chuoi(b, 'ip_cho_phep', { toi_da: 500 });
+    const het_han = ngay(b, 'het_han');
+
+    const tho = b['pham_vi'];
+    const pham_vi = Array.isArray(tho) ? tho.map(String) : [];
+    const sai = pham_vi.filter((p) => !la_pham_vi(p));
+    if (sai.length > 0) {
+      throw new LoiDauVao(`Phạm vi không hợp lệ: ${sai.join(', ')}. Hợp lệ: ${PHAM_VI.join(', ')}.`);
+    }
+    if (pham_vi.length === 0) {
+      throw new LoiDauVao('Phải chọn ít nhất một phạm vi, nếu không khóa không gọi được gì.');
+    }
+    // Khai IP sai dinh dang thi bao NGAY luc tao, khong doi den luc ben tich hop goi vao
+    // roi mo ho khong hieu vi sao bi 403.
+    if (ip_cho_phep !== null && ip_cho_phep.trim() !== '') {
+      doc_danh_sach_ip(ip_cho_phep, 'ip_cho_phep');
+    }
+
+    const { khoa, ma_bam, tien_to } = sinh_khoa();
+    const dong = await truy_van_mot<{ id: string }>(
+      `insert into khoa_api (ten, ma_bam, tien_to, pham_vi, het_han, ip_cho_phep, ghi_chu, tao_boi)
+       values ($1,$2,$3,$4,$5,$6,$7,$8) returning id`,
+      [ten, ma_bam, tien_to, pham_vi, het_han, ip_cho_phep, ghi_chu,
+        nguoi_dung_hien_tai(req).sub],
+    );
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tao_khoa_api', 'khoa_api',
+      dong?.id ?? null, { ten, pham_vi }, req.ip);
+
+    // `khoa` tra ve DUY NHAT lan nay. CSDL chi giu ma bam nen khong the lay lai — mat thi
+    // thu hoi va tao cai moi.
+    return res.code(201).send({ id: dong?.id ?? null, ten, pham_vi, khoa });
+  });
+
+  app.patch('/khoa-api/:id', { preHandler: can_admin }, async (req) => {
+    const id = uuid_bat_buoc(req.params as Record<string, unknown>, 'id');
+    const b = than(req.body);
+    const dang_bat = b['dang_bat'];
+    if (typeof dang_bat !== 'boolean') throw new LoiDauVao('Cần trường "dang_bat" (true/false).');
+    const dong = await truy_van_mot<{ id: string; ten: string }>(
+      'update khoa_api set dang_bat = $2 where id = $1 returning id, ten', [id, dang_bat],
+    );
+    if (dong === null) throw new LoiKhongTim('Không tìm thấy khóa API.');
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, dang_bat ? 'bat_khoa_api' : 'tat_khoa_api',
+      'khoa_api', id, { ten: dong.ten }, req.ip);
+    return { id, dang_bat };
+  });
+
+  app.delete('/khoa-api/:id', { preHandler: can_admin }, async (req) => {
+    const id = uuid_bat_buoc(req.params as Record<string, unknown>, 'id');
+    const dong = await truy_van_mot<{ ten: string }>(
+      'delete from khoa_api where id = $1 returning ten', [id],
+    );
+    if (dong === null) throw new LoiKhongTim('Không tìm thấy khóa API.');
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xoa_khoa_api', 'khoa_api', id,
+      { ten: dong.ten }, req.ip);
+    return { da_xoa: true };
+  });
+
+  /** Nhat ky goi cua mot khoa — de doi chieu khi ben tich hop bao khong lay duoc du lieu. */
+  app.get('/khoa-api/:id/nhat-ky', { preHandler: can_admin }, async (req) => {
+    const id = uuid_bat_buoc(req.params as Record<string, unknown>, 'id');
+    return truy_van(
+      `select duong_dan, phuong_thuc, ma_tra_ve, dia_chi_ip, mili_giay, tao_luc
+         from nhat_ky_api where khoa_api_id = $1 order by id desc limit 200`,
+      [id],
+    );
   });
 
   app.get('/thiet-bi/:serial/lenh', { preHandler: can_nhan_su }, async (req) => {

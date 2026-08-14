@@ -357,6 +357,20 @@ input[type="checkbox"] {
 .hop-loi { background: var(--xau-nen); color: var(--xau); border-color: var(--xau); }
 .hop-tot { background: var(--tot-nen); color: var(--tot); border-color: var(--tot); }
 .hop-luu-y { background: var(--canh-bao-nen); color: var(--canh-bao); border-color: var(--canh-bao); }
+
+/* Khoi lenh mau cho nguoi dung copy — vi du curl trong hop thoai khoa API. */
+.khoi-ma {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--nen-mo);
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+}
 .hop-tin { background: var(--lanh-nen); color: var(--lanh); border-color: var(--lanh); }
 
 .trong {

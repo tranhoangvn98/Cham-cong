@@ -2,6 +2,46 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.15.0] — 2026-08-14
+
+**API tích hợp `/api/v1` — cổng cho hệ thống ngoài gọi vào.**
+
+ERP/kế toán, phần mềm nhân sự khác và cổng thông tin nội bộ giờ nối vào được như một dịch vụ
+độc lập, không phải mượn tài khoản người dùng.
+
+### Thêm mới
+
+- **Khóa API + phạm vi quyền** (di trú `011`). Xác thực bằng khóa sống lâu thay vì JWT 15 phút
+  — hệ thống ngoài chạy theo lịch lúc 2 giờ sáng, không có ai ngồi nhập mật khẩu. Khóa gắn với
+  **một bên tích hợp** chứ không phải một người: thu hồi khóa của ERP không làm ai mất quyền
+  đăng nhập.
+  - Bảy phạm vi: `nhan_vien:doc|ghi`, `bang_cong:doc`, `lan_quet:doc`, `nghi_phep:doc`,
+    `ho_so:doc`, `su_kien:doc`.
+  - **Không có phạm vi ghi cho bảng công và lần quẹt** — đó là bản ghi gốc để tính lương; cho
+    hệ thống ngoài ghi đè là mở đường sửa sổ chấm công mà không qua duyệt. Có test khóa điều này.
+  - CSDL chỉ giữ **mã băm SHA-256**; khóa gốc hiện đúng một lần lúc tạo. Lưu khóa gốc nghĩa là
+    ai đọc được một bản sao lưu là gọi được API thật.
+  - Khai thêm được **dải IP** cho từng khóa — khóa lộ ra ngoài cũng không dùng được từ chỗ khác.
+- **Đường dẫn `/api/v1/*`**: `toi`, `nhan-vien` (đọc + upsert theo `ma_nv`), `bang-cong`,
+  `bang-cong/tong-hop`, `lan-quet`, `nghi-phep`, `su-kien`.
+  - Định danh đối ngoại là **`ma_nv`**, không lộ UUID nội bộ — bên tích hợp gắn vào UUID rồi ta
+    đổi cơ sở dữ liệu là họ hỏng hết.
+  - Hình dạng phản hồi **cố định**: `{ du_lieu, phan_trang }` cho danh sách,
+    `{ loi: { ma, thong_diep } }` cho lỗi. `ma` là thứ client đối chiếu bằng code, nên sửa chữ
+    tiếng Việt trong `thong_diep` không làm hỏng bên nào.
+  - Bảng công mặc định **chỉ trả ngày đã chốt**: ngày chưa chốt còn đổi (nhân sự sửa tay, đơn
+    nghỉ duyệt muộn), bên lương lấy về là tính xong rồi số liệu đổi.
+  - `PUT /nhan-vien/{ma_nv}` là **upsert**, và **trường không gửi thì giữ nguyên** — hệ thống
+    nhân sự bên kia thường chỉ biết một phần thông tin, gửi thiếu mà bị xóa mất `pin_may` là
+    mất chấm công của người đó. Không có đường xóa nhân viên qua API.
+  - `GET /su-kien?tu_id=` để kéo sự kiện về khi bên tích hợp không nhận webhook được. Hệ thống
+    **không giữ con trỏ cho từng bên**, nên nhiều hệ thống cùng đọc mà không đạp nhau.
+- **Nhật ký gọi API**: mọi lần gọi vào `/api/v1` đều được ghi, kể cả lần bị từ chối 401/403. Bên
+  tích hợp báo "hôm qua không lấy được dữ liệu" thì tra ra được, không phải đôi co.
+- **Trang Khóa API** (Hệ thống, chỉ admin): tạo, tắt/bật, xóa, xem nhật ký gọi.
+- Tài liệu `tai_lieu/API-TICH-HOP.md` — kèm quy tắc thay đổi về sau: trong `v1` chỉ được thêm,
+  muốn xóa trường hay đổi kiểu thì phải mở `v2` và chạy song song.
+
 ## [1.14.5] — 2026-08-14
 
 **Máy đẩy chấm công bằng `table=rtlog` — trước đây bị vứt đi im lặng.**

@@ -13,6 +13,7 @@ import { TrangDuyetDon } from './trang/duyet_don.tsx';
 import { TrangCaLam, TrangDiaDiem, TrangNgayLe } from './trang/cai_dat.tsx';
 import { TrangLanQuet } from './trang/lan_quet.tsx';
 import { TrangNguoiDung, TrangNhatKy } from './trang/nguoi_dung.tsx';
+import { TrangKhoaApi } from './trang/khoa_api.tsx';
 import { TrangHoSo } from './trang/ho_so.tsx';
 import { TrangKhoTep } from './trang/kho_tep.tsx';
 
@@ -53,6 +54,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/dia-diem', ten: 'Địa điểm', icon: 'map-pin', nhom: 'Hệ thống', phu: 'Đối chiếu GPS khi đi công tác' },
   { duong_dan: '/ngay-le', ten: 'Ngày lễ', icon: 'star', nhom: 'Hệ thống', phu: 'Tết Nguyên đán phải tự thêm mỗi năm' },
   { duong_dan: '/tai-khoan', ten: 'Tài khoản', icon: 'key', nhom: 'Hệ thống', phu: 'Người dùng và vai trò', quyen: 'admin' },
+  { duong_dan: '/khoa-api', ten: 'Khóa API', icon: 'key', nhom: 'Hệ thống', phu: 'Cho hệ thống ngoài gọi vào', quyen: 'admin' },
   { duong_dan: '/kho-tep', ten: 'Kho tệp hồ sơ', icon: 'folder', nhom: 'Hệ thống', phu: 'Tệp đính kèm và đường dẫn đã lưu', quyen: 'nhan_su' },
   { duong_dan: '/nhat-ky', ten: 'Nhật ký thao tác', icon: 'list-details', nhom: 'Hệ thống', phu: 'Ai sửa gì, khi nào', quyen: 'admin' },
 ];
@@ -81,6 +83,7 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/dia-diem': return <TrangDiaDiem />;
     case '/ngay-le': return <TrangNgayLe />;
     case '/tai-khoan': return la_admin() ? <TrangNguoiDung /> : <KhongCoQuyen />;
+    case '/khoa-api': return la_admin() ? <TrangKhoaApi /> : <KhongCoQuyen />;
     case '/kho-tep': return la_nhan_su() ? <TrangKhoTep /> : <KhongCoQuyen />;
     case '/nhat-ky': return la_admin() ? <TrangNhatKy /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;

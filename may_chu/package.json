@@ -1,6 +1,6 @@
 {
   "name": "@cham-cong/may-chu",
-  "version": "1.14.5",
+  "version": "1.15.0",
   "private": true,
   "type": "module",
   "description": "Backend: cong ADMS cho may ZKTeco + REST API cho webapp va app dien thoai",
@@ -11,7 +11,7 @@
     "start": "node dist/index.js",
     "di_tru": "node --experimental-strip-types src/csdl/chay_di_tru.ts",
     "seed": "node --experimental-strip-types src/csdl/seed.ts",
-    "test": "node --experimental-strip-types --test test/giao_thuc.test.ts test/tinh_cong.test.ts test/bao_mat.test.ts test/dia_chi_ip.test.ts test/microsoft.test.ts test/csv.test.ts test/quyen_ho_so.test.ts test/che_du_lieu.test.ts test/doc_office.test.ts test/moi_test_deu_chay.test.ts && node --experimental-strip-types --test test/proxy_tin_cay.test.ts",
+    "test": "node --experimental-strip-types --test test/giao_thuc.test.ts test/tinh_cong.test.ts test/bao_mat.test.ts test/dia_chi_ip.test.ts test/microsoft.test.ts test/csv.test.ts test/quyen_ho_so.test.ts test/che_du_lieu.test.ts test/doc_office.test.ts test/khoa_api.test.ts test/moi_test_deu_chay.test.ts && node --experimental-strip-types --test test/proxy_tin_cay.test.ts",
     "kiem_tra_kieu": "tsc -p tsconfig.kiem_tra.json",
     "test_e2e": "node --experimental-strip-types --test test/e2e.test.ts",
     "test_tat_ca": "npm test && npm run test_e2e"

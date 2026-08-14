@@ -1,5 +1,9 @@
 # REST API
 
+> Đây là API **nội bộ** dùng cho webapp và app điện thoại của chính hệ thống này.
+> Hệ thống ngoài (ERP, phần mềm nhân sự khác) dùng [`API-TICH-HOP.md`](API-TICH-HOP.md) —
+> cổng `/api/v1` có khóa API, phạm vi quyền và cam kết không phá vỡ tương thích.
+
 Máy chủ mặc định ở `http://localhost:8080`.
 
 ## Xác thực

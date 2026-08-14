@@ -2212,3 +2212,201 @@ test('ban truy xuat tep: nhan vien thuong khong duoc xem', async () => {
   const r = await goi('GET', '/api/ho-so/tep', { token: hs_token_a });
   assert.equal(r.ma, 403);
 });
+
+// ============================================================ API TICH HOP /api/v1
+//
+// Cong danh cho he thong ngoai: khoa API + pham vi quyen, khong dung JWT cua webapp.
+// Phan quan trong nhat can chung minh la KHOA CHI-DOC KHONG GHI DUOC — do la ly do ton
+// tai cua pham vi quyen.
+let khoa_doc = '';
+let khoa_ghi = '';
+let khoa_doc_id = '';
+
+const goi_v1 = async (duong_dan: string, khoa: string | null, tuy: {
+  method?: string; body?: unknown;
+} = {}) => {
+  const r = await app.inject({
+    method: (tuy.method ?? 'GET') as 'GET',
+    url: duong_dan,
+    headers: khoa === null ? {} : { authorization: `Bearer ${khoa}` },
+    ...(tuy.body === undefined ? {} : { payload: tuy.body as object }),
+  });
+  let body: Record<string, unknown> = {};
+  try { body = JSON.parse(r.body) as Record<string, unknown>; } catch { /* khong phai JSON */ }
+  return { ma: r.statusCode, body, tho: r.body };
+};
+
+test('khoa API: admin tao duoc, khoa goc chi hien MOT lan', async () => {
+  const r = await goi('POST', '/api/khoa-api', {
+    token: token_admin,
+    body: { ten: 'ERP kế toán', pham_vi: ['bang_cong:doc', 'nhan_vien:doc'] },
+  });
+  assert.equal(r.ma, 201);
+  khoa_doc = r.body['khoa'] as string;
+  khoa_doc_id = r.body['id'] as string;
+  assert.ok(khoa_doc.startsWith('ck_'));
+
+  // Doc lai danh sach: KHONG duoc lo khoa goc, chi con tien to.
+  const ds = await goi('GET', '/api/khoa-api', { token: token_admin });
+  assert.equal(ds.ma, 200);
+  assert.doesNotMatch(JSON.stringify(ds.body), new RegExp(khoa_doc.slice(3, 20)),
+    'danh sach khoa API khong duoc chua khoa goc');
+});
+
+test('khoa API: pham vi bia bi tu choi ngay luc tao', async () => {
+  const r = await goi('POST', '/api/khoa-api', {
+    token: token_admin, body: { ten: 'Bịa', pham_vi: ['nhan_vien:xoa'] },
+  });
+  assert.equal(r.ma, 400);
+});
+
+test('khoa API: pham vi rong bi tu choi (khoa vo dung)', async () => {
+  const r = await goi('POST', '/api/khoa-api', {
+    token: token_admin, body: { ten: 'Rỗng', pham_vi: [] },
+  });
+  assert.equal(r.ma, 400);
+});
+
+test('khoa API: nhan vien thuong khong tao duoc', async () => {
+  const r = await goi('POST', '/api/khoa-api', {
+    token: token_nhan_vien, body: { ten: 'Lén', pham_vi: ['bang_cong:doc'] },
+  });
+  assert.equal(r.ma, 403);
+});
+
+test('/api/v1: khong co khoa -> 401 kem ma loi on dinh', async () => {
+  const r = await goi_v1('/api/v1/nhan-vien', null);
+  assert.equal(r.ma, 401);
+  assert.equal((r.body['loi'] as Record<string, unknown>)['ma'], 'thieu_khoa');
+});
+
+test('/api/v1: khoa bia -> 401', async () => {
+  const r = await goi_v1('/api/v1/nhan-vien', 'ck_khoa_bia_khong_ton_tai_gi_ca_12345');
+  assert.equal(r.ma, 401);
+  assert.equal((r.body['loi'] as Record<string, unknown>)['ma'], 'khoa_sai');
+});
+
+test('/api/v1: JWT cua webapp KHONG dung duoc lam khoa API', async () => {
+  // Hai he xac thuc phai tach han. Lot duoc bang JWT nghia la moi nhan vien deu goi duoc
+  // API tich hop voi quyen cua khoa.
+  const r = await goi_v1('/api/v1/nhan-vien', token_admin);
+  assert.equal(r.ma, 401);
+});
+
+test('/api/v1/toi: tra ve ten va pham vi cua chinh khoa do', async () => {
+  const r = await goi_v1('/api/v1/toi', khoa_doc);
+  assert.equal(r.ma, 200);
+  const d = r.body['du_lieu'] as Record<string, unknown>;
+  assert.equal(d['ten'], 'ERP kế toán');
+  assert.deepEqual(d['pham_vi'], ['bang_cong:doc', 'nhan_vien:doc']);
+});
+
+test('/api/v1/nhan-vien: tra ve hinh dang { du_lieu, phan_trang }', async () => {
+  const r = await goi_v1('/api/v1/nhan-vien', khoa_doc);
+  assert.equal(r.ma, 200);
+  assert.ok(Array.isArray(r.body['du_lieu']));
+  const pt = r.body['phan_trang'] as Record<string, unknown>;
+  assert.equal(typeof pt['tong'], 'number');
+  // Dinh danh doi ngoai la ma_nv, khong lo uuid noi bo.
+  const d0 = (r.body['du_lieu'] as Record<string, unknown>[])[0];
+  if (d0 !== undefined) {
+    assert.ok('ma_nv' in d0, 'phai co ma_nv');
+    assert.ok(!('id' in d0), 'khong duoc lo uuid noi bo ra ngoai');
+  }
+});
+
+test('/api/v1: khoa CHI-DOC khong ghi duoc nhan vien -> 403', async () => {
+  const r = await goi_v1('/api/v1/nhan-vien/NV-KHONG-CO', khoa_doc, {
+    method: 'PUT', body: { ho_ten: 'Ai đó' },
+  });
+  assert.equal(r.ma, 403);
+  assert.equal((r.body['loi'] as Record<string, unknown>)['ma'], 'thieu_pham_vi');
+});
+
+test('/api/v1: khoa thieu pham vi bang_cong khong doc duoc bang cong', async () => {
+  const r0 = await goi('POST', '/api/khoa-api', {
+    token: token_admin, body: { ten: 'Chỉ nhân viên', pham_vi: ['nhan_vien:doc'] },
+  });
+  const r = await goi_v1('/api/v1/bang-cong?tu=2026-08-01&den=2026-08-31',
+    r0.body['khoa'] as string);
+  assert.equal(r.ma, 403);
+});
+
+test('/api/v1: khoa co pham vi ghi thi tao va sua duoc nhan vien', async () => {
+  const r0 = await goi('POST', '/api/khoa-api', {
+    token: token_admin, body: { ten: 'HRM đồng bộ', pham_vi: ['nhan_vien:doc', 'nhan_vien:ghi'] },
+  });
+  khoa_ghi = r0.body['khoa'] as string;
+
+  const tao = await goi_v1('/api/v1/nhan-vien/TICHHOP01', khoa_ghi, {
+    method: 'PUT', body: { ho_ten: 'Trần Tích Hợp', pin_may: '7777' },
+  });
+  assert.equal(tao.ma, 200);
+  assert.equal(tao.body['da_tao'], true);
+
+  // Goi LAI cung ma: phai la cap nhat, khong tao them nguoi thu hai.
+  const lai = await goi_v1('/api/v1/nhan-vien/TICHHOP01', khoa_ghi, {
+    method: 'PUT', body: { chuc_danh: 'Kỹ sư' },
+  });
+  assert.equal(lai.ma, 200);
+  assert.equal(lai.body['da_tao'], false);
+
+  // Truong khong gui phai GIU NGUYEN — gui thieu ma bi xoa mat PIN la mat cham cong.
+  const doc = await goi_v1('/api/v1/nhan-vien/TICHHOP01', khoa_ghi);
+  const d = doc.body['du_lieu'] as Record<string, unknown>;
+  assert.equal(d['pin_may'], '7777', 'PIN phai con nguyen sau lan cap nhat khong gui pin_may');
+  assert.equal(d['chuc_danh'], 'Kỹ sư');
+});
+
+test('/api/v1: khoa da tat thi khong goi duoc nua', async () => {
+  const tat = await goi('PATCH', `/api/khoa-api/${khoa_doc_id}`, {
+    token: token_admin, body: { dang_bat: false },
+  });
+  assert.equal(tat.ma, 200);
+
+  const r = await goi_v1('/api/v1/toi', khoa_doc);
+  assert.equal(r.ma, 401);
+  assert.equal((r.body['loi'] as Record<string, unknown>)['ma'], 'khoa_da_tat');
+
+  // Bat lai de cac test sau con dung.
+  await goi('PATCH', `/api/khoa-api/${khoa_doc_id}`, {
+    token: token_admin, body: { dang_bat: true },
+  });
+});
+
+test('/api/v1: duong dan la tra JSON dung hinh dang, khong phai 404 cua Fastify', async () => {
+  const r = await goi_v1('/api/v1/khong-co-that', khoa_doc);
+  assert.equal(r.ma, 404);
+  assert.equal((r.body['loi'] as Record<string, unknown>)['ma'], 'khong_co_duong_dan');
+});
+
+test('/api/v1/su-kien: doc theo con tro tu_id, khong dam nhau giua cac ben', async () => {
+  const r0 = await goi('POST', '/api/khoa-api', {
+    token: token_admin, body: { ten: 'Nguồn sự kiện', pham_vi: ['su_kien:doc'] },
+  });
+  const k = r0.body['khoa'] as string;
+
+  const lan_1 = await goi_v1('/api/v1/su-kien?tu_id=0&gioi_han=5', k);
+  assert.equal(lan_1.ma, 200);
+  const ds = lan_1.body['du_lieu'] as Record<string, unknown>[];
+  if (ds.length > 0) {
+    const id_cuoi = lan_1.body['id_cuoi'];
+    // Hoi tiep tu con tro: khong duoc tra lai chinh nhung su kien vua doc.
+    const lan_2 = await goi_v1(`/api/v1/su-kien?tu_id=${String(id_cuoi)}&gioi_han=5`, k);
+    const ds2 = lan_2.body['du_lieu'] as Record<string, unknown>[];
+    const trung = ds2.filter((x) => ds.some((y) => y['id'] === x['id']));
+    assert.equal(trung.length, 0, 'khong duoc tra lai su kien da doc');
+  } else {
+    assert.equal(lan_1.body['id_cuoi'], null, 'het du lieu thi id_cuoi phai la null');
+  }
+});
+
+test('nhat ky API: lan goi cua khoa duoc ghi lai de con doi chieu', async () => {
+  await goi_v1('/api/v1/toi', khoa_doc);
+  // onResponse chay sau khi tra loi — cho mot nhip cho ghi xong.
+  await new Promise((ok) => setTimeout(ok, 150));
+  const r = await goi('GET', `/api/khoa-api/${khoa_doc_id}/nhat-ky`, { token: token_admin });
+  assert.equal(r.ma, 200);
+  const ds = r.body as unknown as Record<string, unknown>[];
+  assert.ok(Array.isArray(ds) && ds.length > 0, 'phai co it nhat mot dong nhat ky');
+});
