@@ -95,6 +95,43 @@ khóa**, email đổi được.
 
 ---
 
+## Module gọi cổng những đầu mối nào
+
+Rất ít — và **không có đầu mối nào nằm trên đường đi của một request người dùng**.
+
+| Đầu mối | Khi nào gọi |
+|---|---|
+| `GET /cong/.well-known/jwks.json` | 1 lần/giờ, và ngay khi gặp `kid` lạ |
+| `GET /cong/.well-known/openid-configuration` | 1 lần lúc khởi động, nếu thư viện JWT tự dò |
+| `POST /cong/api/token-dich-vu` | service chạy nền, 1 lần/giờ (mã + bí mật → token `dv`) |
+| `GET /cong/api/nguoi-dung?sub=a,b,c` | chỉ khi cần hiển thị tên **người khác**, xem dưới |
+
+**Không có** `POST /cong/api/kiem-tra-quyen`, và sẽ không có. Quyền đã nằm trong token; hỏi
+cổng ở mỗi request biến cổng thành điểm nghẽn và điểm hỏng duy nhất của cả cụm.
+
+Hệ quả tốt: **cổng chết thì module vẫn phục vụ bình thường** cho tới khi token hết hạn
+(15 phút). Đừng viết mã làm mất tính chất đó.
+
+## Hiển thị tên người khác
+
+Token mang `ten` và `email` của **người đang đăng nhập**. Nhưng màn hình duyệt đơn cần hiện
+*"duyệt bởi Nguyễn Văn B"* — B không phải người đang đăng nhập.
+
+Ba cách, xếp theo thứ tự nên dùng:
+
+1. **Nhân bản lúc ghi.** Lưu `nguoi_duyet_ten` bên cạnh `nguoi_duyet_cong_id` ngay lúc duyệt.
+   Không gọi cổng lần nào, và đúng về nghiệp vụ: sổ sách phải ghi tên **tại thời điểm** duyệt,
+   không phải tên hiện tại.
+2. **Tra theo lô, có cache.** `GET /cong/api/nguoi-dung?sub=a,b,c` — một lần cho cả trang,
+   không phải mỗi dòng một lần.
+3. **Nghe sự kiện cổng phát khi người dùng đổi tên** rồi cập nhật bản sao. Chỉ làm khi cách 2
+   thành gánh nặng.
+
+Nhân bản dữ liệu giữa các service không phải lỗi thiết kế — đó là cách đổi tính nhất quán tức
+thời lấy tính độc lập. Cái phải tránh là gọi đồng bộ chéo trong đường đi của request.
+
+---
+
 ## Payload token
 
 ```json

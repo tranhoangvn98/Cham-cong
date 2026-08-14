@@ -1,12 +1,12 @@
 # Cổng chung: kiến trúc mô-đun
 
-Tài liệu **thiết kế**, chưa triển khai. Đọc và duyệt trước, rồi mới làm theo mục 15.
+Tài liệu **thiết kế**, chưa triển khai. Đọc và duyệt trước, rồi mới làm theo mục 18.
 
 Người viết một service mới chỉ cần đọc [`KET-NOI-MODUN.md`](KET-NOI-MODUN.md) — tài liệu này
 dành cho người thiết kế và vận hành chính cái cổng.
 
 > **Vị trí tạm.** Tài liệu này đang nằm trong kho `Cham-cong` vì kho của cổng chưa tồn tại.
-> Khi dựng kho `cong-noi-bo` (mục 11), chuyển cả hai tệp sang đó — cổng không được là tài
+> Khi dựng kho `cong-noi-bo` (mục 14), chuyển cả hai tệp sang đó — cổng không được là tài
 > sản của một module.
 
 ---
@@ -113,7 +113,7 @@ nó nằm ở `/chamcong/api/*`.
 
 > ⚠️ Đây là thay đổi **thu hẹp**, trong khi quy ước của `openclaw-teams` (docs/GD2-PHAN2.md)
 > là *"thay đổi Caddy phải ADDITIVE"*. Cố ý phá quy ước đó, nên phải nghiệm thu bằng cả hai
-> cách ở bước 4 mục 15: `curl` trả 401 **và** nhắn thật cho bot trong Teams. Lùi lại là chép
+> cách ở bước 4 mục 18: `curl` trả 401 **và** nhắn thật cho bot trong Teams. Lùi lại là chép
 > lại tệp sao lưu và `systemctl reload caddy`.
 
 ### Đường dẫn ngắn: bí danh có kiểm soát
@@ -156,7 +156,7 @@ bộ tài liệu này dựng lên để tránh: thêm một service không đư�
 Muốn URL sạch mà không có tiền tố thì lối đi đúng là **subdomain cho từng module**
 (`chamcong.tranhoangvietnam.com`) — hết trùng, hết tiền tố, lại thêm ranh giới bảo mật thật.
 Cái giá là mất SSO nhờ chung `localStorage`, phải chuyển sang cookie và mở CORS (mục 2). Đây
-là đánh đổi có thật, để ở mục 18 cho anh quyết.
+là đánh đổi có thật, để ở mục 21 cho anh quyết.
 
 ### Vì sao chung một origin
 
@@ -217,7 +217,7 @@ Microsoft xác thực "ai"  ->  cổng quyết định "được làm gì"  ->  
 |---|---|
 | `mat_khau.ts` (scrypt) | Không còn chỗ nào băm mật khẩu, trừ tài khoản thoát hiểm |
 | Màn hình đổi mật khẩu, cờ `phai_doi_mat_khau` | Chính sách mật khẩu về Entra lo |
-| Chuyển băm mật khẩu khi nhập tài khoản (mục 12) | Chỉ khớp theo Entra object id / email |
+| Chuyển băm mật khẩu khi nhập tài khoản (mục 15) | Chỉ khớp theo Entra object id / email |
 | Đặt lại mật khẩu cho nhân viên quên | Việc của IT trên Entra, không phải của nhân sự |
 
 **Được thêm** mà không phải viết dòng nào: MFA, Conditional Access, khóa tài khoản khi nghỉ
@@ -265,7 +265,7 @@ là hành vi không ai mong đợi. Cần thoát hẳn thì có mục riêng "Đ
 
 **Mọi tài khoản đang dùng phải khớp được với một tài khoản Entra.** Tài khoản nào không khớp
 thì sau khi chuyển là không đăng nhập được nữa. Chạy đối soát và xử lý hết trước khi sang
-giai đoạn B ở mục 12 — đây là việc phải làm, không phải việc nên làm.
+giai đoạn B ở mục 15 — đây là việc phải làm, không phải việc nên làm.
 
 **Đã xác nhận: mọi nhân viên đều có tài khoản Microsoft.** Nên không cần đường đăng nhập thứ
 hai, và "chỉ Microsoft" áp dụng được cho cả web lẫn app điện thoại.
@@ -368,7 +368,7 @@ Ba điểm bắt buộc:
   nghĩa là "đã xác thực, chưa được phân quyền". Trong mô hình mới nó là `quyen.chamcong` rỗng
   — cùng ý nghĩa, nhưng tổng quát cho mọi module và không tốn một vai trò đặc biệt.
 - **Không nhét `nhan_vien_id` vào token.** Đó là khái niệm của Chấm công, không phải của
-  cổng. Module tự giữ bảng ánh xạ `cong_id` → thực thể của nó (mục 12). Cổng nhét khái niệm
+  cổng. Module tự giữ bảng ánh xạ `cong_id` → thực thể của nó (mục 15). Cổng nhét khái niệm
   của một module vào token là bắt đầu phá chính ranh giới nó dựng ra.
 
 ### Token có nên phình khi có nhiều module không
@@ -460,7 +460,186 @@ thao tác dưới tên một nhân viên nào.
 
 ---
 
-## 9. Vòng đời và thu hồi
+## 9. Luồng chạy: từ đăng nhập tới gọi API của module
+
+Câu hỏi quan trọng nhất khi vận hành: **qua được lớp xác minh rồi thì đi tiếp thế nào?**
+
+```
+ ┌────────┐        ┌──────────┐      ┌──────┐   ┌──────────────┐  ┌───────────┐
+ │Trình   │        │  Cổng    │      │Entra │   │ Web module   │  │API module │
+ │duyệt   │        │  :8090   │      │  ID  │   │ (tệp tĩnh)   │  │           │
+ └───┬────┘        └────┬─────┘      └──┬───┘   └──────┬───────┘  └─────┬─────┘
+     │ 1. GET /         │               │              │                │
+     ├─────────────────►│               │              │                │
+     │ 2. chưa có phiên → /cong/dang-nhap              │                │
+     │◄─────────────────┤               │              │                │
+     │ 3. OAuth + PKCE  │               │              │                │
+     ├──────────────────┴──────────────►│              │                │
+     │ 4. mã ủy quyền → /cong/api/xac-thuc/microsoft/goi-ve             │
+     ├─────────────────►│               │              │                │
+     │                  │ 5. đổi mã lấy id_token, đọc oid               │
+     │                  ├──────────────►│              │                │
+     │                  │ 6. tra nguoi_dung + quyen_nguoi_dung          │
+     │                  │    (CSDL của cổng)           │                │
+     │                  │ 7. KÝ token RS256 chứa quyen{}                │
+     │ 8. 302 về /#token_truy_cap=…&token_lam_moi=…    │                │
+     │◄─────────────────┤               │              │                │
+     │ 9. lưu localStorage['cong_phien'], xóa neo khỏi thanh địa chỉ    │
+     │                  │               │              │                │
+     │ 10. bấm "Chấm công" → GET /chamcong/            │                │
+     ├─────────────────────────────────────────────────►                │
+     │ 11. tệp tĩnh                     │              │                │
+     │◄─────────────────────────────────────────────────┤                │
+     │ 12. JS đọc localStorage (CÙNG origin nên thấy)  │                │
+     │ 13. GET /chamcong/api/bang-cong  Authorization: Bearer …          │
+     ├──────────────────────────────────────────────────────────────────►
+     │                  │               │              │  14. xác minh  │
+     │                  │               │              │  CỤC BỘ bằng   │
+     │                  │               │              │  JWKS đã cache │
+     │                  │               │              │  15. đọc       │
+     │                  │               │              │  quyen.chamcong│
+     │                  │               │              │  16. tra       │
+     │                  │               │              │  cong_id=sub   │
+     │ 17. dữ liệu      │               │              │                │
+     │◄──────────────────────────────────────────────────────────────────┤
+```
+
+**Bước 14 là điểm mấu chốt: module KHÔNG gọi cổng.** Nó xác minh chữ ký ngay trong tiến
+trình của mình bằng khóa công khai đã cache. Cổng chỉ xuất hiện ở bước 1–8 (đăng nhập, vài
+phút một lần) và ở lần tải JWKS đầu tiên.
+
+Nếu module phải hỏi cổng ở mỗi request thì đó không còn là microservice — đó là monolith bị
+xé ra rồi nối lại bằng HTTP, chậm hơn và mong manh hơn bản gốc. Chữ ký bất đối xứng tồn tại
+chính là để tránh điều đó.
+
+Hệ quả cụ thể: **cổng chết thì các module vẫn phục vụ bình thường** cho tới khi access token
+hết hạn (15 phút). Chỉ đăng nhập mới là không được.
+
+### App điện thoại khác ở đâu
+
+Bước 8–9 không dùng được vì app native không có `localStorage` và không nhận được phần neo
+của URL. Thay bằng: mở trình duyệt hệ thống → Entra → deep link về app kèm mã → app đổi mã
+lấy token qua `POST /cong/api/token` → cất vào `expo-secure-store`. Từ bước 13 trở đi giống
+hệt web.
+
+---
+
+## 10. Phân quyền xác định từ cái gì — ba tầng
+
+Đây là chỗ dễ lẫn nhất, nên tách bạch rõ ai quyết cái gì:
+
+| Tầng | Câu hỏi | Ai trả lời | Dựa vào |
+|---|---|---|---|
+| 1. Xác thực | **Anh là ai?** | Microsoft Entra ID | Tài khoản công ty, MFA, Conditional Access |
+| 2. Phân quyền thô | **Được vào module nào, với vai trò gì?** | Cổng | Bảng `quyen_nguoi_dung` → nhét vào `quyen` trong token |
+| 3. Phân quyền tinh | **Trong module đó được xem/sửa bản ghi nào?** | Chính module | `quyen[<mã module>]` **+** dữ liệu nghiệp vụ của module |
+
+Ví dụ chạy suốt ba tầng:
+
+1. Entra xác nhận đây là `an.nv@tranhoangvietnam.com`, `oid = 7c3a…`.
+2. Cổng tra ra: người này có `["truong_phong"]` ở `chamcong`, `["su_dung"]` ở `agent`, không
+   có gì ở `rfid`. Ký vào token.
+3. Chấm công đọc `quyen.chamcong = ["truong_phong"]`, rồi **tự** quyết: trưởng phòng chỉ xem
+   được nhân viên trong phòng mình. Logic đó nằm ở `may_chu/src/bao_mat/quyen_ho_so.ts`.
+
+**Cổng không biết "phòng ban" là gì, và không được biết.** Nó chỉ biết chuỗi
+`"truong_phong"` là một vai trò hợp lệ mà module `chamcong` đã khai. Ngày Chấm công đổi luật
+"trưởng phòng xem được gì", cổng không phải sửa một dòng nào — đó chính là thước đo ranh giới
+có đúng hay không.
+
+Câu hỏi kiểm tra khi thiết kế tính năng mới: *cổng có phải biết thêm khái niệm nghiệp vụ nào
+không?* Nếu có, gần như chắc chắn là đặt sai chỗ.
+
+---
+
+## 11. Bề mặt API của cổng
+
+**Có, cổng phải có API riêng** — nhưng nhỏ, và cố ý **không** có đầu mối "kiểm tra quyền cho
+tôi" gọi ở mỗi request.
+
+### Module gọi (rất ít)
+
+| Đầu mối | Ai gọi | Tần suất |
+|---|---|---|
+| `GET /cong/.well-known/jwks.json` | mọi module | 1 lần/giờ + khi gặp `kid` lạ |
+| `GET /cong/.well-known/openid-configuration` | thư viện JWT tự dò | 1 lần lúc khởi động |
+| `POST /cong/api/token-dich-vu` | service chạy nền | 1 lần/giờ |
+| `GET /cong/api/nguoi-dung?sub=a,b,c` | module cần **tên người khác** | có cache, xem dưới |
+
+Hết. Không có gì khác nằm trên đường đi của một request người dùng.
+
+### Trình duyệt gọi (không phải module)
+
+```
+GET  /cong/dang-nhap                          màn hình đăng nhập
+GET  /cong/api/xac-thuc/microsoft/goi-ve      Entra gọi về
+POST /cong/api/token                          đổi mã lấy token (app điện thoại)
+POST /cong/api/lam-moi                        làm mới access token
+POST /cong/api/dang-xuat                      thu hồi token làm mới
+GET  /cong/api/toi                            tôi là ai + vào được module nào
+```
+
+`/cong/api/toi` là thứ thanh điều hướng dùng để vẽ menu. Module **không** cần gọi nó — thông
+tin đã nằm sẵn trong token.
+
+### Quản trị (vai trò `quan_tri` trên module `cong`)
+
+```
+GET    /cong/api/module                       sổ đăng ký
+POST   /cong/api/module                       khai module mới
+PATCH  /cong/api/module/:ma                   bật/tắt, đổi tên, đổi thứ tự
+GET    /cong/api/nguoi-dung                   tìm người
+GET    /cong/api/nguoi-dung/:id/quyen         xem quyền
+PUT    /cong/api/nguoi-dung/:id/quyen         cấp/gỡ quyền
+GET    /cong/api/nhat-ky                      ai cấp quyền cho ai, khi nào
+POST   /cong/api/dich-vu                      tạo/xoay bí mật service token
+```
+
+### Cố ý KHÔNG có
+
+| Không có | Vì sao |
+|---|---|
+| `POST /cong/api/kiem-tra-quyen` gọi mỗi request | Biến cổng thành điểm nghẽn đồng bộ và điểm hỏng duy nhất. Token đã mang sẵn câu trả lời. |
+| Đầu mối cho module đọc/ghi bảng `nguoi_dung` tùy ý | Cổng đổi lược đồ là mọi module gãy |
+| Đầu mối cho module tự cấp quyền cho chính nó | Module tự nâng quyền được thì phân quyền vô nghĩa |
+
+`POST /cong/api/gioi-thieu-token` (token introspection) có thể thêm sau **nếu** xuất hiện
+một thao tác cần chắc chắn tuyệt đối tại thời điểm thực hiện — ví dụ duyệt chi. Cho tới lúc
+đó thì đừng thêm: có sẵn là sẽ có người dùng nó ở mọi request.
+
+### Hiển thị tên người khác — ca dùng thật hay bị bỏ sót
+
+Token mang `ten` và `email` của **người đang đăng nhập**. Nhưng màn hình duyệt đơn cần hiện
+*"duyệt bởi Nguyễn Văn B"* — mà B không phải người đang đăng nhập.
+
+Ba cách, xếp theo thứ tự nên dùng:
+
+1. **Nhân bản lúc ghi.** Khi Chấm công lưu "đơn này do B duyệt", lưu luôn `nguoi_duyet_ten`
+   bên cạnh `nguoi_duyet_cong_id`. Không gọi cổng lần nào, và **đúng về mặt nghiệp vụ**: sổ
+   sách phải ghi tên tại thời điểm duyệt, không phải tên hiện tại.
+2. **Tra theo lô, có cache.** `GET /cong/api/nguoi-dung?sub=a,b,c` cho danh sách dài cần tên
+   mới nhất. Gọi một lần cho cả trang, không phải mỗi dòng một lần.
+3. **Cổng phát sự kiện khi người dùng đổi tên**, module cập nhật bản sao. Chỉ làm khi số
+   module đủ lớn để cách 2 thành gánh nặng.
+
+Nhân bản dữ liệu giữa các service **không phải là lỗi thiết kế** — nó là cách microservice
+đổi tính nhất quán tức thời lấy tính độc lập. Cái phải tránh là gọi đồng bộ chéo trong
+đường đi của request.
+
+### Bốn luật microservice áp cho cụm này
+
+1. **Không service nào đọc CSDL của service khác bằng SQL.** Đi qua API, hoặc nhân bản dữ
+   liệu mình cần.
+2. **Không gọi đồng bộ chéo trong đường đi của request.** Cổng chỉ nằm ở luồng đăng nhập.
+3. **Hỏng từng phần, không hỏng cả cụm.** Cổng chết → không đăng nhập mới được, nhưng người
+   đang dùng vẫn dùng tiếp 15 phút. Chấm công chết → AI Agent không việc gì.
+4. **Hợp đồng đổi phải tương thích ngược.** Thêm khóa vào token thì được; đổi ý nghĩa
+   `quyen` thì phải qua giai đoạn chấp nhận cả hai, đúng như cách chuyển HS256 → RS256 ở
+   mục 15.
+
+---
+
+## 12. Vòng đời và thu hồi
 
 | | TTL | Thu hồi được? |
 |---|---|---|
@@ -479,7 +658,7 @@ Chấm công đã có bảng token làm mới lưu băm + cột `thu_hoi_luc` �
 
 ---
 
-## 10. Ba đường KHÔNG đi qua cổng
+## 13. Ba đường KHÔNG đi qua cổng
 
 Nhận diện sớm để không ai "thống nhất" nhầm rồi làm hỏng dữ liệu thật.
 
@@ -494,27 +673,47 @@ là không phải ranh giới của cổng.
 
 ---
 
-## 11. Cổng nằm ở kho nào
+## 14. Cổng nằm ở kho nào
 
-**Kho riêng — `cong-noi-bo`.** Chưa tồn tại, cần tạo.
+**Đã chốt: kho riêng `cong-noi-bo`.** Chưa tồn tại, cần tạo trước khi viết dòng mã đầu tiên.
 
 Đặt cổng trong kho `Cham-cong` sẽ làm "triển khai cổng" và "triển khai Chấm công" dính vào
 nhau — đúng cái ràng buộc mà cả thiết kế này muốn gỡ. Và mọi module còn lại sẽ phải phụ thuộc
 vào kho của một module.
 
-Đường tắt nếu muốn chạy nhanh: dựng `cong/` thành workspace thứ ba trong kho `Cham-cong`,
-tuyệt đối **không import gì từ `may_chu/`**, rồi tách ra kho riêng khi RF-ID xuất hiện. Đường
-tắt này chỉ an toàn nếu ranh giới không import được giữ nghiêm — mà thứ đó không có gì cưỡng
-chế ngoài kỷ luật. Tôi khuyên tạo kho riêng ngay.
+Việc phải làm ngay khi kho tồn tại: **chuyển `CONG-CHUNG.md` và `KET-NOI-MODUN.md` sang đó.**
+Hai tệp này đang tạm trú trong `Cham-cong` chỉ vì chưa có chỗ. Để lâu thì người viết module
+mới sẽ phải clone kho của một module để đọc hợp đồng của cổng — vô lý, và là dấu hiệu ranh
+giới đang trôi.
 
-Cổng cần CSDL riêng (`nguoi_dung`, `module`, `quyen_nguoi_dung`, `token_lam_moi`,
-`dich_vu`, `nhat_ky_dang_nhap`). Dùng chung instance PostgreSQL với Chấm công thì được,
-nhưng **khác database**, khác tài khoản kết nối — module không được đọc bảng người dùng của
-cổng bằng SQL.
+### Cấu trúc đề xuất
+
+```
+cong-noi-bo/
+  may_chu/          API cổng (Node + TS + Fastify, cùng bộ công cụ với Chấm công)
+  web/              trang chủ + màn hình đăng nhập + trang quản trị quyền
+  chung/            thanh điều hướng dùng chung, sinh ra tệp phục vụ ở /chung/*
+  thiet_ke/         token.json của cổng (nhánh `web`)
+  migrations/       lược đồ CSDL cổng
+  tai_lieu/         CONG-CHUNG.md, KET-NOI-MODUN.md
+```
+
+### CSDL
+
+Cổng cần CSDL riêng: `nguoi_dung`, `module`, `quyen_nguoi_dung`, `token_lam_moi`, `dich_vu`,
+`nhat_ky_dang_nhap`, `bi_danh`.
+
+Dùng chung instance PostgreSQL với Chấm công thì được, nhưng **khác database**, khác tài
+khoản kết nối. Module không được đọc bảng người dùng của cổng bằng SQL — đó là luật 1 của
+mục 11.
+
+Chung instance thì rẻ và đủ ở quy mô này; cái giá là instance chết thì cả cổng lẫn Chấm công
+cùng chết. Tách instance mua được tính độc lập đó, đổi lại thêm một thứ phải sao lưu và giám
+sát. Vẫn để ở mục 21 cho anh quyết.
 
 ---
 
-## 12. Chấm công: từ nơi cấp danh tính thành module
+## 15. Chấm công: từ nơi cấp danh tính thành module
 
 Đây là phần rủi ro nhất, vì Chấm công đang chạy thật và trả lương thật.
 
@@ -567,14 +766,14 @@ Chỉ được sang giai đoạn sau khi giai đoạn trước đã chạy ổn 
 
 ---
 
-## 13. App điện thoại
+## 16. App điện thoại
 
 **App hiện chưa có đăng nhập Microsoft.** `dien_thoai/nguon/api.ts` chỉ có `dang_nhap(ten_dang_nhap,
 mat_khau)` và `doi_mat_khau()` — không có dòng nào nói chuyện với Entra. Vì đã chốt chỉ đăng
 nhập bằng Microsoft, việc này chuyển từ "nên làm" thành **đường găng**: app không viết lại
 thì nhân viên không vào được app, dù web đã chạy.
 
-Nên làm giai đoạn này **song song** với giai đoạn A của mục 12, đừng để tới cuối.
+Nên làm giai đoạn này **song song** với giai đoạn A của mục 15, đừng để tới cuối.
 
 App native có ba ràng buộc khác web:
 
@@ -589,7 +788,7 @@ Việc này đủ lớn để làm thành một giai đoạn riêng, sau khi web
 
 ---
 
-## 14. Caddyfile hợp nhất
+## 17. Caddyfile hợp nhất
 
 Caddy chạy trực tiếp trên máy chủ (không trong Docker), nên mọi đích đến là `127.0.0.1`.
 
@@ -666,7 +865,7 @@ Ba điểm phải kiểm bằng mắt:
 
 - `handle /chamcong/api/*` phải thắng `handle_path /chamcong/*`. Caddy xếp các khối `handle`
   theo độ cụ thể của đường dẫn nên đúng theo lý thuyết — **vẫn phải kiểm bằng `curl`** ở
-  mục 15.
+  mục 18.
 - Khối `http://` làm **tắt** cơ chế tự chuyển HTTP → HTTPS cho toàn site, nên phải tự viết
   lại `redir`. Thiếu dòng đó là webapp bị phục vụ qua HTTP thường.
 - `PROXY_TIN_CAY=172.16.0.0/12`, không phải `127.0.0.1/32`: Caddy chạy trên máy chủ nối vào
@@ -675,7 +874,7 @@ Ba điểm phải kiểm bằng mắt:
 
 ---
 
-## 15. Runbook giai đoạn A
+## 18. Runbook giai đoạn A
 
 Mỗi bước có điều kiện hoàn thành (DoD) và cách lùi.
 
@@ -702,7 +901,7 @@ danh sách sao lưu.
 
 ### Bước 2 — Dựng cổng, chưa nối vào đâu
 
-Chạy cổng ở `127.0.0.1:8090`. Nhập tài khoản từ Chấm công (mục 12).
+Chạy cổng ở `127.0.0.1:8090`. Nhập tài khoản từ Chấm công (mục 15).
 
 **DoD:**
 ```bash
@@ -773,7 +972,7 @@ node trien_khai/gia_lap_may.mjs --may-chu http://<tên miền>
 
 ---
 
-## 16. Rủi ro đã biết
+## 19. Rủi ro đã biết
 
 | # | Rủi ro | Vì sao xảy ra | Cách chặn |
 |---|---|---|---|
@@ -792,19 +991,19 @@ node trien_khai/gia_lap_may.mjs --may-chu http://<tên miền>
 | 12 | Mọi người bị đăng xuất giữa kỳ lương | Giai đoạn B ngắn hơn hạn 30 ngày của token làm mới | Chọn trước: kéo dài giai đoạn B > 30 ngày, hoặc báo trước sẽ đăng nhập lại một lần |
 | 13 | Secret Entra hết hạn | `--years 2` là hạn dài nhất, hết hạn thì đăng nhập chết không báo trước. Chỉ dùng Microsoft nên **cả cụm** ngừng đăng nhập, không riêng Chấm công | Ghi ngày hết hạn vào lịch ngay khi tạo; cảnh báo trước 60 ngày; tài khoản thoát hiểm (mục 3) |
 | 14 | Nhân viên mới không xem được bảng công của mình | Đã xác nhận ai cũng có tài khoản Microsoft, nhưng người **mới** thì chưa. Quẹt vân tay được (máy không cần tài khoản) mà không đăng nhập được | Đưa "tạo tài khoản Entra" vào quy trình nhận việc, làm trước ngày đi làm đầu tiên (mục 3) |
-| 14b | Tài khoản Entra không khớp được với bản ghi nhân viên | Hòm thư dùng chung, một người hai tài khoản, người đã nghỉ mà bản ghi còn hoạt động | Đối soát theo AAD object id trước, email sau, phần còn lại xử lý tay — **xong trước** giai đoạn B (mục 12) |
+| 14b | Tài khoản Entra không khớp được với bản ghi nhân viên | Hòm thư dùng chung, một người hai tài khoản, người đã nghỉ mà bản ghi còn hoạt động | Đối soát theo AAD object id trước, email sau, phần còn lại xử lý tay — **xong trước** giai đoạn B (mục 15) |
 | 15 | Entra hỏng / cấu hình sai là không ai vào được, kể cả quản trị viên | Một nguồn danh tính duy nhất | Tài khoản thoát hiểm cục bộ, mặc định vô hiệu hóa (mục 3) |
-| 16 | App điện thoại thành nút thắt | App chưa có đăng nhập Microsoft; chốt bỏ mật khẩu là app hết đường vào | Làm song song giai đoạn A, không để cuối (mục 13) |
+| 16 | App điện thoại thành nút thắt | App chưa có đăng nhập Microsoft; chốt bỏ mật khẩu là app hết đường vào | Làm song song giai đoạn A, không để cuối (mục 16) |
 
 ---
 
-## 17. Khối lượng
+## 20. Khối lượng
 
 | GĐ | Nội dung | Ước lượng |
 |---|---|---|
 | 1 | Cổng: đăng nhập Entra, RS256 + JWKS, sổ đăng ký module, cấp quyền, trang chủ | 5–8 ngày |
 | 2 | Thanh điều hướng chung `/chung/*`, sinh CSS từ `token.json` + test | 2–3 ngày |
-| 3 | Chấm công thành module (giai đoạn A → C ở mục 12) | 4–6 ngày + thời gian chờ giữa các giai đoạn |
+| 3 | Chấm công thành module (giai đoạn A → C ở mục 15) | 4–6 ngày + thời gian chờ giữa các giai đoạn |
 | 4 | App điện thoại: **viết mới** đăng nhập Microsoft (PKCE, trình duyệt hệ thống, secure store, deep link) — làm **song song** giai đoạn 3, không để cuối | 4–5 ngày |
 | 5 | Module AI Agent — xem `ai_agent/tai_lieu/TRANG-QUAN-TRI.md` | tài liệu riêng |
 | — | `rfid`, `tool` | khi hai kho có nội dung |
@@ -814,20 +1013,19 @@ Giai đoạn 1 và 2 làm được song song với việc khác. Giai đoạn 3 
 
 ---
 
-## 18. Còn phải quyết
+## 21. Còn phải quyết
 
-1. **Tạo kho `cong-noi-bo` hay dựng tạm trong `Cham-cong`?** (mục 11 — tôi khuyên kho riêng)
-2. **Giữ tiền tố `/chamcong`, hay chuyển sang subdomain cho từng module?** (mục 2) Giữ tiền
+1. **Giữ tiền tố `/chamcong`, hay chuyển sang subdomain cho từng module?** (mục 2) Giữ tiền
    tố thì SSO miễn phí nhờ chung `localStorage` và không phải sửa gì; subdomain thì URL sạch
    và có ranh giới bảo mật thật, nhưng phải chuyển sang cookie, mở CORS, và viết lại tầng
    token của cả web lẫn app điện thoại. Đề xuất: giữ tiền tố + bảng bí danh; đổi sang
    subdomain chỉ khi có module do bên ngoài viết.
-3. **Giai đoạn B kéo dài hơn 30 ngày, hay chấp nhận cho mọi người đăng nhập lại một lần?**
-4. **Cổng dùng chung instance PostgreSQL với Chấm công hay instance riêng?**
-5. Sửa `/etc/caddy/Caddyfile` thì phải cập nhật bản trong kho `ai_agent` cho khớp, nếu không
+2. **Giai đoạn B kéo dài hơn 30 ngày, hay chấp nhận cho mọi người đăng nhập lại một lần?**
+3. **Cổng dùng chung instance PostgreSQL với Chấm công hay instance riêng?** (mục 14)
+4. Sửa `/etc/caddy/Caddyfile` thì phải cập nhật bản trong kho `ai_agent` cho khớp, nếu không
    `scripts/drift.sh` sẽ báo lệch. Lần này bắt buộc, vì thay đổi chạm thẳng vào tuyến của bot.
 
-## 19. Đã chốt, không bàn lại
+## 22. Đã chốt, không bàn lại
 
 - **Tên miền:** `teams.tranhoangvietnam.com` là cổng chung chính. Sau mục 2 thì nó thuộc về
   cổng chứ không còn thuộc về bot.
@@ -839,3 +1037,7 @@ Giai đoạn 1 và 2 làm được song song với việc khác. Giai đoạn 3 
   (rủi ro 14).
 - **Kiến trúc:** mô-đun. Cổng giữ danh tính, khóa và quyền; module chỉ xác minh token.
   RS256 + JWKS, quyền tách theo từng module.
+- **Kho:** cổng nằm ở kho riêng `cong-noi-bo` (mục 14), không dựng trong kho của module nào.
+  `CONG-CHUNG.md` và `KET-NOI-MODUN.md` chuyển sang đó ngay khi kho tồn tại.
+- **Module không hỏi cổng ở mỗi request.** Xác minh chữ ký cục bộ bằng JWKS. Cổng chỉ nằm
+  trên luồng đăng nhập (mục 9), và cố ý không có đầu mối "kiểm tra quyền cho tôi" (mục 11).
