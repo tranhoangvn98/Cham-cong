@@ -2,6 +2,37 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.14.5] — 2026-08-14
+
+**Máy đẩy chấm công bằng `table=rtlog` — trước đây bị vứt đi im lặng.**
+
+Đây là mắt xích cuối. Máy đã kết nối, đã nhận lệnh, nhưng quẹt vẫn không hiện lên hệ thống.
+Log tên bảng máy gửi cho thấy nguyên nhân:
+
+```
+table=rtlog                          <- chấm công nằm ở đây
+table=rtstate                        <- nhịp tim trạng thái máy
+table=tabledata&tablename=user       <- danh sách người dùng
+table=tabledata&tablename=biophoto   <- ảnh khuôn mặt
+table=options
+```
+
+Code chỉ hiểu `ATTLOG`. `rtlog` rơi vào nhánh "bảng khác, bỏ qua" → **mọi lần quẹt đều bị
+vứt**, mà máy vẫn nhận `OK` nên không có dấu hiệu gì bất thường ở cả hai phía.
+
+### Sửa
+
+- **Đọc được `table=rtlog`.** Định dạng khác hẳn ATTLOG: không phải cột phân tách bằng TAB
+  mà là các cặp `khoa=giá trị` (`time=… pin=… inoutstatus=… verifytype=…`). Đọc xong đi vào
+  đúng đường nghiệp vụ cũ — chống trùng, tra PIN ra nhân viên, tính lại bảng công ngay.
+- **Bỏ qua sự kiện của thiết bị** (`pin=0` hoặc thiếu `pin`): đó là mở cửa bằng nút, báo
+  động… Ghi chung vào bảng chấm công thì sinh ra công của "nhân viên PIN 0".
+- **`rtstate` im lặng** — nhịp tim vài lần mỗi giây, không mang dữ liệu chấm công.
+- **Thân tin nhắn không đọc được thì ghi nguyên văn vào log** ở mức `warn`, thay vì bỏ qua.
+- **Bảng chưa xử lý nay ghi log mức `info` chứ không phải `debug`.** Production chạy ở mức
+  `info`, nên để `debug` thì một bảng mang dữ liệu thật bị bỏ qua sẽ **không để lại dấu vết
+  nào** — đúng lỗi vừa làm mất nhiều giờ.
+
 ## [1.14.4] — 2026-08-14
 
 **Máy PUSH 3.x hỏi lệnh qua `/iclock/push`, không phải `/iclock/getrequest`.**

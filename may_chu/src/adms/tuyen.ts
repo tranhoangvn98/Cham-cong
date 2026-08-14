@@ -17,7 +17,7 @@ import {
   doc_thong_tin_may,
   dung_phan_hoi_handshake,
 } from './giao_thuc.ts';
-import { tiep_nhan_attlog } from './tiep_nhan.ts';
+import { tiep_nhan_attlog, tiep_nhan_rtlog } from './tiep_nhan.ts';
 import { ip_duoc_phep } from '../tien_ich/dia_chi_ip.ts';
 
 interface DongThietBi {
@@ -139,6 +139,23 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       return tra_text(res, `OK: ${kq.da_nhan}\n`);
     }
 
+    // Firmware PUSH kiem soat ra vao day cham cong bang table=rtlog, KHONG phai ATTLOG.
+    if (bang === 'RTLOG') {
+      const kq = await tiep_nhan_rtlog(sn, body);
+      await cham_thiet_bi(sn, null, req.ip);
+      if (kq.tong > 0) {
+        req.log.info({ sn, ...kq }, 'nhan RTLOG');
+        if (kq.chua_map_pin.length > 0) {
+          req.log.warn({ sn, pin: kq.chua_map_pin }, 'co PIN chua map nhan vien');
+        }
+      } else if (body.trim().length > 0) {
+        // Than khong rong ma khong doc ra ban ghi nao = dinh dang khac du doan. Ghi
+        // nguyen van de con sua, thay vi bo qua roi khong ai biet.
+        req.log.warn({ sn, than: body.slice(0, 500) }, 'RTLOG khong doc duoc ban ghi nao');
+      }
+      return tra_text(res, `OK: ${kq.da_nhan}\n`);
+    }
+
     if (bang === 'OPTIONS' || bang === '') {
       const tt = doc_thong_tin_may(body);
       await cham_thiet_bi(
@@ -149,9 +166,21 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       return tra_text(res, 'OK\n');
     }
 
-    // OPERLOG / ATTPHOTO / bang khac: xac nhan da nhan de may khong gui lai mai.
+    // rtstate la nhip tim trang thai may, den vai lan moi giay va khong mang du lieu cham
+    // cong — im lang de khong lam ngap log.
+    if (bang === 'RTSTATE') {
+      await cham_thiet_bi(sn, null, req.ip);
+      return tra_text(res, 'OK\n');
+    }
+
+    // Bang khac (OPERLOG, ATTPHOTO, tabledata...): xac nhan da nhan de may khong gui lai
+    // mai. Ghi muc info chu khong phai debug: production chay o muc info, de debug thi
+    // mot bang mang du lieu that bi bo qua se khong de lai dau vet nao — dung loi da lam
+    // moi lan quet bi vut im lang truoc khi ho tro rtlog.
     await cham_thiet_bi(sn, null, req.ip);
-    req.log.debug({ sn, bang, dai: body.length }, 'nhan bang khac, bo qua');
+    if (body.trim().length > 0) {
+      req.log.info({ sn, bang, dai: body.length }, 'nhan bang chua xu ly, bo qua');
+    }
     return tra_text(res, 'OK\n');
   });
 

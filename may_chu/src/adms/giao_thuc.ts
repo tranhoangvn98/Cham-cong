@@ -130,6 +130,62 @@ export function doc_attlog(body: string): { ban_ghi: BanGhiAttlog[]; so_dong_loi
   return { ban_ghi, so_dong_loi };
 }
 
+/**
+ * Doc mot lo RTLOG — dinh dang cua giao thuc PUSH kiem soat ra vao (may day len bang
+ * `POST /iclock/cdata?table=rtlog`).
+ *
+ * Khac han ATTLOG: khong phai cot phan tach bang TAB ma la cac cap `khoa=gia tri`:
+ *
+ *   time=2026-08-14 15:28:03⇥pin=123456⇥cardno=0⇥eventaddr=1⇥event=0⇥inoutstatus=0
+ *   ⇥verifytype=15⇥index=0
+ *
+ * May day rtlog rat day (vai lan moi giay) va phan lon la nhip tim than rong — dong rong
+ * tra ve 0 ban ghi, khong tinh la dong loi.
+ *
+ * Bo qua dong khong co `pin` hoac `pin=0`: do la su kien cua cua/thiet bi (bao dong, mo
+ * cua bang nut) chu khong phai mot nguoi quet. Ghi chung vao bang cham cong thi sinh ra
+ * cong cua "nhan vien PIN 0".
+ */
+export function doc_rtlog(body: string): { ban_ghi: BanGhiAttlog[]; so_dong_loi: number } {
+  const ban_ghi: BanGhiAttlog[] = [];
+  let so_dong_loi = 0;
+  if (typeof body !== 'string' || body.trim().length === 0) {
+    return { ban_ghi, so_dong_loi };
+  }
+
+  for (const raw of body.split('\n')) {
+    const dong = raw.replace(/\r$/, '');
+    if (dong.trim().length === 0) continue;
+
+    const o: Record<string, string> = {};
+    for (const token of dong.split(/\t|\s{2,}/)) {
+      const vt = token.indexOf('=');
+      if (vt <= 0) continue;
+      o[token.slice(0, vt).trim().toLowerCase()] = token.slice(vt + 1).trim();
+    }
+
+    const pin = (o['pin'] ?? '').trim();
+    const thoi_diem = doc_thoi_diem(o['time'] ?? '');
+    if (pin === '' || pin === '0' || pin.length > 32 || thoi_diem === null) {
+      // Dong khong co cap khoa=gia tri nao la dinh dang la -> dong loi. Dong co du cap
+      // nhung la su kien cua thiet bi thi bo qua lang le.
+      if (Object.keys(o).length === 0) so_dong_loi++;
+      continue;
+    }
+
+    ban_ghi.push({
+      pin,
+      thoi_diem,
+      // inoutstatus: 0 vao / 1 ra — trung y nghia voi cot Status cua ATTLOG.
+      trang_thai: so_nguyen(o['inoutstatus'], 0, 0, 5),
+      xac_thuc: so_nguyen(o['verifytype'], 9, 0, 255),
+      ma_cong_viec: 0,
+    });
+  }
+
+  return { ban_ghi, so_dong_loi };
+}
+
 function so_nguyen(gia_tri: string | undefined, mac_dinh: number, min: number, max: number): number {
   if (gia_tri === undefined) return mac_dinh;
   const n = Number.parseInt(gia_tri.trim(), 10);

@@ -370,6 +370,39 @@ test('may day ATTLOG -> luu lan quet va TINH LUON bang cong', async () => {
   assert.equal(bc!.so_cong, 1);
 });
 
+// Firmware PUSH kiem soat ra vao day cham cong bang table=rtlog. Truoc khi ho tro, nhanh
+// nay roi vao "bang khac, bo qua" nen moi lan quet bi vut im lang — may bao thanh cong,
+// webapp khong co gi.
+test('may day RTLOG -> vao lan quet va tinh vao bang cong', async () => {
+  const r = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=rtlog`,
+    headers: { 'content-type': 'text/plain' },
+    payload: `time=${NGAY} 07:58:11\tpin=${PIN}\tcardno=0\teventaddr=1`
+      + '\tevent=0\tinoutstatus=0\tverifytype=15\tindex=0\n',
+  });
+  assert.equal(r.statusCode, 200);
+  assert.equal(r.body.trim(), 'OK: 1');
+
+  const lq = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from lan_quet
+      where thiet_bi_serial = $1 and pin_may = $2 and thoi_diem::date = $3`,
+    [SERIAL, PIN, NGAY],
+  );
+  assert.equal(lq!.so > 0, true, 'ban ghi rtlog phai vao bang lan_quet');
+});
+
+test('RTLOG rong (nhip tim) khong sinh ban ghi', async () => {
+  const r = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=rtlog`,
+    headers: { 'content-type': 'text/plain' },
+    payload: '',
+  });
+  assert.equal(r.statusCode, 200);
+  assert.equal(r.body.trim(), 'OK: 0');
+});
+
 test('may gui lai cung lo -> chong trung, khong nhan them ban ghi nao', async () => {
   const body = `${PIN}\t${NGAY} 08:12:03\t0\t15\t0\n`;
   const r = await app.inject({

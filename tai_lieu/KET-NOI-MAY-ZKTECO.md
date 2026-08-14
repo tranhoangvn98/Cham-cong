@@ -122,7 +122,9 @@ Chỉ để tham khảo khi soi log — người dùng không cần gọi tay.
 |---|---|
 | `POST /iclock/registry?SN=..` | Đăng ký máy. Chỉ firmware PUSH 3.x gọi — xem ghi chú dưới |
 | `GET /iclock/cdata?SN=..&options=all` | Handshake. Máy chủ trả block cấu hình + `Realtime=1` |
-| `POST /iclock/cdata?SN=..&table=ATTLOG` | Đẩy log chấm công |
+| `POST /iclock/cdata?SN=..&table=ATTLOG` | Đẩy log chấm công (firmware PUSH 2.x) |
+| `POST /iclock/cdata?SN=..&table=rtlog` | Đẩy log chấm công (firmware PUSH 3.x) |
+| `POST /iclock/cdata?SN=..&table=rtstate` | Nhịp tim trạng thái máy — bỏ qua |
 | `POST /iclock/cdata?SN=..&table=OPTIONS` | Báo thông tin máy (firmware, IP) |
 | `GET /iclock/getrequest?SN=..` | Máy hỏi có lệnh gì không (firmware PUSH 2.x) |
 | `POST /iclock/push?SN=..` | Máy hỏi có lệnh gì không (firmware PUSH 3.x) |
@@ -136,6 +138,11 @@ Chỉ để tham khảo khi soi log — người dùng không cần gọi tay.
 >
 > Firmware PUSH 3.x cũng **không gọi `getrequest`** — nó hỏi lệnh bằng `POST /iclock/push`.
 > Hai đường dùng chung hàng đợi nên một lệnh chỉ đi xuống đúng một lần.
+>
+> Và nó **không đẩy `ATTLOG`** — chấm công về bằng `table=rtlog`, định dạng cặp
+> `khoa=giá trị` chứ không phải cột phân tách bằng TAB:
+> `time=2026-08-14 15:28:03⇥pin=123456⇥inoutstatus=0⇥verifytype=15`.
+> Dòng có `pin=0` là sự kiện của cửa (mở bằng nút, báo động), không phải người quẹt.
 
 Dữ liệu ATTLOG là **text thô phân tách bằng TAB**, không phải JSON:
 

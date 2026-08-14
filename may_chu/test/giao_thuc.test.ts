@@ -7,7 +7,7 @@ process.env['JWT_SECRET'] ??= 'khoa_kiem_thu_du_dai_de_khong_bi_tu_choi_0001';
 process.env['DATABASE_URL'] ??= 'postgres://khong_dung@localhost:5432/khong_dung';
 
 const {
-  doc_attlog, doc_ket_qua_lenh, doc_thong_tin_may,
+  doc_attlog, doc_rtlog, doc_ket_qua_lenh, doc_thong_tin_may,
   dung_phan_hoi_handshake, dinh_dang_lenh, ma_hoa_thoi_gian_zkteco,
   nhan_cach_xac_thuc,
 } = await import('../src/adms/giao_thuc.ts');
@@ -118,4 +118,56 @@ test('ma_hoa_thoi_gian_zkteco: dung cong thuc cua hang', () => {
   const mong_doi = ((2026 - 2000) * 12 * 31 + (8 - 1) * 31 + (6 - 1)) * 86400
     + 10 * 3600 + 30 * 60;
   assert.equal(ma, mong_doi);
+});
+
+// ============================================================ RTLOG (PUSH kiem soat ra vao)
+//
+// May SenseFace 2A day cham cong bang table=rtlog voi cac cap khoa=gia tri, khong phai cot
+// TAB nhu ATTLOG. Truoc khi ho tro, moi lan quet deu bi vut im lang.
+test('doc_rtlog: doc duoc mot lan quet', () => {
+  const { ban_ghi, so_dong_loi } = doc_rtlog(
+    'time=2026-08-14 15:28:03\tpin=123456\tcardno=0\teventaddr=1'
+    + '\tevent=0\tinoutstatus=1\tverifytype=15\tindex=0\n',
+  );
+  assert.equal(so_dong_loi, 0);
+  assert.equal(ban_ghi.length, 1);
+  assert.equal(ban_ghi[0]!.pin, '123456');
+  assert.equal(ban_ghi[0]!.trang_thai, 1);
+  assert.equal(ban_ghi[0]!.xac_thuc, 15);
+  assert.equal(ban_ghi[0]!.thoi_diem.toISOString(), '2026-08-14T08:28:03.000Z');
+});
+
+test('doc_rtlog: nhip tim than rong khong sinh ban ghi va khong tinh la loi', () => {
+  for (const than of ['', '   ', '\n\n']) {
+    const kq = doc_rtlog(than);
+    assert.equal(kq.ban_ghi.length, 0, `than ${JSON.stringify(than)}`);
+    assert.equal(kq.so_dong_loi, 0, `than ${JSON.stringify(than)}`);
+  }
+});
+
+test('doc_rtlog: bo qua su kien cua thiet bi (pin=0 hoac thieu pin)', () => {
+  const kq = doc_rtlog(
+    'time=2026-08-14 15:28:03\tpin=0\tevent=20\tinoutstatus=0\n'
+    + 'time=2026-08-14 15:28:09\tevent=21\tinoutstatus=0\n'
+    + 'time=2026-08-14 15:29:00\tpin=1001\tinoutstatus=0\tverifytype=15\n',
+  );
+  assert.equal(kq.ban_ghi.length, 1, 'chi lan quet cua nguoi moi duoc tinh');
+  assert.equal(kq.ban_ghi[0]!.pin, '1001');
+  assert.equal(kq.so_dong_loi, 0, 'su kien thiet bi khong phai dong loi');
+});
+
+test('doc_rtlog: dong khong co cap khoa=gia tri nao thi tinh la dong loi', () => {
+  const kq = doc_rtlog('day khong phai rtlog\n');
+  assert.equal(kq.ban_ghi.length, 0);
+  assert.equal(kq.so_dong_loi, 1);
+});
+
+test('doc_rtlog: doc nhieu ban ghi trong mot lo', () => {
+  const kq = doc_rtlog(
+    'time=2026-08-14 08:01:00\tpin=1001\tinoutstatus=0\tverifytype=15\n'
+    + 'time=2026-08-14 17:30:00\tpin=1001\tinoutstatus=1\tverifytype=15\n'
+    + 'time=2026-08-14 08:05:00\tpin=1002\tinoutstatus=0\tverifytype=1\n',
+  );
+  assert.equal(kq.ban_ghi.length, 3);
+  assert.deepEqual(kq.ban_ghi.map((b) => b.pin), ['1001', '1001', '1002']);
 });

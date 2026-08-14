@@ -4,7 +4,7 @@ import { trong_giao_dich, truy_van } from '../csdl/ket_noi.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { tinh_lai_nhieu } from '../cong/tinh_cong.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
-import { doc_attlog, nhan_cach_xac_thuc, type BanGhiAttlog } from './giao_thuc.ts';
+import { doc_attlog, doc_rtlog, nhan_cach_xac_thuc, type BanGhiAttlog } from './giao_thuc.ts';
 
 export interface KetQuaTiepNhan {
   tong: number;
@@ -25,6 +25,29 @@ export async function tiep_nhan_attlog(
   body: string,
 ): Promise<KetQuaTiepNhan> {
   const { ban_ghi, so_dong_loi } = doc_attlog(body);
+  return tiep_nhan_ban_ghi(serial, ban_ghi, so_dong_loi);
+}
+
+/**
+ * Tiep nhan mot lo RTLOG — cung nghiep vu, chi khac cach doc than tin nhan.
+ *
+ * Firmware PUSH kiem soat ra vao day cham cong bang `table=rtlog` chu khong phai ATTLOG.
+ * Truoc day nhanh do roi vao "bang khac, bo qua" nen moi lan quet deu bi vut di lang le:
+ * may bao thanh cong, webapp khong co gi, va khong ai biet vi sao.
+ */
+export async function tiep_nhan_rtlog(
+  serial: string,
+  body: string,
+): Promise<KetQuaTiepNhan> {
+  const { ban_ghi, so_dong_loi } = doc_rtlog(body);
+  return tiep_nhan_ban_ghi(serial, ban_ghi, so_dong_loi);
+}
+
+async function tiep_nhan_ban_ghi(
+  serial: string,
+  ban_ghi: BanGhiAttlog[],
+  so_dong_loi: number,
+): Promise<KetQuaTiepNhan> {
   const kq: KetQuaTiepNhan = {
     tong: ban_ghi.length,
     da_nhan: 0,
