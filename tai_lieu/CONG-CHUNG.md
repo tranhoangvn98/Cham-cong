@@ -267,9 +267,18 @@ là hành vi không ai mong đợi. Cần thoát hẳn thì có mục riêng "Đ
 thì sau khi chuyển là không đăng nhập được nữa. Chạy đối soát và xử lý hết trước khi sang
 giai đoạn B ở mục 12 — đây là việc phải làm, không phải việc nên làm.
 
-⚠️ Tenant `thvn23` hiện có **57 tài khoản** (`ai_agent/openclaw-teams/config/danh-ba-aad.csv`,
-chụp 04.08.2026). Nếu số nhân viên cần xem bảng công trên app điện thoại **lớn hơn 57** thì
-số còn lại không đăng nhập được — xem rủi ro 14 ở mục 16.
+**Đã xác nhận: mọi nhân viên đều có tài khoản Microsoft.** Nên không cần đường đăng nhập thứ
+hai, và "chỉ Microsoft" áp dụng được cho cả web lẫn app điện thoại.
+
+Vẫn phải chạy đối soát, vì "ai cũng có tài khoản" chưa đủ — còn phải **khớp được** tài khoản
+Entra với đúng bản ghi nhân viên trong Chấm công. Ba thứ hay lệch: người dùng chung một hòm
+thư, người có hai tài khoản, và người đã nghỉ nhưng bản ghi còn hoạt động. Đối soát bằng AAD
+object id trước, email sau; danh sách còn lại xử lý tay.
+
+Kèm theo một ràng buộc về quy trình: **nhân viên mới phải có tài khoản Entra trước ngày đi
+làm đầu tiên**, nếu không họ quẹt vân tay được (máy ZKTeco không cần tài khoản) nhưng không
+xem được bảng công của chính mình. Trước đây nhân sự tạo tài khoản cục bộ là xong; giờ phải
+qua IT. Ghi vào quy trình nhận việc.
 
 ---
 
@@ -782,7 +791,8 @@ node trien_khai/gia_lap_may.mjs --may-chu http://<tên miền>
 | 11 | XSS ở một module lộ token cả cụm | Hệ quả của việc chung origin (mục 2) | Module bên thứ ba phải ra subdomain riêng. Giữ CSP `default-src 'self'`. |
 | 12 | Mọi người bị đăng xuất giữa kỳ lương | Giai đoạn B ngắn hơn hạn 30 ngày của token làm mới | Chọn trước: kéo dài giai đoạn B > 30 ngày, hoặc báo trước sẽ đăng nhập lại một lần |
 | 13 | Secret Entra hết hạn | `--years 2` là hạn dài nhất, hết hạn thì đăng nhập chết không báo trước. Chỉ dùng Microsoft nên **cả cụm** ngừng đăng nhập, không riêng Chấm công | Ghi ngày hết hạn vào lịch ngay khi tạo; cảnh báo trước 60 ngày; tài khoản thoát hiểm (mục 3) |
-| 14 | **Nhân viên không có tài khoản Microsoft không vào được** | Tenant có 57 tài khoản. Chấm công phục vụ toàn bộ nhân sự, kể cả người không được cấp M365 | Đối soát số nhân viên cần xem bảng công với số tài khoản Entra **trước** khi làm. Xem quyết định 6 ở mục 18. |
+| 14 | Nhân viên mới không xem được bảng công của mình | Đã xác nhận ai cũng có tài khoản Microsoft, nhưng người **mới** thì chưa. Quẹt vân tay được (máy không cần tài khoản) mà không đăng nhập được | Đưa "tạo tài khoản Entra" vào quy trình nhận việc, làm trước ngày đi làm đầu tiên (mục 3) |
+| 14b | Tài khoản Entra không khớp được với bản ghi nhân viên | Hòm thư dùng chung, một người hai tài khoản, người đã nghỉ mà bản ghi còn hoạt động | Đối soát theo AAD object id trước, email sau, phần còn lại xử lý tay — **xong trước** giai đoạn B (mục 12) |
 | 15 | Entra hỏng / cấu hình sai là không ai vào được, kể cả quản trị viên | Một nguồn danh tính duy nhất | Tài khoản thoát hiểm cục bộ, mặc định vô hiệu hóa (mục 3) |
 | 16 | App điện thoại thành nút thắt | App chưa có đăng nhập Microsoft; chốt bỏ mật khẩu là app hết đường vào | Làm song song giai đoạn A, không để cuối (mục 13) |
 
@@ -814,21 +824,18 @@ Giai đoạn 1 và 2 làm được song song với việc khác. Giai đoạn 3 
    subdomain chỉ khi có module do bên ngoài viết.
 3. **Giai đoạn B kéo dài hơn 30 ngày, hay chấp nhận cho mọi người đăng nhập lại một lần?**
 4. **Cổng dùng chung instance PostgreSQL với Chấm công hay instance riêng?**
-6. **Bao nhiêu nhân viên cần xem bảng công trên app, và bao nhiêu người trong số đó có tài
-   khoản Microsoft?** Câu này chặn phạm vi của app điện thoại. Tenant đang có 57 tài khoản.
-   Nếu số nhân viên lớn hơn, có ba lối:
-   - **Cấp tài khoản Entra cho mọi nhân viên.** Sạch nhất, đắt nhất. Có gói M365 F-series giá
-     thấp cho nhân viên tuyến đầu — cần IT xác nhận chi phí thật.
-   - **Giữ một đường đăng nhập thứ hai cho nhân viên không có M365** (mã nhân viên + PIN, chỉ
-     xem được dữ liệu của chính mình). Mâu thuẫn với "chỉ Microsoft", nhưng là ngoại lệ có
-     giới hạn rõ và chỉ nằm ở cổng.
-   - **App điện thoại chỉ dành cho người có tài khoản Microsoft.** Người còn lại xem bảng công
-     qua bản in hoặc hỏi nhân sự — tức là mất phần lớn giá trị của app.
-
-Đăng nhập đã chốt: **chỉ qua Microsoft Entra ID** (mục 3), kèm đúng một tài khoản thoát hiểm
-cục bộ mặc định vô hiệu hóa.
 5. Sửa `/etc/caddy/Caddyfile` thì phải cập nhật bản trong kho `ai_agent` cho khớp, nếu không
    `scripts/drift.sh` sẽ báo lệch. Lần này bắt buộc, vì thay đổi chạm thẳng vào tuyến của bot.
 
-Tên miền đã chốt: **`teams.tranhoangvietnam.com` là cổng chung chính**, và sau thay đổi ở
-mục 2 thì nó thuộc về cổng chứ không còn thuộc về bot. Không đổi tên miền.
+## 19. Đã chốt, không bàn lại
+
+- **Tên miền:** `teams.tranhoangvietnam.com` là cổng chung chính. Sau mục 2 thì nó thuộc về
+  cổng chứ không còn thuộc về bot.
+- **Đăng nhập:** chỉ qua Microsoft Entra ID (mục 3), kèm đúng một tài khoản thoát hiểm cục bộ
+  mặc định vô hiệu hóa.
+- **Phạm vi người dùng:** mọi nhân viên đều có tài khoản Microsoft, nên không cần đường đăng
+  nhập thứ hai cho nhân viên tuyến đầu. Vẫn còn hai việc kèm theo: đối soát tài khoản Entra ↔
+  bản ghi nhân viên (rủi ro 14b), và đưa việc tạo tài khoản Entra vào quy trình nhận việc
+  (rủi ro 14).
+- **Kiến trúc:** mô-đun. Cổng giữ danh tính, khóa và quyền; module chỉ xác minh token.
+  RS256 + JWKS, quyền tách theo từng module.
