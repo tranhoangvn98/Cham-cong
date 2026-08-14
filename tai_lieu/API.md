@@ -439,7 +439,8 @@ Máy ZKTeco gọi, **không dùng JWT** — xác thực bằng whitelist serial.
 | POST | `/registry?SN=..` (firmware PUSH 3.x, trả `RegistryCode=`) |
 | GET | `/cdata?SN=..&options=all` |
 | POST | `/cdata?SN=..&table=ATTLOG\|OPTIONS\|OPERLOG` |
-| GET | `/getrequest?SN=..` |
+| GET | `/getrequest?SN=..` (firmware PUSH 2.x) |
+| POST | `/push?SN=..` (firmware PUSH 3.x, cùng hàng đợi) |
 | POST | `/devicecmd?SN=..` |
 | GET | `/ping?SN=..` |
 

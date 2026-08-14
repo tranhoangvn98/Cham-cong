@@ -263,6 +263,45 @@ test('registry: ma khong doi qua nhieu lan goi (may khong phai dang ky lai)', as
   assert.equal(await goi_registry(), await goi_registry());
 });
 
+// PUSH 3.x hoi lenh bang POST /iclock/push chu khong phai GET /iclock/getrequest.
+const hoi_lenh_qua_push = async (): Promise<string> => (await app.inject({
+  method: 'POST',
+  url: `/iclock/push?SN=${SERIAL}`,
+  headers: { 'content-type': 'text/plain' },
+  payload: '',
+})).body;
+
+test('push: lay duoc lenh dang cho, va lenh khong bi lay hai lan', async () => {
+  const dat = await goi('POST', `/api/thiet-bi/${SERIAL}/gui-lai-log`, { token: token_admin });
+  assert.equal(dat.ma, 200);
+
+  const lan_1 = await hoi_lenh_qua_push();
+  assert.match(lan_1, /CHECK/);
+  assert.match(lan_1, /^C:\d+:/m, 'phai dung dinh dang C:<id>:<lenh>');
+
+  assert.doesNotMatch(await hoi_lenh_qua_push(), /CHECK/, 'lenh da gui roi khong duoc gui lai');
+});
+
+test('push va getrequest dung CHUNG mot hang doi', async () => {
+  const dat = await goi('POST', `/api/thiet-bi/${SERIAL}/dong-bo-gio`, { token: token_admin });
+  assert.equal(dat.ma, 200);
+
+  assert.match(await hoi_lenh_qua_push(), /DateTime=/);
+  // Lay lai bang duong cu: khong duoc thay lenh do nua, neu khong may se thuc thi hai lan.
+  const qua_getrequest = await goi('GET', `/iclock/getrequest?SN=${SERIAL}`);
+  assert.doesNotMatch(qua_getrequest.tho, /DateTime=/);
+});
+
+test('push: may LA bi tu choi 401', async () => {
+  const r = await app.inject({
+    method: 'POST',
+    url: '/iclock/push?SN=MAY-LA-999',
+    headers: { 'content-type': 'text/plain' },
+    payload: '',
+  });
+  assert.equal(r.statusCode, 401);
+});
+
 test('registry: may LA van bi tu choi 401', async () => {
   const r = await app.inject({
     method: 'POST',

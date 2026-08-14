@@ -2,6 +2,32 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.14.4] — 2026-08-14
+
+**Máy PUSH 3.x hỏi lệnh qua `/iclock/push`, không phải `/iclock/getrequest`.**
+
+Sau khi có `registry` (1.14.3), máy `NYU7261300256` hiện "Kết nối" và báo được firmware, IP —
+nhưng cột **Lệnh chờ đứng im ở 5** và quẹt vẫn không về. Log đếm endpoint trong 10 phút:
+
+```
+80 /iclock/push       <- 404, chưa có endpoint này
+40 /iclock/registry
+40 /iclock/cdata
+      (không có getrequest lần nào)
+```
+
+### Sửa
+
+- Thêm **`POST /iclock/push`** (kèm `GET` cho chắc) — kênh hỏi lệnh của firmware PUSH 3.x.
+  Firmware đời cũ dùng `GET /getrequest`, đời mới **không gọi đường đó nữa**. Thiếu endpoint
+  thì máy nhận 404 và làm lại cả chu kỳ `cdata → registry → push` mỗi 15 giây, không bao giờ
+  đẩy `ATTLOG` — nên trên webapp máy vẫn xanh "Kết nối" mà không có dữ liệu nào về.
+- Hai đường **dùng chung một hàng đợi** và cùng câu `UPDATE … FOR UPDATE SKIP LOCKED`, nên
+  một lệnh chỉ đi xuống đúng một lần dù máy hỏi bằng đường nào. Có test riêng cho điều này:
+  lấy lệnh qua `/push` rồi gọi `/getrequest` phải không thấy lại lệnh đó.
+- `/push` ghi log truy vấn và thân tin nhắn để đối chiếu nếu định dạng trả về còn chưa vừa ý
+  firmware.
+
 ## [1.14.3] — 2026-08-11
 
 **Máy đời mới (PUSH 3.x) kết nối được — bổ sung endpoint `registry`.**

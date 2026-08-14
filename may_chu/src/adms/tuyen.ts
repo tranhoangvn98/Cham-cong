@@ -156,7 +156,13 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
   });
 
   // -------------------------------------------------- may hoi lenh can thuc thi
-  app.get('/getrequest', async (req, res) => {
+  /**
+   * Lay lenh dang cho cho mot may va danh dau da gui.
+   *
+   * Tach rieng vi co HAI duong may hoi lenh, tuy doi firmware: `GET /getrequest` (PUSH 2.x)
+   * va `POST /push` (PUSH 3.x). Cung mot hang doi, cung mot dinh dang tra ve.
+   */
+  async function lay_lenh_cho_may(req: FastifyRequest, res: FastifyReply): Promise<FastifyReply> {
     const sn = lay_serial(req);
     const may = await may_hop_le(sn);
     if (may === null) return tra_text(res, 'Unauthorized\n', 401);
@@ -182,7 +188,28 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
 
     req.log.info({ sn, so_lenh: lenh.length }, 'gui lenh xuong may');
     return tra_text(res, lenh.map((l) => dinh_dang_lenh(l.id, l.lenh)).join(''));
-  });
+  }
+
+  app.get('/getrequest', async (req, res) => lay_lenh_cho_may(req, res));
+
+  // -------------------------------------------------- kenh hoi lenh cua PUSH 3.x
+  //
+  // Firmware doi moi KHONG goi getrequest. No hoi lenh bang POST /iclock/push, than tin
+  // nhan rong. May NYU7261300256 goi duong nay 2 lan moi 15 giay; chua co endpoint thi
+  // nhan 404 va lam lai ca chu ky cdata -> registry -> push, khong bao gio day ATTLOG.
+  //
+  // Cung hang doi voi getrequest nen mot lenh chi di xuong dung mot lan, du may dung duong
+  // nao. Ghi lai truy van + than tin nhan: neu dinh dang tra ve con chua vua y firmware thi
+  // day la du lieu de doi chieu, khoi phai doi them mot vong thu nghiem tai van phong.
+  const hoi_lenh_push = async (req: FastifyRequest, res: FastifyReply): Promise<FastifyReply> => {
+    req.log.info(
+      { truy_van: req.query, than: String(req.body ?? '').slice(0, 300) },
+      'may hoi lenh qua /push',
+    );
+    return lay_lenh_cho_may(req, res);
+  };
+  app.post('/push', hoi_lenh_push);
+  app.get('/push', hoi_lenh_push);
 
   // -------------------------------------------------- may bao ket qua lenh
   app.post('/devicecmd', async (req, res) => {

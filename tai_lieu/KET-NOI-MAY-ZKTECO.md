@@ -124,7 +124,8 @@ Chỉ để tham khảo khi soi log — người dùng không cần gọi tay.
 | `GET /iclock/cdata?SN=..&options=all` | Handshake. Máy chủ trả block cấu hình + `Realtime=1` |
 | `POST /iclock/cdata?SN=..&table=ATTLOG` | Đẩy log chấm công |
 | `POST /iclock/cdata?SN=..&table=OPTIONS` | Báo thông tin máy (firmware, IP) |
-| `GET /iclock/getrequest?SN=..` | Máy hỏi có lệnh gì không |
+| `GET /iclock/getrequest?SN=..` | Máy hỏi có lệnh gì không (firmware PUSH 2.x) |
+| `POST /iclock/push?SN=..` | Máy hỏi có lệnh gì không (firmware PUSH 3.x) |
 | `POST /iclock/devicecmd?SN=..` | Máy báo kết quả thực thi lệnh |
 
 > **Firmware PUSH 3.x** (chuỗi truy vấn có `pushver=3.x` và `DeviceType=acc` — dòng SenseFace
@@ -132,6 +133,9 @@ Chỉ để tham khảo khi soi log — người dùng không cần gọi tay.
 > Máy chủ trả `RegistryCode=<mã>`. Thiếu endpoint này thì máy lặp vô tận
 > `cdata → registry → chờ → lặp lại` mỗi `ErrorDelay` giây và **không bao giờ đẩy ATTLOG** —
 > nhìn log chỉ thấy máy gọi đều đặn nên rất dễ tưởng là đã chạy tốt.
+>
+> Firmware PUSH 3.x cũng **không gọi `getrequest`** — nó hỏi lệnh bằng `POST /iclock/push`.
+> Hai đường dùng chung hàng đợi nên một lệnh chỉ đi xuống đúng một lần.
 
 Dữ liệu ATTLOG là **text thô phân tách bằng TAB**, không phải JSON:
 
