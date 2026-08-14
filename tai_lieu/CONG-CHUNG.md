@@ -197,6 +197,80 @@ không có sơ đồ giao thức). Không kiểm là có open redirect: kẻ t�
 thật rồi đẩy nạn nhân sang trang giả. Chấm công đã có sẵn phần kiểm này trong
 `may_chu/src/tuyen/dang_nhap.ts`, chuyển nguyên sang cổng.
 
+### Đã chốt: chỉ đăng nhập bằng Microsoft
+
+Toàn cụm dùng **Microsoft Entra ID**. Không có màn hình nhập mật khẩu ở bất kỳ đâu trong hệ
+thống, trừ một ngoại lệ ở dưới.
+
+**Điều này KHÔNG có nghĩa module xác minh token của Microsoft.** Cổng nhận danh tính từ
+Microsoft rồi **đổi lấy token của cổng** — token đó mới mang `quyen` theo từng module. Lý do:
+Entra biết "đây là chị An", nhưng không biết chị An là `truong_phong` ở Chấm công và không có
+quyền gì ở AI Agent. Toàn bộ mục 4–7 giữ nguyên.
+
+```
+Microsoft xác thực "ai"  ->  cổng quyết định "được làm gì"  ->  module thi hành
+```
+
+**Bỏ được:**
+
+| Bỏ | Ghi chú |
+|---|---|
+| `mat_khau.ts` (scrypt) | Không còn chỗ nào băm mật khẩu, trừ tài khoản thoát hiểm |
+| Màn hình đổi mật khẩu, cờ `phai_doi_mat_khau` | Chính sách mật khẩu về Entra lo |
+| Chuyển băm mật khẩu khi nhập tài khoản (mục 12) | Chỉ khớp theo Entra object id / email |
+| Đặt lại mật khẩu cho nhân viên quên | Việc của IT trên Entra, không phải của nhân sự |
+
+**Được thêm** mà không phải viết dòng nào: MFA, Conditional Access, khóa tài khoản khi nghỉ
+việc chỉ làm một chỗ, nhật ký đăng nhập của Entra.
+
+### Tài khoản thoát hiểm — ngoại lệ duy nhất
+
+Chỉ có Microsoft nghĩa là **một điểm hỏng là cả cụm không ai vào được**, kể cả quản trị viên.
+Và hỏng theo cách không báo trước: `MS_CLIENT_SECRET` hạn tối đa 2 năm, hết hạn là nút đăng
+nhập chết ngay.
+
+Giữ **đúng một** tài khoản quản trị cục bộ:
+
+- Mặc định **vô hiệu hóa**. Bật bằng biến môi trường trên máy chủ, không bật được từ giao diện.
+- Mật khẩu dài, sinh ngẫu nhiên, cất trong két / trình quản lý bí mật. Không ai dùng hằng ngày.
+- Mọi lần đăng nhập bằng nó ghi nhật ký và gửi cảnh báo.
+- Chỉ dùng để chữa cấu hình Entra rồi thoát ra ngay.
+
+Đây là lý do `mat_khau.ts` vẫn phải chuyển sang cổng dù không còn ai dùng mật khẩu.
+
+### Chặn ở tầng Entra, không phải ở tầng ứng dụng
+
+Bật `appRoleAssignmentRequired` trên service principal (lệnh có sẵn ở
+`tai_lieu/DANG-NHAP-MICROSOFT.md`) thì người không được gán **không qua nổi màn hình đăng
+nhập** của Microsoft. Chặt hơn hẳn việc để họ đăng nhập được rồi mới từ chối ở ứng dụng.
+
+Kèm `MS_TEN_MIEN_CHO_PHEP=tranhoangvietnam.com` làm lớp thứ hai.
+
+### Lần đầu đăng nhập
+
+Đặt `MS_TU_DONG_TAO=1`: cổng tự tạo tài khoản với **`quyen` rỗng cho mọi module**. Người dùng
+vào được cổng, thấy màn hình "chưa được cấp quyền", quản trị viên cấp sau.
+
+An toàn vì đã có hai lớp chặn ở trên, và vì mảng quyền rỗng không mở được gì. Để `0` thì mỗi
+nhân viên mới phải chờ tạo tay hai lần — một ở Entra, một ở cổng.
+
+### Đăng xuất
+
+Đăng xuất khỏi cổng = xóa phiên cục bộ + thu hồi token làm mới. **Không** tự động đăng xuất
+khỏi Microsoft: người dùng còn Outlook và Teams đang mở, đá họ ra khỏi cả bộ Microsoft 365
+là hành vi không ai mong đợi. Cần thoát hẳn thì có mục riêng "Đăng xuất khỏi Microsoft" gọi
+đầu mối `logout` của Entra.
+
+### Điều kiện tiên quyết phải kiểm trước
+
+**Mọi tài khoản đang dùng phải khớp được với một tài khoản Entra.** Tài khoản nào không khớp
+thì sau khi chuyển là không đăng nhập được nữa. Chạy đối soát và xử lý hết trước khi sang
+giai đoạn B ở mục 12 — đây là việc phải làm, không phải việc nên làm.
+
+⚠️ Tenant `thvn23` hiện có **57 tài khoản** (`ai_agent/openclaw-teams/config/danh-ba-aad.csv`,
+chụp 04.08.2026). Nếu số nhân viên cần xem bảng công trên app điện thoại **lớn hơn 57** thì
+số còn lại không đăng nhập được — xem rủi ro 14 ở mục 16.
+
 ---
 
 ## 4. Khóa bất đối xứng — thay đổi quan trọng nhất
@@ -452,9 +526,10 @@ thưởng cho việc trước đây đã gom xác thực vào một chỗ.
 
 ### Tài khoản chuyển thế nào
 
-Cổng dựng `nguoi_dung` từ bảng của Chấm công: khớp theo AAD object id với tài khoản
-Microsoft, theo tên đăng nhập với tài khoản cục bộ. Băm mật khẩu chép nguyên — cùng thuật
-toán `scrypt` nên không ai phải đặt lại mật khẩu.
+Cổng dựng `nguoi_dung` từ bảng của Chấm công, khớp theo **AAD object id**, không khớp được
+thì theo email. Vì đã chốt chỉ đăng nhập bằng Microsoft (mục 3), **không chuyển băm mật khẩu**
+— tài khoản nào không khớp được với Entra thì không dùng được nữa, phải xử lý xong trong bước
+đối soát trước khi sang giai đoạn B.
 
 Bảng `nguoi_dung` của Chấm công **giữ lại**, thêm một cột:
 
@@ -485,8 +560,14 @@ Chỉ được sang giai đoạn sau khi giai đoạn trước đã chạy ổn 
 
 ## 13. App điện thoại
 
-`dien_thoai` đăng nhập bằng cách gửi tên đăng nhập/mật khẩu tới Chấm công. Sau khi chuyển,
-nó phải nói chuyện với cổng, và app native có ba ràng buộc khác web:
+**App hiện chưa có đăng nhập Microsoft.** `dien_thoai/nguon/api.ts` chỉ có `dang_nhap(ten_dang_nhap,
+mat_khau)` và `doi_mat_khau()` — không có dòng nào nói chuyện với Entra. Vì đã chốt chỉ đăng
+nhập bằng Microsoft, việc này chuyển từ "nên làm" thành **đường găng**: app không viết lại
+thì nhân viên không vào được app, dù web đã chạy.
+
+Nên làm giai đoạn này **song song** với giai đoạn A của mục 12, đừng để tới cuối.
+
+App native có ba ràng buộc khác web:
 
 - **Không có `localStorage`.** Token vào `expo-secure-store` (Keychain / Keystore), không
   phải `AsyncStorage`.
@@ -700,7 +781,10 @@ node trien_khai/gia_lap_may.mjs --may-chu http://<tên miền>
 | 10 | Tranh cổng 80/443 | Bật `COMPOSE_PROFILES=ten_mien` của Chấm công sẽ dựng Caddy thứ hai, cướp cổng, giết bot | **Không bao giờ** bật profile đó trên VPS này |
 | 11 | XSS ở một module lộ token cả cụm | Hệ quả của việc chung origin (mục 2) | Module bên thứ ba phải ra subdomain riêng. Giữ CSP `default-src 'self'`. |
 | 12 | Mọi người bị đăng xuất giữa kỳ lương | Giai đoạn B ngắn hơn hạn 30 ngày của token làm mới | Chọn trước: kéo dài giai đoạn B > 30 ngày, hoặc báo trước sẽ đăng nhập lại một lần |
-| 13 | Secret Entra hết hạn | `--years 2` là hạn dài nhất, hết hạn thì đăng nhập chết không báo trước | Ghi ngày hết hạn vào lịch ngay khi tạo |
+| 13 | Secret Entra hết hạn | `--years 2` là hạn dài nhất, hết hạn thì đăng nhập chết không báo trước. Chỉ dùng Microsoft nên **cả cụm** ngừng đăng nhập, không riêng Chấm công | Ghi ngày hết hạn vào lịch ngay khi tạo; cảnh báo trước 60 ngày; tài khoản thoát hiểm (mục 3) |
+| 14 | **Nhân viên không có tài khoản Microsoft không vào được** | Tenant có 57 tài khoản. Chấm công phục vụ toàn bộ nhân sự, kể cả người không được cấp M365 | Đối soát số nhân viên cần xem bảng công với số tài khoản Entra **trước** khi làm. Xem quyết định 6 ở mục 18. |
+| 15 | Entra hỏng / cấu hình sai là không ai vào được, kể cả quản trị viên | Một nguồn danh tính duy nhất | Tài khoản thoát hiểm cục bộ, mặc định vô hiệu hóa (mục 3) |
+| 16 | App điện thoại thành nút thắt | App chưa có đăng nhập Microsoft; chốt bỏ mật khẩu là app hết đường vào | Làm song song giai đoạn A, không để cuối (mục 13) |
 
 ---
 
@@ -711,7 +795,7 @@ node trien_khai/gia_lap_may.mjs --may-chu http://<tên miền>
 | 1 | Cổng: đăng nhập Entra, RS256 + JWKS, sổ đăng ký module, cấp quyền, trang chủ | 5–8 ngày |
 | 2 | Thanh điều hướng chung `/chung/*`, sinh CSS từ `token.json` + test | 2–3 ngày |
 | 3 | Chấm công thành module (giai đoạn A → C ở mục 12) | 4–6 ngày + thời gian chờ giữa các giai đoạn |
-| 4 | App điện thoại chuyển sang cổng (mục 13) | 3–4 ngày |
+| 4 | App điện thoại: **viết mới** đăng nhập Microsoft (PKCE, trình duyệt hệ thống, secure store, deep link) — làm **song song** giai đoạn 3, không để cuối | 4–5 ngày |
 | 5 | Module AI Agent — xem `ai_agent/tai_lieu/TRANG-QUAN-TRI.md` | tài liệu riêng |
 | — | `rfid`, `tool` | khi hai kho có nội dung |
 
@@ -730,6 +814,19 @@ Giai đoạn 1 và 2 làm được song song với việc khác. Giai đoạn 3 
    subdomain chỉ khi có module do bên ngoài viết.
 3. **Giai đoạn B kéo dài hơn 30 ngày, hay chấp nhận cho mọi người đăng nhập lại một lần?**
 4. **Cổng dùng chung instance PostgreSQL với Chấm công hay instance riêng?**
+6. **Bao nhiêu nhân viên cần xem bảng công trên app, và bao nhiêu người trong số đó có tài
+   khoản Microsoft?** Câu này chặn phạm vi của app điện thoại. Tenant đang có 57 tài khoản.
+   Nếu số nhân viên lớn hơn, có ba lối:
+   - **Cấp tài khoản Entra cho mọi nhân viên.** Sạch nhất, đắt nhất. Có gói M365 F-series giá
+     thấp cho nhân viên tuyến đầu — cần IT xác nhận chi phí thật.
+   - **Giữ một đường đăng nhập thứ hai cho nhân viên không có M365** (mã nhân viên + PIN, chỉ
+     xem được dữ liệu của chính mình). Mâu thuẫn với "chỉ Microsoft", nhưng là ngoại lệ có
+     giới hạn rõ và chỉ nằm ở cổng.
+   - **App điện thoại chỉ dành cho người có tài khoản Microsoft.** Người còn lại xem bảng công
+     qua bản in hoặc hỏi nhân sự — tức là mất phần lớn giá trị của app.
+
+Đăng nhập đã chốt: **chỉ qua Microsoft Entra ID** (mục 3), kèm đúng một tài khoản thoát hiểm
+cục bộ mặc định vô hiệu hóa.
 5. Sửa `/etc/caddy/Caddyfile` thì phải cập nhật bản trong kho `ai_agent` cho khớp, nếu không
    `scripts/drift.sh` sẽ báo lệch. Lần này bắt buộc, vì thay đổi chạm thẳng vào tuyến của bot.
 
