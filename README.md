@@ -210,9 +210,13 @@ bảng công sinh ra, gồm cả chống trùng, hàng đợi lệnh, và chấm
 |---|---|
 | [`tai_lieu/BAT-DAU-NHANH.md`](tai_lieu/BAT-DAU-NHANH.md) | **Dựng để hứng log máy chấm công** — đọc trước |
 | [`tai_lieu/KET-NOI-MAY-ZKTECO.md`](tai_lieu/KET-NOI-MAY-ZKTECO.md) | Cấu hình máy, giao thức ADMS, xử lý sự cố |
-| [`tai_lieu/TRIEN-KHAI.md`](tai_lieu/TRIEN-KHAI.md) | Triển khai VPS, sao lưu, giám sát |
+| [`tai_lieu/TRIEN-KHAI.md`](tai_lieu/TRIEN-KHAI.md) | Triển khai VPS, reverse proxy, giám sát |
+| [`tai_lieu/SAO-LUU-VA-PHUC-HOI.md`](tai_lieu/SAO-LUU-VA-PHUC-HOI.md) | Sao lưu, kéo về máy khác, phục hồi, diễn tập |
 | [`tai_lieu/TRIEN-KHAI-TU-POWERSHELL.md`](tai_lieu/TRIEN-KHAI-TU-POWERSHELL.md) | Cập nhật VPS từ máy Windows bằng PowerShell |
 | [`tai_lieu/BUILD-APP-DIEN-THOAI.md`](tai_lieu/BUILD-APP-DIEN-THOAI.md) | Build APK / iOS bằng EAS |
+| [`tai_lieu/TEN-MIEN.md`](tai_lieu/TEN-MIEN.md) | Trỏ tên miền, chứng chỉ HTTPS, Caddy |
+| [`tai_lieu/DANG-NHAP-MICROSOFT.md`](tai_lieu/DANG-NHAP-MICROSOFT.md) | Đăng nhập bằng tài khoản Microsoft (Entra ID) |
 | [`tai_lieu/API.md`](tai_lieu/API.md) | Toàn bộ endpoint REST |
+| [`tai_lieu/API-TICH-HOP.md`](tai_lieu/API-TICH-HOP.md) | API `/api/v1` cho hệ thống ngoài: khoá API, Swagger, sinh client |
 | [`tai_lieu/THIET-KE.md`](tai_lieu/THIET-KE.md) | Design token: màu, font, bo góc, breakpoint |
 | [`CLAUDE.md`](CLAUDE.md) | Quy ước code của dự án |

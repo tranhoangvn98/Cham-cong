@@ -2,6 +2,32 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.16.4] — 2026-08-14
+
+**Tài liệu sao lưu — và hai lỗi trong quy trình phục hồi cũ.**
+
+Kéo bản sao lưu về máy khác là việc lặp lại hàng tháng, chạy trên hai máy khác nhau. Trong
+một buổi làm việc đã nhầm máy ba lần: `rsync` chạy trên VPS để kéo từ VPS về chính nó,
+`du` gõ vào PowerShell, `Add-Content` gõ vào bash.
+
+### Thêm
+
+- **[`tai_lieu/SAO-LUU-VA-PHUC-HOI.md`](tai_lieu/SAO-LUU-VA-PHUC-HOI.md).** Mỗi khối lệnh
+  ghi rõ chạy trên **VPS** hay trên **máy người dùng**. Kèm mục diễn tập phục hồi vào một
+  CSDL nháp — bản sao lưu chưa từng thử phục hồi thì chưa phải bản sao lưu.
+
+### Sửa
+
+- **Quy trình phục hồi trong `TRIEN-KHAI.md` sẽ hỏng nếu chạy thật.** Nó đổ bản kết xuất
+  đè lên CSDL đang chạy, mà `pg_dump` ở đây là SQL thuần: gặp bảng đã có sẽ dừng giữa chừng
+  với `relation already exists` và để lại dữ liệu chắp vá. Quy trình đúng phải dừng máy
+  chủ, dựng lại CSDL rỗng, rồi mới nạp.
+- **Kịch bản cron mẫu bỏ sót volume `ho_so`** — nơi giữ **bản gốc** hợp đồng scan và biên
+  bản. CSDL chỉ lưu tên tệp chứ không lưu nội dung, nên mất volume đó là mất hẳn. Đường dẫn
+  trong kịch bản cũng sai so với bản triển khai thật (`/opt/cham-cong`, `/var/backups`).
+- **Mục lục tài liệu trong README thiếu 4 tệp**, trong đó có `API-TICH-HOP.md` — tài liệu
+  bên tích hợp cần đọc mà không có đường nào dẫn tới.
+
 ## [1.16.3] — 2026-08-14
 
 **Biến khai trong `.env` nhưng không vào được container.**

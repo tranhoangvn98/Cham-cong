@@ -127,37 +127,42 @@ và nhật ký thao tác ghi đúng IP thật của người dùng.
 
 **Bắt buộc.** Bảng công là căn cứ tính lương; mất dữ liệu là mất bằng chứng.
 
+`trien_khai/cap_nhat_vps.sh` đã tự sao lưu trước mỗi lần cập nhật. Thêm bản hàng ngày cho
+những ngày không cập nhật — sửa `MA_NGUON` cho đúng nơi anh đặt mã nguồn:
+
 ```bash
 cat > /etc/cron.daily/sao-luu-cham-cong <<'EOF'
 #!/bin/sh
 set -e
-THU_MUC=/var/backups/cham-cong
+MA_NGUON=/root/Cham-cong
+THU_MUC="$MA_NGUON/sao_luu/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$THU_MUC"
-NGAY=$(date +%F)
+cd "$MA_NGUON"
 
-# Cơ sở dữ liệu
-docker compose -f /opt/cham-cong/docker-compose.yml exec -T postgres \
-  pg_dump -U chamcong chamcong | gzip > "$THU_MUC/chamcong_$NGAY.sql.gz"
+docker compose exec -T postgres pg_dump -U chamcong chamcong | gzip > "$THU_MUC/csdl.sql.gz"
 
-# Ảnh chấm công bằng điện thoại
-docker run --rm -v cham-cong_anh_cham_cong:/du_lieu:ro -v "$THU_MUC":/luu alpine \
-  tar czf "/luu/anh_$NGAY.tar.gz" -C /du_lieu .
+# CẢ HAI volume. `ho_so` giữ bản gốc hợp đồng scan — CSDL chỉ có tên tệp, không có nội
+# dung, nên bỏ qua nó là mất hẳn không dựng lại được.
+for v in ho_so anh_cham_cong; do
+  docker run --rm -v "cham-cong_$v:/nguon:ro" -v "$THU_MUC:/dich" \
+    alpine tar czf "/dich/$v.tar.gz" -C /nguon .
+done
 
 # Giữ 30 ngày
-find "$THU_MUC" -name '*.gz' -mtime +30 -delete
+find "$MA_NGUON/sao_luu" -maxdepth 1 -type d -mtime +30 -exec rm -rf {} +
 EOF
 chmod +x /etc/cron.daily/sao-luu-cham-cong
 ```
 
-Sao chép bản sao lưu ra **máy khác** (rsync/S3). Bản sao lưu nằm cùng máy với dữ liệu
-gốc không cứu được khi ổ cứng chết.
+Sao lưu nằm cùng ổ với dữ liệu gốc **không cứu được khi ổ cứng chết** — phải kéo định kỳ
+về máy khác.
 
-Phục hồi:
+Cách kéo về, cách phục hồi, và cách diễn tập phục hồi để biết bản sao lưu có thật sự dùng
+được: xem [SAO-LUU-VA-PHUC-HOI.md](SAO-LUU-VA-PHUC-HOI.md).
 
-```bash
-gunzip -c chamcong_2026-08-06.sql.gz | \
-  docker compose exec -T postgres psql -U chamcong chamcong
-```
+> Đừng đổ bản kết xuất đè lên CSDL đang chạy. Đó là SQL thuần, gặp bảng đã có sẽ dừng giữa
+> chừng với `relation already exists` và để lại dữ liệu chắp vá. Quy trình đúng — dừng máy
+> chủ, dựng lại CSDL rỗng, rồi mới nạp — ở tài liệu trên.
 
 ## 5. Giám sát
 
