@@ -11,7 +11,9 @@ const { loi_thieu_mo_ta } = await import('../src/tuyen/tich_hop.ts');
 const day_du = {
   method: 'GET',
   url: '/api/v1/vi-du',
-  schema: { summary: 'Ví dụ', tags: ['Nhân viên'], security: [{ khoaApi: [] }] },
+  schema: {
+    summary: 'Ví dụ', tags: ['NhanVien'], security: [{ khoaApi: [] }], operationId: 'viDu',
+  },
 };
 
 test('route co du mo ta thi khong bao loi', () => {
@@ -24,12 +26,13 @@ test('route KHONG co schema thi bao loi — day la loi hay gap nhat', () => {
   assert.match(loi!, /summary/);
   assert.match(loi!, /tags/);
   assert.match(loi!, /security/);
+  assert.match(loi!, /operationId/);
   // Loi phai chi ro duong dan nao, khong bat nguoi doc di mo tung file.
   assert.match(loi!, /\/api\/v1\/quen/);
 });
 
 test('thieu tung phan deu bi bat', () => {
-  for (const bo of ['summary', 'tags', 'security'] as const) {
+  for (const bo of ['summary', 'tags', 'security', 'operationId'] as const) {
     const sc: Record<string, unknown> = { ...day_du.schema };
     delete sc[bo];
     const loi = loi_thieu_mo_ta({ ...day_du, schema: sc });
@@ -48,6 +51,12 @@ test('summary rong hoac chi khoang trang cung tinh la thieu', () => {
 test('tags rong hoac security rong tinh la thieu', () => {
   assert.notEqual(loi_thieu_mo_ta({ ...day_du, schema: { ...day_du.schema, tags: [] } }), null);
   assert.notEqual(loi_thieu_mo_ta({ ...day_du, schema: { ...day_du.schema, security: [] } }), null);
+});
+
+test('operationId rong tinh la thieu — ten ham trong client sinh ra phu thuoc no', () => {
+  const loi = loi_thieu_mo_ta({ ...day_du, schema: { ...day_du.schema, operationId: '  ' } });
+  assert.notEqual(loi, null);
+  assert.match(loi!, /operationId/);
 });
 
 test('hide: true duoc bo qua — duong noi bo khong phai hop dong', () => {

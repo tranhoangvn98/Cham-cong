@@ -176,6 +176,20 @@ export const cau_hinh = {
    */
   api_tai_lieu_cong_khai: chu('API_TAI_LIEU_CONG_KHAI', '1') === '1',
 
+  /**
+   * Dia chi CONG KHAI cua API, ghi vao `servers` cua spec OpenAPI.
+   *
+   * Bat buoc phai khai bang tay: may chu chay sau reverse proxy va KHONG the tu suy ra. Ben
+   * ngoai goi https://ten-mien/chamcong/api/v1/... nhung ben trong container chi thay
+   * /api/v1/... — tien to /chamcong do Caddy them, may chu khong he biet.
+   *
+   * De trong thi spec khong co `servers`, va bo sinh ma se mac dinh ve http://localhost —
+   * client sinh ra khong goi duoc gi cho toi khi nguoi ta tu sua tay.
+   *
+   * VD: API_GOC_CONG_KHAI=https://teams.tranhoangvietnam.com/chamcong
+   */
+  api_goc_cong_khai: chu('API_GOC_CONG_KHAI', '').replace(/\/+$/, ''),
+
   tu_dong_di_tru: chu('TU_DONG_DI_TRU', la_production ? '0' : '1') === '1',
 
   /** Kich thuoc anh selfie toi da (byte). */

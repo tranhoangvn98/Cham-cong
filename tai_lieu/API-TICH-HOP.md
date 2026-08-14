@@ -61,6 +61,12 @@ file spec; sinh mã là việc của phía họ.
 
 Postman và Insomnia nhập trực tiếp được URL spec, không cần Java lẫn Docker.
 
+> **Phải khai `API_GOC_CONG_KHAI` trong `.env`** (ví dụ
+> `API_GOC_CONG_KHAI=https://tên-miền/chamcong`). Máy chủ nằm sau reverse proxy nên **không
+> tự suy ra được** địa chỉ công khai: bên ngoài gọi `/chamcong/api/v1/...` còn bên trong
+> container chỉ thấy `/api/v1/...`. Để trống thì spec không có `servers`, và client sinh ra
+> mặc định trỏ về `http://localhost` — không gọi được gì cho tới khi người ta sửa tay.
+
 **Tài liệu sinh từ chính mã nguồn, không viết tay.** Thêm đường dẫn mới vào `/api/v1` mà quên
 mô tả thì **máy chủ không khởi động** — nên spec không thể trôi khỏi thực tế.
 

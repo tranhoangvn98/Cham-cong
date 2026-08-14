@@ -2,6 +2,28 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.16.2] — 2026-08-14
+
+**Ba khiếm khuyết của spec, phát hiện khi chạy thật bộ sinh client.**
+
+Chạy `openapi-generator` lên spec 1.16.1 ra client dùng được nhưng đọc không hiểu. Cả ba lỗi
+đều không lộ ra khi chỉ nhìn spec hay xem Swagger UI — phải sinh mã thật mới thấy.
+
+### Sửa
+
+- **Tên tag đổi sang không dấu.** Bộ sinh mã dùng tag làm **tên lớp** và cắt sạch ký tự ngoài
+  ASCII: `Bảng công` → `BngCngApi`, `Sự kiện` → `SKinApi`, `Nhân viên` → `NhnVinApi`. Nay tag
+  là `BangCong`, `SuKien`, `NhanVien`… còn tên tiếng Việt có dấu chuyển sang `description`
+  nên Swagger UI vẫn đọc dễ.
+- **Thêm `operationId` cho cả 9 thao tác.** Thiếu nó, bộ sinh mã tự bịa tên hàm từ đường dẫn:
+  `apiV1BangCongTongHopGet` thay vì `layTongHopThang`.
+- **Thêm `servers`** qua biến mới **`API_GOC_CONG_KHAI`**. Thiếu nó, client sinh ra mặc định
+  trỏ về `http://localhost` và không gọi được gì. Phải khai tay vì máy chủ nằm sau reverse
+  proxy nên không tự suy ra được: bên ngoài gọi `/chamcong/api/v1/...` còn bên trong container
+  chỉ thấy `/api/v1/...`.
+- **Rào chắn nay đòi cả `operationId`** — thiếu thì máy chủ không khởi động, như với
+  `summary`/`tags`/`security`.
+
 ## [1.16.1] — 2026-08-14
 
 ### Sửa

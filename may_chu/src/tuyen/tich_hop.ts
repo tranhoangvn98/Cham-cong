@@ -60,7 +60,10 @@ async function nhan_vien_theo_ma(ma_nv: string): Promise<{ id: string; ma_nv: st
 export interface RouteCanKiem {
   method: string | string[];
   url: string;
-  schema?: { summary?: unknown; tags?: unknown; security?: unknown; hide?: unknown };
+  schema?: {
+    summary?: unknown; tags?: unknown; security?: unknown;
+    operationId?: unknown; hide?: unknown;
+  };
 }
 
 export function loi_thieu_mo_ta(route: RouteCanKiem): string | null {
@@ -70,6 +73,11 @@ export function loi_thieu_mo_ta(route: RouteCanKiem): string | null {
   if (typeof sc?.summary !== 'string' || sc.summary.trim() === '') thieu.push('summary');
   if (!Array.isArray(sc?.tags) || sc.tags.length === 0) thieu.push('tags');
   if (!Array.isArray(sc?.security) || sc.security.length === 0) thieu.push('security');
+  // operationId quyet dinh ten ham trong client sinh tu spec — thieu la ben kia nhan mot
+  // dong ten ham vo nghia.
+  if (typeof sc?.operationId !== 'string' || sc.operationId.trim() === '') {
+    thieu.push('operationId');
+  }
   if (thieu.length === 0) return null;
   const pt = Array.isArray(route.method) ? route.method.join('/') : route.method;
   return `Tuyến ${pt} ${route.url} thiếu ${thieu.join(', ')} trong schema. `
@@ -120,6 +128,7 @@ function phan_hoi(mo_ta_200: string): Record<string, unknown> {
 
 function mo_ta(
   tag: string,
+  operationId: string,
   summary: string,
   description: string,
   pham_vi: string[],
@@ -127,6 +136,10 @@ function mo_ta(
 ): Record<string, unknown> {
   const sc: Record<string, unknown> = {
     tags: [tag],
+    // operationId thanh TEN HAM trong client sinh tu spec. Thieu no, bo sinh ma tu bia ten
+    // tu duong dan: `apiV1BangCongTongHopGet` thay vi `layTongHopThang`. Dat tay o day de
+    // ben tich hop doc code cua ho con hieu duoc.
+    operationId,
     summary,
     // Ghi thang pham vi can vao mo ta: nguoi doc tai lieu biet ngay phai cap quyen gi khi
     // tao khoa, khong phai do bang cach goi thu roi nhan 403.
@@ -173,6 +186,12 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
           + 'trường hay đổi kiểu dữ liệu thì mở `v2` và chạy song song. Client nên **bỏ qua '
           + 'trường lạ** thay vì báo lỗi.',
       },
+      // Thieu `servers` thi bo sinh ma mac dinh ve http://localhost va client sinh ra khong
+      // goi duoc gi. Khong tu suy ra duoc vi may chu nam sau reverse proxy — xem
+      // API_GOC_CONG_KHAI trong cau_hinh.ts.
+      ...(cau_hinh.api_goc_cong_khai === '' ? {} : {
+        servers: [{ url: cau_hinh.api_goc_cong_khai, description: 'Máy chủ chấm công' }],
+      }),
       components: {
         securitySchemes: {
           khoaApi: {
@@ -183,13 +202,16 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
           },
         },
       },
+      // Ten tag KHONG DAU: bo sinh ma dung tag lam ten lop, va no cat het ky tu khong phai
+      // ASCII — "Bảng công" ra "BngCngApi", "Sự kiện" ra "SKinApi". Ten tieng Viet co dau
+      // van giu o `description` nen Swagger UI van doc de.
       tags: [
-        { name: 'Khóa', description: 'Kiểm tra khóa' },
-        { name: 'Nhân viên', description: 'Đọc và đồng bộ hồ sơ nhân viên' },
-        { name: 'Bảng công', description: 'Số liệu chấm công đã tính — đầu vào của tính lương' },
-        { name: 'Lần quẹt', description: 'Log thô từ máy chấm công' },
-        { name: 'Nghỉ phép', description: 'Đơn nghỉ đã duyệt' },
-        { name: 'Sự kiện', description: 'Dòng sự kiện để đồng bộ tăng dần' },
+        { name: 'Khoa', description: 'Khóa API — kiểm tra khóa còn sống' },
+        { name: 'NhanVien', description: 'Nhân viên — đọc và đồng bộ hồ sơ' },
+        { name: 'BangCong', description: 'Bảng công — số liệu đã tính, đầu vào của tính lương' },
+        { name: 'LanQuet', description: 'Lần quẹt — log thô từ máy chấm công' },
+        { name: 'NghiPhep', description: 'Nghỉ phép — đơn đã duyệt' },
+        { name: 'SuKien', description: 'Sự kiện — dòng sự kiện để đồng bộ tăng dần' },
       ],
     },
   });
@@ -237,7 +259,7 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
   // Ben tich hop goi dau tien de biet khoa cua ho con song va co nhung pham vi nao. Khong
   // co duong nay thi cach duy nhat de kiem tra la goi bua mot endpoint that.
   app.get('/toi', {
-    schema: mo_ta('Khóa', 'Thông tin khóa đang dùng',
+    schema: mo_ta('Khoa', 'layThongTinKhoa', 'Thông tin khóa đang dùng',
       'Trả về tên khóa và danh sách phạm vi. Gọi đường này để kiểm tra khóa còn sống trước khi chạy lô đồng bộ.',
       []),
     preHandler: can_khoa_api(),
@@ -251,7 +273,7 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
 
   // ------------------------------------------------------------ nhan vien
   app.get('/nhan-vien', {
-    schema: mo_ta('Nhân viên', 'Danh sách nhân viên',
+    schema: mo_ta('NhanVien', 'layDanhSachNhanVien', 'Danh sách nhân viên',
       'Mặc định **chỉ trả người đang làm**. Hệ thống lương lấy nhầm người đã nghỉ là tính lương cho người không còn làm việc.',
       ['nhan_vien:doc'],
       { querystring: { ...PHAN_TRANG_CHUNG,
@@ -294,7 +316,7 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
   });
 
   app.get('/nhan-vien/:ma_nv', {
-    schema: mo_ta('Nhân viên', 'Chi tiết một nhân viên',
+    schema: mo_ta('NhanVien', 'layMotNhanVien', 'Chi tiết một nhân viên',
       'Định danh là **mã nhân viên**, không phải UUID nội bộ.',
       ['nhan_vien:doc'], { params: { ma_nv: 'Mã nhân viên, không phân biệt hoa thường.' } }),
     preHandler: can_khoa_api('nhan_vien:doc'),
@@ -318,7 +340,7 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
   // Duong quan trong nhat: he thong luong lay o day. Tra ve theo NGAY chu khong phai da
   // tong hop san — ben kia co quy tac tinh luong rieng, dua so lieu tho de ho tu cong.
   app.get('/bang-cong', {
-    schema: mo_ta('Bảng công', 'Bảng công theo từng ngày',
+    schema: mo_ta('BangCong', 'layBangCongTheoNgay', 'Bảng công theo từng ngày',
       'Đường hệ thống lương dùng nhiều nhất. Mặc định **chỉ trả ngày đã chốt** — ngày chưa chốt còn đổi (nhân sự sửa tay, đơn nghỉ duyệt muộn), lấy về tính lương là tính xong rồi số liệu đổi. Khoảng ngày tối đa 400 ngày.',
       ['bang_cong:doc'],
       { querystring: { ...KHOANG_NGAY_CHUNG, ...PHAN_TRANG_CHUNG,
@@ -363,7 +385,7 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
 
   /** Tong hop theo thang cho mot ky luong — tien cho ERP khong muon tu cong. */
   app.get('/bang-cong/tong-hop', {
-    schema: mo_ta('Bảng công', 'Tổng hợp theo tháng',
+    schema: mo_ta('BangCong', 'layTongHopThang', 'Tổng hợp theo tháng',
       'Cộng sẵn theo tháng cho một kỳ lương: số ngày công, tổng phút làm, tăng ca, đi muộn, về sớm.',
       ['bang_cong:doc'],
       { querystring: { thang: 'Tháng dạng `YYYY-MM`. Bắt buộc.',
@@ -400,7 +422,7 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
 
   // ------------------------------------------------------------ lan quet tho
   app.get('/lan-quet', {
-    schema: mo_ta('Lần quẹt', 'Log quẹt thô từ máy',
+    schema: mo_ta('LanQuet', 'layLanQuet', 'Log quẹt thô từ máy',
       'Dữ liệu gốc chưa qua bộ tính công. Khoảng ngày tối đa **92 ngày** một lần gọi vì dữ liệu này rất dày.',
       ['lan_quet:doc'],
       { querystring: { ...KHOANG_NGAY_CHUNG, ...PHAN_TRANG_CHUNG,
@@ -439,7 +461,7 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
 
   // ------------------------------------------------------------ nghi phep da duyet
   app.get('/nghi-phep', {
-    schema: mo_ta('Nghỉ phép', 'Đơn nghỉ đã duyệt',
+    schema: mo_ta('NghiPhep', 'layNghiPhepDaDuyet', 'Đơn nghỉ đã duyệt',
       'Chỉ trả đơn ở trạng thái `da_duyet`. Đơn chờ duyệt chưa phải sự thật, không nên đưa vào tính lương.',
       ['nghi_phep:doc'],
       { querystring: { ...KHOANG_NGAY_CHUNG, ...PHAN_TRANG_CHUNG } }),
@@ -475,7 +497,7 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
   // ho tu luu — ta khong giu con tro cho tung ben, nen nhieu ben doc chung mot dong su
   // kien ma khong dam nhau.
   app.get('/su-kien', {
-    schema: mo_ta('Sự kiện', 'Kéo dòng sự kiện về',
+    schema: mo_ta('SuKien', 'laySuKien', 'Kéo dòng sự kiện về',
       'Dùng khi bên tích hợp không nhận webhook được. Tự lưu `id_cuoi` rồi lần sau truyền vào `tu_id`. Hệ thống **không giữ con trỏ cho từng bên**, nên nhiều hệ thống cùng đọc mà không đạp nhau. Hết dữ liệu thì `id_cuoi` là `null` — giữ nguyên con trỏ cũ, đừng nhảy về 0.',
       ['su_kien:doc'],
       { querystring: { tu_id: 'Chỉ lấy sự kiện có id lớn hơn số này. Lần đầu truyền `0`.',
@@ -516,7 +538,7 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
   // KHONG cho xoa qua API: xoa nhan vien keo theo lan quet va bang cong. Muon cho nghi thi
   // dat `dang_hoat_dong = false` — du lieu cham cong cu van con de doi chieu ve sau.
   app.put('/nhan-vien/:ma_nv', {
-    schema: mo_ta('Nhân viên', 'Tạo hoặc cập nhật nhân viên',
+    schema: mo_ta('NhanVien', 'luuNhanVien', 'Tạo hoặc cập nhật nhân viên',
       'Upsert theo mã nhân viên: chưa có thì tạo (bắt buộc `ho_ten`), có rồi thì cập nhật. Gọi lại cùng bản ghi không tạo thêm người mới.\n\n**Trường không gửi thì giữ nguyên**, không bị xóa trắng — gửi thiếu mà mất `pin_may` là mất chấm công của người đó.\n\nKhông có đường xóa: cho nghỉ việc thì đặt `dang_hoat_dong: false`.',
       ['nhan_vien:ghi'],
       { params: { ma_nv: 'Mã nhân viên.' },
