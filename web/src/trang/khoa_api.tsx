@@ -4,7 +4,7 @@
 // giu ma bam nen khong the lay lai — neu nguoi dung dong hop thoai ma chua chep thi phai
 // thu hoi va tao cai moi. Vi vay hop thoai hien khoa co canh bao ro va nut chep san.
 import { useState, type ReactNode } from 'react';
-import { goi } from '../api.ts';
+import { goc_api_tuyet_doi, goi } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, HopTot, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
@@ -80,7 +80,7 @@ export function TrangKhoaApi(): ReactNode {
           </p>
         </div>
         <div className="hang-nut">
-          <a className="nut" href="/api/v1/tai-lieu/" target="_blank" rel="noreferrer">
+          <a className="nut" href={`${goc_api_tuyet_doi()}/api/v1/tai-lieu/`} target="_blank" rel="noreferrer">
             Tài liệu API
           </a>
           <button className="nut-chinh" onClick={() => dat_dang_tao(true)}>+ Tạo khóa API</button>
@@ -92,11 +92,11 @@ export function TrangKhoaApi(): ReactNode {
         <table className="bang-gon">
           <tbody>
             <tr><td>Tài liệu bấm thử được</td>
-              <td><a href="/api/v1/tai-lieu/" target="_blank" rel="noreferrer">
-                {window.location.origin}/api/v1/tai-lieu/</a></td></tr>
+              <td><a href={`${goc_api_tuyet_doi()}/api/v1/tai-lieu/`} target="_blank" rel="noreferrer">
+                {goc_api_tuyet_doi()}/api/v1/tai-lieu/</a></td></tr>
             <tr><td>Spec OpenAPI 3.1</td>
-              <td><a href="/api/v1/openapi.json" target="_blank" rel="noreferrer">
-                {window.location.origin}/api/v1/openapi.json</a>
+              <td><a href={`${goc_api_tuyet_doi()}/api/v1/openapi.json`} target="_blank" rel="noreferrer">
+                {goc_api_tuyet_doi()}/api/v1/openapi.json</a>
                 {' '}<span className="goi-y">dán vào bộ sinh client là ra sẵn thư viện gọi API</span></td></tr>
             <tr><td>Khóa API</td>
               <td><span className="goi-y">tạo ở trên, gửi riêng — đừng gửi cùng kênh với tài liệu</span></td></tr>
@@ -315,7 +315,7 @@ function HopThoaiKhoaMoi(
       <div className="o-nhap">
         <label>Cách dùng</label>
         <pre className="khoi-ma">{`curl -H "Authorization: Bearer ${khoa.khoa}" \\
-  ${window.location.origin}/api/v1/toi`}</pre>
+  ${goc_api_tuyet_doi()}/api/v1/toi`}</pre>
       </div>
 
       <div className="hang-nut">

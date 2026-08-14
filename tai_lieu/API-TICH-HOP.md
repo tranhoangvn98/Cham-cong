@@ -21,8 +21,13 @@ tích hợp gắn vào UUID rồi ta đổi cơ sở dữ liệu là họ hỏng
 
 | Thứ | Đường dẫn |
 |---|---|
-| **Swagger UI** — bấm thử được ngay trên trình duyệt | `/api/v1/tai-lieu/` |
-| **Spec OpenAPI 3.1** — dán vào bộ sinh client | `/api/v1/openapi.json` |
+| **Swagger UI** — bấm thử được ngay trên trình duyệt | `<GỐC>/api/v1/tai-lieu/` |
+| **Spec OpenAPI 3.1** — dán vào bộ sinh client | `<GỐC>/api/v1/openapi.json` |
+
+> **`<GỐC>` là gì:** tùy cách triển khai. Đặt webapp dưới một tiền tố (ví dụ `/chamcong/`)
+> thì gốc là `https://tên-miền/chamcong`; đặt ở gốc tên miền thì là `https://tên-miền`.
+> Không phải đoán: mở trang **Khóa API** trên webapp, ở đó hiện sẵn hai đường dẫn đầy đủ để
+> chép đi. Chép nhầm thiếu tiền tố là nhận 404.
 
 Cả hai **không cần khóa**: chúng chỉ bày ra hợp đồng (tên đường dẫn, tham số, ý nghĩa), không
 bày ra dữ liệu. Muốn gọi thật vẫn phải có khóa API. Đưa đường dẫn cho bên tích hợp là họ tự
@@ -31,14 +36,30 @@ bày ra dữ liệu. Muốn gọi thật vẫn phải có khóa API. Đưa đư�
 
 Từ spec sinh sẵn thư viện gọi API:
 
+**Cách không cần cài gì** — dùng Docker:
+
 ```bash
-# Java / C# / Python / Go / PHP…
+docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli generate \
+  -i https://tên-miền/chamcong/api/v1/openapi.json \
+  -g java -o /local/client-cham-cong
+```
+
+**Cách qua npx** — cần **Java 11+** đã cài sẵn trên máy, vì `openapi-generator` là công cụ
+Java; `npx` chỉ tải phần vỏ gọi:
+
+```bash
+java -version   # không ra gì thì cài JDK trước
 npx @openapitools/openapi-generator-cli generate \
-  -i https://teams.tranhoangvietnam.com/api/v1/openapi.json \
+  -i https://tên-miền/chamcong/api/v1/openapi.json \
   -g java -o ./client-cham-cong
 ```
 
-Postman và Insomnia đều nhập trực tiếp được URL đó.
+Thay `-g java` bằng `csharp`, `python`, `go`, `php`, `typescript-axios`… tùy ngôn ngữ bên kia.
+
+Chạy ở đâu: **trên máy của bên tích hợp**, không phải trên VPS chấm công. VPS chỉ cần phục vụ
+file spec; sinh mã là việc của phía họ.
+
+Postman và Insomnia nhập trực tiếp được URL spec, không cần Java lẫn Docker.
 
 **Tài liệu sinh từ chính mã nguồn, không viết tay.** Thêm đường dẫn mới vào `/api/v1` mà quên
 mô tả thì **máy chủ không khởi động** — nên spec không thể trôi khỏi thực tế.
@@ -86,7 +107,7 @@ Kiểm tra khóa còn sống:
 
 ```bash
 curl -H "Authorization: Bearer ck_..." \
-  https://teams.tranhoangvietnam.com/chamcong/api/v1/toi
+  https://tên-miền/chamcong/api/v1/toi
 ```
 
 ```json

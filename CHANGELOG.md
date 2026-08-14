@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.16.1] — 2026-08-14
+
+### Sửa
+
+- **Link tài liệu API thiếu tiền tố triển khai.** Trang Khóa API dựng link bằng
+  `window.location.origin`, nên khi webapp chạy dưới tiền tố (`/chamcong/`) thì link chép đi
+  bị thiếu tiền tố và nhận 404. Nay dùng `goc_api_tuyet_doi()` lấy từ chính cấu hình của
+  webapp. Tài liệu cũng viết chỗ có chỗ không — đã thống nhất và nói rõ `<GỐC>` là gì.
+- Tài liệu bổ sung **cách sinh client bằng Docker** (không cần cài gì) bên cạnh cách qua
+  `npx`, và nói rõ `npx` vẫn **cần Java 11+** vì `openapi-generator` là công cụ Java —
+  `npx` chỉ tải phần vỏ gọi. Kèm ghi chú: sinh mã là việc trên máy của bên tích hợp, không
+  phải trên VPS chấm công.
+
 ## [1.16.0] — 2026-08-14
 
 **Swagger / OpenAPI cho `/api/v1`.**

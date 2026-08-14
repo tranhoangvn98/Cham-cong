@@ -11,6 +11,16 @@
  */
 const GOC = ((import.meta.env['VITE_API_URL'] as string | undefined) ?? '').replace(/\/+$/, '')
   || (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+
+/**
+ * Goc API dang tuyet doi, de hien link cho NGUOI DUNG chep di noi khac.
+ *
+ * KHONG dung window.location.origin cho viec nay: webapp chay duoi tien to (vd /chamcong/)
+ * nen origin khong thoi se ra link thieu tien to, chep sang he thong khac la 404.
+ */
+export function goc_api_tuyet_doi(): string {
+  return `${window.location.origin}${GOC}`;
+}
 const KHOA_LUU = 'cham_cong_phien';
 
 export interface NguoiDung {
