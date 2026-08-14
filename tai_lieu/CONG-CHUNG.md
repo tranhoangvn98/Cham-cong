@@ -64,28 +64,99 @@ Hai luật rút ra, không có ngoại lệ:
 
 ## 2. Sơ đồ đường dẫn
 
-```
-https://<tên miền>/
-  /                     trang chủ cổng                    [cổng]
-  /cong/dang-nhap       màn hình đăng nhập                [cổng]
-  /cong/api/*           API danh tính + quản trị          [cổng]
-  /cong/.well-known/jwks.json   khóa công khai            [cổng]
-  /chung/*              thanh điều hướng + CSS dùng chung [cổng]
+**Cổng sở hữu gốc tên miền và mọi đường không ai nhận.** Ba nhóm đường dưới đây là ngoại lệ
+được khai tên; còn lại thuộc về cổng.
 
-  /chamcong/*           module Chấm công        -> 127.0.0.1:8081
-  /chamcong/api/*                               -> 127.0.0.1:8080
+```
+https://teams.tranhoangvietnam.com/
+  /api/*                webhook bot Teams       -> 127.0.0.1:3978   ngoại lệ
+  /dev/*                webhook bot dev         -> 127.0.0.1:3979   ngoại lệ
+  /iclock/*             máy chấm công ZKTeco    -> 127.0.0.1:8080   ngoại lệ
+
+  /chamcong/api/*       API Chấm công           -> 127.0.0.1:8080
+  /chamcong/*           webapp Chấm công        -> 127.0.0.1:8081
   /agent/*              module AI Agent         -> (chưa có)
   /rfid/*  /tool/*      chỗ trống
 
-  /api/messages         webhook bot Teams       -> 127.0.0.1:3978   KHÔNG qua cổng
-  /dev/*                webhook bot dev         -> 127.0.0.1:3979   KHÔNG qua cổng
+  /                     trang chủ cổng          -> 127.0.0.1:8090
+  /cong/*               đăng nhập, API danh tính, JWKS, quản trị
+  /chung/*              thanh điều hướng + CSS dùng chung
+  <mọi đường còn lại>   cổng xử lý (404 của cổng, bí danh, module mới)
 
-http://<tên miền>/
-  /iclock/*             máy chấm công ZKTeco    -> 127.0.0.1:8080   KHÔNG qua cổng
+http://teams.tranhoangvietnam.com/
+  /iclock/*             máy chấm công ZKTeco (HTTP thường, KHÔNG chuyển hướng)
+  <còn lại>             chuyển hướng sang HTTPS
 ```
 
 Thêm module = thêm một tiền tố đường dẫn + một dòng trong sổ đăng ký. Không đụng module nào
 khác.
+
+### Vì sao phải đảo quyền sở hữu gốc
+
+Caddyfile đang chạy để bot giữ `handle { reverse_proxy 3978 }` — bắt **tất cả**. Domain vì
+thế thuộc về bot, còn cổng chỉ là khách trọ ở `/cong/*`. Muốn
+`teams.tranhoangvietnam.com` **là** cổng thì phải đảo lại.
+
+Đảo được, vì bot chỉ cần đúng một đường. `config/openclaw.json` khai:
+
+```
+webhook: { port: 3978, path: "/api/messages" }
+```
+
+Cổng điều khiển `18789` bind `127.0.0.1`, không bao giờ ra Internet. Ngoài `/api/messages`
+thì bot không phục vụ gì trên tên miền công khai — nó đang bắt tất chỉ vì lịch sử, không phải
+vì cần.
+
+**Thu về `/api/*` chứ không phải `/api/messages`.** Hẹp vừa đủ để nhả gốc cho cổng, nhưng vẫn
+chừa chỗ nếu có đầu mối nào của bot chưa được ghi vào tài liệu. Chấm công không đụng: API của
+nó nằm ở `/chamcong/api/*`.
+
+> ⚠️ Đây là thay đổi **thu hẹp**, trong khi quy ước của `openclaw-teams` (docs/GD2-PHAN2.md)
+> là *"thay đổi Caddy phải ADDITIVE"*. Cố ý phá quy ước đó, nên phải nghiệm thu bằng cả hai
+> cách ở bước 4 mục 15: `curl` trả 401 **và** nhắn thật cho bot trong Teams. Lùi lại là chép
+> lại tệp sao lưu và `systemctl reload caddy`.
+
+### Đường dẫn ngắn: bí danh có kiểm soát
+
+Người dùng không bao giờ phải gõ `/chamcong` — vào gốc tên miền là thấy cổng, bấm vào là đi.
+Nhưng khi cần gửi cho nhau một đường dẫn ngắn, cổng giữ một **bảng bí danh** và chuyển hướng
+302 sang đường dẫn chuẩn của module:
+
+```
+/cham-cong   ->  /chamcong/
+/bang-cong   ->  /chamcong/bang-cong
+/cham-cong/bang-cong -> /chamcong/bang-cong
+```
+
+Bí danh khai cùng chỗ với module và **kiểm trùng lúc đăng ký** — hai module không được cùng
+đòi một bí danh. Danh sách ngắn, có chủ đích, chỉ cho vài trang hay được gửi qua lại.
+
+**Chuyển hướng chứ không viết lại đường dẫn.** Viết lại (giữ nguyên URL ngắn trên thanh địa
+chỉ) là bẫy: Vite đã nhúng tiền tố `/chamcong/` vào mọi tệp tĩnh và mọi liên kết trong
+webapp, nên bấm một phát là quay về đường dài — chỉ khác là bây giờ có hai URL cho cùng một
+trang. Chuyển hướng cho đường vào ngắn mà không sinh ra sự mập mờ đó.
+
+### Vì sao không bỏ hẳn tiền tố
+
+Nghe hợp lý: cho Chấm công chiếm thẳng `/bang-cong`, `/nhan-vien`, AI Agent chiếm
+`/bao-cao`… Nhưng đếm trên chính mã nguồn hiện có thì đụng nhau ngay:
+
+| Đường dẫn | Chấm công | Cổng | AI Agent |
+|---|:--:|:--:|:--:|
+| `/tai-khoan` | ✅ có rồi | ✅ cần | |
+| `/nhat-ky` | ✅ có rồi | ✅ cần | ✅ cần |
+| `/nguoi-dung` | | ✅ cần | ✅ cần |
+| `/cai-dat` | | ✅ cần | ✅ cần |
+| `/api/*` | ✅ có rồi | | ✅ cần (và bot đang giữ) |
+
+Bỏ tiền tố nghĩa là cổng phải giữ một danh sách khoảng mười hai đường dẫn cấp một cho **mỗi**
+module, và mỗi lần thêm module lại phải rà trùng với tất cả module cũ. Đó đúng là thứ mà toàn
+bộ tài liệu này dựng lên để tránh: thêm một service không được bắt sửa service đang chạy.
+
+Muốn URL sạch mà không có tiền tố thì lối đi đúng là **subdomain cho từng module**
+(`chamcong.tranhoangvietnam.com`) — hết trùng, hết tiền tố, lại thêm ranh giới bảo mật thật.
+Cái giá là mất SSO nhờ chung `localStorage`, phải chuyển sang cookie và mở CORS (mục 2). Đây
+là đánh đổi có thật, để ở mục 18 cho anh quyết.
 
 ### Vì sao chung một origin
 
@@ -449,18 +520,15 @@ http://<tên miền> {
 <tên miền> {
 	encode gzip
 
-	# ---- Webhook bot Teams: GIỮ NGUYÊN, không qua cổng ----
+	# ---- Webhook bot Teams ----
+	# TRƯỚC ĐÂY khối này là `handle { }` bắt tất. Thu về `/api/*` để nhả gốc tên miền
+	# cho cổng. Bot chỉ khai đúng `/api/messages` (config/openclaw.json), `/api/*` là
+	# hẹp vừa đủ mà vẫn chừa chỗ cho đầu mối chưa ghi trong tài liệu.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3978
+	}
 	handle_path /dev/* {
 		reverse_proxy 127.0.0.1:3979
-	}
-
-	# ---- Cổng ----
-	handle /cong/* {
-		reverse_proxy 127.0.0.1:8090
-	}
-	handle_path /chung/* {
-		root * /srv/cong/chung
-		file_server
 	}
 
 	# ---- Module: Chấm công ----
@@ -492,14 +560,14 @@ http://<tên miền> {
 		reverse_proxy 127.0.0.1:8080
 	}
 
-	# ---- Trang chủ cổng (khớp đúng '/') ----
-	handle / {
-		reverse_proxy 127.0.0.1:8090
-	}
+	# ---- Bí danh ngắn: danh sách có kiểm soát, kiểm trùng lúc đăng ký module ----
+	redir /cham-cong  /chamcong/           302
+	redir /bang-cong  /chamcong/bang-cong  302
 
-	# ---- Còn lại: webhook bot Teams production. GIỮ NGUYÊN ----
+	# ---- Cổng: gốc tên miền VÀ mọi đường không ai nhận ----
+	# Cổng tự phục vụ /cong/*, /chung/* và trang 404 của chính nó.
 	handle {
-		reverse_proxy 127.0.0.1:3978
+		reverse_proxy 127.0.0.1:8090
 	}
 }
 ```
@@ -568,10 +636,11 @@ caddy validate --config /etc/caddy/Caddyfile
 systemctl reload caddy
 ```
 
-**DoD** — cả bảy lệnh phải đúng:
+**DoD** — cả tám lệnh phải đúng:
 
 ```bash
 curl -s -o /dev/null -w 'bot        %{http_code}\n' https://<tên miền>/api/messages
+curl -s -o /dev/null -w 'goc        %{http_code}\n' https://<tên miền>/
 curl -s -o /dev/null -w 'cong       %{http_code}\n' https://<tên miền>/cong/dang-nhap
 curl -s              -w '\njwks     %{http_code}\n' https://<tên miền>/cong/.well-known/jwks.json
 curl -s -o /dev/null -w 'webapp     %{http_code}\n' https://<tên miền>/chamcong/
@@ -580,8 +649,17 @@ curl -s -o /dev/null -w 'iclock     %{http_code}\n' http://<tên miền>/iclock/
 curl -s -o /dev/null -w 'redir 80   %{http_code}\n' http://<tên miền>/chamcong/
 ```
 
-`health` phải trả JSON `{"trang_thai":"ok",...}` — trả HTML của bot nghĩa là thứ tự khối
-`handle` sai. `redir 80` phải là 301, `iclock` **không** được là 301.
+- `bot` phải là **401** — y như trước khi đổi. Đây là dấu hiệu tốt, không phải lỗi:
+  `scripts/healthcheck.sh` của `openclaw-teams` cũng kiểm bằng đúng mã này.
+- `goc` phải trả trang chủ **cổng**. Trả nội dung của bot nghĩa là khối thu hẹp `/api/*`
+  chưa có hiệu lực.
+- `health` phải trả JSON `{"trang_thai":"ok",...}`. Trả HTML của bot nghĩa là thứ tự khối
+  `handle` sai.
+- `redir 80` phải là 301; `iclock` **không** được là 301.
+
+**Rồi nhắn thật cho bot trong Teams.** `curl` trả 401 chỉ chứng minh Caddy tới được cổng
+3978, không chứng minh Bot Framework vẫn gửi được. Bước này là bắt buộc vì thay đổi ở trên
+**thu hẹp** đường của bot, đi ngược quy ước "chỉ thêm, không bớt" của `openclaw-teams`.
 
 **Lùi:** `cp /root/Caddyfile.truoc-cong-chung /etc/caddy/Caddyfile && systemctl reload caddy`.
 
@@ -615,6 +693,7 @@ node trien_khai/gia_lap_may.mjs --may-chu http://<tên miền>
 | 4 | Cổng chết là cả cụm chết | Mọi đăng nhập đi qua một chỗ | Token sống 15 phút nên cổng chết vẫn dùng tiếp được ~15 phút. Healthcheck + autoheal như `openclaw`. |
 | 5 | Open redirect qua `quay_lai` | Không kiểm đích chuyển hướng | Chỉ nhận đường dẫn nội bộ (mục 3) |
 | 6 | Đụng đường `/api` | Caddyfile của bot `handle { reverse_proxy 3978 }` bắt tất, kể cả `/api/*` | Module bắt buộc nằm dưới tiền tố riêng. Kiểm bằng lệnh `health` ở bước 4. |
+| 6b | **Bot ngừng nhận tin sau khi nhả gốc** | Thu `handle { }` về `/api/*` là thay đổi **bớt**, đi ngược quy ước ADDITIVE của `openclaw-teams`. Nếu bot còn đầu mối nào ngoài `/api/*` chưa ghi trong tài liệu thì đầu mối đó rơi sang cổng | Thu về `/api/*` chứ không phải `/api/messages`. Nghiệm thu bằng **cả hai**: `curl` trả 401 **và** nhắn thật trong Teams (bước 4). Lùi bằng tệp sao lưu ở bước 0. |
 | 7 | `handle_path` cắt nhầm tiền tố | `handle_path /chamcong/api/*` cắt cả `/api`, máy chủ trả 404 | `handle` + `uri strip_prefix` cho đường API |
 | 8 | Máy chấm công ngừng đẩy log | `/iclock` bị ép sang HTTPS hoặc bị kéo vào cổng | Bước 6. `iclock` phải trả 200, không phải 301. |
 | 9 | Đổi tiền tố mà không dựng lại | `VITE_BASE` là biến lúc **build**, Vite thay lúc biên dịch | Dựng lại image `web`, không chỉ restart |
@@ -644,10 +723,15 @@ Giai đoạn 1 và 2 làm được song song với việc khác. Giai đoạn 3 
 ## 18. Còn phải quyết
 
 1. **Tạo kho `cong-noi-bo` hay dựng tạm trong `Cham-cong`?** (mục 11 — tôi khuyên kho riêng)
-2. **Tên miền của cổng.** `teams.tranhoangvietnam.com` là tên của bot. Cổng nội bộ nên có
-   tên riêng (`noibo.` / `portal.`), nhưng đổi thì phải thêm DNS, thêm redirect URI, cấu
-   hình lại webhook Teams. Đề xuất: giữ nguyên ở giai đoạn 1, đổi khi đã có đủ ba module.
+2. **Giữ tiền tố `/chamcong`, hay chuyển sang subdomain cho từng module?** (mục 2) Giữ tiền
+   tố thì SSO miễn phí nhờ chung `localStorage` và không phải sửa gì; subdomain thì URL sạch
+   và có ranh giới bảo mật thật, nhưng phải chuyển sang cookie, mở CORS, và viết lại tầng
+   token của cả web lẫn app điện thoại. Đề xuất: giữ tiền tố + bảng bí danh; đổi sang
+   subdomain chỉ khi có module do bên ngoài viết.
 3. **Giai đoạn B kéo dài hơn 30 ngày, hay chấp nhận cho mọi người đăng nhập lại một lần?**
 4. **Cổng dùng chung instance PostgreSQL với Chấm công hay instance riêng?**
 5. Sửa `/etc/caddy/Caddyfile` thì phải cập nhật bản trong kho `ai_agent` cho khớp, nếu không
-   `scripts/drift.sh` sẽ báo lệch.
+   `scripts/drift.sh` sẽ báo lệch. Lần này bắt buộc, vì thay đổi chạm thẳng vào tuyến của bot.
+
+Tên miền đã chốt: **`teams.tranhoangvietnam.com` là cổng chung chính**, và sau thay đổi ở
+mục 2 thì nó thuộc về cổng chứ không còn thuộc về bot. Không đổi tên miền.
