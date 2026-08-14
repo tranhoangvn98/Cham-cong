@@ -2,6 +2,36 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.16.0] — 2026-08-14
+
+**Swagger / OpenAPI cho `/api/v1`.**
+
+### Thêm mới
+
+- **`GET /api/v1/openapi.json`** — spec OpenAPI 3.1, không cần khóa. Bên tích hợp dán vào
+  `openapi-generator`, Postman hay Insomnia là ra sẵn thư viện gọi API bằng ngôn ngữ của họ.
+- **`GET /api/v1/tai-lieu/`** — Swagger UI bấm thử được. Công khai có chủ đích: nó chỉ bày ra
+  **hợp đồng**, không bày ra dữ liệu — muốn gọi thật vẫn phải có khóa. Tắt bằng
+  `API_TAI_LIEU_CONG_KHAI=0`.
+- Trang **Khóa API** có sẵn hai đường dẫn để gửi cho bên tích hợp, kèm nhắc gửi khóa qua kênh
+  khác với tài liệu.
+
+### Đáng chú ý
+
+- **Chỉ tài liệu hóa `/api/v1`, không đụng 97 endpoint nội bộ.** Chúng đổi theo giao diện và
+  không có cam kết tương thích; tài liệu hóa chúng chỉ tạo ra một đống phải bảo trì mà không
+  ai đọc.
+- **Rào chắn chống tài liệu trôi.** Tài liệu viết tay luôn trôi khỏi thực tế — thêm đường dẫn
+  rồi quên cập nhật spec là chuyện chắc chắn xảy ra, và lúc đó Swagger còn tệ hơn không có gì
+  vì nó nói dối một cách tự tin. Nay một tuyến trong `/api/v1` thiếu `summary`/`tags`/`security`
+  thì **máy chủ không khởi động**, kèm thông báo chỉ đúng đường dẫn nào và cách sửa. Đã thử
+  bằng cách thêm một tuyến thiếu mô tả để xem nó có chặn thật không.
+- **Schema chỉ để sinh tài liệu, không kiểm tra đầu vào.** Mọi tham số khai `type: 'string'` và
+  `additionalProperties: true` — đúng với thực tế (tham số truy vấn qua HTTP vốn là chuỗi) và
+  không bao giờ từ chối request. Bộ kiểm tra tay hiện có trả lỗi tiếng Việt rõ hơn nhiều so với
+  lỗi mặc định của Fastify, nên giữ nguyên. Phần `response` cũng chỉ khai `description`, không
+  khai `type`, để Fastify không cắt bớt trường khi tuần tự hóa.
+
 ## [1.15.0] — 2026-08-14
 
 **API tích hợp `/api/v1` — cổng cho hệ thống ngoài gọi vào.**

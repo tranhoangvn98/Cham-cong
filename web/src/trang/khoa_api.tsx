@@ -79,7 +79,29 @@ export function TrangKhoaApi(): ReactNode {
             cổng thông tin nội bộ. Mỗi bên tích hợp nên một khóa riêng với phạm vi tối thiểu.
           </p>
         </div>
-        <button className="nut-chinh" onClick={() => dat_dang_tao(true)}>+ Tạo khóa API</button>
+        <div className="hang-nut">
+          <a className="nut" href="/api/v1/tai-lieu/" target="_blank" rel="noreferrer">
+            Tài liệu API
+          </a>
+          <button className="nut-chinh" onClick={() => dat_dang_tao(true)}>+ Tạo khóa API</button>
+        </div>
+      </div>
+
+      <div className="the">
+        <h3>Gửi gì cho bên tích hợp</h3>
+        <table className="bang-gon">
+          <tbody>
+            <tr><td>Tài liệu bấm thử được</td>
+              <td><a href="/api/v1/tai-lieu/" target="_blank" rel="noreferrer">
+                {window.location.origin}/api/v1/tai-lieu/</a></td></tr>
+            <tr><td>Spec OpenAPI 3.1</td>
+              <td><a href="/api/v1/openapi.json" target="_blank" rel="noreferrer">
+                {window.location.origin}/api/v1/openapi.json</a>
+                {' '}<span className="goi-y">dán vào bộ sinh client là ra sẵn thư viện gọi API</span></td></tr>
+            <tr><td>Khóa API</td>
+              <td><span className="goi-y">tạo ở trên, gửi riêng — đừng gửi cùng kênh với tài liệu</span></td></tr>
+          </tbody>
+        </table>
       </div>
 
       <HopLoi loi={hd.loi} />

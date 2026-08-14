@@ -17,6 +17,34 @@ tích hợp gắn vào UUID rồi ta đổi cơ sở dữ liệu là họ hỏng
 
 ---
 
+## 0. Tài liệu máy đọc được
+
+| Thứ | Đường dẫn |
+|---|---|
+| **Swagger UI** — bấm thử được ngay trên trình duyệt | `/api/v1/tai-lieu/` |
+| **Spec OpenAPI 3.1** — dán vào bộ sinh client | `/api/v1/openapi.json` |
+
+Cả hai **không cần khóa**: chúng chỉ bày ra hợp đồng (tên đường dẫn, tham số, ý nghĩa), không
+bày ra dữ liệu. Muốn gọi thật vẫn phải có khóa API. Đưa đường dẫn cho bên tích hợp là họ tự
+đọc được, không phải gửi file qua lại. Không muốn lộ cả hợp đồng ra Internet thì đặt
+`API_TAI_LIEU_CONG_KHAI=0` trong `.env`.
+
+Từ spec sinh sẵn thư viện gọi API:
+
+```bash
+# Java / C# / Python / Go / PHP…
+npx @openapitools/openapi-generator-cli generate \
+  -i https://teams.tranhoangvietnam.com/api/v1/openapi.json \
+  -g java -o ./client-cham-cong
+```
+
+Postman và Insomnia đều nhập trực tiếp được URL đó.
+
+**Tài liệu sinh từ chính mã nguồn, không viết tay.** Thêm đường dẫn mới vào `/api/v1` mà quên
+mô tả thì **máy chủ không khởi động** — nên spec không thể trôi khỏi thực tế.
+
+---
+
 ## 1. Lấy khóa API
 
 Webapp → **Tài khoản** → **Khóa API** → tạo mới. Chỉ **admin** làm được — cấp khóa API ngang

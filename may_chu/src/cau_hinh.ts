@@ -167,6 +167,15 @@ export const cau_hinh = {
   },
 
   /** Bat migration tu dong khi khoi dong (tien cho Docker 1 diem). */
+  /**
+   * Trang tai lieu API o /api/v1/tai-lieu.
+   *
+   * Mac dinh BAT: trang do chi bay ra HOP DONG (ten duong dan, tham so, y nghia), khong bay
+   * ra du lieu — muon goi that van phai co khoa API. Dua duong dan cho ben tich hop la ho tu
+   * doc duoc, khong phai gui file qua lai. Dat 0 neu khong muon lo ca hop dong ra ngoai.
+   */
+  api_tai_lieu_cong_khai: chu('API_TAI_LIEU_CONG_KHAI', '1') === '1',
+
   tu_dong_di_tru: chu('TU_DONG_DI_TRU', la_production ? '0' : '1') === '1',
 
   /** Kich thuoc anh selfie toi da (byte). */
