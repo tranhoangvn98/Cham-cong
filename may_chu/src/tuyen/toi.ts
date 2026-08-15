@@ -6,10 +6,13 @@ import { can_dang_nhap, nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/
 import { cau_hinh } from '../cau_hinh.ts';
 import { tinh_lai_khoang, tinh_lai_ngay } from '../cong/tinh_cong.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
+import { gui_ngam, tai_khoan_nguoi_duyet } from '../su_kien/thong_bao_day.ts';
 import { do_geofence, type DiaDiem } from '../tien_ich/dia_ly.ts';
 import { doc_anh_selfie, luu_anh_selfie } from '../tien_ich/luu_anh.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
-import { cong_ngay, khoang_thang, ngay_dia_phuong, thu_trong_tuan } from '../tien_ich/thoi_gian.ts';
+import {
+  cong_ngay, khoang_thang, ngay_dia_phuong, ngay_viet, thu_trong_tuan,
+} from '../tien_ich/thoi_gian.ts';
 import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, khoang_ngay, luan_ly, ngay_bat_buoc, than, trong_tap, uuid,
@@ -17,6 +20,24 @@ import {
 } from '../tien_ich/kiem_tra.ts';
 
 const LOAI_NGHI = ['phep_nam', 'khong_luong', 'om', 'thai_san', 'ket_hon', 'hieu'] as const;
+
+/** Ten tieng Viet cua tung loai nghi, dung trong noi dung thong bao day. */
+const NHAN_LOAI_NGHI: Record<typeof LOAI_NGHI[number], string> = {
+  phep_nam: 'nghỉ phép năm',
+  khong_luong: 'nghỉ không lương',
+  om: 'nghỉ ốm',
+  thai_san: 'nghỉ thai sản',
+  ket_hon: 'nghỉ kết hôn',
+  hieu: 'nghỉ việc hiếu',
+};
+
+/** Ho ten de dua vao thong bao. Khong tim thay thi tra chuoi trung tinh, khong nem loi. */
+async function ten_nhan_vien(nhan_vien_id: string): Promise<string> {
+  const d = await truy_van_mot<{ ho_ten: string }>(
+    'select ho_ten from nhan_vien where id = $1', [nhan_vien_id],
+  );
+  return d?.ho_ten ?? 'Một nhân viên';
+}
 
 /** Khoang cach toi thieu giua hai lan cham cong bang dien thoai (giay). */
 const GIAN_CACH_TOI_THIEU_GIAY = 60;
@@ -592,6 +613,17 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     );
     await ghi_nhat_ky(nd.sub, 'gui_don_nghi_phep', 'don_nghi_phep',
       dong?.id ?? null, { loai, tu_ngay, den_ngay }, req.ip);
+
+    const khoang = tu_ngay === den_ngay
+      ? ngay_viet(tu_ngay)
+      : `${ngay_viet(tu_ngay)} – ${ngay_viet(den_ngay)}`;
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: 'Đơn nghỉ phép mới chờ duyệt',
+      noi_dung: `${await ten_nhan_vien(nv_id)}: ${NHAN_LOAI_NGHI[loai]} ${khoang}`,
+      du_lieu: { man: 'duyet-don', loai: 'nghi_phep', don_id: dong?.id ?? null },
+    });
+
     return res.code(201).send({ ...dong, trang_thai: 'cho_duyet' });
   });
 
@@ -662,6 +694,14 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       );
       await ghi_nhat_ky(nd.sub, 'gui_don_giai_trinh', 'don_giai_trinh',
         dong?.id ?? null, { ngay }, req.ip);
+
+      gui_ngam({
+        nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+        tieu_de: 'Đơn giải trình mới chờ duyệt',
+        noi_dung: `${await ten_nhan_vien(nv_id)}: quên quét ngày ${ngay_viet(ngay)}`,
+        du_lieu: { man: 'duyet-don', loai: 'giai_trinh', don_id: dong?.id ?? null },
+      });
+
       return res.code(201).send({ ...dong, trang_thai: 'cho_duyet' });
     } catch (loi) {
       if ((loi as { code?: string }).code === '23505') {

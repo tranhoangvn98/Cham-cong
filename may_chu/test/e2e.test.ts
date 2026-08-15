@@ -8,6 +8,7 @@
 //   DATABASE_URL=postgres://chamcong:...@localhost:5432/chamcong_test npm run test_e2e
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer, type Server } from 'node:http';
 import type { FastifyInstance } from 'fastify';
 
 process.env['JWT_SECRET'] = 'khoa_kiem_thu_du_dai_de_khong_bi_tu_choi_0001';
@@ -17,6 +18,8 @@ process.env['CORS_ORIGIN'] = 'http://localhost:5173';
 // Bat lop chan IP cho /iclock: cac test hien co goi tu 127.0.0.1 nen van qua,
 // va co test rieng kiem IP ngoai danh sach bi chan.
 process.env['ICLOCK_IP_CHO_PHEP'] = '127.0.0.1,192.168.9.0/24';
+// Tro thong bao day vao may chu gia dung trong tep nay, KHONG goi ra Expo that.
+process.env['EXPO_PUSH_URL'] = 'http://127.0.0.1:39217/push';
 process.env['DATABASE_URL'] ??=
   'postgres://chamcong:chamcong_dev@localhost:5432/chamcong_test';
 
@@ -69,6 +72,7 @@ async function goi(
 
 before(async () => {
   app = await dung_ung_dung();
+  await dung_may_expo();
   await chay_di_tru(() => {});
 
   // Xoa sach de moi lan chay doc lap.
@@ -98,8 +102,52 @@ before(async () => {
   );
 });
 
+// ---------------------------------------------------------------- Expo gia lap
+//
+// Thong bao day duoc gui NGAM (khong await trong route) nen test phai cho no toi noi.
+// `cho_push` doi cho den khi may chu gia nhan du so goi mong doi, thay vi ngu mot khoang
+// co dinh — ngu it thi test chap chon, ngu nhieu thi ca bo test cham di vo ich.
+interface GoiPush { to: string; title: string; body: string; data?: Record<string, unknown> }
+let expo_nhan: GoiPush[] = [];
+let expo_tra_loi: 'ok' | 'chet' = 'ok';
+let may_expo: Server | null = null;
+
+function cho_push(so_luong: number, han_ms = 2000): Promise<void> {
+  const het = Date.now() + han_ms;
+  return new Promise((xong, hong) => {
+    const kiem = (): void => {
+      if (expo_nhan.length >= so_luong) { xong(); return; }
+      if (Date.now() > het) {
+        hong(new Error(`cho ${so_luong} thong bao, chi nhan ${expo_nhan.length}`));
+        return;
+      }
+      setTimeout(kiem, 20);
+    };
+    kiem();
+  });
+}
+
+function dung_may_expo(): Promise<void> {
+  may_expo = createServer((req, res) => {
+    let than = '';
+    req.on('data', (m) => { than += String(m); });
+    req.on('end', () => {
+      const ds = JSON.parse(than) as GoiPush[];
+      expo_nhan.push(...ds);
+      // Expo tra mot ket qua cho MOI thong bao, dung thu tu gui len.
+      const data = ds.map(() => (expo_tra_loi === 'ok'
+        ? { status: 'ok' }
+        : { status: 'error', message: 'not registered', details: { error: 'DeviceNotRegistered' } }));
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ data }));
+    });
+  });
+  return new Promise((ok) => may_expo!.listen(39217, '127.0.0.1', () => { ok(); }));
+}
+
 after(async () => {
   await app?.close();
+  await new Promise<void>((ok) => { may_expo === null ? ok() : may_expo.close(() => { ok(); }); });
   await dong_pool();
 });
 
@@ -373,6 +421,10 @@ test('may day ATTLOG -> luu lan quet va TINH LUON bang cong', async () => {
 // Firmware PUSH kiem soat ra vao day cham cong bang table=rtlog. Truoc khi ho tro, nhanh
 // nay roi vao "bang khac, bo qua" nen moi lan quet bi vut im lang — may bao thanh cong,
 // webapp khong co gi.
+//
+// CHU Y: bai nay them mot lan quet luc 07:58:11 — SOM hon moc 08:12:03 cua bai ATTLOG o
+// tren, nen gio vao cua ngay NGAY doi. MOI kiem tra phut_lam / phut_ot cua ngay do o cac
+// bai PHIA SAU deu phai tinh tu 07:58:11. Doi gio o day thi phai sua ca nhung cho ay.
 test('may day RTLOG -> vao lan quet va tinh vao bang cong', async () => {
   const r = await app.inject({
     method: 'POST',
@@ -464,7 +516,9 @@ test('bang cong tra ve dong da tinh', async () => {
   const ds = r.body as unknown as { ma_nv: string; phut_lam: number }[];
   assert.equal(ds.length, 1);
   assert.equal(ds[0]!.ma_nv, 'NV001');
-  assert.equal(ds[0]!.phut_lam, 437);
+  // Sau bai RTLOG, gio vao la 07:58:11 -> kep ve dau ca 08:00.
+  // 08:00 -> 17:00 = 540p, tru 90p nghi trua = 450p.
+  assert.equal(ds[0]!.phut_lam, 450);
 });
 
 test('tu choi khoang ngay qua dai (chong truy van keo sap CSDL)', async () => {
@@ -517,9 +571,9 @@ test('them ngay le -> tinh lai ngay do thanh nghi le', async () => {
   );
   assert.equal(bc?.trang_thai, 'ngay_le');
   assert.equal(bc?.so_cong, 1);
-  // Ngay le khong co gio chuan de kep: tinh TOAN BO thoi gian co mat
-  // 08:12:03 -> 18:05:20 = 593 phut, tru 90 phut nghi trua = 503.
-  assert.equal(bc?.phut_ot, 503, 'lam viec ngay le -> toan bo thoi gian co mat tinh OT');
+  // Ngay le khong co gio chuan de kep: tinh TOAN BO thoi gian co mat, ke ca truoc dau ca.
+  // 07:58:11 -> 18:05:20 = 607 phut, tru 90 phut nghi trua = 517.
+  assert.equal(bc?.phut_ot, 517, 'lam viec ngay le -> toan bo thoi gian co mat tinh OT');
 });
 
 test('xoa ngay le -> ngay do tro lai co_mat', async () => {
@@ -564,7 +618,8 @@ test('nhan vien xem duoc bang cong cua CHINH MINH', async () => {
   const r = await goi('GET', `/api/toi/bang-cong?thang=${thang}`, { token: token_nhan_vien });
   assert.equal(r.ma, 200);
   const tong = r.body['tong_hop'] as Record<string, number>;
-  assert.equal(Number(tong['tong_phut_lam']), 437);
+  // Nhu bai "bang cong tra ve dong da tinh": 450p sau khi RTLOG them moc 07:58:11.
+  assert.equal(Number(tong['tong_phut_lam']), 450);
 });
 
 test('nhan vien khong xem duoc bang cong nguoi khac (bi loc theo pham vi)', async () => {
@@ -2409,4 +2464,184 @@ test('nhat ky API: lan goi cua khoa duoc ghi lai de con doi chieu', async () => 
   assert.equal(r.ma, 200);
   const ds = r.body as unknown as Record<string, unknown>[];
   assert.ok(Array.isArray(ds) && ds.length > 0, 'phai co it nhat mot dong nhat ky');
+});
+
+// ============================================================ thong bao day (push)
+//
+// Truoc ban nay, app dang ky token day du roi may chu luu vao token_push — nhung KHONG co
+// gi doc bang do. Nhan vien nop don thi quan ly khong hay, don duoc duyet thi nhan vien
+// khong hay. Cac bai duoi kiem dung mat xich cuoi do.
+
+test('push: dang ky token cho ca nhan vien va admin', async () => {
+  const a = await goi('POST', '/api/toi/token-push', {
+    token: token_nhan_vien,
+    body: { token: 'ExponentPushToken[nv001]', nen_tang: 'android' },
+  });
+  assert.equal(a.ma, 200);
+
+  const b = await goi('POST', '/api/toi/token-push', {
+    token: token_admin,
+    body: { token: 'ExponentPushToken[admin]', nen_tang: 'ios' },
+  });
+  assert.equal(b.ma, 200);
+});
+
+test('push: nhan vien nop don nghi phep -> NGUOI DUYET nhan thong bao', async () => {
+  expo_nhan = [];
+  const tu = cong_ngay(ngay_dia_phuong(new Date()), 30);
+  const r = await goi('POST', '/api/toi/nghi-phep', {
+    token: token_nhan_vien,
+    body: { loai: 'phep_nam', tu_ngay: tu, den_ngay: tu, ly_do: 'Viec rieng' },
+  });
+  assert.equal(r.ma, 201);
+
+  await cho_push(1);
+  // Admin la nguoi duyet -> nhan; nguoi nop KHONG duoc tu nhan thong bao cua chinh minh.
+  const den_admin = expo_nhan.filter((g) => g.to === 'ExponentPushToken[admin]');
+  const den_nv = expo_nhan.filter((g) => g.to === 'ExponentPushToken[nv001]');
+  assert.equal(den_admin.length, 1, 'nguoi duyet phai nhan dung mot thong bao');
+  assert.equal(den_nv.length, 0, 'nguoi nop don khong duoc nhan thong bao ve don cua minh');
+  assert.match(den_admin[0]!.title, /chờ duyệt/);
+  // Noi dung phai du de quyet dinh ma khong can mo app: ai, loai gi, ngay nao.
+  assert.match(den_admin[0]!.body, /nghỉ phép năm/);
+  assert.match(den_admin[0]!.body, /^\S/);
+  assert.equal(den_admin[0]!.data?.['man'], 'duyet-don');
+});
+
+test('push: duyet don -> NGUOI NOP nhan thong bao, kem ghi chu cua nguoi duyet', async () => {
+  const ds = await goi('GET', '/api/duyet/nghi-phep?trang_thai=cho_duyet', { token: token_admin });
+  const don = (ds.body as unknown as Record<string, unknown>[])[0]!;
+
+  expo_nhan = [];
+  const r = await goi('POST', `/api/duyet/nghi-phep/${String(don['id'])}/quyet`, {
+    token: token_admin,
+    body: { quyet_dinh: 'da_duyet', ghi_chu: 'Đồng ý' },
+  });
+  assert.equal(r.ma, 200);
+
+  await cho_push(1);
+  const den_nv = expo_nhan.filter((g) => g.to === 'ExponentPushToken[nv001]');
+  assert.equal(den_nv.length, 1);
+  assert.match(den_nv[0]!.title, /được duyệt/);
+  assert.match(den_nv[0]!.body, /Đồng ý/, 'ghi chu cua nguoi duyet phai den tay nhan vien');
+  // Ngay phai o dang nguoi Viet doc duoc, khong phai 2026-09-14.
+  assert.match(den_nv[0]!.body, /\d{2}\/\d{2}\/\d{4}/);
+});
+
+test('push: Expo bao token da chet -> token bi xoa khoi CSDL', async () => {
+  expo_tra_loi = 'chet';
+  expo_nhan = [];
+
+  const ngay = cong_ngay(ngay_dia_phuong(new Date()), -3);
+  const r = await goi('POST', '/api/toi/giai-trinh', {
+    token: token_nhan_vien,
+    body: { ngay, gio_vao_de_xuat: '08:00', ly_do: 'Quen quet the hom do' },
+  });
+  assert.equal(r.ma, 201);
+
+  await cho_push(1);
+  // Cho vong xoa token chay xong (chay sau khi da nhan phan hoi cua Expo).
+  for (let i = 0; i < 50; i++) {
+    const con = await truy_van_mot<{ so: number }>(
+      `select count(*)::int as so from token_push where token = 'ExponentPushToken[admin]'`,
+    );
+    if (con!.so === 0) break;
+    await new Promise((ok) => setTimeout(ok, 20));
+  }
+  const con = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from token_push where token = 'ExponentPushToken[admin]'`,
+  );
+  assert.equal(con!.so, 0, 'token DeviceNotRegistered phai bi xoa, neu khong bang se phinh mai');
+  expo_tra_loi = 'ok';
+});
+
+test('push: tat bang THONG_BAO_DAY thi khong goi Expo nua', async () => {
+  const { cau_hinh } = await import('../src/cau_hinh.ts');
+  const cu = cau_hinh.thong_bao_day_bat;
+  (cau_hinh as { thong_bao_day_bat: boolean }).thong_bao_day_bat = false;
+  expo_nhan = [];
+
+  const tu = cong_ngay(ngay_dia_phuong(new Date()), 60);
+  const r = await goi('POST', '/api/toi/nghi-phep', {
+    token: token_nhan_vien,
+    body: { loai: 'khong_luong', tu_ngay: tu, den_ngay: tu, ly_do: 'Viec gia dinh' },
+  });
+  assert.equal(r.ma, 201, 'tat thong bao KHONG duoc lam hong viec nop don');
+
+  await new Promise((ok) => setTimeout(ok, 200));
+  assert.equal(expo_nhan.length, 0);
+  (cau_hinh as { thong_bao_day_bat: boolean }).thong_bao_day_bat = cu;
+});
+
+test('push: Expo chet thi don van nop duoc — thong bao khong duoc chan luong chinh', async () => {
+  const url_cu = process.env['EXPO_PUSH_URL'];
+  const { cau_hinh } = await import('../src/cau_hinh.ts');
+  // Cong khong ai nghe -> fetch that bai ngay.
+  (cau_hinh as { expo_push_url: string }).expo_push_url = 'http://127.0.0.1:39218/khong-co';
+
+  const tu = cong_ngay(ngay_dia_phuong(new Date()), 90);
+  const r = await goi('POST', '/api/toi/nghi-phep', {
+    token: token_nhan_vien,
+    body: { loai: 'om', tu_ngay: tu, den_ngay: tu, ly_do: 'Om sot' },
+  });
+  assert.equal(r.ma, 201, 'Expo chet van phai nop don thanh cong');
+
+  const con = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from don_nghi_phep where tu_ngay = $1`, [tu],
+  );
+  assert.equal(con!.so, 1, 'don phai duoc luu du thong bao that bai');
+  (cau_hinh as { expo_push_url: string }).expo_push_url = url_cu ?? '';
+});
+
+// ============================================================ xuat CSV cho ke toan
+//
+// Man Bang cong hien BANG TONG HOP (moi nhan vien mot dong) nhung truoc ban nay nut Xuat
+// lai tai ve chi tiet tung ngay — thay mot dang, tai ve mot neo.
+
+test('xuat CSV tong hop: moi nhan vien MOT dong, co BOM de Excel doc dung tieng Viet', async () => {
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('GET', `/api/bang-cong/xuat-csv?thang=${thang}&kieu=thang`,
+    { token: token_admin });
+  assert.equal(r.ma, 200);
+
+  const csv = r.tho;
+  assert.equal(csv.charCodeAt(0), 0xFEFF, 'thieu BOM thi Excel tren Windows hien chu loan');
+
+  const dong = csv.replace(/^﻿/, '').trim().split('\r\n');
+  assert.match(dong[0]!, /^Mã NV,Họ tên,Phòng ban/);
+  assert.match(dong[0]!, /Số công/);
+
+  const cua_nv = dong.filter((d) => d.startsWith('NV001,'));
+  assert.equal(cua_nv.length, 1, 'tong hop thang phai gom ca thang vao MOT dong moi nguoi');
+});
+
+test('xuat CSV chi tiet: moi NGAY mot dong', async () => {
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('GET', `/api/bang-cong/xuat-csv?thang=${thang}&kieu=ngay`,
+    { token: token_admin });
+  assert.equal(r.ma, 200);
+  const dong = r.tho.replace(/^﻿/, '').trim().split('\r\n');
+  assert.match(dong[0]!, /Ngày,Trạng thái/);
+  assert.ok(dong.some((d) => d.includes(NGAY)), 'phai co dong cua ngay da cham cong');
+});
+
+test('xuat CSV: thieu kieu thi van ra chi tiet nhu truoc — khong pha link cu', async () => {
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('GET', `/api/bang-cong/xuat-csv?thang=${thang}`, { token: token_admin });
+  assert.equal(r.ma, 200);
+  assert.match(r.tho.replace(/^﻿/, '').split('\r\n')[0]!, /Ngày,Trạng thái/);
+});
+
+test('xuat CSV: kieu la thi bao loi ro rang chu khong im lang tra chi tiet', async () => {
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('GET', `/api/bang-cong/xuat-csv?thang=${thang}&kieu=quy`,
+    { token: token_admin });
+  assert.equal(r.ma, 400);
+});
+
+test('xuat CSV: nhan vien thuong KHONG duoc xuat ca cong ty', async () => {
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('GET', `/api/bang-cong/xuat-csv?thang=${thang}&kieu=thang`,
+    { token: token_nhan_vien });
+  assert.equal(r.ma, 403);
 });

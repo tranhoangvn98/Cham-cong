@@ -150,7 +150,7 @@ Lệnh vào hàng đợi bền vững trong CSDL; máy nhận ở lần poll k�
 |---|---|---|---|
 | GET | `/bang-cong?tu=&den=&nhan_vien_id=&phong_ban_id=` | mọi vai trò | Tối đa 92 ngày |
 | GET | `/bang-cong/tong-hop?thang=YYYY-MM&phong_ban_id=` | mọi vai trò | Tổng hợp theo người |
-| GET | `/bang-cong/xuat-csv?thang=YYYY-MM` | nhan_su | CSV có BOM UTF-8 |
+| GET | `/bang-cong/xuat-csv?thang=YYYY-MM&kieu=thang\|ngay` | nhan_su | CSV có BOM UTF-8. `kieu=thang`: mỗi nhân viên một dòng (tính lương). `kieu=ngay` (mặc định): mỗi ngày một dòng |
 | POST | `/bang-cong/tinh-lai` | nhan_su | `{tu, den, nhan_vien_id?}` |
 | PATCH | `/bang-cong/:nhan_vien_id/:ngay` | nhan_su | Sửa tay `{so_cong?, phut_ot?, ghi_chu?, da_chot?}` |
 | POST | `/bang-cong/chot-thang` | nhan_su | `{thang}` |
@@ -384,6 +384,25 @@ quyết được đơn của nhân viên trong phòng mình — ngoài phạm vi
 | POST | `/nghi-phep/:id/huy` | Hủy đơn của mình |
 | GET / POST | `/giai-trinh` | Xem / gửi đơn giải trình quên quẹt |
 | POST / DELETE | `/token-push` | Đăng ký / bỏ token thông báo đẩy |
+
+### Thông báo đẩy
+
+Máy chủ gửi thông báo tới app qua dịch vụ Expo khi:
+
+| Việc xảy ra | Ai nhận |
+|---|---|
+| Nhân viên gửi đơn nghỉ phép / giải trình | Trưởng phòng của người đó, **và** mọi tài khoản `nhan_su` / `admin` |
+| Đơn được duyệt hoặc bị từ chối | Chính người gửi đơn (kèm ghi chú của người duyệt) |
+
+Gửi cho cả nhân sự chứ không chỉ trưởng phòng là có chủ đích: phòng ban chưa gán trưởng
+phòng thì đơn sẽ không đến tay ai — và đó đúng là lúc đơn bị bỏ quên lâu nhất.
+
+Thông báo **không bao giờ chặn luồng chính**. Expo hỏng hay máy chủ không ra được Internet
+thì đơn vẫn nộp và duyệt bình thường, chỉ ghi cảnh báo vào log. Token bị Expo báo
+`DeviceNotRegistered` (gỡ app, đổi máy) sẽ tự bị xóa khỏi CSDL.
+
+Tắt hẳn bằng `THONG_BAO_DAY=0`. Nên tắt khi nạp lại dữ liệu cũ hàng loạt, nếu không nhân
+viên sẽ nhận một loạt thông báo về những đơn đã xử lý từ lâu.
 
 ### `GET /api/toi/luong`
 

@@ -192,6 +192,21 @@ export const cau_hinh = {
 
   tu_dong_di_tru: chu('TU_DONG_DI_TRU', la_production ? '0' : '1') === '1',
 
+  /**
+   * Thong bao day toi app dien thoai (don moi, don duoc duyet).
+   *
+   * Dat 0 de tat han — huu ich khi may chu khong ra duoc Internet, hoac khi khoi phuc du
+   * lieu cu: tinh lai bang cong hang loat ma con bat thi nhan vien nhan mot loat thong bao
+   * ve nhung don da xu ly tu lau.
+   */
+  thong_bao_day_bat: chu('THONG_BAO_DAY', '1') === '1',
+
+  /**
+   * Dich vu day thong bao cua Expo. Chi doi khi tu chay may chu day rieng — de nguyen thi
+   * dung dich vu cong cong cua Expo, khong can dang ky hay khoa gi.
+   */
+  expo_push_url: chu('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
+
   /** Kich thuoc anh selfie toi da (byte). */
   anh_toi_da_byte: so('ANH_TOI_DA_BYTE', 3 * 1024 * 1024),
 

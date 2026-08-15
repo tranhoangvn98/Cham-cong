@@ -5,8 +5,9 @@ import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { can_nguoi_duyet, nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
 import { tinh_lai_ngay, tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
+import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
-import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
+import { ngay_dia_phuong, ngay_viet } from '../tien_ich/thoi_gian.ts';
 import {
   chuoi, than, trong_tap, uuid, LoiDauVao, LoiKhongTim,
 } from '../tien_ich/kiem_tra.ts';
@@ -110,6 +111,17 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     // Duyet/tu choi deu doi trang thai ngay cong -> tinh lai khoang ngay cua don.
     const so = await tinh_lai_khoang(don.tu_ngay, don.den_ngay, don.nhan_vien_id);
     await ghi_nhat_ky(nd.sub, `nghi_phep_${quyet}`, 'don_nghi_phep', id, { ghi_chu }, req.ip);
+
+    const khoang = don.tu_ngay === don.den_ngay
+      ? ngay_viet(don.tu_ngay)
+      : `${ngay_viet(don.tu_ngay)} – ${ngay_viet(don.den_ngay)}`;
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_cua_nhan_vien(don.nhan_vien_id),
+      tieu_de: quyet === 'da_duyet' ? 'Đơn nghỉ phép đã được duyệt' : 'Đơn nghỉ phép bị từ chối',
+      noi_dung: ghi_chu === null || ghi_chu === '' ? khoang : `${khoang} — ${ghi_chu}`,
+      du_lieu: { man: 'don-tu', loai: 'nghi_phep', don_id: id, quyet_dinh: quyet },
+    });
+
     return { ok: true, so_ngay_da_tinh_lai: so };
   });
 
@@ -165,6 +177,16 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     // Don da duyet ghi de gio vao/ra -> phai tinh lai ngay do.
     const kq = await tinh_lai_ngay(don.nhan_vien_id, don.ngay);
     await ghi_nhat_ky(nd.sub, `giai_trinh_${quyet}`, 'don_giai_trinh', id, { ghi_chu }, req.ip);
+
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_cua_nhan_vien(don.nhan_vien_id),
+      tieu_de: quyet === 'da_duyet' ? 'Đơn giải trình đã được duyệt' : 'Đơn giải trình bị từ chối',
+      noi_dung: ghi_chu === null || ghi_chu === ''
+        ? `Ngày ${ngay_viet(don.ngay)}`
+        : `Ngày ${ngay_viet(don.ngay)} — ${ghi_chu}`,
+      du_lieu: { man: 'don-tu', loai: 'giai_trinh', don_id: id, quyet_dinh: quyet },
+    });
+
     return {
       ok: true,
       da_tinh_lai: kq !== null,

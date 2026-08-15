@@ -60,6 +60,9 @@ services:
       MS_TU_DONG_TAO: ${MS_TU_DONG_TAO:-0}
       ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
       ERP_WEBHOOK_SECRET: ${ERP_WEBHOOK_SECRET:-}
+      # Thong bao day toi app dien thoai. Dat 0 de tat (vd: may chu khong ra Internet).
+      THONG_BAO_DAY: ${THONG_BAO_DAY:-1}
+      EXPO_PUSH_URL: ${EXPO_PUSH_URL:-https://exp.host/--/api/v2/push/send}
       # Trang Swagger UI (/api/v1/tai-lieu). Dat 0 de tat han.
       API_TAI_LIEU_CONG_KHAI: ${API_TAI_LIEU_CONG_KHAI:-1}
       # Dia chi cong khai cua API, vi du https://ten-mien/chamcong. May chu nam sau reverse

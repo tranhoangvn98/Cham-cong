@@ -178,18 +178,31 @@ Nối nhân viên hai bên bằng trường **Mã bên ERP** ở trang Nhân vi�
 ## 9. Kiểm thử
 
 ```bash
-npm test                              # 60 test: parser ADMS, tính công, JWT, geofence
+npm test                              # 181 test: parser ADMS, tính công, JWT, geofence
 createdb chamcong_test
 DATABASE_URL=postgres://chamcong:...@localhost:5432/chamcong_test \
-  npm --workspace may_chu run test_e2e   # 41 test end-to-end, có CSDL thật
+  npm --workspace may_chu run test_e2e   # 151 test end-to-end, có CSDL thật
 npm run kiem_tra_kieu                 # kiểm tra kiểu TypeScript
 ```
 
-Test end-to-end **giả lập máy ZKTeco thật** đẩy ATTLOG qua giao thức ADMS rồi đối chiếu
-bảng công sinh ra, gồm cả chống trùng, hàng đợi lệnh, và chấm công điện thoại.
+Test end-to-end **giả lập máy ZKTeco thật** đẩy ATTLOG/RTLOG qua giao thức ADMS rồi đối
+chiếu bảng công sinh ra, gồm cả chống trùng, hàng đợi lệnh, chấm công điện thoại, khóa
+API `/api/v1`, và thông báo đẩy (dựng máy chủ Expo giả trên `127.0.0.1:39217`, không gọi
+ra Internet).
 
 > Test e2e **xóa sạch dữ liệu** trước khi chạy, nên nó từ chối chạy nếu tên cơ sở dữ
 > liệu không bắt đầu bằng `chamcong_test`.
+
+Chạy được ngay trên VPS mà không đụng dữ liệu thật — chốt chặn tên CSDL ở trên đảm bảo
+điều đó:
+
+```bash
+cd /root/Cham-cong
+docker compose exec -T postgres psql -U chamcong -d postgres -c 'CREATE DATABASE chamcong_test;'
+docker run --rm -v /root/Cham-cong:/app -w /app --network cham-cong_default \
+  -e DATABASE_URL="postgres://chamcong:$(grep -E '^POSTGRES_PASSWORD=' .env | tail -1 | cut -d= -f2-)@postgres:5432/chamcong_test" \
+  node:22-alpine sh -c 'npm ci --silent && npm run --workspace may_chu test_e2e'
+```
 
 ## 10. Bảo mật
 

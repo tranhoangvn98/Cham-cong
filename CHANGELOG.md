@@ -28,6 +28,54 @@ một buổi làm việc đã nhầm máy ba lần: `rsync` chạy trên VPS đ�
 - **Mục lục tài liệu trong README thiếu 4 tệp**, trong đó có `API-TICH-HOP.md` — tài liệu
   bên tích hợp cần đọc mà không có đường nào dẫn tới.
 
+## [1.17.0] — 2026-08-15
+
+**Chạy được 140 bài kiểm thử e2e lần đầu — và ba bài trong đó đang hỏng.**
+
+Từ đầu dự án tôi không dựng được PostgreSQL trong môi trường phát triển nên bộ e2e chưa
+bao giờ được thực thi, chỉ được viết. Bản này chạy được. Ba bài đỏ ngay.
+
+### Sửa
+
+- **Ba bài e2e sai kỳ vọng.** Bài RTLOG (thêm ở 1.15.0) đẩy một lần quét lúc `07:58:11` —
+  sớm hơn mốc `08:12:03` của bài ATTLOG phía trên — nên giờ vào của ngày đó đổi. Ba bài
+  sau vẫn giữ con số cũ: `437` phải là `450` (kẹp về đầu ca 08:00, trừ 90p nghỉ), và ngày
+  lễ `503` phải là `517` (không có giờ ca để kẹp nên tính toàn bộ thời gian có mặt). **Bộ
+  tính công đúng, chỉ bài kiểm sai** — nhưng nếu không chạy thì không cách nào biết. Đã
+  ghi chú ngay tại bài RTLOG để lần sau ai đổi giờ ở đó biết phải sửa những đâu.
+- **Nút "Xuất CSV" ở trang Bảng công tải về thứ khác với thứ đang xem.** Màn hình hiện
+  bảng tổng hợp tháng (mỗi nhân viên một dòng) nhưng nút xuất lại tải chi tiết từng ngày.
+
+### Thêm
+
+- **Thông báo đẩy — mắt xích cuối cùng.** App đã xin quyền, lấy Expo token và gửi lên máy
+  chủ; máy chủ đã lưu vào `token_push`. Nhưng **không có gì đọc bảng đó**: nhân viên nộp
+  đơn thì quản lý không hay, đơn được duyệt thì nhân viên không hay. Nay:
+  - Đơn nghỉ phép / giải trình mới → trưởng phòng **và** mọi tài khoản nhân sự/admin.
+    Gửi cho cả nhân sự là có chủ đích: phòng chưa gán trưởng phòng thì đơn không đến tay
+    ai, và đó đúng là lúc đơn bị bỏ quên lâu nhất.
+  - Duyệt / từ chối → người gửi đơn, kèm ghi chú của người duyệt.
+  - Token bị Expo báo `DeviceNotRegistered` tự bị xóa, để bảng không phình mãi.
+  - **Không bao giờ chặn luồng chính**: Expo hỏng thì đơn vẫn nộp và duyệt bình thường.
+  - Tắt bằng `THONG_BAO_DAY=0` — nên tắt khi nạp lại dữ liệu cũ hàng loạt.
+- **Xuất CSV tổng hợp tháng** (`kieu=thang`): mỗi nhân viên một dòng, đúng bảng đang xem,
+  kèm số công / ngày có mặt / vắng / nghỉ phép / phút làm / phút OT / số lần đi muộn. Liệt
+  kê cả nhân viên **không có ngày công nào** — kế toán cần thấy họ để còn hỏi, chứ không
+  phải để họ biến mất khỏi bảng lương. Thời lượng xuất bằng **phút nguyên**, không phải
+  giờ thập phân: máy Việt Nam hay đặt dấu phẩy làm dấu thập phân, mà dấu phẩy cũng là dấu
+  phân cách cột của CSV — số `7,5` sẽ bị tách làm hai ô.
+  `kieu=ngay` giữ nguyên hành vi cũ và vẫn là mặc định, nên link cũ không hỏng.
+- **11 bài e2e mới** cho hai tính năng trên. Phần thông báo dựng một máy chủ Expo giả trên
+  `127.0.0.1:39217` để đối chiếu đúng nội dung gửi đi, không gọi ra Internet.
+- **README chỉ cách chạy e2e ngay trên VPS** mà không đụng dữ liệu thật.
+
+Tổng: 181 bài unit + 151 bài e2e, tất cả đạt.
+
+### Còn chặn
+
+Module C (lương/BHXH/thuế), D (hợp đồng), G (vi phạm) vẫn chờ kế toán và luật sư xác nhận
+tham số pháp lý. Màn "Lương" trên app cố ý chỉ hiện cơ sở tính công, không hiện số tiền.
+
 ## [1.16.3] — 2026-08-14
 
 **Biến khai trong `.env` nhưng không vào được container.**
