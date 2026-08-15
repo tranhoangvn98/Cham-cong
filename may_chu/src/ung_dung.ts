@@ -13,6 +13,7 @@ import { tuyen_nhap_du_lieu } from './tuyen/nhap_du_lieu.ts';
 import { tuyen_ho_so } from './tuyen/ho_so.ts';
 import { tuyen_don_tu } from './tuyen/don_tu.ts';
 import { tuyen_luong } from './tuyen/luong.ts';
+import { tuyen_vcontract } from './tuyen/vcontract.ts';
 import { tuyen_toi } from './tuyen/toi.ts';
 import { tuyen_tich_hop } from './tuyen/tich_hop.ts';
 import { truy_van_mot } from './csdl/ket_noi.ts';
@@ -128,6 +129,8 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   await app.register(tuyen_toi, { prefix: '/api/toi' });
   // API cho he thong ngoai. Prefix rieng + xac thuc bang khoa API, xem tuyen/tich_hop.ts.
   await app.register(tuyen_tich_hop, { prefix: '/api/v1' });
+  // Duong vContract goi nguoc ve. NGOAI lop dang nhap — tu bao ve bang token rieng.
+  await app.register(tuyen_vcontract, { prefix: '/vcontract' });
 
   return app;
 }

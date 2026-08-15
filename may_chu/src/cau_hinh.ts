@@ -210,6 +210,27 @@ export const cau_hinh = {
   /** Kich thuoc anh selfie toi da (byte). */
   anh_toi_da_byte: so('ANH_TOI_DA_BYTE', 3 * 1024 * 1024),
 
+  /**
+   * Hop dong dien tu vContract (Viettel). De TRONG `VCONTRACT_URL` = tat han tinh nang.
+   *
+   * `cp_code` va `cp_account_code` do Viettel cap khi mo ket noi. `cp_account_code` nhan
+   * 'VCONTRACT' (co chung thuc) hoac 'SCONTRACT' (khong chung thuc) — khai sai thi login
+   * duoc nhung lap hop dong se vao nham phien ban.
+   */
+  vcontract: {
+    url: chu('VCONTRACT_URL', '').replace(/\/+$/, ''),
+    username: chu('VCONTRACT_USERNAME', ''),
+    mat_khau: chu('VCONTRACT_PASSWORD', ''),
+    cp_code: chu('VCONTRACT_CP_CODE', ''),
+    cp_account_code: chu('VCONTRACT_CP_ACCOUNT_CODE', 'VCONTRACT'),
+    /**
+     * Token vContract phai gui trong header Authorization khi goi callback ve ta. Khong
+     * dat = tu choi moi callback: duong /vcontract/* nam ngoai lop dang nhap, de trong
+     * nghia la bat ky ai cung doi duoc trang thai hop dong lao dong.
+     */
+    token_callback: chu('VCONTRACT_TOKEN_CALLBACK', ''),
+  },
+
   /** Noi luu tep dinh kem ho so nhan su (hop dong scan, bien ban...). */
   thu_muc_ho_so: resolve(process.cwd(), chu('THU_MUC_HO_SO', './du_lieu/ho_so')),
 

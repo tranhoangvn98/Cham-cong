@@ -20,6 +20,8 @@ process.env['CORS_ORIGIN'] = 'http://localhost:5173';
 process.env['ICLOCK_IP_CHO_PHEP'] = '127.0.0.1,192.168.9.0/24';
 // Tro thong bao day vao may chu gia dung trong tep nay, KHONG goi ra Expo that.
 process.env['EXPO_PUSH_URL'] = 'http://127.0.0.1:39217/push';
+// Token dung chung voi vContract khi ho goi callback ve day.
+process.env['VCONTRACT_TOKEN_CALLBACK'] = 'token_callback_kiem_thu_0001';
 process.env['DATABASE_URL'] ??=
   'postgres://chamcong:chamcong_dev@localhost:5432/chamcong_test';
 
@@ -84,6 +86,7 @@ before(async () => {
     ho_so_ca_nhan, tai_lieu_nhan_vien, nguoi_phu_thuoc, bhxh_su_kien,
     ky_luong, phieu_luong,
     vi_pham, ket_qua_kpi, tong_hop_kpi, ky_kpi,
+    nhat_ky_vcontract, hop_dong_dien_tu,
     dia_diem, thiet_bi, nguoi_dung, nhan_vien, ca_lam, phong_ban
     restart identity cascade`);
   // KHONG xoa tham_so_luong / bac_thue_tncn: do la du lieu phap ly do di tru gieo san.
@@ -2536,7 +2539,10 @@ test('push: Expo bao token da chet -> token bi xoa khoi CSDL', async () => {
   expo_tra_loi = 'chet';
   expo_nhan = [];
 
-  const ngay = cong_ngay(ngay_dia_phuong(new Date()), -3);
+  // Neo vao NGAY chu KHONG vao "hom nay": moi don giai trinh la duy nhat theo (nguoi, ngay),
+  // ma bai "quen quet the" o tren da dung NGAY-1. Tinh tu hom nay thi khoang cach giua hai
+  // ngay doi theo gio chay — qua nua dem la trung, va test do mot cach kho hieu.
+  const ngay = cong_ngay(NGAY, -45);
   const r = await goi('POST', '/api/toi/giai-trinh', {
     token: token_nhan_vien,
     body: { ngay, gio_vao_de_xuat: '08:00', ly_do: 'Quen quet the hom do' },
@@ -2873,4 +2879,168 @@ test('luong: tham so phap ly doc duoc va co bieu thue 7 bac', async () => {
   assert.ok(ds.length >= 1);
   const bac = ds[0]!['bac_thue'] as unknown[];
   assert.equal(bac.length, 7, 'bieu thue TNCN co 7 bac');
+});
+
+// ============================================================ vContract callback
+//
+// Duong nay nam NGOAI lop dang nhap cua he thong nen phai tu bao ve. Va phan hoi phai boc
+// base64 — tra JSON tran thi vContract coi la that bai, retry ba lan roi bo, hop dong ket
+// o trang thai cu ma khong ai biet tai sao.
+
+const TOKEN_CB = 'token_callback_kiem_thu_0001';
+let hd_dien_tu_id = '';
+
+/** Goi callback nhu vContract goi: JSON tho + header Authorization. */
+async function goi_callback(duong_dan: string, than: unknown, token = TOKEN_CB) {
+  const res = await app.inject({
+    method: 'POST',
+    url: `/vcontract${duong_dan}`,
+    headers: {
+      'content-type': 'application/json',
+      ...(token === '' ? {} : { authorization: `Bearer ${token}` }),
+    },
+    payload: JSON.stringify(than),
+  });
+  let giai: Record<string, unknown> | null = null;
+  try {
+    giai = JSON.parse(Buffer.from(res.body.trim(), 'base64').toString('utf8')) as Record<string, unknown>;
+  } catch { giai = null; }
+  return { ma: res.statusCode, tho: res.body, giai };
+}
+
+test('vcontract: dung ho so ky de kiem callback', async () => {
+  const hd = await truy_van_mot<{ id: string }>(
+    `insert into hop_dong_lao_dong(nhan_vien_id, loai, hieu_luc_tu, trang_thai)
+     values ($1, 'xac_dinh', current_date, 'nhap') returning id`,
+    [nhan_vien_id],
+  );
+  const dt = await truy_van_mot<{ id: string }>(
+    `insert into hop_dong_dien_tu(hop_dong_id, request_code, contract_code, gui_luc)
+     values ($1, 'REQ_KT_001', 'HD_KT_001', now()) returning id`,
+    [hd!.id],
+  );
+  hd_dien_tu_id = dt!.id;
+  assert.ok(hd_dien_tu_id);
+});
+
+test('vcontract: phan hoi PHAI boc base64, khong duoc la JSON tran', async () => {
+  const r = await goi_callback('/receive-result-contract', {
+    requestCode: 'REQ_KT_001', contractCode: 'HD_KT_001',
+    type: 'PROCESS_NOTI', status: 'DONE_START_FLOW', contractName: 'HD thu',
+  });
+  assert.equal(r.ma, 200);
+  assert.equal(r.tho.trim().startsWith('{'), false, 'tra JSON tran la vContract coi nhu that bai');
+  assert.deepEqual(r.giai, { message: 'OK', success: true });
+});
+
+test('vcontract: sai token bi tu choi 401, va van tra base64', async () => {
+  const r = await goi_callback('/receive-result-contract', { contractCode: 'HD_KT_001' }, 'sai_token');
+  assert.equal(r.ma, 401);
+  assert.equal(r.giai?.['success'], false);
+});
+
+test('vcontract: khong co header Authorization cung bi tu choi', async () => {
+  const r = await goi_callback('/receive-result-contract', { contractCode: 'HD_KT_001' }, '');
+  assert.equal(r.ma, 401);
+});
+
+test('vcontract: callback bao khach hang da ky -> trang thai chuyen PROCESSING', async () => {
+  await goi_callback('/receive-result-contract', {
+    requestCode: 'REQ_KT_001', contractCode: 'HD_KT_001',
+    type: 'PROCESS_NOTI', status: 'CUSTOMER_SIGNED', contractName: 'HD thu',
+    urlDownloadFile: 'https://vcontract.example/tai/HD_KT_001.pdf',
+  });
+  const d = await truy_van_mot<{ trang_thai: string; url_tai_ve: string }>(
+    'select trang_thai, url_tai_ve from hop_dong_dien_tu where id = $1', [hd_dien_tu_id],
+  );
+  assert.equal(d!.trang_thai, 'PROCESSING');
+  assert.equal(d!.url_tai_ve, 'https://vcontract.example/tai/HD_KT_001.pdf');
+});
+
+test('vcontract: thong bao TUNG PHAN khong duoc xoa du lieu da nhan truoc do', async () => {
+  // Thong bao nay KHONG kem urlDownloadFile — dia chi tep nhan o buoc truoc phai con.
+  await goi_callback('/receive-result-contract', {
+    requestCode: 'REQ_KT_001', contractCode: 'HD_KT_001',
+    type: 'ACTION_NOTI', status: 'NEED_SIGN', contractName: 'HD thu',
+  });
+  const d = await truy_van_mot<{ url_tai_ve: string | null; trang_thai_thong_bao: string }>(
+    'select url_tai_ve, trang_thai_thong_bao from hop_dong_dien_tu where id = $1', [hd_dien_tu_id],
+  );
+  assert.equal(d!.url_tai_ve, 'https://vcontract.example/tai/HD_KT_001.pdf',
+    'ghi de null len se xoa mat dia chi tep da nhan');
+  assert.equal(d!.trang_thai_thong_bao, 'NEED_SIGN');
+});
+
+test('vcontract: status la thi GIU trang thai cu, khong doan bua', async () => {
+  await goi_callback('/receive-result-contract', {
+    requestCode: 'REQ_KT_001', contractCode: 'HD_KT_001',
+    type: 'REMIND_PROCESS_NOTI', status: 'MOT_TRANG_THAI_MOI_CUA_VIETTEL',
+    contractName: 'HD thu',
+  });
+  const d = await truy_van_mot<{ trang_thai: string }>(
+    'select trang_thai from hop_dong_dien_tu where id = $1', [hd_dien_tu_id],
+  );
+  assert.equal(d!.trang_thai, 'PROCESSING', 'trang thai cu phai duoc giu nguyen');
+});
+
+test('vcontract: ky xong -> hop dong lao dong tu chuyen sang hieu luc', async () => {
+  await goi_callback('/receive-result-contract', {
+    requestCode: 'REQ_KT_001', contractCode: 'HD_KT_001',
+    type: 'PROCESS_NOTI', status: 'MOIT_DONE', contractStatus: 'FINISHED',
+    contractName: 'HD thu',
+  });
+  const d = await truy_van_mot<{ trang_thai: string; hoan_tat_luc: Date | null }>(
+    'select trang_thai, hoan_tat_luc from hop_dong_dien_tu where id = $1', [hd_dien_tu_id],
+  );
+  assert.equal(d!.trang_thai, 'FINISHED');
+  assert.notEqual(d!.hoan_tat_luc, null, 'phai ghi moc hoan tat');
+
+  const hd = await truy_van_mot<{ trang_thai: string }>(
+    `select hd.trang_thai from hop_dong_lao_dong hd
+       join hop_dong_dien_tu dt on dt.hop_dong_id = hd.id where dt.id = $1`,
+    [hd_dien_tu_id],
+  );
+  assert.equal(hd!.trang_thai, 'hieu_luc');
+});
+
+test('vcontract: thieu ca requestCode lan contractCode -> bao loi dung nhu tai lieu', async () => {
+  const r = await goi_callback('/receive-result-contract', { type: 'PROCESS_NOTI' });
+  assert.equal(r.ma, 200, 'van tra 200: loi du lieu khong phai ly do de ho retry');
+  assert.equal(r.giai?.['success'], false);
+  assert.match(String(r.giai?.['message']), /requestCode/);
+});
+
+test('vcontract: ma khong khop ho so nao van tra OK, va co dau vet trong nhat ky', async () => {
+  const r = await goi_callback('/receive-result-contract', {
+    requestCode: 'KHONG_CO_THAT', contractCode: 'KHONG_CO_THAT',
+    type: 'PROCESS_NOTI', status: 'CUSTOMER_SIGNED', contractName: 'x',
+  });
+  assert.equal(r.giai?.['success'], true, 'khong duoc bat vContract retry vi ma la');
+
+  const n = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from nhat_ky_vcontract
+      where chieu = 'nhan_ve' and du_lieu->>'requestCode' = 'KHONG_CO_THAT'`,
+  );
+  assert.ok(n!.so > 0, 'phai co dau vet de con truy lai');
+});
+
+test('vcontract: ket qua ca YEU CAU cap nhat tung hop dong trong danh sach', async () => {
+  const r = await goi_callback('/receive-result-request', {
+    status: 'DONE', requestCode: 'REQ_KT_001',
+    listContractResult: [
+      { contractCode: 'HD_KT_001', status: 'SUCCESS', decscription: 'Lập thành công' },
+    ],
+  });
+  assert.equal(r.giai?.['success'], true);
+  const d = await truy_van_mot<{ mo_ta: string }>(
+    'select mo_ta from hop_dong_dien_tu where id = $1', [hd_dien_tu_id],
+  );
+  assert.match(d!.mo_ta, /thành công/);
+});
+
+test('vcontract: nhat ky ghi ca chieu nhan ve de con doi chieu khi tranh chap', async () => {
+  const n = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from nhat_ky_vcontract where chieu = 'nhan_ve'`,
+  );
+  assert.ok(n!.so >= 6, `moi callback phai duoc ghi, dang co ${n!.so}`);
 });

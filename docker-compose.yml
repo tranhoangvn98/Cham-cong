@@ -63,6 +63,13 @@ services:
       # Thong bao day toi app dien thoai. Dat 0 de tat (vd: may chu khong ra Internet).
       THONG_BAO_DAY: ${THONG_BAO_DAY:-1}
       EXPO_PUSH_URL: ${EXPO_PUSH_URL:-https://exp.host/--/api/v2/push/send}
+      # Hop dong dien tu vContract (Viettel). De trong VCONTRACT_URL = tat han tinh nang.
+      VCONTRACT_URL: ${VCONTRACT_URL:-}
+      VCONTRACT_USERNAME: ${VCONTRACT_USERNAME:-}
+      VCONTRACT_PASSWORD: ${VCONTRACT_PASSWORD:-}
+      VCONTRACT_CP_CODE: ${VCONTRACT_CP_CODE:-}
+      VCONTRACT_CP_ACCOUNT_CODE: ${VCONTRACT_CP_ACCOUNT_CODE:-VCONTRACT}
+      VCONTRACT_TOKEN_CALLBACK: ${VCONTRACT_TOKEN_CALLBACK:-}
       # Trang Swagger UI (/api/v1/tai-lieu). Dat 0 de tat han.
       API_TAI_LIEU_CONG_KHAI: ${API_TAI_LIEU_CONG_KHAI:-1}
       # Dia chi cong khai cua API, vi du https://ten-mien/chamcong. May chu nam sau reverse

@@ -28,6 +28,46 @@ một buổi làm việc đã nhầm máy ba lần: `rsync` chạy trên VPS đ�
 - **Mục lục tài liệu trong README thiếu 4 tệp**, trong đó có `API-TICH-HOP.md` — tài liệu
   bên tích hợp cần đọc mà không có đường nào dẫn tới.
 
+## [1.18.0] — 2026-08-15
+
+**Hợp đồng điện tử vContract (Viettel) — nền tảng giao thức.**
+
+Đọc *Tài liệu đặc tả API tích hợp vContract v1.0.11* + bộ Postman do Viettel cung cấp.
+Bản này làm tầng giao thức, lưu trữ và luồng callback; giao diện và luồng gửi ký từ hồ sơ
+nhân sự ở bản sau.
+
+### Thêm
+
+- **Bộ giải mã giao thức** (`may_chu/src/vcontract/giao_thuc.ts`) — hàm thuần, 16 bài kiểm.
+  Chuỗi base64 trong bài "login thật" **chép nguyên từ đặc tả mục III.1**.
+- **Tầng gọi** (`may_chu/src/vcontract/khach.ts`): giữ token, tự đăng nhập lại khi hết hạn,
+  chặn đăng nhập song song, ghi nhật ký mọi lần gọi. Thân yêu cầu đăng nhập **không bao giờ
+  được ghi** vì chứa mật khẩu.
+- **Đường callback** `/vcontract/receive-result-request` và `/vcontract/receive-result-contract`,
+  bảo vệ bằng `VCONTRACT_TOKEN_CALLBACK` so sánh không lộ thời gian. Để trống = từ chối tất cả.
+- **Hai bảng** `hop_dong_dien_tu` và `nhat_ky_vcontract` (ghi cả hai chiều), cùng bốn cột
+  nội dung hợp đồng dạng văn bản trên `hop_dong_lao_dong`.
+- 13 bài e2e cho luồng callback.
+
+### Bốn chỗ dễ sai của giao thức, đã xử lý
+
+- **Mọi phản hồi bọc base64**, và `data` bên trong lại là chuỗi JSON — hai lần phải giải.
+  Tài liệu còn đưa ví dụ `data` ở dạng khoá không có nháy kép, nên có đường dự phòng riêng.
+- **Phản hồi callback của ta cũng phải bọc base64.** Trả JSON trần thì vContract coi là thất
+  bại, retry đúng 3 lần rồi bỏ — hợp đồng kẹt trạng thái cũ mà không có gì báo.
+- **Thông báo đến theo từng phần**: thông báo "khách hàng đã ký" không kèm `urlDownloadFile`,
+  ghi đè null lên là xoá mất địa chỉ tệp đã nhận trước đó. Mọi cột dùng `coalesce`.
+- **`contractStatus` không phải lúc nào cũng có**; suy từ `status`, và trả `null` khi không
+  suy được — giữ trạng thái cũ còn hơn ghi đè bằng phỏng đoán.
+
+### Sửa
+
+- **Một bài kiểm push chập chờn theo giờ chạy.** Nó lấy ngày `hôm nay − 3` trong khi bài
+  "quên quẹt thẻ" dùng `NGAY − 1`; qua nửa đêm giờ Việt Nam hai ngày trùng nhau và đơn giải
+  trình thứ hai bị 409. Nay neo vào `NGAY` nên khoảng cách cố định.
+
+199 unit + 177 e2e, tất cả đạt.
+
 ## [1.17.0] — 2026-08-15
 
 **Chạy được 140 bài kiểm thử e2e lần đầu — và ba bài trong đó đang hỏng.**
