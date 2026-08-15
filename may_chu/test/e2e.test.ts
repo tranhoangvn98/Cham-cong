@@ -83,6 +83,7 @@ before(async () => {
     cong_viec, bao_cao, khieu_nai, thiet_bi_cap_phat,
     ho_so_ca_nhan, tai_lieu_nhan_vien, nguoi_phu_thuoc, bhxh_su_kien,
     ky_luong, phieu_luong,
+    vi_pham, ket_qua_kpi, tong_hop_kpi, ky_kpi,
     dia_diem, thiet_bi, nguoi_dung, nhan_vien, ca_lam, phong_ban
     restart identity cascade`);
   // KHONG xoa tham_so_luong / bac_thue_tncn: do la du lieu phap ly do di tru gieo san.
