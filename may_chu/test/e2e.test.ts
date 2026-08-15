@@ -82,8 +82,11 @@ before(async () => {
     ho_so_tep, hop_dong_lao_dong, bien_ban_thoa_thuan, quyet_dinh_luong,
     cong_viec, bao_cao, khieu_nai, thiet_bi_cap_phat,
     ho_so_ca_nhan, tai_lieu_nhan_vien, nguoi_phu_thuoc, bhxh_su_kien,
+    ky_luong, phieu_luong,
     dia_diem, thiet_bi, nguoi_dung, nhan_vien, ca_lam, phong_ban
     restart identity cascade`);
+  // KHONG xoa tham_so_luong / bac_thue_tncn: do la du lieu phap ly do di tru gieo san.
+  // Xoa di thi moi bai luong deu do vi "chua khai tham so co hieu luc".
 
   // Ngay lam viec gan nhat trong qua khu (tranh T7/CN de test ca hanh chinh).
   let ng = cong_ngay(ngay_dia_phuong(new Date()), -1);
@@ -2644,4 +2647,229 @@ test('xuat CSV: nhan vien thuong KHONG duoc xuat ca cong ty', async () => {
   const r = await goi('GET', `/api/bang-cong/xuat-csv?thang=${thang}&kieu=thang`,
     { token: token_nhan_vien });
   assert.equal(r.ma, 403);
+});
+
+// ============================================================ bang luong (Module C)
+//
+// Quy trinh: tao ky -> tinh tu cham cong -> gui duyet -> admin duyet -> danh dau da tra.
+// Cac bai duoi kiem ca so tien LAN quy tac khoa sua theo trang thai.
+
+let ky_luong_id = '';
+
+test('luong: tao ky luong cho thang cua ngay da cham cong', async () => {
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('POST', '/api/ky-luong', { token: token_admin, body: { thang } });
+  assert.equal(r.ma, 201);
+  ky_luong_id = r.body['id'] as string;
+  assert.equal(r.body['trang_thai'], 'nhap');
+});
+
+test('luong: khong tao trung ky cho cung mot thang', async () => {
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('POST', '/api/ky-luong', { token: token_admin, body: { thang } });
+  assert.equal(r.ma, 409);
+});
+
+test('luong: tinh ky -> sinh phieu cho moi nhan vien dang lam viec', async () => {
+  // Khai muc luong de co can cu tinh.
+  await thuc_thi(
+    `insert into quyet_dinh_luong(nhan_vien_id, hieu_luc_tu, luong_co_ban, phu_cap)
+     values ($1, $2, 20000000, 0)`,
+    [nhan_vien_id, `${NGAY.slice(0, 7)}-01`],
+  );
+
+  const r = await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+  assert.equal(r.ma, 200);
+  assert.ok(Number(r.body['so_phieu']) >= 1);
+
+  const p = await truy_van_mot<{
+    luong_co_ban: string; bhxh_nld: string; bhyt_nld: string; bhtn_nld: string;
+    so_ngay_cong_chuan: string; muc_dong_bh: string;
+  }>(
+    'select * from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2',
+    [ky_luong_id, nhan_vien_id],
+  );
+  assert.ok(p !== null, 'phai co phieu cho nhan vien da khai luong');
+  assert.equal(Number(p!.luong_co_ban), 20_000_000);
+  // 10.5% cua 20tr, tach lam ba khoan.
+  assert.equal(Number(p!.bhxh_nld), 1_600_000);
+  assert.equal(Number(p!.bhyt_nld), 300_000);
+  assert.equal(Number(p!.bhtn_nld), 200_000);
+  // Ngay cong chuan phai dem theo lich that, khong phai 26 co dinh.
+  const chuan = Number(p!.so_ngay_cong_chuan);
+  assert.ok(chuan >= 18 && chuan <= 23, `ngay cong chuan ${chuan} khong hop ly`);
+});
+
+test('luong: sua tay thuong -> tinh lai ca ky, tong khop voi tung dong', async () => {
+  const p = await truy_van_mot<{ id: string }>(
+    'select id from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2',
+    [ky_luong_id, nhan_vien_id],
+  );
+  const r = await goi('PATCH', `/api/phieu-luong/${p!.id}`, {
+    token: token_admin,
+    body: { thuong: 5_000_000, ghi_chu: 'Thuong du an' },
+  });
+  assert.equal(r.ma, 200);
+
+  const sau = await truy_van_mot<{
+    thuong: string; tong_thu_nhap: string; luong_theo_cong: string;
+    thu_nhap_tinh_thue: string; thue_tncn: string;
+  }>(
+    `select thuong, tong_thu_nhap, luong_theo_cong, thu_nhap_tinh_thue, thue_tncn
+       from phieu_luong where id = $1`, [p!.id],
+  );
+  assert.equal(Number(sau!.thuong), 5_000_000);
+  // Thuong phai cong vao tong thu nhap. NV001 chi cham cong MOT ngay trong thang nen
+  // luong theo cong rat nho; tong = luong theo cong + thuong, khong khoan nao khac.
+  const ot = await truy_van_mot<{ tien_ot: string }>(
+    'select tien_ot from phieu_luong where id = $1', [p!.id],
+  );
+  assert.equal(
+    Number(sau!.tong_thu_nhap),
+    Number(sau!.luong_theo_cong) + Number(ot!.tien_ot) + 5_000_000,
+    'tong thu nhap = luong theo cong + tien OT + thuong',
+  );
+  // Van duoi nguong chiu thue (giam tru ban than 11tr + bao hiem 2.1tr) nen thue = 0 —
+  // kiem dung dieu do, chu khong duoc ra so am hay NaN.
+  assert.equal(Number(sau!.thu_nhap_tinh_thue), 0);
+  assert.equal(Number(sau!.thue_tncn), 0);
+});
+
+test('luong: thu nhap vuot nguong giam tru thi thue tinh LUY TIEN dung tren du lieu that', async () => {
+  const p = await truy_van_mot<{ id: string }>(
+    'select id from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2',
+    [ky_luong_id, nhan_vien_id],
+  );
+  const r = await goi('PATCH', `/api/phieu-luong/${p!.id}`, {
+    token: token_admin, body: { thuong: 30_000_000 },
+  });
+  assert.equal(r.ma, 200);
+
+  const sau = await truy_van_mot<{
+    tong_thu_nhap: string; giam_tru_tong: string; thu_nhap_tinh_thue: string; thue_tncn: string;
+  }>(
+    `select tong_thu_nhap, giam_tru_tong, thu_nhap_tinh_thue, thue_tncn
+       from phieu_luong where id = $1`, [p!.id],
+  );
+  const tntt = Number(sau!.thu_nhap_tinh_thue);
+  assert.equal(tntt, Number(sau!.tong_thu_nhap) - Number(sau!.giam_tru_tong));
+  assert.ok(tntt > 0, 'thuong 30tr phai vuot nguong giam tru');
+
+  // Tinh lai bang tay theo bieu luy tien de doi chieu voi con so may ra.
+  const bac: [number, number | null, number][] = [
+    [0, 5e6, 5], [5e6, 10e6, 10], [10e6, 18e6, 15], [18e6, 32e6, 20],
+    [32e6, 52e6, 25], [52e6, 80e6, 30], [80e6, null, 35],
+  ];
+  let mong_doi = 0;
+  for (const [tu, den, suat] of bac) {
+    if (tntt <= tu) break;
+    mong_doi += (Math.min(tntt, den ?? Infinity) - tu) * (suat / 100);
+  }
+  assert.equal(Number(sau!.thue_tncn), Math.round(mong_doi));
+
+  // Tra ve muc cu de cac bai sau khong bi anh huong.
+  await goi('PATCH', `/api/phieu-luong/${p!.id}`, {
+    token: token_admin, body: { thuong: 5_000_000 },
+  });
+});
+
+test('luong: chua tinh phieu nao thi khong gui duyet duoc', async () => {
+  const tao = await goi('POST', '/api/ky-luong', {
+    token: token_admin, body: { thang: '2020-01' },
+  });
+  const r = await goi('POST', `/api/ky-luong/${String(tao.body['id'])}/gui-duyet`,
+    { token: token_admin });
+  assert.equal(r.ma, 400);
+});
+
+test('luong: gui duyet -> khoa sua phieu va khoa tinh lai', async () => {
+  const g = await goi('POST', `/api/ky-luong/${ky_luong_id}/gui-duyet`, { token: token_admin });
+  assert.equal(g.ma, 200);
+
+  const t = await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+  assert.equal(t.ma, 409, 'da gui duyet thi khong duoc tu tinh lai duoi chan nguoi duyet');
+
+  const p = await truy_van_mot<{ id: string }>(
+    'select id from phieu_luong where ky_luong_id = $1 limit 1', [ky_luong_id],
+  );
+  const s = await goi('PATCH', `/api/phieu-luong/${p!.id}`, {
+    token: token_admin, body: { thuong: 9_000_000 },
+  });
+  assert.equal(s.ma, 409, 'phieu phai khoa sua khi ky da gui duyet');
+});
+
+test('luong: nhan vien CHUA thay phieu khi ky chua duoc duyet', async () => {
+  const r = await goi('GET', '/api/toi/phieu-luong', { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+  assert.equal((r.body as unknown as unknown[]).length, 0,
+    'so lieu dang cho duyet co the con sai, bay ra roi sua lai la nguon khieu nai');
+});
+
+test('luong: nhan su KHONG duyet duoc ky luong — chi admin', async () => {
+  // Cap token thang thay vi dang nhap: bai nay kiem RANH GIOI QUYEN, khong phai kiem
+  // luong dang nhap (da co bai rieng), va dang nhap nhieu lan trong mot lan chay se dam
+  // vao lop chan do mat khau.
+  const nd = await truy_van_mot<{ id: string }>(
+    `insert into nguoi_dung(ten_dang_nhap, mat_khau_hash, vai_tro, phai_doi_mat_khau)
+     values ('hr01', $1, 'nhan_su', false) returning id`,
+    [await bam_mat_khau('NhanSu2026')],
+  );
+  const token_hr = tao_token_truy_cap({
+    sub: nd!.id, vai_tro: 'nhan_su', nv: null, ten: 'hr01',
+  }).token;
+
+  const r = await goi('POST', `/api/ky-luong/${ky_luong_id}/quyet`, {
+    token: token_hr, body: { quyet_dinh: 'da_duyet' },
+  });
+  assert.equal(r.ma, 403);
+});
+
+test('luong: admin duyet -> nhan vien thay duoc phieu cua CHINH MINH', async () => {
+  const r = await goi('POST', `/api/ky-luong/${ky_luong_id}/quyet`, {
+    token: token_admin, body: { quyet_dinh: 'da_duyet', ghi_chu: 'Duyet' },
+  });
+  assert.equal(r.ma, 200);
+
+  const toi = await goi('GET', '/api/toi/phieu-luong', { token: token_nhan_vien });
+  const ds = toi.body as unknown as Record<string, unknown>[];
+  assert.equal(ds.length, 1);
+  assert.equal(ds[0]!['thang'], NGAY.slice(0, 7));
+  assert.ok(Number(ds[0]!['thuc_linh']) > 0);
+});
+
+test('luong: nhan vien khong thay phieu cua nguoi khac', async () => {
+  const toi = await goi('GET', '/api/toi/phieu-luong', { token: token_nhan_vien });
+  const ds = toi.body as unknown as Record<string, unknown>[];
+  for (const p of ds) {
+    assert.equal(p['nhan_vien_id'], nhan_vien_id);
+  }
+});
+
+test('luong: danh dau da tra, roi khong quyet lai duoc nua', async () => {
+  const r = await goi('POST', `/api/ky-luong/${ky_luong_id}/da-tra`, { token: token_admin });
+  assert.equal(r.ma, 200);
+
+  const lai = await goi('POST', `/api/ky-luong/${ky_luong_id}/quyet`, {
+    token: token_admin, body: { quyet_dinh: 'tra_lai' },
+  });
+  assert.equal(lai.ma, 409);
+});
+
+test('luong: xuat CSV co du cot bao hiem va thue', async () => {
+  const r = await goi('GET', `/api/ky-luong/${ky_luong_id}/xuat-csv`, { token: token_admin });
+  assert.equal(r.ma, 200);
+  assert.equal(r.tho.charCodeAt(0), 0xFEFF);
+  const dau = r.tho.replace(/^﻿/, '').split('\r\n')[0]!;
+  for (const cot of ['BHXH (NLĐ)', 'BHYT (NLĐ)', 'BHTN (NLĐ)', 'Thuế TNCN', 'Thực lĩnh']) {
+    assert.ok(dau.includes(cot), `thieu cot ${cot}`);
+  }
+});
+
+test('luong: tham so phap ly doc duoc va co bieu thue 7 bac', async () => {
+  const r = await goi('GET', '/api/tham-so-luong', { token: token_admin });
+  assert.equal(r.ma, 200);
+  const ds = r.body as unknown as Record<string, unknown>[];
+  assert.ok(ds.length >= 1);
+  const bac = ds[0]!['bac_thue'] as unknown[];
+  assert.equal(bac.length, 7, 'bieu thue TNCN co 7 bac');
 });
