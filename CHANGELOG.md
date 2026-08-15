@@ -28,6 +28,45 @@ một buổi làm việc đã nhầm máy ba lần: `rsync` chạy trên VPS đ�
 - **Mục lục tài liệu trong README thiếu 4 tệp**, trong đó có `API-TICH-HOP.md` — tài liệu
   bên tích hợp cần đọc mà không có đường nào dẫn tới.
 
+## [1.19.0] — 2026-08-15
+
+**Vi phạm và KPI — API và giao diện.**
+
+Hai module trước đó mới có lược đồ. Nay đầy đủ và lên được menu quản trị.
+
+### Thêm — Vi phạm (Module G)
+
+Ba ranh giới pháp lý được **kiểm bằng bài kiểm**, không chỉ ghi trong chú thích:
+
+- **Áp dụng kỷ luật mà thiếu biên bản cuộc họp thì bị từ chối** (Điều 122). *Nhắc nhở*
+  không phải kỷ luật chính thức nên không đòi biên bản.
+- **Máy phát hiện chỉ ghi ở trạng thái `mới`.** Không có đường đi thẳng sang kỷ luật.
+  Người lao động xem được vi phạm của mình và gửi được giải trình (Điều 122).
+- **Không endpoint nào chạm tới bảng lương** — có bài kiểm đọc thẳng mã nguồn tìm tham
+  chiếu tới `phieu_luong`/`thuc_linh`/`tru_khac` và bắt phải rỗng (Điều 127).
+
+Quét lại nhiều lần không sinh bản ghi trùng. Bốn quy tắc mặc định vẫn **tắt sẵn**.
+
+### Thêm — KPI
+
+- Chấm điểm nội suy tuyến tính giữa hai mốc, **22 bài kiểm thuần** bằng số tính tay.
+- **Thiếu dữ liệu trả `null` chứ không phải 0** — người mới vào làm không bị chấm 0 oan;
+  chỉ số đó bị loại khỏi phép trung bình thay vì kéo điểm xuống.
+- Tổng điểm chia cho **tổng trọng số thực tế**, nên thêm/bớt chỉ số không làm vỡ thang
+  điểm của những kỳ trước.
+- Bảng chi tiết hiện **cả giá trị thô lẫn thang chấm** — người bị chấm đối chiếu được với
+  dữ liệu gốc, không chỉ thấy một con điểm.
+- Sửa tay điểm **bắt buộc nêu lý do**, và tính lại kỳ không ghi đè lên điểm đã sửa.
+
+### Sửa
+
+- **Bài kiểm e2e xoá mất danh mục KPI do di trú gieo.** `danh_muc_kpi` có khoá ngoại tới
+  `phong_ban`, mà `TRUNCATE … CASCADE` xoá **mọi** bảng tham chiếu tới bảng bị xoá — kể cả
+  khi giá trị là NULL. Nay chạy lại hai tệp di trú (vốn viết idempotent) sau khi dọn.
+- `POST /api/ky-kpi/:id/chot` gọi không kèm thân yêu cầu thì nổ 400.
+
+221 unit + 13 thiết kế + 199 e2e, tất cả đạt.
+
 ## [1.18.1] — 2026-08-15
 
 **Trang Tham số lương — và ba biểu tượng không tồn tại.**
