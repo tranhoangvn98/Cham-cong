@@ -15,6 +15,7 @@ import { TrangLanQuet } from './trang/lan_quet.tsx';
 import { TrangNguoiDung, TrangNhatKy } from './trang/nguoi_dung.tsx';
 import { TrangKhoaApi } from './trang/khoa_api.tsx';
 import { TrangBangLuong } from './trang/bang_luong.tsx';
+import { TrangThamSoLuong } from './trang/tham_so_luong.tsx';
 import { TrangHoSo } from './trang/ho_so.tsx';
 import { TrangKhoTep } from './trang/kho_tep.tsx';
 
@@ -50,15 +51,16 @@ const MENU: MucMenu[] = [
   { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Quản trị nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản' },
   { duong_dan: '/duyet-don', ten: 'Nghỉ phép', icon: 'plane-departure', nhom: 'Quản trị nhân sự', phu: 'Đơn từ & duyệt' },
 
-  { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'cash', nhom: 'Quản trị nhân sự', phu: 'Tính từ chấm công, gửi duyệt', quyen: 'nhan_su' },
+  { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Tính từ chấm công, gửi duyệt', quyen: 'nhan_su' },
 
   { duong_dan: '/thiet-bi', ten: 'Thiết bị', icon: 'device-desktop', nhom: 'Hệ thống', phu: 'Máy chấm công ZKTeco', quyen: 'nhan_su' },
   { duong_dan: '/ca-lam', ten: 'Ca làm việc', icon: 'clock', nhom: 'Hệ thống', phu: 'Giờ vào/ra, dung sai, ngưỡng OT' },
   { duong_dan: '/dia-diem', ten: 'Địa điểm', icon: 'map-pin', nhom: 'Hệ thống', phu: 'Đối chiếu GPS khi đi công tác' },
   { duong_dan: '/ngay-le', ten: 'Ngày lễ', icon: 'star', nhom: 'Hệ thống', phu: 'Tết Nguyên đán phải tự thêm mỗi năm' },
   { duong_dan: '/tai-khoan', ten: 'Tài khoản', icon: 'key', nhom: 'Hệ thống', phu: 'Người dùng và vai trò', quyen: 'admin' },
+  { duong_dan: '/tham-so-luong', ten: 'Tham số lương', icon: 'settings', nhom: 'Hệ thống', phu: 'BHXH, thuế TNCN, giảm trừ gia cảnh', quyen: 'nhan_su' },
   { duong_dan: '/khoa-api', ten: 'Khóa API', icon: 'key', nhom: 'Hệ thống', phu: 'Cho hệ thống ngoài gọi vào', quyen: 'admin' },
-  { duong_dan: '/kho-tep', ten: 'Kho tệp hồ sơ', icon: 'folder', nhom: 'Hệ thống', phu: 'Tệp đính kèm và đường dẫn đã lưu', quyen: 'nhan_su' },
+  { duong_dan: '/kho-tep', ten: 'Kho tệp hồ sơ', icon: 'file-text', nhom: 'Hệ thống', phu: 'Tệp đính kèm và đường dẫn đã lưu', quyen: 'nhan_su' },
   { duong_dan: '/nhat-ky', ten: 'Nhật ký thao tác', icon: 'list-details', nhom: 'Hệ thống', phu: 'Ai sửa gì, khi nào', quyen: 'admin' },
 ];
 
@@ -88,6 +90,7 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/tai-khoan': return la_admin() ? <TrangNguoiDung /> : <KhongCoQuyen />;
     case '/khoa-api': return la_admin() ? <TrangKhoaApi /> : <KhongCoQuyen />;
     case '/bang-luong': return la_nhan_su() ? <TrangBangLuong /> : <KhongCoQuyen />;
+    case '/tham-so-luong': return la_nhan_su() ? <TrangThamSoLuong /> : <KhongCoQuyen />;
     case '/kho-tep': return la_nhan_su() ? <TrangKhoTep /> : <KhongCoQuyen />;
     case '/nhat-ky': return la_admin() ? <TrangNhatKy /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;

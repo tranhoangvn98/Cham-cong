@@ -28,6 +28,34 @@ một buổi làm việc đã nhầm máy ba lần: `rsync` chạy trên VPS đ�
 - **Mục lục tài liệu trong README thiếu 4 tệp**, trong đó có `API-TICH-HOP.md` — tài liệu
   bên tích hợp cần đọc mà không có đường nào dẫn tới.
 
+## [1.18.1] — 2026-08-15
+
+**Trang Tham số lương — và ba biểu tượng không tồn tại.**
+
+### Sửa
+
+- **Trang Bảng lương chỉ người dùng tới một mục không có thật.** Nó ghi "kế toán phải đối
+  chiếu lại… trong mục *Hệ thống → Tham số lương*" nhưng mục đó chưa bao giờ được làm. API
+  `/api/tham-so-luong` đã có từ 1.17.0, chỉ thiếu giao diện — và đúng chỗ quan trọng nhất,
+  nơi quyết định số tiền trừ bảo hiểm và thuế của cả công ty.
+- **Ba biểu tượng menu không có trong font.** Font icon của dự án là bản **cắt subset** chỉ
+  chứa 33 icon đang dùng. Gõ tên một icon có thật của Tabler nhưng chưa nằm trong subset thì
+  **không có gì báo lỗi** — nó chỉ đơn giản không hiện, lọt qua cả typecheck lẫn build.
+  `cash` (Bảng lương, đã lên VPS ở 1.17.0), `scale` (vừa thêm), `folder` (Kho tệp hồ sơ, có
+  từ trước). Đổi sang `receipt-2`, `settings`, `file-text`.
+
+### Thêm
+
+- **Trang Tham số lương** (*Hệ thống → Tham số lương*). Bày ra phép tính bằng số cụ thể để
+  kiểm tra được hệ thống hiểu đúng luật hay không mà không phải đọc mã nguồn — hai **trần
+  đóng khác nhau** đặt cạnh nhau vì đó là chỗ hay nhầm nhất. Thêm mốc hiệu lực mới điền sẵn
+  theo mốc đang áp dụng; biểu thuế TNCN tự sao chép để không phải gõ lại 7 bậc.
+- **Rào chắn biểu tượng** (`thiet_ke/icon.test.mjs`): mọi icon dùng trong webapp phải có
+  trong `web/src/icon.css`, nếu không thì `npm test` đỏ. Đã thử đặt lại `cash` để xác nhận
+  rào chắn bắt được.
+
+199 unit + 13 thiết kế + 177 e2e, tất cả đạt.
+
 ## [1.18.0] — 2026-08-15
 
 **Hợp đồng điện tử vContract (Viettel) — nền tảng giao thức.**
