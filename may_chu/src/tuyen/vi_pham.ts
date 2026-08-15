@@ -19,8 +19,8 @@ import {
   LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
 
-const NHOM = ['gio_giac', 'noi_quy', 'an_toan', 'tai_san', 'thai_do', 'khac'] as const;
-const MUC_DO = ['nhe', 'trung', 'nang'] as const;
+// Bon muc do theo Dieu 14 Noi quy lao dong, gan voi thang giam thuong P3 5/15/30/100%.
+const MUC_DO = ['nhe', 'trung', 'nang', 'rat_nang'] as const;
 /** BLLD 2019 Dieu 124 + 'nhac_nho' (khong phai ky luat chinh thuc). */
 const KY_LUAT = ['nhac_nho', 'khien_trach', 'keo_dai_nang_luong', 'cach_chuc', 'sa_thai'] as const;
 const CHI_SO = [
@@ -40,7 +40,8 @@ export async function tuyen_vi_pham(app: FastifyInstance): Promise<void> {
     truy_van(
       `select l.*,
               (select count(*) from quy_tac_vi_pham where loai_vi_pham_id = l.id)::int as so_quy_tac
-         from loai_vi_pham l order by l.nhom, l.ma`,
+         from loai_vi_pham l
+        order by l.nhom_phu_luc nulls last, l.ma`,
     ),
   );
 
@@ -54,7 +55,7 @@ export async function tuyen_vi_pham(app: FastifyInstance): Promise<void> {
         chuoi_bat_buoc(b, 'ma', { toi_da: 40 }).toUpperCase(),
         chuoi_bat_buoc(b, 'ten', { toi_da: 200 }),
         chuoi(b, 'mo_ta', { toi_da: 1000 }),
-        trong_tap(b, 'nhom', NHOM, { mac_dinh: 'khac' }),
+        chuoi(b, 'nhom', { toi_da: 100 }) ?? 'khac',
         trong_tap(b, 'muc_do', MUC_DO, { mac_dinh: 'nhe' }),
         trong_tap(b, 'ky_luat_de_xuat', KY_LUAT),
         so_nguyen(b, 'diem_tru_kpi', { min: 0, max: 100 }) ?? 0,
@@ -79,7 +80,7 @@ export async function tuyen_vi_pham(app: FastifyInstance): Promise<void> {
        where id = $1`,
       [
         id, chuoi(b, 'ten', { toi_da: 200 }), chuoi(b, 'mo_ta', { toi_da: 1000 }),
-        trong_tap(b, 'nhom', NHOM), trong_tap(b, 'muc_do', MUC_DO),
+        chuoi(b, 'nhom', { toi_da: 100 }), trong_tap(b, 'muc_do', MUC_DO),
         trong_tap(b, 'ky_luat_de_xuat', KY_LUAT),
         so_nguyen(b, 'diem_tru_kpi', { min: 0, max: 100 }),
         Object.hasOwn(b, 'dang_bat') ? luan_ly(b, 'dang_bat', true) : null,
@@ -170,7 +171,8 @@ export async function tuyen_vi_pham(app: FastifyInstance): Promise<void> {
 
     return truy_van(
       `select v.*, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
-              l.ma as ma_loai, l.ten as ten_loai, l.muc_do, l.diem_tru_kpi
+              l.ma as ma_loai, l.ten as ten_loai, l.muc_do, l.diem_tru_kpi,
+              l.giam_thuong_p3_phan_tram, l.chi_tiet_che_tai, l.can_cu
          from vi_pham v
          join nhan_vien nv on nv.id = v.nhan_vien_id
          join loai_vi_pham l on l.id = v.loai_vi_pham_id

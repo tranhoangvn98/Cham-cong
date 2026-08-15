@@ -18,9 +18,13 @@ interface LoaiViPham {
   ten: string;
   mo_ta: string | null;
   nhom: string;
-  muc_do: 'nhe' | 'trung' | 'nang';
+  muc_do: 'nhe' | 'trung' | 'nang' | 'rat_nang';
   ky_luat_de_xuat: string | null;
   diem_tru_kpi: string;
+  giam_thuong_p3_phan_tram: string | null;
+  chi_tiet_che_tai: string | null;
+  can_cu: string | null;
+  nhom_phu_luc: string | null;
   dang_bat: boolean;
   so_quy_tac: number;
 }
@@ -44,7 +48,9 @@ interface BanGhi {
   ho_ten: string;
   phong_ban: string | null;
   ten_loai: string;
-  muc_do: 'nhe' | 'trung' | 'nang';
+  muc_do: 'nhe' | 'trung' | 'nang' | 'rat_nang';
+  chi_tiet_che_tai: string | null;
+  can_cu: string | null;
   nguon: 'nguoi' | 'he_thong';
   ngay: string;
   mo_ta: string | null;
@@ -54,9 +60,12 @@ interface BanGhi {
   ghi_chu: string | null;
 }
 
-const NHAN_MUC_DO: Record<string, string> = { nhe: 'Nhẹ', trung: 'Trung bình', nang: 'Nặng' };
+// Bon muc do theo Dieu 14 Noi quy lao dong.
+const NHAN_MUC_DO: Record<string, string> = {
+  nhe: 'Nhẹ', trung: 'Trung bình', nang: 'Nặng', rat_nang: 'Rất nặng',
+};
 const MAU_MUC_DO: Record<string, string> = {
-  nhe: 'nhan-mo', trung: 'nhan-canh-bao', nang: 'nhan-xau',
+  nhe: 'nhan-mo', trung: 'nhan-canh-bao', nang: 'nhan-xau', rat_nang: 'nhan-xau',
 };
 
 const NHAN_TRANG_THAI: Record<string, string> = {
@@ -254,6 +263,14 @@ function HopThoaiQuyet(
 
       {vp.mo_ta !== null && <p className="mo-ta"><strong>Nội dung:</strong> {vp.mo_ta}</p>}
 
+      {vp.chi_tiet_che_tai !== null && (
+        <>
+          <h3>Nội quy quy định</h3>
+          <blockquote>{vp.chi_tiet_che_tai}</blockquote>
+          {vp.can_cu !== null && <p className="mo-ta">Căn cứ: {vp.can_cu}</p>}
+        </>
+      )}
+
       <h3>Giải trình của người lao động</h3>
       {vp.giai_trinh === null ? (
         <p className="mo-ta">
@@ -346,15 +363,20 @@ function TabDanhMuc(): ReactNode {
   return (
     <>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
-      <p className="mo-ta">
-        Điểm trừ KPI <strong>chỉ ảnh hưởng điểm đánh giá</strong>, không phải tiền.
-      </p>
+      <div className="hop-luu-y">
+        Danh mục lấy từ <strong>Phụ lục Nội quy lao động số 01/2026/NQLĐ-TPVN</strong>.
+        Cột <em>Giảm thưởng P3</em> là điều kiện hưởng thưởng theo Điều 104 Bộ luật Lao động,
+        do Quy chế thưởng quyết định — <strong>không phải phạt tiền và hệ thống không tự trừ
+        đồng nào vào lương</strong>. Điểm trừ KPI là thang chấm nội bộ, độc lập với khoản trên.
+      </div>
       <div className="vo-bang">
         <table>
           <thead>
             <tr>
-              <th>Mã</th><th>Tên lỗi</th><th>Mức độ</th>
-              <th>Đề xuất xử lý</th><th className="canh-phai">Điểm trừ KPI</th>
+              <th>Mã</th><th>Hành vi vi phạm</th><th>Mức độ</th>
+              <th className="canh-phai">Giảm thưởng P3</th>
+              <th>Kỷ luật đề xuất</th>
+              <th className="canh-phai">Điểm trừ KPI</th>
               <th className="canh-phai">Quy tắc</th><th />
             </tr>
           </thead>
@@ -362,8 +384,18 @@ function TabDanhMuc(): ReactNode {
             {ds.map((l) => (
               <tr key={l.id} style={l.dang_bat ? undefined : { opacity: 0.55 }}>
                 <td><code>{l.ma}</code></td>
-                <td>{l.ten}<div className="mo-ta">{l.mo_ta}</div></td>
+                <td>
+                  {l.ten}
+                  {l.chi_tiet_che_tai !== null && (
+                    <div className="mo-ta">{l.chi_tiet_che_tai}</div>
+                  )}
+                  {l.can_cu !== null && <div className="mo-ta">Căn cứ: {l.can_cu}</div>}
+                </td>
                 <td><span className={MAU_MUC_DO[l.muc_do]}>{NHAN_MUC_DO[l.muc_do]}</span></td>
+                <td className="canh-phai">
+                  {l.giam_thuong_p3_phan_tram === null
+                    ? '—' : `${Number(l.giam_thuong_p3_phan_tram)}%`}
+                </td>
                 <td>{l.ky_luat_de_xuat === null ? '—' : NHAN_KY_LUAT[l.ky_luat_de_xuat]}</td>
                 <td className="canh-phai">{Number(l.diem_tru_kpi)}</td>
                 <td className="canh-phai">{l.so_quy_tac}</td>

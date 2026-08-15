@@ -28,6 +28,41 @@ một buổi làm việc đã nhầm máy ba lần: `rsync` chạy trên VPS đ�
 - **Mục lục tài liệu trong README thiếu 4 tệp**, trong đó có `API-TICH-HOP.md` — tài liệu
   bên tích hợp cần đọc mà không có đường nào dẫn tới.
 
+## [1.20.0] — 2026-08-16
+
+**Nạp danh mục vi phạm thật từ Nội quy lao động của công ty.**
+
+Đọc *Nội quy lao động số 01/2026/NQLĐ-TPVN* (bản 16/07/2026) và nạp toàn bộ **Phụ lục —
+Danh mục hành vi vi phạm**: 64 hành vi, 11 nhóm A–L.
+
+### Thêm
+
+- **Bốn mức độ thay vì ba.** Nội quy phân *Nhẹ / Trung bình / Nặng / Rất nặng*, gắn với
+  thang giảm thưởng P3 **5% / 15% / 30% / tới 100%** (Điều 14 Nội quy).
+- **Cột `giam_thuong_p3_phan_tram`.** Chế tài tài chính của Nội quy là **giảm thưởng P3**
+  — thưởng theo kết quả công việc, là *điều kiện hưởng thưởng* theo Điều 104 BLLĐ. Nội quy
+  ghi rõ đây **không phải phạt tiền và không phải hình thức kỷ luật**. Hệ thống vẫn không
+  tự trừ đồng nào vào lương; việc giảm thưởng do Quy chế thưởng quyết định.
+- **Cột `chi_tiet_che_tai` giữ nguyên văn** cột "Hình thức xử lý" của Phụ lục. Các khoản
+  trong đó có điều kiện và bậc tăng dần không mã hóa máy móc được (*"đi muộn quá 10 phút"*,
+  *"tái phạm nhiều lần trong tháng"*). Ép chúng thành một con số là làm sai văn bản đã ban
+  hành — người xử lý phải đọc đúng câu chữ.
+- Sáu bài kiểm cho danh mục, trong đó có bài đọc lược đồ CSDL và **bắt buộc không tồn tại
+  cột nào tên `tien_phat` / `so_tien` / `muc_phat`** (Điều 127).
+
+### Sửa
+
+- Bảy loại vi phạm mặc định của hệ thống bị **tắt, không xóa** — có thể đã có bản ghi trỏ
+  tới chúng.
+- Ràng buộc `nhom` cũ (6 giá trị) không đủ cho 11 nhóm của Phụ lục, đã gỡ.
+
+221 unit + 13 thiết kế + 205 e2e, tất cả đạt.
+
+### Còn tồn
+
+`trich_docx` trả **0 ký tự** trên tệp .docx thật — đã gặp hai lần (tài liệu vContract và
+Nội quy này). Tính năng "quét nội dung hợp đồng sang text" phụ thuộc hàm này. Chưa sửa.
+
 ## [1.19.0] — 2026-08-15
 
 **Vi phạm và KPI — API và giao diện.**
