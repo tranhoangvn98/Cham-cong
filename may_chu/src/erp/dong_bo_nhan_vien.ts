@@ -1,0 +1,233 @@
+// Anh xa nguoi dung ERP -> nhan vien, va noi voi Microsoft 365.
+//
+// KHOA NOI BA HE THONG LA EMAIL. Dang nhap Microsoft o day khop nguoi theo
+// `lower(nhan_vien.email)`, nen chi can email dung la M365 tu nhan ra nguoi — khong phai
+// khai bao gi them.
+//
+// BON QUY TAC AN TOAN, deu vi day la du lieu NGUOI THAT:
+//
+//   1. Ban ghi KHONG CO EMAIL thi bo qua. Khong noi duoc voi M365, va gan nhu chac chan
+//      la tai khoan he thong chu khong phai nguoi.
+//   2. KHONG BAO GIO xoa hay tu tat nhan vien vi ho vang mat trong ket qua. Tai lieu ERP
+//      muc 4.3 noi ro API khong bao ban ghi bi xoa; suy "khong thay = da nghi viec" la
+//      cach chac chan nhat de mot ngay ERP loi giua chung thi ca cong ty bi tat.
+//   3. KHONG ghi de PIN may, ca lam, phong ban, ngay vao. Do la du lieu do nhan su o day
+//      quan ly; ERP khong biet va khong duoc phep dam vao.
+//   4. Co che do CHAY THU: xem truoc se tao/sua ai truoc khi ghi that.
+import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
+import { lay_nguoi_dung, type NguoiDungErp } from './khach.ts';
+
+export type HanhDong = 'tao_moi' | 'cap_nhat' | 'khong_doi' | 'bo_qua';
+
+export interface DongKetQua {
+  erp_user_id: number | null;
+  email: string | null;
+  ho_ten: string | null;
+  hanh_dong: HanhDong;
+  ly_do?: string;
+  /** Nhung truong thuc su doi — de nguoi doc biet dong bo dong vao cai gi. */
+  thay_doi?: string[];
+}
+
+export interface KetQuaDongBo {
+  so_doc: number;
+  so_tao_moi: number;
+  so_cap_nhat: number;
+  so_bo_qua: number;
+  chi_tiet: DongKetQua[];
+}
+
+/** Chuan hoa email: bo khoang trang, ha chu thuong. Chuoi rong -> null. */
+export function chuan_email(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const s = v.trim().toLowerCase();
+  return s === '' ? null : s;
+}
+
+/** Chuan hoa chuoi rong ve null — tai lieu ERP muc 4.4. */
+export function chuan_chuoi(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const s = v.trim();
+  return s === '' ? null : s;
+}
+
+/**
+ * Sinh ma nhan vien khi tao moi.
+ *
+ * ERP khong co truong ma nhan vien — chi co userId va username. Dung `ERP<userId>` de ma
+ * on dinh qua cac lan dong bo va truy nguoc duoc ve ban ghi goc.
+ */
+export function ma_nv_tu_erp(u: NguoiDungErp): string {
+  return `ERP${u.userId ?? 0}`;
+}
+
+/** Ban ghi ERP nay co dung de tao nhan vien khong? Tra ly do khi khong. */
+export function ly_do_bo_qua(u: NguoiDungErp): string | null {
+  if (typeof u.userId !== 'number' || u.userId <= 0) return 'Thiếu userId';
+  if (chuan_email(u.email) === null) {
+    return 'Không có email — không nối được với Microsoft 365';
+  }
+  if (chuan_chuoi(u.name) === null) return 'Thiếu họ tên';
+  return null;
+}
+
+interface NhanVienHienCo {
+  id: string;
+  ma_nv: string;
+  ho_ten: string;
+  email: string | null;
+  so_dien_thoai: string | null;
+  erp_user_id: number | null;
+  dang_hoat_dong: boolean;
+}
+
+/**
+ * So sanh mot ban ghi ERP voi nhan vien dang co, tra ve danh sach truong CAN doi.
+ *
+ * Chi so sanh nhung truong ERP LA NGUON: ho ten, email, dien thoai. Khong dung toi PIN
+ * may, ca lam, phong ban — nhan su o day quan ly nhung thu do.
+ */
+export function truong_can_doi(u: NguoiDungErp, nv: NhanVienHienCo): string[] {
+  const doi: string[] = [];
+  const ten = chuan_chuoi(u.name);
+  const email = chuan_email(u.email);
+  const dt = chuan_chuoi(u.phoneNumber);
+
+  if (ten !== null && ten !== nv.ho_ten) doi.push('ho_ten');
+  if (email !== null && email !== chuan_email(nv.email)) doi.push('email');
+  if (dt !== null && dt !== nv.so_dien_thoai) doi.push('so_dien_thoai');
+  if (u.userId !== undefined && u.userId !== nv.erp_user_id) doi.push('erp_user_id');
+  return doi;
+}
+
+/**
+ * Dong bo nguoi dung ERP sang bang nhan_vien.
+ *
+ * `che_do = 'thu'` doc ERP va tinh ra se lam gi, NHUNG KHONG GHI GI. Dung de xem truoc
+ * truoc khi cho chay that — dong bo nay tao va sua nguoi hang loat.
+ */
+export async function dong_bo_nhan_vien(
+  che_do: 'thu' | 'that',
+  chi_dang_lam = true,
+): Promise<KetQuaDongBo> {
+  const ds = await lay_nguoi_dung(chi_dang_lam);
+
+  const kq: KetQuaDongBo = {
+    so_doc: ds.length, so_tao_moi: 0, so_cap_nhat: 0, so_bo_qua: 0, chi_tiet: [],
+  };
+
+  // Doc san toan bo nhan vien mot lan: vai tram nguoi thi mot truy van nhanh hon vai tram.
+  const hien_co = await truy_van<NhanVienHienCo>(
+    `select id, ma_nv, ho_ten, email, so_dien_thoai, erp_user_id, dang_hoat_dong
+       from nhan_vien`,
+  );
+  const theo_erp = new Map<number, NhanVienHienCo>();
+  const theo_email = new Map<string, NhanVienHienCo>();
+  for (const nv of hien_co) {
+    if (nv.erp_user_id !== null) theo_erp.set(nv.erp_user_id, nv);
+    const e = chuan_email(nv.email);
+    if (e !== null) theo_email.set(e, nv);
+  }
+
+  // Chan hai ban ghi ERP cung email lam doi tuong thu hai ghi de len ban ghi thu nhat.
+  const email_da_gap = new Set<string>();
+
+  const viec: { u: NguoiDungErp; nv: NhanVienHienCo | null; doi: string[] }[] = [];
+
+  for (const u of ds) {
+    const bo = ly_do_bo_qua(u);
+    if (bo !== null) {
+      kq.so_bo_qua++;
+      kq.chi_tiet.push({
+        erp_user_id: u.userId ?? null, email: chuan_email(u.email),
+        ho_ten: chuan_chuoi(u.name), hanh_dong: 'bo_qua', ly_do: bo,
+      });
+      continue;
+    }
+
+    const email = chuan_email(u.email)!;
+    if (email_da_gap.has(email)) {
+      kq.so_bo_qua++;
+      kq.chi_tiet.push({
+        erp_user_id: u.userId ?? null, email, ho_ten: chuan_chuoi(u.name),
+        hanh_dong: 'bo_qua', ly_do: 'Trùng email với một bản ghi ERP khác trong cùng lượt',
+      });
+      continue;
+    }
+    email_da_gap.add(email);
+
+    // Uu tien khop theo erp_user_id (chac chan), roi moi den email.
+    const theo_ma = theo_erp.get(u.userId!);
+    const theo_mail = theo_email.get(email);
+    const nv = theo_ma ?? theo_mail ?? null;
+
+    // Khop duoc theo email NHUNG nguoi do da mang mot erp_user_id KHAC: day la xung dot
+    // that, khong phai chuyen may tu quyet duoc. Ghi de se lam ban ghi cu doi chu, va
+    // nguoi cu mat duong truy nguoc ve ERP. Bo qua va bao de nguoi that xu ly.
+    if (theo_ma === undefined && theo_mail !== undefined
+        && theo_mail.erp_user_id !== null && theo_mail.erp_user_id !== u.userId) {
+      kq.so_bo_qua++;
+      kq.chi_tiet.push({
+        erp_user_id: u.userId!, email, ho_ten: chuan_chuoi(u.name), hanh_dong: 'bo_qua',
+        ly_do: `Email này đã thuộc về nhân viên đang nối với ERP #${theo_mail.erp_user_id}`,
+      });
+      continue;
+    }
+
+    if (nv === null) {
+      kq.so_tao_moi++;
+      kq.chi_tiet.push({
+        erp_user_id: u.userId!, email, ho_ten: chuan_chuoi(u.name), hanh_dong: 'tao_moi',
+      });
+      viec.push({ u, nv: null, doi: [] });
+      continue;
+    }
+
+    const doi = truong_can_doi(u, nv);
+    if (doi.length === 0) {
+      kq.chi_tiet.push({
+        erp_user_id: u.userId!, email, ho_ten: nv.ho_ten, hanh_dong: 'khong_doi',
+      });
+      continue;
+    }
+    kq.so_cap_nhat++;
+    kq.chi_tiet.push({
+      erp_user_id: u.userId!, email, ho_ten: chuan_chuoi(u.name),
+      hanh_dong: 'cap_nhat', thay_doi: doi,
+    });
+    viec.push({ u, nv, doi });
+  }
+
+  if (che_do === 'thu') return kq;
+
+  await trong_giao_dich(async (khach) => {
+    for (const v of viec) {
+      const ten = chuan_chuoi(v.u.name)!;
+      const email = chuan_email(v.u.email)!;
+      const dt = chuan_chuoi(v.u.phoneNumber);
+
+      if (v.nv === null) {
+        await khach.query(
+          `insert into nhan_vien
+             (ma_nv, ho_ten, email, so_dien_thoai, erp_user_id, erp_username, erp_dong_bo_luc)
+           values ($1,$2,$3,$4,$5,$6, now())
+           on conflict (ma_nv) do nothing`,
+          [ma_nv_tu_erp(v.u), ten, email, dt, v.u.userId, chuan_chuoi(v.u.username)],
+        );
+      } else {
+        // `coalesce` o so_dien_thoai: ERP de trong thi giu so dang co, khong xoa mat.
+        await khach.query(
+          `update nhan_vien set
+             ho_ten = $2, email = $3,
+             so_dien_thoai = coalesce($4, so_dien_thoai),
+             erp_user_id = $5, erp_username = coalesce($6, erp_username),
+             erp_dong_bo_luc = now(), cap_nhat_luc = now()
+           where id = $1`,
+          [v.nv.id, ten, email, dt, v.u.userId, chuan_chuoi(v.u.username)],
+        );
+      }
+    }
+  });
+
+  return kq;
+}

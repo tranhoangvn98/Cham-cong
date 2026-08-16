@@ -63,6 +63,9 @@ services:
       # Thong bao day toi app dien thoai. Dat 0 de tat (vd: may chu khong ra Internet).
       THONG_BAO_DAY: ${THONG_BAO_DAY:-1}
       EXPO_PUSH_URL: ${EXPO_PUSH_URL:-https://exp.host/--/api/v2/push/send}
+      # ERP cu — nguon nguoi dung de dong bo. De trong ERP_API_URL = tat han.
+      ERP_API_URL: ${ERP_API_URL:-}
+      ERP_API_KEY: ${ERP_API_KEY:-}
       # Hop dong dien tu vContract (Viettel). De trong VCONTRACT_URL = tat han tinh nang.
       VCONTRACT_URL: ${VCONTRACT_URL:-}
       VCONTRACT_USERNAME: ${VCONTRACT_USERNAME:-}

@@ -178,10 +178,10 @@ Nối nhân viên hai bên bằng trường **Mã bên ERP** ở trang Nhân vi�
 ## 9. Kiểm thử
 
 ```bash
-npm test                              # 181 test: parser ADMS, tính công, JWT, geofence
+npm test                              # 221 test: parser ADMS, tính công, JWT, geofence
 createdb chamcong_test
 DATABASE_URL=postgres://chamcong:...@localhost:5432/chamcong_test \
-  npm --workspace may_chu run test_e2e   # 151 test end-to-end, có CSDL thật
+  npm --workspace may_chu run test_e2e   # 220 test end-to-end, có CSDL thật
 npm run kiem_tra_kieu                 # kiểm tra kiểu TypeScript
 ```
 
@@ -231,6 +231,7 @@ docker run --rm -v /root/Cham-cong:/app -w /app --network cham-cong_default \
 | [`tai_lieu/DANG-NHAP-MICROSOFT.md`](tai_lieu/DANG-NHAP-MICROSOFT.md) | Đăng nhập bằng tài khoản Microsoft (Entra ID) |
 | [`tai_lieu/API.md`](tai_lieu/API.md) | Toàn bộ endpoint REST |
 | [`tai_lieu/HOP-DONG-DIEN-TU-VCONTRACT.md`](tai_lieu/HOP-DONG-DIEN-TU-VCONTRACT.md) | Ký hợp đồng điện tử qua vContract (Viettel) |
+| [`tai_lieu/DONG-BO-ERP.md`](tai_lieu/DONG-BO-ERP.md) | Đồng bộ người dùng từ ERP cũ, nối với Microsoft 365 |
 | [`tai_lieu/API-TICH-HOP.md`](tai_lieu/API-TICH-HOP.md) | API `/api/v1` cho hệ thống ngoài: khoá API, Swagger, sinh client |
 | [`tai_lieu/THIET-KE.md`](tai_lieu/THIET-KE.md) | Design token: màu, font, bo góc, breakpoint |
 | [`CLAUDE.md`](CLAUDE.md) | Quy ước code của dự án |

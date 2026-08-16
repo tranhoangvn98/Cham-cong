@@ -18,6 +18,7 @@ import { TrangBangLuong } from './trang/bang_luong.tsx';
 import { TrangThamSoLuong } from './trang/tham_so_luong.tsx';
 import { TrangViPham } from './trang/vi_pham.tsx';
 import { TrangKpi } from './trang/kpi.tsx';
+import { TrangDongBoErp } from './trang/dong_bo_erp.tsx';
 import { TrangHoSo } from './trang/ho_so.tsx';
 import { TrangKhoTep } from './trang/kho_tep.tsx';
 
@@ -63,6 +64,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/ngay-le', ten: 'Ngày lễ', icon: 'star', nhom: 'Hệ thống', phu: 'Tết Nguyên đán phải tự thêm mỗi năm' },
   { duong_dan: '/tai-khoan', ten: 'Tài khoản', icon: 'key', nhom: 'Hệ thống', phu: 'Người dùng và vai trò', quyen: 'admin' },
   { duong_dan: '/tham-so-luong', ten: 'Tham số lương', icon: 'settings', nhom: 'Hệ thống', phu: 'BHXH, thuế TNCN, giảm trừ gia cảnh', quyen: 'nhan_su' },
+  { duong_dan: '/dong-bo-erp', ten: 'Đồng bộ ERP', icon: 'refresh', nhom: 'Hệ thống', phu: 'Kéo người dùng từ ERP cũ', quyen: 'admin' },
   { duong_dan: '/khoa-api', ten: 'Khóa API', icon: 'key', nhom: 'Hệ thống', phu: 'Cho hệ thống ngoài gọi vào', quyen: 'admin' },
   { duong_dan: '/kho-tep', ten: 'Kho tệp hồ sơ', icon: 'file-text', nhom: 'Hệ thống', phu: 'Tệp đính kèm và đường dẫn đã lưu', quyen: 'nhan_su' },
   { duong_dan: '/nhat-ky', ten: 'Nhật ký thao tác', icon: 'list-details', nhom: 'Hệ thống', phu: 'Ai sửa gì, khi nào', quyen: 'admin' },
@@ -97,6 +99,7 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/tham-so-luong': return la_nhan_su() ? <TrangThamSoLuong /> : <KhongCoQuyen />;
     case '/vi-pham': return <TrangViPham />;
     case '/kpi': return <TrangKpi />;
+    case '/dong-bo-erp': return la_admin() ? <TrangDongBoErp /> : <KhongCoQuyen />;
     case '/kho-tep': return la_nhan_su() ? <TrangKhoTep /> : <KhongCoQuyen />;
     case '/nhat-ky': return la_admin() ? <TrangNhatKy /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;

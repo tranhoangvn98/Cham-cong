@@ -28,6 +28,47 @@ một buổi làm việc đã nhầm máy ba lần: `rsync` chạy trên VPS đ�
 - **Mục lục tài liệu trong README thiếu 4 tệp**, trong đó có `API-TICH-HOP.md` — tài liệu
   bên tích hợp cần đọc mà không có đường nào dẫn tới.
 
+## [1.21.0] — 2026-08-16
+
+**Đồng bộ người dùng từ ERP cũ, nối với Microsoft 365.**
+
+Đọc *Hướng dẫn tích hợp & đồng bộ dữ liệu qua API — Trần Hoàng Việt Nam*, endpoint
+`GET /external/users`.
+
+### Thêm
+
+- **Email là khóa nối ba hệ thống**: `ERP.email == nhan_vien.email == UPN của M365`. Đăng
+  nhập Microsoft đã tìm người theo `lower(nhan_vien.email)`, nên đồng bộ đúng email là
+  nhân viên đăng nhập được bằng tài khoản công ty ngay — không phải khai báo bước thứ ba.
+- **Chế độ chạy thử.** Đọc ERP, cho biết sẽ tạo/sửa ai, **không ghi gì**. Bắt buộc có bước
+  này vì đồng bộ tạo và sửa nhân viên hàng loạt.
+- Trang **Hệ thống → Đồng bộ ERP** (chỉ admin), kèm nút *"Ai chưa có email?"* — những
+  người đó không đăng nhập M365 được, và không có gì báo lỗi cho tới khi chính họ thử.
+- Bảng `dong_bo_erp` ghi mọi lượt kèm **chi tiết từng bản ghi**.
+- 15 bài e2e dựng **máy chủ ERP giả** trả đúng "phong bì" `{success, result:{items,
+  totalCount}}` có phân trang.
+
+### Bốn quy tắc an toàn
+
+| Tình huống | Hệ thống làm gì |
+|---|---|
+| Bản ghi ERP không có email | Bỏ qua — không nối được M365 |
+| Người biến mất khỏi kết quả ERP | **Không xóa, không tự tắt** |
+| PIN máy, ca làm, phòng ban | **Không đụng tới** |
+| Email đã thuộc về người nối ERP khác | Bỏ qua và báo |
+
+Tài liệu ERP mục 4.3 nói rõ API không báo bản ghi bị xóa. Suy *"không thấy = đã nghỉ việc"*
+là cách chắc chắn nhất để một ngày ERP lỗi giữa chừng thì cả công ty bị tắt.
+
+### Sửa
+
+- **`cau_hinh.ts` có hai khóa `erp` trùng tên.** Khối mới cho API ERP đặt cạnh khối
+  `erp: { webhook_url, webhook_secret }` đã có — trong object literal thì khóa sau đè khóa
+  trước, nên `ERP_WEBHOOK_URL` sẽ thành `undefined` và outbox ERP chết âm thầm. Đã gộp làm
+  một. Bắt được nhờ đọc lại tệp sau khi sửa, không phải nhờ typecheck.
+
+221 unit + 13 thiết kế + 220 e2e, tất cả đạt.
+
 ## [1.20.0] — 2026-08-16
 
 **Nạp danh mục vi phạm thật từ Nội quy lao động của công ty.**

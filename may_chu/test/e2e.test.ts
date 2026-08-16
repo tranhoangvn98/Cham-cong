@@ -23,6 +23,9 @@ process.env['ICLOCK_IP_CHO_PHEP'] = '127.0.0.1,192.168.9.0/24';
 process.env['EXPO_PUSH_URL'] = 'http://127.0.0.1:39217/push';
 // Token dung chung voi vContract khi ho goi callback ve day.
 process.env['VCONTRACT_TOKEN_CALLBACK'] = 'token_callback_kiem_thu_0001';
+// Tro dong bo ERP vao may chu gia dung trong tep nay, KHONG goi ra tranhoangvn.com.
+process.env['ERP_API_URL'] = 'http://127.0.0.1:39218/api/v1';
+process.env['ERP_API_KEY'] = 'khoa_erp_kiem_thu';
 process.env['DATABASE_URL'] ??=
   'postgres://chamcong:chamcong_dev@localhost:5432/chamcong_test';
 
@@ -87,7 +90,7 @@ before(async () => {
     ho_so_ca_nhan, tai_lieu_nhan_vien, nguoi_phu_thuoc, bhxh_su_kien,
     ky_luong, phieu_luong,
     vi_pham, quy_tac_vi_pham, loai_vi_pham, ket_qua_kpi, tong_hop_kpi, ky_kpi,
-    nhat_ky_vcontract, hop_dong_dien_tu,
+    nhat_ky_vcontract, hop_dong_dien_tu, dong_bo_erp,
     dia_diem, thiet_bi, nguoi_dung, nhan_vien, ca_lam, phong_ban
     restart identity cascade`);
   // `danh_muc_kpi` co khoa ngoai toi `phong_ban`, ma TRUNCATE ... CASCADE xoa luon MOI
@@ -165,6 +168,7 @@ function dung_may_expo(): Promise<void> {
 after(async () => {
   await app?.close();
   await new Promise<void>((ok) => { may_expo === null ? ok() : may_expo.close(() => { ok(); }); });
+  await new Promise<void>((ok) => { may_erp === null ? ok() : may_erp.close(() => { ok(); }); });
   await dong_pool();
 });
 
@@ -3419,4 +3423,240 @@ test('noi quy: KHONG cot nao chua so tien phat', async () => {
   }
   // Cot che tai tai chinh phai la PHAN TRAM thuong P3, khong phai tien.
   assert.ok(ten.includes('giam_thuong_p3_phan_tram'));
+});
+
+// ============================================================ dong bo ERP
+//
+// KHOA NOI BA HE THONG LA EMAIL: ERP.email == nhan_vien.email == UPN cua Microsoft 365.
+// Dang nhap Microsoft khop nguoi theo lower(nhan_vien.email), nen dong bo dung email la
+// M365 tu nhan ra nguoi ngay.
+
+interface NguoiErp {
+  userId: number; username?: string; name?: string;
+  email?: string | null; phoneNumber?: string | null; isLocked?: boolean;
+}
+
+let erp_du_lieu: NguoiErp[] = [];
+let erp_so_lan_goi = 0;
+let erp_trang_da_xin: number[] = [];
+let may_erp: Server | null = null;
+
+/** May chu ERP gia: tra dung "phong bi" { success, result:{items,totalCount} } co phan trang. */
+function dung_may_erp(): Promise<void> {
+  may_erp = createServer((req, res) => {
+    erp_so_lan_goi++;
+    const url = new URL(req.url ?? '/', 'http://x');
+
+    // Xac thuc bang X-Api-Key, KHONG phai Bearer.
+    if (req.headers['x-api-key'] !== 'khoa_erp_kiem_thu') {
+      res.writeHead(401, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ success: false, statusCode: 401, errors: [{ message: 'Sai key' }] }));
+      return;
+    }
+
+    const trang = Number(url.searchParams.get('pageIndex') ?? 1);
+    const co_trang = Number(url.searchParams.get('pageSize') ?? 25);
+    erp_trang_da_xin.push(trang);
+
+    const dau = (trang - 1) * co_trang;
+    const items = erp_du_lieu.slice(dau, dau + co_trang);
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({
+      success: true, statusCode: 200,
+      result: { items, totalCount: erp_du_lieu.length, currentPage: trang },
+    }));
+  });
+  return new Promise((ok) => may_erp!.listen(39218, '127.0.0.1', () => { ok(); }));
+}
+
+test('erp: dung may chu gia', async () => {
+  await dung_may_erp();
+  assert.ok(may_erp !== null);
+});
+
+test('erp: chay THU khong ghi gi vao CSDL', async () => {
+  erp_du_lieu = [
+    { userId: 9001, username: 'a.kd', name: 'Nguyễn Văn A', email: 'A.KD@tranhoangvietnam.com', phoneNumber: '0900000001' },
+    { userId: 9002, username: 'b.kd', name: 'Trần Thị B', email: 'b.kd@tranhoangvietnam.com' },
+  ];
+  const truoc = await truy_van_mot<{ so: number }>('select count(*)::int as so from nhan_vien');
+
+  const r = await goi('POST', '/api/dong-bo-erp/nhan-vien', {
+    token: token_admin, body: { che_do: 'thu' },
+  });
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['so_doc'], 2);
+  assert.equal(r.body['so_tao_moi'], 2);
+
+  const sau = await truy_van_mot<{ so: number }>('select count(*)::int as so from nhan_vien');
+  assert.equal(sau!.so, truoc!.so, 'che do thu KHONG duoc ghi gi');
+});
+
+test('erp: chay THAT tao nhan vien, email ha ve chu thuong de khop M365', async () => {
+  const r = await goi('POST', '/api/dong-bo-erp/nhan-vien', {
+    token: token_admin, body: { che_do: 'that' },
+  });
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['so_tao_moi'], 2);
+
+  const a = await truy_van_mot<{ ma_nv: string; ho_ten: string; email: string; erp_user_id: number }>(
+    'select ma_nv, ho_ten, email, erp_user_id from nhan_vien where erp_user_id = 9001',
+  );
+  assert.equal(a!.ho_ten, 'Nguyễn Văn A');
+  // Dang nhap Microsoft khop bang lower(email) — luu hoa se khong khop.
+  assert.equal(a!.email, 'a.kd@tranhoangvietnam.com');
+  assert.equal(a!.ma_nv, 'ERP9001');
+});
+
+test('erp: nguoi vua dong bo dang nhap duoc bang Microsoft (khop theo email)', async () => {
+  // Dung dung cau truy van ma luong dang nhap Microsoft dung.
+  const nv = await truy_van_mot<{ id: string; ho_ten: string }>(
+    'select id, ho_ten from nhan_vien where lower(email) = lower($1) and dang_hoat_dong = true',
+    ['A.KD@TranHoangVietNam.com'],
+  );
+  assert.notEqual(nv, null, 'M365 phai tim ra nguoi nay du go email khac kieu chu');
+  assert.equal(nv!.ho_ten, 'Nguyễn Văn A');
+});
+
+test('erp: chay lai KHONG nhan doi — upsert theo khoa', async () => {
+  const r = await goi('POST', '/api/dong-bo-erp/nhan-vien', {
+    token: token_admin, body: { che_do: 'that' },
+  });
+  assert.equal(r.body['so_tao_moi'], 0);
+  assert.equal(r.body['so_cap_nhat'], 0, 'khong doi gi thi khong dem la cap nhat');
+
+  const so = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from nhan_vien where erp_user_id in (9001, 9002)',
+  );
+  assert.equal(so!.so, 2);
+});
+
+test('erp: doi ten ben ERP -> cap nhat, va NEU RO truong nao doi', async () => {
+  erp_du_lieu[0] = { ...erp_du_lieu[0]!, name: 'Nguyễn Văn A (đã đổi)' };
+  const r = await goi('POST', '/api/dong-bo-erp/nhan-vien', {
+    token: token_admin, body: { che_do: 'that' },
+  });
+  assert.equal(r.body['so_cap_nhat'], 1);
+
+  const ct = (r.body['chi_tiet'] as Record<string, unknown>[])
+    .find((d) => d['erp_user_id'] === 9001);
+  assert.deepEqual(ct!['thay_doi'], ['ho_ten']);
+
+  const a = await truy_van_mot<{ ho_ten: string }>(
+    'select ho_ten from nhan_vien where erp_user_id = 9001',
+  );
+  assert.equal(a!.ho_ten, 'Nguyễn Văn A (đã đổi)');
+});
+
+test('erp: KHONG co email thi bo qua — khong noi duoc voi M365', async () => {
+  erp_du_lieu.push({ userId: 9003, username: 'system', name: 'Tài khoản hệ thống' });
+  const r = await goi('POST', '/api/dong-bo-erp/nhan-vien', {
+    token: token_admin, body: { che_do: 'that' },
+  });
+  assert.ok(Number(r.body['so_bo_qua']) >= 1);
+
+  const ct = (r.body['chi_tiet'] as Record<string, unknown>[])
+    .find((d) => d['erp_user_id'] === 9003);
+  assert.equal(ct!['hanh_dong'], 'bo_qua');
+  assert.match(String(ct!['ly_do']), /Microsoft 365/);
+
+  const co = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from nhan_vien where erp_user_id = 9003',
+  );
+  assert.equal(co!.so, 0);
+});
+
+test('erp: hai ban ghi ERP cung email trong CUNG mot luot -> cai sau bo qua', async () => {
+  erp_du_lieu.push({ userId: 9004, name: 'Trùng email', email: 'b.kd@tranhoangvietnam.com' });
+  const r = await goi('POST', '/api/dong-bo-erp/nhan-vien', {
+    token: token_admin, body: { che_do: 'that' },
+  });
+  const ct = (r.body['chi_tiet'] as Record<string, unknown>[])
+    .find((d) => d['erp_user_id'] === 9004);
+  assert.equal(ct!['hanh_dong'], 'bo_qua');
+  assert.match(String(ct!['ly_do']), /Trùng email/);
+});
+
+test('erp: ban ghi ERP moi mang email cua nguoi DA noi ERP khac -> khong duoc chiem', async () => {
+  // Bo 9002 khoi ERP nhung giu 9004 (cung email). Neu khong chan, 9004 se doi khoa cua
+  // nhan vien dang mang erp_user_id 9002 — nguoi cu mat duong truy nguoc ve ERP.
+  erp_du_lieu = erp_du_lieu.filter((u) => u.userId !== 9002);
+  const r = await goi('POST', '/api/dong-bo-erp/nhan-vien', {
+    token: token_admin, body: { che_do: 'that' },
+  });
+  const ct = (r.body['chi_tiet'] as Record<string, unknown>[])
+    .find((d) => d['erp_user_id'] === 9004);
+  assert.equal(ct!['hanh_dong'], 'bo_qua');
+  assert.match(String(ct!['ly_do']), /đã thuộc về/);
+
+  const b = await truy_van_mot<{ erp_user_id: number }>(
+    'select erp_user_id from nhan_vien where lower(email) = $1',
+    ['b.kd@tranhoangvietnam.com'],
+  );
+  assert.equal(b!.erp_user_id, 9002, 'khoa cu phai duoc giu nguyen');
+});
+
+test('erp: nguoi bien mat khoi ERP KHONG bi xoa hay tu tat', async () => {
+  // 9002 da bi bo khoi ERP o bai tren.
+  await goi('POST', '/api/dong-bo-erp/nhan-vien', {
+    token: token_admin, body: { che_do: 'that' },
+  });
+  const b = await truy_van_mot<{ dang_hoat_dong: boolean }>(
+    'select dang_hoat_dong from nhan_vien where erp_user_id = 9002',
+  );
+  assert.notEqual(b, null, 'khong duoc xoa: API ERP khong bao ban ghi bi xoa');
+  assert.equal(b!.dang_hoat_dong, true, 'suy "khong thay = da nghi viec" la cach de tat oan ca cong ty');
+});
+
+test('erp: tu phan trang het du lieu', async () => {
+  erp_du_lieu = Array.from({ length: 1200 }, (_, i) => ({
+    userId: 20000 + i, name: `Nhân viên ${i}`, email: `nv${i}@tranhoangvietnam.com`,
+  }));
+  erp_trang_da_xin = [];
+
+  const r = await goi('POST', '/api/dong-bo-erp/nhan-vien', {
+    token: token_admin, body: { che_do: 'thu' },
+  });
+  assert.equal(r.body['so_doc'], 1200, 'phai doc het ca 1200 ban ghi qua nhieu trang');
+  assert.ok(erp_trang_da_xin.length >= 3, `phai xin nhieu trang, da xin: ${erp_trang_da_xin.join(',')}`);
+});
+
+test('erp: sai API key -> bao loi ro, KHONG bao "0 ban ghi"', async () => {
+  const { cau_hinh } = await import('../src/cau_hinh.ts');
+  const cu = cau_hinh.erp.api_key;
+  (cau_hinh as { erp: { api_key: string } }).erp.api_key = 'khoa_sai';
+
+  const r = await goi('POST', '/api/dong-bo-erp/nhan-vien', {
+    token: token_admin, body: { che_do: 'thu' },
+  });
+  assert.notEqual(r.ma, 200, 'that bai ma bao 0 ban ghi la kieu that bai te nhat');
+  assert.match(String(r.body['loi']), /API key|ERP_API_KEY/);
+
+  (cau_hinh as { erp: { api_key: string } }).erp.api_key = cu;
+});
+
+test('erp: nhan su thuong KHONG chay duoc dong bo — chi admin', async () => {
+  const r = await goi('POST', '/api/dong-bo-erp/nhan-vien', {
+    token: token_nhan_vien, body: { che_do: 'thu' },
+  });
+  assert.equal(r.ma, 403);
+});
+
+test('erp: moi luot deu duoc ghi nhat ky', async () => {
+  const r = await goi('GET', '/api/dong-bo-erp', { token: token_admin });
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['da_cau_hinh'], true);
+  const ls = r.body['lich_su'] as Record<string, unknown>[];
+  assert.ok(ls.length >= 5, `moi luot phai co dong nhat ky, dang co ${ls.length}`);
+  assert.ok(ls.some((l) => l['che_do'] === 'thu'));
+  assert.ok(ls.some((l) => l['che_do'] === 'that'));
+});
+
+test('erp: chi ra duoc ai CHUA co email — ho khong dang nhap M365 duoc', async () => {
+  const r = await goi('GET', '/api/dong-bo-erp/thieu-email', { token: token_admin });
+  assert.equal(r.ma, 200);
+  const ds = r.body as unknown as Record<string, unknown>[];
+  // NV001 trong bo kiem thu khong co email.
+  assert.ok(Array.isArray(ds));
+  for (const d of ds) assert.ok(d['ma_nv'] !== undefined);
 });

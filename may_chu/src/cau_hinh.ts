@@ -161,9 +161,21 @@ export const cau_hinh = {
     goc_webapp: chu('MS_GOC_WEBAPP', ''),
   },
 
+  /**
+   * He thong ERP cu (Tran Hoang Viet Nam).
+   *
+   * `webhook_*` la chieu DI: outbox cua ta POST su kien sang ERP.
+   * `url` + `api_key` la chieu VE: ta keo nguoi dung tu ERP sang. Xac thuc bang header
+   * `X-Api-Key`, KHONG phai Bearer. De TRONG `url` = tat han viec dong bo.
+   *
+   * Tai lieu tich hop noi ro: khoa production phai xin rieng, dat trong bien moi truong,
+   * KHONG hard-code vao ma nguon hay commit len git.
+   */
   erp: {
     webhook_url: chu('ERP_WEBHOOK_URL', ''),
     webhook_secret: chu('ERP_WEBHOOK_SECRET', ''),
+    url: chu('ERP_API_URL', '').replace(/\/+$/, ''),
+    api_key: chu('ERP_API_KEY', ''),
   },
 
   /** Bat migration tu dong khi khoi dong (tien cho Docker 1 diem). */
