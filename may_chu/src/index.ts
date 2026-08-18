@@ -7,11 +7,33 @@ import { bat_tien_trinh_day, dung_tien_trinh_day } from './su_kien/hop_thu_di.ts
 import { bat_lich, dung_lich } from './su_kien/lich_chay.ts';
 import { bat_giam_sat_may, dung_giam_sat_may } from './su_kien/giam_sat_may.ts';
 import { dung_ung_dung } from './ung_dung.ts';
+import { kiem_tra_luu_tru } from './tien_ich/luu_tep.ts';
 
 const app = await dung_ung_dung();
 
 try {
   await mkdir(cau_hinh.thu_muc_anh, { recursive: true });
+
+  // Thu GHI THAT vao ca hai thu muc luu tru, ngay luc khoi dong.
+  //
+  // LOI DA XAY RA THAT: `/du_lieu/ho_so` thuoc root nen tien trinh `node` khong ghi duoc.
+  // Anh selfie van chay (thu muc kia ghi duoc) nen khong co dau hieu gi, va trieu chung
+  // duy nhat la nhan su bam tai tep len roi nhan HTTP 500. Tinh trang do keo dai bao lau
+  // cung duoc ma khong ai biet — ke ca volume sao luu hang thang luon rong.
+  const luu = await kiem_tra_luu_tru();
+  if (luu.loi_ho_so !== null) {
+    app.log.error(
+      { thu_muc: luu.thu_muc_ho_so, ma_loi: luu.loi_ho_so },
+      'KHONG GHI DUOC thu muc ho so — moi lan tai tep len se that bai. '
+      + 'Sua: docker compose exec -u root may_chu chown -R node:node ' + luu.thu_muc_ho_so,
+    );
+  }
+  if (luu.loi_anh !== null) {
+    app.log.error(
+      { thu_muc: luu.thu_muc_anh, ma_loi: luu.loi_anh },
+      'KHONG GHI DUOC thu muc anh cham cong — anh selfie moi lan quet se bi mat.',
+    );
+  }
 
   if (cau_hinh.tu_dong_di_tru) {
     await chay_di_tru((s) => app.log.info(s));

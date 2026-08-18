@@ -2,11 +2,44 @@
 //
 // Khac anh selfie cham cong o hai diem: cho phep PDF va tep Office, va dung lai chinh sach
 // TRA VE cung ran hon — xem `doc_tep_ho_so`.
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join, resolve, sep } from 'node:path';
 import { cau_hinh } from '../cau_hinh.ts';
 import { LoiDauVao } from './kiem_tra.ts';
+
+/**
+ * Khong ghi duoc xuong thu muc luu tru. KHONG phai loi cua nguoi dung.
+ *
+ * Co lop loi rieng vi day la loi VAN HANH, va no can noi thanh cau nguoi doc hieu duoc.
+ * Truoc do no bubble len thanh HTTP 500 "Loi he thong. Vui long thu lai" — mot cau khong
+ * dan ai den dau, cho mot loi khong bao gio tu khoi.
+ */
+export class LoiThuMucLuu extends Error {
+  readonly thu_muc: string;
+  /** 503, khong phai 500: kho luu tru khong dung duoc, con may chu thi van song. */
+  readonly ma_http = 503;
+  /**
+   * Thong diep duoc phep tra ra ngoai.
+   *
+   * KHONG chua duong dan tuyet doi tren may chu — cai do chi vao log. Nhung PHAI noi ro
+   * "loi cau hinh may chu, khong phai loi cua tep", vi khong noi thi nhan su se ngoi thu
+   * lai voi tep khac hang chuc lan.
+   */
+  readonly thong_diep_cong_khai: string;
+
+  constructor(thu_muc: string, gay_boi: string) {
+    super(`Không ghi được vào thư mục lưu hồ sơ ${thu_muc}: ${gay_boi}`);
+    this.name = 'LoiThuMucLuu';
+    this.thu_muc = thu_muc;
+    this.thong_diep_cong_khai = gay_boi === 'ENOSPC'
+      ? 'Máy chủ đã hết dung lượng đĩa nên chưa lưu được tệp. Đây là lỗi máy chủ, '
+        + 'không phải lỗi của tệp — báo quản trị, đừng thử lại.'
+      : `Máy chủ không ghi được vào thư mục lưu hồ sơ (mã lỗi ${gay_boi}). Đây là lỗi cấu `
+        + 'hình máy chủ, không phải lỗi của tệp — thử lại sẽ vẫn thất bại. Báo quản trị, '
+        + 'xem tai_lieu/TRIEN-KHAI.md mục "Thư mục lưu hồ sơ không ghi được".';
+  }
+}
 
 interface DinhDang {
   duoi: string;
@@ -93,11 +126,68 @@ export async function luu_tep_ho_so(
   }
 
   // Gom theo thang de mot thu muc khong phinh len hang tram nghin tep.
-  await mkdir(join(cau_hinh.thu_muc_ho_so, thang), { recursive: true });
-
   const ten_luu = `${thang}/${randomUUID()}.${dd.duoi}`;
-  await writeFile(join(cau_hinh.thu_muc_ho_so, ten_luu), du_lieu, { mode: 0o600 });
+  try {
+    await mkdir(join(cau_hinh.thu_muc_ho_so, thang), { recursive: true });
+    await writeFile(join(cau_hinh.thu_muc_ho_so, ten_luu), du_lieu, { mode: 0o600 });
+  } catch (loi) {
+    // EACCES / EPERM: thu muc thuoc nguoi khac. ENOSPC: het dia. Ba tinh huong nay deu la
+    // van hanh, va deu KHONG tu khoi — phai noi ro ra thay vi tra 500 chung.
+    const ma = (loi as NodeJS.ErrnoException).code ?? '';
+    if (ma === 'EACCES' || ma === 'EPERM' || ma === 'ENOSPC' || ma === 'EROFS') {
+      throw new LoiThuMucLuu(cau_hinh.thu_muc_ho_so, ma);
+    }
+    throw loi;
+  }
   return { ten_luu, mime: dd.mime, kich_thuoc: du_lieu.length };
+}
+
+/**
+ * Thu muc luu tru co ghi duoc that khong? Goi luc khoi dong.
+ *
+ * KHONG dung `access(W_OK)`: no chi hoi he dieu hanh ve bit quyen, va tra ve "duoc" trong
+ * nhung truong hop van khong ghi duoc (dia chi doc, het inode, quota). Cach duy nhat biet
+ * chac la GHI THAT mot tep roi xoa.
+ */
+export async function thu_ghi_thu_muc(thu_muc: string): Promise<string | null> {
+  const thu = join(thu_muc, `.thu-ghi-${randomUUID()}`);
+  try {
+    await mkdir(thu_muc, { recursive: true });
+    await writeFile(thu, 'x');
+    return null;
+  } catch (loi) {
+    return (loi as NodeJS.ErrnoException).code ?? (loi as Error).message;
+  } finally {
+    await rm(thu, { force: true }).catch(() => { /* khong ghi duoc thi cung khong co gi de xoa */ });
+  }
+}
+
+export interface TinhTrangLuuTru {
+  thu_muc_ho_so: string;
+  thu_muc_anh: string;
+  /** null = ghi duoc. Chuoi = ma loi cua he dieu hanh. */
+  loi_ho_so: string | null;
+  loi_anh: string | null;
+}
+
+/**
+ * Kiem ca hai thu muc luu tru.
+ *
+ * Bao ca hai trong mot lan goi vi hai thu muc nay hong DOC LAP nhau — da xay ra dung the:
+ * `anh_cham_cong` ghi duoc con `ho_so` thi khong, nen anh selfie van chay va khong co dau
+ * hieu nao cho thay mot nua kho luu tru dang chet.
+ */
+export async function kiem_tra_luu_tru(): Promise<TinhTrangLuuTru> {
+  const [loi_ho_so, loi_anh] = await Promise.all([
+    thu_ghi_thu_muc(cau_hinh.thu_muc_ho_so),
+    thu_ghi_thu_muc(cau_hinh.thu_muc_anh),
+  ]);
+  return {
+    thu_muc_ho_so: cau_hinh.thu_muc_ho_so,
+    thu_muc_anh: cau_hinh.thu_muc_anh,
+    loi_ho_so,
+    loi_anh,
+  };
 }
 
 const RE_TEN_LUU = /^\d{4}-\d{2}\/[0-9a-f-]{36}\.(pdf|jpg|png|docx|xlsx)$/;

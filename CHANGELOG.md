@@ -2,6 +2,74 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.22.2] — 2026-08-18
+
+**`/du_lieu/ho_so` thuộc `root` nên máy chủ chưa từng ghi được một tệp hồ sơ nào.**
+
+Sửa lỗi nhóm hồ sơ ở 1.22.1 xong thì lỗi này lộ ra: `400` đổi thành `500`. Hai lỗi xếp
+tầng, và lỗi ngoài che lỗi trong hoàn toàn.
+
+Bằng chứng nó tồn tại từ đầu: `find /du_lieu/ho_so -type f | wc -l` ra **0**, và
+`select count(*) from ho_so_tep` cũng ra **0**.
+
+### Nguyên nhân
+
+Docker khởi tạo một named volume **rỗng** theo nội dung của **ảnh** tại đường dẫn gắn —
+**kể cả quyền sở hữu**. `Dockerfile` chỉ `mkdir -p /du_lieu/anh_cham_cong`:
+
+| Thư mục | Có trong ảnh? | Chủ của volume | `node` ghi được? |
+|---|---|---|---|
+| `/du_lieu/anh_cham_cong` | có, đã `chown node:node` | `node:node` | được |
+| `/du_lieu/ho_so` | **không** | **root:root** | **không — EACCES** |
+
+### Ba điều làm nó vô hình suốt nhiều bản
+
+1. **Ảnh selfie chấm công vẫn ghi được** — thư mục kia đúng quyền. Hệ thống *nhìn như* đang
+   lưu tệp bình thường.
+2. **Triệu chứng duy nhất là `Lỗi hệ thống. Vui lòng thử lại`** — một câu đẩy người dùng đi
+   thử lại với tệp khác, định dạng khác, hàng chục lần, rồi kết luận là tệp của mình có vấn
+   đề. Nó **sai** với một lỗi không bao giờ tự khỏi.
+3. **Volume sao lưu hàng tháng luôn rỗng** — và không ai thấy lạ, vì chưa ai tải tệp lên
+   thành công bao giờ. Bản sao lưu vẫn "chạy đúng".
+
+### Sửa
+
+- `Dockerfile` tạo sẵn **cả hai** thư mục rồi mới `chown`.
+- **Thông báo lỗi nói được nguyên nhân.** `LoiThuMucLuu` trả `503` kèm câu *"Đây là lỗi cấu
+  hình máy chủ, không phải lỗi của tệp — thử lại sẽ vẫn thất bại. Báo quản trị."* Đường dẫn
+  tuyệt đối chỉ vào log, không ra client. `ENOSPC` (hết đĩa) có câu riêng.
+- **Thử ghi thật lúc khởi động**, và ghi ra log kèm đúng lệnh `chown` cần chạy. Dùng ghi
+  thật chứ không `access(W_OK)`: bit quyền nói "được" trong cả những trường hợp vẫn không
+  ghi được (đĩa chỉ đọc, hết inode, quota).
+- **`/health` báo `luu_tru`.** Cố ý **không** trả `503`: hạ container vì lỗi lưu trữ sẽ dừng
+  luôn việc hứng log máy chấm công — thứ đang chạy tốt. Đổi lại, kịch bản triển khai in
+  nguyên thân `/health` mỗi lần cập nhật, nên `luu_tru` khác `ok` sẽ đập vào mắt ngay.
+
+### Rào
+
+`test/luu_tru.test.ts` đọc **thẳng `Dockerfile`** và đối chiếu với **mọi `THU_MUC_*` khai
+trong `docker-compose.yml`**. Thêm một kho lưu trữ mới mà quên tạo thư mục thì đỏ test ngay,
+không phải đợi đến lúc có người tải tệp lên. Đã thử: bỏ `/du_lieu/ho_so` khỏi dòng `mkdir`
+thì test đỏ và gọi đúng tên thư mục.
+
+Kèm bài kiểm cho thông báo lỗi (phải nói "lỗi cấu hình máy chủ", không được lọt đường dẫn
+ra ngoài, `ENOSPC` nói thành "hết dung lượng"), và một bài kiểm `os.tmpdir()` ghi được —
+OCR và `pdftotext` ghi tệp tạm ở đó, một phụ thuộc trước nay không ai khai ở đâu cả.
+
+**276 unit (1 bỏ qua khi chạy bằng root) + 5 proxy + 15 thiết kế + 242 e2e, tất cả đạt.**
+
+### Việc phải làm tay một lần trên VPS
+
+Cập nhật ảnh **không** tự sửa volume đã tồn tại — Docker chỉ đặt quyền sở hữu lúc khởi tạo:
+
+```bash
+docker compose exec -u root -T may_chu chown -R node:node /du_lieu
+docker compose restart may_chu
+```
+
+Chi tiết: [`tai_lieu/TRIEN-KHAI.md`](tai_lieu/TRIEN-KHAI.md), mục *"Thư mục lưu hồ sơ không
+ghi được"*.
+
 ## [1.22.1] — 2026-08-18
 
 **Không tải được tệp cho bốn tab hồ sơ — trong đó có chính checklist "Hồ sơ tài liệu 0/7".**
