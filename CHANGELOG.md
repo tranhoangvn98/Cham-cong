@@ -2,6 +2,59 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.24.0] — 2026-08-18
+
+**Trang Tổng quan dựng theo vai trò — và một đường rò rỉ dữ liệu đã tồn tại từ đầu.**
+
+### Rò rỉ
+
+`/api/dashboard` chỉ chặn ở mức `can_dang_nhap`, rồi trả về **một payload duy nhất cho mọi
+người**: quân số toàn công ty, số người vắng, và **danh sách đích danh mười người đi muộn
+hôm nay kèm số phút muộn**.
+
+Một tài khoản `nhan_vien` bình thường mở trang chủ ra là đọc được hết.
+
+Không ai có ý đồ — trang này được viết khi hệ thống mới có một loại người dùng, rồi không ai
+quay lại. Mọi đường khác (`bang_cong`, `lan_quet`) đều đã có `pham_vi_nhan_vien`; riêng
+đường này không.
+
+### Bốn lớp, mỗi lớp chỉ thêm vào lớp dưới
+
+| Lớp | Ai thấy | Nội dung |
+|---|---|---|
+| `toi` | ai có hồ sơ nhân viên | công hôm nay, công tháng, phép còn lại, đơn của tôi |
+| `phong` | trưởng phòng | phòng mình: vắng/muộn hôm nay, đơn chờ tôi duyệt |
+| `cong_ty` | nhân sự trở lên | toàn công ty, biểu đồ 7 ngày, đi muộn hôm nay |
+| `nhan_su` | nhân sự trở lên | hợp đồng hết hạn, thiếu PIN, thiếu email, thiếu giấy tờ |
+| `he_thong` | quản trị | máy chấm công, trạng thái đồng bộ ERP |
+
+Lớp không được phép **không có trong payload**, chứ không phải có rồi để giao diện ẩn đi. Ẩn
+ở giao diện là ẩn giả: dữ liệu vẫn đi qua đường truyền và vẫn hiện ra trong tab Network.
+
+Trưởng phòng chưa được gán phòng nào thì thấy **rỗng**, không rơi về "xem cả công ty" — rơi
+về toàn công ty là biến một thiếu sót khai báo thành một đường rò rỉ.
+
+Bài kiểm chặn kiểm **trên chuỗi JSON thô**, không kiểm theo tên trường: ai đó thêm một
+trường mới mang cùng dữ liệu đó thì bài kiểm theo trường sẽ không thấy.
+
+### "Việc của nhân sự" — bốn con số đều có người thật đứng sau
+
+- **Chưa gán PIN máy** — những người này **không chấm công được**. Nặng nhất, để màu đỏ.
+- **Hợp đồng đã hết hạn** — quá 30 ngày là tự thành không xác định thời hạn (Điều 20.2).
+- **Chưa có email** — không đăng nhập Microsoft được.
+- **Chưa có phòng ban** — không ai duyệt đơn cho họ.
+- **Hồ sơ thiếu giấy tờ** — đếm **người**, không đếm dòng. "37 dòng thiếu" không nói lên ai
+  phải gọi điện cho ai, và nó luôn lớn hơn số người nên nhìn như tình hình tệ hơn thật. Có
+  bài kiểm chặn con số này vượt quá quân số.
+
+### Sửa — rào "một chỗ duy nhất" bắt được chính tôi
+
+Bài kiểm cấm so sánh chuỗi vai trò (thêm ở 1.23.0) **đỏ ngay khi tôi viết module dashboard**:
+tôi gõ `vai_tro === 'admin'`. Đã thêm `la_quan_tri()` cạnh `la_vai_tro_nhan_su()` — quản trị
+kỹ thuật là một trục khác với quản trị nhân sự, nhưng cả hai câu hỏi vẫn trả lời từ một chỗ.
+
+**288 unit (1 bỏ qua khi chạy bằng root) + 5 proxy + 15 thiết kế + 260 e2e, tất cả đạt.**
+
 ## [1.23.0] — 2026-08-18
 
 **Thay / gỡ tệp đã nạp — và vai trò Trưởng phòng nhân sự.**

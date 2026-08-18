@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
+import { dashboard_cho } from '../dashboard/theo_vai_tro.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { khoang_thang, ngay_dia_phuong, phut_thanh_chu } from '../tien_ich/thoi_gian.ts';
@@ -353,74 +354,16 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
   });
 
   // ============================================================ dashboard hom nay
+  /**
+   * Trang Tong quan. Noi dung PHU THUOC VAI TRO — xem `dashboard/theo_vai_tro.ts`.
+   *
+   * Truoc day duong nay tra ve MOT payload cho moi nguoi: so lieu toan cong ty, va danh
+   * sach dich danh muoi nguoi di muon hom nay kem so phut. Mot tai khoan `nhan_vien` mo
+   * trang chu ra la doc duoc het.
+   */
   app.get('/dashboard', { preHandler: can_dang_nhap }, async (req) => {
-    const hom_nay = ngay_dia_phuong(new Date());
-
-    const tong = await truy_van_mot<{
-      tong_nhan_vien: number;
-      co_mat: number;
-      di_muon: number;
-      vang: number;
-      nghi_phep: number;
-      chua_quet_ra: number;
-    }>(
-      `select
-         (select count(*) from nhan_vien where dang_hoat_dong = true)::int as tong_nhan_vien,
-         count(*) filter (where trang_thai = 'co_mat')::int               as co_mat,
-         count(*) filter (where phut_muon > 0)::int                       as di_muon,
-         count(*) filter (where trang_thai = 'vang')::int                 as vang,
-         count(*) filter (where trang_thai = 'nghi_phep')::int            as nghi_phep,
-         -- Chi co dung mot moc quet => chua quet ra (hoac dang trong gio lam).
-         count(*) filter (where gio_vao is not null and gio_vao = gio_ra)::int as chua_quet_ra
-       from bang_cong_ngay where ngay = $1`,
-      [hom_nay],
-    );
-
-    const may = await truy_van<{ ten: string; serial: string; dang_online: boolean; thay_lan_cuoi: Date | null }>(
-      `select ten, serial, thay_lan_cuoi,
-              (thay_lan_cuoi is not null
-               and thay_lan_cuoi > now() - ($1 || ' seconds')::interval) as dang_online
-         from thiet_bi where dang_bat = true order by ten`,
-      [String(cau_hinh.may_offline_sau_giay)],
-    );
-
-    const cho_duyet = await truy_van_mot<{ nghi_phep: number; giai_trinh: number; quet_mobile: number }>(
-      `select
-         (select count(*) from don_nghi_phep  where trang_thai = 'cho_duyet')::int as nghi_phep,
-         (select count(*) from don_giai_trinh where trang_thai = 'cho_duyet')::int as giai_trinh,
-         (select count(*) from lan_quet where trang_thai_duyet = 'cho_duyet')::int as quet_mobile`,
-    );
-
-    // Bieu do 7 ngay gan nhat.
-    const bay_ngay = await truy_van(
-      `select ngay,
-              count(*) filter (where trang_thai = 'co_mat')::int as co_mat,
-              count(*) filter (where phut_muon > 0)::int          as di_muon,
-              count(*) filter (where trang_thai = 'vang')::int    as vang,
-              coalesce(sum(phut_ot), 0)::int                      as phut_ot
-         from bang_cong_ngay
-        where ngay > $1::date - 7 and ngay <= $1::date
-        group by ngay order by ngay`,
-      [hom_nay],
-    );
-
-    const muon_nhat = await truy_van(
-      `select nv.ho_ten, nv.ma_nv, bc.phut_muon, bc.gio_vao
-         from bang_cong_ngay bc join nhan_vien nv on nv.id = bc.nhan_vien_id
-        where bc.ngay = $1 and bc.phut_muon > 0
-        order by bc.phut_muon desc limit 10`,
-      [hom_nay],
-    );
-
-    return {
-      ngay: hom_nay,
-      tong_quan: tong,
-      thiet_bi: may,
-      cho_duyet,
-      bay_ngay,
-      di_muon_hom_nay: muon_nhat,
-      vai_tro: nguoi_dung_hien_tai(req).vai_tro,
-    };
+    const nd = nguoi_dung_hien_tai(req);
+    return dashboard_cho({ vai_tro: nd.vai_tro, nv: nd.nv }, ngay_dia_phuong(new Date()));
   });
 }
 

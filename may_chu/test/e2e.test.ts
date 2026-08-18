@@ -573,10 +573,17 @@ test('xuat CSV co BOM UTF-8 va chong CSV injection', async () => {
 });
 
 test('dashboard tra ve tong quan hom nay va trang thai may', async () => {
+  // Payload gio chia theo LOP quyen: `cong_ty` cho nhan su tro len, `he_thong` cho admin.
+  // Truoc day tat ca nam phang o goc va ai dang nhap cung nhan duoc het.
   const r = await goi('GET', '/api/dashboard', { token: token_admin });
   assert.equal(r.ma, 200);
-  assert.ok(Array.isArray(r.body['thiet_bi']));
-  assert.ok(typeof (r.body['tong_quan'] as Record<string, unknown>)['tong_nhan_vien'] === 'number');
+
+  const ht = r.body['he_thong'] as Record<string, unknown>;
+  assert.ok(Array.isArray(ht['thiet_bi']));
+
+  const ct = r.body['cong_ty'] as Record<string, unknown>;
+  const th = ct['tinh_hinh'] as Record<string, unknown>;
+  assert.ok(typeof th['tong_nhan_vien'] === 'number');
 });
 
 // ============================================================ ngay le & tinh lai
@@ -4279,4 +4286,102 @@ test('quyen tep: TP nhan su doc va sua duoc ho so nhu nhan su', async () => {
   const r = await goi('GET', `/api/nhan-vien/${hs_nv_b}/hop-dong`, { token: tphr_token });
   assert.equal(r.ma, 200);
   assert.equal(r.body['sua_duoc'], true);
+});
+
+// ==================================================================== dashboard theo vai tro
+//
+// RO RI DA CO THAT: `/api/dashboard` la `can_dang_nhap` va tra ve so lieu TOAN CONG TY cho
+// moi nguoi dang nhap, kem DANH SACH DICH DANH muoi nguoi di muon hom nay va so phut muon.
+// Mot tai khoan `nhan_vien` mo trang chu ra la doc duoc het.
+//
+// Cac duong khac (`bang_cong`, `lan_quet`) deu da co `pham_vi_nhan_vien`; rieng duong nay
+// khong — no duoc viet khi he thong moi co mot loai nguoi dung, roi khong ai quay lai.
+
+test('dashboard: nhan vien thuong CHI thay cua minh, khong thay gi cua cong ty', async () => {
+  const r = await goi('GET', '/api/dashboard', { token: hs_token_a });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+
+  // Truong khong duoc phep phai KHONG CO trong payload, chu khong phai co roi de giao dien
+  // an di. An o giao dien la an gia: du lieu van di qua duong truyen.
+  assert.equal(r.body['cong_ty'], null, 'nhan vien KHONG duoc thay so lieu toan cong ty');
+  assert.equal(r.body['phong'], null);
+  assert.equal(r.body['nhan_su'], null);
+  assert.equal(r.body['he_thong'], null);
+
+  // Va cai ho DUOC thay thi phai co that.
+  assert.notEqual(r.body['toi'], null, 'nhan vien phai thay cong cua chinh minh');
+  const toi = r.body['toi'] as Record<string, unknown>;
+  assert.ok(typeof (toi['thang'] as Record<string, unknown>)['so_cong'] === 'number');
+  assert.ok(typeof (toi['phep'] as Record<string, unknown>)['con_lai'] === 'number');
+});
+
+test('dashboard: KHONG con danh sach dich danh nguoi di muon trong payload cua nhan vien', async () => {
+  // Kiem tren CHUOI JSON tho, khong kiem theo truong: neu sau nay ai do them mot truong moi
+  // co ten khac ma van chua cung du lieu do, bai kiem theo truong se khong thay.
+  const r = await goi('GET', '/api/dashboard', { token: hs_token_a });
+  const tho = JSON.stringify(r.body);
+  assert.equal(tho.includes('di_muon_hom_nay'), false,
+    'payload cua nhan vien khong duoc chua danh sach di muon cua bat ky ai');
+  assert.equal(tho.includes('tong_nhan_vien'), false,
+    'nhan vien khong duoc biet quan so cong ty');
+});
+
+test('dashboard: truong phong thay PHONG MINH, khong thay toan cong ty', async () => {
+  const r = await goi('GET', '/api/dashboard', { token: hs_token_tp });
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['cong_ty'], null, 'truong phong KHONG duoc thay toan cong ty');
+  assert.equal(r.body['nhan_su'], null);
+  assert.equal(r.body['he_thong'], null);
+});
+
+test('dashboard: nhan su thay toan cong ty VA viec cua nhan su', async () => {
+  const r = await goi('GET', '/api/dashboard', { token: ns_token });
+  assert.equal(r.ma, 200);
+  assert.notEqual(r.body['cong_ty'], null);
+  assert.notEqual(r.body['nhan_su'], null);
+
+  const ns = r.body['nhan_su'] as Record<string, unknown>;
+  for (const k of ['hop_dong_het_han', 'thieu_email', 'chua_gan_pin',
+    'chua_co_phong_ban', 'thieu_tai_lieu']) {
+    assert.equal(typeof ns[k], 'number', `thieu truong ${k}`);
+  }
+  // Nhan su khong phai admin nen khong thay lop he thong.
+  assert.equal(r.body['he_thong'], null);
+});
+
+test('dashboard: TP nhan su thay dung nhu nhan su', async () => {
+  const r = await goi('GET', '/api/dashboard', { token: tphr_token });
+  assert.equal(r.ma, 200);
+  assert.notEqual(r.body['cong_ty'], null, 'TP nhan su phai thay toan cong ty');
+  assert.notEqual(r.body['nhan_su'], null);
+});
+
+test('dashboard: admin thay ca lop he thong', async () => {
+  const r = await goi('GET', '/api/dashboard', { token: token_admin });
+  assert.equal(r.ma, 200);
+  assert.notEqual(r.body['cong_ty'], null);
+  assert.notEqual(r.body['he_thong'], null);
+  const ht = r.body['he_thong'] as Record<string, unknown>;
+  assert.ok(Array.isArray(ht['thiet_bi']));
+});
+
+test('dashboard: chua dang nhap thi 401, khong tra gi', async () => {
+  const r = await goi('GET', '/api/dashboard', {});
+  assert.equal(r.ma, 401);
+});
+
+test('dashboard: "viec cua nhan su" dem NGUOI chu khong dem dong', async () => {
+  // "12 nguoi con thieu giay to" la con so nhan su can. "37 dong thieu" khong noi len ai
+  // phai goi dien cho ai — va no luon lon hon so nguoi nen nhin nhu tinh hinh te hon that.
+  const r = await goi('GET', '/api/dashboard', { token: ns_token });
+  const ns = r.body['nhan_su'] as Record<string, number>;
+  const tong = await goi('GET', '/api/nhan-vien', { token: ns_token });
+  const ds = tong.body as unknown;
+  const so_nv = Array.isArray(ds)
+    ? ds.length
+    : (((tong.body as Record<string, unknown>)['danh_sach'] ?? []) as unknown[]).length;
+  const thieu = Number(ns['thieu_tai_lieu'] ?? 0);
+  assert.ok(thieu <= so_nv,
+    `thieu_tai_lieu = ${String(thieu)} > tong ${String(so_nv)} nhan vien `
+    + '-> dang dem dong chu khong dem nguoi');
 });

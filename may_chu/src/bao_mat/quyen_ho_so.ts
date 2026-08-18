@@ -60,6 +60,17 @@ export function la_nguoi_duyet(vai_tro: string): boolean {
   return la_vai_tro_nhan_su(vai_tro) || vai_tro === 'truong_phong';
 }
 
+/**
+ * Quan tri he thong: may cham cong, khoa API, tai khoan, dong bo.
+ *
+ * Rieng ra khoi `la_vai_tro_nhan_su` vi day la mot truc KHAC — quan tri ky thuat, khong
+ * phai quan tri nhan su. Van dat o day de moi cau hoi "vai tro nay la gi" deu tra loi tu
+ * mot cho, va de bai kiem chan so sanh chuoi khong phai chua ngoai le nao.
+ */
+export function la_quan_tri(vai_tro: string): boolean {
+  return vai_tro === 'admin';
+}
+
 function la_nhan_su(nd: NguoiXem): boolean {
   return la_vai_tro_nhan_su(nd.vai_tro);
 }
