@@ -4062,3 +4062,54 @@ test('tep ho so: nhan vien KHONG tu tai tep vao checklist tai lieu cua minh', as
   // Va thong bao loi phai goi ten nhom bang tieng Viet, khong phai 'tai_lieu'.
   assert.match(String(r.json()['loi']), /hồ sơ tài liệu/);
 });
+
+test('checklist tai lieu: DUNG LUONG HAI BUOC nhu giao dien lam — tai len roi gan vao dong', async () => {
+  // Giao dien lam HAI lan goi trong mot thao tac keo-tha. Truoc day lan thu nhat luon that
+  // bai nen lan thu hai CHUA BAO GIO chay that. Bai kiem nay di het ca hai.
+  const rg = '----ckl';
+  const than = Buffer.concat([
+    Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="nhom"\r\n\r\ntai_lieu\r\n`),
+    Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="tep"; filename="CCCD hai mặt.pdf"\r\n`
+      + 'Content-Type: application/pdf\r\n\r\n'),
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(64, 0x20)]),
+    Buffer.from(`\r\n--${rg}--\r\n`),
+  ]);
+  const len = await app.inject({
+    method: 'POST', url: `/api/nhan-vien/${hs_nv_a}/tep`,
+    headers: {
+      authorization: `Bearer ${token_admin}`,
+      'content-type': `multipart/form-data; boundary=${rg}`,
+    },
+    payload: than,
+  });
+  assert.equal(len.statusCode, 201, len.body);
+
+  // Buoc hai: gan vao dong checklist. Giao dien gui lai nguyen cac truong doc duoc tu API,
+  // nen bai kiem cung phai lam vay — gui gia tri "sach" se bo qua dung loi ma nguoi dung gap.
+  const truoc = await goi('GET', `/api/nhan-vien/${hs_nv_a}/tai-lieu`, { token: token_admin });
+  assert.equal(truoc.ma, 200);
+  const dong = (truoc.body['danh_sach'] as Record<string, unknown>[])
+    .find((d) => d['bat_buoc'] === true);
+  assert.ok(dong !== undefined, 'bo kiem thu phai co it nhat mot tai lieu bat buoc');
+
+  const gan = await goi('PUT', `/api/nhan-vien/${hs_nv_a}/tai-lieu/${String(dong['ma'])}`, {
+    token: token_admin,
+    body: {
+      trang_thai: 'da_len_phan_mem',
+      tep_id: len.json()['id'],
+      nguoi_phu_trach: dong['nguoi_phu_trach'],
+      han_hoan_thanh: dong['han_hoan_thanh'],
+      ghi_chu: dong['ghi_chu'],
+    },
+  });
+  assert.equal(gan.ma, 200, JSON.stringify(gan.body));
+
+  // Va thanh tien do phai nhich len.
+  const sau = await goi('GET', `/api/nhan-vien/${hs_nv_a}/tai-lieu`, { token: token_admin });
+  const td = sau.body['tien_do'] as { can_co: number; da_du: number };
+  assert.ok(td.da_du >= 1, `tien do le ra >= 1, dang la ${td.da_du}/${td.can_co}`);
+  const dong_sau = (sau.body['danh_sach'] as Record<string, unknown>[])
+    .find((d) => d['ma'] === dong['ma']);
+  assert.equal(dong_sau?.['trang_thai'], 'da_len_phan_mem');
+  assert.notEqual(dong_sau?.['tep_id'] ?? null, null, 'phai giu lai tep vua gan');
+});
