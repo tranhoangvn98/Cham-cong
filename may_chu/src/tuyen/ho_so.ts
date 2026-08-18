@@ -12,7 +12,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import {
-  cac_nhom_doc_duoc, chi_duoc_sua_o, doc_duoc, sua_duoc,
+  CAC_NHOM, cac_nhom_doc_duoc, chi_duoc_sua_o, doc_duoc, sua_duoc,
   type BoiCanh, type NhomHoSo, type NguoiXem,
 } from '../bao_mat/quyen_ho_so.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
@@ -213,6 +213,18 @@ const DAC_TA: DacTaNhom[] = [
 ];
 
 const THEO_NHOM = new Map(DAC_TA.map((d) => [d.nhom, d]));
+
+/**
+ * Ten hien thi cho hai nhom KHONG nam trong bang dac ta.
+ *
+ * `thong_tin` va `tai_lieu` khong sinh route theo khuon "danh sach theo nhan vien" nen
+ * khong co o trong DAC_TA — nhung chung van la nhom ho so that, van co tep dinh kem, va
+ * van can mot cai ten de bao loi thieu quyen cho ra tieng Viet.
+ */
+const TEN_NHOM_KHAC: Record<string, string> = {
+  thong_tin: 'thông tin cá nhân',
+  tai_lieu: 'hồ sơ tài liệu',
+};
 
 /** Chuan hoa dia chi MAC ve dang aa:bb:cc:dd:ee:ff; chan chuoi rac. */
 function doc_mac(b: Record<string, unknown>): string | null {
@@ -782,9 +794,14 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
     }
     if (du_lieu === null) throw new LoiDauVao('Thiếu tệp đính kèm.');
 
-    const nhom = trong_tap(truong, 'nhom', [...THEO_NHOM.keys()], { bat_buoc: true }) as NhomHoSo;
-    const dac = THEO_NHOM.get(nhom) as DacTaNhom;
-    bat_buoc_sua(nd, nhom, bc, dac.ten);
+    // `CAC_NHOM` chu KHONG phai `THEO_NHOM.keys()`.
+    //
+    // DAC_TA chi co 9 nhom — `thong_tin` va `tai_lieu` khong sinh route tu bang dac ta nen
+    // khong co o trong do. Doi chieu voi DAC_TA lam ca hai nhom do KHONG tai tep len duoc,
+    // va mot trong hai chinh la checklist "Ho so tai lieu 0/7" o dau trang ho so: keo tep
+    // vao bat ky dong nao cung nhan 400. Xem di tru 018.
+    const nhom = trong_tap(truong, 'nhom', CAC_NHOM, { bat_buoc: true }) as NhomHoSo;
+    bat_buoc_sua(nd, nhom, bc, THEO_NHOM.get(nhom)?.ten ?? TEN_NHOM_KHAC[nhom] ?? nhom);
 
     const thuoc_id = truong['thuoc_id'] === undefined || truong['thuoc_id'] === ''
       ? null
@@ -793,14 +810,23 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
     const thang = new Date().toISOString().slice(0, 7);
     const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, thang);
 
-    const moi = await truy_van_mot(
-      `insert into ho_so_tep(nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
-                             kich_thuoc, tai_len_boi)
-       values ($1,$2,$3,$4,$5,$6,$7,$8)
-       returning id, nhom, thuoc_id, ten_goc, kieu_mime, kich_thuoc, tao_luc`,
-      [id, nhom, thuoc_id, ten_goc, da_luu.ten_luu, da_luu.mime, da_luu.kich_thuoc,
-        nguoi_dung_hien_tai(req).sub],
-    );
+    // Tep da nam tren dia truoc khi co dong CSDL. Ghi that bai thi PHAI xoa no di: khong
+    // xoa thi tep mo coi tren dia khong ai biet den, khong ai xoa duoc qua giao dien, va
+    // vi la ban scan ho so nhan su nen no la du lieu ca nhan nam ngoai moi so sach.
+    let moi: Record<string, unknown> | null;
+    try {
+      moi = await truy_van_mot(
+        `insert into ho_so_tep(nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
+                               kich_thuoc, tai_len_boi)
+         values ($1,$2,$3,$4,$5,$6,$7,$8)
+         returning id, nhom, thuoc_id, ten_goc, kieu_mime, kich_thuoc, tao_luc`,
+        [id, nhom, thuoc_id, ten_goc, da_luu.ten_luu, da_luu.mime, da_luu.kich_thuoc,
+          nguoi_dung_hien_tai(req).sub],
+      );
+    } catch (loi) {
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* da co loi that o tren */ });
+      throw loi;
+    }
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.tai_tep_len', 'ho_so_tep',
       String(moi?.['id'] ?? ''), { nhan_vien_id: id, nhom, ten_goc }, req.ip);

@@ -2,6 +2,54 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.22.1] — 2026-08-18
+
+**Không tải được tệp cho bốn tab hồ sơ — trong đó có chính checklist "Hồ sơ tài liệu 0/7".**
+
+Kéo một tệp vào bất kỳ dòng nào của tab **Tài liệu** đều thất bại. Đây là tính năng chính
+của tab đó — cái thanh tiến độ `0/7` trên đầu trang hồ sơ không thể nhích lên được, kể từ
+khi tab được dựng.
+
+Bốn nhóm hỏng theo **hai** kiểu khác nhau, nên hai kiểu che nhau:
+
+| Nhóm | Trước | Hệ quả |
+|---|---|---|
+| `tai_lieu`, `thong_tin` | **400** `Trường nhom phải là một trong: …` | không nhận tệp |
+| `nguoi_phu_thuoc`, `bhxh` | **500** `Lỗi hệ thống` | không nhận tệp, **và** để lại tệp mồ côi trên đĩa |
+
+### Nguyên nhân: ba danh sách nhóm, ba nơi, ba nội dung
+
+| Nơi | Số nhóm |
+|---|---|
+| `CAC_NHOM` trong `quyen_ho_so.ts` | **11** — danh sách đúng |
+| `DAC_TA` trong `tuyen/ho_so.ts` | **9** — thiếu `thong_tin` và `tai_lieu`, vì hai nhóm này không sinh route từ bảng đặc tả |
+| `CHECK ho_so_tep_nhom_check` (di trú 009) | **7 + `khac`** — viết trước khi có di trú 010 |
+
+Route kiểm đầu vào bằng `DAC_TA` nên chặn hai nhóm ở lớp ngoài; hai nhóm còn lại qua được
+route rồi mới vướng `CHECK` của CSDL. Di trú 010 sinh ra bốn nhóm mới nhưng không nới ràng
+buộc theo, và không ai phát hiện vì tệp đính kèm của bốn nhóm đó chỉ lên giao diện sau đó.
+
+### Sửa
+
+- **Di trú `018`** nới `ho_so_tep_nhom_check` cho đủ 11 nhóm + `khac`.
+- Route kiểm đầu vào theo **`CAC_NHOM`** thay vì `DAC_TA`. Hai nhóm ngoài bảng đặc tả có
+  tên tiếng Việt riêng để thông báo thiếu quyền không văng ra `tai_lieu`.
+- **Ghi CSDL thất bại thì xóa tệp vừa ghi xuống đĩa.** Tệp nằm trên đĩa trước khi có dòng
+  CSDL; không xóa thì nó thành tệp mồ côi không ai biết, không xóa được qua giao diện, và
+  vì là bản scan hồ sơ nhân sự nên đó là dữ liệu cá nhân nằm ngoài mọi sổ sách.
+
+### Rào
+
+Bài kiểm e2e **tải lên thật cho từng nhóm trong `CAC_NHOM`** và đòi `201` — không đối chiếu
+ba danh sách với nhau mà bắt cả ba lớp (kiểm đầu vào, `CHECK` của CSDL, ghi đĩa) phải thông.
+Đã thử: trả route về `DAC_TA` thì test đỏ và gọi đúng tên hai nhóm `thong_tin`, `tai_lieu`.
+
+Thêm hai bài: nhóm không hợp lệ phải trả `400` mà **không tạo dòng nào**, và nhân viên
+**không** tự tải tệp vào checklist tài liệu của mình được — hồ sơ tài liệu là hồ sơ pháp lý
+do công ty lập.
+
+**264 unit + 5 proxy + 15 thiết kế + 241 e2e, tất cả đạt.**
+
 ## [1.22.0] — 2026-08-18
 
 **Nội dung hợp đồng và hạn hợp đồng — hai phần còn thiếu của Module D.**

@@ -3962,3 +3962,103 @@ test('han hop dong: quet mot vong -> ghi da_nhac_han va KHONG nhac lai vong sau'
   assert.ok(Array.isArray(qua?.['da_nhac_han']));
   assert.ok((qua?.['da_nhac_han'] as number[]).includes(0), 'hop dong qua han phai cham moc 0');
 });
+
+// ==================================================================== nhom cua tep ho so
+//
+// LOI DA XAY RA THAT: keo mot tep vao bat ky dong nao cua tab "Tai lieu" — chinh cai
+// checklist "Ho so tai lieu 0/7" o dau trang ho so — deu that bai. Hai kieu that bai khac
+// nhau, tuy nhom:
+//
+//   tai_lieu, thong_tin       -> 400 "Truong nhom phai la mot trong: ..."
+//   nguoi_phu_thuoc, bhxh     -> 500, va de lai tep mo coi tren dia
+//
+// Nguyen nhan la BA danh sach nhom o ba noi voi ba noi dung khac nhau: CAC_NHOM (11),
+// DAC_TA (9), va CHECK trong CSDL (7 + khac).
+//
+// Bai kiem duoi day khong doi chieu ba danh sach voi nhau — no TAI LEN THAT cho TUNG nhom
+// trong CAC_NHOM. Ca ba lop (kiem dau vao, CHECK cua CSDL, ghi dia) deu phai thong. Lech
+// bat ky lop nao thi do test ngay, va bao ro lech o nhom nao.
+
+test('tep ho so: tai len duoc cho MOI nhom trong CAC_NHOM', async () => {
+  const { CAC_NHOM } = await import('../src/bao_mat/quyen_ho_so.ts');
+  assert.ok(CAC_NHOM.length >= 11, `CAC_NHOM chi co ${CAC_NHOM.length} nhom — doc sai?`);
+
+  const that_bai: string[] = [];
+  for (const nhom of CAC_NHOM) {
+    const rg = `----nhom-${nhom}`;
+    const than = Buffer.concat([
+      Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="nhom"\r\n\r\n${nhom}\r\n`),
+      Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="tep"; `
+        + `filename="tep ${nhom}.pdf"\r\nContent-Type: application/pdf\r\n\r\n`),
+      Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(64, 0x20)]),
+      Buffer.from(`\r\n--${rg}--\r\n`),
+    ]);
+    const r = await app.inject({
+      method: 'POST', url: `/api/nhan-vien/${hs_nv_a}/tep`,
+      headers: {
+        authorization: `Bearer ${token_admin}`,
+        'content-type': `multipart/form-data; boundary=${rg}`,
+      },
+      payload: than,
+    });
+    if (r.statusCode !== 201) that_bai.push(`${nhom}: HTTP ${String(r.statusCode)} ${r.body}`);
+    else if (r.json()['nhom'] !== nhom) that_bai.push(`${nhom}: luu sai nhom`);
+  }
+
+  assert.deepEqual(that_bai, [],
+    'Nhom nao o day khong tai len duoc thi tab tuong ung tren web se khong nhan duoc tep.\n'
+    + 'Kiem ba cho: CAC_NHOM (quyen_ho_so.ts), kiem dau vao trong tuyen/ho_so.ts, va\n'
+    + 'rang buoc ho_so_tep_nhom_check trong di tru 018.');
+});
+
+test('tep ho so: nhom la khong duoc hoac khong co -> 400, KHONG de lai tep tren dia', async () => {
+  const truoc = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from ho_so_tep', []);
+
+  for (const nhom of ['khong_co_that', '']) {
+    const rg = `----xau${nhom.length.toString()}`;
+    const than = Buffer.concat([
+      Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="nhom"\r\n\r\n${nhom}\r\n`),
+      Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="tep"; filename="x.pdf"\r\n`
+        + 'Content-Type: application/pdf\r\n\r\n'),
+      Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(64, 0x20)]),
+      Buffer.from(`\r\n--${rg}--\r\n`),
+    ]);
+    const r = await app.inject({
+      method: 'POST', url: `/api/nhan-vien/${hs_nv_a}/tep`,
+      headers: {
+        authorization: `Bearer ${token_admin}`,
+        'content-type': `multipart/form-data; boundary=${rg}`,
+      },
+      payload: than,
+    });
+    assert.equal(r.statusCode, 400, `nhom "${nhom}" le ra bi tu choi: ${r.body}`);
+  }
+
+  const sau = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from ho_so_tep', []);
+  assert.equal(sau?.so, truoc?.so, 'tu choi nhom xau thi khong duoc tao dong nao');
+});
+
+test('tep ho so: nhan vien KHONG tu tai tep vao checklist tai lieu cua minh', async () => {
+  // Ho so tai lieu la ho so phap ly do cong ty lap. Nhan vien bao sai thi bao nhan su sua.
+  const rg = '----tlnv';
+  const than = Buffer.concat([
+    Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="nhom"\r\n\r\ntai_lieu\r\n`),
+    Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="tep"; filename="cccd.pdf"\r\n`
+      + 'Content-Type: application/pdf\r\n\r\n'),
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(64, 0x20)]),
+    Buffer.from(`\r\n--${rg}--\r\n`),
+  ]);
+  const r = await app.inject({
+    method: 'POST', url: `/api/nhan-vien/${hs_nv_a}/tep`,
+    headers: {
+      authorization: `Bearer ${hs_token_a}`,
+      'content-type': `multipart/form-data; boundary=${rg}`,
+    },
+    payload: than,
+  });
+  assert.equal(r.statusCode, 403, r.body);
+  // Va thong bao loi phai goi ten nhom bang tieng Viet, khong phai 'tai_lieu'.
+  assert.match(String(r.json()['loi']), /hồ sơ tài liệu/);
+});
