@@ -7,6 +7,9 @@
 //
 // Che o giao dien la che gia: du lieu day du van di qua duong truyen, van nam trong bo nho
 // trinh duyet, van hien ra trong tab Network. Ai mo cong cu phat trien cung doc duoc.
+//
+// `quyen_ho_so.ts` cung la module THUAN nen nhap vao day khong keo theo Fastify hay CSDL.
+import { la_vai_tro_nhan_su } from './quyen_ho_so.ts';
 
 /**
  * Giu `so_dau` ky tu dau va `so_cuoi` ky tu cuoi, phan giua thay bang dau cham.
@@ -101,6 +104,6 @@ export function duoc_xem_day_du(
   nd: { vai_tro: string; nv: string | null },
   nhan_vien_id: string,
 ): boolean {
-  if (nd.vai_tro === 'admin' || nd.vai_tro === 'nhan_su') return true;
+  if (la_vai_tro_nhan_su(nd.vai_tro)) return true;
   return nd.nv !== null && nd.nv === nhan_vien_id;
 }

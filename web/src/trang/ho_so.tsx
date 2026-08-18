@@ -1323,6 +1323,8 @@ interface KetQuaTaiLieu {
   dang_nghi_viec: boolean;
   tien_do: { can_co: number; da_du: number };
   sua_duoc: boolean;
+  /** Thay / go tep DA NAP — chi Truong phong nhan su va quan tri. */
+  thay_xoa_tep_duoc: boolean;
 }
 
 function PanelTaiLieu(
@@ -1337,6 +1339,7 @@ function PanelTaiLieu(
   const ds = du_lieu?.danh_sach ?? [];
   const td = du_lieu?.tien_do ?? { can_co: 0, da_du: 0 };
   const sua_duoc = du_lieu?.sua_duoc ?? false;
+  const thay_xoa_duoc = du_lieu?.thay_xoa_tep_duoc ?? false;
   const phan_tram = td.can_co === 0 ? 100 : Math.round((td.da_du / td.can_co) * 100);
 
   /**
@@ -1345,6 +1348,33 @@ function PanelTaiLieu(
    * Làm hai bước trong một thao tác vì tách ra thì người dùng phải nhớ "tải lên xong rồi
    * gắn vào mục nào" — và cái nhớ đó là chỗ hồ sơ bị gắn nhầm mục.
    */
+  /**
+   * Go tep khoi mot dong checklist: xoa han tep, va dua dong ve trang thai Thieu.
+   *
+   * Hoi lai bang chinh TEN TEP chu khong phai "co / khong": day la ban goc giay to phap ly
+   * cua mot con nguoi, va no khong con o dau khac.
+   */
+  const go_tep = async (d: DongTaiLieu): Promise<void> => {
+    if (!window.confirm(
+      `Gỡ tệp "${d.tep_ten ?? 'này'}" khỏi mục ${d.ten}?\n\n`
+      + 'Tệp sẽ bị XÓA HẲN khỏi máy chủ, không khôi phục được. '
+      + 'Đây là bản gốc giấy tờ pháp lý và nó không còn ở đâu khác.')) return;
+
+    const ok = await hd.chay(async () => {
+      await goi(`/api/nhan-vien/${nhan_vien_id}/tai-lieu/${d.ma}`, {
+        method: 'PUT',
+        body: {
+          trang_thai: 'thieu',
+          tep_id: null,
+          nguoi_phu_trach: d.nguoi_phu_trach,
+          han_hoan_thanh: d.han_hoan_thanh,
+          ghi_chu: d.ghi_chu,
+        },
+      });
+    }, `Đã gỡ tệp khỏi mục ${d.ten}.`);
+    if (ok) { nap_lai(); khi_doi(); }
+  };
+
   const nhan_tep = async (d: DongTaiLieu, tep: File): Promise<void> => {
     const fd = new FormData();
     fd.append('nhom', 'tai_lieu');
@@ -1421,7 +1451,29 @@ function PanelTaiLieu(
                   </td>
                   <td>
                     {d.tep_id !== null ? (
-                      <TepDaNop nhan_vien_id={nhan_vien_id} tep_id={d.tep_id} ten={d.tep_ten ?? 'tệp'} />
+                      <>
+                        <TepDaNop
+                          nhan_vien_id={nhan_vien_id}
+                          tep_id={d.tep_id}
+                          ten={d.tep_ten ?? 'tệp'}
+                        />
+                        {thay_xoa_duoc && (
+                          <div className="hang-nut" style={{ marginTop: 6, gap: 6 }}>
+                            <OKeoTha
+                              khi_nhan={(tep) => void nhan_tep(d, tep)}
+                              ma={`${d.ma}-thay`}
+                              nhan="Thay tệp khác"
+                              gon
+                            />
+                            <button
+                              className="nut-nho nut-nguy"
+                              onClick={() => void go_tep(d)}
+                            >
+                              Gỡ tệp
+                            </button>
+                          </div>
+                        )}
+                      </>
                     ) : sua_duoc ? (
                       <OKeoTha khi_nhan={(tep) => void nhan_tep(d, tep)} ma={d.ma} />
                     ) : '—'}
@@ -1477,14 +1529,23 @@ function TepDaNop(
 
 /** Ô kéo-thả cho từng dòng tài liệu, đúng như bản demo. */
 function OKeoTha(
-  { khi_nhan, ma }: { khi_nhan: (tep: File) => void; ma: string },
+  { khi_nhan, ma, nhan, gon }: {
+    khi_nhan: (tep: File) => void;
+    ma: string;
+    /** Chu trong o. Mac dinh la loi moi tai len lan dau. */
+    nhan?: string;
+    /** Ban gon, dung khi o nam canh mot tep da co chu khong phai thay cho no. */
+    gon?: boolean;
+  },
 ): ReactNode {
   const [dang_ke, dat_dang_ke] = useState(false);
 
   return (
     <label
       htmlFor={`tep_${ma}`}
-      className={dang_ke ? 'o-keo-tha dang-ke' : 'o-keo-tha'}
+      className={
+        `${dang_ke ? 'o-keo-tha dang-ke' : 'o-keo-tha'}${gon === true ? ' o-keo-tha-gon' : ''}`
+      }
       onDragOver={(e) => { e.preventDefault(); dat_dang_ke(true); }}
       onDragLeave={() => dat_dang_ke(false)}
       onDrop={(e) => {
@@ -1494,7 +1555,7 @@ function OKeoTha(
         if (tep !== undefined) khi_nhan(tep);
       }}
     >
-      Kéo thả hoặc bấm để tải lên
+      {nhan ?? 'Kéo thả hoặc bấm để tải lên'}
       <input
         id={`tep_${ma}`}
         type="file"

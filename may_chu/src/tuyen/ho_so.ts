@@ -12,7 +12,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import {
-  CAC_NHOM, cac_nhom_doc_duoc, chi_duoc_sua_o, doc_duoc, sua_duoc,
+  CAC_NHOM, LY_DO_KHONG_THAY_XOA_DUOC, cac_nhom_doc_duoc, chi_duoc_sua_o, doc_duoc,
+  sua_duoc, thay_xoa_tep_duoc,
   type BoiCanh, type NhomHoSo, type NguoiXem,
 } from '../bao_mat/quyen_ho_so.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
@@ -429,7 +430,11 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
            from ho_so_tep where nhan_vien_id = $1 and nhom = $2 order by tao_luc desc`,
         [id, dac.nhom],
       );
-      return { danh_sach: dong, tep, sua_duoc: sua_duoc(nd, dac.nhom, bc) };
+      return {
+        danh_sach: dong, tep,
+        sua_duoc: sua_duoc(nd, dac.nhom, bc),
+        thay_xoa_tep_duoc: thay_xoa_tep_duoc(nd),
+      };
     });
 
     // --- them moi ---
@@ -707,6 +712,10 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       dang_nghi_viec,
       tien_do: { can_co: can_co.length, da_du: da_du.length },
       sua_duoc: sua_duoc(nd, 'tai_lieu', bc),
+      // Giao dien can biet de KHONG ve nut "Thay tep" / "Go tep" cho nguoi khong bam duoc.
+      // Chan o may chu la du de an toan, nhung ve mot cai nut chi de bao 403 la ve mot loi
+      // hua khong giu duoc.
+      thay_xoa_tep_duoc: thay_xoa_tep_duoc(nd),
       nhan_vien: { ma_nv: nv.ma_nv, ho_ten: nv.ho_ten },
     };
   });
@@ -740,6 +749,20 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       }
     }
 
+    // O DANG TRONG thi nhan su nap duoc. O DA CO TEP thi thay hay go doi TP nhan su.
+    //
+    // Kiem o day chu khong chi o duong xoa tep: khong co doan nay thi mot tai khoan nhan su
+    // "thay tep" bang cach nap tep moi de len — ban cu tro thanh tep mo coi khong ai thay
+    // trong giao dien, va cai o checklist da tro thanh mot ban khac. Ket qua giong het xoa.
+    const cu = await truy_van_mot<{ tep_id: string | null }>(
+      'select tep_id from tai_lieu_nhan_vien where nhan_vien_id = $1 and danh_muc_id = $2',
+      [id, dm.id]);
+    const tep_cu = cu?.tep_id ?? null;
+    const doi_tep = tep_cu !== null && tep_cu !== tep_id;
+    if (doi_tep && !thay_xoa_tep_duoc(nd)) {
+      throw new LoiKhongQuyen(LY_DO_KHONG_THAY_XOA_DUOC);
+    }
+
     await thuc_thi(
       `insert into tai_lieu_nhan_vien
          (nhan_vien_id, danh_muc_id, trang_thai, tep_id, nguoi_phu_trach, han_hoan_thanh, ghi_chu)
@@ -757,8 +780,20 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
         chuoi(b, 'ghi_chu', { toi_da: 1000 })],
     );
 
+    // Tep cu bi thay the thi don luon — ca dong CSDL lan tep tren dia. Khong don thi no
+    // thanh tep mo coi: khong con hien o dong checklist nao, nhung van nam trong kho va van
+    // la du lieu ca nhan phai bao ve.
+    if (doi_tep && tep_cu !== null) {
+      const t = await truy_van_mot<{ ten_luu: string }>(
+        'select ten_luu from ho_so_tep where id = $1', [tep_cu]);
+      await thuc_thi('delete from ho_so_tep where id = $1', [tep_cu]);
+      if (t !== null) await xoa_tep_ho_so(t.ten_luu);
+      await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.xoa_tep', 'ho_so_tep',
+        tep_cu, { nhan_vien_id: id, ly_do: 'thay tệp ở mục tài liệu', ma }, req.ip);
+    }
+
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.sua_tai_lieu', 'tai_lieu_nhan_vien',
-      id, { ma, trang_thai }, req.ip);
+      id, { ma, trang_thai, doi_tep }, req.ip);
     return { ok: true };
   });
 
@@ -936,7 +971,11 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
 
     const { bc } = await nap_boi_canh(nd, t.nhan_vien_id);
     const dac = THEO_NHOM.get(t.nhom);
-    bat_buoc_sua(nd, t.nhom, bc, dac?.ten ?? t.nhom);
+    bat_buoc_sua(nd, t.nhom, bc, dac?.ten ?? TEN_NHOM_KHAC[t.nhom] ?? t.nhom);
+
+    // Xoa mot ban da nap la LAM MAT chung cu, khong phai sua mot o du lieu. Doi mot bac
+    // quyen cao hon quyen sua nhom.
+    if (!thay_xoa_tep_duoc(nd)) throw new LoiKhongQuyen(LY_DO_KHONG_THAY_XOA_DUOC);
 
     await thuc_thi('delete from ho_so_tep where id = $1', [tep_id]);
     await xoa_tep_ho_so(t.ten_luu);

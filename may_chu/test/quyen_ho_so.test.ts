@@ -4,8 +4,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  CAC_NHOM, cac_nhom_doc_duoc, chi_duoc_sua_o, doc_duoc, sua_duoc,
-  type NhomHoSo,
+  CAC_NHOM, LY_DO_KHONG_THAY_XOA_DUOC, cac_nhom_doc_duoc, chi_duoc_sua_o, doc_duoc,
+  la_nguoi_duyet, sua_duoc, thay_xoa_tep_duoc,
+  type BoiCanh, type NguoiXem, type NhomHoSo,
 } from '../src/bao_mat/quyen_ho_so.ts';
 
 const ADMIN = { vai_tro: 'admin', nv: 'a' };
@@ -124,4 +125,131 @@ test('truong phong cua chinh minh van doc duoc luong cua minh', () => {
   assert.equal(doc_duoc(TRUONG_PHONG, 'luong', CHINH_MINH), true);
   assert.equal(doc_duoc(TRUONG_PHONG, 'khieu_nai', CHINH_MINH), true);
   assert.equal(sua_duoc(TRUONG_PHONG, 'luong', CHINH_MINH), false);
+});
+
+// ==================================================================== thay / go tep da nap
+//
+// RANH GIOI: nap them mot ban scan la THEM chung cu — nhan su lam hang ngay. Thay hay go
+// mot ban DA NAP la LAM MAT chung cu — phai co nguoi chiu trach nhiem.
+//
+// Ho so nhan su la ho so phap ly: hop dong, CCCD, bang cap, giay kham suc khoe. Khi co
+// tranh chap lao dong hay khi co quan BHXH hoi, cai tra loi duoc la ban goc trong kho tep.
+
+test('thay/go tep: TP nhan su duoc', () => {
+  assert.equal(thay_xoa_tep_duoc({ vai_tro: 'truong_phong_nhan_su', nv: 'x' }), true);
+});
+
+test('thay/go tep: admin duoc — khong bao gio khoa chet he thong', () => {
+  assert.equal(thay_xoa_tep_duoc({ vai_tro: 'admin', nv: null }), true);
+});
+
+test('thay/go tep: nhan su thuong KHONG duoc, du ho sua duoc moi nhom ho so', () => {
+  const nd: NguoiXem = { vai_tro: 'nhan_su', nv: null };
+  const bc: BoiCanh = { la_chinh_minh: false, la_cap_tren: false };
+
+  // Ho van sua duoc ho so va van nap duoc tep moi...
+  assert.equal(sua_duoc(nd, 'tai_lieu', bc), true);
+  assert.equal(sua_duoc(nd, 'hop_dong', bc), true);
+  // ...nhung khong go duoc ban da nap.
+  assert.equal(thay_xoa_tep_duoc(nd), false);
+});
+
+test('thay/go tep: truong phong phong ban khac KHONG duoc', () => {
+  // Ho von khong doc duoc ho so nhan su cua cap duoi thi cang khong sua duoc.
+  assert.equal(thay_xoa_tep_duoc({ vai_tro: 'truong_phong', nv: 'x' }), false);
+});
+
+test('thay/go tep: nguoi lao dong KHONG go duoc tep trong ho so cua CHINH MINH', () => {
+  // Quan trong: ho so nhan su la ho so do CONG TY lap va nop cho co quan nha nuoc. Chinh
+  // chu khong duoc tu go bang cap hay giay kham suc khoe cua minh ra khoi ho so.
+  assert.equal(thay_xoa_tep_duoc({ vai_tro: 'nhan_vien', nv: 'toi' }), false);
+});
+
+test('thay/go tep: tai khoan cho duyet KHONG duoc gi', () => {
+  assert.equal(thay_xoa_tep_duoc({ vai_tro: 'cho_duyet', nv: null }), false);
+});
+
+test('TP nhan su doc va sua duoc ho so nhu nhan su', () => {
+  const nd: NguoiXem = { vai_tro: 'truong_phong_nhan_su', nv: 'x' };
+  const bc: BoiCanh = { la_chinh_minh: false, la_cap_tren: false };
+  for (const nhom of CAC_NHOM) {
+    assert.equal(doc_duoc(nd, nhom, bc), true, `TP nhan su phai doc duoc ${nhom}`);
+    assert.equal(sua_duoc(nd, nhom, bc), true, `TP nhan su phai sua duoc ${nhom}`);
+  }
+});
+
+test('ly do tu choi noi ro nap them thi VAN LAM DUOC', () => {
+  // Neu chi bao "khong co quyen" thi nhan su se tuong ca viec nap tep cung bi cam.
+  assert.match(LY_DO_KHONG_THAY_XOA_DUOC, /Trưởng phòng nhân sự/);
+  assert.match(LY_DO_KHONG_THAY_XOA_DUOC, /Nạp thêm tệp vào ô còn trống/);
+});
+
+// ==================================================================== rao: mot cho duy nhat
+//
+// LOI SUYT XAY RA: them vai tro `truong_phong_nhan_su` xong, cau
+// `vai_tro === 'admin' || vai_tro === 'nhan_su'` con nam rai o NAM cho khac nhau —
+// `can_nhan_su`, `can_nguoi_duyet`, `xem_duoc_tat_ca`, lop che du lieu ca nhan, va bo dem
+// don cho duyet. Bo sot mot cho la nguoi do dang nhap vao thay MOT NUA he thong, va nua
+// khong thay se im lang y nhu no khong ton tai.
+//
+// Bai kiem nay doc ma nguon va cam so sanh chuoi vai tro o ngoai module nay.
+
+test('khong tep nao khac duoc so sanh vai_tro === "nhan_su" bang tay', async () => {
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+
+  const GOC = join(import.meta.dirname, '..', 'src');
+  const CHO_PHEP = new Set(['bao_mat/quyen_ho_so.ts']);
+
+  function cac_tep(thu_muc: string): string[] {
+    const ra: string[] = [];
+    for (const m of readdirSync(thu_muc, { withFileTypes: true })) {
+      const duong = join(thu_muc, m.name);
+      if (m.isDirectory()) ra.push(...cac_tep(duong));
+      else if (m.name.endsWith('.ts')) ra.push(duong);
+    }
+    return ra;
+  }
+
+  const pham: string[] = [];
+  for (const tep of cac_tep(GOC)) {
+    const ten = tep.slice(GOC.length + 1).replace(/\\/g, '/');
+    if (CHO_PHEP.has(ten)) continue;
+    const ma = readFileSync(tep, 'utf8');
+    for (const m of ma.matchAll(/vai_tro\s*===\s*'(nhan_su|admin)'/g)) {
+      pham.push(`${ten}: vai_tro === '${m[1]}'`);
+    }
+  }
+
+  assert.deepEqual(pham, [],
+    'So sanh vai tro bang tay o day se BO SOT vai tro nhan su moi.\n'
+    + 'Dung `la_vai_tro_nhan_su()` hoac `xem_duoc_tat_ca()` thay vi so sanh chuoi.');
+});
+
+test('moi vai tro nhan su deu xem duoc du lieu cua moi nhan vien', async () => {
+  const { xem_duoc_tat_ca } = await import('../src/bao_mat/xac_thuc.ts');
+  for (const v of ['admin', 'nhan_su', 'truong_phong_nhan_su']) {
+    assert.equal(xem_duoc_tat_ca({ vai_tro: v }), true, `${v} phai xem duoc tat ca`);
+  }
+  for (const v of ['truong_phong', 'nhan_vien', 'cho_duyet']) {
+    assert.equal(xem_duoc_tat_ca({ vai_tro: v }), false, `${v} KHONG duoc xem tat ca`);
+  }
+});
+
+test('moi vai tro nhan su deu xem duoc du lieu ca nhan day du (khong bi che)', async () => {
+  const { duoc_xem_day_du } = await import('../src/bao_mat/che_du_lieu.ts');
+  for (const v of ['admin', 'nhan_su', 'truong_phong_nhan_su']) {
+    assert.equal(duoc_xem_day_du({ vai_tro: v, nv: null }, 'nguoi-khac'), true,
+      `${v} phai xem duoc ban day du`);
+  }
+  // Truong phong phong ban khac thi VAN bi che — do la ranh gioi cu, khong duoc noi ra.
+  assert.equal(duoc_xem_day_du({ vai_tro: 'truong_phong', nv: 'tp' }, 'nguoi-khac'), false);
+});
+
+test('TP nhan su duyet duoc don tu', () => {
+  for (const v of ['admin', 'nhan_su', 'truong_phong_nhan_su', 'truong_phong']) {
+    assert.equal(la_nguoi_duyet(v), true, `${v} phai duyet duoc don`);
+  }
+  assert.equal(la_nguoi_duyet('nhan_vien'), false);
+  assert.equal(la_nguoi_duyet('cho_duyet'), false);
 });

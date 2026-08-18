@@ -358,6 +358,14 @@ input[type="checkbox"] {
 .hop-tot { background: var(--tot-nen); color: var(--tot); border-color: var(--tot); }
 .hop-luu-y { background: var(--canh-bao-nen); color: var(--canh-bao); border-color: var(--canh-bao); }
 
+/* Ban gon cua o keo-tha: dung khi o nam CANH mot tep da co, chu khong phai thay cho no.
+   Phai nho hon han o goc, neu khong hai o nhin nhu hai cho tai len khac nhau. */
+.o-keo-tha-gon {
+  padding: 5px 10px;
+  font-size: 12px;
+  min-height: 0;
+}
+
 /* Noi dung hop dong da trich sang van ban.
    Cao co dinh + cuon: mot hop dong bay trang se dai hon man hinh, va neu de no day het
    hop thoai thi cac nut ben duoi (xoa noi dung) bi day ra ngoai vung nhin. */

@@ -18,8 +18,23 @@ import {
 
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
 // KHONG duoc dung khi tao tai khoan moi bang tay (xem POST /nguoi-dung).
-const VAI_TRO = ['admin', 'nhan_su', 'truong_phong', 'nhan_vien', 'cho_duyet'] as const;
-const VAI_TRO_TAO_MOI = ['admin', 'nhan_su', 'truong_phong', 'nhan_vien'] as const;
+const VAI_TRO = ['admin', 'nhan_su', 'truong_phong', 'truong_phong_nhan_su',
+  'nhan_vien', 'cho_duyet'] as const;
+
+/**
+ * Vai tro DOI phai gan voi mot ho so nhan vien.
+ *
+ * `truong_phong_nhan_su` nam trong danh sach nay: nguoi duoc quyen go ban goc giay to phap
+ * ly cua nguoi khac thi nhat ky thao tac phai truy nguoc duoc ve mot con nguoi cu the, chu
+ * khong dung lai o mot ten dang nhap.
+ */
+const VAI_TRO_CAN_HO_SO = ['nhan_vien', 'truong_phong', 'truong_phong_nhan_su'] as const;
+
+function can_ho_so(v: string | null): boolean {
+  return (VAI_TRO_CAN_HO_SO as readonly string[]).includes(v ?? '');
+}
+const VAI_TRO_TAO_MOI = ['admin', 'nhan_su', 'truong_phong', 'truong_phong_nhan_su',
+  'nhan_vien'] as const;
 
 export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   // =====================================================================  PHONG BAN
@@ -506,7 +521,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const vai_tro = trong_tap(b, 'vai_tro', VAI_TRO_TAO_MOI, { bat_buoc: true }) as typeof VAI_TRO_TAO_MOI[number];
     const nhan_vien_id = uuid(b, 'nhan_vien_id');
 
-    if ((vai_tro === 'nhan_vien' || vai_tro === 'truong_phong') && nhan_vien_id === null) {
+    if (can_ho_so(vai_tro) && nhan_vien_id === null) {
       throw new LoiDauVao('Vai trò nhân viên / trưởng phòng phải gắn với một nhân viên.');
     }
 
@@ -583,7 +598,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     // Truoc day cho di thang xuong CSDL: rang buoc no ra loi 23514, khong ai bat, va nguoi
     // dung nhan "Loi he thong" — mot loi hoan toan doan truoc duoc lai hien ra nhu su co.
     let nhan_vien_gan: string | null = null;
-    if (vai_tro === 'nhan_vien' || vai_tro === 'truong_phong') {
+    if (can_ho_so(vai_tro)) {
       const hien = await truy_van_mot<{ nhan_vien_id: string | null; ten: string; email_ms: string | null }>(
         `select nhan_vien_id, ten_dang_nhap as ten, email_microsoft as email_ms
            from nguoi_dung where id = $1`, [id]);

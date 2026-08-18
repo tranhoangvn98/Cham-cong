@@ -2,6 +2,74 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.23.0] — 2026-08-18
+
+**Thay / gỡ tệp đã nạp — và vai trò Trưởng phòng nhân sự.**
+
+Tải tệp lên xong thì không có đường nào thay hay gỡ nó. Và mọi tài khoản `nhan_su` đều xóa
+được bất kỳ tệp nào trong hồ sơ bất kỳ ai.
+
+### Ranh giới mới
+
+**Nạp thêm** một bản scan là **thêm** chứng cứ — nhân sự làm hàng ngày, càng dễ càng tốt.
+**Thay** hay **gỡ** một bản đã nạp là **làm mất** chứng cứ — phải có người chịu trách nhiệm.
+
+Hồ sơ nhân sự là hồ sơ pháp lý: hợp đồng, CCCD, bằng cấp, giấy khám sức khỏe. Khi có tranh
+chấp lao động hay khi cơ quan BHXH hỏi, cái trả lời được là bản gốc trong kho tệp.
+
+| Vai trò | Nạp tệp vào ô trống | Thay / gỡ tệp đã có |
+|---|---|---|
+| `admin` | được | được |
+| `truong_phong_nhan_su` **(mới)** | được | **được** |
+| `nhan_su` | được | **không** |
+| `truong_phong` | không | không |
+| chính chủ | không | không |
+
+Chính chủ **không** tự gỡ được bằng cấp hay giấy khám sức khỏe của mình ra khỏi hồ sơ — đó
+là hồ sơ do công ty lập và nộp cho cơ quan nhà nước.
+
+### Chặn ở CẢ HAI đường, vì bỏ sót một đường là bỏ sót cả quy tắc
+
+- `DELETE /api/ho-so/tep/:id` — xóa thẳng.
+- `PUT /api/nhan-vien/:id/tai-lieu/:ma` — **nạp đè lên ô đã có tệp**. Không chặn ở đây thì
+  "thay tệp" thành đường vòng qua quy tắc: bản cũ trở thành tệp mồ côi không ai thấy trong
+  giao diện, và ô checklist đã là một bản khác. Kết quả giống hệt xóa.
+
+Tệp bị thay thế được **dọn hẳn** — cả dòng CSDL lẫn tệp trên đĩa, và ghi nhật ký riêng.
+
+### Sửa — một lỗi suýt xảy ra khi thêm vai trò
+
+Thêm `truong_phong_nhan_su` xong, câu `vai_tro === 'admin' || vai_tro === 'nhan_su'` vẫn nằm
+rải ở **năm** chỗ khác nhau: `can_nhan_su`, `can_nguoi_duyet`, `xem_duoc_tat_ca`, lớp che dữ
+liệu cá nhân, và bộ đếm đơn chờ duyệt.
+
+Bỏ sót một chỗ là người đó đăng nhập vào **thấy một nửa hệ thống** — và nửa không thấy sẽ im
+lặng y như nó không tồn tại. Đã gom về `la_vai_tro_nhan_su()` trong module thuần
+`quyen_ho_so.ts`, và **bài kiểm đọc mã nguồn cấm so sánh chuỗi vai trò ở mọi tệp khác**.
+
+`VaiTro` trong `jwt.ts` là kiểu union nên trình biên dịch bắt được một chỗ; bốn chỗ còn lại
+thì không, vì chúng nhận `{ vai_tro: string }`.
+
+### Giao diện
+
+Ô kéo-thả gọn **"Thay tệp khác"** và nút **"Gỡ tệp"** chỉ hiện với người bấm được — vẽ một
+cái nút chỉ để báo 403 là vẽ một lời hứa không giữ được. Hộp xác nhận hỏi lại bằng **chính
+tên tệp**, không phải "có / không".
+
+Câu từ chối nói rõ **nạp thêm thì vẫn làm được**; chỉ báo "không có quyền" sẽ làm nhân sự
+tưởng cả việc nạp tệp cũng bị cấm.
+
+### Việc cần làm sau khi triển khai
+
+Vào **Hệ thống → Tài khoản**, đổi vai trò của người phụ trách hồ sơ thành **Trưởng phòng
+nhân sự (TP HR)**. Vai trò này **bắt buộc gắn với một hồ sơ nhân viên** — người được quyền
+gỡ bản gốc giấy tờ của người khác thì nhật ký "ai xóa tệp này" phải truy ngược được về một
+con người, không dừng lại ở một tên đăng nhập.
+
+Chưa gán cho ai thì chỉ `admin` thay/gỡ được — hệ thống không tự khóa chết.
+
+**288 unit (1 bỏ qua khi chạy bằng root) + 5 proxy + 15 thiết kế + 252 e2e, tất cả đạt.**
+
 ## [1.22.2] — 2026-08-18
 
 **`/du_lieu/ho_so` thuộc `root` nên máy chủ chưa từng ghi được một tệp hồ sơ nào.**

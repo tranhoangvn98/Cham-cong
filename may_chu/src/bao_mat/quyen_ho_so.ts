@@ -37,9 +37,56 @@ export interface BoiCanh {
   la_cap_tren: boolean;
 }
 
-function la_nhan_su(nd: NguoiXem): boolean {
-  return nd.vai_tro === 'admin' || nd.vai_tro === 'nhan_su';
+/**
+ * MOT CHO DUY NHAT tra loi cau "vai tro nay co phai la nhan su khong".
+ *
+ * VI SAO PHAI GOM VAO DAY: cau `vai_tro === 'admin' || vai_tro === 'nhan_su'` truoc day nam
+ * rai o SAU cho khac nhau — pham vi bang cong, lop che du lieu ca nhan, dem don cho duyet,
+ * hook `can_nhan_su`, bang phan quyen ho so. Them mot vai tro nhan su moi
+ * (`truong_phong_nhan_su`) ma quen mot cho la nguoi do dang nhap vao thay MOT NUA he thong,
+ * khong bao loi gi, va cai nua khong thay se im lang nhu the no khong ton tai.
+ *
+ * Dat o day chu khong o `xac_thuc.ts` vi module nay THUAN — khong Fastify, khong CSDL — nen
+ * moi lop khac deu nhap duoc ma khong keo theo gi.
+ *
+ * Co bai kiem chan: khong tep nao khac duoc phep so sanh `vai_tro === 'nhan_su'`.
+ */
+export function la_vai_tro_nhan_su(vai_tro: string): boolean {
+  return vai_tro === 'admin' || vai_tro === 'nhan_su' || vai_tro === 'truong_phong_nhan_su';
 }
+
+/** Duyet duoc don tu: nhan su cac cap, va truong phong (voi phong cua minh). */
+export function la_nguoi_duyet(vai_tro: string): boolean {
+  return la_vai_tro_nhan_su(vai_tro) || vai_tro === 'truong_phong';
+}
+
+function la_nhan_su(nd: NguoiXem): boolean {
+  return la_vai_tro_nhan_su(nd.vai_tro);
+}
+
+/**
+ * Duoc THAY hay GO mot tep DA NAP vao ho so khong.
+ *
+ * Chat hon `sua_duoc` mot bac, va co chu dich:
+ *
+ *   NAP THEM mot ban scan la THEM chung cu — nhan su lam hang ngay, cang de cang tot.
+ *   THAY hay GO mot ban da nap la LAM MAT chung cu — phai co nguoi chiu trach nhiem.
+ *
+ * Ho so nhan su la ho so phap ly: hop dong, CCCD, giay kham suc khoe, bang cap. Khi co
+ * tranh chap lao dong hay khi co quan BHXH hoi, cai tra loi duoc la ban goc trong kho tep.
+ * Mot tai khoan nhan su bi muon, hay mot cai bam nham, khong duoc phep lam mat no.
+ *
+ * `truong_phong` cua cac phong ban khac KHONG nam o day: ho von khong doc duoc ho so nhan
+ * su cua cap duoi thi cang khong sua duoc.
+ */
+export function thay_xoa_tep_duoc(nd: NguoiXem): boolean {
+  return nd.vai_tro === 'admin' || nd.vai_tro === 'truong_phong_nhan_su';
+}
+
+/** Cau giai thich khi bi tu choi. Viet ra day de moi cho tu choi noi giong nhau. */
+export const LY_DO_KHONG_THAY_XOA_DUOC =
+  'Chỉ Trưởng phòng nhân sự mới được thay hoặc gỡ tệp đã nạp vào hồ sơ. '
+  + 'Nạp thêm tệp vào ô còn trống thì nhân sự làm được bình thường.';
 
 /**
  * Co duoc DOC nhom nay khong.

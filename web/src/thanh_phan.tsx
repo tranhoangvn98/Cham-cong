@@ -221,6 +221,7 @@ export const TEN_VAI_TRO: Record<string, string> = {
   admin: 'Quản trị',
   nhan_su: 'Nhân sự',
   truong_phong: 'Trưởng phòng',
+  truong_phong_nhan_su: 'TP nhân sự',
   nhan_vien: 'Nhân viên',
   cho_duyet: 'Chờ phân quyền',
 };

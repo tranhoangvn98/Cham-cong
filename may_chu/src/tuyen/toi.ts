@@ -3,6 +3,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { can_dang_nhap, nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
+import { la_nguoi_duyet } from '../bao_mat/quyen_ho_so.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { tinh_lai_khoang, tinh_lai_ngay } from '../cong/tinh_cong.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
@@ -142,7 +143,7 @@ async function viec_can_chu_y(req: FastifyRequest, nv_id: string): Promise<{
   );
 
   let cho_toi_duyet = 0;
-  if (nd.vai_tro === 'admin' || nd.vai_tro === 'nhan_su' || nd.vai_tro === 'truong_phong') {
+  if (la_nguoi_duyet(nd.vai_tro)) {
     const chi_phong_minh = !xem_duoc_tat_ca(nd);
     const r = await truy_van_mot<{ so: string }>(
       `select (select count(*) from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id
