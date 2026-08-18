@@ -6,10 +6,11 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { goi, gui_tep, tai_tep } from '../api.ts';
 import {
-  DangTai, HopLoi, HopThoai, HopThoaiXemTep, HopTot, Trong,
+  DangTai, HopLoi, HopThoai, HopThoaiXemTep, HopTot, OSo, Trong,
   dung_hanh_dong, dung_nap, ngay_viet, ngay_gio,
 } from '../thanh_phan.tsx';
 import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
+import { NhanCachTrich } from './hop_dong.tsx';
 
 // ==================================================================== kieu du lieu
 
@@ -358,6 +359,7 @@ function BangNhom(
   const [dang_sua, dat_dang_sua] = useState<Record<string, unknown> | null>(null);
   const [dang_them, dat_dang_them] = useState(false);
   const [dang_gan_tep, dat_dang_gan_tep] = useState(false);
+  const [xem_noi_dung, dat_xem_noi_dung] = useState<string | null>(null);
   const hd = dung_hanh_dong();
 
   const lam_moi = (): void => { nap_lai(); khi_doi(); };
@@ -407,6 +409,16 @@ function BangNhom(
                     {COT[nhom].map((c) => <td key={c.nhan}>{c.ve(r)}</td>)}
                     {sua_duoc && (
                       <td className="khong-ngat">
+                        {nhom === 'hop_dong' && (
+                          <>
+                            <button
+                              className="nut-nho nut-phang"
+                              onClick={() => dat_xem_noi_dung(String(r['id']))}
+                            >
+                              Nội dung
+                            </button>{' '}
+                          </>
+                        )}
                         <button className="nut-nho" onClick={() => dat_dang_sua(r)}>Sửa</button>{' '}
                         <button className="nut-nho nut-nguy" onClick={() => void xoa(String(r['id']))}>
                           Xóa
@@ -439,6 +451,14 @@ function BangNhom(
           nhan_vien_id={nhan_vien_id}
           khi_dong={() => dat_dang_gan_tep(false)}
           khi_xong={() => { dat_dang_gan_tep(false); lam_moi(); }}
+        />
+      )}
+
+      {xem_noi_dung !== null && (
+        <HopThoaiNoiDungHopDong
+          hop_dong_id={xem_noi_dung}
+          tep={du_lieu?.tep ?? []}
+          khi_dong={() => dat_xem_noi_dung(null)}
         />
       )}
     </>
@@ -629,6 +649,186 @@ function DanhSachTep(
         />
       )}
     </div>
+  );
+}
+
+// ==================================================================== noi dung hop dong
+
+interface NoiDungHopDong {
+  hop_dong_id: string;
+  so_hd: string | null;
+  noi_dung_text: string | null;
+  cach_trich: string | null;
+  trich_luc: string | null;
+  trich_tu_tep_id: string | null;
+  so_ky_tu: number;
+}
+
+interface KetQuaTrich {
+  da_luu: boolean;
+  ten_tep: string;
+  noi_dung_text: string;
+  cach_trich: string;
+  so_ky_tu: number;
+  so_trang?: number;
+  canh_bao: string | null;
+  cat_bot: boolean;
+}
+
+interface CongCuTrich {
+  docx: boolean;
+  pdf: boolean;
+  ocr: boolean;
+  pdf_sang_anh: boolean;
+}
+
+/** Duoi tep nao trich duoc. Giu khop voi `duong_trich` o may chu. */
+const DUOI_TRICH_DUOC = /\.(docx|pdf|jpe?g|png)$/i;
+
+/**
+ * Trich noi dung hop dong sang van ban.
+ *
+ * Hop thoai nay noi ba thu ma nguoi dung khong the tu biet:
+ *   1. May chu co OCR khong. Neu chua cai, bam nut se that bai — noi truoc.
+ *   2. Van ban dang co den TU DAU (docx / lop chu PDF / OCR). OCR doc sai duoc.
+ *   3. Trich lai se GHI DE ban dang co.
+ */
+function HopThoaiNoiDungHopDong(
+  { hop_dong_id, tep, khi_dong }:
+  { hop_dong_id: string; tep: TepDinhKem[]; khi_dong: () => void },
+): ReactNode {
+  const duong = `/api/ho-so/hop-dong/${hop_dong_id}/noi-dung`;
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<NoiDungHopDong>(duong, [hop_dong_id]);
+  const cc = dung_nap<CongCuTrich>('/api/ho-so/cong-cu-trich');
+  const [kq, dat_kq] = useState<KetQuaTrich | null>(null);
+  const [chon_tep, dat_chon_tep] = useState('');
+  const hd = dung_hanh_dong();
+
+  // Chi liet ke tep trich duoc. Mot tep .xlsx trong danh sach chi de nguoi dung chon roi
+  // an loi la lang phi mot vong thu.
+  const tep_duoc = tep.filter((t) => DUOI_TRICH_DUOC.test(t.ten_goc));
+  const cong_cu = cc.du_lieu ?? null;
+
+  const trich = async (): Promise<void> => {
+    if (chon_tep === '') return;
+    const co = du_lieu?.so_ky_tu ?? 0;
+    if (co > 0 && !window.confirm(
+      'Hợp đồng này đã có nội dung. Trích lại sẽ ghi đè bản đang có. Tiếp tục?')) return;
+
+    // `chay_lay` vi ta CAN ket qua: canh bao ("day la ban scan, OCR khong doc duoc chu
+    // nao") nam trong do, va do la thu duy nhat giai thich vi sao khong co gi duoc luu.
+    const r = await hd.chay_lay<KetQuaTrich>(
+      () => goi<KetQuaTrich>(duong.replace('/noi-dung', '/trich-noi-dung'),
+        { method: 'POST', body: { tep_id: chon_tep } }),
+      undefined,
+    );
+    if (r !== null) {
+      dat_kq(r);
+      nap_lai();
+    }
+  };
+
+  return (
+    <HopThoai tieu_de="Nội dung hợp đồng" khi_dong={khi_dong} rong>
+      <p className="mo-ta">
+        Văn bản trích ra dùng để <strong>tìm kiếm và đối chiếu</strong>. Bản có giá trị pháp
+        lý luôn là <strong>tệp gốc</strong> trong hồ sơ, không phải văn bản này.
+      </p>
+
+      {cong_cu !== null && !cong_cu.pdf && (
+        <div className="hop-luu-y">
+          Máy chủ <strong>chưa cài <code>pdftotext</code></strong> nên chưa đọc được PDF.
+          Tệp <code>.docx</code> vẫn trích được bình thường.
+        </div>
+      )}
+      {cong_cu !== null && cong_cu.pdf && !cong_cu.ocr && (
+        <div className="hop-luu-y">
+          Máy chủ <strong>chưa cài <code>tesseract</code></strong> nên chưa OCR được bản
+          scan. PDF <em>có lớp chữ</em> và <code>.docx</code> vẫn trích được.
+        </div>
+      )}
+
+      {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} /> : (
+        <>
+          <HopLoi loi={hd.loi} />
+          <HopTot chu={hd.tot} />
+
+          {tep_duoc.length === 0 ? (
+            <Trong
+              tieu_de="Chưa có tệp nào trích được"
+              mo_ta="Đính kèm tệp .docx, .pdf, .jpg hoặc .png vào mục Hợp đồng rồi quay lại đây."
+            />
+          ) : (
+            <div className="hang-nut">
+              <select value={chon_tep} onChange={(e) => dat_chon_tep(e.target.value)}>
+                <option value="">— chọn tệp để trích —</option>
+                {tep_duoc.map((t) => (
+                  <option key={t.id} value={t.id}>{t.ten_goc}</option>
+                ))}
+              </select>
+              <button
+                className="nut-chinh"
+                disabled={hd.dang_chay || chon_tep === ''}
+                onClick={() => void trich()}
+              >
+                {hd.dang_chay ? 'Đang trích…' : 'Trích nội dung'}
+              </button>
+            </div>
+          )}
+          <p className="mo-ta">
+            Bản scan phải qua OCR nên có thể mất đến một phút. Đừng đóng hộp thoại giữa lúc
+            đang chạy.
+          </p>
+
+          {kq !== null && kq.canh_bao !== null && (
+            <div className="hop-luu-y">
+              <strong>{kq.da_luu ? 'Đã lưu, nhưng lưu ý:' : 'Chưa lưu gì:'}</strong>{' '}
+              {kq.canh_bao}
+            </div>
+          )}
+
+          {(du_lieu?.so_ky_tu ?? 0) === 0 ? (
+            <Trong tieu_de="Hợp đồng này chưa có nội dung đã trích" />
+          ) : (
+            <>
+              <div className="ho-so-chi-so">
+                <OSo
+                  nhan="Cách trích"
+                  gia_tri={<NhanCachTrich cach={du_lieu?.cach_trich ?? null} />}
+                  phu={du_lieu?.cach_trich === 'ocr'
+                    ? 'máy đoán từ ảnh — phải đối chiếu'
+                    : 'chữ gốc trong tệp'}
+                />
+                <OSo
+                  nhan="Số ký tự"
+                  gia_tri={(du_lieu?.so_ky_tu ?? 0).toLocaleString('vi-VN')}
+                />
+                <OSo
+                  nhan="Trích lúc"
+                  gia_tri={ngay_gio(du_lieu?.trich_luc)}
+                />
+              </div>
+
+              <pre className="khoi-van-ban">{du_lieu?.noi_dung_text}</pre>
+
+              <div className="hang-nut">
+                <button
+                  className="nut-nho nut-nguy"
+                  disabled={hd.dang_chay}
+                  onClick={() => {
+                    if (!window.confirm('Xóa nội dung đã trích? Tệp gốc vẫn còn.')) return;
+                    void hd.chay(() => goi(duong, { method: 'DELETE' }), 'Đã xóa nội dung.')
+                      .then(() => { dat_kq(null); nap_lai(); });
+                  }}
+                >
+                  Xóa nội dung đã trích
+                </button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </HopThoai>
   );
 }
 

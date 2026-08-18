@@ -2,6 +2,147 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.22.0] — 2026-08-18
+
+**Nội dung hợp đồng và hạn hợp đồng — hai phần còn thiếu của Module D.**
+
+Di trú `015` đã tạo `noi_dung_text`, `cach_trich`, `trich_luc`, `da_nhac_han` từ trước. Bản
+này là phần **dùng** những cột đó: trước bản này chúng rỗng vĩnh viễn vì không có đường nào
+ghi vào.
+
+### Sửa — một ghi chú sai của chính tôi
+
+Bản 1.20.0 ghi *"`trich_docx` trả 0 ký tự trên tệp .docx thật"* và xếp vào **Còn tồn**.
+**Điều đó không đúng.** Chạy lại trên đúng ba tệp đã thử:
+
+| Tệp | Đoạn | Ký tự |
+|---|---|---|
+| Dự thảo HĐLĐ mới 16/07/2026 | 121 | 12.576 |
+| Tài liệu API vContract | 400 (chạm trần) | 14.507 |
+| Nội quy lao động 01/2026 | 400 (chạm trần) | 33.520 |
+
+Hàm đọc đúng cả tiếng Việt có dấu ngay từ đoạn đầu. Kết luận sai trước đó đã làm việc này
+bị hoãn một bản. Cái thiếu thật là **chưa có gì gọi nó**.
+
+Trần 400 đoạn là trần của **"xem nhanh"**, không phải trần đọc được. Nay `trich_docx` nhận
+tùy chọn `doan_toi_da`; đường lưu trữ dùng 5.000.
+
+### Thêm — trích nội dung hợp đồng (Module D)
+
+Ba đường, và **luôn biết mình đi đường nào** — cột `cach_trich` tồn tại chính vì điều này:
+
+| `cach_trich` | Nguồn | Độ tin cậy |
+|---|---|---|
+| `docx` | XML trong tệp | chữ gốc |
+| `pdf_text` | lớp chữ PDF (`pdftotext`) | chữ gốc |
+| `ocr` | `tesseract -l vie` trên ảnh | **máy đoán — có lỗi** |
+
+PDF được thử lớp chữ trước; dưới **40 ký tự** thì coi như bản scan và tự chuyển sang OCR
+(PDF scan không rỗng hoàn toàn — vẫn có dấu ngắt trang và rác watermark).
+
+**Không bao giờ ghi chuỗi rỗng vào `noi_dung_text`.** Một ô trống im lặng sẽ bị đọc là *"hợp
+đồng này không có nội dung"*, trong khi sự thật là *"máy chưa đọc được"*. Trích không ra chữ
+thì trả `da_luu: false` kèm câu giải thích cụ thể — thiếu công cụ, ảnh mờ, hay nội dung nằm
+trong ảnh chèn vào tài liệu.
+
+Ảnh Docker thêm `poppler-utils`, `tesseract-ocr`, `tesseract-ocr-data-vie`. **Thiếu cả ba
+thì máy chủ vẫn chạy** — chỉ việc trích báo `Máy chủ chưa cài ...`, và giao diện đọc
+`GET /api/ho-so/cong-cu-trich` để nói trước thay vì để người dùng bấm nút rồi mới nhận lỗi.
+
+Thiếu `tesseract-ocr-data-vie` là trường hợp tệ nhất: OCR **vẫn chạy** nhưng đọc bằng tiếng
+Anh, chữ ra không dấu. Có bài kiểm đọc ảnh tiếng Việt thật và đòi đúng `HỢP ĐỒNG LAO ĐỘNG`.
+
+### Thêm — nhắc hạn hợp đồng
+
+Hết hạn hợp đồng là mốc **không có gì kích hoạt**: không ai quét thẻ, không ai nộp đơn.
+Ba mốc luật được mã hóa thành ràng buộc, không chỉ ghi trong chú thích:
+
+- **Điều 45** — thông báo bằng văn bản **chậm nhất 15 ngày** trước khi hết hạn. Có bài kiểm
+  đòi mốc `15` phải nằm trong bộ mốc, để ai sửa bộ mốc mà bỏ mất nó thì đỏ test.
+- **Điều 20.2** — quá **30 ngày** vẫn làm việc mà chưa ký mới thì hợp đồng **tự thành không
+  xác định thời hạn**. Lời nhắc đếm ngược đúng số ngày còn lại của mốc này.
+- **Điều 27** — thử việc có bộ mốc riêng (7/3/0); mốc 45 ngày sẽ rơi vào trước cả khi hợp
+  đồng bắt đầu.
+
+Thông báo đẩy **không phải "văn bản" theo Điều 45** — nó chỉ để nhân sự không bỏ sót hạn.
+Nói rõ điều này ngay trên giao diện.
+
+Mốc đã nhắc ghi vào `da_nhac_han`. Hợp đồng nhập vào hệ thống khi chỉ còn 3 ngày sẽ gửi
+**một** thông báo và ghi nhận **cả** 45/30/15/7 — không làm vậy thì vòng sau nhắc tiếp mốc
+15, rồi 30, rồi 45: bốn thông báo cho một hợp đồng, và người nhận sẽ tắt thông báo.
+
+`da_nhac_han` được ghi **trước** khi gửi. Gửi trước rồi ghi sau, một lần hỏng ở giữa sẽ làm
+vòng kế tiếp nhắc lại — và nhắc lại mãi.
+
+Trang **Hợp đồng** (menu Quản trị nhân sự) có hai tab: *Sắp hết hạn* và *Tìm trong nội dung*.
+Hợp đồng **đã hết hạn luôn hiện**, không phụ thuộc bộ lọc số ngày — một hợp đồng hết hạn ba
+tháng trước là thứ cần thấy nhất, và nó không còn "sắp" nữa nên mọi bộ lọc theo ngày còn lại
+đều sẽ làm nó biến mất.
+
+### Sửa — trang Đồng bộ ERP sẽ trắng trang khi bấm "Chạy thử"
+
+Tìm thấy khi viết hộp thoại trích nội dung, không phải khi chạy thử.
+
+`dung_hanh_dong().chay` trả về **`boolean`**. Trang Đồng bộ ERP gọi nó rồi
+`dat_kq(r as unknown as KetQua)` — nghĩa là lưu `true` đã bị ép kiểu. Ngay sau đó
+`kq.chi_tiet.slice(0, 300)` đọc thuộc tính của `true` → `undefined.slice` → **trắng trang**,
+đúng vào lúc nhân sự vừa bấm nút và đang cần biết nó sẽ tạo/sửa ai.
+
+Trình biên dịch không cản được vì `as unknown as` đã tắt hết kiểm tra.
+
+Cách chữa: thêm `chay_lay<T>()` trả về **kết quả** (hoặc `null` khi lỗi) thay vì boolean, và
+đọc `kq.chi_tiet ?? []` — hỏng ở đây là trắng trang nên không tin vào kiểu khai báo.
+
+### Sửa — hạn giờ của chương trình ngoài có thể treo vĩnh viễn
+
+Bản đầu của `chay_lenh` gọi `tt.kill()` rồi chờ sự kiện `close`. Bài kiểm chạy
+`sh -c 'yes'`: giết `sh` xong `yes` **mọc ra ngoài**, vẫn giữ đầu ra, nên `close` không bao
+giờ đến — hạn giờ 1 giây thành treo vô hạn. Đã thấy tiến trình mồ côi quay 81% CPU.
+
+Chữa bằng ba việc: nhóm tiến trình riêng (`detached`) để giết được **cả nhóm**, phá luôn ba
+đường ống, và **trả lời ngay** thay vì chờ `close`. Có bài kiểm đo thời gian trả lời.
+
+### Thêm — hai lớp rào mới
+
+- **Bài kiểm `icon.css` ↔ glyph thật trong `.woff2`.** Rào cũ chỉ đối chiếu mã nguồn với
+  CSS. Thêm icon là **hai** việc — thêm dòng CSS *và* cắt lại font — và làm thiếu việc thứ
+  hai cho ra ô vuông rỗng trên màn hình thật, không lỗi, không cảnh báo. Bài kiểm mới tự
+  đọc bảng `cmap` trong WOFF2 (giải nén brotli, tính offset qua bảng thư mục). Đã thử: thêm
+  một dòng CSS không có glyph thì test đỏ đúng dòng đó. Kèm cả chiều ngược lại — font mang
+  glyph không ai dùng là dấu hiệu lần cắt sau sẽ cắt thiếu.
+- **Bài kiểm biến môi trường không lọt sang tiến trình con.** Biến môi trường của máy chủ
+  có mật khẩu CSDL và khóa JWT; một bộ OCR không cần biết.
+
+### An toàn
+
+`pdftotext` / `pdftoppm` / `tesseract` đều viết bằng C và đều từng có lỗ hổng đọc bộ nhớ.
+Bốn ràng buộc cứng trong `lenh_ngoai.ts`: không bao giờ qua shell (`spawn` với mảng đối số),
+có hạn giờ, có trần đầu ra, và nhóm tiến trình riêng.
+
+Hai ranh giới của API được kiểm bằng e2e:
+
+- **Tệp phải thuộc chính nhân viên đó.** Thiếu ràng buộc này thì ai sửa được một hợp đồng sẽ
+  đọc được nội dung tệp của **bất kỳ ai**, chỉ bằng cách đoán mã tệp — và nội dung sẽ hiện
+  ra ngay trên hợp đồng họ vừa sửa.
+- **Quyền đi theo nhóm `hop_dong`.** Trưởng phòng không đọc được hợp đồng thì cũng không đọc
+  được nội dung hợp đồng — nội dung hợp đồng **có lương**.
+
+Ô tìm kiếm dùng `position()` chứ không `ilike '%...%'`: `%` và `_` là ký tự thường, gõ dấu
+`%` vào không biến thành "khớp mọi hợp đồng". Có bài kiểm.
+
+### Tài liệu
+
+[`tai_lieu/HOP-DONG.md`](tai_lieu/HOP-DONG.md) — ba đường trích và độ tin cậy, bảng thông
+báo lỗi kèm cách xử lý, các mốc nhắc hạn và căn cứ luật, cách kiểm tra máy chủ có OCR chưa.
+
+**264 unit + 15 thiết kế + 238 e2e, tất cả đạt.** Typecheck và build sạch.
+
+### Còn tồn
+
+- Gửi hợp đồng đi ký qua vContract vẫn chờ anh hoàn tất đăng ký, và chờ hai câu trả lời:
+  ai ký phía công ty, và dùng bản production hay bản test.
+- Chưa có việc tự tải bản PDF đã ký về `ho_so_tep`.
+
 ## [1.16.4] — 2026-08-14
 
 **Tài liệu sao lưu — và hai lỗi trong quy trình phục hồi cũ.**
@@ -103,6 +244,11 @@ Danh mục hành vi vi phạm**: 64 hành vi, 11 nhóm A–L.
 
 `trich_docx` trả **0 ký tự** trên tệp .docx thật — đã gặp hai lần (tài liệu vContract và
 Nội quy này). Tính năng "quét nội dung hợp đồng sang text" phụ thuộc hàm này. Chưa sửa.
+
+> **Ghi chú sai — đã đính chính ở [1.22.0](#1220--2026-08-18).** Chạy lại `trich_docx` trên
+> đúng ba tệp .docx đó cho ra 121 / 400 / 400 đoạn và 12.576 / 14.507 / 33.520 ký tự. Hàm
+> vẫn đọc được. Cái thật sự thiếu là **không có gì gọi nó**: di trú 015 đã tạo cột
+> `noi_dung_text` nhưng chưa có đường ghi vào cột đó.
 
 ## [1.19.0] — 2026-08-15
 

@@ -21,6 +21,7 @@ import { TrangKpi } from './trang/kpi.tsx';
 import { TrangDongBoErp } from './trang/dong_bo_erp.tsx';
 import { TrangHoSo } from './trang/ho_so.tsx';
 import { TrangKhoTep } from './trang/kho_tep.tsx';
+import { TrangHopDong } from './trang/hop_dong.tsx';
 
 interface MucMenu {
   duong_dan: string;
@@ -57,6 +58,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/vi-pham', ten: 'Vi phạm', icon: 'alert-triangle', nhom: 'Quản trị nhân sự', phu: 'Nội quy lao động, kỷ luật' },
   { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Quản trị nhân sự', phu: 'Chấm điểm từ dữ liệu thật' },
   { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Tính từ chấm công, gửi duyệt', quyen: 'nhan_su' },
+  { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Quản trị nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
 
   { duong_dan: '/thiet-bi', ten: 'Thiết bị', icon: 'device-desktop', nhom: 'Hệ thống', phu: 'Máy chấm công ZKTeco', quyen: 'nhan_su' },
   { duong_dan: '/ca-lam', ten: 'Ca làm việc', icon: 'clock', nhom: 'Hệ thống', phu: 'Giờ vào/ra, dung sai, ngưỡng OT' },
@@ -101,6 +103,7 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/kpi': return <TrangKpi />;
     case '/dong-bo-erp': return la_admin() ? <TrangDongBoErp /> : <KhongCoQuyen />;
     case '/kho-tep': return la_nhan_su() ? <TrangKhoTep /> : <KhongCoQuyen />;
+    case '/hop-dong': return la_nhan_su() ? <TrangHopDong /> : <KhongCoQuyen />;
     case '/nhat-ky': return la_admin() ? <TrangNhatKy /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;
   }

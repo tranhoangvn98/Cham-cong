@@ -358,6 +358,24 @@ input[type="checkbox"] {
 .hop-tot { background: var(--tot-nen); color: var(--tot); border-color: var(--tot); }
 .hop-luu-y { background: var(--canh-bao-nen); color: var(--canh-bao); border-color: var(--canh-bao); }
 
+/* Noi dung hop dong da trich sang van ban.
+   Cao co dinh + cuon: mot hop dong bay trang se dai hon man hinh, va neu de no day het
+   hop thoai thi cac nut ben duoi (xoa noi dung) bi day ra ngoai vung nhin. */
+.khoi-van-ban {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  max-height: 46vh;
+  overflow: auto;
+  background: var(--nen-mo);
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* Khoi lenh mau cho nguoi dung copy — vi du curl trong hop thoai khoa API. */
 .khoi-ma {
   margin: 0;

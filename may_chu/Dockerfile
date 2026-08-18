@@ -25,6 +25,20 @@ FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 
+# ---------------------------------------------------------------- cong cu doc tep
+#
+# Ba chuong trinh cho viec "quet noi dung hop dong chuyen sang text":
+#
+#   poppler-utils          pdftotext (doc lop chu cua PDF) + pdftoppm (rasterise de OCR)
+#   tesseract-ocr          OCR ban scan
+#   tesseract-ocr-data-vie du lieu tieng Viet. THIEU GOI NAY thi OCR van chay nhung doc
+#                          bang tieng Anh: chu tieng Viet se mat dau.
+#
+# NEU BUOC NAY LOI vi ten goi doi trong ban Alpine moi: may chu VAN CHAY BINH THUONG khi
+# thieu ca ba — chi rieng viec trich noi dung se bao "may chu chua cai ...". Trang
+# "Hop dong" trong webapp hien san may chu dang co nhung gi, nen khong phai doan.
+RUN apk add --no-cache poppler-utils tesseract-ocr tesseract-ocr-data-vie
+
 # Chay bang nguoi dung thuong, khong phai root.
 RUN mkdir -p /du_lieu/anh_cham_cong && chown -R node:node /du_lieu
 

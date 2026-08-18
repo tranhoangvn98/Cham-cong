@@ -86,12 +86,14 @@ export function TrangDongBoErp(): ReactNode {
   if (loi !== null) return <HopLoi loi={loi} />;
   const tt = du_lieu ?? { da_cau_hinh: false, so_da_noi: 0, lich_su: [] };
 
+  // `chay_lay` chu khong phai `chay`: ta CAN ket qua de ve bang. `chay` tra ve boolean, va
+  // ep `true` thanh KetQua se lam trang trang khi doc `kq.chi_tiet`.
   const chay = (che_do: 'thu' | 'that') => () => {
-    void hd.chay(
-      () => goi('/api/dong-bo-erp/nhan-vien', { method: 'POST', body: { che_do } }),
+    void hd.chay_lay<KetQua>(
+      () => goi<KetQua>('/api/dong-bo-erp/nhan-vien', { method: 'POST', body: { che_do } }),
       che_do === 'thu' ? 'Đã chạy thử — chưa ghi gì.' : 'Đã đồng bộ.',
     ).then((r) => {
-      if (r !== null) dat_kq(r as unknown as KetQua);
+      if (r !== null) dat_kq(r);
       nap_lai();
     });
   };
@@ -193,7 +195,10 @@ export function TrangDongBoErp(): ReactNode {
 
 function BangKetQua({ kq }: { kq: KetQua }): ReactNode {
   const [chi_hien, dat_chi_hien] = useState<DongKetQua['hanh_dong'] | ''>('');
-  const ds = chi_hien === '' ? kq.chi_tiet : kq.chi_tiet.filter((d) => d.hanh_dong === chi_hien);
+  // `?? []` chu khong phai tin vao kieu: hong o day la TRANG TRANG giua luc nhan su vua bam
+  // "Đồng bộ thật" va dang can biet no lam gi.
+  const chi_tiet = kq.chi_tiet ?? [];
+  const ds = chi_hien === '' ? chi_tiet : chi_tiet.filter((d) => d.hanh_dong === chi_hien);
 
   return (
     <div className="the">
@@ -208,7 +213,7 @@ function BangKetQua({ kq }: { kq: KetQua }): ReactNode {
 
       <div className="hang-nut">
         <select value={chi_hien} onChange={(e) => dat_chi_hien(e.target.value as never)}>
-          <option value="">Tất cả ({kq.chi_tiet.length})</option>
+          <option value="">Tất cả ({chi_tiet.length})</option>
           <option value="tao_moi">Tạo mới ({kq.so_tao_moi})</option>
           <option value="cap_nhat">Cập nhật ({kq.so_cap_nhat})</option>
           <option value="bo_qua">Bỏ qua ({kq.so_bo_qua})</option>

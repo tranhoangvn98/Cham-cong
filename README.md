@@ -230,6 +230,7 @@ docker run --rm -v /root/Cham-cong:/app -w /app --network cham-cong_default \
 | [`tai_lieu/TEN-MIEN.md`](tai_lieu/TEN-MIEN.md) | Trỏ tên miền, chứng chỉ HTTPS, Caddy |
 | [`tai_lieu/DANG-NHAP-MICROSOFT.md`](tai_lieu/DANG-NHAP-MICROSOFT.md) | Đăng nhập bằng tài khoản Microsoft (Entra ID) |
 | [`tai_lieu/API.md`](tai_lieu/API.md) | Toàn bộ endpoint REST |
+| [`tai_lieu/HOP-DONG.md`](tai_lieu/HOP-DONG.md) | Trích nội dung hợp đồng (DOCX / PDF / OCR bản scan), nhắc hạn hợp đồng |
 | [`tai_lieu/HOP-DONG-DIEN-TU-VCONTRACT.md`](tai_lieu/HOP-DONG-DIEN-TU-VCONTRACT.md) | Ký hợp đồng điện tử qua vContract (Viettel) |
 | [`tai_lieu/DONG-BO-ERP.md`](tai_lieu/DONG-BO-ERP.md) | Đồng bộ người dùng từ ERP cũ, nối với Microsoft 365 |
 | [`tai_lieu/API-TICH-HOP.md`](tai_lieu/API-TICH-HOP.md) | API `/api/v1` cho hệ thống ngoài: khoá API, Swagger, sinh client |

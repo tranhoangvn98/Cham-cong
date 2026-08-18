@@ -7,6 +7,7 @@ import { OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { chot_ngay_hom_qua } from '../cong/tinh_cong.ts';
 import { don_su_kien_cu } from './hop_thu_di.ts';
+import { ma_viec_nhac_han, quet_nhac_han } from '../hop_dong/nhac_han.ts';
 import { cong_ngay, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. */
@@ -62,6 +63,26 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
       // Nha viec de vong sau thu lai — khong duoc bo qua im lang.
       await nha_viec(ma_viec);
       ghi_log(`[lich] LOI khi chot ngay ${hom_qua}: ${(loi as Error).message}`);
+    }
+  }
+
+  // Nhac han hop dong, moi ngay mot lan.
+  //
+  // Chay cung khung gio cuoi ngay, khong phai vao gio hanh chinh: `nhan_viec` chi cho MOT
+  // instance chay, nhung neu de no chay ngay khi khoi dong may chu thi moi lan trien khai
+  // lai trong ngay se... khong gui lai (da co ma viec cua ngay do), dung nhu mong doi.
+  const ma_nhac = ma_viec_nhac_han(hom_nay);
+  if (await nhan_viec(ma_nhac)) {
+    try {
+      const kq = await quet_nhac_han(hom_nay);
+      await ghi_ket_qua(ma_nhac,
+        `xet ${String(kq.so_hop_dong)} hop dong, nhac ${String(kq.so_gui)}`);
+      if (kq.so_gui > 0) {
+        ghi_log(`[lich] da nhac han ${String(kq.so_gui)} hop dong`);
+      }
+    } catch (loi) {
+      await nha_viec(ma_nhac);
+      ghi_log(`[lich] LOI khi nhac han hop dong: ${(loi as Error).message}`);
     }
   }
 

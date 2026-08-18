@@ -257,6 +257,14 @@ export function OSo({ nhan, gia_tri, phu, mau }: OSoProps): ReactNode {
 // ============================================================ hanh dong co xu ly loi
 export interface KetQuaHanhDong {
   chay: (ham: () => Promise<unknown>, thong_bao_tot?: string) => Promise<boolean>;
+  /**
+   * Nhu `chay` nhung TRA VE KET QUA cua lan goi, null khi loi.
+   *
+   * Can rieng mot ham vi `chay` tra ve boolean. Ai muon dung ket qua ma goi `chay` roi
+   * `as unknown as T` se nhan duoc `true` da bi ep kieu — trinh bien dich khong can, va
+   * man hinh se trang khi doc thuoc tinh dau tien. Da xay ra that o trang Dong bo ERP.
+   */
+  chay_lay: <T>(ham: () => Promise<T>, thong_bao_tot?: string) => Promise<T | null>;
   dang_chay: boolean;
   loi: unknown;
   tot: string | null;
@@ -285,8 +293,25 @@ export function dung_hanh_dong(): KetQuaHanhDong {
     }
   };
 
+  const chay_lay = async <T,>(ham: () => Promise<T>, thong_bao_tot?: string): Promise<T | null> => {
+    dat_dang_chay(true);
+    dat_loi(null);
+    dat_tot(null);
+    try {
+      const kq = await ham();
+      if (thong_bao_tot !== undefined) dat_tot(thong_bao_tot);
+      return kq;
+    } catch (e) {
+      dat_loi(e instanceof LoiApi ? e : new Error(e instanceof Error ? e.message : String(e)));
+      return null;
+    } finally {
+      dat_dang_chay(false);
+    }
+  };
+
   return {
     chay,
+    chay_lay,
     dang_chay,
     loi,
     tot,
