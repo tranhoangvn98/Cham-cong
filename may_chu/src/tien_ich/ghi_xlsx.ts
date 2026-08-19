@@ -120,7 +120,7 @@ function sheet_xml(b: BangXlsx): string {
 
 // ---------------------------------------------------------------- ZIP
 
-interface MucZip {
+export interface MucZip {
   ten: string;
   du_lieu: Buffer;
 }
@@ -128,13 +128,16 @@ interface MucZip {
 /**
  * Dong goi cac tep thanh mot ZIP.
  *
+ * Xuat ra vi `ghi_docx.ts` dung lai: DOCX va XLSX la cung mot dinh dang goi (OPC), chi khac
+ * cac tep XML ben trong. Viet hai bo dong ZIP la hai cho de sai khac nhau.
+ *
  * Dung deflate (phuong thuc 8) chu khong "store": mot bang cong ca thang la XML lap di lap
  * lai, nen ti le nen rat cao va tep gui qua mang nho han nhieu.
  *
  * Khong dung ZIP64, khong dung data descriptor: kich thuoc biet truoc nen ghi thang vao
  * header cuc bo duoc. Doi lai gioi han 4 GB mot tep — khong lien quan gi den viec nay.
  */
-function dong_zip(muc: readonly MucZip[]): Buffer {
+export function dong_zip(muc: readonly MucZip[]): Buffer {
   const cuc_bo: Buffer[] = [];
   const trung_tam: Buffer[] = [];
   let cho = 0;

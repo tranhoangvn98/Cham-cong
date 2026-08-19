@@ -260,7 +260,7 @@ test('chon nhanh: moi nhom trong CAC_NHOM deu co cau tra loi ro rang', () => {
   // Bai nay khong kiem "map dung", no kiem KHONG NHOM NAO BI BO QUEN. Them mot nhom vao
   // CAC_NHOM ma quen khai o day thi test do, thay vi tep cua nhom do im lang khong bao gio
   // duoc day sang.
-  const KHONG_DAY: readonly string[] = ['khieu_nai'];
+  const KHONG_DAY: readonly string[] = ['khieu_nai', 'don_tu'];
   for (const nhom of CAC_NHOM) {
     const n = chon_nhanh({ nhom });
     if (KHONG_DAY.includes(nhom)) {
@@ -270,6 +270,13 @@ test('chon nhanh: moi nhom trong CAC_NHOM deu co cau tra loi ro rang', () => {
       assert.ok(n !== null && n in NHANH, `${nhom} tra ve nhanh la: ${String(n)}`);
     }
   }
+});
+
+test('chon nhanh: don tu KHONG day sang — quyet dinh, khong phai thieu nhanh', () => {
+  // `05.2 Đơn từ & Theo dõi phép` co san va vua dung. Nhung mot to don nghi om mang theo ly do
+  // nghi, tuc la du lieu suc khoe — nhay cam theo ND 13/2023. Giu tren he thong, noi quyen doc
+  // tinh theo tung nguoi.
+  assert.equal(chon_nhanh({ nhom: 'don_tu' }), null);
 });
 
 test('chon nhanh: khieu nai KHONG day sang', () => {

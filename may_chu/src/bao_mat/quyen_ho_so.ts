@@ -16,11 +16,12 @@ export type NhomHoSo =
   | 'thong_tin'      // thong tin ca nhan: CCCD, MST, so BHXH, lien he khan cap
   | 'tai_lieu'       // checklist ho so bat buoc theo HCNS
   | 'nguoi_phu_thuoc'
-  | 'bhxh';
+  | 'bhxh'
+  | 'don_tu';         // ban don DA DUYET, do he thong sinh ra — xem don_tu/ban_don.ts
 
 export const CAC_NHOM: readonly NhomHoSo[] = [
   'thong_tin', 'tai_lieu', 'hop_dong', 'bien_ban', 'luong',
-  'nguoi_phu_thuoc', 'bhxh', 'cong_viec', 'bao_cao', 'khieu_nai', 'thiet_bi',
+  'nguoi_phu_thuoc', 'bhxh', 'cong_viec', 'bao_cao', 'khieu_nai', 'thiet_bi', 'don_tu',
 ] as const;
 
 export interface NguoiXem {
@@ -114,6 +115,7 @@ export const LY_DO_KHONG_THAY_XOA_DUOC =
  *   khieu_nai   | co            | KHONG                   | co         | khong
  *   thiet_bi    | co            | co                      | co         | khong
  *   thong_tin   | co            | co NHUNG DA CHE         | co         | khong
+ *   don_tu      | co            | co                      | co         | khong
  *
  * Hai o dang chu y:
  *
@@ -131,8 +133,10 @@ export function doc_duoc(nd: NguoiXem, nhom: NhomHoSo, bc: BoiCanh): boolean {
     // can lien he khan cap cua cap duoi khi co su co, con so CCCD / so tai khoan / ket
     // luan suc khoe thi khong. Neu chan han ca nhom nay thi lop che tro thanh code chet —
     // moi nguoi doc duoc deu la nguoi duoc xem ban day du.
+    // `don_tu`: truong phong DUYET don cua cap duoi, nen phai doc lai duoc ban don minh da
+    // duyet. Do la ban ghi cua chinh quyet dinh cua ho.
     return nhom === 'cong_viec' || nhom === 'bao_cao' || nhom === 'thiet_bi'
-      || nhom === 'thong_tin';
+      || nhom === 'thong_tin' || nhom === 'don_tu';
   }
   return false;
 }
@@ -151,10 +155,17 @@ export function doc_duoc(nd: NguoiXem, nhom: NhomHoSo, bc: BoiCanh): boolean {
  *   bao_cao     | co            | co                      | co (nop bao cao cua minh)
  *   khieu_nai   | co            | khong                   | co (gui khieu nai cua minh)
  *   thiet_bi    | co            | khong                   | khong (chi doc)
+ *   don_tu      | co            | khong                   | khong (chi doc)
  *
  * Nhan vien KHONG duoc tu sua hop dong, luong hay danh sach thiet bi cua chinh minh — do
  * la ho so do cong ty lap. Nhung ho PHAI tu gui duoc khieu nai va bao cao, neu khong thi
  * hai muc do khong con y nghia gi.
+ *
+ * `don_tu` KHONG ai sua duoc tru nhan su, ke ca chinh nguoi da lam don va ca nguoi da duyet.
+ * Ban don la BAN GHI CUA MOT QUYET DINH da xay ra: nguoi lam don sua duoc thi to don khong
+ * con la bang chung ve dieu ho da xin, va nguoi duyet sua duoc thi khong con la bang chung ve
+ * dieu ho da dong y. Muon doi thi lam don moi. (Go tep thi chi Truong phong nhan su — xem
+ * `thay_xoa_tep_duoc`.)
  */
 export function sua_duoc(nd: NguoiXem, nhom: NhomHoSo, bc: BoiCanh): boolean {
   if (la_nhan_su(nd)) return true;

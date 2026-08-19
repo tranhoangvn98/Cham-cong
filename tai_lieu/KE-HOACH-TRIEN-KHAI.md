@@ -5,7 +5,7 @@ Cái gì đang chạy, cái gì đang chờ ai, và cái gì cố ý để lại
 Mỗi mục ghi rõ **ai làm** và **thế nào là xong**. Mục nào tôi không tự kiểm được thì nói thẳng
 là không kiểm được, thay vì để nó nằm trong danh sách "đã xong" cho đủ.
 
-Ngày cập nhật: 19-08-2026 — bản 1.28.0.
+Ngày cập nhật: 19-08-2026 — bản 1.29.0.
 
 ---
 
@@ -23,6 +23,7 @@ Ngày cập nhật: 19-08-2026 — bản 1.28.0.
 | Bảng lương từ chấm công + BHXH + thuế TNCN | chạy thật |
 | Vi phạm + KPI | chạy thật |
 | Bản chốt bảng công / bảng lương sau khi duyệt (XLSX) | chạy thật |
+| Đơn nghỉ phép / giải trình: nhân viên lên đơn, duyệt, lưu bản đơn (DOCX) | chạy thật |
 | Dashboard theo vai trò | chạy thật |
 | Đăng nhập Microsoft (Entra ID) | chạy thật |
 | Đồng bộ người dùng từ ERP cũ | chạy thật, đọc được 53 người |
@@ -122,21 +123,20 @@ Bạn quyết định xây dựng sau. Hiện trạng: bảng `khieu_nai` và gi
 `may_chu/src/sharepoint/anh_xa.ts` và bỏ `khieu_nai` khỏi đường `default` của `chon_nhanh`.
 Không cần đổi gì khác — bộ san bằng sẽ tự đẩy các tệp đang chờ.
 
-### 3.2 Nhánh `05.2 Đơn từ & Theo dõi phép` chưa có nguồn tệp
+### 3.2 Nhánh `05.2 Đơn từ & Theo dõi phép` — cố ý để trống
 
-`05.1 Bảng chấm công tháng` đã xong — nhận bản chốt tháng sau khi kỳ lương được duyệt, xem
-[SHAREPOINT.md mục 3](SHAREPOINT.md). Còn `05.2` thì `don_nghi_phep` và `don_giai_trinh`
-**không có cột tệp** trong lược đồ hiện tại, nên nó nằm trong `NHANH_CHUA_CO_NGUON` kèm lý do.
+Đã có câu trả lời: **bản đơn đã duyệt giữ trên hệ thống, không đẩy sang SharePoint.**
 
-Cần: di trú thêm cột, thêm một nhóm hồ sơ vào `CAC_NHOM`, mở rộng ràng buộc
-`ho_so_tep_nhom_check`, sửa giao diện đơn từ trên web và app. Dùng cho giấy nghỉ ốm, giấy tờ
-chứng minh lý do nghỉ.
+Không phải vì thiếu nhánh — `05.2` có sẵn và vừa đúng. Là một quyết định về dữ liệu: một tờ đơn
+nghỉ ốm mang theo lý do nghỉ, tức là **dữ liệu sức khỏe**, dữ liệu cá nhân *nhạy cảm* theo NĐ
+13/2023. Trong hệ thống, quyền đọc tính theo từng người (`quyen_ho_so.ts`); trong một thư viện
+dùng chung thì không.
 
-**Lưu ý pháp lý phải quyết trước khi làm:** giấy nghỉ ốm là **dữ liệu sức khỏe**, tức là dữ liệu
-cá nhân *nhạy cảm* theo NĐ 13/2023. Nên `05.2` phải được phân loại nhạy cảm — không phải "nội
-bộ" — và quyền đọc phải hẹp như nhánh `09`. Nếu thư mục `05.2` hiện đang mở cho cả phòng thì
-đính kèm giấy nghỉ ốm vào đó là mở rộng phạm vi truy cập dữ liệu sức khỏe, và việc đó cần đối
-chiếu với người phụ trách trước.
+Bản đơn nằm trong kho hồ sơ nhóm `don_tu` — xem `CHANGELOG` bản 1.29.0. Trên trang quản trị
+SharePoint nó hiện ở mục *Không đồng bộ* kèm lý do, chứ không lặng lẽ không có gì.
+
+Nếu sau này đổi ý thì việc phải làm là một dòng trong `chon_nhanh` — và trước đó phải trả lời
+được: ai đọc được `05.2`, và họ có được phép đọc lý do nghỉ ốm của người khác không.
 
 ### 3.3 App điện thoại v2
 

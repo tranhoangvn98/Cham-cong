@@ -206,6 +206,15 @@ export function chon_nhanh(d: DauVaoAnhXa): TenNhanh | null {
     case 'thiet_bi':
       return 'hanh_chinh_van_thu';
 
+    // `don_tu`: ban don DA DUYET. Giu tren he thong, KHONG day sang SharePoint.
+    //
+    // Khong phai vi thieu nhanh — `05.2 Đơn từ & Theo dõi phép` co san va vua dung. La mot
+    // quyet dinh ve DU LIEU: mot to don nghi om mang theo ly do nghi, tuc la du lieu suc khoe
+    // — du lieu ca nhan NHAY CAM theo ND 13/2023. Trong he thong, quyen doc duoc tinh theo
+    // tung nguoi (`quyen_ho_so.ts`); trong mot thu vien dung chung thi khong.
+    case 'don_tu':
+      return null;
+
     // `khieu_nai` va moi nhom khac: KHONG day sang.
     default:
       return null;

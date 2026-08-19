@@ -2,6 +2,79 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.29.0] — 2026-08-19
+
+**Đơn được duyệt thì lưu bản đơn trên hệ thống.** Nhân viên tự lên đơn và người duyệt duyệt thì
+đã chạy từ trước; thiếu đúng phần cuối — **sau khi duyệt không có bản đơn nào được lưu lại**.
+
+Di trú `023` (nhóm `don_tu`) + bộ sinh DOCX + móc lúc duyệt + đường sinh lại bằng tay.
+
+### Bản đơn là hồ sơ của một nhân viên, nên chỗ của nó là kho hồ sơ
+
+Không làm bảng mới. Bản đơn lưu thành một dòng `ho_so_tep` nhóm `don_tu`, `thuoc_id` trỏ về đơn
+gốc. Nhờ thế nó dùng lại **toàn bộ** phần đã có: phân quyền theo nhóm, tab Hồ sơ trên web,
+đường tải tệp, cây thư mục trên đĩa, sao lưu. Một bảng mới là một bản sao của tất cả những thứ
+đó, và mỗi bản sao là một chỗ để lệch.
+
+Phân quyền: người làm đơn đọc được bản đơn của chính mình; trưởng phòng đọc được bản đơn mình đã
+duyệt; **không ai sửa được trừ nhân sự** — kể cả chính người làm đơn và cả người đã duyệt. Bản
+đơn là bản ghi của một quyết định đã xảy ra: người làm đơn sửa được thì tờ đơn không còn là bằng
+chứng về điều họ đã xin, và người duyệt sửa được thì không còn là bằng chứng về điều họ đã đồng
+ý. Muốn đổi thì làm đơn mới. Gỡ tệp thì chỉ Trưởng phòng nhân sự.
+
+### DOCX chứ không phải PDF
+
+PDF cần **nhúng font** TrueType và tự cắt bỏ (subset) nó để hiện được tiếng Việt — WinAnsi không
+có `ạ`, `ề`, `ộ`. Đó là một bộ mã dài và sai kiểu *"tệp mở được nhưng mất hết dấu"*, kiểu sai
+không ai phát hiện đến lúc in ra. DOCX thì Unicode sẵn, và HR mở ra sửa được, in được, ký được.
+
+`ghi_docx.ts` dùng lại bộ đóng ZIP của `ghi_xlsx.ts` — DOCX và XLSX là cùng một định dạng gói
+(OPC), chỉ khác các tệp XML bên trong. Viết hai bộ đóng ZIP là hai chỗ để sai khác nhau.
+
+Bộ kiểm là **vòng kín** như XLSX: sinh bằng `ghi_docx`, đọc lại bằng `trich_docx`. Ba chỗ dễ sai
+được giữ lại: dấu tiếng Việt nguyên vẹn, xuống dòng trong một đoạn phải là `<w:br/>` chứ không
+phải `\n`, và `sectPr` khai khổ A4 — thiếu thì Word dùng Letter và tờ đơn in ra bị cắt lề.
+
+### Vết duyệt là lý do bản đơn tồn tại
+
+Mỗi bản đơn có một bảng *Xác nhận phê duyệt*: kết quả, người duyệt, thời điểm, ghi chú. Không có
+mấy dòng đó thì nó chỉ là bản in lại của form nhập, không chứng minh được gì. Bản gốc vẫn là dữ
+liệu trong hệ thống; tệp là bản kết xuất, và tệp tự nói ra điều đó ở dòng cuối.
+
+Chỉ sinh khi **duyệt**. Đơn bị từ chối thì không có tờ đơn nào để lưu, và sinh một bản "đã từ
+chối" chỉ làm kho hồ sơ đầy giấy không ai cần. Một đơn một bản: duyệt lại thì bản cũ bị gỡ và
+bản mới thay chỗ — hai bản đơn cho cùng một đơn là hai tờ giấy cùng "đã duyệt" và không ai biết
+tin tờ nào.
+
+### KHÔNG đẩy sang SharePoint — và đó là một quyết định
+
+"Lưu trên hệ thống" đọc theo đúng nghĩa đối lập với câu trước đó về bảng chốt ("lưu SharePoint").
+Không phải vì thiếu nhánh: `05.2 Đơn từ & Theo dõi phép` có sẵn và vừa đúng. Là một quyết định về
+**dữ liệu**: một tờ đơn nghỉ ốm mang theo lý do nghỉ, tức là **dữ liệu sức khỏe** — dữ liệu cá
+nhân *nhạy cảm* theo NĐ 13/2023. Trong hệ thống, quyền đọc tính theo từng người; trong một thư
+viện dùng chung thì không.
+
+`chon_nhanh` trả `null` cho `don_tu`, và trên trang quản trị nó hiện ở mục *Không đồng bộ* kèm
+lý do đọc được — không lặng lẽ không có gì. Có bài kiểm e2e giữ điều này.
+
+### Sinh bản đơn không được làm đổ lần duyệt
+
+`ban_don_am_tham` nuốt lỗi: duyệt đơn là việc chính, sinh bản đơn là việc phụ, và nếu kho tệp có
+sự cố (hết đĩa, sai quyền thư mục) thì đơn **vẫn** phải duyệt được — nhân sự đang chờ và bảng
+công phụ thuộc vào nó. Đổi lại phải có đường sinh lại, nếu không thì một đơn đã duyệt có thể
+vĩnh viễn không có bản đơn: `POST /api/duyet/nghi-phep/:id/ban-don` và bản giải trình tương ứng.
+
+### Ghi nhận: bài kiểm bắt được khóa tháng đang chạy thật
+
+Bài e2e cho đơn giải trình lúc đầu chọn ngày `NGAY` và trả `409` — vì tháng đó vừa bị chốt cứng
+do kỳ lương đã duyệt (1.28.0). Test chọn sai ngày, nhưng nó cho thấy khóa tháng chạy đúng qua cả
+đường đơn từ.
+
+**Còn thiếu:** hiện chỉ có hai loại đơn (nghỉ phép, giải trình). Xem phần trả lời trong hội thoại
+về các loại đơn khác.
+
+430 unit (1 skipped) + 5 proxy + 15 thiết kế + 298 e2e.
+
 ## [1.28.0] — 2026-08-19
 
 **Bảng chốt cuối cùng, sau khi được duyệt, lưu SharePoint.** Trước bản này bảng công và bảng

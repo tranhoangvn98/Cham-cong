@@ -283,6 +283,11 @@ function ly_do_bo_qua(nhom: string): string {
       + 'Tới lúc đó mới có nhánh trên SharePoint. Hiện tệp chỉ nằm trên máy chủ — và đó là '
       + 'chỗ an toàn hơn: khiếu nại có thể là về chính người có quyền đọc thư mục đích.';
   }
+  if (nhom === 'don_tu') {
+    return 'Bản đơn đã duyệt được giữ TRÊN HỆ THỐNG, không đẩy sang SharePoint. Không phải vì '
+      + 'thiếu nhánh: đơn nghỉ ốm mang theo lý do nghỉ, tức là dữ liệu sức khỏe — dữ liệu cá '
+      + 'nhân nhạy cảm theo NĐ 13/2023. Trong hệ thống, quyền đọc tính theo từng người.';
+  }
   return `Nhóm "${nhom}" chưa được khai nhánh nào trong đặc tả thư mục HCNS.`;
 }
 

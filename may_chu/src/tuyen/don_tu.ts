@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { can_nguoi_duyet, nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
 import { tinh_lai_ngay, tinh_lai_khoang } from '../cong/tinh_cong.ts';
+import { ban_don_am_tham, ban_don_giai_trinh, ban_don_nghi_phep } from '../don_tu/ban_don.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
@@ -110,6 +111,12 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
 
     // Duyet/tu choi deu doi trang thai ngay cong -> tinh lai khoang ngay cua don.
     const so = await tinh_lai_khoang(don.tu_ngay, don.den_ngay, don.nhan_vien_id);
+
+    // Ban don DA DUYET duoc luu vao kho ho so (nhom `don_tu`). Chi khi DUYET — mot don bi tu
+    // choi thi khong co to don nao de luu, va sinh mot ban "da tu choi" chi lam kho ho so day
+    // giay khong ai can.
+    if (quyet === 'da_duyet') await ban_don_am_tham('nghi_phep', id);
+
     await ghi_nhat_ky(nd.sub, `nghi_phep_${quyet}`, 'don_nghi_phep', id, { ghi_chu }, req.ip);
 
     const khoang = don.tu_ngay === don.den_ngay
@@ -176,6 +183,9 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
 
     // Don da duyet ghi de gio vao/ra -> phai tinh lai ngay do.
     const kq = await tinh_lai_ngay(don.nhan_vien_id, don.ngay);
+
+    if (quyet === 'da_duyet') await ban_don_am_tham('giai_trinh', id);
+
     await ghi_nhat_ky(nd.sub, `giai_trinh_${quyet}`, 'don_giai_trinh', id, { ghi_chu }, req.ip);
 
     gui_ngam({
@@ -242,6 +252,40 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     const kq = await tinh_lai_ngay(lq.nhan_vien_id, ng);
     await ghi_nhat_ky(nd.sub, `quet_dien_thoai_${quyet}`, 'lan_quet', id, { ngay: ng }, req.ip);
     return { ok: true, da_tinh_lai: kq !== null };
+  });
+
+  // ================================================================ sinh lai ban don
+  //
+  // `ban_don_am_tham` nuot loi de mot su co kho tep khong lam do lan duyet. Doi lai phai co
+  // duong sinh lai — neu khong thi mot don da duyet co the vinh vien khong co ban don, va
+  // khong co cach nao sua ngoai viec huy don roi duyet lai.
+
+  /** Sinh lai ban don cho mot don nghi phep DA DUYET. Tra 404 neu don chua duyet. */
+  app.post('/nghi-phep/:id/ban-don', { preHandler: can_nguoi_duyet }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const don = await truy_van_mot<{ nhan_vien_id: string }>(
+      "select nhan_vien_id from don_nghi_phep where id = $1 and trang_thai = 'da_duyet'", [id]);
+    if (don === null) throw new LoiKhongTim('Không có đơn nghỉ phép đã duyệt với mã này.');
+    await bat_buoc_trong_pham_vi(nd, don.nhan_vien_id);
+
+    const bd = await ban_don_nghi_phep(id);
+    await ghi_nhat_ky(nd.sub, 'sinh_lai_ban_don', 'don_nghi_phep', id, {}, req.ip);
+    return { ok: bd !== null, ban_don: bd };
+  });
+
+  /** Sinh lai ban don cho mot don giai trinh DA DUYET. */
+  app.post('/giai-trinh/:id/ban-don', { preHandler: can_nguoi_duyet }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const don = await truy_van_mot<{ nhan_vien_id: string }>(
+      "select nhan_vien_id from don_giai_trinh where id = $1 and trang_thai = 'da_duyet'", [id]);
+    if (don === null) throw new LoiKhongTim('Không có đơn giải trình đã duyệt với mã này.');
+    await bat_buoc_trong_pham_vi(nd, don.nhan_vien_id);
+
+    const bd = await ban_don_giai_trinh(id);
+    await ghi_nhat_ky(nd.sub, 'sinh_lai_ban_don', 'don_giai_trinh', id, {}, req.ip);
+    return { ok: bd !== null, ban_don: bd };
   });
 }
 

@@ -231,6 +231,7 @@ const THEO_NHOM = new Map(DAC_TA.map((d) => [d.nhom, d]));
 const TEN_NHOM_KHAC: Record<string, string> = {
   thong_tin: 'thông tin cá nhân',
   tai_lieu: 'hồ sơ tài liệu',
+  don_tu: 'bản đơn đã duyệt',
 };
 
 /** Chuan hoa dia chi MAC ve dang aa:bb:cc:dd:ee:ff; chan chuoi rac. */
