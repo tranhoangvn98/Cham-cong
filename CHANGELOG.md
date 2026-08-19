@@ -29,7 +29,7 @@ Bài e2e chỉ kiểm nhãn **có mặt** (`dd.includes('/CV - ')`) nên `CV - C
 Siết lại: tên tệp phải chứa họ tên nhân viên, và nhãn không được xuất hiện quá một lần. Đã kiểm
 bằng cách đặt lại đúng dòng cũ — bài kiểm đỏ đúng chỗ.
 
-431 unit (1 skipped) + 5 proxy + 15 thiết kế + 311 e2e.
+452 unit (1 skipped) + 5 proxy + 15 thiết kế + 311 e2e.
 
 ## [1.30.0] — 2026-08-19
 
