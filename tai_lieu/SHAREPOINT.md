@@ -347,6 +347,12 @@ dựng một máy chủ Graph giả tại chỗ. Đặt giá trị là nộp cli
 `SHAREPOINT_BAT_DAY=0` là mặc định, và đó là cố ý: cấu hình xong thì hệ thống vẫn **chỉ tính
 đường dẫn và ghi vào bảng**, chưa chạm vào SharePoint.
 
+0. **Dọn dữ liệu trước.** Thư viện HCNS đang có người dùng, nên mỗi hồ sơ rác đẩy lên là một thư
+   mục phải dọn tay trong thư viện của họ. Hai việc:
+   - Xóa nhân viên demo (`NVDEMO01`–`08`) và máy `THU001` nếu còn.
+   - Gộp hồ sơ trùng — `npm run gop_trung` để liệt kê, xem
+     [`GOP-HO-SO-TRUNG.md`](GOP-HO-SO-TRUNG.md). Một người có hai hồ sơ sẽ thành **hai thư mục
+     nhân viên** trên SharePoint với tệp chia đôi giữa hai thư mục đó.
 1. Khai `SHAREPOINT_*` (trừ `BAT_DAY`), `docker compose up -d`.
 2. Vào **Hệ thống → Kho tệp hồ sơ → Đồng bộ SharePoint**, bấm **Tính lại đường dẫn**.
 3. Đọc cột *Đường dẫn trên SharePoint*. Nhánh đúng chưa, thư mục nhân viên đúng chưa, tên tệp

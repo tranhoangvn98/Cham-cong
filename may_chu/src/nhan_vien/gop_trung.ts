@@ -51,8 +51,11 @@ export async function cot_tro_toi_nhan_vien(): Promise<CotThamChieu[]> {
   );
 
   const uq = await truy_van<{ bang: string; cot_ds: string[] }>(
+    // `a.attname` la kieu `name`, va node-postgres KHONG phan giai `name[]` thanh mang JS —
+    // no tra ve chuoi `{nhan_vien_id,ngay}`. Phai cast tung phan tu sang `text` de thanh
+    // `text[]`, kieu ma bo phan giai co ho tro. Thieu cast thi `.filter` no bao "not a function".
     `select c.conrelid::regclass::text as bang,
-            array_agg(a.attname order by k.ord) as cot_ds
+            array_agg(a.attname::text order by k.ord) as cot_ds
        from pg_constraint c
        join unnest(c.conkey) with ordinality as k(attnum, ord) on true
        join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum
@@ -255,9 +258,9 @@ export async function gop_ho_so(
       const dem_cham = c.co_rang_buoc_don && c.cot_kem.length > 0
         ? `select count(*)::int as so
              from ${c.bang} b
-            where b.${c.cot} = $2
+            where b.${c.cot} = $2::uuid
               and exists (select 1 from ${c.bang} g
-                           where g.${c.cot} = $1
+                           where g.${c.cot} = $1::uuid
                              and ${c.cot_kem.map((k) => `g.${k} is not distinct from b.${k}`).join(' and ')})`
         : null;
 
@@ -267,24 +270,36 @@ export async function gop_ho_so(
 
       // Cau doi cho. `where not exists` bo qua dung nhung dong se cham — chung o lai ban bo va
       // se mat khi xoa. Bao cao noi ro con so do.
+      //
+      // `::uuid` tuong minh o moi tham so: cau DEM cho bang khong co rang buoc UNIQUE chi dung
+      // MOT tham so, va Postgres tu choi han mot tham so khong xuat hien trong cau
+      // ("could not determine data type of parameter $1"). Nen cau dem va cau update co so
+      // tham so khac nhau, va chung duoc dung rieng chu khong dung chung mot chuoi.
       const dieu_kien_cham = c.co_rang_buoc_don && c.cot_kem.length > 0
         ? ` and not exists (select 1 from ${c.bang} g
-                             where g.${c.cot} = $1
+                             where g.${c.cot} = $1::uuid
                                and ${c.cot_kem.map((k) => `g.${k} is not distinct from ${c.bang}.${k}`).join(' and ')})`
         : c.co_rang_buoc_don
-          ? ` and not exists (select 1 from ${c.bang} g where g.${c.cot} = $1)`
+          ? ` and not exists (select 1 from ${c.bang} g where g.${c.cot} = $1::uuid)`
           : '';
-
-      const sql_doi = `update ${c.bang} set ${c.cot} = $1 where ${c.cot} = $2${dieu_kien_cham}`;
 
       let so_doi = 0;
       if (che_do === 'that') {
-        const kq = await chay(`${sql_doi} returning 1`, [giu_id, bo_id]);
+        const kq = await chay(
+          `update ${c.bang} set ${c.cot} = $1::uuid
+            where ${c.cot} = $2::uuid${dieu_kien_cham} returning 1`,
+          [giu_id, bo_id]);
         so_doi = kq.rows.length;
+      } else if (dieu_kien_cham === '') {
+        // Khong co rang buoc UNIQUE -> khong can biet ban giu, va khong duoc truyen tham so du.
+        const kq = await chay(
+          `select count(*)::int as so from ${c.bang} where ${c.cot} = $1::uuid`, [bo_id]);
+        so_doi = Number(kq.rows[0]?.['so'] ?? 0);
       } else {
-        const dem = `select count(*)::int as so from ${c.bang}
-                      where ${c.cot} = $2${dieu_kien_cham.replace(new RegExp(`${c.bang}\\.`, 'g'), `${c.bang}.`)}`;
-        so_doi = Number((await chay(dem, [giu_id, bo_id])).rows[0]?.['so'] ?? 0);
+        const kq = await chay(
+          `select count(*)::int as so from ${c.bang}
+            where ${c.cot} = $2::uuid${dieu_kien_cham}`, [giu_id, bo_id]);
+        so_doi = Number(kq.rows[0]?.['so'] ?? 0);
       }
 
       if (so_doi > 0 || so_cham > 0) {

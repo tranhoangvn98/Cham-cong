@@ -2,6 +2,57 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.31.0] — 2026-08-19
+
+**Công cụ gộp hai hồ sơ là cùng một người.** Dữ liệu thật trên VPS có `ERP147 — HOÀNG MINH NGỌC`
+(đồng bộ ERP tạo) song song với hồ sơ nhân sự tự nhập cho cùng người đó. Hai hồ sơ thì lần quét
+vào một bên, hợp đồng nằm bên kia, và trên SharePoint sẽ mọc **hai thư mục nhân viên** cho một
+người — trong một thư viện đang có người khác dùng. Nên việc này phải xong **trước** lần đẩy thật
+đầu tiên, và mục *Thứ tự bật* của `SHAREPOINT.md` giờ có bước 0 nói đúng thế.
+
+```bash
+docker compose exec may_chu npm run gop_trung                          # liệt kê cặp nghi trùng
+docker compose exec may_chu npm run gop_trung -- HR-01 ERP147          # chạy thử
+docker compose exec may_chu npm run gop_trung -- HR-01 ERP147 --that   # gộp thật
+```
+
+### Nó đọc khóa ngoại từ catalog, không mang danh sách bảng gõ tay
+
+`pg_constraint` cho biết bảng nào trỏ tới `nhan_vien`. Một danh sách gõ tay thì mỗi bảng mới là
+một cơ hội quên, và quên **không đỏ test** — chỉ là một hồ sơ gộp thiếu, phát hiện vài tháng sau
+khi bảng lương lệch. Có bài kiểm đối chiếu số bảng công cụ tìm được với số khóa ngoại đếm trực
+tiếp từ `pg_constraint`, và đòi có mặt `bang_cong_ngay`, `lan_quet`, `ho_so_tep`, `don_tu`,
+`phieu_luong`, `nguoi_dung`.
+
+### Dòng trùng thì mất theo hồ sơ bỏ, và con số đó được in ra
+
+`bang_cong_ngay` có `unique (nhan_vien_id, ngay)`: nếu cả hai hồ sơ đều có dòng ngày 15/07 thì
+dòng của bản bỏ không chuyển sang được. Công cụ giữ dòng của bản giữ lại, để dòng kia ở lại và
+mất khi xóa hồ sơ bỏ — in riêng ở dòng `TRÙNG`, **cả trong lần chạy thử**, để xem trước rồi mới
+quyết. `lan_quet` không có ràng buộc UNIQUE nào chứa `nhan_vien_id` nên mọi lần quét chuyển sang
+trọn vẹn, và **Tính lại tháng** dựng lại bảng công từ đó.
+
+### Mặc định chạy thử, thứ tự hai mã không có mặc định
+
+Tham số một là mã **giữ**, hai là mã **bỏ**. Gõ ngược là gộp ngược — lần quét của bản đúng thành
+của bản bị bỏ rồi bản đúng bị xóa. Không đoán được nên không mặc định: thiếu tham số thì chỉ liệt
+kê. Từ chối khi cả hai hồ sơ đều có tài khoản đăng nhập (gộp sẽ để lại một tài khoản mồ côi).
+Họ tên khác nhau thì **cảnh báo, không chặn** — `HOÀNG MINH NGỌC` với `Hoàng Minh Ngọc` là cùng
+người, còn hai người cùng tên thì thật sự là hai người.
+
+### Hai lỗi trong lần đầu viết
+
+- `array_agg(a.attname)` trả `name[]`, mà node-postgres **không phân giải** kiểu đó thành mảng JS
+  — nó trả về chuỗi `{nhan_vien_id,ngay}` và `.filter` báo "not a function". Phải
+  `array_agg(a.attname::text)`.
+- Câu đếm cho bảng **không có** ràng buộc UNIQUE chỉ dùng một tham số, và Postgres từ chối hẳn
+  một tham số không xuất hiện trong câu (`could not determine data type of parameter $1`). Tách
+  thành ba nhánh rõ ràng thay vì lắp chuỗi điều kiện dùng chung.
+
+Tài liệu mới: [`tai_lieu/GOP-HO-SO-TRUNG.md`](tai_lieu/GOP-HO-SO-TRUNG.md).
+
+452 unit (1 skipped) + 5 proxy + 15 thiết kế + 318 e2e.
+
 ## [1.30.1] — 2026-08-19
 
 **Nhãn loại bị lặp vào giữa tên tệp.** Dữ liệu thật trên VPS lộ ra ngay ở lần xem trước đường dẫn

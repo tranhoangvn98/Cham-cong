@@ -5373,3 +5373,183 @@ test('don khac: dem cho duyet tra ve so theo tung loai', async () => {
   const tong = Object.values(r.body as Record<string, number>).reduce((a, b) => a + b, 0);
   assert.ok(tong > 0, JSON.stringify(r.body));
 });
+
+// ==================================================================== gop ho so trung
+//
+// ERP147 va HR-01 la cung mot nguoi. Nhom bai duoi day kiem bo gop, va bai dau tien la bai
+// quan trong nhat: bo gop doc khoa ngoai TU CATALOG chu khong go tay danh sach bang.
+//
+// Vi sao doc catalog: go tay la kieu hong im lang nhat cua mot bo gop. Them mot bang moi tro
+// toi `nhan_vien` (da co bon bang moi trong phien lam viec nay: sharepoint_tep khong tro,
+// ban_chot khong tro, nhung don_tu thi CO) ma quen sua danh sach, thi gop xong mot bang bi bo
+// lai va du lieu cua nguoi do mat mot phan — khong bao gi.
+
+test('gop: doc duoc MOI cot tro toi nhan_vien tu catalog', async () => {
+  const { cot_tro_toi_nhan_vien } = await import('../src/nhan_vien/gop_trung.ts');
+  const cot = await cot_tro_toi_nhan_vien();
+
+  // Doi chieu voi catalog bang mot duong KHAC: dem truc tiep so khoa ngoai.
+  const d = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from pg_constraint
+      where contype = 'f' and confrelid = 'nhan_vien'::regclass
+        and array_length(conkey, 1) = 1`);
+  assert.equal(cot.length, d?.so, 'bo doc catalog bo sot khoa ngoai');
+  assert.ok(cot.length >= 15, `chi thay ${String(cot.length)} cot — doc sai?`);
+
+  // Vai bang PHAI co trong danh sach, moi bang mot ly do khac nhau:
+  const ten = cot.map((c) => `${c.bang}.${c.cot}`);
+  for (const can of [
+    'bang_cong_ngay.nhan_vien_id',   // co unique (nhan_vien_id, ngay) -> se cham nhau
+    'lan_quet.nhan_vien_id',         // lich su thiet bi, khong tai tao duoc
+    'ho_so_tep.nhan_vien_id',        // tep tren dia
+    'don_tu.nhan_vien_id',           // bang MOI them trong phien nay
+    'phieu_luong.nhan_vien_id',      // tien
+    'nguoi_dung.nhan_vien_id',       // tai khoan dang nhap, unique
+  ]) {
+    assert.ok(ten.includes(can), `thieu ${can} — danh sach: ${ten.join(', ')}`);
+  }
+
+  // Va bo doc phai nhan ra dung nhung cho co rang buoc UNIQUE.
+  const bcn = cot.find((c) => c.bang === 'bang_cong_ngay');
+  assert.equal(bcn?.co_rang_buoc_don, true, 'khong nhan ra unique cua bang_cong_ngay');
+  assert.deepEqual(bcn?.cot_kem, ['ngay'], 'cot kem cua unique sai');
+});
+
+/** Hai ho so RIENG cho nhom bai gop — khong dua vao fixture cua bai khac. */
+async function cap_gop(hau_to: string, ten_a: string, ten_b: string): Promise<[string, string]> {
+  const a = await goi('POST', '/api/nhan-vien', {
+    token: token_admin, body: { ma_nv: `GT${hau_to}A`, ho_ten: ten_a },
+  });
+  const b = await goi('POST', '/api/nhan-vien', {
+    token: token_admin, body: { ma_nv: `GT${hau_to}B`, ho_ten: ten_b },
+  });
+  assert.equal(a.ma, 201, JSON.stringify(a.body));
+  assert.equal(b.ma, 201, JSON.stringify(b.body));
+  return [a.body['id'] as string, b.body['id'] as string];
+}
+
+test('gop: chay thu KHONG sua mot dong nao', async () => {
+  const { gop_ho_so } = await import('../src/nhan_vien/gop_trung.ts');
+  const [id_a, id_b] = await cap_gop('1', 'Đỗ Văn Một', 'Đỗ Văn Hai');
+  const a = { id: id_a };
+  const b = { id: id_b };
+  // Cho ban B mot tep de co gi de dem.
+  await gan_tep(id_b, 'tai_lieu', 'x.pdf',
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(32, 0x20)]), token_admin);
+
+  const truoc = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from nhan_vien');
+  const bc_truoc = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from bang_cong_ngay where nhan_vien_id = $1', [b?.id]);
+
+  const kq = await gop_ho_so(a!.id, b!.id, 'thu');
+  assert.equal(kq.che_do, 'thu');
+  assert.equal(kq.da_xoa_ban_bo, false);
+  assert.ok(kq.so_doi > 0, 'chay thu phai dem duoc so dong se doi');
+
+  const sau = await truy_van_mot<{ so: number }>('select count(*)::int as so from nhan_vien');
+  const bc_sau = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from bang_cong_ngay where nhan_vien_id = $1', [b?.id]);
+  assert.equal(sau?.so, truoc?.so, 'chay thu ma so nhan vien doi');
+  assert.equal(bc_sau?.so, bc_truoc?.so, 'chay thu ma bang cong doi');
+});
+
+test('gop: TU CHOI khi ca hai ho so deu co tai khoan dang nhap', async () => {
+  // Day la quyet dinh ve QUYEN TRUY CAP, khong phai viec cong cu tu doan.
+  const { gop_ho_so } = await import('../src/nhan_vien/gop_trung.ts');
+  const ds = await truy_van<{ nhan_vien_id: string }>(
+    'select nhan_vien_id from nguoi_dung where nhan_vien_id is not null limit 2');
+  if (ds.length < 2) return; // bo du lieu mau chi co mot tai khoan noi voi nhan vien
+
+  await assert.rejects(
+    () => gop_ho_so(ds[0]!.nhan_vien_id, ds[1]!.nhan_vien_id, 'thu'),
+    /tài khoản đăng nhập/);
+});
+
+test('gop: canh bao khi hai ho so KHAC TEN', async () => {
+  const { gop_ho_so } = await import('../src/nhan_vien/gop_trung.ts');
+  const [id_a, id_b] = await cap_gop('2', 'Vũ Thị Ba', 'Vũ Thị Bốn');
+  const kq = await gop_ho_so(id_a, id_b, 'thu');
+  assert.ok(kq.canh_bao.some((c) => /KHÁC TÊN/.test(c)),
+    `khong canh bao khac ten: ${JSON.stringify(kq.canh_bao)}`);
+});
+
+test('gop: de nghi giu ban co PIN may cham cong', async () => {
+  // PIN va lich su quet den tu thiet bi — khong tai tao duoc. Ma nhan vien va ho ten thi go
+  // lai duoc trong mot phut.
+  const { nen_giu_ban_nao } = await import('../src/nhan_vien/gop_trung.ts');
+  const co_pin = await truy_van_mot<{ id: string }>(
+    "select id from nhan_vien where pin_may is not null and pin_may <> '' limit 1");
+  const khong_pin = await truy_van_mot<{ id: string }>(
+    "select id from nhan_vien where coalesce(pin_may,'') = '' limit 1");
+  if (co_pin === null || khong_pin === null) return;
+
+  const g = await nen_giu_ban_nao(khong_pin.id, co_pin.id);
+  assert.equal(g.giu, co_pin.id, 'de nghi bo ban co PIN');
+  assert.match(g.ly_do, /PIN/);
+});
+
+test('gop THAT: don het du lieu sang ban giu roi xoa ban bo', async () => {
+  const { gop_ho_so } = await import('../src/nhan_vien/gop_trung.ts');
+
+  // Dung hai ho so RIENG cho bai nay — khong gop du lieu mau ma cac bai khac dang dung.
+  const a = await goi('POST', '/api/nhan-vien', {
+    token: token_admin, body: { ma_nv: 'GOP-A', ho_ten: 'Lê Văn Gộp' },
+  });
+  const b = await goi('POST', '/api/nhan-vien', {
+    token: token_admin, body: { ma_nv: 'GOP-B', ho_ten: 'Lê Văn Gộp' },
+  });
+  assert.equal(a.ma, 201, JSON.stringify(a.body));
+  assert.equal(b.ma, 201, JSON.stringify(b.body));
+  const id_a = a.body['id'] as string;
+  const id_b = b.body['id'] as string;
+
+  // Cho ban B mot tep va mot don, de co gi de don.
+  const tep = await gan_tep(id_b, 'tai_lieu', 'cccd-b.pdf',
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(32, 0x20)]), token_admin);
+  await thuc_thi(
+    `insert into don_tu(nhan_vien_id, loai, tu_ngay, noi_den) values ($1,'cong_tac',$2,'Huế')`,
+    [id_b, cong_ngay(NGAY, -300)]);
+
+  const kq = await gop_ho_so(id_a, id_b, 'that');
+  assert.equal(kq.da_xoa_ban_bo, true);
+  assert.ok(kq.so_doi >= 2, `chi doi ${String(kq.so_doi)} dong`);
+
+  // Ho so B khong con.
+  const con_b = await truy_van_mot<{ id: string }>(
+    'select id from nhan_vien where id = $1', [id_b]);
+  assert.equal(con_b, null, 'ho so bo van con');
+
+  // Tep va don da sang ban A — KHONG bi xoa theo cascade.
+  const t = await truy_van_mot<{ nhan_vien_id: string }>(
+    'select nhan_vien_id from ho_so_tep where id = $1', [tep]);
+  assert.equal(t?.nhan_vien_id, id_a, 'tep bi mat hoac khong chuyen sang ban giu');
+  const dt = await truy_van_mot<{ so: number }>(
+    "select count(*)::int as so from don_tu where nhan_vien_id = $1 and loai = 'cong_tac'",
+    [id_a]);
+  assert.ok((dt?.so ?? 0) >= 1, 'don cong tac khong chuyen sang ban giu');
+
+  // Va bao ro viec con lai: ten thu muc tren dia van la cua ban bo.
+  assert.ok(kq.canh_bao.some((c) => /sap_xep_tep/.test(c)),
+    `khong nhac don ten thu muc: ${JSON.stringify(kq.canh_bao)}`);
+});
+
+test('gop: tim ho so trung thay cap cung ten', async () => {
+  const { tim_ho_so_trung } = await import('../src/nhan_vien/gop_trung.ts');
+  // Tao mot cap cung ten de bai kiem khong phu thuoc vao du lieu mau.
+  const a = await goi('POST', '/api/nhan-vien', {
+    token: token_admin, body: { ma_nv: 'TRUNG-1', ho_ten: 'Phạm Thị Trùng' },
+  });
+  const b = await goi('POST', '/api/nhan-vien', {
+    token: token_admin, body: { ma_nv: 'TRUNG-2', ho_ten: 'Pham Thi Trung' },
+  });
+  assert.equal(a.ma, 201);
+  assert.equal(b.ma, 201);
+
+  const cap = await tim_ho_so_trung();
+  const thay = cap.find((c) =>
+    [c.a_ma_nv, c.b_ma_nv].includes('TRUNG-1') && [c.a_ma_nv, c.b_ma_nv].includes('TRUNG-2'));
+  assert.notEqual(thay, undefined,
+    'khong nhan ra hai ban cung ten khi mot ban co dau va mot ban khong');
+  assert.equal(thay?.ly_do, 'ho_ten');
+});
