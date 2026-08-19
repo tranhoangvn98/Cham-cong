@@ -2,6 +2,46 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.25.1] — 2026-08-19
+
+**`npm run sap_xep_tep` không chạy được trong container.**
+
+```
+Error: Cannot find module '/app/may_chu/src/ho_so/chay_sap_xep.ts'
+```
+
+Ảnh chạy chỉ `COPY` `may_chu/dist`, `may_chu/migrations` và `package.json` — **không có
+`src`**. Đó là cố ý: ảnh chạy không cần trình biên dịch. Nhưng lệnh tôi thêm ở 1.25.0 trỏ vào
+`src/ho_so/chay_sap_xep.ts`, nên nó chạy tốt trên máy lập trình và không tồn tại trong
+container.
+
+**`di_tru` và `seed` hỏng y như vậy từ trước** — chỉ là chưa ai gọi đến. Di trú chạy tự động
+lúc khởi động nên không ai phát hiện `npm run di_tru` không dùng được.
+
+### Sửa
+
+Lệnh vận hành trỏ vào `dist/`, và giữ biến thể `_ma_nguon` cho máy lập trình:
+
+| Lệnh | Chạy ở đâu |
+|---|---|
+| `npm run sap_xep_tep` | container (và máy lập trình sau khi `build`) |
+| `npm run sap_xep_tep_ma_nguon` | máy lập trình, chạy trực tiếp từ `src` |
+
+Tương tự cho `di_tru` và `seed`.
+
+### Rào
+
+Bài kiểm đọc `package.json` và `Dockerfile`, rồi đối chiếu: một lệnh trỏ vào `src/` thì ảnh
+chạy **phải** `COPY may_chu/src`, nếu không lệnh đó không tồn tại trong container. Lệnh chỉ
+dùng khi phát triển thì đặt tên có hậu tố `_ma_nguon` để đọc ra là biết.
+
+Kèm chiều còn lại: mọi lệnh trỏ vào `dist/...` phải là đường dẫn **có thật** sau khi build —
+gõ sai một chữ thì trong container vẫn ra "Cannot find module", chỉ muộn hơn một bước.
+
+Đã thử: trả `sap_xep_tep` về `src` thì test đỏ và in đúng tên lệnh.
+
+**313 unit (1 bỏ qua khi chạy bằng root) + 5 proxy + 15 thiết kế + 270 e2e, tất cả đạt.**
+
 ## [1.25.0] — 2026-08-19
 
 **Kho tệp hồ sơ có cây thư mục đọc được, tên tệp theo quy chuẩn.**

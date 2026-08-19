@@ -273,6 +273,12 @@ cd /root/Cham-cong && docker compose exec may_chu npm run sap_xep_tep -- --that
 **Mặc định là chạy thử.** Thứ đang di chuyển là bản gốc hợp đồng, CCCD, bằng cấp — không khôi
 phục được từ cơ sở dữ liệu.
 
+> **Lệnh trong container chạy bản đã biên dịch (`dist/`), không chạy mã nguồn TypeScript.**
+> Ảnh chạy không chứa `may_chu/src` — đó là cố ý, ảnh chạy không cần trình biên dịch. Trên máy
+> lập trình, dùng biến thể `_ma_nguon` để chạy trực tiếp từ `src`:
+> `npm run sap_xep_tep_ma_nguon`. Có bài kiểm đối chiếu `package.json` với `Dockerfile` nên
+> một lệnh không chạy được trong container sẽ đỏ test.
+
 Lệnh **gọi lại được nhiều lần**: tệp đã đúng chỗ thì bỏ qua. Việc chỉ di chuyển **trong** kho
 hồ sơ — không xóa, không ghi đè.
 

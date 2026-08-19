@@ -171,3 +171,80 @@ test('ghi roi doc lai duoc dung noi dung', async () => {
     await rm(tm, { recursive: true, force: true });
   }
 });
+
+// ==================================================================== lenh chay duoc trong anh
+//
+// LOI DA XAY RA THAT: `npm run sap_xep_tep` tro vao `src/ho_so/chay_sap_xep.ts`, chay tot
+// tren may lap trinh, va trong container thi:
+//
+//   Error: Cannot find module '/app/may_chu/src/ho_so/chay_sap_xep.ts'
+//
+// Anh chay chi COPY `may_chu/dist`, `may_chu/migrations` va `package.json` — KHONG co `src`.
+// Ma nguon TypeScript khong nam trong anh, va do la co y: anh chay khong can trinh bien dich.
+//
+// `di_tru` va `seed` cung hong y nhu vay tu truoc, chi la chua ai goi den — di tru chay tu
+// dong luc khoi dong nen khong ai phat hien.
+//
+// Bai kiem doi chieu package.json voi Dockerfile: mot lenh tro vao `src/` thi anh phai COPY
+// `src`, neu khong lenh do khong ton tai trong container.
+
+test('moi lenh npm "van hanh" deu chay duoc trong anh Docker', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+
+  const goc = join(import.meta.dirname, '..');
+  const pkg = JSON.parse(readFileSync(join(goc, 'package.json'), 'utf8')) as {
+    scripts: Record<string, string>;
+  };
+  const df = readFileSync(join(goc, 'Dockerfile'), 'utf8');
+
+  // Anh chay = doan sau `FROM` cuoi cung. Nhung gi COPY o giai doan build khong co trong do.
+  const anh_chay = df.slice(df.lastIndexOf('\nFROM '));
+  const co_src = /COPY[^\n]*may_chu\/src/.test(anh_chay);
+
+  // Lenh chi dung khi phat trien thi khong tinh — dat ten theo quy uoc de doc ra la biet.
+  const chi_phat_trien = (ten: string): boolean =>
+    ten === 'dev' || ten === 'build' || ten === 'kiem_tra_kieu'
+    || ten.startsWith('test') || ten.endsWith('_ma_nguon');
+
+  const hong: string[] = [];
+  for (const [ten, lenh] of Object.entries(pkg.scripts)) {
+    if (chi_phat_trien(ten)) continue;
+    if (/(?:^|\s)src\//.test(lenh) && !co_src) {
+      hong.push(`${ten}: ${lenh}`);
+    }
+  }
+
+  assert.deepEqual(hong, [],
+    'Nhung lenh npm nay tro vao `src/`, nhung anh chay KHONG COPY `may_chu/src`.\n'
+    + 'Trong container chung se bao "Cannot find module".\n'
+    + 'Hoac doi sang `dist/...`, hoac them hau to `_ma_nguon` neu chi dung khi phat trien.');
+});
+
+test('moi lenh npm tro vao dist deu co tep that sau khi build', async () => {
+  // Chieu con lai: `dist/csdl/chay_di_tru.js` phai la duong dan DUNG. Go sai mot chu thi
+  // trong container van ra "Cannot find module", chi la muon hon mot buoc.
+  const { readFileSync, existsSync } = await import('node:fs');
+  const { join } = await import('node:path');
+
+  const goc = join(import.meta.dirname, '..');
+  const pkg = JSON.parse(readFileSync(join(goc, 'package.json'), 'utf8')) as {
+    scripts: Record<string, string>;
+  };
+
+  // Chi kiem khi da build — tren may vua clone thi `dist` chua co, va bai kiem nay khong
+  // phai cho de bat buoc phai build truoc khi chay test.
+  if (!existsSync(join(goc, 'dist'))) {
+    return;
+  }
+
+  const thieu: string[] = [];
+  for (const [ten, lenh] of Object.entries(pkg.scripts)) {
+    for (const m of lenh.matchAll(/(?:^|\s)(dist\/[\w/.-]+\.js)/g)) {
+      if (!existsSync(join(goc, m[1] as string))) thieu.push(`${ten}: ${String(m[1])}`);
+    }
+  }
+
+  assert.deepEqual(thieu, [],
+    'Lenh npm tro vao tep dist khong ton tai sau khi build. Kiem lai duong dan.');
+});
