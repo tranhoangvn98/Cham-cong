@@ -21,6 +21,7 @@ import { TrangKpi } from './trang/kpi.tsx';
 import { TrangDongBoErp } from './trang/dong_bo_erp.tsx';
 import { TrangHoSo } from './trang/ho_so.tsx';
 import { TrangKhoTep } from './trang/kho_tep.tsx';
+import { TrangMaDinhDanh } from './trang/ma_dinh_danh.tsx';
 import { TrangHopDong } from './trang/hop_dong.tsx';
 
 interface MucMenu {
@@ -69,6 +70,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/dong-bo-erp', ten: 'Đồng bộ ERP', icon: 'refresh', nhom: 'Hệ thống', phu: 'Kéo người dùng từ ERP cũ', quyen: 'admin' },
   { duong_dan: '/khoa-api', ten: 'Khóa API', icon: 'key', nhom: 'Hệ thống', phu: 'Cho hệ thống ngoài gọi vào', quyen: 'admin' },
   { duong_dan: '/kho-tep', ten: 'Kho tệp hồ sơ', icon: 'file-text', nhom: 'Hệ thống', phu: 'Tệp đính kèm và đường dẫn đã lưu', quyen: 'nhan_su' },
+  { duong_dan: '/ma-dinh-danh', ten: 'Mã định danh', icon: 'fingerprint', nhom: 'Hệ thống', phu: 'Tra cứu theo mã, đối soát các nguồn', quyen: 'nhan_su' },
   { duong_dan: '/nhat-ky', ten: 'Nhật ký thao tác', icon: 'list-details', nhom: 'Hệ thống', phu: 'Ai sửa gì, khi nào', quyen: 'admin' },
 ];
 
@@ -103,6 +105,7 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/kpi': return <TrangKpi />;
     case '/dong-bo-erp': return la_admin() ? <TrangDongBoErp /> : <KhongCoQuyen />;
     case '/kho-tep': return la_nhan_su() ? <TrangKhoTep /> : <KhongCoQuyen />;
+    case '/ma-dinh-danh': return la_nhan_su() ? <TrangMaDinhDanh /> : <KhongCoQuyen />;
     case '/hop-dong': return la_nhan_su() ? <TrangHopDong /> : <KhongCoQuyen />;
     case '/nhat-ky': return la_admin() ? <TrangNhatKy /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;

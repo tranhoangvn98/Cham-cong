@@ -11,6 +11,7 @@ import {
 } from '../thanh_phan.tsx';
 import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
 import { NhanCachTrich } from './hop_dong.tsx';
+import { TheMaDinhDanh } from './ma_dinh_danh.tsx';
 
 // ==================================================================== kieu du lieu
 
@@ -1206,6 +1207,14 @@ function PanelThongTin({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {
           ))}
         </div>
       )}
+
+      {/*
+        Ma dinh danh dat o Thong tin chung chu khong lam mot tab rieng: chung LA thong tin nhan
+        dang cua nguoi do, va thanh tab da co 11 nhan — them cai thu 12 thi xuong hai dong.
+      */}
+      <div style={{ marginTop: 12 }}>
+        <TheMaDinhDanh nhan_vien_id={nhan_vien_id} sua_duoc={du_lieu?.sua_duoc === true} />
+      </div>
 
       {dang_sua && (
         <FormThongTin

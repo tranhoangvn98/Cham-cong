@@ -5724,3 +5724,368 @@ test('gop: nhac dung `sap_xep_tep -- --that`, khong phai `--that`', async () => 
   assert.notEqual(nhac, undefined, 'khong nhac don ten thu muc');
   assert.match(nhac!, /sap_xep_tep -- --that/);
 });
+
+// ==================================================================== ma dinh danh
+//
+// Bang `ma_dinh_danh` la cau tra loi cho "nhieu luong du lieu nhan su, moi luong mot ma". Nhom
+// bai duoi day kiem hai thu quan trong nhat:
+//
+//   1. BACKFILL DUNG. Di tru 025 chuyen cac cot cu sang bang moi. Sai o day thi bang moi noi
+//      mot chuyen khac voi cot cu, va vi cot cu VAN la duong doc cua ADMS / dang nhap Microsoft
+//      nen khong ai phat hien ra cho lech cho den luc go cot.
+//   2. KHONG AM THAM LAY MA CUA NGUOI KHAC. Do la cach cap trung `ERP147`/`HR-01` sinh ra.
+
+/**
+ * Chay lai KHOI BACKFILL cua di tru 025, doc tu chinh tep di tru.
+ *
+ * Doc tep that chu khong viet lai SQL trong bai kiem: mot ban sao trong bai kiem thi bai kiem
+ * kiem chinh ban sao do, va cai chay tren VPS co the sai theo cach khac. Cac cau trong do co
+ * `on conflict do nothing` nen goi lai duoc.
+ */
+async function chay_lai_backfill_025(): Promise<void> {
+  const { readFileSync } = await import('node:fs');
+  const { dirname, join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const tep = join(dirname(fileURLToPath(import.meta.url)), '..', 'migrations',
+    '025_ma_dinh_danh.sql');
+  const sql = readFileSync(tep, 'utf8');
+  // Chi lay phan backfill — phan tao bang/index da chay roi va `if not exists` thi vo hai, nhung
+  // tach ra cho ro y dinh cua bai kiem.
+  const i = sql.indexOf('-- Ma noi bo.');
+  assert.notEqual(i, -1, 'khong tim thay khoi backfill trong 025 — tep da doi cau truc?');
+  await thuc_thi(sql.slice(i));
+}
+
+test('dinh danh: backfill cua di tru 025 phu het cac cot cu', async () => {
+  // Bai kiem quan trong nhat cua nhom. Dung mot ho so tao BANG SQL THUAN — dung hinh dang truoc
+  // di tru: cac cot cu co gia tri, bang dinh danh chua co dong nao.
+  const { doi_soat, ma_cua_nhan_vien } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien (ma_nv, ho_ten, pin_may, ma_erp, email, erp_user_id, erp_username)
+     values ('BF-01', 'Bùi Văn Backfill', '88801', 'E-BF-01', 'bf01@vi-du.com', 990801, 'bf01')
+     returning id`);
+  const id = nv!.id;
+
+  const truoc = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from ma_dinh_danh where nhan_vien_id = $1', [id]);
+  assert.equal(truoc?.so, 0, 'ho so tao bang SQL thuan ma da co ma dinh danh');
+
+  await chay_lai_backfill_025();
+
+  const nhom = await ma_cua_nhan_vien(id);
+  // Tra ve CA cac he thong chua co ma — mot o trong la mot thong tin ("chua noi Microsoft").
+  assert.equal(nhom.length, 7, 'phai tra ve du bay he thong ke ca cac he thong chua co ma');
+  const lay = (h: string): string | undefined =>
+    nhom.find((n) => n.he_thong === h)?.cac_ma[0]?.ma;
+  assert.equal(lay('noi_bo'), 'BF-01');
+  assert.equal(lay('may_cham_cong'), '88801');
+  assert.equal(lay('erp_cu'), '990801');
+  assert.equal(lay('erp_cu_tai_khoan'), 'bf01');
+  assert.equal(lay('erp_cu_ma'), 'E-BF-01');
+  assert.equal(lay('microsoft_email'), 'bf01@vi-du.com');
+  assert.equal(lay('microsoft_oid'), undefined, 'khong co cot cu nao cho oid');
+  assert.equal(nhom.find((n) => n.he_thong === 'noi_bo')?.cac_ma[0]?.nguon, 'di_tru');
+
+  // Va doi soat khong con noi gi ve nguoi nay.
+  const lech = (await doi_soat()).filter((l) => l.nhan_vien_id === id);
+  assert.deepEqual(lech, [], `van lech sau backfill: ${JSON.stringify(lech, null, 2)}`);
+});
+
+test('dinh danh: doi soat PHAT HIEN duoc cho lech', async () => {
+  // Bai tren chung minh backfill dung. Bai nay chung minh bo doi soat THAT SU nhin — mot bo doi
+  // soat luon tra rong thi cung "sach", va do la kieu yen tam sai nhat.
+  const { doi_soat } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien (ma_nv, ho_ten, pin_may)
+     values ('LECH-01', 'Lê Văn Lệch', '88802') returning id`);
+  const id = nv!.id;
+
+  const lech = (await doi_soat()).filter((l) => l.nhan_vien_id === id);
+  const pin = lech.find((l) => l.he_thong === 'may_cham_cong');
+  assert.notEqual(pin, undefined, `khong phat hien PIN thieu ma: ${JSON.stringify(lech)}`);
+  assert.equal(pin?.cot_cu, '88802');
+  assert.equal(pin?.bang_moi, null);
+  assert.match(pin?.ly_do ?? '', /không có mã đang hiệu lực/);
+
+  // Chieu nguoc lai: bang co ma ma cot de trong.
+  await thuc_thi(
+    `insert into ma_dinh_danh (nhan_vien_id, he_thong, ma, ma_chuan, nguon)
+     values ($1, 'erp_cu_ma', 'CHI-CO-TRONG-BANG', 'CHI-CO-TRONG-BANG', 'nguoi_khai')`, [id]);
+  const lech2 = (await doi_soat()).filter(
+    (l) => l.nhan_vien_id === id && l.he_thong === 'erp_cu_ma');
+  assert.equal(lech2.length, 1, 'khong phat hien chieu nguoc (bang co, cot trong)');
+  assert.match(lech2[0]?.ly_do ?? '', /để trống/);
+});
+
+test('dinh danh: gan lai dung ma da co thi khong ghi gi', async () => {
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a] = await cap_gop('DD1', 'Đinh Văn Một', 'Đinh Văn Hai');
+  const l1 = await gan_ma(id_a, 'may_cham_cong', '77001');
+  assert.equal(l1.ket_cuc, 'them_moi');
+  const l2 = await gan_ma(id_a, 'may_cham_cong', ' 77001 ');
+  assert.equal(l2.ket_cuc, 'da_co', 'goi lai lan hai phai la khong lam gi');
+
+  const so = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from ma_dinh_danh
+      where nhan_vien_id = $1 and he_thong = 'may_cham_cong'`, [id_a]);
+  assert.equal(so?.so, 1, 'tao hai dong cho cung mot ma');
+});
+
+test('dinh danh: TU CHOI lay ma dang thuoc nguoi khac', async () => {
+  // Day la quy tac trung tam cua module. Mot bo dong bo am tham doi chu mot ma la cach cap
+  // trung sinh ra, va sau ba thang khong ai truy lai duoc.
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a, id_b] = await cap_gop('DD2', 'Đoàn Thị Ba', 'Đoàn Thị Bốn');
+  await gan_ma(id_a, 'may_cham_cong', '77002');
+
+  await assert.rejects(() => gan_ma(id_b, 'may_cham_cong', '77002'), (loi: Error) => {
+    assert.match(loi.message, /đang thuộc GTDD2A/, `thong diep khong noi ro ai dang giu: ${loi.message}`);
+    return true;
+  });
+
+  const chu = await truy_van_mot<{ nhan_vien_id: string }>(
+    `select nhan_vien_id from ma_dinh_danh
+      where he_thong = 'may_cham_cong' and ma_chuan = '77002' and hieu_luc_den is null`);
+  assert.equal(chu?.nhan_vien_id, id_a, 'ma da bi doi chu du da tu choi');
+});
+
+test('dinh danh: thu hoi CO Y thi dong ma cu lai, khong xoa', async () => {
+  // PIN 1 chuyen tu nguoi da nghi sang nguoi moi la viec that. Dieu kien: phai co y, va phai
+  // con vet — de cau hoi "nhung lan quet thang truoc bang PIN nay la cua ai" tra loi duoc.
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a, id_b] = await cap_gop('DD3', 'Đỗ Văn Cũ', 'Đỗ Văn Mới');
+  await gan_ma(id_a, 'may_cham_cong', '77003');
+
+  const kq = await gan_ma(id_b, 'may_cham_cong', '77003', { thu_hoi_cua_nguoi_khac: true });
+  assert.equal(kq.ket_cuc, 'thu_hoi_tu_nguoi_khac');
+  assert.equal(kq.lay_tu?.nhan_vien_id, id_a);
+  assert.equal(kq.lay_tu?.ho_ten, 'Đỗ Văn Cũ');
+
+  const ds = await truy_van<{ nhan_vien_id: string; hieu_luc_den: string | null; ghi_chu: string | null }>(
+    `select nhan_vien_id, hieu_luc_den::text as hieu_luc_den, ghi_chu from ma_dinh_danh
+      where he_thong = 'may_cham_cong' and ma_chuan = '77003' order by hieu_luc_den nulls first`,
+    []);
+  assert.equal(ds.length, 2, 'dong cu bi xoa thay vi dong lai');
+  assert.equal(ds[0]?.nhan_vien_id, id_b);
+  assert.equal(ds[0]?.hieu_luc_den, null);
+  assert.equal(ds[1]?.nhan_vien_id, id_a);
+  assert.notEqual(ds[1]?.hieu_luc_den, null, 'ma cu van con hieu luc -> hai nguoi cung mot ma');
+  assert.match(ds[1]?.ghi_chu ?? '', /Thu hồi/);
+});
+
+test('dinh danh: he thong MOT MA thi ma moi thay ma cu', async () => {
+  const { gan_ma, ma_cua_nhan_vien } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a] = await cap_gop('DD4', 'Dương Văn Đổi', 'Dương Văn Khác');
+  await gan_ma(id_a, 'erp_cu_ma', 'E-CU');
+  const kq = await gan_ma(id_a, 'erp_cu_ma', 'E-MOI');
+  assert.equal(kq.ket_cuc, 'thay_the');
+  assert.equal(kq.ma_cu, 'E-CU');
+
+  const nhom = await ma_cua_nhan_vien(id_a, true);
+  const cua = nhom.find((n) => n.he_thong === 'erp_cu_ma')?.cac_ma ?? [];
+  assert.equal(cua.filter((m) => m.hieu_luc_den === null).length, 1, 'con hai ma dang hieu luc');
+  assert.equal(cua.length, 2, 'ma cu bi xoa thay vi thanh lich su');
+});
+
+test('dinh danh: he thong NHIEU MA thi hai ma cung hieu luc', async () => {
+  // Mot nguoi co PIN o hai may cham cong la chuyen thuong — cot `pin_may` khong chua duoc.
+  const { gan_ma, ma_cua_nhan_vien } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a] = await cap_gop('DD5', 'Hà Văn Hai Máy', 'Hà Văn Khác');
+  await gan_ma(id_a, 'may_cham_cong', '77005');
+  await gan_ma(id_a, 'may_cham_cong', '77006');
+  const cua = (await ma_cua_nhan_vien(id_a)).find((n) => n.he_thong === 'may_cham_cong')?.cac_ma ?? [];
+  assert.equal(cua.length, 2);
+  assert.deepEqual(cua.map((m) => m.ma).sort(), ['77005', '77006']);
+});
+
+test('dinh danh: ma sai dang bi tu choi truoc khi vao CSDL', async () => {
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a] = await cap_gop('DD6', 'Lâm Văn Sai', 'Lâm Văn Khác');
+  await assert.rejects(() => gan_ma(id_a, 'may_cham_cong', 'A99'), /chỉ gồm chữ số/);
+  await assert.rejects(() => gan_ma(id_a, 'microsoft_oid', 'khong-phai-uuid'), /UUID/);
+  await assert.rejects(() => gan_ma(id_a, 'khong_co_he_thong_nay', 'x'), /không hợp lệ/);
+  // Chi dem hai he thong vua thu — `noi_bo` thi da co san tu luc tao ho so qua API.
+  const so = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from ma_dinh_danh
+      where nhan_vien_id = $1 and he_thong in ('may_cham_cong','microsoft_oid')`, [id_a]);
+  assert.equal(so?.so, 0, 'ma sai dang van vao duoc CSDL');
+});
+
+test('dinh danh: tim theo ma cu da dong lai', async () => {
+  // Cong dung chinh: mot bang cong in thang truoc ghi PIN cu, mot cong van ghi ma ERP cu.
+  const { gan_ma, tim_theo_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a] = await cap_gop('DD7', 'Mai Thị Tìm', 'Mai Thị Khác');
+  await gan_ma(id_a, 'erp_cu_ma', 'TIM-CU');
+  await gan_ma(id_a, 'erp_cu_ma', 'TIM-MOI');
+
+  const cu = await tim_theo_ma('tim-cu');
+  assert.equal(cu.length, 1, 'khong tim ra nguoi qua ma da dong lai');
+  assert.equal(cu[0]?.nhan_vien_id, id_a);
+  assert.notEqual(cu[0]?.hieu_luc_den, null, 'phai noi ro ma nay da dong lai');
+  assert.equal(cu[0]?.ten_he_thong, 'Mã nhân viên bên ERP cũ');
+
+  const moi = await tim_theo_ma('TIM-MOI');
+  assert.equal(moi[0]?.hieu_luc_den, null);
+});
+
+test('dinh danh: gop ho so chuyen luon cac ma sang ban giu', async () => {
+  // Bo gop doi chu theo khoa ngoai doc tu catalog, nen `ma_dinh_danh` di theo ma khong phai khai
+  // rieng. Bai nay giu dieu do: neu ai do them `on delete cascade` roi xoa truoc khi doi chu thi
+  // cac ma bien mat cung ban bo.
+  const { gop_ho_so } = await import('../src/nhan_vien/gop_trung.ts');
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a, id_b] = await cap_gop('DD8', 'Ngô Văn Gộp Mã', 'Ngô Văn Gộp Mã');
+  await gan_ma(id_b, 'erp_cu', '990777');
+  await gan_ma(id_b, 'may_cham_cong', '77008');
+
+  await gop_ho_so(id_a, id_b, 'that');
+
+  const ds = await truy_van<{ he_thong: string; nhan_vien_id: string }>(
+    `select he_thong, nhan_vien_id from ma_dinh_danh
+      where ma_chuan in ('990777','77008') and hieu_luc_den is null`);
+  assert.equal(ds.length, 2, 'ma bi mat khi xoa ho so bo');
+  for (const d of ds) assert.equal(d.nhan_vien_id, id_a, `${d.he_thong} khong sang ban giu`);
+});
+
+test('dinh danh: dang nhap Microsoft khop bang oid ke ca khi email doi', async () => {
+  // Truoc ban 1.32.0 `oid` bi trich ra roi bo di, va khop nguoi chi bang `lower(email)`. Doi
+  // email trong Entra la mat khop, va neu ten mien duoc phep thi lan dang nhap sau TAO MOT TAI
+  // KHOAN THU HAI cho cung mot nguoi.
+  const { tim_hoac_tao_theo_email } = await import('../src/tuyen/dang_nhap.ts');
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const co = await truy_van_mot<{ nhan_vien_id: string; id: string }>(
+    'select id, nhan_vien_id from nguoi_dung where nhan_vien_id is not null limit 1');
+  if (co === null) return;
+
+  const oid = '3f2504e0-4f89-11d3-9a0c-0305e82c3301';
+  await gan_ma(co.nhan_vien_id, 'microsoft_oid', oid, { thu_hoi_cua_nguoi_khac: true });
+
+  // Email HOAN TOAN KHAC moi thu trong CSDL — chi con `oid` de khop.
+  const nd = await tim_hoac_tao_theo_email('ten-moi-hoan-toan@vi-du-khong-co.com', 'Tên Mới', oid);
+  assert.notEqual(nd, null, 'khong khop duoc bang oid -> se tao tai khoan thu hai');
+  assert.equal(nd?.id, co.id);
+});
+
+test('API ma dinh danh: xem, gan, doi, dong lai', async () => {
+  const [id_a] = await cap_gop('API1', 'Phan Văn Api', 'Phan Văn Khác');
+
+  const xem = await goi('GET', `/api/nhan-vien/${id_a}/ma-dinh-danh`, { token: token_admin });
+  assert.equal(xem.ma, 200, JSON.stringify(xem.body));
+  const nhom = xem.body as unknown as { he_thong: string; cac_ma: { ma: string }[] }[];
+  assert.equal(nhom.length, 7);
+  // Tao ho so qua API thi ma noi bo duoc ghi luon.
+  assert.equal(nhom.find((n) => n.he_thong === 'noi_bo')?.cac_ma[0]?.ma, 'GTAPI1A');
+
+  const gan = await goi('POST', `/api/nhan-vien/${id_a}/ma-dinh-danh`, {
+    token: token_admin, body: { he_thong: 'may_cham_cong', ma: '77101' },
+  });
+  assert.equal(gan.ma, 201, JSON.stringify(gan.body));
+  assert.equal(gan.body['ket_cuc'], 'them_moi');
+
+  // Ma sai dang bi tu choi bang 400, kem ten he thong trong thong diep.
+  const sai = await goi('POST', `/api/nhan-vien/${id_a}/ma-dinh-danh`, {
+    token: token_admin, body: { he_thong: 'may_cham_cong', ma: 'ABC' },
+  });
+  assert.equal(sai.ma, 400, JSON.stringify(sai.body));
+  assert.match(String(sai.body['loi']), /PIN máy chấm công/);
+
+  // He thong khong ton tai -> 400, khong phai 500.
+  const hs = await goi('POST', `/api/nhan-vien/${id_a}/ma-dinh-danh`, {
+    token: token_admin, body: { he_thong: 'facebook', ma: 'x' },
+  });
+  assert.equal(hs.ma, 400, JSON.stringify(hs.body));
+
+  // Dong ma lai qua DELETE, roi doc lai voi ca_lich_su.
+  const ds = await goi('GET', `/api/nhan-vien/${id_a}/ma-dinh-danh`, { token: token_admin });
+  const pin = (ds.body as unknown as { he_thong: string; cac_ma: { id: string }[] }[])
+    .find((n) => n.he_thong === 'may_cham_cong')?.cac_ma[0];
+  const xoa = await goi('DELETE', `/api/ma-dinh-danh/${pin?.id ?? ''}`, { token: token_admin });
+  assert.equal(xoa.ma, 200, JSON.stringify(xoa.body));
+
+  const sau = await goi('GET', `/api/nhan-vien/${id_a}/ma-dinh-danh?ca_lich_su=1`,
+    { token: token_admin });
+  const pin_sau = (sau.body as unknown as { he_thong: string; cac_ma: { hieu_luc_den: string | null }[] }[])
+    .find((n) => n.he_thong === 'may_cham_cong')?.cac_ma ?? [];
+  assert.equal(pin_sau.length, 1, 'dong ma bi xoa thay vi dong lai');
+  assert.notEqual(pin_sau[0]?.hieu_luc_den, null);
+});
+
+test('API ma dinh danh: 409 kem TEN nguoi dang giu ma', async () => {
+  // Thong diep phai noi ra AI dang giu — de nguoi dung quyet dinh co thu hoi hay khong. Mot loi
+  // "mã đã tồn tại" khong tra loi duoc cau hoi do va nguoi ta se di go lai o cho khac.
+  const [id_a, id_b] = await cap_gop('API2', 'Quách Thị Hai', 'Quách Thị Ba');
+  await goi('POST', `/api/nhan-vien/${id_a}/ma-dinh-danh`, {
+    token: token_admin, body: { he_thong: 'may_cham_cong', ma: '77102' },
+  });
+  const xd = await goi('POST', `/api/nhan-vien/${id_b}/ma-dinh-danh`, {
+    token: token_admin, body: { he_thong: 'may_cham_cong', ma: '77102' },
+  });
+  assert.equal(xd.ma, 409, JSON.stringify(xd.body));
+  assert.match(String(xd.body['loi']), /GTAPI2A/);
+  assert.match(String(xd.body['loi']), /Quách Thị Hai/);
+
+  // Co xac nhan thi qua.
+  const ok = await goi('POST', `/api/nhan-vien/${id_b}/ma-dinh-danh`, {
+    token: token_admin,
+    body: { he_thong: 'may_cham_cong', ma: '77102', thu_hoi_cua_nguoi_khac: true },
+  });
+  assert.equal(ok.ma, 201, JSON.stringify(ok.body));
+  assert.equal(ok.body['ket_cuc'], 'thu_hoi_tu_nguoi_khac');
+});
+
+test('API ma dinh danh: nhan vien thuong KHONG gan/thu hoi duoc', async () => {
+  const [id_a] = await cap_gop('API3', 'Rơ Văn Quyền', 'Rơ Văn Khác');
+  const gan = await goi('POST', `/api/nhan-vien/${id_a}/ma-dinh-danh`, {
+    token: token_nhan_vien, body: { he_thong: 'may_cham_cong', ma: '77103' },
+  });
+  assert.equal(gan.ma, 403, `nhan vien thuong gan duoc ma: ${JSON.stringify(gan.body)}`);
+
+  const tim = await goi('GET', '/api/ma-dinh-danh/tim?q=77103', { token: token_nhan_vien });
+  assert.equal(tim.ma, 403, 'nhan vien thuong tra cuu duoc ma cua ca cong ty');
+
+  const ds = await goi('GET', '/api/ma-dinh-danh/doi-soat', { token: token_nhan_vien });
+  assert.equal(ds.ma, 403, 'nhan vien thuong xem duoc bao cao doi soat');
+});
+
+test('API ma dinh danh: tra cuu va bang dac ta he thong', async () => {
+  const ht = await goi('GET', '/api/ma-dinh-danh/he-thong', { token: token_admin });
+  assert.equal(ht.ma, 200);
+  const bang = ht.body as unknown as { ma: string; nhom: string }[];
+  assert.equal(bang.length, 7);
+  assert.ok(bang.every((h) => h.nhom.trim() !== ''), 'co he thong khong co nhom');
+
+  const [id_a] = await cap_gop('API4', 'Sử Văn Tìm', 'Sử Văn Khác');
+  await goi('POST', `/api/nhan-vien/${id_a}/ma-dinh-danh`, {
+    token: token_admin, body: { he_thong: 'erp_cu', ma: '990904' },
+  });
+  const tim = await goi('GET', '/api/ma-dinh-danh/tim?q=990904', { token: token_admin });
+  assert.equal(tim.ma, 200);
+  const kq = tim.body as unknown as { nhan_vien_id: string; ten_he_thong: string }[];
+  assert.equal(kq.length, 1);
+  assert.equal(kq[0]?.nhan_vien_id, id_a);
+  assert.equal(kq[0]?.ten_he_thong, 'userId bên ERP cũ');
+});
+
+test('API nhan vien: PUT bao canh bao khi ma ERP dang thuoc nguoi khac', async () => {
+  // `ma_erp` KHONG co rang buoc UNIQUE tren cot, nen cau ghi ho so khong chan. Ho so luu xong
+  // roi, chi rieng ma dinh danh khong gan duoc — phai BAO, khong duoc im, va khong duoc bao
+  // "luu that bai" cho mot thao tac da thanh cong.
+  const [id_a, id_b] = await cap_gop('API5', 'Tạ Văn Erp', 'Tạ Văn Khác');
+  await goi('POST', `/api/nhan-vien/${id_a}/ma-dinh-danh`, {
+    token: token_admin, body: { he_thong: 'erp_cu_ma', ma: 'E-CHUNG' },
+  });
+
+  const sua = await goi('PUT', `/api/nhan-vien/${id_b}`, {
+    token: token_admin,
+    body: { ma_nv: 'GTAPI5B', ho_ten: 'Tạ Văn Khác', ma_erp: 'E-CHUNG' },
+  });
+  assert.equal(sua.ma, 200, JSON.stringify(sua.body));
+  const cb = sua.body['canh_bao'] as string[] | undefined;
+  assert.notEqual(cb, undefined, 'khong bao gi ve ma ERP khong gan duoc');
+  assert.match(cb?.join(' ') ?? '', /đang thuộc GTAPI5A/);
+
+  // Ho so VAN luu duoc cot `ma_erp` — cot khong co rang buoc, va do la trang thai that.
+  const nv = await truy_van_mot<{ ma_erp: string }>(
+    'select ma_erp from nhan_vien where id = $1', [id_b]);
+  assert.equal(nv?.ma_erp, 'E-CHUNG');
+});

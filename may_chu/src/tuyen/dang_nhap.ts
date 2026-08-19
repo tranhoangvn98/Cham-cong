@@ -13,6 +13,7 @@ import { can_dang_nhap_ke_ca_cho_duyet, nguoi_dung_hien_tai } from '../bao_mat/x
 import { cau_hinh } from '../cau_hinh.ts';
 import { chuoi_bat_buoc, LoiDauVao, than } from '../tien_ich/kiem_tra.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
+import { gan_ma_am_tham } from '../dinh_danh/nghiep_vu.ts';
 import {
   bat_dang_nhap_microsoft,
   doi_ma_lay_token,
@@ -371,7 +372,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
       return res.redirect(ve_loi(thong_bao), 302);
     }
 
-    const nd = await tim_hoac_tao_theo_email(tt.email, tt.ho_ten);
+    const nd = await tim_hoac_tao_theo_email(tt.email, tt.ho_ten, tt.oid);
     if (nd === null) {
       req.log.warn({ email: tt.email }, 'dang nhap Microsoft: email chua gan tai khoan nao');
       return res.redirect(
@@ -390,6 +391,27 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     );
     await ghi_nhat_ky(nd.id, 'dang_nhap_microsoft', 'nguoi_dung', nd.id, null, req.ip);
 
+    // Ghi nho danh tinh Microsoft cua nguoi nay. `oid` chi lay duoc o day — no den tu
+    // `id_token`, va truoc ban 1.32.0 he thong trich no ra roi bo di.
+    //
+    // KHONG BAO GIO LAM HONG VIEC DANG NHAP. Nguoi ta da xac thuc xong voi Microsoft; mot ma
+    // trung (oid da thuoc ho so khac) hay mot loi CSDL o day khong duoc bien thanh "khong dang
+    // nhap duoc". Ghi log de nguoi phu trach thay, roi di tiep.
+    if (nd.nhan_vien_id !== null) {
+      for (const [he_thong, gia_tri] of [
+        ['microsoft_oid', tt.oid], ['microsoft_email', tt.email],
+      ] as const) {
+        if (gia_tri === '') continue;
+        try {
+          const cb = await gan_ma_am_tham(
+            nd.nhan_vien_id, he_thong, gia_tri, 'dang_nhap_microsoft');
+          if (cb !== null) req.log.warn({ he_thong, canh_bao: cb }, 'ghi ma dinh danh Microsoft');
+        } catch (loi) {
+          req.log.warn({ err: loi, he_thong }, 'khong ghi duoc ma dinh danh Microsoft');
+        }
+      }
+    }
+
     const phien_moi = await phat_token(nd, 'Microsoft SSO');
     const neo = new URLSearchParams({
       token_truy_cap: phien_moi.token_truy_cap,
@@ -400,12 +422,35 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
 }
 
 /**
- * Doi chieu email Microsoft voi tai khoan trong he thong.
+ * Doi chieu danh tinh Microsoft voi tai khoan trong he thong.
  *
- * Thu tu: email da gan san o tai khoan -> email cua ho so nhan vien. Khong khop thi tra
- * null (tu choi dang nhap), TRU KHI bat MS_TU_DONG_TAO.
+ * Thu tu: `oid` da ghi nho -> email da gan san o tai khoan -> email cua ho so nhan vien. Khong
+ * khop thi tra null (tu choi dang nhap), TRU KHI bat MS_TU_DONG_TAO.
+ *
+ * VI SAO `oid` DUNG TRUOC EMAIL: `oid` la ma dinh danh cua Entra va KHONG BAO GIO DOI, con email
+ * (UPN) doi duoc — doi ten nguoi, doi ten mien, doi phong. Truoc day chi khop bang email, nen
+ * doi email trong Entra la mat khop, va neu ten mien nam trong danh sach cho phep thi lan dang
+ * nhap ke tiep TAO MOT TAI KHOAN THU HAI cho cung mot nguoi. `oid` di ra tu `id_token` da qua
+ * `kiem_id_token` (chu ky, issuer, audience, nonce) nen no dang tin ngang email — that ra hon,
+ * vi khong ai doi duoc no.
  */
-async function tim_hoac_tao_theo_email(email: string, ho_ten: string | null): Promise<DongNguoiDung | null> {
+export async function tim_hoac_tao_theo_email(
+  email: string, ho_ten: string | null, oid: string,
+): Promise<DongNguoiDung | null> {
+  if (oid !== '') {
+    const theo_oid = await truy_van_mot<DongNguoiDung>(
+      `select nd.id, nd.ten_dang_nhap, nd.mat_khau_hash, nd.vai_tro, nd.nhan_vien_id,
+              nd.dang_hoat_dong, nd.phai_doi_mat_khau, nd.so_lan_sai, nd.khoa_den, nv.ho_ten
+         from ma_dinh_danh md
+         join nhan_vien nv on nv.id = md.nhan_vien_id
+         join nguoi_dung nd on nd.nhan_vien_id = nv.id
+        where md.he_thong = 'microsoft_oid' and md.ma_chuan = lower($1)
+          and md.hieu_luc_den is null`,
+      [oid],
+    );
+    if (theo_oid !== null) return theo_oid;
+  }
+
   const theo_tai_khoan = await truy_van_mot<DongNguoiDung>(
     `select nd.id, nd.ten_dang_nhap, nd.mat_khau_hash, nd.vai_tro, nd.nhan_vien_id,
             nd.dang_hoat_dong, nd.phai_doi_mat_khau, nd.so_lan_sai, nd.khoa_den, nv.ho_ten

@@ -94,6 +94,17 @@ ERP là **nguồn** của ba trường:
 Nhân viên tạo mới nhận mã `ERP<userId>` — ERP không có trường mã nhân viên, chỉ có `userId`
 và `username`.
 
+### Đồng bộ cũng ghi vào bảng mã định danh
+
+Từ bản `1.32.0`, mỗi lượt **Đồng bộ thật** ghi `userId`, tài khoản ERP và email vào bảng
+`ma_dinh_danh` (xem [`MA-DINH-DANH.md`](MA-DINH-DANH.md)) — nên câu hỏi *"ai là userId 147"* trả
+lời được cả sau khi mã nhân viên bên này đã đổi.
+
+Bộ đồng bộ **không bao giờ tự lấy mã đang thuộc người khác**. Gặp trường hợp đó nó **báo** ở cột
+*Chi tiết* rồi đi tiếp, chứ không đổi chủ mã — một lần chạy tự động âm thầm chuyển danh tính giữa
+hai con người chính là cách cặp trùng `ERP147`/`HR-01` sinh ra. Cả lượt đồng bộ nằm trong **một**
+giao dịch, nên ném lỗi ở đó là rollback cả công ty vì một mã của một người.
+
 ### `phoneNumber` không phải số thì bị bỏ qua
 
 ERP cũ trả **họ tên** trong trường `phoneNumber` với một số người — thấy trên dữ liệu thật ở

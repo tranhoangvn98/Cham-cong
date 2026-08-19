@@ -113,6 +113,26 @@ curl -X POST http://localhost:8080/api/xac-thuc/dang-nhap \
 `pin_may` là **khóa nối máy chấm công với nhân viên** — chỉ chữ số, phải khớp User ID
 trên máy. Không có PIN thì log về không map được vào ai.
 
+`POST` / `PUT /nhan-vien/:id` cũng ghi mã vào bảng **mã định danh** (`ma_nv`, `pin_may`,
+`ma_erp`, `email`). `ma_erp` và `email` **không** có ràng buộc UNIQUE trên cột, nên chúng có thể
+đã thuộc người khác trong bảng định danh; khi đó hồ sơ **vẫn lưu** và phản hồi kèm mảng
+`canh_bao` nói rõ ai đang giữ mã. Xem [`MA-DINH-DANH.md`](MA-DINH-DANH.md).
+
+### Mã định danh
+
+| Method | Đường dẫn | Quyền | Ghi chú |
+|---|---|---|---|
+| GET | `/ma-dinh-danh/he-thong` | đã đăng nhập | Bảng đặc tả các hệ thống |
+| GET | `/ma-dinh-danh/tim?q=` | nhan_su | Tìm người theo **một mã bất kỳ**, kể cả mã đã đóng |
+| GET | `/ma-dinh-danh/doi-soat` | nhan_su | So bảng định danh với các cột cũ, hai chiều |
+| GET | `/nhan-vien/:id/ma-dinh-danh?ca_lich_su=` | đã đăng nhập | Nhóm theo hệ thống, kể cả hệ thống chưa có mã |
+| POST | `/nhan-vien/:id/ma-dinh-danh` | nhan_su | `{ he_thong, ma, ghi_chu?, thu_hoi_cua_nguoi_khac? }` |
+| DELETE | `/ma-dinh-danh/:id` | nhan_su | **Đóng mã lại**, không xóa dòng |
+
+`POST` trả **409** kèm mã nhân viên và họ tên người đang giữ mã, khi mã đó đang hiệu lực ở người
+khác. Chỉ `thu_hoi_cua_nguoi_khac: true` mới chuyển — và mã của người kia được đóng lại kèm ghi
+chú, không bị xóa. Mã sai dạng (PIN có chữ cái, `oid` không phải UUID) trả **400**.
+
 `duoc_cham_cong_dien_thoai` mặc định `false`; chỉ bật cho người đi công tác.
 
 ### Máy chấm công

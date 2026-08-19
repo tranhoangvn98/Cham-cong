@@ -2,6 +2,99 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.32.0] — 2026-08-19
+
+**Bảng mã định danh: một người, nhiều hệ thống, mỗi hệ thống một mã.** Dữ liệu nhân sự vào hệ
+thống này từ nhiều nguồn, và trước bản này mỗi mã là **một cột** trên `nhan_vien` — `pin_may`,
+`erp_user_id`, `erp_username`, `ma_erp`, `email`. Cách đó vỡ ở bốn chỗ, và cả bốn đều đã xảy ra
+trên dữ liệu thật:
+
+1. **Một người một mã.** `pin_may` là một cột, nên một người không thể có PIN ở hai máy, và đăng
+   ký lại là ghi đè — mất dấu vết.
+2. **Không có lịch sử.** PIN 1 chuyển sang người mới thì không còn vết nào nói những lần quẹt cũ
+   thuộc ai.
+3. **Mã Microsoft ổn định bị bỏ đi.** `id_token` có `oid` — mã không bao giờ đổi — và hệ thống
+   trích nó ra rồi *không lưu*.
+4. **Thêm nguồn mới = thêm cột** + sửa mọi chỗ join.
+
+Hậu quả thấy được là hai cặp trùng phải gộp bằng tay tuần này: `ERP147`/`HR-01` và `BGD`/`ERP4`.
+
+Di trú `025` + `dinh_danh/he_thong.ts` (bảng đặc tả) + `dinh_danh/nghiep_vu.ts` (nghiệp vụ) +
+trang **Hệ thống → Mã định danh** + thẻ mã trong tab *Thông tin chung* của hồ sơ.
+
+### Chống trùng do cơ sở dữ liệu bảo đảm
+
+```sql
+create unique index ma_dinh_danh_dang_hieu_luc_idx
+  on ma_dinh_danh(he_thong, ma_chuan) where hieu_luc_den is null;
+```
+
+Một mã **đang hiệu lực** thuộc đúng một người. Các dòng đã đóng lại thì tự do trùng nhau — đúng
+thế mới kể lại được lịch sử một PIN đã qua tay ba người.
+
+Đây là *index* chứ không phải *constraint* vì Postgres không cho `unique constraint` có `where`.
+Hệ quả: nó không nằm trong `pg_constraint` nên bộ gộp hồ sơ không "thấy" nó — không sao, vì bộ gộp
+chỉ đổi chủ sở hữu, và index này bảo đảm hai người không thể cùng mang một mã đang hiệu lực nên
+chuyển cả hai sang một người không thể chạm nhau. Có bài kiểm giữ điều đó.
+
+### Quy tắc trung tâm: không âm thầm lấy mã của người khác
+
+Đó chính là cách "trùng" xuất hiện — một mã đi từ người này sang người kia trong một lần chạy tự
+động, và ba tháng sau không ai biết vì sao lần quẹt của ông A lại tính cho bà B. Nên `gan_ma` **từ
+chối** và nói rõ *ai* đang giữ:
+
+> PIN máy chấm công "1" đang thuộc HR-07 — Phan Song Hào. Một mã đang hiệu lực chỉ thuộc một
+> người. Nếu đúng là cần chuyển sang người này, hãy xác nhận thu hồi.
+
+Chỉ khi người gọi nói rõ là có ý thì mã mới đổi chủ, và dòng cũ được **đóng lại kèm ghi chú**,
+không bị xóa. Trên giao diện, ô xác nhận chỉ hiện **sau khi** máy chủ từ chối lần đầu — để nhìn
+thấy tên người đang giữ trước khi quyết định.
+
+### `oid` của Microsoft: từ chỗ bị bỏ đi thành khóa khớp người đầu tiên
+
+Đăng nhập Microsoft giờ khớp theo thứ tự `oid` → `email_microsoft` → email hồ sơ. Trước bản này
+chỉ khớp `lower(email)`, nên đổi email trong Entra là mất khớp, và nếu tên miền nằm trong danh
+sách cho phép thì lần đăng nhập kế tiếp **tạo một tài khoản thứ hai** cho cùng một người. `oid` đi
+ra từ `id_token` đã qua kiểm chữ ký/issuer/audience/nonce nên đáng tin ngang email — thật ra hơn,
+vì không ai đổi được nó.
+
+Bước ghi nhớ danh tính **không bao giờ làm hỏng việc đăng nhập**: người ta đã xác thực xong với
+Microsoft, nên một mã trùng ở đó chỉ được ghi log.
+
+### Các cột cũ vẫn còn, và có báo cáo đối soát
+
+Di trú này **không đổi đường đọc**: `pin_may` vẫn là đường máy chấm công khớp người. Đổi một lần
+cả ba đường khớp người là cách chắc chắn nhất để một sai sót trong backfill làm máy chấm công
+ngừng khớp người **một cách im lặng** — lần quẹt không khớp thì không ai thấy gì, nó chỉ nằm đó
+với `nhan_vien_id = null`.
+
+Nên **Hệ thống → Mã định danh → Đối soát** so hai chiều: cột có mã mà bảng không, và bảng có mã mà
+cột trống. Sạch thì mới bỏ được các cột cũ.
+
+### Bài kiểm: backfill được kiểm bằng chính tệp di trú
+
+Bài kiểm quan trọng nhất tạo một hồ sơ **bằng SQL thuần** (đúng hình dạng trước di trú), rồi
+**đọc `025_ma_dinh_danh.sql` từ đĩa và chạy lại khối backfill trong đó** — không viết lại SQL
+trong bài kiểm, vì một bản sao thì bài kiểm chỉ kiểm chính bản sao đó. Đã chứng minh bằng cách đổi
+một dòng trong di trú: đỏ đúng chỗ.
+
+Và một bài thứ hai chứng minh bộ đối soát **thật sự nhìn** — một bộ đối soát luôn trả rỗng thì
+cũng "sạch", và đó là kiểu yên tâm sai nhất.
+
+Bài kiểm đăng nhập bằng `oid` gọi thẳng hàm khớp người thật với một email **hoàn toàn khác** mọi
+thứ trong cơ sở dữ liệu; tắt nhánh `oid` đi thì nó đỏ.
+
+### Bốn lỗi trong bài kiểm của tôi, một trong đó đáng nói
+
+Bốn bài đầu tiên đỏ vì chính bài kiểm sai, không phải mã sai: hai bài phụ thuộc vào dữ liệu mẫu mà
+các bài khác đã sửa, một bài đếm cả mã `noi_bo` sinh ra khi tạo hồ sơ qua API, và một bài viết
+`order by hieu_luc_den nulls last` trong khi cần `nulls first`. Cái cuối đúng là thứ bài kiểm phải
+bắt — nó khẳng định dòng đầu tiên là mã đang hiệu lực.
+
+469 unit (1 skipped) + 5 proxy + 15 thiết kế + 341 e2e.
+
+Tài liệu mới: [`tai_lieu/MA-DINH-DANH.md`](tai_lieu/MA-DINH-DANH.md).
+
 ## [1.31.2] — 2026-08-19
 
 **ERP cũ trả họ tên trong trường số điện thoại, và hệ thống ghi thẳng nó vào cột

@@ -236,6 +236,7 @@ docker run --rm -v /root/Cham-cong:/app -w /app --network cham-cong_default \
 | [`tai_lieu/KE-HOACH-TRIEN-KHAI.md`](tai_lieu/KE-HOACH-TRIEN-KHAI.md) | Cái gì đang chạy, cái gì đang chờ ai, cái gì cố ý để lại sau |
 | [`tai_lieu/SHAREPOINT.md`](tai_lieu/SHAREPOINT.md) | Đồng bộ kho tệp hồ sơ sang thư viện HCNS trên SharePoint (một chiều, xóa lan theo) |
 | [`tai_lieu/GOP-HO-SO-TRUNG.md`](tai_lieu/GOP-HO-SO-TRUNG.md) | Gộp hai hồ sơ là cùng một người (đồng bộ ERP tạo trùng với hồ sơ nhân sự tự nhập) |
+| [`tai_lieu/MA-DINH-DANH.md`](tai_lieu/MA-DINH-DANH.md) | Mã của một người ở các hệ thống khác (PIN máy, ERP cũ, Microsoft) — chống trùng, lịch sử, đối soát |
 | [`tai_lieu/API-TICH-HOP.md`](tai_lieu/API-TICH-HOP.md) | API `/api/v1` cho hệ thống ngoài: khoá API, Swagger, sinh client |
 | [`tai_lieu/THIET-KE.md`](tai_lieu/THIET-KE.md) | Design token: màu, font, bo góc, breakpoint |
 | [`CLAUDE.md`](CLAUDE.md) | Quy ước code của dự án |

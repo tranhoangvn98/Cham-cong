@@ -18,6 +18,7 @@ import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { lay_nguoi_dung, type NguoiDungErp } from './khach.ts';
 import { sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
 import { la_so_dien_thoai } from '../tien_ich/kiem_tra.ts';
+import { bo_chay_tu, gan_ma_am_tham } from '../dinh_danh/nghiep_vu.ts';
 
 export type HanhDong = 'tao_moi' | 'cap_nhat' | 'khong_doi' | 'bo_qua';
 
@@ -231,20 +232,39 @@ export async function dong_bo_nhan_vien(
 
   if (che_do === 'thu') return kq;
 
+  // Canh bao sinh ra trong luc GHI (vi du ma ERP dang thuoc nguoi khac) — gom lai theo
+  // `erp_user_id` roi nhap vao bao cao sau, vi bao cao duoc dung o pha TINH truoc do.
+  const canh_bao_khi_ghi = new Map<number, string[]>();
+
   await trong_giao_dich(async (khach) => {
+    const bo = bo_chay_tu(khach);
+
     for (const v of viec) {
       const ten = chuan_chuoi(v.u.name)!;
       const email = chuan_email(v.u.email)!;
       const dt = chuan_dien_thoai(v.u.phoneNumber);
+      let nhan_vien_id = v.nv?.id ?? null;
 
       if (v.nv === null) {
-        await khach.query(
+        const ma_nv = ma_nv_tu_erp(v.u);
+        // `returning id` de con gan ma dinh danh. `on conflict do nothing` thi khong tra dong
+        // nao, nen phai doc lai theo `ma_nv` — truong hop do xay ra khi mot ho so da mang dung
+        // ma `ERP<userId>` nhung chua noi voi ERP.
+        const moi = (await khach.query(
           `insert into nhan_vien
              (ma_nv, ho_ten, email, so_dien_thoai, erp_user_id, erp_username, erp_dong_bo_luc)
            values ($1,$2,$3,$4,$5,$6, now())
-           on conflict (ma_nv) do nothing`,
-          [ma_nv_tu_erp(v.u), ten, email, dt, v.u.userId, chuan_chuoi(v.u.username)],
-        );
+           on conflict (ma_nv) do nothing
+           returning id`,
+          [ma_nv, ten, email, dt, v.u.userId, chuan_chuoi(v.u.username)],
+        )).rows[0];
+        if (moi !== undefined) {
+          nhan_vien_id = String(moi['id']);
+        } else {
+          const co = (await khach.query(
+            'select id from nhan_vien where ma_nv = $1', [ma_nv])).rows[0];
+          nhan_vien_id = co === undefined ? null : String(co['id']);
+        }
       } else {
         // `coalesce` o so_dien_thoai: ERP de trong thi giu so dang co, khong xoa mat.
         await khach.query(
@@ -257,8 +277,35 @@ export async function dong_bo_nhan_vien(
           [v.nv.id, ten, email, dt, v.u.userId, chuan_chuoi(v.u.username)],
         );
       }
+
+      if (nhan_vien_id === null) continue;
+
+      // Ghi ma dinh danh. `am_tham` vi ca lo nam trong MOT giao dich: nem loi vi mot ma trung
+      // cua mot nguoi la rollback ca luot dong bo cua ca cong ty.
+      //
+      // Va no KHONG tu lay ma cua nguoi khac — `gan_ma` tu choi truong hop do. Dung la cho
+      // sinh ra cap trung `ERP147`/`HR-01`: mot lan chay tu dong am tham doi chu mot ma.
+      const cb: string[] = [];
+      for (const [he_thong, gia_tri] of [
+        ['erp_cu', String(v.u.userId)],
+        ['erp_cu_tai_khoan', chuan_chuoi(v.u.username) ?? ''],
+        ['microsoft_email', email],
+      ] as const) {
+        if (gia_tri === '') continue;
+        const loi = await gan_ma_am_tham(nhan_vien_id, he_thong, gia_tri, 'dong_bo_erp', bo);
+        if (loi !== null) cb.push(loi);
+      }
+      if (cb.length > 0 && v.u.userId !== undefined) canh_bao_khi_ghi.set(v.u.userId, cb);
     }
   });
+
+  // Nhap canh bao khi ghi vao bao cao, giu nguyen canh bao da co cua pha tinh.
+  for (const d of kq.chi_tiet) {
+    if (d.erp_user_id === null) continue;
+    const cb = canh_bao_khi_ghi.get(d.erp_user_id);
+    if (cb === undefined) continue;
+    d.canh_bao = [d.canh_bao, ...cb].filter((x) => x !== undefined).join(' • ');
+  }
 
   // Dong bo ERP GHI LAI HO TEN cho hang chuc nguoi mot lan, va ten thu muc kho tep mang ho
   // ten. Quet MOT LAN sau ca lo thay vi goi tung nguoi: goi tung nguoi la mot truy van

@@ -16,6 +16,10 @@ import {
   chuoi, chuoi_bat_buoc, gio, luan_ly, ngay, ngay_bat_buoc, so_nguyen, so_thuc,
   than, trong_tap, uuid, uuid_bat_buoc, LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
+import {
+  doi_soat, gan_bo_ma_nhan_su, gan_ma, ma_cua_nhan_vien, thu_hoi_ma, tim_theo_ma,
+} from '../dinh_danh/nghiep_vu.ts';
+import { CAC_HE_THONG, MA_CAC_HE_THONG } from '../dinh_danh/he_thong.ts';
 
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
 // KHONG duoc dung khi tao tai khoan moi bang tay (xem POST /nguoi-dung).
@@ -188,7 +192,9 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     );
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tao_nhan_vien', 'nhan_vien',
       dong?.id ?? null, { ma_nv: b['ma_nv'] }, req.ip);
-    return res.code(201).send(dong);
+
+    const canh_bao = dong === null ? [] : await ghi_ma_dinh_danh(dong.id, b);
+    return res.code(201).send(canh_bao.length === 0 ? dong : { ...dong, canh_bao });
   });
 
   app.put('/nhan-vien/:id', { preHandler: can_nhan_su }, async (req) => {
@@ -213,7 +219,9 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     await dong_bo_thu_muc_nhan_vien(id, (m) => { req.log.info(m); });
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'sua_nhan_vien', 'nhan_vien', id, null, req.ip);
-    return { ok: true };
+
+    const canh_bao = await ghi_ma_dinh_danh(id, b);
+    return canh_bao.length === 0 ? { ok: true } : { ok: true, canh_bao };
   });
 
   /** Cho nghi viec: giu lai lich su cham cong, chi tat hoat dong. */
@@ -239,6 +247,65 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       [id],
     );
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'cho_nghi_viec', 'nhan_vien', id, null, req.ip);
+    return { ok: true };
+  });
+
+  // =====================================================================  MA DINH DANH
+  //
+  // Mot nguoi di qua nhieu he thong va moi he thong goi ho bang mot ma khac. Nhom route nay la
+  // cho nhan su NHIN THAY va SUA bang do — truoc day cac ma nam rai rac trong nhung o nho tren
+  // form ho so, va khong cho nao noi duoc "ma nay dang thuoc ai".
+
+  /** Bang dac ta cac he thong — de giao dien khong go tay danh sach. */
+  app.get('/ma-dinh-danh/he-thong', { preHandler: can_dang_nhap }, async () =>
+    CAC_HE_THONG.map((h) => ({
+      ma: h.ma, ten: h.ten, nhom: h.nhom, nhieu_ma: h.nhieu_ma, on_dinh: h.on_dinh,
+      cot_cu: h.cot_cu,
+    })));
+
+  /** Tim nguoi theo MOT MA BAT KY, ke ca ma da dong lai. */
+  app.get('/ma-dinh-danh/tim', { preHandler: can_nhan_su }, async (req) => {
+    const q = chuoi(req.query as Record<string, unknown>, 'q', { toi_da: 200 });
+    return q === null ? [] : tim_theo_ma(q);
+  });
+
+  /** Doi soat bang dinh danh voi cac cot cu tren `nhan_vien`. */
+  app.get('/ma-dinh-danh/doi-soat', { preHandler: can_nhan_su }, async () => {
+    const lech = await doi_soat();
+    return { so_lech: lech.length, chi_tiet: lech };
+  });
+
+  app.get('/nhan-vien/:id/ma-dinh-danh', { preHandler: can_dang_nhap }, async (req) => {
+    const id = lay_id(req);
+    const ca_lich_su = luan_ly(req.query as Record<string, unknown>, 'ca_lich_su', false);
+    return ma_cua_nhan_vien(id, ca_lich_su === true);
+  });
+
+  app.post('/nhan-vien/:id/ma-dinh-danh', { preHandler: can_nhan_su }, async (req, res) => {
+    const id = lay_id(req);
+    const b = than(req.body);
+    const he_thong = trong_tap(b, 'he_thong', MA_CAC_HE_THONG, { bat_buoc: true }) as string;
+    const ma = chuoi_bat_buoc(b, 'ma', { toi_da: 200 });
+    // Mac dinh KHONG thu hoi ma cua nguoi khac. Nguoi goi phai noi ro — day la thao tac chuyen
+    // danh tinh giua hai con nguoi, khong phai mot o nhap lieu binh thuong.
+    const thu_hoi = luan_ly(b, 'thu_hoi_cua_nguoi_khac', false) === true;
+    const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
+
+    const kq = await gan_ma(id, he_thong, ma, {
+      nguon: 'nguoi_khai', ghi_chu, thu_hoi_cua_nguoi_khac: thu_hoi,
+    });
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'gan_ma_dinh_danh', 'nhan_vien', id,
+      { he_thong, ma, ket_cuc: kq.ket_cuc }, req.ip);
+    return res.code(201).send(kq);
+  });
+
+  /** Dong mot ma lai. Khong xoa dong — lich su la ly do bang nay ton tai. */
+  app.delete('/ma-dinh-danh/:id', { preHandler: can_nhan_su }, async (req) => {
+    const id = lay_id(req);
+    const ghi_chu = chuoi(than(req.body ?? {}), 'ghi_chu', { toi_da: 500 });
+    await thu_hoi_ma(id, ghi_chu);
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'thu_hoi_ma_dinh_danh', 'ma_dinh_danh',
+      id, null, req.ip);
     return { ok: true };
   });
 
@@ -869,6 +936,22 @@ function doc_ngay_lam(v: unknown): number[] {
   }
   if (ds.length === 0) throw new LoiDauVao('Ca làm phải có ít nhất một ngày đi làm.');
   return [...new Set(ds)].sort((a, b) => a - b);
+}
+
+/**
+ * Ghi ma dinh danh sau khi tao/sua ho so, tra ve canh bao.
+ *
+ * Doc DUNG cac o ma `doc_nhan_vien` doc, de hai duong khong the lech nhau.
+ */
+async function ghi_ma_dinh_danh(
+  nhan_vien_id: string, b: Record<string, unknown>,
+): Promise<string[]> {
+  return gan_bo_ma_nhan_su(nhan_vien_id, {
+    ma_nv: chuoi(b, 'ma_nv', { toi_da: 40 }),
+    pin_may: chuoi(b, 'pin_may', { toi_da: 32 }),
+    ma_erp: chuoi(b, 'ma_erp', { toi_da: 40 }),
+    email: chuoi(b, 'email', { toi_da: 200 }),
+  }, 'nguoi_khai');
 }
 
 function doc_nhan_vien(b: Record<string, unknown>, bat_buoc: boolean): unknown[] {
