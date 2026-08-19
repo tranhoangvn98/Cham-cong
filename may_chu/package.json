@@ -15,7 +15,7 @@
     "seed_ma_nguon": "node --experimental-strip-types src/csdl/seed.ts",
     "sap_xep_tep": "node dist/ho_so/chay_sap_xep.js",
     "sap_xep_tep_ma_nguon": "node --experimental-strip-types src/ho_so/chay_sap_xep.ts",
-    "test": "node --experimental-strip-types --test test/giao_thuc.test.ts test/tinh_cong.test.ts test/bao_mat.test.ts test/dia_chi_ip.test.ts test/microsoft.test.ts test/csv.test.ts test/quyen_ho_so.test.ts test/che_du_lieu.test.ts test/doc_office.test.ts test/khoa_api.test.ts test/openapi.test.ts test/tinh_luong.test.ts test/vcontract.test.ts test/cham_diem_kpi.test.ts test/bien_moi_truong.test.ts test/trich_noi_dung.test.ts test/nhac_han.test.ts test/luu_tru.test.ts test/ten_tep.test.ts test/sharepoint_anh_xa.test.ts test/sharepoint_khach.test.ts test/moi_test_deu_chay.test.ts && node --experimental-strip-types --test test/proxy_tin_cay.test.ts",
+    "test": "node --experimental-strip-types --test test/giao_thuc.test.ts test/tinh_cong.test.ts test/bao_mat.test.ts test/dia_chi_ip.test.ts test/microsoft.test.ts test/csv.test.ts test/quyen_ho_so.test.ts test/che_du_lieu.test.ts test/doc_office.test.ts test/khoa_api.test.ts test/openapi.test.ts test/tinh_luong.test.ts test/vcontract.test.ts test/cham_diem_kpi.test.ts test/bien_moi_truong.test.ts test/trich_noi_dung.test.ts test/nhac_han.test.ts test/luu_tru.test.ts test/ten_tep.test.ts test/ghi_xlsx.test.ts test/sharepoint_anh_xa.test.ts test/sharepoint_khach.test.ts test/moi_test_deu_chay.test.ts && node --experimental-strip-types --test test/proxy_tin_cay.test.ts",
     "kiem_tra_kieu": "tsc -p tsconfig.kiem_tra.json",
     "test_e2e": "node --experimental-strip-types --test test/e2e.test.ts",
     "test_tat_ca": "npm test && npm run test_e2e"
