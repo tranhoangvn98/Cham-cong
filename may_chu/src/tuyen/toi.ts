@@ -15,6 +15,8 @@ import {
   cong_ngay, khoang_thang, ngay_dia_phuong, ngay_viet, thu_trong_tuan,
 } from '../tien_ich/thoi_gian.ts';
 import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
+import { CAC_LOAI, MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_don.ts';
+import { don_cua_nhan_vien, huy_don, tao_don } from '../don_tu/nghiep_vu.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, khoang_ngay, luan_ly, ngay_bat_buoc, than, trong_tap, uuid,
   LoiDauVao, LoiKhongQuyen, LoiKhongTim, LoiXungDot,
@@ -176,6 +178,18 @@ function nhan_vien_cua_toi(req: FastifyRequest): string {
     );
   }
   return nd.nv;
+}
+
+/** `den_ngay` tuy chon: co thi phai la ngay hop le, khong co thi null. */
+function khoang_ngay_tuy_chon(b: Record<string, unknown>): string | null {
+  return b['den_ngay'] === undefined || b['den_ngay'] === null || b['den_ngay'] === ''
+    ? null
+    : ngay_bat_buoc(b, 'den_ngay');
+}
+
+/** `tu_ngay` da doc o tren; doc lai de dat vao thong bao day. */
+function kq_tu_ngay(b: Record<string, unknown>): string {
+  return ngay_bat_buoc(b, 'tu_ngay');
 }
 
 export async function tuyen_toi(app: FastifyInstance): Promise<void> {
@@ -732,6 +746,69 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     const token = chuoi(b, 'token', { toi_da: 300 });
     if (token !== null) await thuc_thi('delete from token_push where token = $1', [token]);
     return { ok: true };
+  });
+
+  // ================================================================ CAC LOAI DON KHAC
+  //
+  // Bon loai dung chung bang `don_tu`: lam them gio, doi ca, di cong tac, thoi viec. Mot bo
+  // route duy nhat cho ca bon — cac o du lieu rieng cua tung loai duoc `loai_don.ts` khai, va
+  // rang buoc theo loai thi CSDL giu (xem di tru 024).
+
+  /** Danh muc loai don, de giao dien dung cai gi may chu nhan chu khong go tay lai. */
+  app.get('/don/loai', async () => ({
+    danh_sach: CAC_LOAI.map((l) => ({
+      ma: l.ma, ten: l.ten, nhan_tu_ngay: l.nhan_tu_ngay, co_khoang_ngay: l.co_khoang_ngay,
+    })),
+  }));
+
+  /** Don cua chinh minh. `loai` de trong = tat ca. */
+  app.get('/don', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const q = than(req.query);
+    const loai = trong_tap(q, 'loai', MA_LOAI_DON, {}) as MaLoaiDon | null;
+    return { danh_sach: await don_cua_nhan_vien(nv_id, loai) };
+  });
+
+  /** Tu lam don. Canh bao phap ly tra ve cung ket qua, khong chan. */
+  app.post('/don', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const b = than(req.body);
+
+    const loai = trong_tap(b, 'loai', MA_LOAI_DON, { bat_buoc: true }) as MaLoaiDon;
+    const dt = dac_ta(loai);
+
+    const kq = await tao_don(nv_id, {
+      loai,
+      tu_ngay: ngay_bat_buoc(b, 'tu_ngay'),
+      den_ngay: dt.co_khoang_ngay ? khoang_ngay_tuy_chon(b) : null,
+      gio_bat_dau: gio(b, 'gio_bat_dau'),
+      gio_ket_thuc: gio(b, 'gio_ket_thuc'),
+      doi_voi_id: uuid(b, 'doi_voi_id'),
+      ca_hien_tai_id: uuid(b, 'ca_hien_tai_id'),
+      ca_moi_id: uuid(b, 'ca_moi_id'),
+      noi_den: chuoi(b, 'noi_den', { toi_da: 250 }),
+      ly_do: chuoi(b, 'ly_do', { toi_da: 1000 }),
+    });
+
+    await ghi_nhat_ky(nd.sub, `tu_lam_don_${loai}`, 'don_tu', kq.id, { loai }, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: `${dt.ten} chờ duyệt`,
+      noi_dung: `${dt.nhan_tu_ngay}: ${ngay_viet(kq_tu_ngay(b))}`,
+      du_lieu: { man: 'duyet-don', loai, don_id: kq.id },
+    });
+    return res.code(201).send(kq);
+  });
+
+  /** Tu huy don CUA MINH. */
+  app.post('/don/:id/huy', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const kq = await huy_don(lay_id(req), nv_id);
+    if (kq.tinh_lai !== null) {
+      await tinh_lai_khoang(kq.tinh_lai.tu_ngay, kq.tinh_lai.den_ngay, nv_id);
+    }
+    return { ok: true, da_tinh_lai: kq.tinh_lai !== null };
   });
 }
 

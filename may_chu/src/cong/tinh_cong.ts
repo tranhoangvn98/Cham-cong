@@ -90,6 +90,16 @@ export async function tinh_lai_ngay(
     [ngay],
   );
 
+  // Don di cong tac DA DUYET trum ngay nay. Khong co thi ngay do tinh nhu binh thuong.
+  const cong_tac = await truy_van_mot<{ noi_den: string | null }>(
+    `select noi_den
+       from don_tu
+      where nhan_vien_id = $1 and loai = 'cong_tac' and trang_thai = 'da_duyet'
+        and tu_ngay <= $2 and coalesce(den_ngay, tu_ngay) >= $2
+      order by tao_luc desc limit 1`,
+    [nhan_vien_id, ngay],
+  );
+
   const giai_trinh = await truy_van_mot<{
     gio_vao_de_xuat: string | null;
     gio_ra_de_xuat: string | null;
@@ -108,6 +118,7 @@ export async function tinh_lai_ngay(
     nghi_phep,
     ngay_le,
     giai_trinh,
+    cong_tac,
   });
 
   await trong_giao_dich(async (khach) => {

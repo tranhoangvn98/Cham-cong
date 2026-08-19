@@ -5136,3 +5136,227 @@ test('ban don: sinh lai duoc bang tay khi lan tu dong that bai', async () => {
     [bd_don]);
   assert.equal(d?.so, 1);
 });
+
+// ==================================================================== bon loai don khac
+//
+// "Cac loai don tren he thong": lam them gio, doi ca, di cong tac, thoi viec. MOT bang va MOT
+// bo route cho ca bon — nen nhom bai duoi day chay cung mot duong cho tung loai, va rieng
+// nhung cho khac nhau thi kiem rieng.
+
+test('don khac: danh muc loai don may chu tra ve khop dang ky', async () => {
+  // Giao dien dung danh sach nay chu khong go tay lai. Lech thi form hien mot loai ma may chu
+  // tu choi, hoac thieu mot loai da co.
+  const { MA_LOAI_DON } = await import('../src/don_tu/loai_don.ts');
+  const r = await goi('GET', '/api/toi/don/loai', { token: token_nhan_vien });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+  const ds = r.body['danh_sach'] as { ma: string }[];
+  assert.deepEqual(ds.map((x) => x.ma).sort(), [...MA_LOAI_DON].sort());
+});
+
+test('don khac: nhan vien lam duoc CA BON loai, va duyet xong co ban don', async () => {
+  const { doc_tep_ho_so } = await import('../src/tien_ich/luu_tep.ts');
+  const { trich_docx } = await import('../src/tien_ich/doc_office.ts');
+  const goc = cong_ngay(NGAY, -70);
+
+  const dau_vao: Record<string, Record<string, unknown>> = {
+    lam_them: { tu_ngay: cong_ngay(goc, 1), gio_bat_dau: '18:00', gio_ket_thuc: '20:00', ly_do: 'Chốt số liệu tháng' },
+    cong_tac: { tu_ngay: cong_ngay(goc, 3), den_ngay: cong_ngay(goc, 4), noi_den: 'Đà Nẵng', ly_do: 'Khảo sát khách hàng' },
+    thoi_viec: { tu_ngay: cong_ngay(NGAY, 60), ly_do: 'Chuyển chỗ ở' },
+  };
+
+  const that_bai: string[] = [];
+  for (const [loai, than_don] of Object.entries(dau_vao)) {
+    const tao = await goi('POST', '/api/toi/don', {
+      token: token_nhan_vien, body: { loai, ...than_don },
+    });
+    if (tao.ma !== 201) { that_bai.push(`${loai}: tao -> ${String(tao.ma)} ${tao.tho}`); continue; }
+    const id = tao.body['id'] as string;
+
+    const q = await goi('POST', `/api/duyet/don/${id}/quyet`, {
+      token: token_admin, body: { quyet_dinh: 'da_duyet', ghi_chu: 'Đồng ý' },
+    });
+    if (q.ma !== 200) { that_bai.push(`${loai}: quyet -> ${String(q.ma)} ${q.tho}`); continue; }
+
+    const t = await truy_van_mot<{ ten_luu: string }>(
+      `select ten_luu from ho_so_tep where nhom = 'don_tu' and thuoc_id = $1`, [id]);
+    if (t === null) { that_bai.push(`${loai}: khong co ban don`); continue; }
+
+    const chu = (trich_docx((await doc_tep_ho_so(t.ten_luu))!)?.doan ?? []).join(' | ');
+    const { dac_ta } = await import('../src/don_tu/loai_don.ts');
+    if (!chu.includes(dac_ta(loai).tieu_de)) that_bai.push(`${loai}: ban don thieu tieu de`);
+    if (!chu.includes('ĐÃ DUYỆT')) that_bai.push(`${loai}: ban don thieu vet duyet`);
+  }
+  assert.deepEqual(that_bai, [], that_bai.join('\n'));
+});
+
+test('don khac: doi ca can ca moi — CSDL tu choi don thieu no', async () => {
+  // Mot don doi ca khong co ca moi la vo nghia. Rang buoc nam o CSDL (di tru 024) nen khong
+  // cho goi nao lot qua duoc.
+  const r = await goi('POST', '/api/toi/don', {
+    token: token_nhan_vien,
+    body: { loai: 'doi_ca', tu_ngay: cong_ngay(NGAY, -60), ly_do: 'x' },
+  });
+  assert.ok(r.ma >= 400, `le ra bi tu choi: ${String(r.ma)} ${r.tho}`);
+});
+
+test('don khac: lam them phai co ca hai moc gio va gio ket thuc sau gio bat dau', async () => {
+  const xau = [
+    { gio_bat_dau: '18:00' },
+    { gio_ket_thuc: '20:00' },
+    { gio_bat_dau: '20:00', gio_ket_thuc: '18:00' },
+    { gio_bat_dau: '18:00', gio_ket_thuc: '18:00' },
+  ];
+  for (const [i, g] of xau.entries()) {
+    const r = await goi('POST', '/api/toi/don', {
+      token: token_nhan_vien,
+      body: { loai: 'lam_them', tu_ngay: cong_ngay(NGAY, -50 - i), ly_do: 'x', ...g },
+    });
+    assert.ok(r.ma >= 400, `${JSON.stringify(g)} le ra bi tu choi: ${String(r.ma)} ${r.tho}`);
+  }
+});
+
+test('don khac: cong tac phai co noi den', async () => {
+  const r = await goi('POST', '/api/toi/don', {
+    token: token_nhan_vien,
+    body: { loai: 'cong_tac', tu_ngay: cong_ngay(NGAY, -45), ly_do: 'x' },
+  });
+  assert.ok(r.ma >= 400, `le ra bi tu choi: ${String(r.ma)} ${r.tho}`);
+});
+
+test('don khac: KHONG trum khoang voi don cung loai dang cho', async () => {
+  const ng = cong_ngay(NGAY, -100);
+  const a = await goi('POST', '/api/toi/don', {
+    token: token_nhan_vien,
+    body: { loai: 'cong_tac', tu_ngay: ng, den_ngay: cong_ngay(ng, 3), noi_den: 'Huế' },
+  });
+  assert.equal(a.ma, 201, JSON.stringify(a.body));
+
+  const b = await goi('POST', '/api/toi/don', {
+    token: token_nhan_vien,
+    body: { loai: 'cong_tac', tu_ngay: cong_ngay(ng, 2), den_ngay: cong_ngay(ng, 5), noi_den: 'Huế' },
+  });
+  assert.equal(b.ma, 409, JSON.stringify(b.body));
+
+  // Nhung loai KHAC thi khong bi chan: mot ngay co the vua di cong tac vua lam them gio.
+  const c = await goi('POST', '/api/toi/don', {
+    token: token_nhan_vien,
+    body: { loai: 'lam_them', tu_ngay: ng, gio_bat_dau: '18:00', gio_ket_thuc: '20:00' },
+  });
+  assert.equal(c.ma, 201, JSON.stringify(c.body));
+});
+
+test('don khac: ngay cong tac DA DUYET chuyen bang cong tu vang sang cong_tac', async () => {
+  // Day la ly do ca nhanh `cong_tac` trong bo tinh cong ton tai.
+  const ng = cong_ngay(NGAY, -120);
+  const tao = await goi('POST', '/api/toi/don', {
+    token: token_nhan_vien,
+    body: { loai: 'cong_tac', tu_ngay: ng, den_ngay: ng, noi_den: 'Hải Phòng' },
+  });
+  assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+
+  const q = await goi('POST', `/api/duyet/don/${String(tao.body['id'])}/quyet`, {
+    token: token_admin, body: { quyet_dinh: 'da_duyet' },
+  });
+  assert.equal(q.ma, 200, JSON.stringify(q.body));
+  assert.ok(Number(q.body['so_ngay_da_tinh_lai']) >= 1, 'phai tinh lai bang cong');
+
+  const bc = await truy_van_mot<{ trang_thai: string; so_cong: string; ghi_chu: string | null }>(
+    `select trang_thai, so_cong::text as so_cong, ghi_chu from bang_cong_ngay
+      where nhan_vien_id = (select id from nhan_vien where ma_nv = 'NV001') and ngay = $1`,
+    [ng]);
+  assert.equal(bc?.trang_thai, 'cong_tac', 'ngay cong tac van bi tinh la vang');
+  assert.equal(Number(bc?.so_cong), 1);
+  assert.match(bc?.ghi_chu ?? '', /Hải Phòng/);
+});
+
+test('don khac: huy don cong tac da duyet thi bang cong tro lai', async () => {
+  const ng = cong_ngay(NGAY, -130);
+  const tao = await goi('POST', '/api/toi/don', {
+    token: token_nhan_vien, body: { loai: 'cong_tac', tu_ngay: ng, noi_den: 'Cần Thơ' },
+  });
+  const id = tao.body['id'] as string;
+  await goi('POST', `/api/duyet/don/${id}/quyet`, {
+    token: token_admin, body: { quyet_dinh: 'da_duyet' },
+  });
+
+  const huy = await goi('POST', `/api/toi/don/${id}/huy`, { token: token_nhan_vien });
+  assert.equal(huy.ma, 200, JSON.stringify(huy.body));
+  assert.equal(huy.body['da_tinh_lai'], true);
+
+  const bc = await truy_van_mot<{ trang_thai: string }>(
+    `select trang_thai from bang_cong_ngay
+      where nhan_vien_id = (select id from nhan_vien where ma_nv = 'NV001') and ngay = $1`,
+    [ng]);
+  assert.notEqual(bc?.trang_thai, 'cong_tac', 'huy don roi ma ngay do van la cong tac');
+});
+
+test('don khac: canh bao vuot 40 gio OT mot thang (BLLD Dieu 107)', async () => {
+  // Canh bao, KHONG chan: mot so nganh duoc 300 gio/nam theo Dieu 107.3.
+  const thang_goc = cong_ngay(NGAY, -200);
+  const ngay1 = `${thang_goc.slice(0, 7)}-05`;
+  const ngay2 = `${thang_goc.slice(0, 7)}-06`;
+
+  // 21 gio ngay 1 + 21 gio ngay 2 = 42 gio > 40.
+  const a = await goi('POST', '/api/toi/don', {
+    token: token_nhan_vien,
+    body: { loai: 'lam_them', tu_ngay: ngay1, gio_bat_dau: '02:00', gio_ket_thuc: '23:00' },
+  });
+  assert.equal(a.ma, 201, JSON.stringify(a.body));
+  assert.deepEqual(a.body['canh_bao'], [], 'don dau tien chua vuot tran');
+
+  await goi('POST', `/api/duyet/don/${String(a.body['id'])}/quyet`, {
+    token: token_admin, body: { quyet_dinh: 'da_duyet' },
+  });
+
+  const b = await goi('POST', '/api/toi/don', {
+    token: token_nhan_vien,
+    body: { loai: 'lam_them', tu_ngay: ngay2, gio_bat_dau: '02:00', gio_ket_thuc: '23:00' },
+  });
+  assert.equal(b.ma, 201, JSON.stringify(b.body));
+  const cb = b.body['canh_bao'] as string[];
+  assert.equal(cb.length, 1, JSON.stringify(cb));
+  assert.match(cb[0]!, /107/);
+  assert.match(cb[0]!, /42/);
+});
+
+test('don khac: nguoi duyet doc duoc canh bao TRUOC khi bam duyet', async () => {
+  const ds = await goi('GET', '/api/duyet/don?loai=lam_them&trang_thai=cho_duyet',
+    { token: token_admin });
+  assert.equal(ds.ma, 200, JSON.stringify(ds.body));
+  const danh_sach = ds.body['danh_sach'] as Record<string, unknown>[];
+  assert.ok(danh_sach.length > 0, 'khong con don lam them nao cho duyet');
+
+  const cb = await goi('GET', `/api/duyet/don/${String(danh_sach[0]!['id'])}/canh-bao`,
+    { token: token_admin });
+  assert.equal(cb.ma, 200, JSON.stringify(cb.body));
+  assert.ok(Array.isArray(cb.body['canh_bao']));
+});
+
+test('don khac: nhan vien thuong KHONG duyet duoc va khong xem duoc don nguoi khac', async () => {
+  const ds = await goi('GET', '/api/duyet/don', { token: token_nhan_vien });
+  assert.equal(ds.ma, 403, 'nhan vien thuong vao duoc danh sach duyet');
+
+  const dem = await goi('GET', '/api/duyet/don/dem', { token: token_nhan_vien });
+  assert.equal(dem.ma, 403);
+});
+
+test('don khac: don thoi viec sat han canh bao theo BLLD Dieu 35', async () => {
+  // Nhan vien NV001 co hop dong trong bo du lieu mau. Bao truoc 2 ngay thi it hon moi muc cua
+  // Dieu 35.1 (45 / 30 / 3 ngay), nen phai co canh bao.
+  const r = await goi('POST', '/api/toi/don', {
+    token: token_nhan_vien,
+    body: { loai: 'thoi_viec', tu_ngay: cong_ngay(NGAY, 2), ly_do: 'Việc gia đình' },
+  });
+  assert.equal(r.ma, 201, JSON.stringify(r.body));
+  const cb = r.body['canh_bao'] as string[];
+  assert.ok(cb.length >= 1, 'khong co canh bao nao cho don bao truoc 2 ngay');
+  assert.ok(cb.some((c) => /35/.test(c)), JSON.stringify(cb));
+});
+
+test('don khac: dem cho duyet tra ve so theo tung loai', async () => {
+  const r = await goi('GET', '/api/duyet/don/dem', { token: token_admin });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+  // It nhat mot loai con don cho duyet tu cac bai tren.
+  const tong = Object.values(r.body as Record<string, number>).reduce((a, b) => a + b, 0);
+  assert.ok(tong > 0, JSON.stringify(r.body));
+});

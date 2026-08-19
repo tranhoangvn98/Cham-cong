@@ -320,6 +320,14 @@ export function dung_nap<T>(duong_dan: string | null): KetQuaNap<T> {
 // ============================================================ hanh dong ghi du lieu
 export interface KetQuaHanhDong {
   chay: (ham: () => Promise<unknown>, thong_bao_tot?: string) => Promise<boolean>;
+  /**
+   * Nhu `chay` nhung TRA VE THAN PHAN HOI (null khi loi).
+   *
+   * Can khi may chu tra ve thu phai hien cho nguoi dung — vi du canh bao phap ly kem ket qua
+   * tao don. Voi `chay` (tra boolean) thi than phan hoi khong den duoc tang giao dien, va cach
+   * "sua" de mac nhat la ep kieu `as` roi doc mot truong khong ton tai: man hinh trang.
+   */
+  chay_lay: <T>(ham: () => Promise<T>, thong_bao_tot?: string) => Promise<T | null>;
   dang_chay: boolean;
   loi: unknown;
   tot: string | null;
@@ -347,7 +355,25 @@ export function dung_hanh_dong(): KetQuaHanhDong {
     }
   };
 
-  return { chay, dang_chay, loi, tot, xoa: () => { dat_loi(null); dat_tot(null); } };
+  const chay_lay = async <T,>(ham: () => Promise<T>, thong_bao_tot?: string): Promise<T | null> => {
+    dat_dang_chay(true);
+    dat_loi(null);
+    dat_tot(null);
+    try {
+      const kq = await ham();
+      if (thong_bao_tot !== undefined) dat_tot(thong_bao_tot);
+      return kq;
+    } catch (e) {
+      dat_loi(e instanceof LoiApi ? e : new Error(e instanceof Error ? e.message : String(e)));
+      return null;
+    } finally {
+      dat_dang_chay(false);
+    }
+  };
+
+  return {
+    chay, chay_lay, dang_chay, loi, tot, xoa: () => { dat_loi(null); dat_tot(null); },
+  };
 }
 
 // ============================================================ dong danh sach

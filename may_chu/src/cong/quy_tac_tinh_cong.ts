@@ -5,8 +5,16 @@
 //   1. Don nghi phep DA DUYET trum ngay  -> nghi_phep
 //   2. Ngay le                            -> ngay_le
 //   3. Khong thuoc cac ngay lam cua ca    -> nghi_tuan
-//   4. Co lan quet hop le                 -> co_mat
-//   5. Con lai                            -> vang
+//   4. Don cong tac DA DUYET trum ngay    -> cong_tac
+//   5. Co lan quet hop le                 -> co_mat
+//   6. Con lai                            -> vang
+//
+// VI SAO `cong_tac` DUNG O BUOC 4 chu khong som hon:
+//   - Sau `nghi_phep`: hai don trum cung mot ngay la du lieu mau thuan, va nghi phep la thu
+//     nguoi lao dong duoc huong — no thang.
+//   - Sau `ngay_le`: cong tac trum mot ngay le thi nguoi do van duoc huong ngay le.
+//   - Sau `nghi_tuan`: cong tac vao ngay nghi tuan khong bien ngay do thanh ngay cong. Neu ho
+//     that su lam viec hom do thi co lan quet, va nhanh `nghi_tuan` tinh toan bo vao OT.
 //
 // Lam viec vao ngay le / nghi tuan / dang nghi phep: toan bo thoi gian tinh vao OT,
 // KHONG tinh di muon/ve som (khong co gio chuan de doi chieu).
@@ -63,7 +71,8 @@ export function ca_cua_ngay(ca: CaLam | null, ngay: string): CaLam | null {
   };
 }
 
-export type TrangThaiNgay = 'vang' | 'co_mat' | 'nghi_phep' | 'ngay_le' | 'nghi_tuan';
+export type TrangThaiNgay =
+  'vang' | 'co_mat' | 'nghi_phep' | 'ngay_le' | 'nghi_tuan' | 'cong_tac';
 
 export interface DauVaoTinhCong {
   /** 'YYYY-MM-DD' */
@@ -76,6 +85,13 @@ export interface DauVaoTinhCong {
   ngay_le: { huong_luong: boolean } | null;
   /** Don giai trinh quen quet DA DUYET — ghi de gio vao/ra. */
   giai_trinh: { gio_vao_de_xuat: string | null; gio_ra_de_xuat: string | null } | null;
+  /**
+   * Don di cong tac DA DUYET trum ngay nay (neu co).
+   *
+   * KHONG PHAI NGAY VANG. Nguoi di cong tac khong quet the o van phong, nen truoc khi co
+   * nhanh nay ho hien la vang — va ke toan nhin bang cong do thi tru cong that.
+   */
+  cong_tac: { noi_den: string | null } | null;
 }
 
 export interface KetQuaTinhCong {
@@ -212,7 +228,27 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
     };
   }
 
-  // --- Nhanh 4: vang mat ---
+  // --- Nhanh 4: di cong tac da duyet ---
+  //
+  // Tinh MOT cong tron. Khong tinh di muon / ve som: khong co gio chuan de doi chieu voi mot
+  // nguoi khong o van phong. Neu ho co quet the (ghe qua van phong roi di) thi ghi chu lai —
+  // mot lan quet trong ngay cong tac la thong tin, khong phai loi.
+  if (dv.cong_tac !== null) {
+    const noi = dv.cong_tac.noi_den;
+    chu_thich.push(noi === null || noi === '' ? 'Di cong tac' : `Di cong tac: ${noi}`);
+    if (phut_co_mat > 0) chu_thich.push('Co quet the trong ngay cong tac');
+    return {
+      ...RONG,
+      trang_thai: 'cong_tac',
+      gio_vao,
+      gio_ra,
+      co_dieu_chinh,
+      so_cong: 1,
+      ghi_chu: gop_chu_thich(chu_thich),
+    };
+  }
+
+  // --- Nhanh 5: vang mat ---
   if (gio_vao === null || gio_ra === null) {
     return {
       ...RONG,
@@ -223,7 +259,7 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
     };
   }
 
-  // --- Nhanh 5: co mat, chua gan ca -> chi tinh tong thoi gian, khong phat ---
+  // --- Nhanh 6: co mat, chua gan ca -> chi tinh tong thoi gian, khong phat ---
   if (ca === null) {
     chu_thich.push('Nhan vien chua duoc gan ca lam viec');
     return {
@@ -238,7 +274,7 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
     };
   }
 
-  // --- Nhanh 6: co mat, co ca -> tinh day du ---
+  // --- Nhanh 7: co mat, co ca -> tinh day du ---
   const cong_ngay_ra = ca.qua_dem ? 1 : 0;
   const ca_bat_dau = moc_thoi_gian(dv.ngay, ca.gio_vao);
   const ca_ket_thuc = moc_thoi_gian(dv.ngay, ca.gio_ra, cong_ngay_ra);

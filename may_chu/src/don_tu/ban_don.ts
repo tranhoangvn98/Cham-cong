@@ -16,8 +16,16 @@ import { truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { ghi_docx, type KhoiDocx } from '../tien_ich/ghi_docx.ts';
 import { luu_tep_ho_so, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
+import { dac_ta, type DonTuDayDu } from './loai_don.ts';
+import { don_theo_id } from './nghiep_vu.ts';
 
-/** Cac loai don sinh duoc ban don. Them loai moi thi khai o day va o `NHAN_DON`. */
+/**
+ * Cac loai don sinh duoc ban don.
+ *
+ * `nghi_phep` va `giai_trinh` co bang rieng nen khai o day. Bon loai con lai dung chung bang
+ * `don_tu` va lay ten / cac hang tu `loai_don.ts` — khong khai lai o day, vi khai hai cho la
+ * hai cho de lech.
+ */
 export type LoaiDon = 'nghi_phep' | 'giai_trinh';
 
 const NHAN_DON: Record<LoaiDon, string> = {
@@ -39,6 +47,12 @@ function ngay_viet(ngay: string | null): string {
   if (ngay === null || ngay === '') return '';
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ngay);
   return m === null ? ngay : `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+/** ISO `2026-08-19T14:05:00+07` -> `19/08/2026 14:05`. Chuoi la thi tra nguyen. */
+function ngay_gio_viet(t: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(t);
+  return m === null ? t : `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
 }
 
 function gio_viet(gio: string | null): string {
@@ -143,7 +157,7 @@ export interface BanDonDaLuu {
  * nao. Tim ban cu bang `thuoc_id`, khong bang ten tep.
  */
 async function luu_ban_don(
-  loai: LoaiDon,
+  tien_to_tep: string,
   don_id: string,
   nhan_vien_id: string,
   ma_nv: string,
@@ -152,8 +166,7 @@ async function luu_ban_don(
   ngay_don: string,
 ): Promise<BanDonDaLuu> {
   const du_lieu = ghi_docx({ khoi });
-  const ten_goc = `${loai === 'nghi_phep' ? 'Don-xin-nghi-phep' : 'Don-giai-trinh'}`
-    + `_${ma_nv}_${ngay_don}.docx`;
+  const ten_goc = `${tien_to_tep}_${ma_nv}_${ngay_don}.docx`;
 
   const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, {
     ma_nv, ho_ten, nhom: 'don_tu', ngay: ngay_dia_phuong(new Date()),
@@ -220,7 +233,7 @@ export async function ban_don_nghi_phep(don_id: string): Promise<BanDonDaLuu | n
     ]),
   ];
 
-  return luu_ban_don('nghi_phep', d.id, d.nhan_vien_id, d.ma_nv, d.ho_ten, khoi, d.tu_ngay);
+  return luu_ban_don('Don-xin-nghi-phep', d.id, d.nhan_vien_id, d.ma_nv, d.ho_ten, khoi, d.tu_ngay);
 }
 
 /** Sinh ban don cho mot don giai trinh DA DUYET. */
@@ -251,7 +264,47 @@ export async function ban_don_giai_trinh(don_id: string): Promise<BanDonDaLuu | 
     ]),
   ];
 
-  return luu_ban_don('giai_trinh', d.id, d.nhan_vien_id, d.ma_nv, d.ho_ten, khoi, d.ngay);
+  return luu_ban_don('Don-giai-trinh', d.id, d.nhan_vien_id, d.ma_nv, d.ho_ten, khoi, d.ngay);
+}
+
+// ---------------------------------------------------------------- bon loai dung chung bang
+
+/**
+ * Sinh ban don cho mot don trong bang `don_tu` (lam them / doi ca / cong tac / thoi viec).
+ *
+ * Tieu de va cac hang rieng lay tu `CAC_LOAI` trong `loai_don.ts` — mot cho khai, moi tang
+ * dung theo. Them loai thu nam la them mot muc trong bang do, khong sua ham nay.
+ */
+export async function ban_don_khac(don_id: string): Promise<BanDonDaLuu | null> {
+  const d = await don_theo_id(don_id);
+  if (d === null || d.trang_thai !== 'da_duyet') return null;
+
+  const dt = dac_ta(d.loai);
+  const day_du: DonTuDayDu = {
+    ...d,
+    tu_ngay_viet: ngay_viet(d.tu_ngay),
+    den_ngay_viet: d.den_ngay === null ? null : ngay_viet(d.den_ngay),
+  };
+
+  const khoi: KhoiDocx[] = [
+    { loai: 'tieu_de', chu: dt.tieu_de },
+    ...khoi_chung(
+      {
+        ma_nv: d.ma_nv,
+        ho_ten: d.ho_ten,
+        phong_ban: d.phong_ban,
+        chuc_danh: d.chuc_danh,
+        nguoi_duyet: d.nguoi_duyet,
+        quyet_luc: d.quyet_luc === null ? null : ngay_gio_viet(d.quyet_luc),
+        ghi_chu_duyet: d.ghi_chu_duyet,
+        tao_luc: ngay_gio_viet(d.tao_luc),
+      },
+      [...dt.hang_ban_don(day_du), ['Ngày lập đơn', ngay_gio_viet(d.tao_luc)]],
+    ),
+  ];
+
+  return luu_ban_don(
+    dt.tien_to_tep, d.id, d.nhan_vien_id, d.ma_nv, d.ho_ten, khoi, d.tu_ngay);
 }
 
 /**
@@ -261,10 +314,13 @@ export async function ban_don_giai_trinh(don_id: string): Promise<BanDonDaLuu | 
  * sai quyen) thi don VAN phai duyet duoc — nhan su dang cho, va bang cong phu thuoc vao no.
  * Bo sot ban don thi con vet lai trong log va sinh lai duoc bang `POST .../ban-don`.
  */
-export async function ban_don_am_tham(loai: LoaiDon, don_id: string): Promise<void> {
+export async function ban_don_am_tham(
+  loai: LoaiDon | 'khac', don_id: string,
+): Promise<void> {
   try {
     if (loai === 'nghi_phep') await ban_don_nghi_phep(don_id);
-    else await ban_don_giai_trinh(don_id);
+    else if (loai === 'giai_trinh') await ban_don_giai_trinh(don_id);
+    else await ban_don_khac(don_id);
   } catch {
     // Sinh lai duoc bang tay; xem duong `POST /api/nghi-phep/:id/ban-don`.
   }

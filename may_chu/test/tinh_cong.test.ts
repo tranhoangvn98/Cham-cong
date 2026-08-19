@@ -30,7 +30,7 @@ function q(ngay: string, ...gio: string[]) {
 }
 
 function co_ban(ngay: string, ca: CaLam | null, quet: Date[]) {
-  return { ngay, ca, quet, nghi_phep: null, ngay_le: null, giai_trinh: null };
+  return { ngay, ca, quet, nghi_phep: null, ngay_le: null, giai_trinh: null, cong_tac: null };
 }
 
 test('ngay du cong binh thuong: 08:00-17:00 = 540 phut tho - 90 nghi = 450', () => {
@@ -328,4 +328,71 @@ test('ca_cua_ngay: tra dung khung gio cua thu, khong doi dung sai va ngay lam', 
   const t5 = ca_cua_ngay(CA_HD, T5);
   assert.equal(t5?.gio_ra, '17:30', 'thu khong khai -> khung gio goc');
   assert.equal(ca_cua_ngay(null, T7), null);
+});
+
+// ==================================================================== ngay di cong tac
+//
+// Truoc khi co nhanh nay, mot nguoi di cong tac ca tuan hien la VANG ca tuan: khong co lan
+// quet nao, va bo tinh cong khong biet ly do. Ke toan nhin bang do thi tru cong that.
+
+test('cong tac: khong co lan quet nao van duoc mot cong, khong phai vang', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    cong_tac: { noi_den: 'Hà Nội' },
+  });
+  assert.equal(kq.trang_thai, 'cong_tac');
+  assert.equal(kq.so_cong, 1);
+  assert.equal(kq.phut_muon, 0, 'khong co gio chuan de doi chieu thi khong duoc phat di muon');
+  assert.equal(kq.phut_ve_som, 0);
+  assert.match(kq.ghi_chu ?? '', /Hà Nội/, 'ghi chu phai noi di dau');
+});
+
+test('cong tac: khong co noi den van chay, ghi chu goi la "Di cong tac"', () => {
+  const kq = tinh_cong_ngay({ ...co_ban(T5, CA_HC, []), cong_tac: { noi_den: null } });
+  assert.equal(kq.trang_thai, 'cong_tac');
+  assert.equal(kq.so_cong, 1);
+});
+
+test('cong tac: co quet the trong ngay cong tac thi ghi chu lai, khong bao loi', () => {
+  // Ghe qua van phong roi di la chuyen binh thuong. Mot lan quet trong ngay cong tac la thong
+  // tin, khong phai loi.
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, q(T5, '08:00', '09:00')),
+    cong_tac: { noi_den: 'Đà Nẵng' },
+  });
+  assert.equal(kq.trang_thai, 'cong_tac');
+  assert.equal(kq.so_cong, 1);
+  assert.match(kq.ghi_chu ?? '', /quet the/i);
+});
+
+test('cong tac: NGHI PHEP thang cong tac', () => {
+  // Hai don trum cung mot ngay la du lieu mau thuan. Nghi phep la thu nguoi lao dong duoc
+  // huong nen no thang — va con so cong khong bi tinh hai lan.
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'phep_nam', nua_ngay: false },
+    cong_tac: { noi_den: 'Hà Nội' },
+  });
+  assert.equal(kq.trang_thai, 'nghi_phep');
+});
+
+test('cong tac: NGAY LE thang cong tac', () => {
+  // Cong tac trum mot ngay le thi nguoi do van duoc huong ngay le.
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    ngay_le: { huong_luong: true },
+    cong_tac: { noi_den: 'Hà Nội' },
+  });
+  assert.equal(kq.trang_thai, 'ngay_le');
+});
+
+test('cong tac: NGAY NGHI TUAN thang cong tac', () => {
+  // Cong tac vao ngay nghi tuan khong bien ngay do thanh ngay cong. Neu that su lam viec hom
+  // do thi co lan quet, va nhanh `nghi_tuan` tinh toan bo vao OT.
+  const kq = tinh_cong_ngay({
+    ...co_ban(T7, CA_HC, []),
+    cong_tac: { noi_den: 'Hà Nội' },
+  });
+  assert.equal(kq.trang_thai, 'nghi_tuan');
+  assert.equal(kq.so_cong, 0);
 });

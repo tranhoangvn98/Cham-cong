@@ -4,7 +4,13 @@ import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { can_nguoi_duyet, nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
 import { tinh_lai_ngay, tinh_lai_khoang } from '../cong/tinh_cong.ts';
-import { ban_don_am_tham, ban_don_giai_trinh, ban_don_nghi_phep } from '../don_tu/ban_don.ts';
+import {
+  ban_don_am_tham, ban_don_giai_trinh, ban_don_khac, ban_don_nghi_phep,
+} from '../don_tu/ban_don.ts';
+import { MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_don.ts';
+import {
+  canh_bao_cho_don, dem_cho_duyet, don_cho_nguoi_duyet, don_theo_id, quyet_don,
+} from '../don_tu/nghiep_vu.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
@@ -285,6 +291,98 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
 
     const bd = await ban_don_giai_trinh(id);
     await ghi_nhat_ky(nd.sub, 'sinh_lai_ban_don', 'don_giai_trinh', id, {}, req.ip);
+    return { ok: bd !== null, ban_don: bd };
+  });
+
+  // ================================================================ CAC LOAI DON KHAC
+  //
+  // Bon loai dung chung bang `don_tu`. MOT bo route cho ca bon — nguoi duyet lam mot dong tac,
+  // khong phai hoc bon man hinh.
+
+  /** Dem don dang cho duyet, theo loai. Cho o dem tren giao dien. */
+  app.get('/don/dem', { preHandler: can_nguoi_duyet }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    return dem_cho_duyet(xem_duoc_tat_ca(nd) ? null : nd.nv);
+  });
+
+  /** Danh sach don theo trang thai va loai. */
+  app.get('/don', { preHandler: can_nguoi_duyet }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const q = than(req.query);
+    const trang_thai = trong_tap(q, 'trang_thai',
+      ['cho_duyet', 'da_duyet', 'tu_choi', 'da_huy'] as const,
+      { mac_dinh: 'cho_duyet' }) as string;
+    const loai = trong_tap(q, 'loai', MA_LOAI_DON, {}) as MaLoaiDon | null;
+
+    return {
+      danh_sach: await don_cho_nguoi_duyet(
+        trang_thai, loai, xem_duoc_tat_ca(nd) ? null : nd.nv),
+    };
+  });
+
+  /**
+   * Duyet hoac tu choi.
+   *
+   * Duyet xong thi: (1) tinh lai bang cong neu la don cong tac, (2) sinh ban don DOCX vao kho
+   * ho so. Thu tu do la co y — ban don ghi lai trang thai SAU khi moi thu da xong.
+   */
+  app.post('/don/:id/quyet', { preHandler: can_nguoi_duyet }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const b = than(req.body);
+    const quyet = trong_tap(b, 'quyet_dinh', ['da_duyet', 'tu_choi'] as const,
+      { bat_buoc: true }) as 'da_duyet' | 'tu_choi';
+    const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
+
+    const truoc = await don_theo_id(id);
+    if (truoc === null) throw new LoiKhongTim('Không tìm thấy đơn.');
+    await bat_buoc_trong_pham_vi(nd, truoc.nhan_vien_id);
+
+    const kq = await quyet_don(id, quyet, nd.sub, ghi_chu);
+
+    let so_ngay_da_tinh_lai = 0;
+    if (kq.tinh_lai !== null && quyet === 'da_duyet') {
+      so_ngay_da_tinh_lai = await tinh_lai_khoang(
+        kq.tinh_lai.tu_ngay, kq.tinh_lai.den_ngay, truoc.nhan_vien_id);
+    }
+
+    if (quyet === 'da_duyet') await ban_don_am_tham('khac', id);
+
+    await ghi_nhat_ky(nd.sub, `don_${kq.loai}_${quyet}`, 'don_tu', id, { ghi_chu }, req.ip);
+
+    const dt = dac_ta(kq.loai);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_cua_nhan_vien(truoc.nhan_vien_id),
+      tieu_de: quyet === 'da_duyet' ? `${dt.ten} đã được duyệt` : `${dt.ten} bị từ chối`,
+      noi_dung: ghi_chu === null || ghi_chu === ''
+        ? `${dt.nhan_tu_ngay}: ${ngay_viet(truoc.tu_ngay)}`
+        : `${dt.nhan_tu_ngay}: ${ngay_viet(truoc.tu_ngay)} — ${ghi_chu}`,
+      du_lieu: { man: 'don-tu', loai: kq.loai, don_id: id, quyet_dinh: quyet },
+    });
+
+    return { ok: true, so_ngay_da_tinh_lai };
+  });
+
+  /** Canh bao phap ly cua mot don — de nguoi duyet doc TRUOC khi bam duyet. */
+  app.get('/don/:id/canh-bao', { preHandler: can_nguoi_duyet }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const d = await don_theo_id(lay_id(req));
+    if (d === null) throw new LoiKhongTim('Không tìm thấy đơn.');
+    await bat_buoc_trong_pham_vi(nd, d.nhan_vien_id);
+    return { canh_bao: await canh_bao_cho_don(d.nhan_vien_id, d, d.id) };
+  });
+
+  /** Sinh lai ban don cho mot don DA DUYET trong bang `don_tu`. */
+  app.post('/don/:id/ban-don', { preHandler: can_nguoi_duyet }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const d = await don_theo_id(id);
+    if (d === null || d.trang_thai !== 'da_duyet') {
+      throw new LoiKhongTim('Không có đơn đã duyệt với mã này.');
+    }
+    await bat_buoc_trong_pham_vi(nd, d.nhan_vien_id);
+    const bd = await ban_don_khac(id);
+    await ghi_nhat_ky(nd.sub, 'sinh_lai_ban_don', 'don_tu', id, {}, req.ip);
     return { ok: bd !== null, ban_don: bd };
   });
 }

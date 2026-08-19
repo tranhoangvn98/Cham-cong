@@ -2,6 +2,88 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.30.0] — 2026-08-19
+
+**Bốn loại đơn còn thiếu: làm thêm giờ, đổi ca, đi công tác, thôi việc.** Nhân viên tự lên đơn
+trên app, trưởng phòng + nhân sự duyệt trên web (đúng người duyệt như nghỉ phép), duyệt xong thì
+bản đơn DOCX lưu vào kho hồ sơ.
+
+Di trú `024` + `don_tu/loai_don.ts` + `don_tu/nghiep_vu.ts` + một bộ route dùng chung + tab mới
+trên web và trên app.
+
+### Một bảng, một bộ route, một đăng ký
+
+`don_nghi_phep` và `don_giai_trinh` giữ bảng riêng: chúng có **nghĩa riêng** trong bộ tính công
+(nghỉ phép đổi trạng thái ngày, giải trình ghi đè giờ vào/ra) và đã chạy thật từ đầu. Bốn loại
+mới thì khác — chúng khác nhau ở vài ô dữ liệu, còn vòng đời thì giống hệt. Bốn bảng là bốn bộ
+route, bốn form, bốn chỗ để lệch.
+
+Đổi lại, một bảng chung phải có **ràng buộc theo từng loại**, nếu không nó thành một cái túi
+đựng được mọi thứ và không bảo đảm gì. CSDL từ chối: đơn `doi_ca` không có ca mới, đơn
+`lam_them` thiếu một mốc giờ hay có giờ kết thúc ≤ giờ bắt đầu, đơn `cong_tac` không có nơi đến,
+đơn `thoi_viec` không có lý do, và đổi ca với chính mình.
+
+`loai_don.ts` là **một chỗ khai** — tên, tiêu đề bản đơn, tiền tố tên tệp, các hàng trong DOCX.
+Web và app lấy danh mục từ `/api/toi/don/loai` chứ không gõ tay lại. Thêm loại thứ năm là thêm
+một mục trong bảng đó, không sửa route nào.
+
+### Ngày đi công tác không còn bị tính là vắng
+
+Trước bản này, một người đi công tác cả tuần hiện là **vắng cả tuần**: không có lượt quẹt nào, và
+bộ tính công không biết lý do. Kế toán nhìn bảng đó thì trừ công thật.
+
+Thêm trạng thái ngày `cong_tac` (1 công, không phạt đi muộn/về sớm vì không có giờ chuẩn để đối
+chiếu với người không ở văn phòng). Thứ tự ưu tiên có lý do cho từng bước:
+
+- **sau `nghi_phep`** — hai đơn trùm cùng một ngày là dữ liệu mâu thuẫn, và nghỉ phép là thứ
+  người lao động được hưởng nên nó thắng;
+- **sau `ngay_le`** — công tác trùm một ngày lễ thì người đó vẫn được hưởng ngày lễ;
+- **sau `nghi_tuan`** — công tác vào ngày nghỉ tuần không biến ngày đó thành ngày công; nếu thật
+  sự làm việc thì có lượt quẹt, và nhánh `nghi_tuan` tính toàn bộ vào OT.
+
+Sáu bài kiểm giữ đúng bốn thứ tự đó. Trường `cong_tac` để **bắt buộc** trong `DauVaoTinhCong`
+chứ không tuỳ chọn — nhờ thế `tsc` buộc mọi chỗ gọi phải nghĩ đến nó, thay vì một chỗ quên rồi
+im lặng tính sai.
+
+### Ba loại KHÔNG tự sửa dữ liệu gốc — ranh giới cố ý
+
+- `lam_them` là **đăng ký trước**. Số phút OT trên bảng công vẫn tính từ lượt quẹt thật, nên
+  duyệt một đơn OT không tự nhiên tạo ra giờ OT. Nếu muốn *"chỉ tính OT đã đăng ký"* thì đó là
+  một quyết định khác và phải nói ra, vì nó đổi cách tính tiền.
+- `doi_ca` — đổi ca làm là việc nhân sự làm trên hồ sơ nhân viên; đơn chỉ là đề nghị. Form trên
+  app nói thẳng điều đó.
+- `thoi_viec` — ngày nghỉ việc do nhân sự ghi vào `nhan_vien.ngay_nghi_viec`.
+
+Đơn là **đề nghị và bản ghi**, không phải lệnh tự động sửa dữ liệu gốc. Một đơn duyệt nhầm mà tự
+sửa hồ sơ thì không ai lần lại được.
+
+### Hai cảnh báo pháp lý — cảnh báo, không chặn
+
+- **BLLĐ 2019 Điều 107**: tổng làm thêm vượt 40 giờ/tháng. Không chặn cứng vì một số ngành được
+  300 giờ/năm theo Điều 107.3 — chặn ở đây là chặn sai trong những trường hợp hợp pháp.
+- **BLLĐ 2019 Điều 35.1**: hạn báo trước khi thôi việc — 45 ngày (không xác định thời hạn), 30
+  ngày (12–36 tháng), 3 ngày làm việc (dưới 12 tháng). Không chặn vì Điều 35.2 có các trường hợp
+  không cần báo trước. Thiếu dữ liệu hợp đồng thì **không đoán** một con số pháp lý: hàm trả
+  `null` và cảnh báo nói rõ là chưa tính được.
+
+Cả hai đều hiện cho **người làm đơn** (trên app, ngay sau khi gửi) và **người duyệt** (trên web,
+trước khi bấm duyệt). Câu cảnh báo do máy chủ sinh và giao diện hiện nguyên văn — viết lại ở
+tầng giao diện là để hai bản lệch nhau, và bản trên app là bản người lao động đọc.
+
+### `chay_lay` cho app điện thoại
+
+`dung_hanh_dong().chay` chỉ trả boolean, nên thân phản hồi không đến được tầng giao diện — và
+cảnh báo pháp lý nằm trong thân phản hồi. Thêm `chay_lay<T>` như web đã có ở 1.24.0. Cách "sửa"
+dễ mắc nhất là ép kiểu `as` rồi đọc một trường không tồn tại, và kết quả là màn hình trắng.
+
+### Ghi nhận: typecheck bắt được thứ bài kiểm bỏ qua
+
+Năm chỗ trong bài kiểm e2e dùng `.raw` trong khi trường thật là `.tho`. Bài kiểm **vẫn xanh** vì
+`.raw` chỉ nằm trong thông điệp assertion — nó chỉ hiện ra khi có gì khác đổ, tức là đúng lúc
+người đọc cần nó nhất. `tsc` thấy, bộ kiểm không.
+
+452 unit (1 skipped) + 5 proxy + 15 thiết kế + 311 e2e.
+
 ## [1.29.0] — 2026-08-19
 
 **Đơn được duyệt thì lưu bản đơn trên hệ thống.** Nhân viên tự lên đơn và người duyệt duyệt thì

@@ -5,7 +5,7 @@ Cái gì đang chạy, cái gì đang chờ ai, và cái gì cố ý để lại
 Mỗi mục ghi rõ **ai làm** và **thế nào là xong**. Mục nào tôi không tự kiểm được thì nói thẳng
 là không kiểm được, thay vì để nó nằm trong danh sách "đã xong" cho đủ.
 
-Ngày cập nhật: 19-08-2026 — bản 1.29.0.
+Ngày cập nhật: 19-08-2026 — bản 1.30.0.
 
 ---
 
@@ -24,6 +24,7 @@ Ngày cập nhật: 19-08-2026 — bản 1.29.0.
 | Vi phạm + KPI | chạy thật |
 | Bản chốt bảng công / bảng lương sau khi duyệt (XLSX) | chạy thật |
 | Đơn nghỉ phép / giải trình: nhân viên lên đơn, duyệt, lưu bản đơn (DOCX) | chạy thật |
+| Đơn làm thêm / đổi ca / công tác / thôi việc + cảnh báo BLLĐ Điều 107, 35 | chạy thật |
 | Dashboard theo vai trò | chạy thật |
 | Đăng nhập Microsoft (Entra ID) | chạy thật |
 | Đồng bộ người dùng từ ERP cũ | chạy thật, đọc được 53 người |
