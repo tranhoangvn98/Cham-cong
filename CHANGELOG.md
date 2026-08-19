@@ -2,6 +2,25 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.33.1] — 2026-08-20
+
+**Khai một máy thì xóa không được — chỉ tắt được.** Lộ ra khi chạy bộ giả lập máy trên VPS: muốn
+chạy nó phải khai một serial, và khai xong thì cái máy giả đó nằm lại danh sách vĩnh viễn. Đúng
+tình trạng của `THU001` — máy giả lập từ 07/08, đã tắt, mang theo một lệnh chờ không ai lấy, và
+gỡ được chỉ bằng SQL tay.
+
+`DELETE /api/thiet-bi/:id` + nút **Xóa** (chỉ hiện khi máy đã tắt):
+
+- **Tắt trước, rồi xóa.** Hai bước là cố ý: xóa một máy đang chạy thì nó bắt đầu ăn `401` và không
+  ai biết vì sao. Bắt tắt trước nghĩa là người xóa nhìn thấy máy đã ngừng nhận dữ liệu.
+- **Lịch sử lần quẹt ở lại.** `lan_quet.thiet_bi_serial` là chữ tự do không có khóa ngoại, nên
+  bảng công cũ không đổi và vẫn trả lời được *"lần quẹt này từ máy nào"*. Có bài kiểm đẩy một lần
+  quẹt qua máy rồi xóa máy và đòi lần quẹt còn nguyên — nếu ai đó thêm khóa ngoại `on delete
+  cascade` vào đây, bài kiểm đỏ trước khi bảng công thủng.
+- **Dọn luôn lệnh chưa gửi**, và báo lại số lệnh đã dọn cùng số lần quẹt giữ lại.
+
+476 unit (1 skipped) + 5 proxy + 20 thiết kế + 359 e2e.
+
 ## [1.33.0] — 2026-08-19
 
 **Mỗi trang có khung "Quy trình ở trang này", đúng theo vai trò của người đang đăng nhập.**

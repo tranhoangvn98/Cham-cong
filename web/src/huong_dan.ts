@@ -164,6 +164,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       { chu: 'Trên máy: Menu › Comm › Cloud Server — địa chỉ máy chủ, cổng 8080, chế độ ADMS, Realtime bật.', vai_tro: NHAN_SU },
       { chu: 'Bấm Đồng bộ giờ cho máy mới.', vai_tro: NHAN_SU },
       { chu: 'Nạp NV để tạo sẵn user trên máy theo PIN đã cấp.', vai_tro: NHAN_SU },
+      { chu: 'Máy thay/bỏ: Tắt trước, rồi Xóa. Lịch sử lần quẹt vẫn giữ nguyên.', vai_tro: NHAN_SU },
     ],
     luu_y: [
       'Địa chỉ máy chủ KHÔNG gửi xuống được từ đây — giao thức là máy tự gọi lên. Phải gõ trên chính máy.',

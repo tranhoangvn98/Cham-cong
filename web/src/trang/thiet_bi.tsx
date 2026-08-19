@@ -44,6 +44,21 @@ export function TrangThietBi(): ReactNode {
     nap_lai();
   };
 
+  // Xoa han: chi hien khi may DA TAT. Hoi lai vi day la thao tac khong hoan tac duoc — du lich
+  // su quet o lai, ban ghi khai bao may thi mat.
+  const xoa = async (tb: ThietBi): Promise<void> => {
+    const dong_y = window.confirm(
+      `Xóa hẳn máy "${tb.ten}" (${tb.serial})?\n\n`
+      + 'Lịch sử lần quẹt của máy này VẪN GIỮ NGUYÊN — bảng công cũ không đổi. '
+      + 'Chỉ bản ghi khai báo máy và các lệnh chưa gửi bị xóa.');
+    if (!dong_y) return;
+    await hd.chay(
+      () => goi(`/api/thiet-bi/${tb.id}`, { method: 'DELETE' }),
+      'Đã xóa máy. Lịch sử lần quẹt vẫn còn.',
+    );
+    nap_lai();
+  };
+
   const bat_tat = async (tb: ThietBi): Promise<void> => {
     await hd.chay(
       () => goi(`/api/thiet-bi/${tb.id}`, { method: 'PATCH', body: { dang_bat: !tb.dang_bat } }),
@@ -144,6 +159,12 @@ export function TrangThietBi(): ReactNode {
                           <button className="nut-nho nut-phang" onClick={() => bat_tat(tb)}>
                             {tb.dang_bat ? 'Tắt' : 'Bật'}
                           </button>
+                          {!tb.dang_bat && (
+                            <button className="nut-nho nut-phang" onClick={() => xoa(tb)}
+                              title="Xóa hẳn máy đã ngừng dùng. Lịch sử lần quẹt vẫn giữ nguyên.">
+                              Xóa
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}

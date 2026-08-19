@@ -212,6 +212,15 @@ Thiết bị cho biết lệnh nào đã gửi, mã trả về là bao nhiêu.
 4. **Bấm *Đồng bộ giờ*** cho máy mới. Lệch đồng hồ giữa hai máy là nguyên nhân sai công phổ
    biến nhất, và nguy hiểm hơn khi giờ vào / giờ ra do hai máy khác nhau ghi.
 
+### Bỏ một máy đã ngừng dùng
+
+**Tắt trước, rồi Xóa** — nút Xóa chỉ hiện khi máy đã tắt. Hai bước là cố ý: xóa một máy đang chạy
+thì nó bắt đầu ăn `401` và không ai biết vì sao.
+
+Xóa **giữ nguyên lịch sử lần quẹt**: `lan_quet.thiet_bi_serial` là chữ tự do không có khóa ngoại,
+nên bảng công cũ không đổi và vẫn trả lời được *"lần quẹt này từ máy nào"*. Chỉ bản ghi khai báo
+máy và các lệnh chưa gửi bị xóa — đúng những thứ hết nghĩa khi máy không còn.
+
 ## 4. Các endpoint máy gọi tới
 
 Chỉ để tham khảo khi soi log — người dùng không cần gọi tay.

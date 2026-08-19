@@ -6492,3 +6492,67 @@ test('thiet bi: may DANG TAT khong nhan lenh, bao ro thay vi xep lenh chet', asy
     'select count(*)::int as so from lenh_thiet_bi where thiet_bi_serial = $1', [sn]);
   assert.equal(so?.so, 0, 'van xep lenh xuong may dang tat');
 });
+
+test('thiet bi: xoa may PHAI tat truoc, va lich su quet o lai', async () => {
+  // Xoa mot may dang chay thi no bat dau an 401 va khong ai biet vi sao. Hai buoc bat nguoi xoa
+  // nhin thay may do da ngung nhan du lieu truoc khi go han.
+  const sn = 'MAY-XOA-01';
+  const tao = await goi('POST', '/api/thiet-bi', {
+    token: token_admin, body: { serial: sn, ten: 'Máy sắp bỏ', vi_tri: 'Kho cũ' },
+  });
+  assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+  const id = tao.body['id'] as string;
+
+  // Co lan quet tu may nay — thu phai o lai sau khi xoa.
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_nv] = await cap_gop('XM1', 'Xóa Văn Máy', 'Xóa Văn Khác');
+  await gan_ma(id_nv, 'may_cham_cong', '80001');
+  const day = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${sn}&table=ATTLOG`,
+    headers: { 'content-type': 'text/plain' },
+    payload: `80001\t${NGAY} 08:01:00\t0\t15\t0\n`,
+  });
+  assert.equal(day.statusCode, 200, day.body);
+
+  // Dang bat thi tu choi.
+  const som = await goi('DELETE', `/api/thiet-bi/${id}`, { token: token_admin });
+  assert.equal(som.ma, 409, JSON.stringify(som.body));
+  assert.match(String(som.body['loi']), /Tắt máy trước/);
+
+  await goi('PATCH', `/api/thiet-bi/${id}`, { token: token_admin, body: { dang_bat: false } });
+  const xoa = await goi('DELETE', `/api/thiet-bi/${id}`, { token: token_admin });
+  assert.equal(xoa.ma, 200, JSON.stringify(xoa.body));
+  assert.equal(xoa.body['so_lan_quet_giu_lai'], 1);
+
+  const con = await truy_van_mot<{ id: string }>('select id from thiet_bi where id = $1', [id]);
+  assert.equal(con, null, 'may van con sau khi xoa');
+
+  // LICH SU QUET O LAI, va van tra loi duoc "lan quet nay tu may nao".
+  const quet = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from lan_quet where thiet_bi_serial = $1', [sn]);
+  assert.equal(quet?.so, 1, 'xoa may lam mat lan quet — bang cong cu bi thung');
+});
+
+test('thiet bi: xoa may don luon lenh chua gui', async () => {
+  // Lenh cho mot may khong con ton tai thi khong ai lay, va no lam so "lenh cho" tren bao cao sai
+  // mai mai.
+  const sn = 'MAY-XOA-02';
+  const tao = await goi('POST', '/api/thiet-bi', {
+    token: token_admin, body: { serial: sn, ten: 'Máy có lệnh', vi_tri: 'Kho' },
+  });
+  const id = tao.body['id'] as string;
+  await goi('POST', `/api/thiet-bi/${sn}/dong-bo-gio`, { token: token_admin, body: {} });
+  const truoc = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from lenh_thiet_bi where thiet_bi_serial = $1', [sn]);
+  assert.ok((truoc?.so ?? 0) >= 1, 'khong xep duoc lenh de kiem');
+
+  await goi('PATCH', `/api/thiet-bi/${id}`, { token: token_admin, body: { dang_bat: false } });
+  const xoa = await goi('DELETE', `/api/thiet-bi/${id}`, { token: token_admin });
+  assert.equal(xoa.ma, 200, JSON.stringify(xoa.body));
+  assert.ok(Number(xoa.body['so_lenh_da_xoa']) >= 1, 'khong bao so lenh da don');
+
+  const sau = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from lenh_thiet_bi where thiet_bi_serial = $1', [sn]);
+  assert.equal(sau?.so, 0, 'lenh chet o lai sau khi xoa may');
+});

@@ -379,6 +379,45 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   });
 
   /**
+   * Xoa han mot may da ngung dung.
+   *
+   * PHAI TAT TRUOC. Xoa mot may dang chay thi no bat dau an 401 va khong ai biet vi sao — hai
+   * buoc bat nguoi xoa nhin thay may do da ngung nhan du lieu truoc khi go han.
+   *
+   * LICH SU QUET O LAI. `lan_quet.thiet_bi_serial` la chu tu do, khong co khoa ngoai, nen bang
+   * cong cu van nguyen ven va van tra loi duoc "lan quet nay tu may nao". Chi ban ghi khai bao
+   * may va cac lenh chua gui la mat — dung nhung thu khong con nghia khi may khong con.
+   */
+  app.delete('/thiet-bi/:id', { preHandler: can_nhan_su }, async (req) => {
+    const id = lay_id(req);
+    const may = await truy_van_mot<{ serial: string; ten: string; dang_bat: boolean }>(
+      'select serial, ten, dang_bat from thiet_bi where id = $1', [id]);
+    if (may === null) throw new LoiKhongTim('Không tìm thấy thiết bị.');
+    if (may.dang_bat) {
+      throw new LoiXungDot(
+        `Máy "${may.ten}" đang bật. Tắt máy trước rồi mới xóa — để chắc chắn nó đã ngừng nhận `
+        + 'dữ liệu, thay vì đột nhiên bị từ chối 401 mà không ai biết vì sao.',
+      );
+    }
+
+    const kq = await trong_giao_dich(async (khach) => {
+      const quet = await khach.query<{ so: number }>(
+        'select count(*)::int as so from lan_quet where thiet_bi_serial = $1', [may.serial]);
+      const lenh = await khach.query(
+        'delete from lenh_thiet_bi where thiet_bi_serial = $1', [may.serial]);
+      await khach.query('delete from thiet_bi where id = $1', [id]);
+      return {
+        so_lan_quet_giu_lai: Number(quet.rows[0]?.so ?? 0),
+        so_lenh_da_xoa: lenh.rowCount ?? 0,
+      };
+    });
+
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xoa_thiet_bi', 'thiet_bi', id,
+      { serial: may.serial, ...kq }, req.ip);
+    return { ok: true, ...kq };
+  });
+
+  /**
    * De nghi mot PIN con trong cho may nay. KHONG ghi gi.
    *
    * De nguoi dung nhin thay so truoc khi quyet dinh — cap PIN la viec se phai cai tay len may,
