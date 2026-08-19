@@ -77,6 +77,107 @@ export async function cot_tro_toi_nhan_vien(): Promise<CotThamChieu[]> {
   });
 }
 
+// ---------------------------------------------------------------- mang truong theo
+
+/**
+ * Cac cot cua `nhan_vien` duoc MANG TU BAN BO SANG BAN GIU khi ban giu de trong o do.
+ *
+ * VI SAO PHAI CO: thieu buoc nay thi VIEC GOP TU HUY. `erp_user_id` co unique index, va bo dong
+ * bo ERP khop nguoi theo `erp_user_id` truoc, roi moi den `email`. Xoa ban `ERP147` la xoa luon
+ * so 147 khoi CSDL; luot dong bo ke tiep khong tim thay ai mang so do, khong khop duoc email,
+ * nen TAO LAI mot ban ghi moi — va cap trung quay ve dung nhu truoc khi gop. Da xay ra that
+ * (Hoang Minh Ngoc, HR-01 / ERP147).
+ *
+ * `pin_may` cung the: no la khoa noi log may ZKTeco -> nhan vien. Neu nguoi dung chon giu ban
+ * KHONG co PIN, mat PIN nghia la moi lan quet sau do khong biet la cua ai.
+ *
+ * Chi dien khi ban giu DE TRONG. Hai ben deu co gia tri va khac nhau thi KHONG ghi de — do la
+ * du lieu that ca hai phia, may khong chon duoc.
+ */
+export const COT_MANG_THEO: readonly string[] = [
+  // Khoa noi ra ngoai — mat la viec gop tu huy.
+  'erp_user_id', 'erp_username', 'erp_dong_bo_luc', 'ma_erp', 'email', 'pin_may',
+  // Thong tin nhan su — mat la mat du lieu nguoi ta da nhap.
+  'phong_ban_id', 'ca_lam_id', 'chuc_danh', 'nguoi_quan_ly_id',
+  'ngay_vao', 'ngay_chinh_thuc', 'so_dien_thoai',
+] as const;
+
+/**
+ * Cac cot CO Y KHONG mang theo. Moi cot o day la mot quyet dinh, khong phai cho sot.
+ *
+ *   - `id`, `ma_nv`: chinh la thu phan biet hai ban. Chon giu ban nao la chon hai o nay.
+ *   - `ho_ten`: ten cua ban giu thang. Khac ten thi da co canh bao rieng.
+ *   - `tao_luc`, `cap_nhat_luc`: so sach cua CSDL.
+ *   - `dang_hoat_dong`, `ngay_nghi_viec`: mang theo la co the AM THAM cho mot nguoi da nghi
+ *     thanh dang lam, hoac nguoc lai. Bao de nguoi that doi.
+ *   - `duoc_cham_cong_dien_thoai`: mac dinh TAT de chong gian lan (xem `001_khoi_tao.sql`).
+ *     Mang theo `true` tu mot ban ghi sap bi xoa la am tham mo mot cua chong gian lan.
+ *   - `so_ngay_phep_nam`: `not null default 12`, nen "de trong" khong phan biet duoc voi "co y
+ *     dat 12". Khac nhau thi bao, khong tu chon.
+ */
+export const COT_KHONG_MANG: readonly string[] = [
+  'id', 'ma_nv', 'ho_ten', 'tao_luc', 'cap_nhat_luc',
+  'dang_hoat_dong', 'ngay_nghi_viec', 'duoc_cham_cong_dien_thoai', 'so_ngay_phep_nam',
+] as const;
+
+/** Cac cot khong mang theo nhung LECH NHAU thi phai bao. Tap con cua `COT_KHONG_MANG`. */
+export const COT_CANH_BAO_LECH: readonly string[] = [
+  'dang_hoat_dong', 'ngay_nghi_viec', 'duoc_cham_cong_dien_thoai', 'so_ngay_phep_nam',
+] as const;
+
+export interface TruongMangTheo {
+  cot: string;
+  gia_tri: unknown;
+}
+
+function trong(v: unknown): boolean {
+  return v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
+}
+
+function de_doc(v: unknown): string {
+  if (v === null || v === undefined) return '(trống)';
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (typeof v === 'boolean') return v ? 'có' : 'không';
+  return String(v);
+}
+
+/**
+ * Tinh xem nhung o nao cua ban giu dang trong va ban bo co, cong cac cho lech can bao.
+ *
+ * Doc CA HAI dong bang `select *` roi so tren JS — khong dung cot nao tu dau vao nguoi dung, nen
+ * khong co cho nao noi chuoi vao SQL.
+ */
+export function tinh_mang_theo(
+  hang_giu: Record<string, unknown>,
+  hang_bo: Record<string, unknown>,
+): { mang: TruongMangTheo[]; canh_bao: string[] } {
+  const mang: TruongMangTheo[] = [];
+  const canh_bao: string[] = [];
+
+  for (const c of COT_MANG_THEO) {
+    if (!(c in hang_giu)) continue;
+    if (trong(hang_giu[c]) && !trong(hang_bo[c])) {
+      mang.push({ cot: c, gia_tri: hang_bo[c] });
+    } else if (!trong(hang_giu[c]) && !trong(hang_bo[c])
+               && String(hang_giu[c]) !== String(hang_bo[c])) {
+      canh_bao.push(
+        `\`${c}\`: hai hồ sơ khác nhau (giữ: ${de_doc(hang_giu[c])}, `
+        + `bỏ: ${de_doc(hang_bo[c])}). Giữ nguyên bản của hồ sơ giữ — sửa tay nếu cần.`);
+    }
+  }
+
+  for (const c of COT_CANH_BAO_LECH) {
+    if (!(c in hang_giu)) continue;
+    if (String(hang_giu[c]) !== String(hang_bo[c])) {
+      canh_bao.push(
+        `\`${c}\` lệch nhau (giữ: ${de_doc(hang_giu[c])}, bỏ: ${de_doc(hang_bo[c])}) và CỐ Ý `
+        + 'không mang theo — đây là trạng thái làm việc / quyền, phải người quyết.');
+    }
+  }
+
+  return { mang, canh_bao };
+}
+
 // ---------------------------------------------------------------- tim ho so trung
 
 export interface CapTrung {
@@ -149,6 +250,8 @@ export interface KetQuaGop {
   giu: { id: string; ma_nv: string; ho_ten: string };
   bo: { id: string; ma_nv: string; ho_ten: string };
   chi_tiet: DongDoiCho[];
+  /** Cac o cua ban giu duoc dien tu ban bo (khoa noi ERP, PIN may, phong ban...). */
+  mang_theo: TruongMangTheo[];
   /** Tong so dong da (hoac se) doi cho. */
   so_doi: number;
   /** Tong so dong cham nhau — nam o ban bo va se mat khi xoa ban do. */
@@ -210,21 +313,32 @@ export async function nen_giu_ban_nao(
  *   3. KHONG doi ten thu muc tren dia o day. `ho_so_tep.ten_luu` van tro vao thu muc cu, va
  *      viec sap xep kho tep (`ho_so/sap_xep_tep.ts`) se don — no da la mot lan quet hang ngay,
  *      va lam hai viec trong mot giao dich la hai thu co the do rieng.
+ *
+ * Mot dieu CO lam va de bi bo sot: mang cac khoa noi (`erp_user_id`, `pin_may`, `email`...) tu
+ * ban bo sang ban giu khi ban giu de trong. Xem `COT_MANG_THEO` — thieu buoc do thi lan dong bo
+ * ERP ke tiep tao lai dung ban vua xoa.
  */
 export async function gop_ho_so(
   giu_id: string, bo_id: string, che_do: CheDoGop = 'thu',
 ): Promise<KetQuaGop> {
   if (giu_id === bo_id) throw new LoiDauVao('Hai hồ sơ phải khác nhau.');
 
-  const nv = await truy_van<{ id: string; ma_nv: string; ho_ten: string }>(
-    'select id, ma_nv, ho_ten from nhan_vien where id = any($1::uuid[])', [[giu_id, bo_id]]);
-  const giu = nv.find((x) => x.id === giu_id);
-  const bo = nv.find((x) => x.id === bo_id);
-  if (giu === undefined || bo === undefined) {
+  // `select *`: can DU cot de tinh phan mang theo. Ten cot khong den tu dau vao nguoi dung.
+  const nv = await truy_van<Record<string, unknown>>(
+    'select * from nhan_vien where id = any($1::uuid[])', [[giu_id, bo_id]]);
+  const hang_giu = nv.find((x) => x['id'] === giu_id);
+  const hang_bo = nv.find((x) => x['id'] === bo_id);
+  if (hang_giu === undefined || hang_bo === undefined) {
     throw new LoiDauVao('Không tìm thấy một trong hai hồ sơ nhân viên.');
   }
+  const ten_ma = (h: Record<string, unknown>): { id: string; ma_nv: string; ho_ten: string } => ({
+    id: String(h['id']), ma_nv: String(h['ma_nv']), ho_ten: String(h['ho_ten']),
+  });
+  const giu = ten_ma(hang_giu);
+  const bo = ten_ma(hang_bo);
 
-  const canh_bao: string[] = [];
+  const { mang, canh_bao: canh_bao_truong } = tinh_mang_theo(hang_giu, hang_bo);
+  const canh_bao: string[] = [...canh_bao_truong];
 
   // Chan 1: hai tai khoan dang nhap.
   const tk = await truy_van<{ ten_dang_nhap: string; nhan_vien_id: string }>(
@@ -316,6 +430,17 @@ export async function gop_ho_so(
       // dung nhu mong doi: chung la ban trung cua nhung dong da co o ban giu.
       await khach.query('delete from nhan_vien where id = $1', [bo_id]);
       da_xoa = true;
+
+      // Dien cac o trong cua ban giu SAU KHI XOA ban bo, va thu tu do la bat buoc: `pin_may` va
+      // `erp_user_id` deu UNIQUE, nen ghi truoc khi xoa la va ngay vao rang buoc voi chinh ban
+      // dang bi bo. Gia tri da doc vao JS o tren roi nen khong mat gi.
+      if (mang.length > 0) {
+        const dat = mang.map((m, i) => `${m.cot} = $${String(i + 2)}`).join(', ');
+        await khach.query(
+          `update nhan_vien set ${dat}, cap_nhat_luc = now() where id = $1`,
+          [giu_id, ...mang.map((m) => m.gia_tri)],
+        );
+      }
     });
   } else {
     await lam(async (sql, ts) => ({ rows: await truy_van(sql, ts) }));
@@ -330,9 +455,12 @@ export async function gop_ho_so(
       + 'cùng danh mục...). Chúng sẽ bị xoá theo hồ sơ bỏ. Bản ở hồ sơ giữ được giữ lại.');
   }
   if (che_do === 'that') {
+    // `-- --that`: hai dau gach la de npm chuyen tham so cho script chu khong tu an. Thieu chung
+    // thi lenh chay o che do thu va nguoi doc tuong da don xong.
     canh_bao.push(
-      'Đường dẫn tệp trên đĩa vẫn còn tên thư mục cũ. Chạy `npm run sap_xep_tep --that` để dọn, '
-      + 'hoặc chờ lượt quét hằng ngày. Bảng đồng bộ SharePoint tự tính lại đường dẫn ở lượt sau.');
+      'Đường dẫn tệp trên đĩa vẫn còn tên thư mục cũ. Chạy `npm run sap_xep_tep -- --that` để '
+      + 'dọn, hoặc chờ lượt quét hằng ngày. Bảng đồng bộ SharePoint tự tính lại đường dẫn ở '
+      + 'lượt sau.');
   }
 
   return {
@@ -340,6 +468,7 @@ export async function gop_ho_so(
     giu: { id: giu.id, ma_nv: giu.ma_nv, ho_ten: giu.ho_ten },
     bo: { id: bo.id, ma_nv: bo.ma_nv, ho_ten: bo.ho_ten },
     chi_tiet: chi_tiet.sort((a, b) => b.so_doi - a.so_doi),
+    mang_theo: mang,
     so_doi,
     so_cham,
     canh_bao,

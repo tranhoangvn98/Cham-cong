@@ -2,6 +2,57 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.31.1] — 2026-08-19
+
+**Bộ gộp tự huỷ việc nó vừa làm.** Bản `1.31.0` chạy thật trên VPS ngay hôm nay, gộp `HR-01` ←
+`ERP147` sạch sẽ — 2 dòng, xóa hồ sơ bỏ, dọn thư mục. Rồi tôi đọc lại bộ đồng bộ ERP và thấy nó
+khớp người theo `erp_user_id` (unique index) trước, rồi mới đến `email`. Xóa bản `ERP147` là xóa
+luôn số ERP đó khỏi cơ sở dữ liệu, nên **lượt Đồng bộ thật kế tiếp sẽ tạo lại đúng bản vừa xóa**
+và cặp trùng quay về nguyên vẹn. Không báo gì, vài giờ sau, do một người khác bấm nút.
+
+`pin_may` cũng vậy: nếu người dùng chọn giữ bản không có PIN thì mất khóa nối log máy ZKTeco, và
+mọi lần quẹt sau đó không biết là của ai.
+
+Sửa: các ô của bản giữ **đang để trống** thì được điền từ bản bỏ trước khi xóa —
+`erp_user_id`, `erp_username`, `erp_dong_bo_luc`, `ma_erp`, `email`, `pin_may`, cộng
+`phong_ban_id`, `ca_lam_id`, `chuc_danh`, `nguoi_quan_ly_id`, `ngay_vao`, `ngay_chinh_thuc`,
+`so_dien_thoai`. Hai bên đều có giá trị và khác nhau thì **không ghi đè**, chỉ báo chỗ lệch.
+
+### Bốn cột cố ý KHÔNG mang theo
+
+`dang_hoat_dong` và `ngay_nghi_viec` — mang theo là có thể âm thầm cho một người đã nghỉ thành
+đang làm. `duoc_cham_cong_dien_thoai` — mặc định tắt để chống gian lận, mang `true` từ một bản ghi
+sắp bị xóa là âm thầm mở một cửa chống gian lận. `so_ngay_phep_nam` — `not null default 12` nên
+"để trống" không phân biệt được với "cố ý đặt 12". Bốn cột này lệch nhau thì **báo**, không tự
+chọn.
+
+Guard: một bài kiểm đọc danh sách cột của `nhan_vien` từ `information_schema` và đòi mọi cột phải
+nằm trong đúng một trong hai danh sách. Thêm cột mới mà không quyết định thì test đỏ — thay vì im
+lặng làm mất dữ liệu ở lần gộp đầu tiên sau đó.
+
+### Thứ tự trong giao dịch: xóa trước, điền sau
+
+`pin_may` và `erp_user_id` đều UNIQUE, nên điền trước khi xóa là đụng chính ràng buộc của bản đang
+bị bỏ. Giá trị đã đọc vào bộ nhớ từ trước nên không mất gì. Đã kiểm bằng cách đảo lại thứ tự:
+Postgres `23505 unique_violation`, đúng chỗ.
+
+### Hai lần "chứng minh" đầu của tôi không có giá trị
+
+Tôi thử chứng minh bài kiểm bắt được lỗi bằng `--test-name-pattern`, và nó đỏ — nhưng đỏ vì
+`401 Chưa đăng nhập`: lọc theo tên bỏ luôn bài đăng nhập tạo token cho cả bộ. Chạy lại **toàn bộ**
+bộ e2e mới là chứng minh thật: `null !== 990147` kèm thông điệp "MẤT liên kết ERP", rồi `23505`
+cho phép thử đảo thứ tự.
+
+**Nếu bạn đã gộp bằng bản 1.31.0**, xem
+[`GOP-HO-SO-TRUNG.md`](tai_lieu/GOP-HO-SO-TRUNG.md) mục *Sửa một lần gộp đã làm mất liên kết ERP*
+— nối lại được qua **Chạy thử** của trang Đồng bộ ERP, không cần SQL tay.
+
+Sửa kèm: thông điệp sau khi gộp nhắc `npm run sap_xep_tep --that` thiếu hai dấu gạch. `npm run x
+--that` thì npm ăn tham số, script chạy ở chế độ thử, và người đọc tưởng đã dọn xong. Giờ là
+`-- --that`, có bài kiểm giữ.
+
+452 unit (1 skipped) + 5 proxy + 15 thiết kế + 324 e2e.
+
 ## [1.31.0] — 2026-08-19
 
 **Công cụ gộp hai hồ sơ là cùng một người.** Dữ liệu thật trên VPS có `ERP147 — HOÀNG MINH NGỌC`

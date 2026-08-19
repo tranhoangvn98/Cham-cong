@@ -5553,3 +5553,148 @@ test('gop: tim ho so trung thay cap cung ten', async () => {
     'khong nhan ra hai ban cung ten khi mot ban co dau va mot ban khong');
   assert.equal(thay?.ly_do, 'ho_ten');
 });
+
+// -------------------------------------------------------------------- mang khoa noi theo
+//
+// Nhom bai nay ra doi tu MOT LOI THAT tren VPS: gop `HR-01` <- `ERP147` xong thi lien ket ERP
+// mat theo ban bi xoa, va luot dong bo ERP ke tiep se TAO LAI dung ban vua xoa — cap trung quay
+// ve nguyen ven. Bo gop tu huy chinh no, im lang, sau vai gio.
+
+test('gop: MOI cot cua nhan_vien phai duoc phan loai mang theo hay khong', async () => {
+  // Guard. Them mot cot moi vao `nhan_vien` ma khong quyet dinh no co mang theo hay khong thi
+  // bai nay do — thay vi im lang lam mat du lieu o lan gop dau tien sau do.
+  const { COT_MANG_THEO, COT_KHONG_MANG, COT_CANH_BAO_LECH } =
+    await import('../src/nhan_vien/gop_trung.ts');
+
+  const cot = await truy_van<{ ten: string }>(
+    `select column_name as ten from information_schema.columns
+      where table_name = 'nhan_vien' and table_schema = current_schema()`);
+  assert.ok(cot.length >= 20, `chi thay ${String(cot.length)} cot cua nhan_vien`);
+
+  const mang = new Set(COT_MANG_THEO);
+  const khong = new Set(COT_KHONG_MANG);
+  for (const c of cot) {
+    const o_mang = mang.has(c.ten);
+    const o_khong = khong.has(c.ten);
+    assert.ok(o_mang || o_khong,
+      `cot \`nhan_vien.${c.ten}\` chua duoc phan loai: them vao COT_MANG_THEO hoac COT_KHONG_MANG`);
+    assert.ok(!(o_mang && o_khong), `cot \`${c.ten}\` nam trong CA HAI danh sach`);
+  }
+
+  // Va nguoc lai: khong khai mot cot khong ton tai (danh sach lac hau sau khi doi ten cot).
+  const co_that = new Set(cot.map((c) => c.ten));
+  for (const t of [...COT_MANG_THEO, ...COT_KHONG_MANG]) {
+    assert.ok(co_that.has(t), `khai cot \`${t}\` nhung nhan_vien khong co cot do`);
+  }
+  for (const t of COT_CANH_BAO_LECH) {
+    assert.ok(khong.has(t), `\`${t}\` canh bao lech thi phai nam trong COT_KHONG_MANG`);
+  }
+});
+
+test('gop THAT: mang erp_user_id va pin_may sang ban giu, khong cham unique', async () => {
+  // BAI QUAN TRONG NHAT cua nhom nay. Ca hai cot deu UNIQUE, nen no kiem luon THU TU: dien
+  // truoc khi xoa ban bo la va vao rang buoc voi chinh ban dang bi bo.
+  const { gop_ho_so } = await import('../src/nhan_vien/gop_trung.ts');
+  const [id_a, id_b] = await cap_gop('MT', 'Hoàng Minh Ngọc', 'Hoàng Minh Ngọc');
+
+  // Ban GIU (A) khong co gi de noi ra ngoai. Ban BO (B) mang ca lien ket ERP lan PIN may.
+  await thuc_thi(
+    `update nhan_vien set erp_user_id = 990147, erp_username = 'hmn_erp', ma_erp = 'E147',
+            pin_may = '99147', email = 'hmn@example.com', chuc_danh = 'Nhân viên kho'
+      where id = $1`, [id_b]);
+
+  const kq = await gop_ho_so(id_a, id_b, 'that');
+  assert.equal(kq.da_xoa_ban_bo, true);
+
+  const sau = await truy_van_mot<{
+    erp_user_id: number | null; erp_username: string | null; ma_erp: string | null;
+    pin_may: string | null; email: string | null; chuc_danh: string | null;
+  }>('select erp_user_id, erp_username, ma_erp, pin_may, email, chuc_danh from nhan_vien where id = $1',
+    [id_a]);
+
+  assert.equal(sau?.erp_user_id, 990147, 'MAT lien ket ERP — dong bo se tao lai ban vua xoa');
+  assert.equal(sau?.erp_username, 'hmn_erp');
+  assert.equal(sau?.ma_erp, 'E147');
+  assert.equal(sau?.pin_may, '99147', 'MAT PIN may — lan quet sau khong biet la cua ai');
+  assert.equal(sau?.email, 'hmn@example.com');
+  assert.equal(sau?.chuc_danh, 'Nhân viên kho');
+
+  // Va bao cao phai noi ra da mang gi.
+  const da_mang = kq.mang_theo.map((m) => m.cot);
+  for (const c of ['erp_user_id', 'pin_may', 'email']) {
+    assert.ok(da_mang.includes(c), `bao cao khong nhac \`${c}\`: ${da_mang.join(', ')}`);
+  }
+
+  // Dung khoa ma bo dong bo ERP dung de khop nguoi: no phai tim ra BAN GIU.
+  const theo_erp = await truy_van_mot<{ id: string }>(
+    'select id from nhan_vien where erp_user_id = $1', [990147]);
+  assert.equal(theo_erp?.id, id_a,
+    'dong bo ERP khong tim thay ai mang so 990147 -> luot sau se tao lai ban trung');
+});
+
+test('gop: KHONG ghi de khi ban giu da co gia tri, chi canh bao', async () => {
+  const { gop_ho_so } = await import('../src/nhan_vien/gop_trung.ts');
+  const [id_a, id_b] = await cap_gop('MG', 'Ngô Văn Giữ', 'Ngô Văn Giữ');
+  await thuc_thi("update nhan_vien set email = 'giu@example.com' where id = $1", [id_a]);
+  await thuc_thi("update nhan_vien set email = 'bo@example.com' where id = $1", [id_b]);
+
+  const kq = await gop_ho_so(id_a, id_b, 'that');
+  assert.ok(!kq.mang_theo.some((m) => m.cot === 'email'), 'ghi de email cua ban giu');
+  assert.ok(kq.canh_bao.some((c) => /email/.test(c) && /giu@example\.com/.test(c)),
+    `khong bao cho lech email: ${JSON.stringify(kq.canh_bao)}`);
+
+  const sau = await truy_van_mot<{ email: string }>(
+    'select email from nhan_vien where id = $1', [id_a]);
+  assert.equal(sau?.email, 'giu@example.com');
+});
+
+test('gop: KHONG mang co chong gian lan va trang thai lam viec', async () => {
+  // `duoc_cham_cong_dien_thoai` mac dinh TAT de chong gian lan. Mang theo `true` tu mot ban ghi
+  // sap bi xoa la am tham mo mot cua — va khong ai doc lai bao cao gop sau ba thang.
+  const { gop_ho_so } = await import('../src/nhan_vien/gop_trung.ts');
+  const [id_a, id_b] = await cap_gop('MK', 'Trịnh Văn Cờ', 'Trịnh Văn Cờ');
+  await thuc_thi(
+    `update nhan_vien set duoc_cham_cong_dien_thoai = true, dang_hoat_dong = false,
+            ngay_nghi_viec = current_date where id = $1`, [id_b]);
+
+  const kq = await gop_ho_so(id_a, id_b, 'that');
+  const sau = await truy_van_mot<{ dt: boolean; hd: boolean; nghi: string | null }>(
+    `select duoc_cham_cong_dien_thoai as dt, dang_hoat_dong as hd, ngay_nghi_viec as nghi
+       from nhan_vien where id = $1`, [id_a]);
+  assert.equal(sau?.dt, false, 'am tham bat cham cong dien thoai theo ban bi bo');
+  assert.equal(sau?.hd, true, 'am tham doi trang thai lam viec theo ban bi bo');
+  assert.equal(sau?.nghi, null, 'am tham danh dau da nghi viec');
+
+  for (const c of ['duoc_cham_cong_dien_thoai', 'dang_hoat_dong', 'ngay_nghi_viec']) {
+    assert.ok(kq.canh_bao.some((cb) => cb.includes(c)),
+      `lech \`${c}\` ma khong bao: ${JSON.stringify(kq.canh_bao)}`);
+  }
+});
+
+test('gop: chay thu bao truoc se mang gi, nhung KHONG ghi', async () => {
+  const { gop_ho_so } = await import('../src/nhan_vien/gop_trung.ts');
+  const [id_a, id_b] = await cap_gop('MU', 'Bùi Văn Thử', 'Bùi Văn Thử');
+  await thuc_thi('update nhan_vien set erp_user_id = 990148 where id = $1', [id_b]);
+
+  const kq = await gop_ho_so(id_a, id_b, 'thu');
+  assert.ok(kq.mang_theo.some((m) => m.cot === 'erp_user_id' && m.gia_tri === 990148),
+    `chay thu khong bao truoc phan mang theo: ${JSON.stringify(kq.mang_theo)}`);
+
+  const a = await truy_van_mot<{ erp: number | null }>(
+    'select erp_user_id as erp from nhan_vien where id = $1', [id_a]);
+  const b = await truy_van_mot<{ erp: number | null }>(
+    'select erp_user_id as erp from nhan_vien where id = $1', [id_b]);
+  assert.equal(a?.erp, null, 'chay thu ma da ghi vao ban giu');
+  assert.equal(b?.erp, 990148, 'chay thu ma da xoa cua ban bo');
+});
+
+test('gop: nhac dung `sap_xep_tep -- --that`, khong phai `--that`', async () => {
+  // `npm run x --that` thi npm an tham so, script chay o che do THU va nguoi doc tuong da don
+  // xong. Mot dau gach thieu la mot viec tuong da lam.
+  const { gop_ho_so } = await import('../src/nhan_vien/gop_trung.ts');
+  const [id_a, id_b] = await cap_gop('MD', 'Đặng Văn Gạch', 'Đặng Văn Gạch');
+  const kq = await gop_ho_so(id_a, id_b, 'that');
+  const nhac = kq.canh_bao.find((c) => c.includes('sap_xep_tep'));
+  assert.notEqual(nhac, undefined, 'khong nhac don ten thu muc');
+  assert.match(nhac!, /sap_xep_tep -- --that/);
+});

@@ -53,6 +53,16 @@ try {
       }
       console.log(`  đã xoá hồ sơ bỏ: ${kq.da_xoa_ban_bo ? 'có' : 'chưa'}`);
 
+      if (kq.mang_theo.length > 0) {
+        console.log(`\n  ${that ? 'Đã mang' : 'Sẽ mang'} sang hồ sơ giữ (ô đang để trống):`);
+        for (const m of kq.mang_theo) {
+          const v = m.gia_tri instanceof Date
+            ? m.gia_tri.toISOString().slice(0, 10)
+            : String(m.gia_tri);
+          console.log(`    ${m.cot.padEnd(20)} ${v}`);
+        }
+      }
+
       if (kq.chi_tiet.length > 0) {
         console.log('\n  Theo từng bảng:');
         for (const c of kq.chi_tiet) {
