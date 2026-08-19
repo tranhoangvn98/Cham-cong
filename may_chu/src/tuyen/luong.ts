@@ -18,7 +18,8 @@ import { ghi_nhan_am_tham } from '../sharepoint/dong_bo.ts';
 import { khoang_thang } from '../tien_ich/thoi_gian.ts';
 import { ghi_xlsx } from '../tien_ich/ghi_xlsx.ts';
 import {
-  chuoi, chuoi_bat_buoc, luan_ly, ngay_bat_buoc, so_nguyen, so_thuc, than, trong_tap, uuid,
+  chuoi, chuoi_bat_buoc, luan_ly, ngay_bat_buoc, so_nguyen, so_thuc, than, trong_tap,
+  uuid, uuid_bat_buoc,
   LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
 
@@ -33,6 +34,91 @@ function so_tien(nguon: Record<string, unknown>, khoa: string, mac_dinh = 0): nu
   if (n < 0) throw new LoiDauVao(`Trường ${khoa} không được âm.`);
   // Tien Viet khong co don vi nho hon dong.
   return Math.round(n);
+}
+
+/**
+ * Mo mot dong chinh sach phu cap cho mot nguoi, dong dong cu lai neu co.
+ *
+ * Dung chung cho ca hai tuyen: gan mot nguoi va gan hang loat. Tach ra vi quy tac "dong dong
+ * cu truoc" la phan de sai nhat, va co hai ban sao cua no la co hai co hoi sai khac nhau.
+ */
+async function mo_chinh_sach(
+  nguoi: string, nhan_vien_id: string, hieu_luc_tu: string, b: Record<string, unknown>,
+): Promise<{ id: string }> {
+  const khoan_ma = chuoi_bat_buoc(b, 'khoan_ma', { toi_da: 40 });
+
+  const dm = await truy_van_mot<{ cach_tinh: string; dang_dung: boolean; ten: string }>(
+    'select cach_tinh, dang_dung, ten from khoan_luong where ma = $1', [khoan_ma],
+  );
+  if (dm === null) throw new LoiDauVao(`Không có khoản mã "${khoan_ma}" trong danh mục.`);
+  if (!dm.dang_dung) {
+    throw new LoiDauVao(`Khoản "${dm.ten}" đã ngừng dùng nên không mở chính sách mới được.`);
+  }
+
+  const nv = await truy_van_mot<{ ho_ten: string }>(
+    'select ho_ten from nhan_vien where id = $1', [nhan_vien_id],
+  );
+  if (nv === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
+
+  const nguon = trong_tap(b, 'nguon_so_luong', ['co_dinh', 'theo_cong'] as const) ?? 'co_dinh';
+  const so_luong = so_thuc(b, 'so_luong', { min: 0, max: 999 });
+  const so_tien_thang = so_thuc(b, 'so_tien', { min: 0 });
+
+  if (dm.cach_tinh === 'nhap_tay') {
+    if (so_tien_thang === null || so_tien_thang <= 0) {
+      throw new LoiDauVao(
+        `Khoản "${dm.ten}" gõ thẳng số tiền, nên chính sách phải nói số tiền mỗi tháng.`,
+      );
+    }
+  } else if (nguon === 'co_dinh' && (so_luong === null || so_luong <= 0)) {
+    throw new LoiDauVao(
+      `Khoản "${dm.ten}" tính theo số lượng. Hãy điền số lượng cố định, `
+      + 'hoặc chọn nguồn "theo công thực tế".',
+    );
+  }
+
+  // Dong dong dang hieu luc lai TRUOC, vi chi so bo phan (`... where hieu_luc_den is null`)
+  // chi cho phep mot dong mo cho moi cap (nguoi, khoan). Dong vao ngay TRUOC ngay hieu luc
+  // moi de hai khoang khong chong len nhau.
+  await thuc_thi(
+    `update chinh_sach_phu_cap
+        set hieu_luc_den = ($3::date - interval '1 day')::date
+      where nhan_vien_id = $1 and khoan_ma = $2 and hieu_luc_den is null
+        and hieu_luc_tu < $3::date`,
+    [nhan_vien_id, khoan_ma, hieu_luc_tu],
+  );
+  // Dong cu bat dau DUNG hoac SAU ngay moi thi dong lui la ra khoang am. Truong hop do la
+  // nhap nham, phai bao chu khong duoc lang le sua.
+  const con_mo = await truy_van_mot<{ hieu_luc_tu: string }>(
+    `select to_char(hieu_luc_tu, 'YYYY-MM-DD') as hieu_luc_tu from chinh_sach_phu_cap
+      where nhan_vien_id = $1 and khoan_ma = $2 and hieu_luc_den is null`,
+    [nhan_vien_id, khoan_ma],
+  );
+  if (con_mo !== null) {
+    throw new LoiXungDot(
+      `${nv.ho_ten} đã có chính sách "${dm.ten}" hiệu lực từ ${con_mo.hieu_luc_tu} — `
+      + `ngày mới (${hieu_luc_tu}) không sau ngày đó nên không nối tiếp được. `
+      + 'Hãy chọn ngày hiệu lực sau, hoặc đóng chính sách cũ trước.',
+    );
+  }
+
+  const dong = await truy_van_mot<{ id: string }>(
+    `insert into chinh_sach_phu_cap
+       (nhan_vien_id, khoan_ma, nguon_so_luong, so_luong, so_tien, don_gia,
+        hieu_luc_tu, ly_do, ghi_chu, tao_boi)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id`,
+    [
+      nhan_vien_id, khoan_ma, nguon,
+      dm.cach_tinh === 'nhap_tay' ? null : so_luong,
+      dm.cach_tinh === 'nhap_tay' ? so_tien_thang : null,
+      so_thuc(b, 'don_gia', { min: 0 }),
+      hieu_luc_tu,
+      chuoi(b, 'ly_do', { toi_da: 500 }),
+      chuoi(b, 'ghi_chu', { toi_da: 500 }),
+      nguoi,
+    ],
+  );
+  return dong!;
 }
 
 async function lay_ky(id: string): Promise<{ id: string; thang: string; trang_thai: string }> {
@@ -197,6 +283,150 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       ],
     );
     await ghi_nhat_ky(nd.sub, 'sua_khoan_luong', 'khoan_luong', ma, b, req.ip);
+    return { ok: true };
+  });
+
+  // ============================================================ chinh sach phu cap
+  //
+  // "Chi A duoc ho tro gui xe 200.000/thang tu 01/8" la mot THOA THUAN, khong phai mot o tren
+  // bang luong thang 8. Nen no co hieu luc tu-den, khong sua tai cho, khong xoa — dong cu dong
+  // lai va mo dong moi. Ky luong doc chinh sach cua thang do va tu sinh cac dong khoan.
+
+  /** Chinh sach cua toan cong ty, hoac cua mot nguoi neu truyen `nhan_vien_id`. */
+  app.get('/chinh-sach-phu-cap', { preHandler: can_nhan_su }, async (req) => {
+    const q = than((req as { query?: unknown }).query ?? {});
+    const nv = uuid(q, 'nhan_vien_id');
+    const con_hieu_luc = luan_ly(q, 'con_hieu_luc', true) === true;
+
+    return truy_van(
+      `select cs.*, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+              d.ten as khoan_ten, d.loai, d.cach_tinh, d.chiu_thue, d.canh_bao,
+              d.don_gia as don_gia_danh_muc, d.dang_dung as khoan_dang_dung,
+              u.ten_dang_nhap as nguoi_tao
+         from chinh_sach_phu_cap cs
+         join nhan_vien nv on nv.id = cs.nhan_vien_id
+         join khoan_luong d on d.ma = cs.khoan_ma
+         left join phong_ban pb on pb.id = nv.phong_ban_id
+         left join nguoi_dung u on u.id = cs.tao_boi
+        where ($1::uuid is null or cs.nhan_vien_id = $1)
+          and ($2::boolean is false or cs.hieu_luc_den is null)
+        order by nv.ma_nv, d.thu_tu, cs.hieu_luc_tu desc`,
+      [nv, con_hieu_luc],
+    );
+  });
+
+  /**
+   * Mo mot chinh sach.
+   *
+   * Da co chinh sach dang hieu luc cho cung khoan thi DONG dong cu lai truoc (ngay truoc ngay
+   * hieu luc cua dong moi) — khong ghi de, khong xoa. Nho vay cau "tu bao gio nguoi nay huong
+   * muc nay" luon co cau tra loi.
+   */
+  app.post('/chinh-sach-phu-cap', { preHandler: can_nhan_su }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body);
+    const nhan_vien_id = uuid_bat_buoc(b, 'nhan_vien_id');
+    const hieu_luc_tu = ngay_bat_buoc(b, 'hieu_luc_tu');
+    const dong = await mo_chinh_sach(nd.sub, nhan_vien_id, hieu_luc_tu, b);
+    await ghi_nhat_ky(nd.sub, 'tao_chinh_sach_phu_cap', 'chinh_sach_phu_cap',
+      dong.id, b, req.ip);
+    return res.code(201).send(dong);
+  });
+
+  /**
+   * Gan cung mot chinh sach cho NHIEU nguoi.
+   *
+   * 53 nguoi cung huong phu cap an trua thi khong ai nen phai mo 53 hop thoai. Moi nguoi van
+   * ra mot dong rieng co hieu luc rieng — day chi la cach nhap nhanh, khong phai mot tang
+   * "chinh sach chung" thu hai de sau nay khong biet so cua ai den tu dau.
+   */
+  app.post('/chinh-sach-phu-cap/hang-loat', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body);
+    const hieu_luc_tu = ngay_bat_buoc(b, 'hieu_luc_tu');
+
+    const ds_nv = b['nhan_vien_ids'];
+    if (!Array.isArray(ds_nv) || ds_nv.length === 0) {
+      throw new LoiDauVao('Chưa chọn nhân viên nào.');
+    }
+    if (ds_nv.length > 500) throw new LoiDauVao('Mỗi lần gán tối đa 500 người.');
+
+    const ket_qua: { nhan_vien_id: string; id: string }[] = [];
+    for (const raw of ds_nv) {
+      const nhan_vien_id = uuid_bat_buoc({ id: raw }, 'id');
+      const dong = await mo_chinh_sach(nd.sub, nhan_vien_id, hieu_luc_tu, b);
+      ket_qua.push({ nhan_vien_id, id: dong.id });
+    }
+
+    await ghi_nhat_ky(nd.sub, 'gan_chinh_sach_hang_loat', 'chinh_sach_phu_cap', null,
+      { khoan_ma: b['khoan_ma'], hieu_luc_tu, so_nguoi: ket_qua.length }, req.ip);
+    return { ok: true, so_nguoi: ket_qua.length, danh_sach: ket_qua };
+  });
+
+  /**
+   * Dong mot chinh sach lai tu mot ngay.
+   *
+   * KHONG xoa: bang luong thang truoc duoc tinh tu dong nay, va xoa no la lam mat can cu cua
+   * mot so tien da tra. Xoa han chi cho phep khi chinh sach CHUA tung anh huong ky nao — xem
+   * `DELETE` ben duoi.
+   */
+  app.post('/chinh-sach-phu-cap/:id/dong', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const b = than(req.body);
+    const den = ngay_bat_buoc(b, 'hieu_luc_den');
+
+    const cs = await truy_van_mot<{ hieu_luc_tu: string; hieu_luc_den: string | null }>(
+      `select to_char(hieu_luc_tu, 'YYYY-MM-DD') as hieu_luc_tu,
+              to_char(hieu_luc_den, 'YYYY-MM-DD') as hieu_luc_den
+         from chinh_sach_phu_cap where id = $1`,
+      [id],
+    );
+    if (cs === null) throw new LoiKhongTim('Không tìm thấy chính sách phụ cấp.');
+    if (cs.hieu_luc_den !== null) throw new LoiXungDot('Chính sách này đã đóng rồi.');
+    if (den < cs.hieu_luc_tu) {
+      throw new LoiDauVao(
+        `Ngày kết thúc (${den}) không được trước ngày hiệu lực (${cs.hieu_luc_tu}).`,
+      );
+    }
+
+    await thuc_thi('update chinh_sach_phu_cap set hieu_luc_den = $2 where id = $1', [id, den]);
+    await ghi_nhat_ky(nd.sub, 'dong_chinh_sach_phu_cap', 'chinh_sach_phu_cap', id,
+      { hieu_luc_den: den }, req.ip);
+    return { ok: true };
+  });
+
+  /**
+   * Xoa han mot chinh sach — chi khi no CHUA tung vao mot ky luong nao.
+   *
+   * Day la duong sua mot dong vua go nham, khong phai duong huy bo mot thoa thuan. Da co ky
+   * luong nao trong khoang hieu luc thi phai DONG lai, vi so tien da tra can can cu.
+   */
+  app.delete('/chinh-sach-phu-cap/:id', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+
+    const cs = await truy_van_mot<{ nhan_vien_id: string; khoan_ma: string }>(
+      'select nhan_vien_id, khoan_ma from chinh_sach_phu_cap where id = $1', [id],
+    );
+    if (cs === null) throw new LoiKhongTim('Không tìm thấy chính sách phụ cấp.');
+
+    const da_dung = await truy_van_mot<{ so: number }>(
+      `select count(*)::int as so
+         from phieu_luong_khoan pk
+         join phieu_luong p on p.id = pk.phieu_luong_id
+        where p.nhan_vien_id = $1 and pk.khoan_ma = $2 and pk.tu_chinh_sach = true`,
+      [cs.nhan_vien_id, cs.khoan_ma],
+    );
+    if ((da_dung?.so ?? 0) > 0) {
+      throw new LoiXungDot(
+        'Chính sách này đã sinh ra khoản trên phiếu lương nên không xóa được. '
+        + 'Hãy ĐÓNG nó lại từ một ngày — số tiền đã trả phải giữ được căn cứ.',
+      );
+    }
+
+    await thuc_thi('delete from chinh_sach_phu_cap where id = $1', [id]);
+    await ghi_nhat_ky(nd.sub, 'xoa_chinh_sach_phu_cap', 'chinh_sach_phu_cap', id, cs, req.ip);
     return { ok: true };
   });
 
@@ -426,8 +656,14 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
   // ============================================================ cac khoan cua mot phieu
   //
   // Thay CA danh sach cung mot luc chu khong sua tung dong: ke toan nhin bang luong theo
-  // dong nguoi, khong theo tung o. Gui len {khoan: [...]} la trang thai MONG MUON cua dong
-  // do — khoan khong co trong danh sach thi bi xoa khoi phieu.
+  // dong nguoi, khong theo tung o.
+  //
+  // PHAM VI: danh sach gui len la cac khoan GO TAY cho rieng ky nay. Cac dong may sinh ra tu
+  // `chinh_sach_phu_cap` khong nam trong pham vi cua tuyen nay — chung do chinh sach quan ly,
+  // va `tinh_ky_luong` sinh lai moi lan tinh.
+  //
+  // Ghi de mot dong chinh sach = dua khoan do VAO danh sach nay (thanh mot dong go tay, chinh
+  // sach se khong sinh dong cho no nua). Bo ghi de = bo no ra khoi danh sach.
   app.put('/phieu-luong/:id/khoan', { preHandler: can_nhan_su }, async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     const id = lay_id(req);
@@ -482,19 +718,26 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       });
     }
 
+    // Chi xoa dong GO TAY. Dong tu chinh sach khong thuoc pham vi tuyen nay — xoa o day thi
+    // `tinh_ky_luong` ngay duoi sinh lai, chi ton mot vong ghi.
     await thuc_thi(
-      'delete from phieu_luong_khoan where phieu_luong_id = $1 and khoan_ma <> all($2::text[])',
+      `delete from phieu_luong_khoan
+        where phieu_luong_id = $1 and tu_chinh_sach = false and khoan_ma <> all($2::text[])`,
       [id, dong.map((d) => d.ma)],
     );
     for (const d of dong) {
       // `thanh_tien` o day chi la gia tri tam — `tinh_ky_luong` ngay duoi se tinh lai het
       // theo dung `cach_tinh` cua danh muc.
+      //
+      // `tu_chinh_sach = false` ke ca khi dong cu la dong chinh sach: dua mot khoan vao danh
+      // sach nay CHINH LA hanh dong ghi de.
       await thuc_thi(
-        `insert into phieu_luong_khoan (phieu_luong_id, khoan_ma, so_luong, thanh_tien, ghi_chu)
-         values ($1,$2,$3,$4,$5)
+        `insert into phieu_luong_khoan
+           (phieu_luong_id, khoan_ma, so_luong, thanh_tien, ghi_chu, tu_chinh_sach)
+         values ($1,$2,$3,$4,$5,false)
          on conflict (phieu_luong_id, khoan_ma) do update set
            so_luong = excluded.so_luong, thanh_tien = excluded.thanh_tien,
-           ghi_chu = excluded.ghi_chu`,
+           ghi_chu = excluded.ghi_chu, tu_chinh_sach = false`,
         [id, d.ma, d.so_luong, d.so_tien, d.ghi_chu],
       );
     }

@@ -6,6 +6,12 @@ import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { khoang_thang, danh_sach_ngay, thu_trong_tuan } from '../tien_ich/thoi_gian.ts';
 import { tinh_phieu_luong, type BacThue, type ThamSoLuong } from './tinh_luong.ts';
 import type { CachTinhKhoan, LoaiKhoan } from './khoan.ts';
+import { khoan_tu_chinh_sach, type DongChinhSach } from './chinh_sach.ts';
+
+/** Mot dong chinh sach doc tu CSDL — them `nhan_vien_id` de nhom lai. */
+interface DongChinhSachDb extends DongChinhSach {
+  nhan_vien_id: string;
+}
 
 /** Cach tra luong cua cong ty — khong phai tham so phap ly, nhung cung theo bo hieu luc. */
 export interface ChinhSachTra {
@@ -151,6 +157,36 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
     [tu, den],
   );
 
+  // Chinh sach phu cap con hieu luc trong ky, cua CA cong ty, doc mot lan.
+  //
+  // `distinct on`: mot nguoi co the co nhieu dong cho cung mot khoan (dong cu da dong lai, dong
+  // moi mo ra). Lay dong co `hieu_luc_tu` moi nhat — cung quy tac voi `quyet_dinh_luong`.
+  const chinh_sach = await truy_van<DongChinhSachDb>(
+    `select distinct on (cs.nhan_vien_id, cs.khoan_ma)
+            cs.nhan_vien_id, cs.khoan_ma, cs.nguon_so_luong,
+            cs.so_luong::float8 as so_luong, cs.so_tien::float8 as so_tien,
+            cs.don_gia::float8 as don_gia, d.cach_tinh
+       from chinh_sach_phu_cap cs
+       join khoan_luong d on d.ma = cs.khoan_ma
+      where cs.hieu_luc_tu <= $2
+        and (cs.hieu_luc_den is null or cs.hieu_luc_den >= $1)
+      order by cs.nhan_vien_id, cs.khoan_ma, cs.hieu_luc_tu desc`,
+    [tu, den],
+  );
+  const theo_nguoi = new Map<string, DongChinhSach[]>();
+  for (const c of chinh_sach) {
+    const ds_c = theo_nguoi.get(c.nhan_vien_id);
+    const dong: DongChinhSach = {
+      khoan_ma: c.khoan_ma,
+      cach_tinh: c.cach_tinh,
+      nguon_so_luong: c.nguon_so_luong,
+      so_luong: c.so_luong,
+      so_tien: c.so_tien,
+      don_gia: c.don_gia,
+    };
+    if (ds_c === undefined) theo_nguoi.set(c.nhan_vien_id, [dong]); else ds_c.push(dong);
+  }
+
   await trong_giao_dich(async (khach) => {
     for (const nv of ds) {
       // Cong chuan CO DINH neu cong ty da khai; khong khai thi dem theo lich that.
@@ -170,11 +206,63 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       const phu_cap_khac = Number(phieu_cu?.phu_cap_khac ?? 0);
       const tru_khac = Number(phieu_cu?.tru_khac ?? 0);
 
-      // Cac khoan cung la phan nguoi nhap tay: doc lai theo phieu cu, gop voi dac ta trong
-      // danh muc de biet cach tinh. Khoan da tat trong danh muc (`dang_dung = false`) van
-      // giu lai o phieu da co — tat mot khoan la de khong THEM moi nua, khong phai de xoa
+      // Phai co ID phieu TRUOC khi ap chinh sach, vi dong khoan tro ve phieu. Chua co thi tao
+      // mot dong rong — cac con so duoc ghi o buoc cuoi, va ca vong nay nam trong mot giao
+      // dich nen khong ai nhin thay trang thai giua chung.
+      const phieu_id = phieu_cu?.id ?? (await khach.query<{ id: string }>(
+        `insert into phieu_luong (ky_luong_id, nhan_vien_id) values ($1, $2)
+         on conflict (ky_luong_id, nhan_vien_id)
+           do update set ky_luong_id = excluded.ky_luong_id
+         returning id`,
+        [ky_luong_id, nv.nhan_vien_id],
+      )).rows[0]!.id;
+
+      // ---------------------------------------------------------- ap chinh sach phu cap
+      //
+      // Khoan nguoi dung GO TAY cho thang nay thang chinh sach: chinh sach khong sinh them
+      // dong cho khoan da co dong go tay. Ghi de la ghi de, khong phai cong don.
+      const go_tay = new Set(
+        (await khach.query<{ khoan_ma: string }>(
+          'select khoan_ma from phieu_luong_khoan where phieu_luong_id = $1 and tu_chinh_sach = false',
+          [phieu_id],
+        )).rows.map((r) => r.khoan_ma),
+      );
+
+      const sinh = khoan_tu_chinh_sach(
+        theo_nguoi.get(nv.nhan_vien_id) ?? [],
+        { so_cong: nv.so_cong },
+        go_tay,
+      );
+
+      // Chinh sach het hieu luc / bi ghi de thi dong may sinh ra phai BIEN MAT, khong de lai
+      // mot khoan khong con can cu nao.
+      await khach.query(
+        `delete from phieu_luong_khoan
+          where phieu_luong_id = $1 and tu_chinh_sach = true and khoan_ma <> all($2::text[])`,
+        [phieu_id, sinh.map((x) => x.khoan_ma)],
+      );
+      for (const s of sinh) {
+        await khach.query(
+          `insert into phieu_luong_khoan
+             (phieu_luong_id, khoan_ma, so_luong, don_gia, thanh_tien, tu_chinh_sach)
+           values ($1,$2,$3,$4,$5,true)
+           on conflict (phieu_luong_id, khoan_ma) do update set
+             so_luong = excluded.so_luong, don_gia = excluded.don_gia,
+             thanh_tien = excluded.thanh_tien
+           -- CO Y TRUNG voi go_tay o tren: khoan_tu_chinh_sach() da khong sinh dong cho khoan
+           -- da go tay, nen menh de nay khong chan gi trong luong hien tai. No o day de rang
+           -- buoc "khong de len so nguoi da go" nam o lop gan du lieu nhat — day la tien that.
+           -- Bo MOT trong hai lop thi test van xanh; bo ca hai thi do.
+           where phieu_luong_khoan.tu_chinh_sach = true`,
+          [phieu_id, s.khoan_ma, s.so_luong, s.don_gia, s.so_tien],
+        );
+      }
+
+      // Cac khoan cua phieu: doc lai het (ca dong go tay lan dong tu chinh sach), gop voi dac
+      // ta trong danh muc de biet cach tinh. Khoan da tat trong danh muc (`dang_dung = false`)
+      // van giu lai o phieu da co — tat mot khoan la de khong THEM moi nua, khong phai de xoa
       // khoan da tinh cho nguoi ta.
-      const khoan = phieu_cu === undefined ? [] : (await khach.query<{
+      const khoan = (await khach.query<{
         ma: string; loai: LoaiKhoan; cach_tinh: CachTinhKhoan;
         don_gia: string | null; don_gia_danh_muc: string | null;
         chiu_thue: boolean; so_luong: string | null; so_tien: string | null;
@@ -186,7 +274,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
            join khoan_luong d on d.ma = k.khoan_ma
           where k.phieu_luong_id = $1
           order by d.thu_tu, k.khoan_ma`,
-        [phieu_cu.id],
+        [phieu_id],
       )).rows.map((r) => ({
         ma: r.ma,
         loai: r.loai,
@@ -213,50 +301,28 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
         lam_tron_den: ts.cs.lam_tron_den,
       }, ts.ts);
 
-      const ghi = await khach.query<{ id: string }>(
-        `insert into phieu_luong (
-           ky_luong_id, nhan_vien_id, luong_co_ban, phu_cap,
-           so_ngay_cong_chuan, so_ngay_cong_thuc, phut_ot, he_so_ot,
-           luong_theo_cong, tien_ot, thuong, phu_cap_khac, tong_thu_nhap,
-           muc_dong_bh, bhxh_nld, bhyt_nld, bhtn_nld,
-           bhxh_nsdld, bhyt_nsdld, bhtn_nsdld,
-           so_nguoi_phu_thuoc, giam_tru_tong, thu_nhap_tinh_thue, thue_tncn,
-           tru_khac, tong_tru, thuc_linh,
-           luong_ngay, khoan_thu_nhap, khoan_tru, thu_nhap_mien_thue,
-           thuc_linh_lam_tron, loai_hop_dong, tinh_luc
-         ) values (
-           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
-           $21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33, now()
-         )
-         on conflict (ky_luong_id, nhan_vien_id) do update set
-           luong_co_ban = excluded.luong_co_ban, phu_cap = excluded.phu_cap,
-           so_ngay_cong_chuan = excluded.so_ngay_cong_chuan,
-           so_ngay_cong_thuc = excluded.so_ngay_cong_thuc,
-           phut_ot = excluded.phut_ot, he_so_ot = excluded.he_so_ot,
-           luong_theo_cong = excluded.luong_theo_cong, tien_ot = excluded.tien_ot,
-           tong_thu_nhap = excluded.tong_thu_nhap, muc_dong_bh = excluded.muc_dong_bh,
-           bhxh_nld = excluded.bhxh_nld, bhyt_nld = excluded.bhyt_nld,
-           bhtn_nld = excluded.bhtn_nld, bhxh_nsdld = excluded.bhxh_nsdld,
-           bhyt_nsdld = excluded.bhyt_nsdld, bhtn_nsdld = excluded.bhtn_nsdld,
-           so_nguoi_phu_thuoc = excluded.so_nguoi_phu_thuoc,
-           giam_tru_tong = excluded.giam_tru_tong,
-           thu_nhap_tinh_thue = excluded.thu_nhap_tinh_thue,
-           thue_tncn = excluded.thue_tncn, tong_tru = excluded.tong_tru,
-           thuc_linh = excluded.thuc_linh,
-           luong_ngay = excluded.luong_ngay,
-           khoan_thu_nhap = excluded.khoan_thu_nhap, khoan_tru = excluded.khoan_tru,
-           thu_nhap_mien_thue = excluded.thu_nhap_mien_thue,
-           thuc_linh_lam_tron = excluded.thuc_linh_lam_tron,
-           loai_hop_dong = excluded.loai_hop_dong, tinh_luc = now()
-         returning id`,
+      await khach.query(
+        `update phieu_luong set
+           luong_co_ban = $2, phu_cap = $3,
+           so_ngay_cong_chuan = $4, so_ngay_cong_thuc = $5, phut_ot = $6, he_so_ot = $7,
+           luong_theo_cong = $8, tien_ot = $9, thuong = $10, phu_cap_khac = $11,
+           tong_thu_nhap = $12, muc_dong_bh = $13,
+           bhxh_nld = $14, bhyt_nld = $15, bhtn_nld = $16,
+           bhxh_nsdld = $17, bhyt_nsdld = $18, bhtn_nsdld = $19,
+           so_nguoi_phu_thuoc = $20, giam_tru_tong = $21, thu_nhap_tinh_thue = $22,
+           thue_tncn = $23, tru_khac = $24, tong_tru = $25, thuc_linh = $26,
+           luong_ngay = $27, khoan_thu_nhap = $28, khoan_tru = $29, thu_nhap_mien_thue = $30,
+           thuc_linh_lam_tron = $31, loai_hop_dong = $32, tinh_luc = now()
+         where id = $1`,
         [
-          ky_luong_id, nv.nhan_vien_id, nv.luong_co_ban, nv.phu_cap,
+          phieu_id, nv.luong_co_ban, nv.phu_cap,
           chuan, nv.so_cong, nv.phut_ot, 1.5,
-          kq.luong_theo_cong, kq.tien_ot, thuong, phu_cap_khac, kq.tong_thu_nhap,
-          kq.muc_dong_bh, kq.bhxh_nld, kq.bhyt_nld, kq.bhtn_nld,
+          kq.luong_theo_cong, kq.tien_ot, thuong, phu_cap_khac,
+          kq.tong_thu_nhap, kq.muc_dong_bh,
+          kq.bhxh_nld, kq.bhyt_nld, kq.bhtn_nld,
           kq.bhxh_nsdld, kq.bhyt_nsdld, kq.bhtn_nsdld,
-          nv.so_nguoi_phu_thuoc, kq.giam_tru_tong, kq.thu_nhap_tinh_thue, kq.thue_tncn,
-          tru_khac, kq.tong_tru, kq.thuc_linh,
+          nv.so_nguoi_phu_thuoc, kq.giam_tru_tong, kq.thu_nhap_tinh_thue,
+          kq.thue_tncn, tru_khac, kq.tong_tru, kq.thuc_linh,
           kq.luong_ngay, kq.khoan_thu_nhap, kq.khoan_tru, kq.thu_nhap_mien_thue,
           kq.thuc_linh_lam_tron, nv.loai_hop_dong,
         ],
@@ -269,7 +335,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
         await khach.query(
           `update phieu_luong_khoan set don_gia = $3, thanh_tien = $4
             where phieu_luong_id = $1 and khoan_ma = $2`,
-          [ghi.rows[0]!.id, k.ma, k.don_gia, k.thanh_tien],
+          [phieu_id, k.ma, k.don_gia, k.thanh_tien],
         );
       }
     }

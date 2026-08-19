@@ -3007,6 +3007,284 @@ test('khoan: canh bao Dieu 127 di kem hai khoan tru vi di muon', async () => {
   }
 });
 
+// ---------------------------------------------------------------- chinh sach phu cap
+//
+// Phu cap khong phai thu doi hang thang. "Chi A duoc ho tro gui xe 200.000/thang tu 01/8" la
+// mot thoa thuan co hieu luc tu mot ngay — nhan su khai mot lan, ky luong tu sinh dong khoan.
+
+test('chinh sach: khai mot lan, tinh ky luong tu sinh dong khoan', async () => {
+  const thang = NGAY.slice(0, 7);
+
+  // Don sach khoan go tay cua cac bai truoc de con so o duoi chi den tu chinh sach.
+  await goi('PUT', `/api/phieu-luong/${await phieu_cua_nv001()}/khoan`,
+    { token: token_admin, body: { khoan: [] } });
+
+  const r = await goi('POST', '/api/chinh-sach-phu-cap', {
+    token: token_admin,
+    body: {
+      nhan_vien_id, khoan_ma: 'pc_gui_xe', so_tien: 200_000,
+      hieu_luc_tu: `${thang}-01`, ly_do: 'Thỏa thuận hỗ trợ gửi xe',
+    },
+  });
+  assert.equal(r.ma, 201);
+
+  // Chua tinh lai thi phieu chua thay gi — chinh sach khong tu di sua mot bang luong dang mo
+  // duoi chan nguoi dang lam viec tren no.
+  const truoc = await truy_van<{ khoan_ma: string }>(
+    `select pk.khoan_ma from phieu_luong_khoan pk join phieu_luong p on p.id = pk.phieu_luong_id
+      where p.ky_luong_id = $1 and p.nhan_vien_id = $2 and pk.khoan_ma = 'pc_gui_xe'`,
+    [ky_luong_id, nhan_vien_id],
+  );
+  assert.deepEqual(truoc, []);
+
+  const t = await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+  assert.equal(t.ma, 200);
+
+  const k = await truy_van_mot<{ thanh_tien: string; tu_chinh_sach: boolean }>(
+    `select pk.thanh_tien, pk.tu_chinh_sach
+       from phieu_luong_khoan pk join phieu_luong p on p.id = pk.phieu_luong_id
+      where p.ky_luong_id = $1 and p.nhan_vien_id = $2 and pk.khoan_ma = 'pc_gui_xe'`,
+    [ky_luong_id, nhan_vien_id],
+  );
+  assert.ok(k !== null, 'chinh sach phai sinh ra dong khoan khi tinh ky luong');
+  assert.equal(Number(k!.thanh_tien), 200_000, 'so tien co dinh moi thang cua chinh sach');
+  assert.equal(k!.tu_chinh_sach, true, 'dong nay do may sinh, phai danh dau duoc');
+  assert.equal(await so_tren_phieu('khoan_thu_nhap'), 200_000);
+});
+
+test('chinh sach "theo công": số lượng bám ngày công, đơn giá riêng của người thắng danh mục', async () => {
+  const thang = NGAY.slice(0, 7);
+  await goi('POST', '/api/chinh-sach-phu-cap', {
+    token: token_admin,
+    body: {
+      nhan_vien_id, khoan_ma: 'pc_an_trua', nguon_so_luong: 'theo_cong',
+      // Danh muc de 30.000; nguoi nay duoc muc rieng 35.000. Day la cho de mot nguoi huong
+      // khac ca cong ty ma khong phai tao mot khoan moi chi cho mot nguoi.
+      don_gia: 35_000, hieu_luc_tu: `${thang}-01`,
+    },
+  });
+  await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+
+  const cong = await so_tren_phieu('so_ngay_cong_thuc');
+  assert.ok(cong > 0, 'phai co ngay cong thi bai nay moi co nghia');
+
+  const k = await truy_van_mot<{ so_luong: string; thanh_tien: string; don_gia: string }>(
+    `select pk.so_luong, pk.thanh_tien, pk.don_gia
+       from phieu_luong_khoan pk join phieu_luong p on p.id = pk.phieu_luong_id
+      where p.ky_luong_id = $1 and p.nhan_vien_id = $2 and pk.khoan_ma = 'pc_an_trua'`,
+    [ky_luong_id, nhan_vien_id],
+  );
+  assert.equal(Number(k!.so_luong), cong, 'so luong phai bam theo so cong thuc te');
+  assert.equal(Number(k!.don_gia), 35_000, 'don gia rieng cua nguoi phai thang danh muc');
+  assert.equal(Number(k!.thanh_tien), cong * 35_000);
+});
+
+test('chinh sach: gõ tay một khoản là GHI ĐÈ — chính sách không sinh thêm dòng', async () => {
+  const id = await phieu_cua_nv001();
+
+  // Thang nay chi A duoc ho tro gui xe 750.000 thay vi 200.000 theo chinh sach.
+  await goi('PUT', `/api/phieu-luong/${id}/khoan`, {
+    token: token_admin,
+    body: { khoan: [{ ma: 'pc_gui_xe', so_tien: 750_000 }] },
+  });
+
+  const sau_ghi_de = await truy_van_mot<{ thanh_tien: string; tu_chinh_sach: boolean }>(
+    `select thanh_tien, tu_chinh_sach from phieu_luong_khoan
+      where phieu_luong_id = $1 and khoan_ma = 'pc_gui_xe'`,
+    [id],
+  );
+  assert.equal(Number(sau_ghi_de!.thanh_tien), 750_000);
+  assert.equal(sau_ghi_de!.tu_chinh_sach, false, 'go tay thi khong con la dong chinh sach');
+
+  // Tinh lai KHONG duoc keo no ve 200.000 theo chinh sach, va khong duoc sinh dong thu hai.
+  await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+
+  const con = await truy_van<{ thanh_tien: string; tu_chinh_sach: boolean }>(
+    `select thanh_tien, tu_chinh_sach from phieu_luong_khoan
+      where phieu_luong_id = $1 and khoan_ma = 'pc_gui_xe'`,
+    [id],
+  );
+  assert.equal(con.length, 1, 'ghi de la ghi de, khong phai cong don thanh hai dong');
+  assert.equal(Number(con[0]!.thanh_tien), 750_000,
+    'tinh lai khong duoc de len con so nguoi da go');
+  assert.equal(con[0]!.tu_chinh_sach, false);
+});
+
+test('chinh sach: bỏ ghi đè thì dòng chính sách quay lại', async () => {
+  const id = await phieu_cua_nv001();
+  await goi('PUT', `/api/phieu-luong/${id}/khoan`, { token: token_admin, body: { khoan: [] } });
+  await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+
+  const k = await truy_van_mot<{ thanh_tien: string; tu_chinh_sach: boolean }>(
+    `select thanh_tien, tu_chinh_sach from phieu_luong_khoan
+      where phieu_luong_id = $1 and khoan_ma = 'pc_gui_xe'`,
+    [id],
+  );
+  assert.equal(Number(k!.thanh_tien), 200_000, 've lai so cua chinh sach');
+  assert.equal(k!.tu_chinh_sach, true);
+});
+
+test('chinh sach: đóng lại thì dòng khoản biến mất ở lần tính sau', async () => {
+  const cs = await truy_van_mot<{ id: string }>(
+    `select id from chinh_sach_phu_cap
+      where nhan_vien_id = $1 and khoan_ma = 'pc_gui_xe' and hieu_luc_den is null`,
+    [nhan_vien_id],
+  );
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('POST', `/api/chinh-sach-phu-cap/${cs!.id}/dong`, {
+    token: token_admin, body: { hieu_luc_den: `${thang}-01` },
+  });
+  assert.equal(r.ma, 200);
+
+  // Dong vao ngay 1 thi ky nay VAN con giao nhau -> dong khoan van con.
+  await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+  const van_con = await truy_van<{ khoan_ma: string }>(
+    `select pk.khoan_ma from phieu_luong_khoan pk join phieu_luong p on p.id = pk.phieu_luong_id
+      where p.ky_luong_id = $1 and p.nhan_vien_id = $2 and pk.khoan_ma = 'pc_gui_xe'`,
+    [ky_luong_id, nhan_vien_id],
+  );
+  assert.equal(van_con.length, 1, 'dong dung ngay dau ky thi ky do van duoc huong');
+
+  // Day ca khoang hieu luc ve truoc ky -> khong con giao nhau -> dong khoan phai bien mat.
+  // Doi rieng `hieu_luc_den` xuong duoi `hieu_luc_tu` la khoang am, va CSDL tu chan (rang
+  // buoc `chinh_sach_khoang_hop_le`) — nen phai doi ca hai dau.
+  await thuc_thi(
+    `update chinh_sach_phu_cap
+        set hieu_luc_tu = date '2020-01-01', hieu_luc_den = date '2020-01-31'
+      where id = $1`,
+    [cs!.id],
+  );
+  await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+  const het = await truy_van<{ khoan_ma: string }>(
+    `select pk.khoan_ma from phieu_luong_khoan pk join phieu_luong p on p.id = pk.phieu_luong_id
+      where p.ky_luong_id = $1 and p.nhan_vien_id = $2 and pk.khoan_ma = 'pc_gui_xe'`,
+    [ky_luong_id, nhan_vien_id],
+  );
+  assert.deepEqual(het, [], 'chinh sach het hieu luc thi khoan khong duoc o lai');
+});
+
+test('chinh sach: mở dòng mới thì dòng cũ TỰ ĐÓNG, không đè lên nhau', async () => {
+  const thang = NGAY.slice(0, 7);
+  await goi('POST', '/api/chinh-sach-phu-cap', {
+    token: token_admin,
+    body: {
+      nhan_vien_id, khoan_ma: 'pc_trang_diem', so_tien: 300_000, hieu_luc_tu: `${thang}-01`,
+    },
+  });
+  const r = await goi('POST', '/api/chinh-sach-phu-cap', {
+    token: token_admin,
+    body: {
+      nhan_vien_id, khoan_ma: 'pc_trang_diem', so_tien: 500_000, hieu_luc_tu: `${thang}-15`,
+      ly_do: 'Tăng mức',
+    },
+  });
+  assert.equal(r.ma, 201);
+
+  const ds = await truy_van<{ so_tien: string; hieu_luc_den: string | null }>(
+    `select so_tien, to_char(hieu_luc_den, 'YYYY-MM-DD') as hieu_luc_den
+       from chinh_sach_phu_cap
+      where nhan_vien_id = $1 and khoan_ma = 'pc_trang_diem'
+      order by hieu_luc_tu`,
+    [nhan_vien_id],
+  );
+  assert.equal(ds.length, 2, 'dong cu phai o lai — do la lich su, khong phai rac');
+  assert.equal(Number(ds[0]!.so_tien), 300_000);
+  assert.equal(ds[0]!.hieu_luc_den, `${thang}-14`, 'dong cu dong vao NGAY TRUOC ngay moi');
+  assert.equal(ds[1]!.hieu_luc_den, null);
+});
+
+test('chinh sach: ngày hiệu lực không sau dòng đang mở thì bị từ chối, không đè', async () => {
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('POST', '/api/chinh-sach-phu-cap', {
+    token: token_admin,
+    body: {
+      nhan_vien_id, khoan_ma: 'pc_trang_diem', so_tien: 900_000, hieu_luc_tu: `${thang}-15`,
+    },
+  });
+  assert.equal(r.ma, 409);
+
+  const ds = await truy_van<{ so_tien: string }>(
+    `select so_tien from chinh_sach_phu_cap
+      where nhan_vien_id = $1 and khoan_ma = 'pc_trang_diem' and hieu_luc_den is null`,
+    [nhan_vien_id],
+  );
+  assert.equal(ds.length, 1, 'van chi mot dong dang mo');
+  assert.equal(Number(ds[0]!.so_tien), 500_000, 'dong dang mo khong bi doi');
+});
+
+test('chinh sach: khoản gõ thẳng tiền mà không khai số tiền thì bị từ chối', async () => {
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('POST', '/api/chinh-sach-phu-cap', {
+    token: token_admin,
+    body: { nhan_vien_id, khoan_ma: 'pc_kpi', hieu_luc_tu: `${thang}-01` },
+  });
+  assert.equal(r.ma, 400);
+});
+
+test('chinh sach: đã sinh ra khoản trên phiếu thì KHÔNG xóa được, phải đóng', async () => {
+  const cs = await truy_van_mot<{ id: string }>(
+    `select id from chinh_sach_phu_cap
+      where nhan_vien_id = $1 and khoan_ma = 'pc_an_trua' and hieu_luc_den is null`,
+    [nhan_vien_id],
+  );
+  const r = await goi('DELETE', `/api/chinh-sach-phu-cap/${cs!.id}`, { token: token_admin });
+  assert.equal(r.ma, 409, 'so tien da tra phai giu duoc can cu');
+
+  const con = await truy_van<{ id: string }>(
+    'select id from chinh_sach_phu_cap where id = $1', [cs!.id],
+  );
+  assert.equal(con.length, 1);
+});
+
+test('chinh sach: gán hàng loạt ra một dòng riêng cho từng người', async () => {
+  const thang = NGAY.slice(0, 7);
+  const ds_nv = await truy_van<{ id: string }>(
+    'select id from nhan_vien where dang_hoat_dong = true order by ma_nv limit 3',
+  );
+  assert.ok(ds_nv.length >= 2, 'can it nhat hai nguoi de bai nay co nghia');
+
+  const r = await goi('POST', '/api/chinh-sach-phu-cap/hang-loat', {
+    token: token_admin,
+    body: {
+      nhan_vien_ids: ds_nv.map((x) => x.id),
+      khoan_ma: 'pc_trang_phuc', so_tien: 400_000, hieu_luc_tu: `${thang}-01`,
+    },
+  });
+  assert.equal(r.ma, 200);
+  assert.equal(Number(r.body['so_nguoi']), ds_nv.length);
+
+  const dong = await truy_van<{ nhan_vien_id: string }>(
+    `select nhan_vien_id from chinh_sach_phu_cap
+      where khoan_ma = 'pc_trang_phuc' and hieu_luc_den is null`,
+  );
+  assert.equal(dong.length, ds_nv.length,
+    'moi nguoi mot dong rieng — khong co mot dong chung cho ca nhom');
+
+  // Don dep de cac bai sau khong bi anh huong.
+  await thuc_thi(`delete from chinh_sach_phu_cap where khoan_ma = 'pc_trang_phuc'`);
+});
+
+test('chinh sach: người không phải nhân sự không khai được', async () => {
+  const thang = NGAY.slice(0, 7);
+  const r = await goi('POST', '/api/chinh-sach-phu-cap', {
+    token: token_nhan_vien,
+    body: { nhan_vien_id, khoan_ma: 'pc_kpi', so_tien: 1_000_000, hieu_luc_tu: `${thang}-01` },
+  });
+  assert.equal(r.ma, 403);
+});
+
+test('chinh sach: dọn sạch để các bài sau tính từ nền cũ', async () => {
+  await thuc_thi('delete from chinh_sach_phu_cap');
+  const id = await phieu_cua_nv001();
+  await goi('PUT', `/api/phieu-luong/${id}/khoan`, { token: token_admin, body: { khoan: [] } });
+  await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+
+  const con = await truy_van<{ khoan_ma: string }>(
+    'select khoan_ma from phieu_luong_khoan where phieu_luong_id = $1', [id],
+  );
+  assert.deepEqual(con, [], 'khong con chinh sach thi khong con dong khoan nao');
+});
+
 test('khoan: xuat XLSX co cot rieng cho tung khoan dang dung', async () => {
   const id = await phieu_cua_nv001();
   await goi('PUT', `/api/phieu-luong/${id}/khoan`, {

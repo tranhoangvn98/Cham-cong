@@ -148,6 +148,24 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/phu-cap',
+    tom_tat: 'Phụ cấp định kỳ của từng người — khai một lần, kỳ lương tự sinh khoản.',
+    buoc: [
+      { chu: 'Bấm "Gán phụ cấp", chọn khoản, chọn người (lọc theo phòng ban để chọn cả nhóm).', vai_tro: NHAN_SU },
+      { chu: 'Điền ngày hiệu lực và lý do — đây là căn cứ của số tiền sẽ trả.', vai_tro: NHAN_SU },
+      { chu: 'Sang Bảng lương, bấm "Tính lương" ở kỳ liên quan thì khoản mới xuất hiện.', vai_tro: NHAN_SU },
+      { chu: 'Người thôi hưởng: bấm "Đóng" và điền ngày hưởng đến hết — không xóa.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Đổi mức thì gán lại với ngày hiệu lực mới. Dòng cũ TỰ ĐÓNG vào ngày trước đó và ở lại làm lịch sử — nhờ vậy tính lại lương tháng cũ vẫn ra đúng số cũ.',
+      'Chính sách KHÔNG tự sửa bảng lương đang mở. Phải bấm "Tính lương" ở kỳ đó. Đó là chủ ý: số liệu không được đổi dưới chân người đang làm việc trên nó.',
+      'Gõ tay một khoản trên phiếu là GHI ĐÈ chính sách cho riêng tháng đó — chính sách không cộng thêm dòng thứ hai. Bỏ khoản đó khỏi danh sách gõ tay thì dòng chính sách quay lại.',
+      'Nguồn "số ngày công thực tế" bám theo chấm công: đi làm ít ngày thì hưởng ít, không ai phải sửa tay. Dùng cho hỗ trợ ăn trưa.',
+      'Đơn giá riêng là chỗ để một người hưởng mức khác cả công ty — không phải tạo một khoản mới chỉ cho một người.',
+      'Chính sách đã sinh ra khoản trên phiếu thì KHÔNG xóa được, chỉ đóng. Số tiền đã trả phải giữ được căn cứ.',
+    ],
+  },
+  {
     duong_dan: '/hop-dong',
     tom_tat: 'Hạn hợp đồng và tìm trong nội dung hợp đồng đã trích.',
     buoc: [

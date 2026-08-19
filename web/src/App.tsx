@@ -15,6 +15,7 @@ import { TrangLanQuet } from './trang/lan_quet.tsx';
 import { TrangNguoiDung, TrangNhatKy } from './trang/nguoi_dung.tsx';
 import { TrangKhoaApi } from './trang/khoa_api.tsx';
 import { TrangBangLuong } from './trang/bang_luong.tsx';
+import { TrangPhuCap } from './trang/phu_cap.tsx';
 import { TrangThamSoLuong } from './trang/tham_so_luong.tsx';
 import { TrangViPham } from './trang/vi_pham.tsx';
 import { TrangKpi } from './trang/kpi.tsx';
@@ -60,6 +61,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/vi-pham', ten: 'Vi phạm', icon: 'alert-triangle', nhom: 'Quản trị nhân sự', phu: 'Nội quy lao động, kỷ luật' },
   { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Quản trị nhân sự', phu: 'Chấm điểm từ dữ liệu thật' },
   { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Tính từ chấm công, gửi duyệt', quyen: 'nhan_su' },
+  { duong_dan: '/phu-cap', ten: 'Phụ cấp', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Chính sách phụ cấp từng người', quyen: 'nhan_su' },
   { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Quản trị nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
 
   { duong_dan: '/thiet-bi', ten: 'Thiết bị', icon: 'device-desktop', nhom: 'Hệ thống', phu: 'Máy chấm công ZKTeco', quyen: 'nhan_su' },
@@ -101,6 +103,7 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/tai-khoan': return la_admin() ? <TrangNguoiDung /> : <KhongCoQuyen />;
     case '/khoa-api': return la_admin() ? <TrangKhoaApi /> : <KhongCoQuyen />;
     case '/bang-luong': return la_nhan_su() ? <TrangBangLuong /> : <KhongCoQuyen />;
+    case '/phu-cap': return la_nhan_su() ? <TrangPhuCap /> : <KhongCoQuyen />;
     case '/tham-so-luong': return la_nhan_su() ? <TrangThamSoLuong /> : <KhongCoQuyen />;
     case '/vi-pham': return <TrangViPham />;
     case '/kpi': return <TrangKpi />;

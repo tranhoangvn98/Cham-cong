@@ -2,6 +2,71 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.35.0] — 2026-08-20
+
+**Phụ cấp khai một lần, không phải gõ lại mỗi tháng.** Bản 1.34.0 cho ghi phụ cấp của từng người
+lên phiếu lương, nhưng mỗi kỳ nhân sự phải gõ lại từ đầu cho cả 53 người. Đó là sai chỗ: *"Chị A
+được hỗ trợ gửi xe 200.000/tháng từ 01/8"* là một **thỏa thuận**, không phải một ô trên bảng
+lương tháng 8.
+
+Nên nó thành một bảng riêng — `chinh_sach_phu_cap` — có **hiệu lực từ – đến**, và kỳ lương tự
+sinh dòng khoản từ đó.
+
+### Số lượng lấy từ đâu
+
+| Nguồn | Nghĩa | Dùng cho |
+|---|---|---|
+| `co_dinh` | số lượng ghi trong chính sách | hỗ trợ gửi xe 1 lần/tháng |
+| `theo_cong` | = **số ngày công thực tế** của kỳ | hỗ trợ ăn trưa |
+
+`theo_cong` bám theo chấm công: đi làm ít ngày thì hưởng ít, không ai phải sửa tay. Không đi làm
+ngày nào thì không sinh dòng nào — bảng lương không có dòng 0 đồng để người đọc phải tự hiểu.
+
+**Đơn giá riêng của từng người**: để trống thì lấy đơn giá danh mục; điền thì đó là mức riêng —
+chỗ để một người hưởng khác cả công ty mà không phải tạo một khoản mới chỉ cho một người.
+
+### Đổi mức: đóng dòng cũ, mở dòng mới
+
+Không sửa tại chỗ, giống `quyet_dinh_luong` và `ma_dinh_danh`. Gán lại với ngày hiệu lực mới thì
+dòng cũ **tự đóng vào ngày trước đó** và ở lại làm lịch sử:
+
+```
+pc_trang_diem  300.000 đ/tháng   01/08 → 14/08   (tự đóng)
+pc_trang_diem  500.000 đ/tháng   15/08 → nay     "Tăng mức"
+```
+
+Nhờ vậy tính lại lương tháng cũ vẫn ra đúng số cũ. Ngày hiệu lực mới không sau dòng đang mở thì
+hệ thống **từ chối** chứ không lặng lẽ đè. Chính sách đã sinh ra khoản trên phiếu thì **không
+xóa được**, chỉ đóng — số tiền đã trả phải giữ được căn cứ.
+
+Kỳ lương nào **giao** với khoảng hiệu lực thì được hưởng, không phải kỳ nào nằm gọn trong đó:
+người vào làm hoặc nghỉ giữa tháng đều tính đúng.
+
+### Ghi đè cho riêng một kỳ
+
+Dòng do chính sách sinh ra mang nhãn *theo chính sách* và tự tính lại mỗi kỳ. Bấm **Ghi đè** thì
+nó thành dòng gõ tay và chính sách thôi điều khiển nó. Ghi đè là ghi đè — chính sách **không**
+sinh thêm dòng thứ hai, và tính lại kỳ không đè lên con số đã gõ.
+
+Rào này nằm ở **hai lớp** cố ý trùng nhau: bộ giải chính sách bỏ qua khoản đã gõ tay, và câu
+`INSERT ... ON CONFLICT` mang thêm `where tu_chinh_sach = true`. Bỏ một lớp thì test vẫn xanh;
+bỏ cả hai thì đỏ. Ghi rõ điều đó ngay tại chỗ để người sau không dọn nhầm.
+
+**Chính sách không tự sửa bảng lương đang mở** — phải bấm *Tính lương* ở kỳ đó. Số liệu không
+được đổi dưới chân người đang làm việc trên nó.
+
+### Thêm
+
+- Trang **Quản trị nhân sự → Phụ cấp**: xem theo người, xem cả lịch sử, gán và đóng.
+- **Gán hàng loạt** — lọc theo tên / mã / phòng ban rồi chọn cả nhóm. Mỗi người vẫn ra một dòng
+  riêng có hiệu lực riêng; đây là cách nhập nhanh, không phải một tầng "chính sách chung" thứ
+  hai để sau này không biết số của ai đến từ đâu.
+
+### Sửa
+
+- Một comment SQL trong `ky_luong.ts` chứa dấu backtick nằm trong template literal, làm hỏng cả
+  tệp. Bắt được vì bộ kiểm thử không chạy nổi — đã đổi sang dấu nháy thường.
+
 ## [1.34.0] — 2026-08-20
 
 **Bảng lương mẫu của công ty đã lên phần mềm.** Bảng tính tháng 7/2026 (53 người, 7 sheet) có

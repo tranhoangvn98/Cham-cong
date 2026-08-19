@@ -62,6 +62,8 @@ interface KhoanPhieu {
   don_gia: string | null;
   thanh_tien: string;
   ghi_chu: string | null;
+  /** true = máy sinh từ chính sách phụ cấp; false = người gõ tay cho riêng kỳ này. */
+  tu_chinh_sach: boolean;
 }
 
 interface Phieu {
@@ -446,10 +448,15 @@ function HopThoaiChiTiet(
 /**
  * Sua cac khoan phu cap / khoan tru cua MOT phieu.
  *
- * Man hinh nay thay 15 cot cua bang tinh Excel cu. Ba dieu no phai noi ro:
+ * Man hinh nay thay 15 cot cua bang tinh Excel cu. Bon dieu no phai noi ro:
  *   1. Khoan tinh theo cong thuc thi KHONG go tien — go so lan / so ngay, may nhan.
  *   2. Khoan mien thue duoc danh dau, vi de sai o do la tinh sai thue ca cong ty.
  *   3. Khoan co rui ro phap ly mang canh bao ngay canh o nhap, khong giau trong tai lieu.
+ *   4. Khoan den TU CHINH SACH duoc danh dau rieng, va CHI sua khi nguoi dung bam "Ghi de".
+ *
+ * Diem 4 la ly do `dong` chi gieo tu cac dong GO TAY: neu gieo ca dong chinh sach thi mo hop
+ * thoai roi bam Luu — khong sua gi — cung bien het chung thanh dong go tay, va tu do chinh
+ * sach khong con dieu khien duoc phieu nay nua. Mot cu bam khong nen lam duoc chuyen do.
  */
 function HopThoaiKhoan(
   { phieu, khi_dong, khi_xong }:
@@ -457,12 +464,17 @@ function HopThoaiKhoan(
 ): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<KhoanDanhMuc[]>('/api/khoan-luong');
   const [dong, dat_dong] = useState<Record<string, { so_luong: string; so_tien: string }>>(
-    Object.fromEntries(phieu.khoan.map((k) => [k.khoan_ma, {
+    Object.fromEntries(phieu.khoan.filter((k) => !k.tu_chinh_sach).map((k) => [k.khoan_ma, {
       so_luong: k.so_luong === null ? '' : String(Number(k.so_luong)),
       so_tien: String(Number(k.thanh_tien)),
     }])),
   );
   const hd = dung_hanh_dong();
+
+  /** Dong dang do chinh sach dieu khien (va chua bi ghi de trong phien nay). */
+  const theo_chinh_sach = new Map(
+    phieu.khoan.filter((k) => k.tu_chinh_sach).map((k) => [k.khoan_ma, k]),
+  );
 
   if (dang_tai) {
     return <HopThoai tieu_de="Các khoản" khi_dong={khi_dong}><DangTai /></HopThoai>;
@@ -502,6 +514,28 @@ function HopThoaiKhoan(
   const o_nhap = (d: KhoanDanhMuc): ReactNode => {
     const co = dong[d.ma];
     if (co === undefined) {
+      const cs = theo_chinh_sach.get(d.ma);
+      if (cs !== undefined) {
+        // Ghi de = dua khoan nay vao danh sach go tay, gieo san bang con so chinh sach dang
+        // cho — de nguoi dung sua tu do chu khong phai go lai tu dau.
+        return (
+          <>
+            <strong>{tien(cs.thanh_tien)} đ</strong>
+            <button
+              className="nut-nho"
+              onClick={() => dat_dong((truoc) => ({
+                ...truoc,
+                [d.ma]: {
+                  so_luong: cs.so_luong === null ? '' : String(Number(cs.so_luong)),
+                  so_tien: String(Number(cs.thanh_tien)),
+                },
+              }))}
+            >
+              Ghi đè
+            </button>
+          </>
+        );
+      }
       return (
         <button className="nut-nho" onClick={() => dat(d.ma, 'so_luong', '')}>Thêm</button>
       );
@@ -539,6 +573,12 @@ function HopThoaiKhoan(
                 <td>
                   {d.ten}
                   {!d.chiu_thue && <span className="nhan-tot"> miễn thuế</span>}
+                  {theo_chinh_sach.has(d.ma) && dong[d.ma] === undefined && (
+                    <span className="nhan-mo"> theo chính sách</span>
+                  )}
+                  {theo_chinh_sach.has(d.ma) && dong[d.ma] !== undefined && (
+                    <span className="nhan-canh-bao"> đã ghi đè cho kỳ này</span>
+                  )}
                   {d.cach_tinh === 'so_luong_x_don_gia' && (
                     <div className="mo-ta">
                       Nhập SỐ LƯỢNG — đơn giá {tien(d.don_gia)} đ, máy nhân ra tiền.
@@ -571,6 +611,13 @@ function HopThoaiKhoan(
         ({tien(phieu.luong_co_ban)} ÷ {Number(phieu.so_ngay_cong_chuan)} công chuẩn).
         Lưu xong hệ thống tính lại cả kỳ để tổng khớp với từng dòng.
       </p>
+      {theo_chinh_sach.size > 0 && (
+        <p className="mo-ta">
+          Khoản gắn nhãn <span className="nhan-mo">theo chính sách</span> do{' '}
+          <em>Phụ cấp</em> điều khiển và tự tính lại mỗi kỳ. Bấm <strong>Ghi đè</strong> nếu
+          riêng kỳ này khác — muốn trả lại theo chính sách thì bấm <strong>Bỏ</strong>.
+        </p>
+      )}
 
       {bang('thu_nhap', 'Phụ cấp / thu nhập thêm')}
       {bang('tru', 'Các khoản trừ')}

@@ -30,6 +30,24 @@ Sửa sau khi duyệt thì phải **trả lại** kỳ về nháp — không có
 
 ---
 
+## Ba tầng, đọc từ dưới lên
+
+```
+khoan_luong            DANH MỤC — công ty có những khoản nào
+   (Hệ thống → Tham số lương → Danh mục khoản lương, chỉ admin)
+        ↓
+chinh_sach_phu_cap     CHÍNH SÁCH — ai được hưởng khoản nào, từ ngày nào
+   (Quản trị nhân sự → Phụ cấp)
+        ↓
+phieu_luong_khoan      SỐ TIỀN THẬT của một người trong một kỳ
+   (Bảng lương → nút "Khoản" trên từng dòng)
+```
+
+Tầng giữa là thứ khiến nhân sự **không phải gõ lại mỗi tháng**. Tầng dưới cùng chỉ dành cho
+những gì thực sự thay đổi trong tháng: thưởng KPI, doanh số, tạm ứng.
+
+---
+
 ## Các khoản
 
 Bảng lương thật của công ty có 9 khoản thu nhập và 5 khoản trừ, và danh sách đó đổi gần như
@@ -62,6 +80,77 @@ giá trong danh mục về sau không làm đổi số tiền của phiếu đã
 
 Tắt `dang_dung` chỉ chặn **thêm mới** vào phiếu. Các phiếu đã tính vẫn giữ nguyên khoản đó và vẫn
 sửa được — tắt một khoản là để không dùng tiếp, không phải để xóa lịch sử.
+
+---
+
+## Chính sách phụ cấp của từng người
+
+*Quản trị nhân sự → Phụ cấp*
+
+> "Chị A được hỗ trợ gửi xe 200.000/tháng từ 01/8" là một **thỏa thuận**, không phải một ô trên
+> bảng lương tháng 8.
+
+Nên nó có **hiệu lực từ – đến**, và kỳ lương tự sinh dòng khoản từ đó. Khai một lần, dùng mãi
+cho đến khi có quyết định khác.
+
+### Số lượng lấy từ đâu
+
+| `nguon_so_luong` | Nghĩa | Dùng cho |
+|---|---|---|
+| `co_dinh` | số lượng ghi trong chính sách | hỗ trợ gửi xe 1 lần/tháng |
+| `theo_cong` | = **số ngày công thực tế** của kỳ | hỗ trợ ăn trưa |
+
+`theo_cong` bám theo chấm công: đi làm ít ngày thì hưởng ít, không ai phải sửa tay. Không đi làm
+ngày nào thì **không sinh dòng nào** — bảng lương không có dòng 0 đồng để người đọc phải tự hiểu.
+
+Với khoản `cach_tinh = 'nhap_tay'`, chính sách nói thẳng **số tiền mỗi tháng**.
+
+### Đơn giá riêng
+
+`chinh_sach_phu_cap.don_gia` để trống thì lấy đơn giá danh mục. Điền thì đó là mức riêng của
+người này — chỗ để một người hưởng khác cả công ty **mà không phải tạo một khoản mới chỉ cho một
+người**.
+
+### Đổi mức: không sửa tại chỗ
+
+Gán lại với ngày hiệu lực mới. Dòng cũ **tự đóng** vào ngày trước đó và ở lại làm lịch sử:
+
+```
+pc_trang_diem  300.000 đ/tháng   01/08/2026 → 14/08/2026   (tự đóng)
+pc_trang_diem  500.000 đ/tháng   15/08/2026 → nay          "Tăng mức"
+```
+
+Nhờ vậy tính lại lương tháng cũ vẫn ra đúng số cũ, và câu *"từ bao giờ người này hưởng mức
+này"* luôn có câu trả lời. Ngày hiệu lực mới phải **sau** ngày của dòng đang mở — không sau thì
+hệ thống từ chối chứ không lặng lẽ đè.
+
+Người thôi hưởng: bấm **Đóng** và điền ngày hưởng đến hết. Kỳ lương nào còn **giao** với khoảng
+hiệu lực thì vẫn được hưởng — người vào làm hoặc nghỉ giữa tháng đều tính đúng.
+
+Chính sách đã sinh ra khoản trên phiếu nào thì **không xóa được**, chỉ đóng. Số tiền đã trả phải
+giữ được căn cứ. Nút *Xóa* chỉ để sửa một dòng vừa gõ nhầm.
+
+### Ghi đè cho riêng một kỳ
+
+Trên *Bảng lương → nút "Khoản"*, dòng do chính sách sinh ra mang nhãn **theo chính sách** và tự
+tính lại mỗi kỳ. Bấm **Ghi đè** nếu riêng kỳ này khác — dòng đó thành dòng gõ tay
+(`tu_chinh_sach = false`) và chính sách thôi điều khiển nó:
+
+- Ghi đè là **ghi đè**, không cộng dồn — chính sách không sinh thêm dòng thứ hai.
+- Tính lại kỳ **không** đè lên con số đã gõ tay.
+- Bấm **Bỏ** để trả về theo chính sách; lần tính sau dòng chính sách quay lại.
+
+### Chính sách không tự sửa bảng lương đang mở
+
+Khai chính sách xong phải bấm **Tính lương** ở kỳ liên quan thì khoản mới xuất hiện. Đó là chủ
+ý: số liệu không được đổi dưới chân người đang làm việc trên nó.
+
+### Gán hàng loạt
+
+53 người cùng hưởng phụ cấp ăn trưa thì không ai nên phải mở 53 hộp thoại. Lọc theo tên / mã /
+phòng ban rồi chọn cả nhóm. Mỗi người vẫn ra **một dòng riêng có hiệu lực riêng** — đây chỉ là
+cách nhập nhanh, không phải một tầng "chính sách chung" thứ hai để sau này không biết số của ai
+đến từ đâu.
 
 ---
 
@@ -155,10 +244,17 @@ không sinh ra cột rỗng.
 | `GET` | `/api/khoan-luong` (`?ca=true` để thấy cả khoản đã tắt) | nhân sự |
 | `POST` | `/api/khoan-luong` | admin |
 | `PATCH` | `/api/khoan-luong/:ma` | admin |
+| `GET` | `/api/chinh-sach-phu-cap` (`?nhan_vien_id=`, `?con_hieu_luc=false`) | nhân sự |
+| `POST` | `/api/chinh-sach-phu-cap` | nhân sự |
+| `POST` | `/api/chinh-sach-phu-cap/hang-loat` | nhân sự |
+| `POST` | `/api/chinh-sach-phu-cap/:id/dong` | nhân sự |
+| `DELETE` | `/api/chinh-sach-phu-cap/:id` (chỉ khi chưa từng sinh khoản) | nhân sự |
 | `PUT` | `/api/phieu-luong/:id/khoan` | nhân sự |
 
-`PUT .../khoan` nhận **cả danh sách** — đó là trạng thái mong muốn của dòng đó. Khoản không có
-trong danh sách gửi lên sẽ bị gỡ khỏi phiếu. Gửi xong hệ thống tính lại cả kỳ.
+`PUT .../khoan` nhận **cả danh sách** — nhưng phạm vi của nó chỉ là các khoản **gõ tay** cho
+riêng kỳ này. Khoản gõ tay không có trong danh sách gửi lên sẽ bị gỡ; dòng do chính sách sinh
+ra không nằm trong phạm vi và được `tinh_ky_luong` dựng lại mỗi lần tính. Đưa một khoản vào danh
+sách này *chính là* hành động ghi đè. Gửi xong hệ thống tính lại cả kỳ.
 
 `loai` và `cach_tinh` của một khoản **không sửa được** sau khi tạo: các phiếu đã tính đang mang số
 tiền ra theo cách cũ, đổi ở đây là lặng lẽ biến một khoản cộng thành một khoản trừ trong lịch sử.
