@@ -20,6 +20,7 @@ import {
   doi_soat, gan_bo_ma_nhan_su, gan_ma, ma_cua_nhan_vien, thu_hoi_ma, tim_theo_ma,
 } from '../dinh_danh/nghiep_vu.ts';
 import { CAC_HE_THONG, MA_CAC_HE_THONG } from '../dinh_danh/he_thong.ts';
+import { cap_pin, doc_dai_pin, goi_y_pin } from '../dinh_danh/cap_pin.ts';
 
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
 // KHONG duoc dung khi tao tai khoan moi bang tay (xem POST /nguoi-dung).
@@ -324,7 +325,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   app.get('/thiet-bi', { preHandler: can_dang_nhap }, async () =>
     truy_van(
       `select id, serial, ten, vi_tri, dang_bat, phien_ban_firmware, dia_chi_ip,
-              thay_lan_cuoi,
+              thay_lan_cuoi, pin_tu, pin_den,
               (thay_lan_cuoi is not null
                and thay_lan_cuoi > now() - ($1 || ' seconds')::interval) as dang_online,
               (select count(*) from lenh_thiet_bi l
@@ -339,10 +340,14 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const serial = chuoi_bat_buoc(b, 'serial', { toi_da: 64 });
     const ten = chuoi_bat_buoc(b, 'ten', { toi_da: 120 });
     const vi_tri = chuoi(b, 'vi_tri', { toi_da: 120 }) ?? 'Van phong';
+    // Dai PIN: khai ngay luc them may thi khong ai phai nho quay lai dat sau — va cap PIN cho
+    // nguoi dau tien cua may do da dung dai ngay tu dau.
+    const dai = doc_dai_pin(so_nguyen(b, 'pin_tu'), so_nguyen(b, 'pin_den'));
     const dong = await ghi_bat_trung(
       () => truy_van_mot<{ id: string }>(
-        'insert into thiet_bi(serial, ten, vi_tri) values ($1,$2,$3) returning id',
-        [serial, ten, vi_tri],
+        `insert into thiet_bi(serial, ten, vi_tri, pin_tu, pin_den)
+         values ($1,$2,$3,$4,$5) returning id`,
+        [serial, ten, vi_tri, dai?.tu ?? null, dai?.den ?? null],
       ),
       'Serial máy này đã được khai báo.',
     );
@@ -354,16 +359,49 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   app.patch('/thiet-bi/:id', { preHandler: can_nhan_su }, async (req) => {
     const id = lay_id(req);
     const b = than(req.body);
+    // `pin_tu`/`pin_den` di CUNG NHAU: gui mot trong hai thi `doc_dai_pin` bao loi, gui ca hai
+    // thi doi ca hai, khong gui gi thi giu nguyen. Rang buoc `check` cua bang cung doi the.
+    const co_dai = b['pin_tu'] !== undefined || b['pin_den'] !== undefined;
+    const dai = co_dai ? doc_dai_pin(so_nguyen(b, 'pin_tu'), so_nguyen(b, 'pin_den')) : null;
     const so = await thuc_thi(
       `update thiet_bi
           set ten = coalesce($2, ten),
               vi_tri = coalesce($3, vi_tri),
-              dang_bat = coalesce($4, dang_bat)
+              dang_bat = coalesce($4, dang_bat),
+              pin_tu = case when $5::boolean then $6::int else pin_tu end,
+              pin_den = case when $5::boolean then $7::int else pin_den end
         where id = $1`,
-      [id, chuoi(b, 'ten', { toi_da: 120 }), chuoi(b, 'vi_tri', { toi_da: 120 }), luan_ly(b, 'dang_bat')],
+      [id, chuoi(b, 'ten', { toi_da: 120 }), chuoi(b, 'vi_tri', { toi_da: 120 }),
+        luan_ly(b, 'dang_bat'), co_dai, dai?.tu ?? null, dai?.den ?? null],
     );
     if (so === 0) throw new LoiKhongTim('Không tìm thấy thiết bị.');
     return { ok: true };
+  });
+
+  /**
+   * De nghi mot PIN con trong cho may nay. KHONG ghi gi.
+   *
+   * De nguoi dung nhin thay so truoc khi quyet dinh — cap PIN la viec se phai cai tay len may,
+   * nen ho can biet so do la gi truoc khi bam.
+   */
+  app.get('/thiet-bi/:serial/pin-goi-y', { preHandler: can_nhan_su }, async (req) =>
+    goi_y_pin(lay_serial_param(req)));
+
+  /**
+   * He thong CAP mot PIN cho nhan vien, theo dai cua may.
+   *
+   * Chieu di la he-thong -> may: he thong chon so, nguoi phu trach cai dung so do len may. Nguoc
+   * lai — nguoi khai may tu nghi so roi go lai vao phan mem — la duong chac chan den cham cong
+   * sai ten khi co nhieu may.
+   */
+  app.post('/nhan-vien/:id/cap-pin', { preHandler: can_nhan_su }, async (req, res) => {
+    const id = lay_id(req);
+    const b = than(req.body);
+    const serial = chuoi_bat_buoc(b, 'thiet_bi_serial', { toi_da: 64 });
+    const kq = await cap_pin(id, serial);
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'cap_pin_may', 'nhan_vien', id,
+      { pin: kq.pin, thiet_bi_serial: serial }, req.ip);
+    return res.code(201).send(kq);
   });
 
   /** Nap mot nhan vien xuong may (tao user tren may theo PIN). */
@@ -800,9 +838,24 @@ function lay_serial_param(req: { params: unknown }): string {
   return s;
 }
 
+/**
+ * May phai CO KHAI va DANG BAT thi moi xep lenh xuong duoc.
+ *
+ * `dang_bat` la dieu kien bat buoc chu khong phai chi tiet: cong `/iclock` chi nhan may co
+ * `dang_bat = true`, nen mot lenh xep cho may dang tat se KHONG BAO GIO duoc nhan. Truoc day
+ * route van bao "đã xếp lệnh" va lenh nam lai mai mai — tren VPS that co dung mot dong nhu the,
+ * xep cho may `THU001` tu 07/08 va khong ai biet.
+ */
 async function bat_buoc_co_may(serial: string): Promise<void> {
-  const may = await truy_van_mot<{ id: string }>('select id from thiet_bi where serial = $1', [serial]);
+  const may = await truy_van_mot<{ id: string; ten: string; dang_bat: boolean }>(
+    'select id, ten, dang_bat from thiet_bi where serial = $1', [serial]);
   if (may === null) throw new LoiKhongTim('Chưa khai báo máy có serial này.');
+  if (!may.dang_bat) {
+    throw new LoiXungDot(
+      `Máy "${may.ten}" đang tắt nên không nhận lệnh — cổng máy chỉ tiếp máy đang bật. `
+      + 'Bật máy ở trang Thiết bị rồi xếp lệnh lại.',
+    );
+  }
 }
 
 /** Doi loi vi pham UNIQUE (23505) thanh LoiXungDot co thong diep de hieu. */

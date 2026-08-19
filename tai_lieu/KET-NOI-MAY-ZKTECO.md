@@ -76,15 +76,37 @@ Sau khoảng 10 giây, trạng thái máy trong webapp chuyển thành **Kết n
 
 ## 3. Đăng ký nhân viên lên máy
 
-Có hai việc khác nhau, phải làm cả hai:
+**Hệ thống cấp số, máy làm theo — không bao giờ ngược lại.**
 
-1. **Trên webapp**: thêm nhân viên và điền **PIN máy** — đúng bằng số ID (User ID) của
-   người đó trên máy.
-2. **Tại máy**: nhân viên phải **đăng ký khuôn mặt / vân tay trực tiếp**. Sinh trắc học
-   không thể nạp từ xa.
+Trước bản `1.32.3`, nhân sự tự nghĩ ra PIN rồi gõ vào phần mềm và hy vọng nó khớp với số đã khai
+trên máy. Với một máy thì không sao; với nhiều máy thì đó là đường chắc chắn đến chấm công sai
+tên, vì PIN **là** danh tính và hệ thống tra PIN ra người trên phạm vi toàn công ty chứ không lọc
+theo máy.
 
-Nút **"Nạp NV"** trong webapp chỉ tạo sẵn user (PIN + tên) trên máy để nhân viên khỏi
-phải tự tạo — vẫn phải ra máy đăng ký khuôn mặt.
+Ba việc, đúng thứ tự:
+
+1. **Trên webapp** — mở hồ sơ nhân viên → thẻ *Mã ở các hệ thống* → **Cấp PIN** → chọn máy. Hệ
+   thống lấy **số còn trống đầu tiên trong dải của máy đó**, cho xem trước rồi mới ghi.
+2. **Tại máy** — tạo user với đúng `User ID` = số vừa cấp. Hoặc bấm **Nạp NV** ở trang Thiết bị
+   để hệ thống tạo sẵn user (PIN + tên) trên máy.
+3. **Tại máy** — nhân viên **đăng ký khuôn mặt / vân tay trực tiếp**. Sinh trắc học không thể nạp
+   từ xa.
+
+Nút **"Nạp NV"** chỉ tạo sẵn user (PIN + tên) trên máy để nhân viên khỏi phải tự tạo — vẫn
+phải ra máy đăng ký khuôn mặt.
+
+### Dải PIN của từng máy
+
+Khai lúc thêm máy (**Thiết bị → Khai báo máy → Dải PIN**): VP1 `1001–1999`, VP2 `2001–2999`.
+Nhìn PIN là biết máy nào, và hai nơi không bao giờ cấp trùng số cho hai người khác nhau. Để
+trống thì cấp từ 1 trở lên.
+
+Bộ cấp phát lấy **số còn trống đầu tiên**, không phải `lớn nhất + 1`: PIN của người đã nghỉ được
+thu hồi sẽ để lại lỗ trống, và tái sử dụng lỗ đó là đúng — dải PIN của một văn phòng hữu hạn. Nó
+cũng tránh cả số đang nằm ở cột cũ `nhan_vien.pin_may`, không chỉ số trong bảng mã định danh.
+
+Dải đầy thì báo rõ và **không tràn sang dải máy khác** — tràn ra là dẫm vào đúng thứ mà dải sinh
+ra để tránh.
 
 Tên hiển thị trên máy bị bỏ dấu tự động vì màn hình máy ZKTeco chỉ hiện được ASCII.
 

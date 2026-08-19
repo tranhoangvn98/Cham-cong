@@ -181,6 +181,8 @@ function FormThietBi({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
   const [serial, dat_serial] = useState('');
   const [ten, dat_ten] = useState('');
   const [vi_tri, dat_vi_tri] = useState('');
+  const [pin_tu, dat_pin_tu] = useState('');
+  const [pin_den, dat_pin_den] = useState('');
   const hd = dung_hanh_dong();
 
   const gui = async (e: React.FormEvent): Promise<void> => {
@@ -191,6 +193,8 @@ function FormThietBi({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
         serial: serial.trim(),
         ten: ten.trim(),
         vi_tri: vi_tri.trim() === '' ? null : vi_tri.trim(),
+        pin_tu: pin_tu.trim() === '' ? null : Number(pin_tu),
+        pin_den: pin_den.trim() === '' ? null : Number(pin_den),
       },
     }));
     if (ok) khi_xong();
@@ -217,6 +221,24 @@ function FormThietBi({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
           <label htmlFor="vt">Vị trí</label>
           <input id="vt" value={vi_tri} onChange={(e) => dat_vi_tri(e.target.value)}
             placeholder="Tầng 1, VP Hà Nội" />
+        </div>
+        <div className="luoi luoi-2">
+          <div className="o-nhap">
+            <label htmlFor="pt">Dải PIN — từ</label>
+            <input id="pt" type="number" min={1} value={pin_tu}
+              onChange={(e) => dat_pin_tu(e.target.value)} placeholder="1001" />
+          </div>
+          <div className="o-nhap">
+            <label htmlFor="pd">đến</label>
+            <input id="pd" type="number" min={1} value={pin_den}
+              onChange={(e) => dat_pin_den(e.target.value)} placeholder="1999" />
+          </div>
+        </div>
+        <div className="goi-y">
+          Hệ thống sẽ <strong>cấp PIN trong dải này</strong> cho nhân viên của máy, rồi bạn cài
+          đúng số đó lên máy. Mỗi máy một dải riêng (VP1 <code>1001–1999</code>, VP2{' '}
+          <code>2001–2999</code>) thì nhìn PIN là biết máy nào, và hai nơi không bao giờ cấp
+          trùng số cho hai người khác nhau. Để trống thì cấp từ 1 trở lên.
         </div>
         <div className="hang-nut">
           <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>

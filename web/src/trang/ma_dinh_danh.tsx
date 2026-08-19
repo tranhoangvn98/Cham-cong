@@ -43,6 +43,7 @@ export function TheMaDinhDanh(
 ): ReactNode {
   const [ca_lich_su, dat_ca_lich_su] = useState(false);
   const [dang_them, dat_dang_them] = useState<string | null>(null);
+  const [dang_cap_pin, dat_dang_cap_pin] = useState(false);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<NhomMa[]>(
     `/api/nhan-vien/${nhan_vien_id}/ma-dinh-danh?ca_lich_su=${ca_lich_su ? '1' : '0'}`,
     [nhan_vien_id, ca_lich_su],
@@ -125,6 +126,13 @@ export function TheMaDinhDanh(
                         ))}
                     </td>
                     <td style={{ width: 90 }}>
+                      {sua_duoc && n.he_thong === 'may_cham_cong' && (
+                        <button type="button" className="nut-nho nut-chinh"
+                          onClick={() => dat_dang_cap_pin(true)}
+                          title="Hệ thống chọn một PIN còn trống trong dải của máy">
+                          Cấp PIN
+                        </button>
+                      )}
                       {sua_duoc && (n.nhieu_ma || n.cac_ma.every((m) => m.hieu_luc_den !== null)) && (
                         <button type="button" className="nut-nho" onClick={() => dat_dang_them(n.he_thong)}>
                           + Thêm
@@ -143,6 +151,14 @@ export function TheMaDinhDanh(
           </div>
         </div>
       ))}
+
+      {dang_cap_pin && (
+        <HopThoaiCapPin
+          nhan_vien_id={nhan_vien_id}
+          khi_dong={() => dat_dang_cap_pin(false)}
+          khi_xong={() => { dat_dang_cap_pin(false); nap_lai(); }}
+        />
+      )}
 
       {dang_them !== null && (
         <HopThoaiGanMa
@@ -256,6 +272,110 @@ function HopThoaiGanMa(
       </div>
     </HopThoai>
   );
+}
+
+/**
+ * Cap PIN may cham cong: HE THONG CHON SO, nguoi phu trach cai len may.
+ *
+ * Chieu di la he-thong -> may. Nguoc lai — nguoi khai may tu nghi so roi go lai vao phan mem —
+ * la duong chac chan den cham cong sai ten khi co nhieu may: PIN la danh tinh, va he thong tra
+ * PIN ra nguoi tren pham vi toan cong ty chu khong loc theo may.
+ */
+function HopThoaiCapPin(
+  { nhan_vien_id, khi_dong, khi_xong }: {
+    nhan_vien_id: string; khi_dong: () => void; khi_xong: () => void;
+  },
+): ReactNode {
+  const [serial, dat_serial] = useState('');
+  const [da_cap, dat_da_cap] = useState<CapPin | null>(null);
+  const hd = dung_hanh_dong();
+  const { du_lieu: may } = dung_nap<ThietBiGon[]>('/api/thiet-bi');
+  // De nghi truoc khi bam: nguoi dung thay so TRUOC khi quyet dinh, vi cap xong la phai ra may
+  // cai dung so do.
+  const { du_lieu: goi_y, loi: loi_goi_y } = dung_nap<CapPin>(
+    serial === '' ? null : `/api/thiet-bi/${encodeURIComponent(serial)}/pin-goi-y`, [serial]);
+
+  const cap = async (): Promise<void> => {
+    const kq = await hd.chay_lay<CapPin>(() => goi(`/api/nhan-vien/${nhan_vien_id}/cap-pin`, {
+      method: 'POST', body: { thiet_bi_serial: serial },
+    }));
+    if (kq !== null) dat_da_cap(kq);
+  };
+
+  const dang_bat = (may ?? []).filter((m) => m.dang_bat);
+
+  return (
+    <HopThoai tieu_de="Cấp PIN máy chấm công" khi_dong={khi_dong}>
+      {da_cap === null ? (
+        <>
+          <HopLoi loi={hd.loi} />
+          <p className="mo-ta">
+            Hệ thống chọn một PIN <strong>còn trống</strong> trong dải của máy bạn chọn. Sau đó
+            bạn cài đúng số đó lên máy — không tự nghĩ số.
+          </p>
+          <label className="o">
+            <span>Máy chấm công *</span>
+            <select value={serial} onChange={(e) => dat_serial(e.target.value)}>
+              <option value="">— Chọn máy —</option>
+              {dang_bat.map((m) => (
+                <option key={m.serial} value={m.serial}>
+                  {m.ten}{m.pin_tu === null ? '' : ` (dải ${m.pin_tu}–${m.pin_den ?? ''})`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <HopLoi loi={loi_goi_y} />
+          {goi_y !== null && (
+            <div className="goi-y">
+              PIN sẽ cấp: <strong style={{ fontSize: 18 }}>{goi_y.pin}</strong>
+              {' '}— dải {goi_y.dai.tu}–{goi_y.dai.den}, còn trống{' '}
+              {goi_y.con_trong > 1000 ? 'trên 1000' : goi_y.con_trong} số.
+            </div>
+          )}
+
+          <div className="hang-nut">
+            <button type="button" className="nut-chinh"
+              disabled={serial === '' || goi_y === null || hd.dang_chay} onClick={cap}>
+              Cấp PIN này
+            </button>
+            <button type="button" onClick={khi_dong}>Hủy</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <HopTot chu={`Đã cấp PIN ${da_cap.pin} cho máy ${da_cap.thiet_bi_ten}.`} />
+          <div className="goi-y">
+            <p><strong>Việc còn lại, làm tại máy:</strong></p>
+            <ol style={{ margin: '4px 0 0 18px' }}>
+              <li>Tạo user trên máy với <strong>User ID = {da_cap.pin}</strong> — hoặc bấm
+                <em> Nạp NV</em> ở trang Thiết bị để hệ thống tạo sẵn.</li>
+              <li>Nhân viên <strong>đăng ký khuôn mặt / vân tay trực tiếp tại máy</strong> —
+                sinh trắc học không nạp từ xa được.</li>
+            </ol>
+          </div>
+          <div className="hang-nut">
+            <button type="button" className="nut-chinh" onClick={khi_xong}>Xong</button>
+          </div>
+        </>
+      )}
+    </HopThoai>
+  );
+}
+
+interface ThietBiGon {
+  serial: string;
+  ten: string;
+  dang_bat: boolean;
+  pin_tu: number | null;
+  pin_den: number | null;
+}
+
+interface CapPin {
+  pin: string;
+  thiet_bi_ten: string;
+  dai: { tu: number; den: number };
+  con_trong: number;
 }
 
 // ==================================================================== trang He thong

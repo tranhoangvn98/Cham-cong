@@ -122,3 +122,42 @@ test('he thong NHIEU MA ma cot chi chua mot thi khong duoc ghi de bua', () => {
   assert.equal(pin?.nhieu_ma, true);
   assert.equal(pin?.dong_bo_cot, 'luon');
 });
+
+// -------------------------------------------------------------------- cap phat PIN
+//
+// He thong cap so, nguoi phu trach cai len may. Ham chon so la THUAN nen kiem duoc het cac
+// truong hop bien o day, khong can CSDL.
+
+test('cap PIN: lay so trong DAU TIEN trong dai, khong phai max+1', async () => {
+  const { pin_trong_dau_tien } = await import('../src/dinh_danh/cap_pin.ts');
+  // Lay lo trong o giua: PIN cua nguoi da nghi duoc thu hoi de lai lo, va tai su dung la dung —
+  // dai PIN cua mot van phong huu han.
+  assert.equal(pin_trong_dau_tien({ tu: 1001, den: 1999 }, new Set([1001, 1002, 1004])), 1003);
+  assert.equal(pin_trong_dau_tien({ tu: 1001, den: 1999 }, new Set()), 1001);
+  assert.equal(pin_trong_dau_tien({ tu: 1, den: 3 }, new Set([1, 2])), 3);
+});
+
+test('cap PIN: dai day thi tra null, khong tran ra ngoai dai', async () => {
+  const { pin_trong_dau_tien } = await import('../src/dinh_danh/cap_pin.ts');
+  // Tran ra ngoai dai la dam vao dai cua may khac — dung cai ma dai sinh ra de tranh.
+  assert.equal(pin_trong_dau_tien({ tu: 1, den: 3 }, new Set([1, 2, 3])), null);
+  assert.equal(pin_trong_dau_tien({ tu: 5, den: 5 }, new Set([5])), null);
+  assert.equal(pin_trong_dau_tien({ tu: 5, den: 5 }, new Set([4, 6])), 5);
+});
+
+test('cap PIN: dai chi tinh trong khoang cua no', async () => {
+  const { pin_trong_dau_tien } = await import('../src/dinh_danh/cap_pin.ts');
+  // So dang dung o dai khac khong lam thay doi ket qua cua dai nay.
+  assert.equal(pin_trong_dau_tien({ tu: 2001, den: 2999 }, new Set([1001, 1002, 2001])), 2002);
+});
+
+test('doc_dai_pin: hai dau di cung nhau, va phai xuoi', async () => {
+  const { doc_dai_pin, PIN_TOI_DA } = await import('../src/dinh_danh/cap_pin.ts');
+  assert.deepEqual(doc_dai_pin(1001, 1999), { tu: 1001, den: 1999 });
+  assert.equal(doc_dai_pin(null, null), null);
+  assert.throws(() => doc_dai_pin(1001, null), /cả hai đầu/);
+  assert.throws(() => doc_dai_pin(null, 1999), /cả hai đầu/);
+  assert.throws(() => doc_dai_pin(1999, 1001), /nhỏ hơn hoặc bằng/);
+  assert.throws(() => doc_dai_pin(0, 10), /1–/);
+  assert.throws(() => doc_dai_pin(1, PIN_TOI_DA + 1), /1–/);
+});

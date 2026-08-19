@@ -6361,3 +6361,134 @@ test('nhieu may: may CHUA khai serial bi tu choi 401', async () => {
   });
   assert.equal(r.statusCode, 401, r.body);
 });
+
+// -------------------------------------------------------------------- he thong cap PIN
+//
+// Chieu di la he-thong -> may: he thong chon so con trong trong dai cua may, nguoi phu trach cai
+// dung so do len may. Nguoc lai — nguoi khai may tu nghi so roi go lai vao phan mem — la duong
+// chac chan den cham cong sai ten khi co nhieu may.
+
+test('cap PIN: he thong chon so trong dai cua may va ghi vao bang', async () => {
+  const [id_a] = await cap_gop('CP1', 'Quản Văn Cấp', 'Quản Văn Khác');
+  const sn = 'MAY-DAI-01';
+  const tao = await goi('POST', '/api/thiet-bi', {
+    token: token_admin,
+    body: { serial: sn, ten: 'Máy dải 1', vi_tri: 'VP1', pin_tu: 41000, pin_den: 41999 },
+  });
+  assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+
+  // De nghi truoc — khong duoc ghi gi.
+  const goi_y = await goi('GET', `/api/thiet-bi/${sn}/pin-goi-y`, { token: token_admin });
+  assert.equal(goi_y.ma, 200, JSON.stringify(goi_y.body));
+  assert.equal(goi_y.body['pin'], '41000');
+  const chua_ghi = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from ma_dinh_danh
+      where nhan_vien_id = $1 and he_thong = 'may_cham_cong'`, [id_a]);
+  assert.equal(chua_ghi?.so, 0, 'chi de nghi ma da ghi');
+
+  const cap = await goi('POST', `/api/nhan-vien/${id_a}/cap-pin`, {
+    token: token_admin, body: { thiet_bi_serial: sn },
+  });
+  assert.equal(cap.ma, 201, JSON.stringify(cap.body));
+  assert.equal(cap.body['pin'], '41000');
+
+  // Ghi vao bang VA dong bo cot — cot la duong du phong cua bo tiep nhan ADMS.
+  const ma = await truy_van_mot<{ ma: string; ghi_chu: string | null }>(
+    `select ma, ghi_chu from ma_dinh_danh
+      where nhan_vien_id = $1 and he_thong = 'may_cham_cong' and hieu_luc_den is null`, [id_a]);
+  assert.equal(ma?.ma, '41000');
+  assert.match(ma?.ghi_chu ?? '', /Máy dải 1/);
+  const cot = await truy_van_mot<{ pin_may: string | null }>(
+    'select pin_may from nhan_vien where id = $1', [id_a]);
+  assert.equal(cot?.pin_may, '41000');
+
+  // Nguoi thu hai cua cung may: so KE TIEP, khong trung.
+  const [id_b] = await cap_gop('CP2', 'Quản Thị Hai', 'Quản Thị Khác');
+  const cap2 = await goi('POST', `/api/nhan-vien/${id_b}/cap-pin`, {
+    token: token_admin, body: { thiet_bi_serial: sn },
+  });
+  assert.equal(cap2.ma, 201, JSON.stringify(cap2.body));
+  assert.equal(cap2.body['pin'], '41001');
+});
+
+test('cap PIN: KHONG cap trung so dang nam o cot cu', async () => {
+  // Cot `pin_may` van la duong doc du phong va van co duong ghi vao. Cap trung mot so dang o do
+  // nghia la hai nguoi cung mot danh tinh — va bo tiep nhan se ghi cong cho mot trong hai.
+  const sn = 'MAY-DAI-02';
+  await goi('POST', '/api/thiet-bi', {
+    token: token_admin,
+    body: { serial: sn, ten: 'Máy dải 2', vi_tri: 'VP2', pin_tu: 42000, pin_den: 42999 },
+  });
+  const [id_cu] = await cap_gop('CP3', 'Cột Văn Cũ', 'Cột Văn Khác');
+  // Dat thang vao cot, KHONG qua bang — dung hinh dang du lieu truoc di tru 025.
+  await thuc_thi("update nhan_vien set pin_may = '42000' where id = $1", [id_cu]);
+  await thuc_thi(
+    `delete from ma_dinh_danh where nhan_vien_id = $1 and he_thong = 'may_cham_cong'`, [id_cu]);
+
+  const [id_moi] = await cap_gop('CP4', 'Cột Văn Mới', 'Cột Văn Khác 2');
+  const cap = await goi('POST', `/api/nhan-vien/${id_moi}/cap-pin`, {
+    token: token_admin, body: { thiet_bi_serial: sn },
+  });
+  assert.equal(cap.ma, 201, JSON.stringify(cap.body));
+  assert.notEqual(cap.body['pin'], '42000', 'cap trung so dang nam o cot cu');
+  assert.equal(cap.body['pin'], '42001');
+});
+
+test('cap PIN: dai day thi bao ro, khong tran sang dai may khac', async () => {
+  const sn = 'MAY-DAI-03';
+  await goi('POST', '/api/thiet-bi', {
+    token: token_admin,
+    body: { serial: sn, ten: 'Máy dải hẹp', vi_tri: 'VP3', pin_tu: 43000, pin_den: 43001 },
+  });
+  for (const hau_to of ['CP5', 'CP6']) {
+    const [id] = await cap_gop(hau_to, `Hẹp ${hau_to}`, `Hẹp ${hau_to} khác`);
+    const r = await goi('POST', `/api/nhan-vien/${id}/cap-pin`, {
+      token: token_admin, body: { thiet_bi_serial: sn },
+    });
+    assert.equal(r.ma, 201, JSON.stringify(r.body));
+  }
+  const [id_thua] = await cap_gop('CP7', 'Hẹp Thừa', 'Hẹp Thừa khác');
+  const het = await goi('POST', `/api/nhan-vien/${id_thua}/cap-pin`, {
+    token: token_admin, body: { thiet_bi_serial: sn },
+  });
+  assert.equal(het.ma, 409, JSON.stringify(het.body));
+  assert.match(String(het.body['loi']), /đã dùng hết/);
+  assert.match(String(het.body['loi']), /43000/);
+});
+
+test('cap PIN: dai sai thi tu choi ngay luc khai may', async () => {
+  const nguoc = await goi('POST', '/api/thiet-bi', {
+    token: token_admin,
+    body: { serial: 'MAY-DAI-SAI', ten: 'Sai dải', pin_tu: 9000, pin_den: 8000 },
+  });
+  assert.equal(nguoc.ma, 400, JSON.stringify(nguoc.body));
+  assert.match(String(nguoc.body['loi']), /nhỏ hơn hoặc bằng/);
+
+  const mot_dau = await goi('POST', '/api/thiet-bi', {
+    token: token_admin, body: { serial: 'MAY-DAI-SAI-2', ten: 'Thiếu đầu', pin_tu: 9000 },
+  });
+  assert.equal(mot_dau.ma, 400, JSON.stringify(mot_dau.body));
+  assert.match(String(mot_dau.body['loi']), /cả hai đầu/);
+});
+
+test('thiet bi: may DANG TAT khong nhan lenh, bao ro thay vi xep lenh chet', async () => {
+  // Cong `/iclock` chi tiep may `dang_bat = true`, nen lenh xep cho may dang tat khong bao gio
+  // duoc nhan. Tren VPS that co dung mot dong nhu the, xep cho `THU001` tu 07/08 — giao dien bao
+  // "đã xếp lệnh" va no nam lai mai mai.
+  const sn = 'MAY-TAT-01';
+  const tao = await goi('POST', '/api/thiet-bi', {
+    token: token_admin, body: { serial: sn, ten: 'Máy đã tắt', vi_tri: 'Kho cũ' },
+  });
+  assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+  await goi('PATCH', `/api/thiet-bi/${tao.body['id'] as string}`, {
+    token: token_admin, body: { dang_bat: false },
+  });
+
+  const r = await goi('POST', `/api/thiet-bi/${sn}/dong-bo-gio`, { token: token_admin, body: {} });
+  assert.equal(r.ma, 409, JSON.stringify(r.body));
+  assert.match(String(r.body['loi']), /đang tắt/);
+
+  const so = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from lenh_thiet_bi where thiet_bi_serial = $1', [sn]);
+  assert.equal(so?.so, 0, 'van xep lenh xuong may dang tat');
+});

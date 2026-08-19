@@ -2,6 +2,44 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.32.3] — 2026-08-19
+
+**Hệ thống cấp PIN, máy làm theo — không bao giờ ngược lại.**
+
+Trước bản này nhân sự tự nghĩ ra PIN rồi gõ vào phần mềm và hy vọng nó khớp số đã khai trên máy.
+Với một máy thì không sao. Với nhiều máy thì đó là đường chắc chắn đến chấm công sai tên: PIN
+**là** danh tính, và bộ tiếp nhận tra PIN ra người trên phạm vi **toàn công ty** chứ không lọc
+theo máy. Hai văn phòng cùng đánh số từ 1 thì anh A ở VP2 và anh B ở VP1 là cùng một người dưới
+mắt hệ thống — và không có gì báo, vì máy chỉ gửi lên "PIN 1".
+
+Di trú `026` (`thiet_bi.pin_tu`, `pin_den`) + `dinh_danh/cap_pin.ts` + nút **Cấp PIN** trên thẻ
+*Mã ở các hệ thống* của hồ sơ.
+
+Luồng đóng lại: chọn máy → hệ thống lấy **số còn trống đầu tiên trong dải của máy đó** → cho xem
+trước → ghi vào bảng mã định danh và đồng bộ cột → màn hình chỉ ra hai việc còn lại phải làm
+**tại máy** (tạo user đúng số đó, rồi đăng ký khuôn mặt/vân tay).
+
+### Bốn quyết định trong bộ cấp phát
+
+- **Số còn trống đầu tiên, không phải `lớn nhất + 1`.** PIN của người đã nghỉ được thu hồi để lại
+  lỗ trống, và tái sử dụng lỗ đó là đúng — dải PIN của một văn phòng hữu hạn.
+- **Tránh cả số đang nằm ở cột cũ `nhan_vien.pin_may`**, không chỉ số trong bảng. Cột vẫn có
+  đường ghi vào và vẫn là đường đọc dự phòng; cấp trùng số ở đó nghĩa là hai người cùng một danh
+  tính. Đã kiểm bằng cách bỏ nguồn thứ hai đi: đỏ đúng chỗ.
+- **Dải đầy thì báo rõ, không tràn sang dải máy khác** — tràn ra là dẫm vào đúng thứ mà dải sinh
+  ra để tránh.
+- **Thử lại khi đụng nhau.** Hai người cùng bấm *Cấp PIN* một lúc thì cả hai được đề nghị cùng
+  một số; unique index chặn người thứ hai, và bộ cấp phát thử lại với số kế tiếp thay vì ném lỗi.
+  Không khóa bảng: cấp PIN là thao tác hiếm, còn khóa bảng thì ai cũng trả giá.
+
+### Máy đang tắt vẫn nhận được lệnh — và lệnh nằm lại mãi mãi
+
+Tìm ra từ chính dữ liệu trên VPS: `THU001` đang tắt mà có **1 lệnh chờ từ 07/08**. Cổng `/iclock`
+chỉ tiếp máy `dang_bat = true`, nên lệnh xếp cho máy đang tắt **không bao giờ được nhận** — nhưng
+giao diện vẫn báo "đã xếp lệnh". Giờ `bat_buoc_co_may` từ chối kèm lý do đọc được.
+
+472 unit → 476 unit (1 skipped) + 5 proxy + 15 thiết kế + 357 e2e.
+
 ## [1.32.2] — 2026-08-19
 
 **"Nạp NV" xuống máy vẫn đọc cột `pin_may`** — cùng loại lỗi vừa sửa cho đường tiếp nhận ADMS,
