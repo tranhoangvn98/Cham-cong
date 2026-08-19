@@ -216,3 +216,18 @@ bảng công sinh ra, gồm cả chống trùng, hàng đợi lệnh, và chấm
 | [`tai_lieu/API.md`](tai_lieu/API.md) | Toàn bộ endpoint REST |
 | [`tai_lieu/THIET-KE.md`](tai_lieu/THIET-KE.md) | Design token: màu, font, bo góc, breakpoint |
 | [`CLAUDE.md`](CLAUDE.md) | Quy ước code của dự án |
+
+### Cổng chung nội bộ
+
+Chấm công sẽ trở thành **module `chamcong`** của cổng chung: đăng nhập, phân quyền và token
+do cổng lo, Chấm công chỉ xác minh token rồi làm việc của mình.
+
+Thiết kế nằm ở kho riêng [`tranhoangvn98/phanquyen`](https://github.com/tranhoangvn98/phanquyen)
+— **không** chép về đây, để không có hai bản trôi khác nhau:
+
+| Tệp | Nội dung |
+|---|---|
+| [`tai_lieu/CONG-CHUNG.md`](https://github.com/tranhoangvn98/phanquyen/blob/main/tai_lieu/CONG-CHUNG.md) | Kiến trúc cổng, luồng chạy, bề mặt API, runbook, rủi ro |
+| [`tai_lieu/KET-NOI-MODUN.md`](https://github.com/tranhoangvn98/phanquyen/blob/main/tai_lieu/KET-NOI-MODUN.md) | Hợp đồng để nối một service vào cổng |
+
+Chưa triển khai. Cho tới lúc đó, Chấm công vẫn tự làm đăng nhập như hiện tại.
