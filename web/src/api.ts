@@ -11,12 +11,25 @@
  */
 const GOC = ((import.meta.env['VITE_API_URL'] as string | undefined) ?? '').replace(/\/+$/, '')
   || (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+
+/**
+ * Goc API dang tuyet doi, de hien link cho NGUOI DUNG chep di noi khac.
+ *
+ * KHONG dung window.location.origin cho viec nay: webapp chay duoi tien to (vd /chamcong/)
+ * nen origin khong thoi se ra link thieu tien to, chep sang he thong khac la 404.
+ */
+export function goc_api_tuyet_doi(): string {
+  return `${window.location.origin}${GOC}`;
+}
 const KHOA_LUU = 'cham_cong_phien';
+
+export type VaiTroNguoiDung =
+  | 'admin' | 'nhan_su' | 'truong_phong_nhan_su' | 'truong_phong' | 'nhan_vien' | 'cho_duyet';
 
 export interface NguoiDung {
   id: string;
   ten_dang_nhap: string;
-  vai_tro: 'admin' | 'nhan_su' | 'truong_phong' | 'nhan_vien' | 'cho_duyet';
+  vai_tro: VaiTroNguoiDung;
   nhan_vien_id: string | null;
   ho_ten: string | null;
   phai_doi_mat_khau: boolean;
@@ -139,7 +152,16 @@ export function da_dang_nhap(): boolean {
 /** Cac vai tro co quyen quan tri cham cong. */
 export function la_nhan_su(): boolean {
   const v = phien?.nguoi_dung.vai_tro;
-  return v === 'admin' || v === 'nhan_su';
+  // `truong_phong_nhan_su` PHAI co mat o day: may chu coi vai tro nay ngang `nhan_su`
+  // (`can_nhan_su` cua `bao_mat/xac_thuc.ts`), nen thieu no o day thi giao dien AN het nhom
+  // "He thong" va cac trang nhan su cua ho — trong khi may chu van cho vao. Nguoi dung thay mot
+  // ung dung cut, khong co gi bao vi sao.
+  return v === 'admin' || v === 'nhan_su' || v === 'truong_phong_nhan_su';
+}
+
+/** Vai tro cua nguoi dang dang nhap, hoac null khi chua dang nhap. */
+export function vai_tro_hien_tai(): VaiTroNguoiDung | null {
+  return phien?.nguoi_dung.vai_tro ?? null;
 }
 
 export function la_admin(): boolean {

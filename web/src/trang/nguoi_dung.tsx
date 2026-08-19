@@ -24,7 +24,8 @@ interface TaiKhoan {
 
 const VAI_TRO_CAP: { ma: string; ten: string; mo_ta: string }[] = [
   { ma: 'admin', ten: 'Quản trị', mo_ta: 'Toàn quyền, gồm quản lý tài khoản và phân quyền' },
-  { ma: 'nhan_su', ten: 'Nhân sự (HR)', mo_ta: 'Quản trị chấm công: nhân viên, ca, thiết bị, bảng công' },
+  { ma: 'truong_phong_nhan_su', ten: 'Trưởng phòng nhân sự (TP HR)', mo_ta: 'Như Nhân sự, và là vai trò DUY NHẤT được thay hoặc gỡ tệp đã nạp vào hồ sơ' },
+  { ma: 'nhan_su', ten: 'Nhân sự (HR)', mo_ta: 'Quản trị chấm công: nhân viên, ca, thiết bị, bảng công. Nạp tệp mới được, gỡ tệp thì không' },
   { ma: 'truong_phong', ten: 'Trưởng phòng', mo_ta: 'Duyệt đơn của phòng mình, xem công nhân viên phòng mình' },
   { ma: 'nhan_vien', ten: 'Nhân viên', mo_ta: 'Chỉ xem dữ liệu của chính mình' },
 ];
@@ -401,7 +402,9 @@ function FormPhanQuyen(
           ))}
         </div>
 
-        {tai_khoan.nhan_vien_id === null && (vai_tro === 'nhan_vien' || vai_tro === 'truong_phong') && (
+        {tai_khoan.nhan_vien_id === null
+          && (vai_tro === 'nhan_vien' || vai_tro === 'truong_phong'
+            || vai_tro === 'truong_phong_nhan_su') && (
           <div className="hop-thong-bao hop-luu-y">
             Tài khoản này chưa gắn hồ sơ nhân viên. Hai vai trò này cần một hồ sơ để biết
             người đó được xem dữ liệu của ai. Hãy tạo nhân viên ở trang{' '}

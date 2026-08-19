@@ -12,8 +12,15 @@ import { tuyen_bang_cong } from './tuyen/bang_cong.ts';
 import { tuyen_nhap_du_lieu } from './tuyen/nhap_du_lieu.ts';
 import { tuyen_ho_so } from './tuyen/ho_so.ts';
 import { tuyen_don_tu } from './tuyen/don_tu.ts';
+import { tuyen_luong } from './tuyen/luong.ts';
+import { tuyen_vcontract } from './tuyen/vcontract.ts';
+import { tuyen_vi_pham } from './tuyen/vi_pham.ts';
+import { tuyen_kpi } from './tuyen/kpi.ts';
+import { tuyen_dong_bo_erp } from './tuyen/dong_bo_erp.ts';
 import { tuyen_toi } from './tuyen/toi.ts';
+import { tuyen_tich_hop } from './tuyen/tich_hop.ts';
 import { truy_van_mot } from './csdl/ket_noi.ts';
+import { kiem_tra_luu_tru } from './tien_ich/luu_tep.ts';
 
 /** Loi nghiep vu co ma HTTP rieng (LoiDauVao, LoiKhongTim, ...). */
 interface LoiCoMa extends Error {
@@ -79,6 +86,17 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
     if (ma >= 500) {
       // Loi he thong: ghi day du vao log nhung KHONG tra chi tiet ra ngoai.
       req.log.error({ err: loi }, 'loi khong mong doi');
+
+      // MOT NGOAI LE: loi khong the tu khoi bang cach thu lai.
+      //
+      // "Loi he thong. Vui long thu lai" la cau dung cho mot loi thoang qua. Voi thu muc
+      // luu tru khong ghi duoc thi no SAI va con lam hai: nhan su se thu lai voi tep khac,
+      // dinh dang khac, hang chuc lan, roi ket luan la tep cua minh co van de. Nhung loi
+      // nay tu khai mot thong diep an toan de tra ra ngoai.
+      const cong_khai = (loi as { thong_diep_cong_khai?: string }).thong_diep_cong_khai;
+      if (typeof cong_khai === 'string') {
+        return res.code(ma).send({ loi: cong_khai });
+      }
       return res.code(500).send({ loi: 'Lỗi hệ thống. Vui lòng thử lại hoặc liên hệ quản trị.' });
     }
 
@@ -99,13 +117,31 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
 
   // -------------------------------------------------------------------- suc khoe
   app.get('/health', async (_req, res) => {
+    // Kho luu tru duoc bao o day, va CO CHU DICH la khong lam /health thanh 503.
+    //
+    // Khong ghi duoc ho so la nghiem trong, nhung ha container vi no thi dung ca viec hung
+    // log may cham cong — mot thu dang chay tot. Doi lai, kich ban trien khai IN nguyen
+    // than /health ra man hinh moi lan cap nhat, nen mot dong `luu_tru` khac 'ok' se dap
+    // vao mat nguoi trien khai ngay lan sau. Do la cho de thay nhat ma khong pha gi.
+    const luu = await kiem_tra_luu_tru();
+    const hong = [
+      luu.loi_ho_so === null ? null : `ho_so: ${luu.loi_ho_so}`,
+      luu.loi_anh === null ? null : `anh_cham_cong: ${luu.loi_anh}`,
+    ].filter((x) => x !== null);
+
     try {
       await truy_van_mot('select 1 as ok');
-      return { trang_thai: 'ok', csdl: 'ok', luc: new Date().toISOString() };
+      return {
+        trang_thai: 'ok',
+        csdl: 'ok',
+        luu_tru: hong.length === 0 ? 'ok' : `KHONG GHI DUOC — ${hong.join('; ')}`,
+        luc: new Date().toISOString(),
+      };
     } catch (loi) {
       return res.code(503).send({
         trang_thai: 'loi',
         csdl: 'khong ket noi duoc',
+        luu_tru: hong.length === 0 ? 'ok' : `KHONG GHI DUOC — ${hong.join('; ')}`,
         chi_tiet: (loi as Error).message,
       });
     }
@@ -121,8 +157,16 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   await app.register(tuyen_bang_cong, { prefix: '/api' });
   await app.register(tuyen_nhap_du_lieu, { prefix: '/api' });
   await app.register(tuyen_ho_so, { prefix: '/api' });
+  await app.register(tuyen_luong, { prefix: '/api' });
+  await app.register(tuyen_vi_pham, { prefix: '/api' });
+  await app.register(tuyen_kpi, { prefix: '/api' });
+  await app.register(tuyen_dong_bo_erp, { prefix: '/api' });
   await app.register(tuyen_don_tu, { prefix: '/api/duyet' });
   await app.register(tuyen_toi, { prefix: '/api/toi' });
+  // API cho he thong ngoai. Prefix rieng + xac thuc bang khoa API, xem tuyen/tich_hop.ts.
+  await app.register(tuyen_tich_hop, { prefix: '/api/v1' });
+  // Duong vContract goi nguoc ve. NGOAI lop dang nhap — tu bao ve bang token rieng.
+  await app.register(tuyen_vcontract, { prefix: '/vcontract' });
 
   return app;
 }

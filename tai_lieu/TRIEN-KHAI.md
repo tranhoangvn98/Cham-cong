@@ -127,37 +127,108 @@ và nhật ký thao tác ghi đúng IP thật của người dùng.
 
 **Bắt buộc.** Bảng công là căn cứ tính lương; mất dữ liệu là mất bằng chứng.
 
+`trien_khai/cap_nhat_vps.sh` đã tự sao lưu trước mỗi lần cập nhật. Thêm bản hàng ngày cho
+những ngày không cập nhật — sửa `MA_NGUON` cho đúng nơi anh đặt mã nguồn:
+
 ```bash
 cat > /etc/cron.daily/sao-luu-cham-cong <<'EOF'
 #!/bin/sh
 set -e
-THU_MUC=/var/backups/cham-cong
+MA_NGUON=/root/Cham-cong
+THU_MUC="$MA_NGUON/sao_luu/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$THU_MUC"
-NGAY=$(date +%F)
+cd "$MA_NGUON"
 
-# Cơ sở dữ liệu
-docker compose -f /opt/cham-cong/docker-compose.yml exec -T postgres \
-  pg_dump -U chamcong chamcong | gzip > "$THU_MUC/chamcong_$NGAY.sql.gz"
+docker compose exec -T postgres pg_dump -U chamcong chamcong | gzip > "$THU_MUC/csdl.sql.gz"
 
-# Ảnh chấm công bằng điện thoại
-docker run --rm -v cham-cong_anh_cham_cong:/du_lieu:ro -v "$THU_MUC":/luu alpine \
-  tar czf "/luu/anh_$NGAY.tar.gz" -C /du_lieu .
+# CẢ HAI volume. `ho_so` giữ bản gốc hợp đồng scan — CSDL chỉ có tên tệp, không có nội
+# dung, nên bỏ qua nó là mất hẳn không dựng lại được.
+for v in ho_so anh_cham_cong; do
+  docker run --rm -v "cham-cong_$v:/nguon:ro" -v "$THU_MUC:/dich" \
+    alpine tar czf "/dich/$v.tar.gz" -C /nguon .
+done
 
 # Giữ 30 ngày
-find "$THU_MUC" -name '*.gz' -mtime +30 -delete
+find "$MA_NGUON/sao_luu" -maxdepth 1 -type d -mtime +30 -exec rm -rf {} +
 EOF
 chmod +x /etc/cron.daily/sao-luu-cham-cong
 ```
 
-Sao chép bản sao lưu ra **máy khác** (rsync/S3). Bản sao lưu nằm cùng máy với dữ liệu
-gốc không cứu được khi ổ cứng chết.
+Sao lưu nằm cùng ổ với dữ liệu gốc **không cứu được khi ổ cứng chết** — phải kéo định kỳ
+về máy khác.
 
-Phục hồi:
+Cách kéo về, cách phục hồi, và cách diễn tập phục hồi để biết bản sao lưu có thật sự dùng
+được: xem [SAO-LUU-VA-PHUC-HOI.md](SAO-LUU-VA-PHUC-HOI.md).
+
+> Đừng đổ bản kết xuất đè lên CSDL đang chạy. Đó là SQL thuần, gặp bảng đã có sẽ dừng giữa
+> chừng với `relation already exists` và để lại dữ liệu chắp vá. Quy trình đúng — dừng máy
+> chủ, dựng lại CSDL rỗng, rồi mới nạp — ở tài liệu trên.
+
+## Thư mục lưu hồ sơ không ghi được
+
+Triệu chứng: tải tệp lên bất kỳ tab hồ sơ nào cũng nhận **HTTP 500**, và volume `ho_so`
+**luôn rỗng** — `find /du_lieu/ho_so -type f | wc -l` ra `0` trong khi ảnh selfie chấm công
+vẫn lưu bình thường.
+
+### Vì sao xảy ra
+
+Docker khởi tạo một named volume **rỗng** theo nội dung của **ảnh** tại đường dẫn gắn —
+**kể cả quyền sở hữu**:
+
+| Thư mục | Có trong ảnh? | Chủ của volume | Tiến trình `node` ghi được? |
+|---|---|---|---|
+| `/du_lieu/anh_cham_cong` | có, `chown node:node` | `node:node` | được |
+| `/du_lieu/ho_so` | **không** (lỗi cũ) | **root:root** | **không — EACCES** |
+
+Ảnh chạy bằng `USER node`, nên thư mục thuộc `root` là không ghi được. Và vì thư mục ảnh
+selfie vẫn đúng quyền, hệ thống *nhìn như* đang lưu tệp bình thường.
+
+Đã sửa trong `may_chu/Dockerfile` (tạo sẵn **cả hai** thư mục), có bài kiểm chặn ở
+`may_chu/test/luu_tru.test.ts` đọc thẳng Dockerfile và đối chiếu với mọi `THU_MUC_*` khai
+trong `docker-compose.yml`.
+
+### Kiểm tra
 
 ```bash
-gunzip -c chamcong_2026-08-06.sql.gz | \
-  docker compose exec -T postgres psql -U chamcong chamcong
+# 🖥️ Trên VPS
+cd /root/Cham-cong
+
+# Ai là chủ thư mục, và máy chủ chạy bằng ai?
+docker compose exec -T may_chu ls -ld /du_lieu /du_lieu/anh_cham_cong /du_lieu/ho_so
+docker compose exec -T may_chu id
 ```
+
+Hoặc gọn hơn — `/health` báo luôn:
+
+```bash
+curl -s http://127.0.0.1:8080/health
+# {"trang_thai":"ok","csdl":"ok","luu_tru":"ok",...}                      <- đúng
+# {"trang_thai":"ok","csdl":"ok","luu_tru":"KHONG GHI DUOC — ho_so: EACCES",...}
+```
+
+Kịch bản `trien_khai/cap_nhat_vps.sh` in nguyên thân `/health` ra màn hình mỗi lần cập nhật,
+nên một dòng `luu_tru` khác `ok` sẽ đập vào mắt ngay lần triển khai sau.
+
+Máy chủ **cũng ghi lỗi này ra log lúc khởi động**, kèm đúng lệnh cần chạy:
+
+```bash
+docker compose logs may_chu | grep "KHONG GHI DUOC"
+```
+
+### Sửa volume đã tạo rồi
+
+Cập nhật ảnh **không tự sửa** một volume đã tồn tại: Docker chỉ đặt quyền sở hữu khi khởi
+tạo volume lần đầu. Phải `chown` một lần:
+
+```bash
+# 🖥️ Trên VPS
+cd /root/Cham-cong
+docker compose exec -u root -T may_chu chown -R node:node /du_lieu
+docker compose restart may_chu
+curl -s http://127.0.0.1:8080/health    # luu_tru phải là "ok"
+```
+
+Lệnh này **an toàn để chạy lại nhiều lần** và không đụng vào nội dung tệp.
 
 ## 5. Giám sát
 

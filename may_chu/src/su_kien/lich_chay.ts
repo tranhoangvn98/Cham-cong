@@ -7,6 +7,9 @@ import { OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { chot_ngay_hom_qua } from '../cong/tinh_cong.ts';
 import { don_su_kien_cu } from './hop_thu_di.ts';
+import { ma_viec_nhac_han, quet_nhac_han } from '../hop_dong/nhac_han.ts';
+import { ma_viec_sap_xep, sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
+import { ghi_nhan, ma_viec_dong_bo, quet } from '../sharepoint/dong_bo.ts';
 import { cong_ngay, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. */
@@ -62,6 +65,87 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
       // Nha viec de vong sau thu lai — khong duoc bo qua im lang.
       await nha_viec(ma_viec);
       ghi_log(`[lich] LOI khi chot ngay ${hom_qua}: ${(loi as Error).message}`);
+    }
+  }
+
+  // Nhac han hop dong, moi ngay mot lan.
+  //
+  // Chay cung khung gio cuoi ngay, khong phai vao gio hanh chinh: `nhan_viec` chi cho MOT
+  // instance chay, nhung neu de no chay ngay khi khoi dong may chu thi moi lan trien khai
+  // lai trong ngay se... khong gui lai (da co ma viec cua ngay do), dung nhu mong doi.
+  const ma_nhac = ma_viec_nhac_han(hom_nay);
+  if (await nhan_viec(ma_nhac)) {
+    try {
+      const kq = await quet_nhac_han(hom_nay);
+      await ghi_ket_qua(ma_nhac,
+        `xet ${String(kq.so_hop_dong)} hop dong, nhac ${String(kq.so_gui)}`);
+      if (kq.so_gui > 0) {
+        ghi_log(`[lich] da nhac han ${String(kq.so_gui)} hop dong`);
+      }
+    } catch (loi) {
+      await nha_viec(ma_nhac);
+      ghi_log(`[lich] LOI khi nhac han hop dong: ${(loi as Error).message}`);
+    }
+  }
+
+  // Sap xep kho tep, moi ngay mot lan.
+  //
+  // Day la LUOI HUNG, khong phai duong chinh: doi ma nhan vien hay ho ten thi thu muc duoc
+  // doi ngay tai cho. Nhung co BON cho sua duoc ma_nv/ho_ten (nhan su sua tay, nhap CSV,
+  // dong bo ERP, API /api/v1), va mot cho quen goi la mot cho lech im lang mai mai. Lan quet
+  // nay lam viec "quen mot cho" thanh "lech toi da mot ngay".
+  //
+  // An toan de chay hang ngay: tep da dung cho thi bo qua, va viec chi doi cho TRONG kho ho
+  // so — khong xoa, khong ghi de.
+  const ma_sap_xep = ma_viec_sap_xep(hom_nay);
+  if (await nhan_viec(ma_sap_xep)) {
+    try {
+      const kq = await sap_xep_kho('that');
+      await ghi_ket_qua(ma_sap_xep,
+        `xet ${String(kq.so_xet)}, doi cho ${String(kq.so_doi_cho)}, `
+        + `mat tep ${String(kq.so_mat_tep)}`);
+      if (kq.so_doi_cho > 0) {
+        ghi_log(`[lich] da sap xep ${String(kq.so_doi_cho)} tep vao dung thu muc`);
+      }
+      // Mat tep la chuyen PHAI co nguoi biet: co dong CSDL ma khong co tep tren dia.
+      if (kq.so_mat_tep > 0 || kq.so_duong_dan_xau > 0) {
+        ghi_log(`[lich] CANH BAO kho tep: ${String(kq.so_mat_tep)} tep mat, `
+          + `${String(kq.so_duong_dan_xau)} duong dan xau. Chay `
+          + '`npm run sap_xep_tep` de xem chi tiet.');
+      }
+    } catch (loi) {
+      await nha_viec(ma_sap_xep);
+      ghi_log(`[lich] LOI khi sap xep kho tep: ${(loi as Error).message}`);
+    }
+  }
+
+  // Doi chieu va day kho tep sang SharePoint, moi ngay mot lan.
+  //
+  // Chay SAU viec sap xep kho tep o tren, va thu tu do la co y: viec sap xep doi ten thu muc
+  // TREN DIA, con viec nay tinh duong dan TREN SHAREPOINT tu ma_nv/ho_ten. Lam nguoc lai thi
+  // duong dan vua tinh se lech ngay trong cung mot vong.
+  //
+  // `ghi_nhan` luon chay, `quet` chi day that khi SHAREPOINT_BAT_DAY=1. Nghia la bang trang
+  // thai luon dung va xem duoc duong dan se la gi TRUOC khi bat dong bo.
+  const ma_sp = ma_viec_dong_bo(hom_nay);
+  if (await nhan_viec(ma_sp)) {
+    try {
+      const gn = await ghi_nhan();
+      const q = await quet();
+      await ghi_ket_qua(ma_sp,
+        `xet ${String(gn.so_xet)}, doi ${String(gn.so_doi)}, con viec ${String(q.so_con_viec)}, `
+        + `day ${String(q.so_day)}, xoa ${String(q.so_xoa)}, loi ${String(q.so_loi)}`
+        + (q.chi_dem ? ' (chi dem, chua bat SHAREPOINT_BAT_DAY)' : ''));
+      if (q.so_day > 0 || q.so_xoa > 0) {
+        ghi_log(`[lich] SharePoint: day ${String(q.so_day)}, xoa ${String(q.so_xoa)}`);
+      }
+      if (q.so_loi > 0) {
+        ghi_log(`[lich] CANH BAO SharePoint: ${String(q.so_loi)} tep loi. `
+          + 'Xem He thong -> Kho tep ho so.');
+      }
+    } catch (loi) {
+      await nha_viec(ma_sp);
+      ghi_log(`[lich] LOI khi dong bo SharePoint: ${(loi as Error).message}`);
     }
   }
 

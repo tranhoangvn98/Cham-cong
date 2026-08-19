@@ -10,19 +10,30 @@
 // chung, khong the bo sot.
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
-import { can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
+import { can_admin, can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import {
-  cac_nhom_doc_duoc, chi_duoc_sua_o, doc_duoc, sua_duoc,
+  CAC_NHOM, LY_DO_KHONG_THAY_XOA_DUOC, cac_nhom_doc_duoc, chi_duoc_sua_o, doc_duoc,
+  sua_duoc, thay_xoa_tep_duoc,
   type BoiCanh, type NhomHoSo, type NguoiXem,
 } from '../bao_mat/quyen_ho_so.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { che_ho_so, duoc_xem_day_du } from '../bao_mat/che_du_lieu.ts';
 import { trich_theo_duoi } from '../tien_ich/doc_office.ts';
+import {
+  LoiDinhDang, cong_cu_trich, trich_tu_tep, type KetQuaTrich,
+} from '../hop_dong/trich_noi_dung.ts';
+import { hop_dong_sap_het_han, muc_gap } from '../hop_dong/nhac_han.ts';
+import { sap_xep_kho, so_tep_lech } from '../ho_so/sap_xep_tep.ts';
+import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { doc_tep_ho_so, lam_sach_ten, luu_tep_ho_so, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
+import {
+  ghi_nhan, ghi_nhan_am_tham, quet, thu_lai_cac_dong_loi, tinh_hinh,
+} from '../sharepoint/dong_bo.ts';
+import { thu_ket_noi } from '../sharepoint/khach.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import {
-  chuoi, chuoi_bat_buoc, luan_ly, ngay, ngay_bat_buoc, phan_trang, so_thuc, than, trong_tap,
-  uuid, uuid_bat_buoc,
+  chuoi, chuoi_bat_buoc, luan_ly, ngay, ngay_bat_buoc, phan_trang, so_nguyen, so_thuc, than,
+  trong_tap, uuid, uuid_bat_buoc,
   LoiDauVao, LoiKhongQuyen, LoiKhongTim,
 } from '../tien_ich/kiem_tra.ts';
 
@@ -210,6 +221,19 @@ const DAC_TA: DacTaNhom[] = [
 
 const THEO_NHOM = new Map(DAC_TA.map((d) => [d.nhom, d]));
 
+/**
+ * Ten hien thi cho hai nhom KHONG nam trong bang dac ta.
+ *
+ * `thong_tin` va `tai_lieu` khong sinh route theo khuon "danh sach theo nhan vien" nen
+ * khong co o trong DAC_TA — nhung chung van la nhom ho so that, van co tep dinh kem, va
+ * van can mot cai ten de bao loi thieu quyen cho ra tieng Viet.
+ */
+const TEN_NHOM_KHAC: Record<string, string> = {
+  thong_tin: 'thông tin cá nhân',
+  tai_lieu: 'hồ sơ tài liệu',
+  don_tu: 'bản đơn đã duyệt',
+};
+
 /** Chuan hoa dia chi MAC ve dang aa:bb:cc:dd:ee:ff; chan chuoi rac. */
 function doc_mac(b: Record<string, unknown>): string | null {
   const s = chuoi(b, 'dia_chi_mac', { toi_da: 20 });
@@ -337,6 +361,7 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
     const chi_tiet = await truy_van_mot<Record<string, unknown>>(
       `select nv.ma_nv, nv.ho_ten, nv.pin_may, nv.email, nv.so_dien_thoai, nv.ngay_vao,
               nv.ngay_nghi_viec, nv.dang_hoat_dong, nv.duoc_cham_cong_dien_thoai,
+              nv.chuc_danh, nv.ngay_chinh_thuc,
               pb.ten as phong_ban, cl.ten as ca_lam
          from nhan_vien nv
          left join phong_ban pb on pb.id = nv.phong_ban_id
@@ -412,7 +437,11 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
            from ho_so_tep where nhan_vien_id = $1 and nhom = $2 order by tao_luc desc`,
         [id, dac.nhom],
       );
-      return { danh_sach: dong, tep, sua_duoc: sua_duoc(nd, dac.nhom, bc) };
+      return {
+        danh_sach: dong, tep,
+        sua_duoc: sua_duoc(nd, dac.nhom, bc),
+        thay_xoa_tep_duoc: thay_xoa_tep_duoc(nd),
+      };
     });
 
     // --- them moi ---
@@ -690,6 +719,10 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       dang_nghi_viec,
       tien_do: { can_co: can_co.length, da_du: da_du.length },
       sua_duoc: sua_duoc(nd, 'tai_lieu', bc),
+      // Giao dien can biet de KHONG ve nut "Thay tep" / "Go tep" cho nguoi khong bam duoc.
+      // Chan o may chu la du de an toan, nhung ve mot cai nut chi de bao 403 la ve mot loi
+      // hua khong giu duoc.
+      thay_xoa_tep_duoc: thay_xoa_tep_duoc(nd),
       nhan_vien: { ma_nv: nv.ma_nv, ho_ten: nv.ho_ten },
     };
   });
@@ -723,6 +756,20 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       }
     }
 
+    // O DANG TRONG thi nhan su nap duoc. O DA CO TEP thi thay hay go doi TP nhan su.
+    //
+    // Kiem o day chu khong chi o duong xoa tep: khong co doan nay thi mot tai khoan nhan su
+    // "thay tep" bang cach nap tep moi de len — ban cu tro thanh tep mo coi khong ai thay
+    // trong giao dien, va cai o checklist da tro thanh mot ban khac. Ket qua giong het xoa.
+    const cu = await truy_van_mot<{ tep_id: string | null }>(
+      'select tep_id from tai_lieu_nhan_vien where nhan_vien_id = $1 and danh_muc_id = $2',
+      [id, dm.id]);
+    const tep_cu = cu?.tep_id ?? null;
+    const doi_tep = tep_cu !== null && tep_cu !== tep_id;
+    if (doi_tep && !thay_xoa_tep_duoc(nd)) {
+      throw new LoiKhongQuyen(LY_DO_KHONG_THAY_XOA_DUOC);
+    }
+
     await thuc_thi(
       `insert into tai_lieu_nhan_vien
          (nhan_vien_id, danh_muc_id, trang_thai, tep_id, nguoi_phu_trach, han_hoan_thanh, ghi_chu)
@@ -740,8 +787,25 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
         chuoi(b, 'ghi_chu', { toi_da: 1000 })],
     );
 
+    // Tep cu bi thay the thi don luon — ca dong CSDL lan tep tren dia. Khong don thi no
+    // thanh tep mo coi: khong con hien o dong checklist nao, nhung van nam trong kho va van
+    // la du lieu ca nhan phai bao ve.
+    if (doi_tep && tep_cu !== null) {
+      const t = await truy_van_mot<{ ten_luu: string }>(
+        'select ten_luu from ho_so_tep where id = $1', [tep_cu]);
+      await thuc_thi('delete from ho_so_tep where id = $1', [tep_cu]);
+      if (t !== null) await xoa_tep_ho_so(t.ten_luu);
+      await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.xoa_tep', 'ho_so_tep',
+        tep_cu, { nhan_vien_id: id, ly_do: 'thay tệp ở mục tài liệu', ma }, req.ip);
+      await ghi_nhan_am_tham(tep_cu, true);
+    }
+
+    // Noi tep vao mot muc danh muc lam DOI duong dan mong muon: nhanh (giay kham suc khoe di
+    // sang 09 chu khong phai 01) va ten tep (phan giua lay ten danh muc) deu doi theo.
+    if (tep_id !== null) await ghi_nhan_am_tham(tep_id);
+
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.sua_tai_lieu', 'tai_lieu_nhan_vien',
-      id, { ma, trang_thai }, req.ip);
+      id, { ma, trang_thai, doi_tep }, req.ip);
     return { ok: true };
   });
 
@@ -758,7 +822,7 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
   }, async (req, res) => {
     const nd = nguoi_xem(req);
     const id = doc_id(req);
-    const { bc } = await nap_boi_canh(nd, id);
+    const { nv, bc } = await nap_boi_canh(nd, id);
 
     const truong: Record<string, string> = {};
     let du_lieu: Buffer | null = null;
@@ -777,28 +841,55 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
     }
     if (du_lieu === null) throw new LoiDauVao('Thiếu tệp đính kèm.');
 
-    const nhom = trong_tap(truong, 'nhom', [...THEO_NHOM.keys()], { bat_buoc: true }) as NhomHoSo;
-    const dac = THEO_NHOM.get(nhom) as DacTaNhom;
-    bat_buoc_sua(nd, nhom, bc, dac.ten);
+    // `CAC_NHOM` chu KHONG phai `THEO_NHOM.keys()`.
+    //
+    // DAC_TA chi co 9 nhom — `thong_tin` va `tai_lieu` khong sinh route tu bang dac ta nen
+    // khong co o trong do. Doi chieu voi DAC_TA lam ca hai nhom do KHONG tai tep len duoc,
+    // va mot trong hai chinh la checklist "Ho so tai lieu 0/7" o dau trang ho so: keo tep
+    // vao bat ky dong nao cung nhan 400. Xem di tru 018.
+    const nhom = trong_tap(truong, 'nhom', CAC_NHOM, { bat_buoc: true }) as NhomHoSo;
+    bat_buoc_sua(nd, nhom, bc, THEO_NHOM.get(nhom)?.ten ?? TEN_NHOM_KHAC[nhom] ?? nhom);
 
     const thuoc_id = truong['thuoc_id'] === undefined || truong['thuoc_id'] === ''
       ? null
       : uuid_bat_buoc(truong, 'thuoc_id');
 
-    const thang = new Date().toISOString().slice(0, 7);
-    const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, thang);
+    // Cay thu muc mang MA NHAN VIEN va HO TEN, nen phai lay tu ban ghi nhan vien chu khong
+    // phai tu than yeu cau. Xem `tien_ich/ten_tep.ts`.
+    const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, {
+      ma_nv: nv.ma_nv,
+      ho_ten: nv.ho_ten,
+      nhom,
+      ngay: ngay_dia_phuong(new Date()),
+    });
 
-    const moi = await truy_van_mot(
-      `insert into ho_so_tep(nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
-                             kich_thuoc, tai_len_boi)
-       values ($1,$2,$3,$4,$5,$6,$7,$8)
-       returning id, nhom, thuoc_id, ten_goc, kieu_mime, kich_thuoc, tao_luc`,
-      [id, nhom, thuoc_id, ten_goc, da_luu.ten_luu, da_luu.mime, da_luu.kich_thuoc,
-        nguoi_dung_hien_tai(req).sub],
-    );
+    // Tep da nam tren dia truoc khi co dong CSDL. Ghi that bai thi PHAI xoa no di: khong
+    // xoa thi tep mo coi tren dia khong ai biet den, khong ai xoa duoc qua giao dien, va
+    // vi la ban scan ho so nhan su nen no la du lieu ca nhan nam ngoai moi so sach.
+    let moi: Record<string, unknown> | null;
+    try {
+      // `id` lay tu `da_luu.ma_tep`, KHONG de CSDL sinh: tam ky tu dau cua ma nam trong ten
+      // tep, nen mo thu muc len la tra nguoc duoc ve dung dong CSDL. De CSDL sinh ma rieng
+      // thi ten tep va khoa chinh khong lien quan gi den nhau.
+      moi = await truy_van_mot(
+        `insert into ho_so_tep(id, nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
+                               kich_thuoc, tai_len_boi)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         returning id, nhom, thuoc_id, ten_goc, kieu_mime, kich_thuoc, tao_luc`,
+        [da_luu.ma_tep, id, nhom, thuoc_id, ten_goc, da_luu.ten_luu, da_luu.mime,
+          da_luu.kich_thuoc, nguoi_dung_hien_tai(req).sub],
+      );
+    } catch (loi) {
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* da co loi that o tren */ });
+      throw loi;
+    }
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.tai_tep_len', 'ho_so_tep',
       String(moi?.['id'] ?? ''), { nhan_vien_id: id, nhom, ten_goc }, req.ip);
+
+    // Ghi nhan de dong bo sang SharePoint. Loi o day khong lam do lan nap tep (xem
+    // `ghi_nhan_am_tham`), nhung van cho xong truoc khi tra loi de trang thai doc ra la dung.
+    await ghi_nhan_am_tham(String(moi?.['id'] ?? ''));
     return res.code(201).send(moi);
   });
 
@@ -905,17 +996,291 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
 
     const { bc } = await nap_boi_canh(nd, t.nhan_vien_id);
     const dac = THEO_NHOM.get(t.nhom);
-    bat_buoc_sua(nd, t.nhom, bc, dac?.ten ?? t.nhom);
+    bat_buoc_sua(nd, t.nhom, bc, dac?.ten ?? TEN_NHOM_KHAC[t.nhom] ?? t.nhom);
+
+    // Xoa mot ban da nap la LAM MAT chung cu, khong phai sua mot o du lieu. Doi mot bac
+    // quyen cao hon quyen sua nhom.
+    if (!thay_xoa_tep_duoc(nd)) throw new LoiKhongQuyen(LY_DO_KHONG_THAY_XOA_DUOC);
 
     await thuc_thi('delete from ho_so_tep where id = $1', [tep_id]);
     await xoa_tep_ho_so(t.ten_luu);
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.xoa_tep', 'ho_so_tep',
       tep_id, { nhan_vien_id: t.nhan_vien_id }, req.ip);
+    await ghi_nhan_am_tham(tep_id, true);
+    return { ok: true };
+  });
+
+  // ------------------------------------------------------------ noi dung hop dong
+  //
+  // Yeu cau: "quet noi dung hop dong chuyen sang text de luu tru".
+  //
+  // Van ban trich ra la de TIM va DOI CHIEU. Ban co gia tri phap ly luon la tep goc trong
+  // ho_so_tep — xem chu thich dau `hop_dong/trich_noi_dung.ts`.
+
+  /** May chu nay trich duoc nhung dinh dang nao. Giao dien doc truoc de bao som. */
+  app.get('/ho-so/cong-cu-trich', { preHandler: can_dang_nhap }, async () => ({
+    docx: true,
+    ...(await cong_cu_trich()),
+  }));
+
+  /**
+   * Tim hop dong theo NOI DUNG da trich.
+   *
+   * Chi nhan su. Noi dung hop dong co luong, dieu khoan rieng, dieu kien thoi viec — day
+   * la duong tim XUYEN nhan vien nen khong the de quyen theo tung ho so gac cho no.
+   */
+  app.get('/ho-so/hop-dong/tim', { preHandler: can_nhan_su }, async (req) => {
+    const q = than(req.query);
+    const tu_khoa = chuoi_bat_buoc(q, 'q', { toi_da: 200 });
+    const { gioi_han, bo_qua } = phan_trang(q, 30, 100);
+
+    // `position` thay vi `ilike '%...%'`: khong phai thoat `%` va `_` trong tu khoa nguoi
+    // dung nhap — go dau '%' vao o tim khong duoc bien thanh "khop moi hop dong".
+    const dong = await truy_van(
+      `select hd.id, hd.so_hd, hd.loai, hd.chuc_danh, hd.hieu_luc_tu, hd.hieu_luc_den,
+              hd.trang_thai, hd.cach_trich, hd.trich_luc,
+              length(hd.noi_dung_text) as so_ky_tu,
+              nv.id as nhan_vien_id, nv.ma_nv, nv.ho_ten
+         from hop_dong_lao_dong hd
+         join nhan_vien nv on nv.id = hd.nhan_vien_id
+        where hd.noi_dung_text is not null
+          and position(lower($1) in lower(hd.noi_dung_text)) > 0
+        order by hd.hieu_luc_tu desc, nv.ma_nv
+        limit $2 offset $3`,
+      [tu_khoa, gioi_han, bo_qua],
+    );
+
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.tim_noi_dung_hop_dong',
+      'hop_dong_lao_dong', '', { tu_khoa, so_ket_qua: dong.length }, req.ip);
+    return { danh_sach: dong, tu_khoa };
+  });
+
+  // ------------------------------------------------------------ sap xep kho tep
+  //
+  // Duong rieng, khong dat duoi `/ho-so/tep/...`: cho do da co `/ho-so/tep/:tep_id` va mot
+  // doan tinh trung ten voi tham so la mot cho de nham.
+
+  /** Con bao nhieu tep chua dung cho? Chi DEM, khong di chuyen gi. */
+  app.get('/ho-so/sap-xep-tep', { preHandler: can_nhan_su }, async () => so_tep_lech());
+
+  /**
+   * Sap xep kho tep vao dung cay thu muc.
+   *
+   * Chi ADMIN. Day la thao tac DI CHUYEN HANG LOAT tren ban goc hop dong, CCCD, bang cap —
+   * khong khoi phuc duoc tu CSDL. Mac dinh `che_do = 'thu'`: doc va bao se doi gi, khong
+   * ghi gi.
+   */
+  app.post('/ho-so/sap-xep-tep', { preHandler: can_admin }, async (req) => {
+    const b = than(req.body ?? {});
+    const che_do = trong_tap(b, 'che_do', ['thu', 'that'] as const, { mac_dinh: 'thu' })!;
+    const kq = await sap_xep_kho(che_do);
+
+    if (che_do === 'that') {
+      await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.sap_xep_kho_tep', 'ho_so_tep', '',
+        {
+          so_xet: kq.so_xet, so_doi_cho: kq.so_doi_cho,
+          so_mat_tep: kq.so_mat_tep, so_duong_dan_xau: kq.so_duong_dan_xau,
+        }, req.ip);
+    }
+    // Cat bot chi tiet: mot kho vai nghin tep se tra ve mot payload khong ai doc het.
+    return { ...kq, chi_tiet: kq.chi_tiet.slice(0, 200), cat_bot: kq.chi_tiet.length > 200 };
+  });
+
+  // ------------------------------------------------------------ dong bo SharePoint
+
+  /**
+   * Tinh hinh dong bo sang thu vien HCNS, kem danh sach dong con viec / dang loi.
+   *
+   * Doc duoc NGAY CA KHI chua bat dong bo — do la muc dich: xem duong dan se la gi truoc khi
+   * cho ung dung ghi vao mot thu vien dang dung that.
+   */
+  app.get('/ho-so/sharepoint', { preHandler: can_nhan_su }, async (req) => {
+    const q = than(req.query);
+    const loc = trong_tap(q, 'loc', ['con_viec', 'loi', 'bo_qua', 'tat_ca'] as const,
+      { mac_dinh: 'con_viec' })!;
+
+    const dieu_kien = {
+      con_viec: 's.duong_dan_muon is distinct from s.duong_dan_da_day',
+      loi: "s.ket_qua = 'loi'",
+      bo_qua: "s.ket_qua = 'bo_qua'",
+      tat_ca: 'true',
+    }[loc];
+
+    const dong = await truy_van(
+      `select s.tep_id, s.duong_dan_muon, s.duong_dan_da_day, s.ket_qua, s.ly_do,
+              s.so_lan_thu, s.so_byte, s.lam_luc,
+              nv.ma_nv, nv.ho_ten, t.nhom, t.ten_goc
+         from sharepoint_tep s
+         left join nhan_vien nv on nv.id = s.nhan_vien_id
+         left join ho_so_tep t on t.id = s.tep_id
+        where ${dieu_kien}
+        order by s.cap_nhat_luc desc
+        limit 200`,
+    );
+
+    return { ...(await tinh_hinh()), loc, danh_sach: dong, ket_noi: await thu_ket_noi() };
+  });
+
+  /**
+   * Doi chieu lai bang trang thai, va (neu da bat) day / xoa cho khop.
+   *
+   * Chi ADMIN. `chi_ghi_nhan = true` thi chi tinh lai duong dan mong muon, KHONG cham vao
+   * SharePoint — dung de xem truoc. Do cung la hanh vi khi SHAREPOINT_BAT_DAY chua bat, bat
+   * ke tham so nay.
+   */
+  app.post('/ho-so/sharepoint', { preHandler: can_admin }, async (req) => {
+    const b = than(req.body ?? {});
+    const chi_ghi_nhan = luan_ly(b, 'chi_ghi_nhan', false);
+
+    const gn = await ghi_nhan();
+    const q = chi_ghi_nhan ? null : await quet();
+
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.dong_bo_sharepoint', 'sharepoint_tep',
+      '', { so_xet: gn.so_xet, so_doi: gn.so_doi, chi_ghi_nhan, ...(q ?? {}) }, req.ip);
+
+    return { ghi_nhan: gn, quet: q, ...(await tinh_hinh()) };
+  });
+
+  /** Cho phep thu lai cac dong da het luot thu. Chi ADMIN, va chi sau khi da sua nguyen nhan. */
+  app.post('/ho-so/sharepoint/thu-lai', { preHandler: can_admin }, async (req) => {
+    const so = await thu_lai_cac_dong_loi();
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.sharepoint_thu_lai', 'sharepoint_tep',
+      '', { so }, req.ip);
+    return { so, ...(await tinh_hinh()) };
+  });
+
+  /**
+   * Hop dong sap het han va DA het han.
+   *
+   * Day la mat doi dien cua viec nhac han tu dong: thong bao day co the bi tat, bi mat, hay
+   * nguoi nhan da nghi viec. Danh sach nay thi luon o day va luon day du.
+   */
+  app.get('/ho-so/hop-dong/sap-het-han', { preHandler: can_nhan_su }, async (req) => {
+    const q = than(req.query);
+    const trong_ngay = so_nguyen(q, 'trong_ngay', { min: 0, max: 365 }) ?? 45;
+    const ds = await hop_dong_sap_het_han(trong_ngay);
+
+    return {
+      trong_ngay,
+      danh_sach: ds.map((hd) => ({ ...hd, muc_gap: muc_gap(hd.so_ngay_con) })),
+      // Dem rieng so da het han: do la con so nhan su can thay dau tien.
+      so_da_het_han: ds.filter((hd) => hd.so_ngay_con < 0).length,
+    };
+  });
+
+  /** Doc noi dung da trich cua mot hop dong. */
+  app.get('/ho-so/hop-dong/:id/noi-dung', { preHandler: can_dang_nhap }, async (req) => {
+    const nd = nguoi_xem(req);
+    const hd = await nap_hop_dong(doc_id(req));
+    const { bc } = await nap_boi_canh(nd, hd.nhan_vien_id);
+    bat_buoc_doc(nd, 'hop_dong', bc, 'hợp đồng lao động');
+
+    return {
+      hop_dong_id: hd.id,
+      so_hd: hd.so_hd,
+      noi_dung_text: hd.noi_dung_text,
+      cach_trich: hd.cach_trich,
+      trich_luc: hd.trich_luc,
+      trich_tu_tep_id: hd.trich_tu_tep_id,
+      so_ky_tu: hd.noi_dung_text?.length ?? 0,
+    };
+  });
+
+  /**
+   * Trich noi dung mot tep dinh kem vao hop dong.
+   *
+   * Doi quyen SUA hop dong, khong phai quyen doc: thao tac nay GHI vao ho so.
+   *
+   * Voi ban scan, OCR chay dong bo va co the mat den mot phut. Chua tach ra viec chay nen
+   * vi mot hop dong lao dong chi vai trang; neu sau nay co nhu cau trich ca kho thi day la
+   * cho dau tien phai tach.
+   */
+  app.post('/ho-so/hop-dong/:id/trich-noi-dung', { preHandler: can_dang_nhap }, async (req) => {
+    const nd = nguoi_xem(req);
+    const hd = await nap_hop_dong(doc_id(req));
+    const { bc } = await nap_boi_canh(nd, hd.nhan_vien_id);
+    bat_buoc_sua(nd, 'hop_dong', bc, 'hợp đồng lao động');
+
+    const b = than(req.body);
+    const tep_id = uuid_bat_buoc(b, 'tep_id');
+    const t = await truy_van_mot<{ nhan_vien_id: string; ten_goc: string; ten_luu: string }>(
+      'select nhan_vien_id, ten_goc, ten_luu from ho_so_tep where id = $1', [tep_id]);
+    if (t === null) throw new LoiKhongTim('Không tìm thấy tệp.');
+
+    // TEP PHAI THUOC CHINH NHAN VIEN NAY. Thieu rang buoc nay thi ai sua duoc mot hop dong
+    // se doc duoc noi dung tep cua BAT KY nhan vien nao chi bang cach doan ma tep — noi
+    // dung se hien ra ngay tren hop dong ho vua sua.
+    if (t.nhan_vien_id !== hd.nhan_vien_id) {
+      throw new LoiDauVao('Tệp này không thuộc hồ sơ của nhân viên đó.');
+    }
+
+    const du_lieu = await doc_tep_ho_so(t.ten_luu);
+    if (du_lieu === null) throw new LoiKhongTim('Tệp không còn trên máy chủ.');
+
+    let kq: KetQuaTrich;
+    try {
+      kq = await trich_tu_tep(du_lieu, t.ten_luu);
+    } catch (loi) {
+      if (loi instanceof LoiDinhDang) throw new LoiDauVao(loi.message);
+      throw loi;
+    }
+
+    // KHONG ghi chuoi rong. Mot o trong im lang se duoc doc la "hop dong nay khong co noi
+    // dung", trong khi su that la "may chua doc duoc". Tra canh bao ve cho nguoi dung.
+    if (kq.so_ky_tu === 0) return { da_luu: false, ten_tep: t.ten_goc, ...kq };
+
+    await thuc_thi(
+      `update hop_dong_lao_dong
+          set noi_dung_text = $2, trich_tu_tep_id = $3, cach_trich = $4, trich_luc = now(),
+              cap_nhat_luc = now()
+        where id = $1`,
+      [hd.id, kq.noi_dung_text, tep_id, kq.cach_trich],
+    );
+
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.trich_noi_dung_hop_dong',
+      'hop_dong_lao_dong', hd.id,
+      { tep_id, ten_tep: t.ten_goc, cach_trich: kq.cach_trich, so_ky_tu: kq.so_ky_tu }, req.ip);
+
+    return { da_luu: true, ten_tep: t.ten_goc, ...kq };
+  });
+
+  /** Xoa noi dung da trich. Dung khi OCR ra rac va can trich lai tu tep khac. */
+  app.delete('/ho-so/hop-dong/:id/noi-dung', { preHandler: can_dang_nhap }, async (req) => {
+    const nd = nguoi_xem(req);
+    const hd = await nap_hop_dong(doc_id(req));
+    const { bc } = await nap_boi_canh(nd, hd.nhan_vien_id);
+    bat_buoc_sua(nd, 'hop_dong', bc, 'hợp đồng lao động');
+
+    await thuc_thi(
+      `update hop_dong_lao_dong
+          set noi_dung_text = null, trich_tu_tep_id = null, cach_trich = null,
+              trich_luc = null, cap_nhat_luc = now()
+        where id = $1`, [hd.id]);
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.xoa_noi_dung_hop_dong',
+      'hop_dong_lao_dong', hd.id, {}, req.ip);
     return { ok: true };
   });
 }
 
 // ==================================================================== tien ich
+
+interface HopDongCoNoiDung {
+  id: string;
+  nhan_vien_id: string;
+  so_hd: string | null;
+  noi_dung_text: string | null;
+  cach_trich: string | null;
+  trich_luc: string | null;
+  trich_tu_tep_id: string | null;
+}
+
+async function nap_hop_dong(id: string): Promise<HopDongCoNoiDung> {
+  const hd = await truy_van_mot<HopDongCoNoiDung>(
+    `select id, nhan_vien_id, so_hd, noi_dung_text, cach_trich, trich_luc, trich_tu_tep_id
+       from hop_dong_lao_dong where id = $1`, [id]);
+  if (hd === null) throw new LoiKhongTim('Không tìm thấy hợp đồng.');
+  return hd;
+}
 
 interface TepDaKiem {
   t: { nhan_vien_id: string; nhom: NhomHoSo; ten_goc: string; ten_luu: string; kieu_mime: string };

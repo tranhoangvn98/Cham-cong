@@ -1,5 +1,9 @@
 # REST API
 
+> Đây là API **nội bộ** dùng cho webapp và app điện thoại của chính hệ thống này.
+> Hệ thống ngoài (ERP, phần mềm nhân sự khác) dùng [`API-TICH-HOP.md`](API-TICH-HOP.md) —
+> cổng `/api/v1` có khóa API, phạm vi quyền và cam kết không phá vỡ tương thích.
+
 Máy chủ mặc định ở `http://localhost:8080`.
 
 ## Xác thực
@@ -105,11 +109,39 @@ curl -X POST http://localhost:8080/api/xac-thuc/dang-nhap \
 | POST | `/nhan-vien` | nhan_su |
 | PUT | `/nhan-vien/:id` | nhan_su |
 | POST | `/nhan-vien/:id/nghi-viec` | nhan_su |
+| DELETE | `/nhan-vien/:id` | nhan_su |
 
 `pin_may` là **khóa nối máy chấm công với nhân viên** — chỉ chữ số, phải khớp User ID
 trên máy. Không có PIN thì log về không map được vào ai.
 
+`POST` / `PUT /nhan-vien/:id` cũng ghi mã vào bảng **mã định danh** (`ma_nv`, `pin_may`,
+`ma_erp`, `email`). `ma_erp` và `email` **không** có ràng buộc UNIQUE trên cột, nên chúng có thể
+đã thuộc người khác trong bảng định danh; khi đó hồ sơ **vẫn lưu** và phản hồi kèm mảng
+`canh_bao` nói rõ ai đang giữ mã. Xem [`MA-DINH-DANH.md`](MA-DINH-DANH.md).
+
+### Mã định danh
+
+| Method | Đường dẫn | Quyền | Ghi chú |
+|---|---|---|---|
+| GET | `/ma-dinh-danh/he-thong` | đã đăng nhập | Bảng đặc tả các hệ thống |
+| GET | `/ma-dinh-danh/tim?q=` | nhan_su | Tìm người theo **một mã bất kỳ**, kể cả mã đã đóng |
+| GET | `/ma-dinh-danh/doi-soat` | nhan_su | So bảng định danh với các cột cũ, hai chiều |
+| GET | `/nhan-vien/:id/ma-dinh-danh?ca_lich_su=` | đã đăng nhập | Nhóm theo hệ thống, kể cả hệ thống chưa có mã |
+| POST | `/nhan-vien/:id/ma-dinh-danh` | nhan_su | `{ he_thong, ma, ghi_chu?, thu_hoi_cua_nguoi_khac? }` |
+| DELETE | `/ma-dinh-danh/:id` | nhan_su | **Đóng mã lại**, không xóa dòng |
+
+`POST` trả **409** kèm mã nhân viên và họ tên người đang giữ mã, khi mã đó đang hiệu lực ở người
+khác. Chỉ `thu_hoi_cua_nguoi_khac: true` mới chuyển — và mã của người kia được đóng lại kèm ghi
+chú, không bị xóa. Mã sai dạng (PIN có chữ cái, `oid` không phải UUID) trả **400**.
+
 `duoc_cham_cong_dien_thoai` mặc định `false`; chỉ bật cho người đi công tác.
+
+`DELETE /nhan-vien/:id` dùng để **dọn dữ liệu thử**, không dùng cho người thật. Ba hàng rào, mỗi
+cái chặn một kiểu mất mát khác nhau: phải **đã cho nghỉ việc** (409), **không được có phiếu lương**
+(409 — đã trả lương thì hồ sơ là chứng từ), **không được còn tài khoản đăng nhập** (409). Không
+gửi `xac_nhan: true` thì chỉ **đếm và báo sẽ mất gì**, không xóa. Xóa thật thì mã định danh đi
+theo (PIN được giải phóng) còn **lần quẹt ở lại nhưng thành vô chủ** — bằng chứng gốc không biến
+mất cùng hồ sơ.
 
 ### Máy chấm công
 
@@ -146,7 +178,7 @@ Lệnh vào hàng đợi bền vững trong CSDL; máy nhận ở lần poll k�
 |---|---|---|---|
 | GET | `/bang-cong?tu=&den=&nhan_vien_id=&phong_ban_id=` | mọi vai trò | Tối đa 92 ngày |
 | GET | `/bang-cong/tong-hop?thang=YYYY-MM&phong_ban_id=` | mọi vai trò | Tổng hợp theo người |
-| GET | `/bang-cong/xuat-csv?thang=YYYY-MM` | nhan_su | CSV có BOM UTF-8 |
+| GET | `/bang-cong/xuat-csv?thang=YYYY-MM&kieu=thang\|ngay` | nhan_su | CSV có BOM UTF-8. `kieu=thang`: mỗi nhân viên một dòng (tính lương). `kieu=ngay` (mặc định): mỗi ngày một dòng |
 | POST | `/bang-cong/tinh-lai` | nhan_su | `{tu, den, nhan_vien_id?}` |
 | PATCH | `/bang-cong/:nhan_vien_id/:ngay` | nhan_su | Sửa tay `{so_cong?, phut_ot?, ghi_chu?, da_chot?}` |
 | POST | `/bang-cong/chot-thang` | nhan_su | `{thang}` |
@@ -381,6 +413,25 @@ quyết được đơn của nhân viên trong phòng mình — ngoài phạm vi
 | GET / POST | `/giai-trinh` | Xem / gửi đơn giải trình quên quẹt |
 | POST / DELETE | `/token-push` | Đăng ký / bỏ token thông báo đẩy |
 
+### Thông báo đẩy
+
+Máy chủ gửi thông báo tới app qua dịch vụ Expo khi:
+
+| Việc xảy ra | Ai nhận |
+|---|---|
+| Nhân viên gửi đơn nghỉ phép / giải trình | Trưởng phòng của người đó, **và** mọi tài khoản `nhan_su` / `admin` |
+| Đơn được duyệt hoặc bị từ chối | Chính người gửi đơn (kèm ghi chú của người duyệt) |
+
+Gửi cho cả nhân sự chứ không chỉ trưởng phòng là có chủ đích: phòng ban chưa gán trưởng
+phòng thì đơn sẽ không đến tay ai — và đó đúng là lúc đơn bị bỏ quên lâu nhất.
+
+Thông báo **không bao giờ chặn luồng chính**. Expo hỏng hay máy chủ không ra được Internet
+thì đơn vẫn nộp và duyệt bình thường, chỉ ghi cảnh báo vào log. Token bị Expo báo
+`DeviceNotRegistered` (gỡ app, đổi máy) sẽ tự bị xóa khỏi CSDL.
+
+Tắt hẳn bằng `THONG_BAO_DAY=0`. Nên tắt khi nạp lại dữ liệu cũ hàng loạt, nếu không nhân
+viên sẽ nhận một loạt thông báo về những đơn đã xử lý từ lâu.
+
 ### `GET /api/toi/luong`
 
 Trả **dữ liệu chấm công làm căn cứ tính lương**, không trả số tiền:
@@ -436,9 +487,11 @@ Máy ZKTeco gọi, **không dùng JWT** — xác thực bằng whitelist serial.
 
 | Method | Đường dẫn |
 |---|---|
+| POST | `/registry?SN=..` (firmware PUSH 3.x, trả `RegistryCode=`) |
 | GET | `/cdata?SN=..&options=all` |
 | POST | `/cdata?SN=..&table=ATTLOG\|OPTIONS\|OPERLOG` |
-| GET | `/getrequest?SN=..` |
+| GET | `/getrequest?SN=..` (firmware PUSH 2.x) |
+| POST | `/push?SN=..` (firmware PUSH 3.x, cùng hàng đợi) |
 | POST | `/devicecmd?SN=..` |
 | GET | `/ping?SN=..` |
 

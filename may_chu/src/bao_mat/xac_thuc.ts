@@ -2,6 +2,7 @@
 //
 // Luu y ve Fastify 5: trong hook async, muon tra loi ngay thi phai `return reply.send(...)`.
 // Fastify thay hook tra ve reply se dung chuoi hook, khong chay handler.
+import { la_vai_tro_nhan_su } from './quyen_ho_so.ts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { giai_ma_token, type NoiDungToken, type VaiTro } from './jwt.ts';
 
@@ -65,10 +66,11 @@ export function can_vai_tro(...vai_tro_cho_phep: VaiTro[]) {
 }
 
 /** Quan tri cham cong: admin hoac nhan su. */
-export const can_nhan_su = can_vai_tro('admin', 'nhan_su');
+export const can_nhan_su = can_vai_tro('admin', 'nhan_su', 'truong_phong_nhan_su');
 
 /** Nguoi duyet don: admin, nhan su, truong phong. */
-export const can_nguoi_duyet = can_vai_tro('admin', 'nhan_su', 'truong_phong');
+export const can_nguoi_duyet = can_vai_tro('admin', 'nhan_su', 'truong_phong_nhan_su',
+  'truong_phong');
 
 /** Chi admin (quan tri tai khoan, xoa du lieu). */
 export const can_admin = can_vai_tro('admin');
@@ -82,5 +84,5 @@ export function nguoi_dung_hien_tai(req: FastifyRequest): NoiDungToken {
 
 /** true neu vai tro duoc xem du lieu cua moi nhan vien. */
 export function xem_duoc_tat_ca(nd: { vai_tro: string }): boolean {
-  return nd.vai_tro === 'admin' || nd.vai_tro === 'nhan_su';
+  return la_vai_tro_nhan_su(nd.vai_tro);
 }

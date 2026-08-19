@@ -4,7 +4,7 @@ import { trong_giao_dich, truy_van } from '../csdl/ket_noi.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { tinh_lai_nhieu } from '../cong/tinh_cong.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
-import { doc_attlog, nhan_cach_xac_thuc, type BanGhiAttlog } from './giao_thuc.ts';
+import { doc_attlog, doc_rtlog, nhan_cach_xac_thuc, type BanGhiAttlog } from './giao_thuc.ts';
 
 export interface KetQuaTiepNhan {
   tong: number;
@@ -25,6 +25,29 @@ export async function tiep_nhan_attlog(
   body: string,
 ): Promise<KetQuaTiepNhan> {
   const { ban_ghi, so_dong_loi } = doc_attlog(body);
+  return tiep_nhan_ban_ghi(serial, ban_ghi, so_dong_loi);
+}
+
+/**
+ * Tiep nhan mot lo RTLOG — cung nghiep vu, chi khac cach doc than tin nhan.
+ *
+ * Firmware PUSH kiem soat ra vao day cham cong bang `table=rtlog` chu khong phai ATTLOG.
+ * Truoc day nhanh do roi vao "bang khac, bo qua" nen moi lan quet deu bi vut di lang le:
+ * may bao thanh cong, webapp khong co gi, va khong ai biet vi sao.
+ */
+export async function tiep_nhan_rtlog(
+  serial: string,
+  body: string,
+): Promise<KetQuaTiepNhan> {
+  const { ban_ghi, so_dong_loi } = doc_rtlog(body);
+  return tiep_nhan_ban_ghi(serial, ban_ghi, so_dong_loi);
+}
+
+async function tiep_nhan_ban_ghi(
+  serial: string,
+  ban_ghi: BanGhiAttlog[],
+  so_dong_loi: number,
+): Promise<KetQuaTiepNhan> {
   const kq: KetQuaTiepNhan = {
     tong: ban_ghi.length,
     da_nhan: 0,
@@ -36,13 +59,7 @@ export async function tiep_nhan_attlog(
 
   // Nap mot lan toan bo PIN -> nhan vien de khong truy van tung dong.
   const cac_pin = [...new Set(ban_ghi.map((b) => b.pin))];
-  const nv = await truy_van<{ id: string; pin_may: string; ma_nv: string; ma_erp: string | null }>(
-    `select id, pin_may, ma_nv, ma_erp
-       from nhan_vien
-      where pin_may = any($1::text[]) and dang_hoat_dong = true`,
-    [cac_pin],
-  );
-  const theo_pin = new Map(nv.map((n) => [n.pin_may, n]));
+  const theo_pin = await map_pin_nhan_vien(cac_pin);
 
   const ngay_can_tinh = new Set<string>();
   const chua_map = new Set<string>();
@@ -79,6 +96,62 @@ interface NguoiMap {
   id: string;
   ma_nv: string;
   ma_erp: string | null;
+}
+
+/**
+ * PIN may -> nhan vien. BANG MA DINH DANH TRUOC, cot `nhan_vien.pin_may` sau.
+ *
+ * VI SAO HAI NGUON: bang `ma_dinh_danh` la nguon su that ve ma, nhung cot `pin_may` van la thu
+ * ma nhan su go tay tren form ho so va la thu di tru 025 backfill tu. Doc CA HAI roi uu tien
+ * bang thi:
+ *
+ *   - Mot nguoi co PIN o HAI MAY chay dung — cot chi chua duoc mot ma, bang thi chua ca hai.
+ *   - Chuyen PIN sang nguoi moi qua trang ma dinh danh co hieu luc NGAY, khong cho ai nho di
+ *     sua cot.
+ *   - Va khong the MAT khop so voi truoc: cot van duoc doc, chi la doc sau.
+ *
+ * Hai ben noi khac nhau la trieu chung, khong phai chuyen binh thuong — ghi log canh bao de no
+ * len duoc bao cao doi soat thay vi im lang.
+ */
+export async function map_pin_nhan_vien(cac_pin: string[]): Promise<Map<string, NguoiMap>> {
+  if (cac_pin.length === 0) return new Map();
+  const ds = await truy_van<{
+    pin: string; id: string; ma_nv: string; ma_erp: string | null; nguon: string;
+  }>(
+    `with pin as (select unnest($1::text[]) as pin)
+     select p.pin, nv.id, nv.ma_nv, nv.ma_erp, 'bang' as nguon
+       from pin p
+       join ma_dinh_danh md on md.he_thong = 'may_cham_cong'
+                           and md.ma_chuan = p.pin and md.hieu_luc_den is null
+       join nhan_vien nv on nv.id = md.nhan_vien_id and nv.dang_hoat_dong = true
+     union all
+     select p.pin, nv.id, nv.ma_nv, nv.ma_erp, 'cot' as nguon
+       from pin p
+       join nhan_vien nv on nv.pin_may = p.pin and nv.dang_hoat_dong = true`,
+    [cac_pin],
+  );
+
+  const tu_bang = new Map<string, NguoiMap>();
+  const tu_cot = new Map<string, NguoiMap>();
+  for (const d of ds) {
+    (d.nguon === 'bang' ? tu_bang : tu_cot).set(
+      d.pin, { id: d.id, ma_nv: d.ma_nv, ma_erp: d.ma_erp });
+  }
+
+  const ra = new Map<string, NguoiMap>();
+  for (const pin of new Set([...tu_bang.keys(), ...tu_cot.keys()])) {
+    const b = tu_bang.get(pin);
+    const c = tu_cot.get(pin);
+    if (b !== undefined && c !== undefined && b.id !== c.id) {
+      console.warn(
+        `[adms] PIN ${pin}: bang dinh danh noi ${b.ma_nv}, cot pin_may noi ${c.ma_nv}. `
+        + 'Dung bang. Chay doi soat ma dinh danh de biet vi sao lech.',
+      );
+    }
+    const nguoi = b ?? c;
+    if (nguoi !== undefined) ra.set(pin, nguoi);
+  }
+  return ra;
 }
 
 /** Tra ve true neu ban ghi duoc them moi, false neu da ton tai (trung). */

@@ -84,11 +84,18 @@ export function HopTot({ chu }: { chu: string | null }): ReactNode {
   return <div className="hop-thong-bao hop-tot">{chu}</div>;
 }
 
-export function Trong({ tieu_de, mo_ta }: { tieu_de: string; mo_ta?: string }): ReactNode {
+/**
+ * Khoi "chua co gi". `hanh_dong` de dat luon nut tao ngay giua khoi — nut noi mo mot khung
+ * rong doc de hon la nut tha o tren roi khung rong o duoi khong dinh gi den nhau.
+ */
+export function Trong(
+  { tieu_de, mo_ta, hanh_dong }: { tieu_de: string; mo_ta?: string; hanh_dong?: ReactNode },
+): ReactNode {
   return (
     <div className="trong">
       <div className="trong-lon">{tieu_de}</div>
       {mo_ta !== undefined && <div>{mo_ta}</div>}
+      {hanh_dong !== undefined && <div className="trong-hanh-dong">{hanh_dong}</div>}
     </div>
   );
 }
@@ -214,6 +221,7 @@ export const TEN_VAI_TRO: Record<string, string> = {
   admin: 'Quản trị',
   nhan_su: 'Nhân sự',
   truong_phong: 'Trưởng phòng',
+  truong_phong_nhan_su: 'TP nhân sự',
   nhan_vien: 'Nhân viên',
   cho_duyet: 'Chờ phân quyền',
 };
@@ -250,6 +258,14 @@ export function OSo({ nhan, gia_tri, phu, mau }: OSoProps): ReactNode {
 // ============================================================ hanh dong co xu ly loi
 export interface KetQuaHanhDong {
   chay: (ham: () => Promise<unknown>, thong_bao_tot?: string) => Promise<boolean>;
+  /**
+   * Nhu `chay` nhung TRA VE KET QUA cua lan goi, null khi loi.
+   *
+   * Can rieng mot ham vi `chay` tra ve boolean. Ai muon dung ket qua ma goi `chay` roi
+   * `as unknown as T` se nhan duoc `true` da bi ep kieu — trinh bien dich khong can, va
+   * man hinh se trang khi doc thuoc tinh dau tien. Da xay ra that o trang Dong bo ERP.
+   */
+  chay_lay: <T>(ham: () => Promise<T>, thong_bao_tot?: string) => Promise<T | null>;
   dang_chay: boolean;
   loi: unknown;
   tot: string | null;
@@ -278,8 +294,25 @@ export function dung_hanh_dong(): KetQuaHanhDong {
     }
   };
 
+  const chay_lay = async <T,>(ham: () => Promise<T>, thong_bao_tot?: string): Promise<T | null> => {
+    dat_dang_chay(true);
+    dat_loi(null);
+    dat_tot(null);
+    try {
+      const kq = await ham();
+      if (thong_bao_tot !== undefined) dat_tot(thong_bao_tot);
+      return kq;
+    } catch (e) {
+      dat_loi(e instanceof LoiApi ? e : new Error(e instanceof Error ? e.message : String(e)));
+      return null;
+    } finally {
+      dat_dang_chay(false);
+    }
+  };
+
   return {
     chay,
+    chay_lay,
     dang_chay,
     loi,
     tot,

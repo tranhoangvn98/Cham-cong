@@ -11,7 +11,28 @@ import {
   TEN_LOAI_NGHI, TEN_TRANG_THAI_DON, hom_nay, ngay_viet,
 } from '../../nguon/tien_ich';
 
-type Tab = 'nghi_phep' | 'giai_trinh';
+type Tab = 'nghi_phep' | 'giai_trinh' | 'khac';
+
+/** Bon loai don dung chung bang `don_tu`. Danh muc lay TU MAY CHU. */
+interface LoaiDon {
+  ma: string;
+  ten: string;
+  nhan_tu_ngay: string;
+  co_khoang_ngay: boolean;
+}
+
+interface DonKhac {
+  id: string;
+  loai: string;
+  tu_ngay: string;
+  den_ngay: string | null;
+  gio_bat_dau: string | null;
+  gio_ket_thuc: string | null;
+  noi_den: string | null;
+  ly_do: string | null;
+  trang_thai: string;
+  ghi_chu_duyet: string | null;
+}
 
 interface DonNghiPhep {
   id: string;
@@ -34,6 +55,29 @@ interface DonGiaiTrinh {
   ghi_chu_duyet: string | null;
 }
 
+const NHAN_TAB: Record<Tab, string> = {
+  nghi_phep: 'Đơn nghỉ phép',
+  giai_trinh: 'Đơn giải trình quên quẹt',
+  khac: 'Đơn làm thêm, đổi ca, công tác, thôi việc',
+};
+
+const NHAN_TAB_NGAN: Record<Tab, string> = {
+  nghi_phep: 'Nghỉ phép',
+  giai_trinh: 'Quên quẹt',
+  khac: 'Đơn khác',
+};
+
+const NHAN_NUT: Record<Tab, string> = {
+  nghi_phep: '+ Xin nghỉ phép',
+  giai_trinh: '+ Gửi giải trình quên quẹt',
+  khac: '+ Làm đơn',
+};
+
+/** Ten loai don, lay TU MAY CHU. Chua nap xong thi tra ma — khong go tay ten lai o day. */
+function ten_loai_don(ds: LoaiDon[] | undefined, ma: string): string {
+  return ds?.find((l) => l.ma === ma)?.ten ?? ma;
+}
+
 export default function ManDonTu(): ReactNode {
   const m = dung_mau();
   const [tab, dat_tab] = useState<Tab>('nghi_phep');
@@ -41,6 +85,8 @@ export default function ManDonTu(): ReactNode {
 
   const nghi = dung_nap<DonNghiPhep[]>('/api/toi/nghi-phep');
   const giai = dung_nap<DonGiaiTrinh[]>('/api/toi/giai-trinh');
+  const khac = dung_nap<{ danh_sach: DonKhac[] }>('/api/toi/don');
+  const loai_don = dung_nap<{ danh_sach: LoaiDon[] }>('/api/toi/don/loai');
   const hd = dung_hanh_dong();
 
   const huy_don = async (id: string): Promise<void> => {
@@ -51,19 +97,24 @@ export default function ManDonTu(): ReactNode {
     nghi.nap_lai();
   };
 
-  const kq = tab === 'nghi_phep' ? nghi : giai;
+  const huy_don_khac = async (id: string): Promise<void> => {
+    await hd.chay(() => goi(`/api/toi/don/${id}/huy`, { method: 'POST', body: {} }), 'Đã hủy đơn.');
+    khac.nap_lai();
+  };
+
+  const kq = tab === 'nghi_phep' ? nghi : tab === 'giai_trinh' ? giai : khac;
 
   return (
     <View style={[kieu.man, { backgroundColor: m.nen }]}>
       {/* ------------------------------------------------ tab */}
       <View style={[kieu.hang, { padding: 12, gap: 8 }]}>
-        {(['nghi_phep', 'giai_trinh'] as const).map((t) => (
+        {(['nghi_phep', 'giai_trinh', 'khac'] as const).map((t) => (
           <Pressable
             key={t}
             onPress={() => dat_tab(t)}
             accessibilityRole="tab"
             accessibilityState={{ selected: tab === t }}
-            accessibilityLabel={t === 'nghi_phep' ? 'Đơn nghỉ phép' : 'Đơn giải trình quên quẹt'}
+            accessibilityLabel={NHAN_TAB[t]}
             style={[
               kieu.nut,
               kieu.nut_nho,
@@ -75,7 +126,7 @@ export default function ManDonTu(): ReactNode {
             ]}
           >
             <Chu co="nho" dam mau={tab === t ? 'chinh' : 'nhat'}>
-              {t === 'nghi_phep' ? 'Nghỉ phép' : 'Quên quẹt'}
+              {NHAN_TAB_NGAN[t]}
             </Chu>
           </Pressable>
         ))}
@@ -87,7 +138,7 @@ export default function ManDonTu(): ReactNode {
         <HopLoi loi={kq.loi} />
 
         <Nut
-          chu={tab === 'nghi_phep' ? '+ Xin nghỉ phép' : '+ Gửi giải trình quên quẹt'}
+          chu={NHAN_NUT[tab]}
           kieu_nut="chinh"
           khi_bam={() => dat_mo_form(true)}
         />
@@ -137,7 +188,7 @@ export default function ManDonTu(): ReactNode {
                   </Dong>
                 ))
               )
-            ) : (giai.du_lieu ?? []).length === 0 ? (
+            ) : tab === 'giai_trinh' ? ((giai.du_lieu ?? []).length === 0 ? (
               <Trong
                 tieu_de="Chưa có đơn giải trình nào"
                 mo_ta="Dùng khi bạn quên quẹt thẻ và bảng công bị thiếu giờ."
@@ -165,6 +216,51 @@ export default function ManDonTu(): ReactNode {
                   />
                 </Dong>
               ))
+            )) : null}
+            {tab === 'khac' && (
+              (khac.du_lieu?.danh_sach ?? []).length === 0 ? (
+                <Trong
+                  tieu_de="Chưa có đơn nào"
+                  mo_ta="Làm thêm giờ, đổi ca, đi công tác, thôi việc."
+                />
+              ) : (
+                (khac.du_lieu?.danh_sach ?? []).map((d, i) => (
+                  <Dong key={d.id} cuoi={i === (khac.du_lieu?.danh_sach ?? []).length - 1}>
+                    <View style={kieu.nhieu}>
+                      <Chu co="nho" dam>{ten_loai_don(loai_don.du_lieu?.danh_sach, d.loai)}</Chu>
+                      <Chu co="bo" mau="nhat">
+                        {d.den_ngay === null || d.den_ngay === d.tu_ngay
+                          ? ngay_viet(d.tu_ngay)
+                          : `${ngay_viet(d.tu_ngay)} – ${ngay_viet(d.den_ngay)}`}
+                        {d.gio_bat_dau !== null && d.gio_ket_thuc !== null
+                          && ` · ${d.gio_bat_dau.slice(0, 5)}–${d.gio_ket_thuc.slice(0, 5)}`}
+                        {d.noi_den !== null && ` · ${d.noi_den}`}
+                      </Chu>
+                      {d.ly_do !== null && <Chu co="bo" mau="mo">{d.ly_do}</Chu>}
+                      {d.ghi_chu_duyet !== null && (
+                        <Chu co="bo" mau={d.trang_thai === 'tu_choi' ? 'xau' : 'nhat'}>
+                          Nhân sự: {d.ghi_chu_duyet}
+                        </Chu>
+                      )}
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                      <NhanDon
+                        trang_thai={d.trang_thai}
+                        chu={TEN_TRANG_THAI_DON[d.trang_thai] ?? d.trang_thai}
+                      />
+                      {(d.trang_thai === 'cho_duyet' || d.trang_thai === 'da_duyet') && (
+                        <Nut
+                          chu="Hủy"
+                          kieu_nut="phang"
+                          khi_bam={() => void huy_don_khac(d.id)}
+                          dang_chay={hd.dang_chay}
+                          style={kieu.nut_nho}
+                        />
+                      )}
+                    </View>
+                  </Dong>
+                ))
+              )
             )}
           </View>
         )}
@@ -176,10 +272,16 @@ export default function ManDonTu(): ReactNode {
             khi_dong={() => dat_mo_form(false)}
             khi_xong={() => { dat_mo_form(false); nghi.nap_lai(); }}
           />
-        ) : (
+        ) : tab === 'giai_trinh' ? (
           <FormGiaiTrinh
             khi_dong={() => dat_mo_form(false)}
             khi_xong={() => { dat_mo_form(false); giai.nap_lai(); }}
+          />
+        ) : (
+          <FormDonKhac
+            loai_don={loai_don.du_lieu?.danh_sach ?? []}
+            khi_dong={() => dat_mo_form(false)}
+            khi_xong={() => { dat_mo_form(false); khac.nap_lai(); }}
           />
         )
       )}
@@ -372,6 +474,183 @@ function FormGiaiTrinh(
             tat={ly_do.trim().length < 5 || (gio_vao.trim() === '' && gio_ra.trim() === '')}
           />
           <Nut chu="Hủy" kieu_nut="phang" khi_bam={khi_dong} />
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+// ============================================================ form bon loai don khac
+//
+// MOT form cho ca bon loai. Cac o hien ra theo loai dang chon, va danh muc loai lay TU MAY CHU
+// (`/api/toi/don/loai`) — go tay lai o day la mot cho de lech: them loai thu nam ben may chu
+// thi form nay se thieu no, hoac hien mot loai ma may chu tu choi.
+//
+// Canh bao phap ly (tran 40 gio OT, han bao truoc khi thoi viec) do may chu tra ve trong ket
+// qua tao don. Hien nguyen van chu khong dien giai lai: mot cau dan chieu dieu luat ma bi viet
+// lai o tang giao dien thi hai ban se lech nhau, va ban tren dien thoai la ban nguoi lao dong
+// doc.
+
+function FormDonKhac({ loai_don, khi_dong, khi_xong }: {
+  loai_don: LoaiDon[];
+  khi_dong: () => void;
+  khi_xong: () => void;
+}): ReactNode {
+  const m = dung_mau();
+  const [loai, dat_loai] = useState(loai_don[0]?.ma ?? 'lam_them');
+  const [tu_ngay, dat_tu_ngay] = useState(hom_nay());
+  const [den_ngay, dat_den_ngay] = useState(hom_nay());
+  const [gio_bat_dau, dat_gio_bat_dau] = useState('18:00');
+  const [gio_ket_thuc, dat_gio_ket_thuc] = useState('20:00');
+  const [noi_den, dat_noi_den] = useState('');
+  const [ly_do, dat_ly_do] = useState('');
+  const [canh_bao, dat_canh_bao] = useState<string[]>([]);
+  const hd = dung_hanh_dong();
+
+  const dt = loai_don.find((l) => l.ma === loai);
+
+  const gui = async (): Promise<void> => {
+    dat_canh_bao([]);
+    const kq = await hd.chay_lay<{ canh_bao?: string[] }>(() => goi('/api/toi/don', {
+      method: 'POST',
+      body: {
+        loai,
+        tu_ngay,
+        den_ngay: dt?.co_khoang_ngay === true ? den_ngay : null,
+        gio_bat_dau: loai === 'lam_them' ? gio_bat_dau : null,
+        gio_ket_thuc: loai === 'lam_them' ? gio_ket_thuc : null,
+        noi_den: loai === 'cong_tac' ? noi_den.trim() : null,
+        ly_do: ly_do.trim() === '' ? null : ly_do.trim(),
+      },
+    }));
+    if (kq === null) return;
+    // Co canh bao thi GIU form mo de nguoi lam don doc — don da duoc tao roi, va dong form ngay
+    // nghia la ho khong bao gio thay dong canh bao nao.
+    if ((kq.canh_bao ?? []).length > 0) {
+      dat_canh_bao(kq.canh_bao ?? []);
+      return;
+    }
+    khi_xong();
+  };
+
+  return (
+    <Modal visible animationType="slide" onRequestClose={khi_dong}>
+      <SafeAreaView style={[kieu.man, { backgroundColor: m.nen }]}>
+        <ScrollView contentContainerStyle={kieu.cuon}>
+          <Chu co="h1">Làm đơn</Chu>
+          <HopLoi loi={hd.loi} />
+
+          {canh_bao.length > 0 && (
+            <>
+              <Hop loai="luu_y" chu={`Đơn đã gửi. ${canh_bao.join(' ')}`} />
+              <Nut chu="Đã hiểu, đóng" kieu_nut="chinh" khi_bam={khi_xong} />
+            </>
+          )}
+
+          <View>
+            <Chu co="nho" dam mau="nhat" style={{ marginBottom: 6 }}>Loại đơn</Chu>
+            <View style={[kieu.hang, { flexWrap: 'wrap', gap: 8 }]}>
+              {loai_don.map((l) => (
+                <Pressable
+                  key={l.ma}
+                  onPress={() => dat_loai(l.ma)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: loai === l.ma }}
+                  accessibilityLabel={l.ten}
+                  style={[
+                    kieu.nut, kieu.nut_nho,
+                    {
+                      backgroundColor: loai === l.ma ? m.chinh_dam : m.nen_the,
+                      borderColor: loai === l.ma ? m.chinh_dam : m.vien,
+                    },
+                  ]}
+                >
+                  <Chu co="nho" dam style={{ color: loai === l.ma ? m.tren_chinh : m.chu }}>
+                    {l.ten.replace(/^Đơn xin /, '')}
+                  </Chu>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          <Nhap
+            nhan={dt?.nhan_tu_ngay ?? 'Từ ngày'}
+            gia_tri={tu_ngay}
+            khi_doi={dat_tu_ngay}
+            goi_y="2026-08-10"
+            tu_dong="off"
+            goi_y_duoi={loai === 'thoi_viec'
+              ? 'Ngày làm việc cuối cùng bạn mong muốn'
+              : 'Định dạng năm-tháng-ngày, ví dụ 2026-08-10'}
+          />
+
+          {dt?.co_khoang_ngay === true && (
+            <Nhap
+              nhan="Đến ngày"
+              gia_tri={den_ngay}
+              khi_doi={dat_den_ngay}
+              goi_y="2026-08-12"
+              tu_dong="off"
+            />
+          )}
+
+          {loai === 'lam_them' && (
+            <>
+              <Nhap
+                nhan="Từ giờ"
+                gia_tri={gio_bat_dau}
+                khi_doi={dat_gio_bat_dau}
+                goi_y="18:00"
+                tu_dong="off"
+                goi_y_duoi="Định dạng giờ:phút, ví dụ 18:00"
+              />
+              <Nhap
+                nhan="Đến giờ"
+                gia_tri={gio_ket_thuc}
+                khi_doi={dat_gio_ket_thuc}
+                goi_y="20:00"
+                tu_dong="off"
+                goi_y_duoi="Phải sau giờ bắt đầu. Làm thêm qua nửa đêm thì làm hai đơn."
+              />
+            </>
+          )}
+
+          {loai === 'cong_tac' && (
+            <Nhap
+              nhan="Nơi đến"
+              gia_tri={noi_den}
+              khi_doi={dat_noi_den}
+              goi_y="Đà Nẵng"
+              goi_y_duoi="Bắt buộc với đơn công tác."
+            />
+          )}
+
+          <Nhap
+            nhan={loai === 'cong_tac' ? 'Nội dung công tác' : 'Lý do'}
+            gia_tri={ly_do}
+            khi_doi={dat_ly_do}
+            nhieu_dong
+            goi_y_duoi={loai === 'thoi_viec' ? 'Bắt buộc với đơn thôi việc.' : undefined}
+          />
+
+          {loai === 'doi_ca' && (
+            <Hop
+              loai="luu_y"
+              chu={'Đổi ca cần nhân sự chọn ca mới trên hồ sơ. Gửi đơn ở đây rồi liên hệ nhân '
+                + 'sự để chốt ca — đơn là đề nghị, không tự đổi ca của bạn.'}
+            />
+          )}
+
+          <View style={[kieu.hang, { gap: 8 }]}>
+            <Nut chu="Hủy" kieu_nut="phang" khi_bam={khi_dong} style={kieu.nhieu} />
+            <Nut
+              chu="Gửi đơn"
+              kieu_nut="chinh"
+              khi_bam={() => void gui()}
+              dang_chay={hd.dang_chay}
+              style={kieu.nhieu}
+            />
+          </View>
         </ScrollView>
       </SafeAreaView>
     </Modal>

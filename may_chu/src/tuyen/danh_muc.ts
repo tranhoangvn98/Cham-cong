@@ -9,15 +9,38 @@ import { xep_lenh } from '../adms/tuyen.ts';
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
+import { dong_bo_thu_muc_nhan_vien } from '../ho_so/sap_xep_tep.ts';
+import { PHAM_VI, la_pham_vi, sinh_khoa } from '../bao_mat/khoa_api.ts';
+import { doc_danh_sach_ip } from '../tien_ich/dia_chi_ip.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, luan_ly, ngay, ngay_bat_buoc, so_nguyen, so_thuc,
-  than, trong_tap, uuid, LoiDauVao, LoiKhongTim, LoiXungDot,
+  than, trong_tap, uuid, uuid_bat_buoc, LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
+import {
+  doi_soat, gan_bo_ma_nhan_su, gan_ma, ma_cua_nhan_vien, thu_hoi_ma, tim_theo_ma,
+} from '../dinh_danh/nghiep_vu.ts';
+import { CAC_HE_THONG, MA_CAC_HE_THONG } from '../dinh_danh/he_thong.ts';
+import { cap_pin, doc_dai_pin, goi_y_pin } from '../dinh_danh/cap_pin.ts';
 
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
 // KHONG duoc dung khi tao tai khoan moi bang tay (xem POST /nguoi-dung).
-const VAI_TRO = ['admin', 'nhan_su', 'truong_phong', 'nhan_vien', 'cho_duyet'] as const;
-const VAI_TRO_TAO_MOI = ['admin', 'nhan_su', 'truong_phong', 'nhan_vien'] as const;
+const VAI_TRO = ['admin', 'nhan_su', 'truong_phong', 'truong_phong_nhan_su',
+  'nhan_vien', 'cho_duyet'] as const;
+
+/**
+ * Vai tro DOI phai gan voi mot ho so nhan vien.
+ *
+ * `truong_phong_nhan_su` nam trong danh sach nay: nguoi duoc quyen go ban goc giay to phap
+ * ly cua nguoi khac thi nhat ky thao tac phai truy nguoc duoc ve mot con nguoi cu the, chu
+ * khong dung lai o mot ten dang nhap.
+ */
+const VAI_TRO_CAN_HO_SO = ['nhan_vien', 'truong_phong', 'truong_phong_nhan_su'] as const;
+
+function can_ho_so(v: string | null): boolean {
+  return (VAI_TRO_CAN_HO_SO as readonly string[]).includes(v ?? '');
+}
+const VAI_TRO_TAO_MOI = ['admin', 'nhan_su', 'truong_phong', 'truong_phong_nhan_su',
+  'nhan_vien'] as const;
 
 export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   // =====================================================================  PHONG BAN
@@ -170,7 +193,9 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     );
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tao_nhan_vien', 'nhan_vien',
       dong?.id ?? null, { ma_nv: b['ma_nv'] }, req.ip);
-    return res.code(201).send(dong);
+
+    const canh_bao = dong === null ? [] : await ghi_ma_dinh_danh(dong.id, b);
+    return res.code(201).send(canh_bao.length === 0 ? dong : { ...dong, canh_bao });
   });
 
   app.put('/nhan-vien/:id', { preHandler: can_nhan_su }, async (req) => {
@@ -188,8 +213,83 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       'Mã nhân viên hoặc PIN máy đã được dùng cho người khác.',
     );
     if (so === 0) throw new LoiKhongTim('Không tìm thấy nhân viên.');
+
+    // Ten thu muc kho tep mang ma nhan vien va ho ten, nen doi hai truong do thi thu muc
+    // phai doi theo. KHONG nem loi neu doi cho that bai: `ho_so_tep.ten_luu` van tro dung
+    // cho cu nen moi tep van doc duoc, va lan quet dinh ky se sua ten thu muc sau.
+    await dong_bo_thu_muc_nhan_vien(id, (m) => { req.log.info(m); });
+
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'sua_nhan_vien', 'nhan_vien', id, null, req.ip);
-    return { ok: true };
+
+    const canh_bao = await ghi_ma_dinh_danh(id, b);
+    return canh_bao.length === 0 ? { ok: true } : { ok: true, canh_bao };
+  });
+
+  /**
+   * XOA HAN mot ho so. Dung de don du lieu thu, khong dung cho nguoi that.
+   *
+   * Ba hang rao, va moi cai chan mot kieu mat mat khac nhau:
+   *
+   *   1. PHAI DA CHO NGHI VIEC. Xoa la buoc thu hai co y, khong phai mot nut canh nut sua.
+   *   2. KHONG DUOC CO PHIEU LUONG. Da tra luong cho ai thi ho so nguoi do o lai vinh vien —
+   *      do la chung tu, khong phai du lieu tien ich.
+   *   3. KHONG DUOC CON TAI KHOAN dang nhap. Go tai khoan truoc la mot quyet dinh ve quyen.
+   *
+   * Va no BAO TRUOC se mat gi: `xac_nhan` khong dat thi chi dem, khong xoa. Xoa mot nhan vien
+   * keo theo 21 bang cascade (bang cong, don tu, ho so, KPI...) va set null o 5 bang khac —
+   * lan quet o lai nhung thanh vo chu. Con so do phai nhin thay TRUOC khi bam.
+   */
+  app.delete('/nhan-vien/:id', { preHandler: can_nhan_su }, async (req) => {
+    const id = lay_id(req);
+    const xac_nhan = luan_ly(than(req.body ?? {}), 'xac_nhan', false) === true;
+
+    const nv = await truy_van_mot<{ ma_nv: string; ho_ten: string; dang_hoat_dong: boolean }>(
+      'select ma_nv, ho_ten, dang_hoat_dong from nhan_vien where id = $1', [id]);
+    if (nv === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
+
+    const dem = await truy_van_mot<{
+      quet: number; cong: number; luong: number; tai_khoan: number; tep: number; don: number;
+    }>(
+      `select (select count(*) from lan_quet        where nhan_vien_id = $1)::int as quet,
+              (select count(*) from bang_cong_ngay  where nhan_vien_id = $1)::int as cong,
+              (select count(*) from phieu_luong     where nhan_vien_id = $1)::int as luong,
+              (select count(*) from nguoi_dung      where nhan_vien_id = $1)::int as tai_khoan,
+              (select count(*) from ho_so_tep       where nhan_vien_id = $1)::int as tep,
+              (select count(*) from don_tu          where nhan_vien_id = $1)::int as don`,
+      [id]);
+
+    const se_mat = {
+      lan_quet_thanh_vo_chu: dem?.quet ?? 0,
+      bang_cong_ngay: dem?.cong ?? 0,
+      tep_ho_so: dem?.tep ?? 0,
+      don_tu: dem?.don ?? 0,
+    };
+
+    if (nv.dang_hoat_dong) {
+      throw new LoiXungDot(
+        `"${nv.ma_nv} — ${nv.ho_ten}" đang làm việc. Cho nghỉ việc trước rồi mới xóa được — `
+        + 'xóa là bước thứ hai có ý, không phải một nút cạnh nút sửa.');
+    }
+    if ((dem?.luong ?? 0) > 0) {
+      throw new LoiXungDot(
+        `"${nv.ma_nv} — ${nv.ho_ten}" có ${String(dem?.luong ?? 0)} phiếu lương. Đã trả lương `
+        + 'cho ai thì hồ sơ người đó ở lại vĩnh viễn — đó là chứng từ. Dùng Cho nghỉ việc.');
+    }
+    if ((dem?.tai_khoan ?? 0) > 0) {
+      throw new LoiXungDot(
+        `"${nv.ma_nv} — ${nv.ho_ten}" còn tài khoản đăng nhập. Gỡ tài khoản trước — đó là một `
+        + 'quyết định về quyền truy cập, không phải hệ quả phụ của việc xóa hồ sơ.');
+    }
+
+    if (!xac_nhan) {
+      return { da_xoa: false, ma_nv: nv.ma_nv, ho_ten: nv.ho_ten, se_mat,
+        luu_y: 'Chưa xóa gì. Gửi lại kèm xac_nhan = true để xóa thật.' };
+    }
+
+    await thuc_thi('delete from nhan_vien where id = $1', [id]);
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xoa_nhan_vien', 'nhan_vien', id,
+      { ma_nv: nv.ma_nv, ho_ten: nv.ho_ten, ...se_mat }, req.ip);
+    return { da_xoa: true, ma_nv: nv.ma_nv, ho_ten: nv.ho_ten, se_mat };
   });
 
   /** Cho nghi viec: giu lai lich su cham cong, chi tat hoat dong. */
@@ -218,11 +318,81 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
+  // =====================================================================  MA DINH DANH
+  //
+  // Mot nguoi di qua nhieu he thong va moi he thong goi ho bang mot ma khac. Nhom route nay la
+  // cho nhan su NHIN THAY va SUA bang do — truoc day cac ma nam rai rac trong nhung o nho tren
+  // form ho so, va khong cho nao noi duoc "ma nay dang thuoc ai".
+
+  /** Bang dac ta cac he thong — de giao dien khong go tay danh sach. */
+  app.get('/ma-dinh-danh/he-thong', { preHandler: can_dang_nhap }, async () =>
+    CAC_HE_THONG.map((h) => ({
+      ma: h.ma, ten: h.ten, nhom: h.nhom, nhieu_ma: h.nhieu_ma, on_dinh: h.on_dinh,
+      cot_cu: h.cot_cu,
+    })));
+
+  /** Tim nguoi theo MOT MA BAT KY, ke ca ma da dong lai. */
+  app.get('/ma-dinh-danh/tim', { preHandler: can_nhan_su }, async (req) => {
+    const q = chuoi(req.query as Record<string, unknown>, 'q', { toi_da: 200 });
+    return q === null ? [] : tim_theo_ma(q);
+  });
+
+  /** Doi soat bang dinh danh voi cac cot cu tren `nhan_vien`. */
+  app.get('/ma-dinh-danh/doi-soat', { preHandler: can_nhan_su }, async () => {
+    const lech = await doi_soat();
+    return { so_lech: lech.length, chi_tiet: lech };
+  });
+
+  app.get('/nhan-vien/:id/ma-dinh-danh', { preHandler: can_dang_nhap }, async (req) => {
+    const id = lay_id(req);
+    const ca_lich_su = luan_ly(req.query as Record<string, unknown>, 'ca_lich_su', false);
+    return ma_cua_nhan_vien(id, ca_lich_su === true);
+  });
+
+  app.post('/nhan-vien/:id/ma-dinh-danh', { preHandler: can_nhan_su }, async (req, res) => {
+    const id = lay_id(req);
+    const b = than(req.body);
+    const he_thong = trong_tap(b, 'he_thong', MA_CAC_HE_THONG, { bat_buoc: true }) as string;
+    const ma = chuoi_bat_buoc(b, 'ma', { toi_da: 200 });
+
+    // `ma_nv` chi doi duoc tu form ho so: doi no con keo theo doi ten thu muc kho tep tren dia
+    // va duong dan tren SharePoint (`dong_bo_thu_muc_nhan_vien`). Cho sua o hai cho la de mot
+    // cho quen lam phan con lai.
+    const dt = CAC_HE_THONG.find((h) => h.ma === he_thong);
+    if (dt?.chi_tu_form_ho_so === true) {
+      throw new LoiDauVao(
+        `${dt.ten} chỉ đổi được ở form hồ sơ nhân viên, không đổi ở đây — đổi mã nhân viên `
+        + 'còn kéo theo đổi tên thư mục kho tệp và đường dẫn trên SharePoint.',
+      );
+    }
+    // Mac dinh KHONG thu hoi ma cua nguoi khac. Nguoi goi phai noi ro — day la thao tac chuyen
+    // danh tinh giua hai con nguoi, khong phai mot o nhap lieu binh thuong.
+    const thu_hoi = luan_ly(b, 'thu_hoi_cua_nguoi_khac', false) === true;
+    const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
+
+    const kq = await gan_ma(id, he_thong, ma, {
+      nguon: 'nguoi_khai', ghi_chu, thu_hoi_cua_nguoi_khac: thu_hoi,
+    });
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'gan_ma_dinh_danh', 'nhan_vien', id,
+      { he_thong, ma, ket_cuc: kq.ket_cuc }, req.ip);
+    return res.code(201).send(kq);
+  });
+
+  /** Dong mot ma lai. Khong xoa dong — lich su la ly do bang nay ton tai. */
+  app.delete('/ma-dinh-danh/:id', { preHandler: can_nhan_su }, async (req) => {
+    const id = lay_id(req);
+    const ghi_chu = chuoi(than(req.body ?? {}), 'ghi_chu', { toi_da: 500 });
+    await thu_hoi_ma(id, ghi_chu);
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'thu_hoi_ma_dinh_danh', 'ma_dinh_danh',
+      id, null, req.ip);
+    return { ok: true };
+  });
+
   // =====================================================================  THIET BI
   app.get('/thiet-bi', { preHandler: can_dang_nhap }, async () =>
     truy_van(
       `select id, serial, ten, vi_tri, dang_bat, phien_ban_firmware, dia_chi_ip,
-              thay_lan_cuoi,
+              thay_lan_cuoi, pin_tu, pin_den,
               (thay_lan_cuoi is not null
                and thay_lan_cuoi > now() - ($1 || ' seconds')::interval) as dang_online,
               (select count(*) from lenh_thiet_bi l
@@ -237,10 +407,14 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const serial = chuoi_bat_buoc(b, 'serial', { toi_da: 64 });
     const ten = chuoi_bat_buoc(b, 'ten', { toi_da: 120 });
     const vi_tri = chuoi(b, 'vi_tri', { toi_da: 120 }) ?? 'Van phong';
+    // Dai PIN: khai ngay luc them may thi khong ai phai nho quay lai dat sau — va cap PIN cho
+    // nguoi dau tien cua may do da dung dai ngay tu dau.
+    const dai = doc_dai_pin(so_nguyen(b, 'pin_tu'), so_nguyen(b, 'pin_den'));
     const dong = await ghi_bat_trung(
       () => truy_van_mot<{ id: string }>(
-        'insert into thiet_bi(serial, ten, vi_tri) values ($1,$2,$3) returning id',
-        [serial, ten, vi_tri],
+        `insert into thiet_bi(serial, ten, vi_tri, pin_tu, pin_den)
+         values ($1,$2,$3,$4,$5) returning id`,
+        [serial, ten, vi_tri, dai?.tu ?? null, dai?.den ?? null],
       ),
       'Serial máy này đã được khai báo.',
     );
@@ -252,16 +426,88 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   app.patch('/thiet-bi/:id', { preHandler: can_nhan_su }, async (req) => {
     const id = lay_id(req);
     const b = than(req.body);
+    // `pin_tu`/`pin_den` di CUNG NHAU: gui mot trong hai thi `doc_dai_pin` bao loi, gui ca hai
+    // thi doi ca hai, khong gui gi thi giu nguyen. Rang buoc `check` cua bang cung doi the.
+    const co_dai = b['pin_tu'] !== undefined || b['pin_den'] !== undefined;
+    const dai = co_dai ? doc_dai_pin(so_nguyen(b, 'pin_tu'), so_nguyen(b, 'pin_den')) : null;
     const so = await thuc_thi(
       `update thiet_bi
           set ten = coalesce($2, ten),
               vi_tri = coalesce($3, vi_tri),
-              dang_bat = coalesce($4, dang_bat)
+              dang_bat = coalesce($4, dang_bat),
+              pin_tu = case when $5::boolean then $6::int else pin_tu end,
+              pin_den = case when $5::boolean then $7::int else pin_den end
         where id = $1`,
-      [id, chuoi(b, 'ten', { toi_da: 120 }), chuoi(b, 'vi_tri', { toi_da: 120 }), luan_ly(b, 'dang_bat')],
+      [id, chuoi(b, 'ten', { toi_da: 120 }), chuoi(b, 'vi_tri', { toi_da: 120 }),
+        luan_ly(b, 'dang_bat'), co_dai, dai?.tu ?? null, dai?.den ?? null],
     );
     if (so === 0) throw new LoiKhongTim('Không tìm thấy thiết bị.');
     return { ok: true };
+  });
+
+  /**
+   * Xoa han mot may da ngung dung.
+   *
+   * PHAI TAT TRUOC. Xoa mot may dang chay thi no bat dau an 401 va khong ai biet vi sao — hai
+   * buoc bat nguoi xoa nhin thay may do da ngung nhan du lieu truoc khi go han.
+   *
+   * LICH SU QUET O LAI. `lan_quet.thiet_bi_serial` la chu tu do, khong co khoa ngoai, nen bang
+   * cong cu van nguyen ven va van tra loi duoc "lan quet nay tu may nao". Chi ban ghi khai bao
+   * may va cac lenh chua gui la mat — dung nhung thu khong con nghia khi may khong con.
+   */
+  app.delete('/thiet-bi/:id', { preHandler: can_nhan_su }, async (req) => {
+    const id = lay_id(req);
+    const may = await truy_van_mot<{ serial: string; ten: string; dang_bat: boolean }>(
+      'select serial, ten, dang_bat from thiet_bi where id = $1', [id]);
+    if (may === null) throw new LoiKhongTim('Không tìm thấy thiết bị.');
+    if (may.dang_bat) {
+      throw new LoiXungDot(
+        `Máy "${may.ten}" đang bật. Tắt máy trước rồi mới xóa — để chắc chắn nó đã ngừng nhận `
+        + 'dữ liệu, thay vì đột nhiên bị từ chối 401 mà không ai biết vì sao.',
+      );
+    }
+
+    const kq = await trong_giao_dich(async (khach) => {
+      const quet = await khach.query<{ so: number }>(
+        'select count(*)::int as so from lan_quet where thiet_bi_serial = $1', [may.serial]);
+      const lenh = await khach.query(
+        'delete from lenh_thiet_bi where thiet_bi_serial = $1', [may.serial]);
+      await khach.query('delete from thiet_bi where id = $1', [id]);
+      return {
+        so_lan_quet_giu_lai: Number(quet.rows[0]?.so ?? 0),
+        so_lenh_da_xoa: lenh.rowCount ?? 0,
+      };
+    });
+
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xoa_thiet_bi', 'thiet_bi', id,
+      { serial: may.serial, ...kq }, req.ip);
+    return { ok: true, ...kq };
+  });
+
+  /**
+   * De nghi mot PIN con trong cho may nay. KHONG ghi gi.
+   *
+   * De nguoi dung nhin thay so truoc khi quyet dinh — cap PIN la viec se phai cai tay len may,
+   * nen ho can biet so do la gi truoc khi bam.
+   */
+  app.get('/thiet-bi/:serial/pin-goi-y', { preHandler: can_nhan_su }, async (req) =>
+    goi_y_pin(lay_serial_param(req)));
+
+  /**
+   * He thong CAP mot PIN cho nhan vien, theo dai cua may.
+   *
+   * Chieu di la he-thong -> may: he thong chon so, nguoi phu trach cai dung so do len may. Nguoc
+   * lai — nguoi khai may tu nghi so roi go lai vao phan mem — la duong chac chan den cham cong
+   * sai ten khi co nhieu may.
+   */
+  app.post('/nhan-vien/:id/cap-pin', { preHandler: can_nhan_su }, async (req, res) => {
+    const id = lay_id(req);
+    const b = than(req.body);
+    const serial = chuoi_bat_buoc(b, 'thiet_bi_serial', { toi_da: 64 });
+    const kq = await cap_pin(id, serial);
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'cap_pin_may', 'nhan_vien', id,
+      { pin: kq.pin, thiet_bi_serial: serial }, req.ip);
+    return res.code(201).send(kq);
   });
 
   /** Nap mot nhan vien xuong may (tao user tren may theo PIN). */
@@ -275,14 +521,44 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       [nhan_vien_id],
     );
     if (nv === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
-    if (nv.pin_may === null) throw new LoiDauVao('Nhân viên chưa có PIN máy. Hãy gán PIN trước.');
+
+    // PIN lay tu BANG MA DINH DANH, hop voi cot cu — dung nguon ma bo tiep nhan ADMS dung.
+    // Mot nguoi co the co NHIEU PIN (moi may mot PIN), va cot `pin_may` chi chua duoc mot;
+    // nap nham PIN cua may khac thi nguoi do quet vao may nay khong ai nhan ra.
+    const tu_bang = await truy_van<{ ma: string }>(
+      `select ma from ma_dinh_danh
+        where nhan_vien_id = $1 and he_thong = 'may_cham_cong' and hieu_luc_den is null
+        order by hieu_luc_tu`,
+      [nhan_vien_id],
+    );
+    const cac_pin = [...new Set([
+      ...tu_bang.map((x) => x.ma),
+      ...(nv.pin_may === null || nv.pin_may.trim() === '' ? [] : [nv.pin_may]),
+    ])];
+
+    if (cac_pin.length === 0) {
+      throw new LoiDauVao('Nhân viên chưa có PIN máy. Hãy gán PIN trước.');
+    }
+    const pin_chon = chuoi(b, 'pin', { toi_da: 32 });
+    if (pin_chon !== null && !cac_pin.includes(pin_chon)) {
+      throw new LoiDauVao(
+        `PIN "${pin_chon}" không thuộc nhân viên này. Các PIN đang có: ${cac_pin.join(', ')}.`);
+    }
+    // Nhieu PIN ma khong noi ro nap cai nao thi KHONG DOAN — doan sai o day nghia la nguoi do
+    // quet vao may nay ma khong khop duoc ai, va khong co gi bao.
+    if (pin_chon === null && cac_pin.length > 1) {
+      throw new LoiDauVao(
+        `Nhân viên có ${String(cac_pin.length)} PIN đang dùng (${cac_pin.join(', ')}). `
+        + 'Chọn PIN cần nạp xuống máy này.');
+    }
+    const pin_nap = pin_chon ?? cac_pin[0] as string;
 
     await bat_buoc_co_may(serial);
     // Ten tren may ZKTeco chi hien duoc ASCII — bo dau de khong ra ky tu la.
     const ten_may = bo_dau(nv.ho_ten).slice(0, 24);
     const id = await xep_lenh(
       serial,
-      `DATA UPDATE USERINFO PIN=${nv.pin_may}\tName=${ten_may}\tPri=0\tPasswd=\tCard=\tGrp=1\tTZ=0000000000000000`,
+      `DATA UPDATE USERINFO PIN=${pin_nap}\tName=${ten_may}\tPri=0\tPasswd=\tCard=\tGrp=1\tTZ=0000000000000000`,
     );
     return { ok: true, lenh_id: id, luu_y: 'Máy sẽ nhận lệnh ở lần kết nối kế tiếp (thường dưới 10 giây).' };
   });
@@ -310,6 +586,90 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     await bat_buoc_co_may(serial);
     const id = await xep_lenh(serial, 'CHECK');
     return { ok: true, lenh_id: id, luu_y: 'Bản ghi trùng sẽ tự bị bỏ qua nhờ khóa chống trùng.' };
+  });
+
+  // ------------------------------------------------------------ khoa API tich hop
+  //
+  // Chi admin. Khoa API mo duong vao du lieu cham cong va ho so nhan su cua ca cong ty
+  // bang mot chuoi ky tu — cap cho ai la mot quyet dinh ngang voi cap tai khoan quan tri.
+  app.get('/khoa-api', { preHandler: can_admin }, async () => truy_van(
+    `select k.id, k.ten, k.tien_to, k.pham_vi, k.dang_bat, k.het_han, k.ip_cho_phep,
+            k.ghi_chu, k.tao_luc, k.dung_lan_cuoi, k.so_lan_dung, nd.ten_dang_nhap as tao_boi
+       from khoa_api k
+       left join nguoi_dung nd on nd.id = k.tao_boi
+      order by k.tao_luc desc`,
+  ));
+
+  app.post('/khoa-api', { preHandler: can_admin }, async (req, res) => {
+    const b = than(req.body);
+    const ten = chuoi_bat_buoc(b, 'ten', { toi_da: 100 });
+    const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
+    const ip_cho_phep = chuoi(b, 'ip_cho_phep', { toi_da: 500 });
+    const het_han = ngay(b, 'het_han');
+
+    const tho = b['pham_vi'];
+    const pham_vi = Array.isArray(tho) ? tho.map(String) : [];
+    const sai = pham_vi.filter((p) => !la_pham_vi(p));
+    if (sai.length > 0) {
+      throw new LoiDauVao(`Phạm vi không hợp lệ: ${sai.join(', ')}. Hợp lệ: ${PHAM_VI.join(', ')}.`);
+    }
+    if (pham_vi.length === 0) {
+      throw new LoiDauVao('Phải chọn ít nhất một phạm vi, nếu không khóa không gọi được gì.');
+    }
+    // Khai IP sai dinh dang thi bao NGAY luc tao, khong doi den luc ben tich hop goi vao
+    // roi mo ho khong hieu vi sao bi 403.
+    if (ip_cho_phep !== null && ip_cho_phep.trim() !== '') {
+      doc_danh_sach_ip(ip_cho_phep, 'ip_cho_phep');
+    }
+
+    const { khoa, ma_bam, tien_to } = sinh_khoa();
+    const dong = await truy_van_mot<{ id: string }>(
+      `insert into khoa_api (ten, ma_bam, tien_to, pham_vi, het_han, ip_cho_phep, ghi_chu, tao_boi)
+       values ($1,$2,$3,$4,$5,$6,$7,$8) returning id`,
+      [ten, ma_bam, tien_to, pham_vi, het_han, ip_cho_phep, ghi_chu,
+        nguoi_dung_hien_tai(req).sub],
+    );
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tao_khoa_api', 'khoa_api',
+      dong?.id ?? null, { ten, pham_vi }, req.ip);
+
+    // `khoa` tra ve DUY NHAT lan nay. CSDL chi giu ma bam nen khong the lay lai — mat thi
+    // thu hoi va tao cai moi.
+    return res.code(201).send({ id: dong?.id ?? null, ten, pham_vi, khoa });
+  });
+
+  app.patch('/khoa-api/:id', { preHandler: can_admin }, async (req) => {
+    const id = uuid_bat_buoc(req.params as Record<string, unknown>, 'id');
+    const b = than(req.body);
+    const dang_bat = b['dang_bat'];
+    if (typeof dang_bat !== 'boolean') throw new LoiDauVao('Cần trường "dang_bat" (true/false).');
+    const dong = await truy_van_mot<{ id: string; ten: string }>(
+      'update khoa_api set dang_bat = $2 where id = $1 returning id, ten', [id, dang_bat],
+    );
+    if (dong === null) throw new LoiKhongTim('Không tìm thấy khóa API.');
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, dang_bat ? 'bat_khoa_api' : 'tat_khoa_api',
+      'khoa_api', id, { ten: dong.ten }, req.ip);
+    return { id, dang_bat };
+  });
+
+  app.delete('/khoa-api/:id', { preHandler: can_admin }, async (req) => {
+    const id = uuid_bat_buoc(req.params as Record<string, unknown>, 'id');
+    const dong = await truy_van_mot<{ ten: string }>(
+      'delete from khoa_api where id = $1 returning ten', [id],
+    );
+    if (dong === null) throw new LoiKhongTim('Không tìm thấy khóa API.');
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xoa_khoa_api', 'khoa_api', id,
+      { ten: dong.ten }, req.ip);
+    return { da_xoa: true };
+  });
+
+  /** Nhat ky goi cua mot khoa — de doi chieu khi ben tich hop bao khong lay duoc du lieu. */
+  app.get('/khoa-api/:id/nhat-ky', { preHandler: can_admin }, async (req) => {
+    const id = uuid_bat_buoc(req.params as Record<string, unknown>, 'id');
+    return truy_van(
+      `select duong_dan, phuong_thuc, ma_tra_ve, dia_chi_ip, mili_giay, tao_luc
+         from nhat_ky_api where khoa_api_id = $1 order by id desc limit 200`,
+      [id],
+    );
   });
 
   app.get('/thiet-bi/:serial/lenh', { preHandler: can_nhan_su }, async (req) => {
@@ -420,7 +780,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const vai_tro = trong_tap(b, 'vai_tro', VAI_TRO_TAO_MOI, { bat_buoc: true }) as typeof VAI_TRO_TAO_MOI[number];
     const nhan_vien_id = uuid(b, 'nhan_vien_id');
 
-    if ((vai_tro === 'nhan_vien' || vai_tro === 'truong_phong') && nhan_vien_id === null) {
+    if (can_ho_so(vai_tro) && nhan_vien_id === null) {
       throw new LoiDauVao('Vai trò nhân viên / trưởng phòng phải gắn với một nhân viên.');
     }
 
@@ -497,7 +857,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     // Truoc day cho di thang xuong CSDL: rang buoc no ra loi 23514, khong ai bat, va nguoi
     // dung nhan "Loi he thong" — mot loi hoan toan doan truoc duoc lai hien ra nhu su co.
     let nhan_vien_gan: string | null = null;
-    if (vai_tro === 'nhan_vien' || vai_tro === 'truong_phong') {
+    if (can_ho_so(vai_tro)) {
       const hien = await truy_van_mot<{ nhan_vien_id: string | null; ten: string; email_ms: string | null }>(
         `select nhan_vien_id, ten_dang_nhap as ten, email_microsoft as email_ms
            from nguoi_dung where id = $1`, [id]);
@@ -584,9 +944,24 @@ function lay_serial_param(req: { params: unknown }): string {
   return s;
 }
 
+/**
+ * May phai CO KHAI va DANG BAT thi moi xep lenh xuong duoc.
+ *
+ * `dang_bat` la dieu kien bat buoc chu khong phai chi tiet: cong `/iclock` chi nhan may co
+ * `dang_bat = true`, nen mot lenh xep cho may dang tat se KHONG BAO GIO duoc nhan. Truoc day
+ * route van bao "đã xếp lệnh" va lenh nam lai mai mai — tren VPS that co dung mot dong nhu the,
+ * xep cho may `THU001` tu 07/08 va khong ai biet.
+ */
 async function bat_buoc_co_may(serial: string): Promise<void> {
-  const may = await truy_van_mot<{ id: string }>('select id from thiet_bi where serial = $1', [serial]);
+  const may = await truy_van_mot<{ id: string; ten: string; dang_bat: boolean }>(
+    'select id, ten, dang_bat from thiet_bi where serial = $1', [serial]);
   if (may === null) throw new LoiKhongTim('Chưa khai báo máy có serial này.');
+  if (!may.dang_bat) {
+    throw new LoiXungDot(
+      `Máy "${may.ten}" đang tắt nên không nhận lệnh — cổng máy chỉ tiếp máy đang bật. `
+      + 'Bật máy ở trang Thiết bị rồi xếp lệnh lại.',
+    );
+  }
 }
 
 /** Doi loi vi pham UNIQUE (23505) thanh LoiXungDot co thong diep de hieu. */
@@ -761,6 +1136,22 @@ function doc_ngay_lam(v: unknown): number[] {
   }
   if (ds.length === 0) throw new LoiDauVao('Ca làm phải có ít nhất một ngày đi làm.');
   return [...new Set(ds)].sort((a, b) => a - b);
+}
+
+/**
+ * Ghi ma dinh danh sau khi tao/sua ho so, tra ve canh bao.
+ *
+ * Doc DUNG cac o ma `doc_nhan_vien` doc, de hai duong khong the lech nhau.
+ */
+async function ghi_ma_dinh_danh(
+  nhan_vien_id: string, b: Record<string, unknown>,
+): Promise<string[]> {
+  return gan_bo_ma_nhan_su(nhan_vien_id, {
+    ma_nv: chuoi(b, 'ma_nv', { toi_da: 40 }),
+    pin_may: chuoi(b, 'pin_may', { toi_da: 32 }),
+    ma_erp: chuoi(b, 'ma_erp', { toi_da: 40 }),
+    email: chuoi(b, 'email', { toi_da: 200 }),
+  }, 'nguoi_khai');
 }
 
 function doc_nhan_vien(b: Record<string, unknown>, bat_buoc: boolean): unknown[] {

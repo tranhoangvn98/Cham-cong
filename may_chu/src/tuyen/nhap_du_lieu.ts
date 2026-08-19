@@ -8,8 +8,10 @@ import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { tiep_nhan_attlog } from '../adms/tiep_nhan.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
+import { sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
 import { chuan_hoa_tieu_de, doi_chieu_cot, tach_csv, type DongCsv } from '../tien_ich/csv.ts';
 import { chuoi, chuoi_bat_buoc, luan_ly, than, LoiDauVao } from '../tien_ich/kiem_tra.ts';
+import { gan_ma_am_tham } from '../dinh_danh/nghiep_vu.ts';
 
 /** Tran so dong mot lan nhap — de mot tep nham khong khoa CSDL hang phut. */
 const TOI_DA_DONG = 5000;
@@ -171,6 +173,7 @@ export async function tuyen_nhap_du_lieu(app: FastifyInstance): Promise<void> {
         if (moi !== null) {
           da_co.set(ma_nv.toLowerCase(), moi.id);
           if (pin !== '') pin_da_dung.set(pin, moi.id);
+          await ghi_ma_dinh_danh_nhap(moi.id, ma_nv, pin, lay('email'));
         }
       } else {
         // coalesce: o de trong trong tep = KHONG doi, khong phai xoa. Nhan su thuong xuat
@@ -191,6 +194,7 @@ export async function tuyen_nhap_du_lieu(app: FastifyInstance): Promise<void> {
             where id = $9`,
           [...ts.slice(1), id_hien_co]);
         if (pin !== '') pin_da_dung.set(pin, id_hien_co);
+        await ghi_ma_dinh_danh_nhap(id_hien_co, ma_nv, pin, lay('email'));
       }
     }
 
@@ -260,6 +264,17 @@ export async function tuyen_nhap_du_lieu(app: FastifyInstance): Promise<void> {
     const kq = await tiep_nhan_attlog(serial, attlog.van_ban);
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'nhap_lan_quet', 'lan_quet',
       null, { serial, ...kq }, req.ip);
+    // Nhap CSV doi ho ten hang loat, va ten thu muc kho tep mang ho ten. Quet mot lan sau
+    // ca lo. Khong nem loi: du lieu nhan vien da nhap xong va dung.
+    try {
+      const sx = await sap_xep_kho('that');
+      if (sx.so_doi_cho > 0) {
+        req.log.info(`[nhap] da doi cho ${String(sx.so_doi_cho)} tep theo ho ten moi`);
+      }
+    } catch (loi) {
+      req.log.warn(`[nhap] khong sap xep duoc kho tep: ${(loi as Error).message}`);
+    }
+
     return { xem_truoc: false, ...kq };
   });
 }
@@ -400,4 +415,27 @@ function chuan_hoa_moc(s: string): string | null {
 function so_hoac(s: string, mac_dinh: number): string {
   const n = Number(s);
   return String(Number.isInteger(n) && n >= 0 ? n : mac_dinh);
+}
+
+/**
+ * Ghi ma dinh danh cho mot dong vua nhap tu tep.
+ *
+ * VI SAO PHAI CO: duong nhap CSV ghi THANG vao `nhan_vien.pin_may`. Neu no khong ghi vao bang
+ * ma dinh danh thi hai ben lech ngay sau mot lan nhap — bang noi PIN 5 la cua nguoi cu, cot noi
+ * la cua nguoi moi, va bo tiep nhan ADMS (uu tien bang) se ghi cong cho NGUOI CU. Dung cai lo ma
+ * bang ma dinh danh sinh ra de vá.
+ *
+ * `am_tham`: mot ma trung cua mot nguoi khong duoc lam hong ca lan nhap vai nghin dong. Cot da
+ * ghi xong roi; cho lech con lai hien tren bao cao doi soat.
+ */
+async function ghi_ma_dinh_danh_nhap(
+  nhan_vien_id: string, ma_nv: string, pin: string, email: string,
+): Promise<void> {
+  for (const [he_thong, gia_tri] of [
+    ['noi_bo', ma_nv], ['may_cham_cong', pin], ['microsoft_email', email],
+  ] as const) {
+    if (gia_tri.trim() === '') continue;
+    const cb = await gan_ma_am_tham(nhan_vien_id, he_thong, gia_tri, 'nhap_csv');
+    if (cb !== null) console.warn(`[nhap] ${ma_nv}: ${cb}`);
+  }
 }

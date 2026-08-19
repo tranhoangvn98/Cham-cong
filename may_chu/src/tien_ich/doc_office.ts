@@ -98,10 +98,22 @@ export interface TrichVanBan {
   cat_bot: boolean;
 }
 
+/**
+ * Tran doan cho "xem nhanh". Du de liec qua mot tep, khong phai de luu tru.
+ *
+ * Ai can TOAN VAN — vd luu noi dung hop dong de tim kiem — phai tu khai `doan_toi_da`
+ * cao hon. Giu mac dinh thap o day de mot cai bam xem nhanh khong keo ve ca quyen sach.
+ */
 const DOAN_TOI_DA = 400;
 
+export interface TuyChonDocx {
+  /** So doan toi da. Mac dinh 400 — du xem nhanh, khong du luu tru. */
+  doan_toi_da?: number;
+}
+
 /** Trich cac doan van cua DOCX. Bo dinh dang, chi giu chu. */
-export function trich_docx(du_lieu: Buffer): TrichVanBan | null {
+export function trich_docx(du_lieu: Buffer, tc: TuyChonDocx = {}): TrichVanBan | null {
+  const tran = tc.doan_toi_da ?? DOAN_TOI_DA;
   const muc = doc_zip(du_lieu, (t) => t === 'word/document.xml');
   const xml = muc.get('word/document.xml')?.toString('utf8');
   if (xml === undefined) return null;
@@ -113,10 +125,10 @@ export function trich_docx(du_lieu: Buffer): TrichVanBan | null {
       .map((t) => bo_thuc_the(t.replace(/<[^>]*>/g, '')))
       .join('');
     if (chu.trim() !== '') doan.push(chu.trim());
-    if (doan.length >= DOAN_TOI_DA) break;
+    if (doan.length >= tran) break;
   }
 
-  return { loai: 'van_ban', doan, cat_bot: doan.length >= DOAN_TOI_DA };
+  return { loai: 'van_ban', doan, cat_bot: doan.length >= tran };
 }
 
 // ---------------------------------------------------------------- XLSX

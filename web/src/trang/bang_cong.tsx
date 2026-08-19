@@ -65,9 +65,12 @@ export function TrangBangCong(): ReactNode {
     nap_lai();
   };
 
-  const xuat = async (): Promise<void> => {
+  // Hai kieu xuat cho hai nguoi doc khac nhau: ke toan can moi nguoi mot dong de tinh
+  // luong, nhan su can tung ngay khi phai giai thich cho nhan vien ve mot ngay cu the.
+  const xuat = async (kieu: 'thang' | 'ngay'): Promise<void> => {
+    const ten = kieu === 'thang' ? `bang_cong_thang_${thang}` : `bang_cong_chi_tiet_${thang}`;
     await hd.chay(
-      () => tai_tep(`/api/bang-cong/xuat-csv?thang=${thang}`, `bang_cong_${thang}.csv`),
+      () => tai_tep(`/api/bang-cong/xuat-csv?thang=${thang}&kieu=${kieu}`, `${ten}.csv`),
     );
   };
 
@@ -88,7 +91,14 @@ export function TrangBangCong(): ReactNode {
         </div>
         {la_nhan_su() && (
           <div className="hang-nut">
-            <button onClick={xuat} disabled={hd.dang_chay}>Xuất CSV</button>
+            <button onClick={() => xuat('thang')} disabled={hd.dang_chay}
+              title="Mỗi nhân viên một dòng — đúng bảng đang xem. Dùng để tính lương.">
+              Xuất tổng hợp
+            </button>
+            <button className="nut-phang" onClick={() => xuat('ngay')} disabled={hd.dang_chay}
+              title="Mỗi ngày một dòng. Dùng khi cần đối chiếu một ngày cụ thể.">
+              Xuất chi tiết
+            </button>
             <button onClick={tinh_lai} disabled={hd.dang_chay}>Tính lại tháng</button>
             <button onClick={() => chot(false)} disabled={hd.dang_chay}>Chốt tháng</button>
             <button className="nut-phang" onClick={() => chot(true)} disabled={hd.dang_chay}>

@@ -13,8 +13,17 @@ import { TrangDuyetDon } from './trang/duyet_don.tsx';
 import { TrangCaLam, TrangDiaDiem, TrangNgayLe } from './trang/cai_dat.tsx';
 import { TrangLanQuet } from './trang/lan_quet.tsx';
 import { TrangNguoiDung, TrangNhatKy } from './trang/nguoi_dung.tsx';
+import { TrangKhoaApi } from './trang/khoa_api.tsx';
+import { TrangBangLuong } from './trang/bang_luong.tsx';
+import { TrangThamSoLuong } from './trang/tham_so_luong.tsx';
+import { TrangViPham } from './trang/vi_pham.tsx';
+import { TrangKpi } from './trang/kpi.tsx';
+import { TrangDongBoErp } from './trang/dong_bo_erp.tsx';
 import { TrangHoSo } from './trang/ho_so.tsx';
 import { TrangKhoTep } from './trang/kho_tep.tsx';
+import { TrangMaDinhDanh } from './trang/ma_dinh_danh.tsx';
+import { KhungHuongDan } from './thanh_phan_huong_dan.tsx';
+import { TrangHopDong } from './trang/hop_dong.tsx';
 
 interface MucMenu {
   duong_dan: string;
@@ -48,12 +57,21 @@ const MENU: MucMenu[] = [
   { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Quản trị nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản' },
   { duong_dan: '/duyet-don', ten: 'Nghỉ phép', icon: 'plane-departure', nhom: 'Quản trị nhân sự', phu: 'Đơn từ & duyệt' },
 
+  { duong_dan: '/vi-pham', ten: 'Vi phạm', icon: 'alert-triangle', nhom: 'Quản trị nhân sự', phu: 'Nội quy lao động, kỷ luật' },
+  { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Quản trị nhân sự', phu: 'Chấm điểm từ dữ liệu thật' },
+  { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Tính từ chấm công, gửi duyệt', quyen: 'nhan_su' },
+  { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Quản trị nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
+
   { duong_dan: '/thiet-bi', ten: 'Thiết bị', icon: 'device-desktop', nhom: 'Hệ thống', phu: 'Máy chấm công ZKTeco', quyen: 'nhan_su' },
   { duong_dan: '/ca-lam', ten: 'Ca làm việc', icon: 'clock', nhom: 'Hệ thống', phu: 'Giờ vào/ra, dung sai, ngưỡng OT' },
   { duong_dan: '/dia-diem', ten: 'Địa điểm', icon: 'map-pin', nhom: 'Hệ thống', phu: 'Đối chiếu GPS khi đi công tác' },
   { duong_dan: '/ngay-le', ten: 'Ngày lễ', icon: 'star', nhom: 'Hệ thống', phu: 'Tết Nguyên đán phải tự thêm mỗi năm' },
   { duong_dan: '/tai-khoan', ten: 'Tài khoản', icon: 'key', nhom: 'Hệ thống', phu: 'Người dùng và vai trò', quyen: 'admin' },
-  { duong_dan: '/kho-tep', ten: 'Kho tệp hồ sơ', icon: 'folder', nhom: 'Hệ thống', phu: 'Tệp đính kèm và đường dẫn đã lưu', quyen: 'nhan_su' },
+  { duong_dan: '/tham-so-luong', ten: 'Tham số lương', icon: 'settings', nhom: 'Hệ thống', phu: 'BHXH, thuế TNCN, giảm trừ gia cảnh', quyen: 'nhan_su' },
+  { duong_dan: '/dong-bo-erp', ten: 'Đồng bộ ERP', icon: 'refresh', nhom: 'Hệ thống', phu: 'Kéo người dùng từ ERP cũ', quyen: 'admin' },
+  { duong_dan: '/khoa-api', ten: 'Khóa API', icon: 'key', nhom: 'Hệ thống', phu: 'Cho hệ thống ngoài gọi vào', quyen: 'admin' },
+  { duong_dan: '/kho-tep', ten: 'Kho tệp hồ sơ', icon: 'file-text', nhom: 'Hệ thống', phu: 'Tệp đính kèm và đường dẫn đã lưu', quyen: 'nhan_su' },
+  { duong_dan: '/ma-dinh-danh', ten: 'Mã định danh', icon: 'fingerprint', nhom: 'Hệ thống', phu: 'Tra cứu theo mã, đối soát các nguồn', quyen: 'nhan_su' },
   { duong_dan: '/nhat-ky', ten: 'Nhật ký thao tác', icon: 'list-details', nhom: 'Hệ thống', phu: 'Ai sửa gì, khi nào', quyen: 'admin' },
 ];
 
@@ -81,7 +99,15 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/dia-diem': return <TrangDiaDiem />;
     case '/ngay-le': return <TrangNgayLe />;
     case '/tai-khoan': return la_admin() ? <TrangNguoiDung /> : <KhongCoQuyen />;
+    case '/khoa-api': return la_admin() ? <TrangKhoaApi /> : <KhongCoQuyen />;
+    case '/bang-luong': return la_nhan_su() ? <TrangBangLuong /> : <KhongCoQuyen />;
+    case '/tham-so-luong': return la_nhan_su() ? <TrangThamSoLuong /> : <KhongCoQuyen />;
+    case '/vi-pham': return <TrangViPham />;
+    case '/kpi': return <TrangKpi />;
+    case '/dong-bo-erp': return la_admin() ? <TrangDongBoErp /> : <KhongCoQuyen />;
     case '/kho-tep': return la_nhan_su() ? <TrangKhoTep /> : <KhongCoQuyen />;
+    case '/ma-dinh-danh': return la_nhan_su() ? <TrangMaDinhDanh /> : <KhongCoQuyen />;
+    case '/hop-dong': return la_nhan_su() ? <TrangHopDong /> : <KhongCoQuyen />;
     case '/nhat-ky': return la_admin() ? <TrangNhatKy /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;
   }
@@ -259,6 +285,11 @@ function BoCuc(): ReactNode {
         </header>
 
         <div className="noi-dung">
+          {/*
+            Huong dan ve o DAY, mot cho cho ca 20 trang. Chen vao tung trang thi som muon co
+            trang quen, va cai quen do khong bao gio do test.
+          */}
+          <KhungHuongDan key={duong_dan} duong_dan={duong_dan} />
           <NoiDung duong_dan={duong_dan} />
         </div>
       </main>

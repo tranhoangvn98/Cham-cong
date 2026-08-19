@@ -17,7 +17,7 @@ import {
   doc_thong_tin_may,
   dung_phan_hoi_handshake,
 } from './giao_thuc.ts';
-import { tiep_nhan_attlog } from './tiep_nhan.ts';
+import { tiep_nhan_attlog, tiep_nhan_rtlog } from './tiep_nhan.ts';
 import { ip_duoc_phep } from '../tien_ich/dia_chi_ip.ts';
 
 interface DongThietBi {
@@ -139,6 +139,23 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       return tra_text(res, `OK: ${kq.da_nhan}\n`);
     }
 
+    // Firmware PUSH kiem soat ra vao day cham cong bang table=rtlog, KHONG phai ATTLOG.
+    if (bang === 'RTLOG') {
+      const kq = await tiep_nhan_rtlog(sn, body);
+      await cham_thiet_bi(sn, null, req.ip);
+      if (kq.tong > 0) {
+        req.log.info({ sn, ...kq }, 'nhan RTLOG');
+        if (kq.chua_map_pin.length > 0) {
+          req.log.warn({ sn, pin: kq.chua_map_pin }, 'co PIN chua map nhan vien');
+        }
+      } else if (body.trim().length > 0) {
+        // Than khong rong ma khong doc ra ban ghi nao = dinh dang khac du doan. Ghi
+        // nguyen van de con sua, thay vi bo qua roi khong ai biet.
+        req.log.warn({ sn, than: body.slice(0, 500) }, 'RTLOG khong doc duoc ban ghi nao');
+      }
+      return tra_text(res, `OK: ${kq.da_nhan}\n`);
+    }
+
     if (bang === 'OPTIONS' || bang === '') {
       const tt = doc_thong_tin_may(body);
       await cham_thiet_bi(
@@ -149,14 +166,32 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       return tra_text(res, 'OK\n');
     }
 
-    // OPERLOG / ATTPHOTO / bang khac: xac nhan da nhan de may khong gui lai mai.
+    // rtstate la nhip tim trang thai may, den vai lan moi giay va khong mang du lieu cham
+    // cong — im lang de khong lam ngap log.
+    if (bang === 'RTSTATE') {
+      await cham_thiet_bi(sn, null, req.ip);
+      return tra_text(res, 'OK\n');
+    }
+
+    // Bang khac (OPERLOG, ATTPHOTO, tabledata...): xac nhan da nhan de may khong gui lai
+    // mai. Ghi muc info chu khong phai debug: production chay o muc info, de debug thi
+    // mot bang mang du lieu that bi bo qua se khong de lai dau vet nao — dung loi da lam
+    // moi lan quet bi vut im lang truoc khi ho tro rtlog.
     await cham_thiet_bi(sn, null, req.ip);
-    req.log.debug({ sn, bang, dai: body.length }, 'nhan bang khac, bo qua');
+    if (body.trim().length > 0) {
+      req.log.info({ sn, bang, dai: body.length }, 'nhan bang chua xu ly, bo qua');
+    }
     return tra_text(res, 'OK\n');
   });
 
   // -------------------------------------------------- may hoi lenh can thuc thi
-  app.get('/getrequest', async (req, res) => {
+  /**
+   * Lay lenh dang cho cho mot may va danh dau da gui.
+   *
+   * Tach rieng vi co HAI duong may hoi lenh, tuy doi firmware: `GET /getrequest` (PUSH 2.x)
+   * va `POST /push` (PUSH 3.x). Cung mot hang doi, cung mot dinh dang tra ve.
+   */
+  async function lay_lenh_cho_may(req: FastifyRequest, res: FastifyReply): Promise<FastifyReply> {
     const sn = lay_serial(req);
     const may = await may_hop_le(sn);
     if (may === null) return tra_text(res, 'Unauthorized\n', 401);
@@ -182,7 +217,28 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
 
     req.log.info({ sn, so_lenh: lenh.length }, 'gui lenh xuong may');
     return tra_text(res, lenh.map((l) => dinh_dang_lenh(l.id, l.lenh)).join(''));
-  });
+  }
+
+  app.get('/getrequest', async (req, res) => lay_lenh_cho_may(req, res));
+
+  // -------------------------------------------------- kenh hoi lenh cua PUSH 3.x
+  //
+  // Firmware doi moi KHONG goi getrequest. No hoi lenh bang POST /iclock/push, than tin
+  // nhan rong. May NYU7261300256 goi duong nay 2 lan moi 15 giay; chua co endpoint thi
+  // nhan 404 va lam lai ca chu ky cdata -> registry -> push, khong bao gio day ATTLOG.
+  //
+  // Cung hang doi voi getrequest nen mot lenh chi di xuong dung mot lan, du may dung duong
+  // nao. Ghi lai truy van + than tin nhan: neu dinh dang tra ve con chua vua y firmware thi
+  // day la du lieu de doi chieu, khoi phai doi them mot vong thu nghiem tai van phong.
+  const hoi_lenh_push = async (req: FastifyRequest, res: FastifyReply): Promise<FastifyReply> => {
+    req.log.info(
+      { truy_van: req.query, than: String(req.body ?? '').slice(0, 300) },
+      'may hoi lenh qua /push',
+    );
+    return lay_lenh_cho_may(req, res);
+  };
+  app.post('/push', hoi_lenh_push);
+  app.get('/push', hoi_lenh_push);
 
   // -------------------------------------------------- may bao ket qua lenh
   app.post('/devicecmd', async (req, res) => {
@@ -211,6 +267,51 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
     const sn = lay_serial(req);
     if (sn.length > 0) await cham_thiet_bi(sn, null, req.ip);
     return tra_text(res, 'OK\n');
+  });
+
+  // -------------------------------------------------- dang ky may (PUSH >= 2.x)
+  //
+  // Firmware doi moi (SenseFace/SpeedFace, pushver 3.x, DeviceType=acc) mo phien bang
+  // POST /iclock/registry TRUOC khi chiu lam viec. Khong tra loi duoc thi may coi nhu dang
+  // ky that bai va lam lai tu dau sau moi ErrorDelay giay — vong lap vo tan
+  // "GET /cdata -> POST /registry -> cho -> lap lai", khong bao gio sang getrequest hay day
+  // ATTLOG. Gap dung tinh huong nay khi dau noi may NYU7261300256 (lap lai moi 15 giay).
+  //
+  // May chi can mot dong "RegistryCode=<ma>". Dung luon serial lam ma: no on dinh qua cac
+  // lan khoi dong lai nen may khong phai dang ky lai, va khong them mot cot CSDL chi de
+  // sinh so ngau nhien.
+  app.post('/registry', async (req, res) => {
+    const sn = lay_serial(req);
+    const may = await may_hop_le(sn);
+    if (may === null) {
+      req.log.warn({ sn }, 'may chua khai bao goi registry');
+      return tra_text(res, 'Unauthorized\n', 401);
+    }
+    // Than tin nhan mang thong tin may (kieu may, firmware...) — ghi lai de con doi chieu.
+    const tt = doc_thong_tin_may(typeof req.body === 'string' ? req.body : '');
+    await cham_thiet_bi(sn, tt['firmver'] ?? tt['fwversion'] ?? null, req.ip);
+    req.log.info({ sn, thong_tin: tt }, 'may dang ky (registry)');
+    return tra_text(res, `RegistryCode=${sn}\n`);
+  });
+
+  // -------------------------------------------------- endpoint chua ho tro
+  //
+  // Fastify tra 404 kem body JSON cho duong dan la. Voi may ZKTeco day la loi CAM: may chi
+  // thu lai mai, con phia may chu khong co dau vet nao ngoai dong log request tho — dung
+  // mot endpoint thieu ma mat nhieu gio moi lan ra.
+  //
+  // Bat lai o day de ghi RO endpoint nao con thieu, va tra text/plain thay vi JSON.
+  app.setNotFoundHandler(async (req, res) => {
+    req.log.error(
+      {
+        url: req.url,
+        method: req.method,
+        sn: lay_serial(req),
+        than: String(req.body ?? '').slice(0, 500),
+      },
+      'may goi endpoint /iclock chua ho tro — can bo sung',
+    );
+    return tra_text(res, 'Not Found\n', 404);
   });
 }
 

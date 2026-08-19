@@ -4,6 +4,7 @@ import {
   DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
+import type { NhomMa as NhomMaDinhDanh } from './ma_dinh_danh.tsx';
 
 interface ThietBi {
   id: string;
@@ -43,6 +44,21 @@ export function TrangThietBi(): ReactNode {
     nap_lai();
   };
 
+  // Xoa han: chi hien khi may DA TAT. Hoi lai vi day la thao tac khong hoan tac duoc — du lich
+  // su quet o lai, ban ghi khai bao may thi mat.
+  const xoa = async (tb: ThietBi): Promise<void> => {
+    const dong_y = window.confirm(
+      `Xóa hẳn máy "${tb.ten}" (${tb.serial})?\n\n`
+      + 'Lịch sử lần quẹt của máy này VẪN GIỮ NGUYÊN — bảng công cũ không đổi. '
+      + 'Chỉ bản ghi khai báo máy và các lệnh chưa gửi bị xóa.');
+    if (!dong_y) return;
+    await hd.chay(
+      () => goi(`/api/thiet-bi/${tb.id}`, { method: 'DELETE' }),
+      'Đã xóa máy. Lịch sử lần quẹt vẫn còn.',
+    );
+    nap_lai();
+  };
+
   const bat_tat = async (tb: ThietBi): Promise<void> => {
     await hd.chay(
       () => goi(`/api/thiet-bi/${tb.id}`, { method: 'PATCH', body: { dang_bat: !tb.dang_bat } }),
@@ -70,15 +86,7 @@ export function TrangThietBi(): ReactNode {
       <HopTot chu={hd.tot} />
       <HopLoi loi={loi} />
 
-      <div className="the">
-        <h2>Cấu hình trên máy ZKTeco</h2>
-        <p className="mo-ta" style={{ marginBottom: 0 }}>
-          Trên máy: <strong>Menu › Comm › Cloud Server / ADMS</strong>. Đặt Server Mode =
-          {' '}<strong>ADMS</strong>, Server Address = địa chỉ IP máy chủ này, Port ={' '}
-          <strong>8080</strong>, bật <strong>Realtime</strong> (Enable Domain Name = tắt nếu dùng IP).
-          Sau đó khai serial máy (dán sau lưng máy) vào danh sách dưới đây.
-        </p>
-      </div>
+      <HuongDanCauHinh />
 
       <div className="the the-mong">
         {dang_tai ? <DangTai /> : (du_lieu ?? []).length === 0 ? (
@@ -151,6 +159,12 @@ export function TrangThietBi(): ReactNode {
                           <button className="nut-nho nut-phang" onClick={() => bat_tat(tb)}>
                             {tb.dang_bat ? 'Tắt' : 'Bật'}
                           </button>
+                          {!tb.dang_bat && (
+                            <button className="nut-nho nut-phang" onClick={() => xoa(tb)}
+                              title="Xóa hẳn máy đã ngừng dùng. Lịch sử lần quẹt vẫn giữ nguyên.">
+                              Xóa
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}
@@ -188,6 +202,8 @@ function FormThietBi({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
   const [serial, dat_serial] = useState('');
   const [ten, dat_ten] = useState('');
   const [vi_tri, dat_vi_tri] = useState('');
+  const [pin_tu, dat_pin_tu] = useState('');
+  const [pin_den, dat_pin_den] = useState('');
   const hd = dung_hanh_dong();
 
   const gui = async (e: React.FormEvent): Promise<void> => {
@@ -198,6 +214,8 @@ function FormThietBi({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
         serial: serial.trim(),
         ten: ten.trim(),
         vi_tri: vi_tri.trim() === '' ? null : vi_tri.trim(),
+        pin_tu: pin_tu.trim() === '' ? null : Number(pin_tu),
+        pin_den: pin_den.trim() === '' ? null : Number(pin_den),
       },
     }));
     if (ok) khi_xong();
@@ -211,7 +229,8 @@ function FormThietBi({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
           <label htmlFor="sn">Serial máy *</label>
           <input id="sn" value={serial} onChange={(e) => dat_serial(e.target.value)} required autoFocus />
           <div className="goi-y">
-            Số serial dán sau lưng máy (SN). Phải khớp tuyệt đối, có phân biệt chữ hoa/thường.
+            Lấy ở <strong>Menu › Hệ thống › Thông tin thiết bị › Số sê ri</strong> trên chính máy
+            đó, không lấy số dán sau lưng máy. Phải khớp tuyệt đối, có phân biệt chữ hoa/thường.
           </div>
         </div>
         <div className="o-nhap">
@@ -223,6 +242,24 @@ function FormThietBi({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
           <label htmlFor="vt">Vị trí</label>
           <input id="vt" value={vi_tri} onChange={(e) => dat_vi_tri(e.target.value)}
             placeholder="Tầng 1, VP Hà Nội" />
+        </div>
+        <div className="luoi luoi-2">
+          <div className="o-nhap">
+            <label htmlFor="pt">Dải PIN — từ</label>
+            <input id="pt" type="number" min={1} value={pin_tu}
+              onChange={(e) => dat_pin_tu(e.target.value)} placeholder="1001" />
+          </div>
+          <div className="o-nhap">
+            <label htmlFor="pd">đến</label>
+            <input id="pd" type="number" min={1} value={pin_den}
+              onChange={(e) => dat_pin_den(e.target.value)} placeholder="1999" />
+          </div>
+        </div>
+        <div className="goi-y">
+          Hệ thống sẽ <strong>cấp PIN trong dải này</strong> cho nhân viên của máy, rồi bạn cài
+          đúng số đó lên máy. Mỗi máy một dải riêng (VP1 <code>1001–1999</code>, VP2{' '}
+          <code>2001–2999</code>) thì nhìn PIN là biết máy nào, và hai nơi không bao giờ cấp
+          trùng số cho hai người khác nhau. Để trống thì cấp từ 1 trở lên.
         </div>
         <div className="hang-nut">
           <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>
@@ -292,15 +329,23 @@ function NapNhanVien(
   { thiet_bi: ThietBi; khi_dong: () => void; khi_xong: () => void },
 ): ReactNode {
   const [nhan_vien_id, dat_nhan_vien_id] = useState('');
+  const [pin, dat_pin] = useState('');
   const hd = dung_hanh_dong();
   const { du_lieu } = dung_nap<NhanVien[]>('/api/nhan-vien?chi_dang_lam=true');
   const co_pin = (du_lieu ?? []).filter((n) => n.pin_may !== null);
+
+  // Mot nguoi co the co NHIEU PIN — moi may mot PIN. Doc tu bang ma dinh danh de chon dung cai
+  // cua may nay; cot `pin_may` chi chua duoc mot.
+  const { du_lieu: cac_nhom } = dung_nap<NhomMaDinhDanh[]>(
+    nhan_vien_id === '' ? null : `/api/nhan-vien/${nhan_vien_id}/ma-dinh-danh`, [nhan_vien_id]);
+  const pin_dang_co = (cac_nhom ?? [])
+    .find((n) => n.he_thong === 'may_cham_cong')?.cac_ma.map((m) => m.ma) ?? [];
 
   const gui = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     const ok = await hd.chay(() => goi(
       `/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/nap-nhan-vien`,
-      { method: 'POST', body: { nhan_vien_id } },
+      { method: 'POST', body: pin === '' ? { nhan_vien_id } : { nhan_vien_id, pin } },
     ));
     if (ok) khi_xong();
   };
@@ -331,13 +376,109 @@ function NapNhanVien(
           )}
         </div>
 
+        {pin_dang_co.length > 1 && (
+          <div className="o-nhap">
+            <label htmlFor="pinchon">PIN nạp xuống máy này *</label>
+            <select id="pinchon" value={pin} onChange={(e) => dat_pin(e.target.value)} required>
+              <option value="">— Chọn PIN —</option>
+              {pin_dang_co.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <div className="goi-y">
+              Người này có {pin_dang_co.length} PIN đang dùng. Chọn PIN đã khai{' '}
+              <strong>trên chính máy {thiet_bi.ten}</strong> — nạp nhầm PIN của máy khác thì họ
+              quẹt vào máy này sẽ không khớp được ai.
+            </div>
+          </div>
+        )}
+
         <div className="hang-nut">
-          <button type="submit" className="nut-chinh" disabled={hd.dang_chay || nhan_vien_id === ''}>
+          <button
+            type="submit"
+            className="nut-chinh"
+            disabled={hd.dang_chay || nhan_vien_id === ''
+              || (pin_dang_co.length > 1 && pin === '')}
+          >
             {hd.dang_chay ? 'Đang xếp lệnh…' : 'Nạp xuống máy'}
           </button>
           <button type="button" onClick={khi_dong}>Hủy</button>
         </div>
       </form>
     </HopThoai>
+  );
+}
+
+/**
+ * Huong dan cau hinh may, tu doi theo cach he thong dang duoc trien khai.
+ *
+ * Ban truoc in cung mot doan chi dung cho kieu "may chu cung LAN": IP + cong 8080 +
+ * Enable Domain Name tat. Chay tren VPS thi ca ba deu sai, va nguoi dung sai khong nhan
+ * duoc loi nao — may chi im lang khong goi len. Nen suy ra tu chinh dia chi dang mo
+ * webapp: do la dia chi ma may cham cong cung phai goi toi.
+ */
+function HuongDanCauHinh(): ReactNode {
+  const chu_nha = window.location.hostname;
+  const la_cuc_bo = chu_nha === 'localhost' || chu_nha === '127.0.0.1';
+  // Mo webapp bang IP (hoac dang chay may lap) = kieu may chu cung LAN. Mo bang ten mien =
+  // kieu may chu tren VPS. Hai kieu nay cau hinh khac nhau ca ba dong duoi.
+  const qua_ten_mien = !la_cuc_bo && !/^\d{1,3}(\.\d{1,3}){3}$/.test(chu_nha);
+
+  return (
+    <div className="the">
+      <h2>Cấu hình trên máy ZKTeco</h2>
+      <p className="mo-ta">
+        Trên máy: <strong>Menu › Comm (Kết nối) › Cloud Server Setting / ADMS</strong>.
+      </p>
+      <table className="bang-gon">
+        <tbody>
+          <tr><td>Server Mode</td><td><strong>ADMS</strong></td></tr>
+          <tr>
+            <td>Enable Domain Name</td>
+            <td><strong>{qua_ten_mien ? 'Bật' : 'Tắt'}</strong>{' '}
+              <span className="goi-y">
+                {qua_ten_mien
+                  ? 'để tắt thì máy không phân giải DNS và im lặng không gọi được'
+                  : 'điền IP thì phải tắt'}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>Server Address</td>
+            <td>
+              <strong>{la_cuc_bo ? 'địa chỉ IP máy chủ này' : chu_nha}</strong>{' '}
+              <span className="goi-y">không kèm http:// và không kèm / ở cuối</span>
+            </td>
+          </tr>
+          <tr>
+            <td>Server Port</td>
+            <td><strong>{qua_ten_mien ? '80' : '8080'}</strong>{' '}
+              {qua_ten_mien && (
+                <span className="goi-y">không phải 8080 — 8080 chỉ tồn tại bên trong máy chủ</span>
+              )}
+            </td>
+          </tr>
+          <tr>
+            <td>Enable Proxy Server</td>
+            <td><strong>Tắt</strong>{' '}
+              <span className="goi-y">
+                bật lên là máy đẩy hết qua proxy đã khai (thường bỏ trống thành 0.0.0.0) và
+                không bao giờ tới được máy chủ
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>HTTPS</td>
+            <td><strong>Tắt</strong>{' '}
+              <span className="goi-y">nhiều firmware ZKTeco không làm được TLS</span>
+            </td>
+          </tr>
+          <tr><td>Realtime</td><td><strong>Bật</strong></td></tr>
+        </tbody>
+      </table>
+      <p className="mo-ta" style={{ marginBottom: 0 }}>
+        Serial lấy ở <strong>Menu › Hệ thống › Thông tin thiết bị › Số sê ri</strong> trên chính
+        máy đó — <strong>không</strong> lấy số dán sau lưng máy hay số trên hộp, hai số này khác
+        nhau ở nhiều lô máy và ADMS chỉ gửi lên số sê ri firmware.
+      </p>
+    </div>
   );
 }

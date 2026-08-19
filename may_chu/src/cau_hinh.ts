@@ -161,16 +161,119 @@ export const cau_hinh = {
     goc_webapp: chu('MS_GOC_WEBAPP', ''),
   },
 
+  /**
+   * He thong ERP cu (Tran Hoang Viet Nam).
+   *
+   * `webhook_*` la chieu DI: outbox cua ta POST su kien sang ERP.
+   * `url` + `api_key` la chieu VE: ta keo nguoi dung tu ERP sang. Xac thuc bang header
+   * `X-Api-Key`, KHONG phai Bearer. De TRONG `url` = tat han viec dong bo.
+   *
+   * Tai lieu tich hop noi ro: khoa production phai xin rieng, dat trong bien moi truong,
+   * KHONG hard-code vao ma nguon hay commit len git.
+   */
   erp: {
     webhook_url: chu('ERP_WEBHOOK_URL', ''),
     webhook_secret: chu('ERP_WEBHOOK_SECRET', ''),
+    url: chu('ERP_API_URL', '').replace(/\/+$/, ''),
+    api_key: chu('ERP_API_KEY', ''),
   },
 
   /** Bat migration tu dong khi khoi dong (tien cho Docker 1 diem). */
+  /**
+   * Trang tai lieu API o /api/v1/tai-lieu.
+   *
+   * Mac dinh BAT: trang do chi bay ra HOP DONG (ten duong dan, tham so, y nghia), khong bay
+   * ra du lieu — muon goi that van phai co khoa API. Dua duong dan cho ben tich hop la ho tu
+   * doc duoc, khong phai gui file qua lai. Dat 0 neu khong muon lo ca hop dong ra ngoai.
+   */
+  api_tai_lieu_cong_khai: chu('API_TAI_LIEU_CONG_KHAI', '1') === '1',
+
+  /**
+   * Dia chi CONG KHAI cua API, ghi vao `servers` cua spec OpenAPI.
+   *
+   * Bat buoc phai khai bang tay: may chu chay sau reverse proxy va KHONG the tu suy ra. Ben
+   * ngoai goi https://ten-mien/chamcong/api/v1/... nhung ben trong container chi thay
+   * /api/v1/... — tien to /chamcong do Caddy them, may chu khong he biet.
+   *
+   * De trong thi spec khong co `servers`, va bo sinh ma se mac dinh ve http://localhost —
+   * client sinh ra khong goi duoc gi cho toi khi nguoi ta tu sua tay.
+   *
+   * VD: API_GOC_CONG_KHAI=https://teams.tranhoangvietnam.com/chamcong
+   */
+  api_goc_cong_khai: chu('API_GOC_CONG_KHAI', '').replace(/\/+$/, ''),
+
   tu_dong_di_tru: chu('TU_DONG_DI_TRU', la_production ? '0' : '1') === '1',
+
+  /**
+   * Thong bao day toi app dien thoai (don moi, don duoc duyet).
+   *
+   * Dat 0 de tat han — huu ich khi may chu khong ra duoc Internet, hoac khi khoi phuc du
+   * lieu cu: tinh lai bang cong hang loat ma con bat thi nhan vien nhan mot loat thong bao
+   * ve nhung don da xu ly tu lau.
+   */
+  thong_bao_day_bat: chu('THONG_BAO_DAY', '1') === '1',
+
+  /**
+   * Dich vu day thong bao cua Expo. Chi doi khi tu chay may chu day rieng — de nguyen thi
+   * dung dich vu cong cong cua Expo, khong can dang ky hay khoa gi.
+   */
+  expo_push_url: chu('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
 
   /** Kich thuoc anh selfie toi da (byte). */
   anh_toi_da_byte: so('ANH_TOI_DA_BYTE', 3 * 1024 * 1024),
+
+  /**
+   * Hop dong dien tu vContract (Viettel). De TRONG `VCONTRACT_URL` = tat han tinh nang.
+   *
+   * `cp_code` va `cp_account_code` do Viettel cap khi mo ket noi. `cp_account_code` nhan
+   * 'VCONTRACT' (co chung thuc) hoac 'SCONTRACT' (khong chung thuc) — khai sai thi login
+   * duoc nhung lap hop dong se vao nham phien ban.
+   */
+  vcontract: {
+    url: chu('VCONTRACT_URL', '').replace(/\/+$/, ''),
+    username: chu('VCONTRACT_USERNAME', ''),
+    mat_khau: chu('VCONTRACT_PASSWORD', ''),
+    cp_code: chu('VCONTRACT_CP_CODE', ''),
+    cp_account_code: chu('VCONTRACT_CP_ACCOUNT_CODE', 'VCONTRACT'),
+    /**
+     * Token vContract phai gui trong header Authorization khi goi callback ve ta. Khong
+     * dat = tu choi moi callback: duong /vcontract/* nam ngoai lop dang nhap, de trong
+     * nghia la bat ky ai cung doi duoc trang thai hop dong lao dong.
+     */
+    token_callback: chu('VCONTRACT_TOKEN_CALLBACK', ''),
+  },
+
+  /**
+   * Dong bo kho tep ho so sang thu vien HCNS tren SharePoint. MOT CHIEU, xoa lan theo.
+   *
+   * Dung MOT APP RIENG (`cham-cong-sharepoint-sync`), khong dung lai app dang nhap:
+   *   - App dang nhap chi can `openid profile email`, khong can quyen nao tren SharePoint.
+   *     Gan quyen ghi tep vao no la mo rong be mat cua chinh lop dang nhap.
+   *   - Quyen dung o day la `Sites.Selected`, va no CHI co hieu luc tren nhung site da duoc
+   *     cap ten dich danh — hep hon `Sites.ReadWrite.All` rat nhieu.
+   *
+   * `goc_graph` va `goc_token` de doi duoc VI BO KIEM CAN mot may chu Graph gia tai cho:
+   * phien lam viec dung de xay khong ket noi duoc SharePoint that. Vi chinh dieu do lam
+   * chung thanh mot duong nga tren may that (tro sang may cua ke khac la nop ca client
+   * secret), `goc_an_toan()` trong sharepoint/khach.ts tu choi moi goc la khi NODE_ENV=production.
+   */
+  sharepoint: {
+    site_id: chu('SHAREPOINT_SITE_ID', ''),
+    /** Biet san thi khoi mot luot goi Graph moi lan khoi dong. */
+    drive_id: chu('SHAREPOINT_DRIVE_ID', ''),
+    /** Ten thu vien tai lieu, dung khi khong khai `drive_id`. */
+    thu_vien: chu('SHAREPOINT_THU_VIEN', 'HCNS'),
+    tenant_id: chu('SHAREPOINT_TENANT_ID', chu('MS_TENANT_ID', '')),
+    client_id: chu('SHAREPOINT_CLIENT_ID', ''),
+    client_secret: chu('SHAREPOINT_CLIENT_SECRET', ''),
+    goc_graph: chu('SHAREPOINT_GOC_GRAPH', 'https://graph.microsoft.com/v1.0').replace(/\/+$/, ''),
+    goc_token: chu('SHAREPOINT_GOC_TOKEN', 'https://login.microsoftonline.com').replace(/\/+$/, ''),
+    /**
+     * Day thuc su len SharePoint. TAT mac dinh, va do la co y: cau hinh xong thi van chi
+     * ghi nhan viec can day vao bang, de ban xem bang do truoc roi moi bat.
+     */
+    bat_day: chu('SHAREPOINT_BAT_DAY', '0') === '1',
+  },
 
   /** Noi luu tep dinh kem ho so nhan su (hop dong scan, bien ban...). */
   thu_muc_ho_so: resolve(process.cwd(), chu('THU_MUC_HO_SO', './du_lieu/ho_so')),
