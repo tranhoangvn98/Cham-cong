@@ -2,6 +2,60 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.33.0] — 2026-08-19
+
+**Mỗi trang có khung "Quy trình ở trang này", đúng theo vai trò của người đang đăng nhập.**
+
+Hệ thống có 20 trang và 6 vai trò, và cho tới giờ người dùng mới phải tự đoán thứ tự thao tác —
+hoặc hỏi. Giờ mỗi trang nói: trang này để làm gì, các bước theo thứ tự (chỉ những bước **vai trò
+của bạn** làm được), và các bẫy thật của trang đó.
+
+Khai **một chỗ** trong `web/src/huong_dan.ts`, vẽ **một chỗ** trong `App.tsx` ngay trên nội dung.
+Không trang nào tự viết hướng dẫn của nó: 20 chỗ viết riêng thì sau vài tháng chúng nói khác
+nhau, và chỗ lệch nguy hiểm nhất là giao diện hướng dẫn một đằng còn máy chủ làm một nẻo.
+
+Khung **đóng được và nhớ theo từng trang**. Người dùng quen đóng một lần và nó ở nguyên thế — một
+khung hướng dẫn không đóng được là khung người ta học cách nhìn xuyên qua, và lúc đó các dòng cảnh
+báo thật sự quan trọng cũng bị nhìn xuyên qua.
+
+### Lưu ý phải là bẫy thật
+
+*"Nhớ lưu dữ liệu"* thì không ai đọc. Mỗi dòng trong phần lưu ý là một chỗ đã làm sai thật, hoặc
+một ràng buộc pháp lý:
+
+- Đổi ca **không** tự tính lại bảng công cũ.
+- Duyệt kỳ lương **khóa** tháng đó.
+- Tết âm lịch **phải tự thêm mỗi năm** — quên là cả công ty bị tính vắng.
+- Máy đang tắt không nhận lệnh; địa chỉ máy chủ không gửi xuống được, phải gõ trên máy.
+- Cảnh báo 40 giờ OT/tháng (Điều 107) là cảnh báo, **không chặn**.
+- Hợp đồng xác định thời hạn hết hạn mà vẫn làm việc thì sau 30 ngày tự thành không xác định thời
+  hạn (Điều 20.2).
+- Chỉ Trưởng phòng nhân sự được thay/gỡ tệp đã nạp.
+- Đồng bộ SharePoint là **một chiều và xóa lan theo**.
+
+### Một lỗi phân quyền tìm ra khi làm việc này
+
+Máy chủ coi `truong_phong_nhan_su` **ngang** `nhan_su` (`can_nhan_su`), nhưng giao diện thì không:
+`la_nhan_su()` chỉ nhận `admin` và `nhan_su`, và kiểu `VaiTro` của web thậm chí không liệt kê vai
+trò đó. Hậu quả: người mang vai trò Trưởng phòng nhân sự đăng nhập web thì **cả nhóm "Hệ thống" và
+các trang nhân sự bị ẩn**, trong khi máy chủ vẫn cho vào. Họ thấy một ứng dụng cụt và không có gì
+nói vì sao.
+
+Sửa, và thêm một bài kiểm đọc **cả hai tệp** rồi đòi hai tập vai trò bằng nhau. Đã chứng minh bằng
+cách trả lại bản cũ: bài kiểm đỏ đúng chỗ.
+
+### Guard cho chính bảng hướng dẫn
+
+`thiet_ke/huong_dan.test.mjs` đối chiếu ba mặt: mọi trang trong thanh điều hướng phải có hướng
+dẫn, không có hướng dẫn cho trang đã gỡ, và mọi tên vai trò nhắc trong bảng phải có thật trong
+`api.ts` — gõ nhầm `truong_phong_hr` thì bước đó không hiện với ai cả, im lặng tuyệt đối.
+
+Sửa kèm: README nói ngược chiều PIN ở mục *Việc nhân sự phải làm sau khi cài* (*"điền PIN máy đúng
+bằng số ID đã khai trên máy"*) — từ `1.32.3` thì hệ thống cấp số, máy làm theo. Bảng phân quyền
+cũng thiếu hai vai trò `truong_phong_nhan_su` và `cho_duyet`.
+
+476 unit (1 skipped) + 5 proxy + **20** thiết kế + 357 e2e.
+
 ## [1.32.3] — 2026-08-19
 
 **Hệ thống cấp PIN, máy làm theo — không bao giờ ngược lại.**

@@ -22,6 +22,7 @@ import { TrangDongBoErp } from './trang/dong_bo_erp.tsx';
 import { TrangHoSo } from './trang/ho_so.tsx';
 import { TrangKhoTep } from './trang/kho_tep.tsx';
 import { TrangMaDinhDanh } from './trang/ma_dinh_danh.tsx';
+import { KhungHuongDan } from './thanh_phan_huong_dan.tsx';
 import { TrangHopDong } from './trang/hop_dong.tsx';
 
 interface MucMenu {
@@ -284,6 +285,11 @@ function BoCuc(): ReactNode {
         </header>
 
         <div className="noi-dung">
+          {/*
+            Huong dan ve o DAY, mot cho cho ca 20 trang. Chen vao tung trang thi som muon co
+            trang quen, va cai quen do khong bao gio do test.
+          */}
+          <KhungHuongDan key={duong_dan} duong_dan={duong_dan} />
           <NoiDung duong_dan={duong_dan} />
         </div>
       </main>

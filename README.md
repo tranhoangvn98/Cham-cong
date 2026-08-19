@@ -92,9 +92,12 @@ Thứ tự này quan trọng — làm sai thứ tự thì log về sẽ không m
 
 1. **Ca làm việc** — sửa ca "Hành chính" cho khớp giờ thật và **các ngày phải đi làm**
    (mặc định T2–T6; công ty làm cả T7 phải tự thêm).
-2. **Nhân viên** — thêm từng người, điền **PIN máy** đúng bằng số ID đã khai trên máy.
-3. **Máy chấm công** — khai serial, rồi bấm "Đồng bộ giờ" (lệch giờ máy là nguyên nhân
-   sai công phổ biến nhất).
+2. **Máy chấm công** — khai serial và **dải PIN** của từng máy (VP1 `1001–1999`,
+   VP2 `2001–2999`), rồi bấm "Đồng bộ giờ" (lệch giờ máy là nguyên nhân sai công phổ
+   biến nhất).
+3. **Nhân viên** — thêm từng người, rồi **Cấp PIN**: hệ thống chọn số còn trống trong dải
+   của máy, bạn cài đúng số đó lên máy. **Đừng tự nghĩ ra số** — hai văn phòng cùng đánh
+   số từ 1 là công của người này chạy sang người kia.
 4. **Ngày lễ** — chỉ có sẵn ngày lễ dương lịch cố định. **Tết Nguyên đán và ngày nghỉ
    bù theo lịch âm phải tự thêm mỗi năm.**
 5. **Địa điểm** — chỉ cần nếu dùng chấm công bằng điện thoại.
@@ -156,8 +159,15 @@ Nhân sự xem ảnh và khoảng cách ở webapp → **Duyệt đơn → Chấ
 |---|---|
 | `admin` | Toàn quyền, gồm quản lý tài khoản và nhật ký thao tác |
 | `nhan_su` | Toàn bộ dữ liệu chấm công, khai máy, chốt tháng, xuất CSV |
+| `truong_phong_nhan_su` | Như `nhan_su`, và là vai trò **duy nhất** được thay hoặc gỡ tệp đã nạp vào hồ sơ |
 | `truong_phong` | Xem và duyệt đơn của **nhân viên trong phòng mình** |
 | `nhan_vien` | Chỉ dữ liệu của chính mình (dùng app điện thoại) |
+| `cho_duyet` | Đăng nhập được nhưng chưa được cấp quyền gì — trạng thái của người vừa đăng nhập Microsoft lần đầu |
+
+Mỗi trang trong webapp có khung **Quy trình ở trang này**: các bước đúng theo vai trò của người
+đang đăng nhập, kèm những cái bẫy thật của trang đó. Khai một chỗ ở
+[`web/src/huong_dan.ts`](web/src/huong_dan.ts), và có bài kiểm đòi mọi trang trong thanh điều
+hướng phải có một mục.
 
 ## 8. Đồng bộ sang ERP (tùy chọn)
 
