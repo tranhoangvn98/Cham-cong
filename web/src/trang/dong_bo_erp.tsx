@@ -36,6 +36,8 @@ interface DongKetQua {
   hanh_dong: 'tao_moi' | 'cap_nhat' | 'khong_doi' | 'bo_qua';
   ly_do?: string;
   thay_doi?: string[];
+  /** Du lieu ERP co van de nhung khong chan dong bo — vi du ten nguoi trong o dien thoai. */
+  canh_bao?: string;
 }
 
 interface KetQua {
@@ -241,6 +243,9 @@ function BangKetQua({ kq }: { kq: KetQua }): ReactNode {
                 </td>
                 <td className="mo-ta">
                   {d.ly_do ?? (d.thay_doi ?? []).map((t) => NHAN_TRUONG[t] ?? t).join(', ')}
+                  {d.canh_bao !== undefined && (
+                    <div><span className="nhan-xau">⚠ {d.canh_bao}</span></div>
+                  )}
                 </td>
               </tr>
             ))}

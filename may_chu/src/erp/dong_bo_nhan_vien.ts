@@ -17,6 +17,7 @@
 import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { lay_nguoi_dung, type NguoiDungErp } from './khach.ts';
 import { sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
+import { la_so_dien_thoai } from '../tien_ich/kiem_tra.ts';
 
 export type HanhDong = 'tao_moi' | 'cap_nhat' | 'khong_doi' | 'bo_qua';
 
@@ -28,6 +29,8 @@ export interface DongKetQua {
   ly_do?: string;
   /** Nhung truong thuc su doi — de nguoi doc biet dong bo dong vao cai gi. */
   thay_doi?: string[];
+  /** Du lieu ERP co van de nhung khong chan viec dong bo. Vi du ten nguoi trong o dien thoai. */
+  canh_bao?: string;
 }
 
 export interface KetQuaDongBo {
@@ -50,6 +53,22 @@ export function chuan_chuoi(v: unknown): string | null {
   if (typeof v !== 'string') return null;
   const s = v.trim();
   return s === '' ? null : s;
+}
+
+/**
+ * So dien thoai tu ERP, hoac null neu gia tri do KHONG PHAI so dien thoai.
+ *
+ * ERP cu tra ho ten trong `phoneNumber` voi mot so nguoi (thay o `ERP4`: "Trần Hoàng Anh Vinh").
+ * Nhan lay tat la de ten nguoi chay vao cot `so_dien_thoai` roi hien tren ho so — va vi lan dong
+ * bo sau lai so "gia tri ERP" voi "gia tri trong CSDL" nen no con bao `cap_nhat` mai mai.
+ *
+ * Tra `null` thi cau `update` da co `coalesce($4, so_dien_thoai)`, nghia la GIU nguyen so dang
+ * co chu khong xoa mat.
+ */
+export function chuan_dien_thoai(v: unknown): string | null {
+  const s = chuan_chuoi(v);
+  if (s === null) return null;
+  return la_so_dien_thoai(s) ? s : null;
 }
 
 /**
@@ -92,7 +111,9 @@ export function truong_can_doi(u: NguoiDungErp, nv: NhanVienHienCo): string[] {
   const doi: string[] = [];
   const ten = chuan_chuoi(u.name);
   const email = chuan_email(u.email);
-  const dt = chuan_chuoi(u.phoneNumber);
+  // PHAI dung chinh bo loc ma cau ghi dung. Neu o day nhan mot gia tri ma cau ghi lai bo, thi
+  // moi lan dong bo se bao `cap_nhat` cho nguoi do, sua khong duoc gi, va bao mai mai.
+  const dt = chuan_dien_thoai(u.phoneNumber);
 
   if (ten !== null && ten !== nv.ho_ten) doi.push('ho_ten');
   if (email !== null && email !== chuan_email(nv.email)) doi.push('email');
@@ -175,10 +196,19 @@ export async function dong_bo_nhan_vien(
       continue;
     }
 
+    // Gia tri ERP cho la "so dien thoai" nhung khong phai so: bao ra de nhan su sua BEN ERP.
+    // Bao o CA BA nhanh duoi day, ke ca `khong_doi` — nguoi bi anh huong thuong nam o do, vi
+    // moi thu khac da khop tu lan dong bo truoc.
+    const dt_tho = chuan_chuoi(u.phoneNumber);
+    const canh_bao = dt_tho !== null && chuan_dien_thoai(u.phoneNumber) === null
+      ? `ERP trả "${dt_tho}" trong trường số điện thoại — không phải số, đã bỏ qua ô này`
+      : undefined;
+
     if (nv === null) {
       kq.so_tao_moi++;
       kq.chi_tiet.push({
         erp_user_id: u.userId!, email, ho_ten: chuan_chuoi(u.name), hanh_dong: 'tao_moi',
+        canh_bao,
       });
       viec.push({ u, nv: null, doi: [] });
       continue;
@@ -187,14 +217,14 @@ export async function dong_bo_nhan_vien(
     const doi = truong_can_doi(u, nv);
     if (doi.length === 0) {
       kq.chi_tiet.push({
-        erp_user_id: u.userId!, email, ho_ten: nv.ho_ten, hanh_dong: 'khong_doi',
+        erp_user_id: u.userId!, email, ho_ten: nv.ho_ten, hanh_dong: 'khong_doi', canh_bao,
       });
       continue;
     }
     kq.so_cap_nhat++;
     kq.chi_tiet.push({
       erp_user_id: u.userId!, email, ho_ten: chuan_chuoi(u.name),
-      hanh_dong: 'cap_nhat', thay_doi: doi,
+      hanh_dong: 'cap_nhat', thay_doi: doi, canh_bao,
     });
     viec.push({ u, nv, doi });
   }
@@ -205,7 +235,7 @@ export async function dong_bo_nhan_vien(
     for (const v of viec) {
       const ten = chuan_chuoi(v.u.name)!;
       const email = chuan_email(v.u.email)!;
-      const dt = chuan_chuoi(v.u.phoneNumber);
+      const dt = chuan_dien_thoai(v.u.phoneNumber);
 
       if (v.nv === null) {
         await khach.query(

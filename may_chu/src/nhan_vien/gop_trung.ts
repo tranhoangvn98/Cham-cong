@@ -14,7 +14,7 @@
 // MAC DINH CHAY THU. Day la thao tac khong hoan tac duoc bang mot lenh, tren du lieu cham cong
 // va tien luong cua nguoi that.
 import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
-import { LoiDauVao, LoiXungDot } from '../tien_ich/kiem_tra.ts';
+import { LoiDauVao, LoiXungDot, la_so_dien_thoai } from '../tien_ich/kiem_tra.ts';
 import { bo_dau } from '../tien_ich/ten_tep.ts';
 
 export type CheDoGop = 'thu' | 'that';
@@ -157,6 +157,14 @@ export function tinh_mang_theo(
   for (const c of COT_MANG_THEO) {
     if (!(c in hang_giu)) continue;
     if (trong(hang_giu[c]) && !trong(hang_bo[c])) {
+      // ERP cu tra HO TEN trong o dien thoai. Mang cai do sang ban giu la chuyen rac tu mot ban
+      // ghi sap bi xoa vao mot ho so con song tiep — dung dung bo kiem ma dong bo ERP dung.
+      if (c === 'so_dien_thoai' && !la_so_dien_thoai(String(hang_bo[c]))) {
+        canh_bao.push(
+          `\`so_dien_thoai\` của hồ sơ bỏ là "${String(hang_bo[c])}" — không phải số điện thoại `
+          + '(ERP cũ trả họ tên vào ô này), nên KHÔNG mang sang.');
+        continue;
+      }
       mang.push({ cot: c, gia_tri: hang_bo[c] });
     } else if (!trong(hang_giu[c]) && !trong(hang_bo[c])
                && String(hang_giu[c]) !== String(hang_bo[c])) {

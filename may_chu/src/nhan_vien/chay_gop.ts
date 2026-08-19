@@ -56,8 +56,10 @@ try {
       if (kq.mang_theo.length > 0) {
         console.log(`\n  ${that ? 'Đã mang' : 'Sẽ mang'} sang hồ sơ giữ (ô đang để trống):`);
         for (const m of kq.mang_theo) {
+          // Ngay GIO day du cho `timestamptz`: cat con ngay thi `erp_dong_bo_luc` in ra nhu mot
+          // cot ngay, va nguoi doc tuong gia tri mang sang chi co ngay.
           const v = m.gia_tri instanceof Date
-            ? m.gia_tri.toISOString().slice(0, 10)
+            ? m.gia_tri.toISOString().replace('T', ' ').slice(0, 19)
             : String(m.gia_tri);
           console.log(`    ${m.cot.padEnd(20)} ${v}`);
         }

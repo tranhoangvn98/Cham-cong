@@ -94,6 +94,37 @@ ERP là **nguồn** của ba trường:
 Nhân viên tạo mới nhận mã `ERP<userId>` — ERP không có trường mã nhân viên, chỉ có `userId`
 và `username`.
 
+### `phoneNumber` không phải số thì bị bỏ qua
+
+ERP cũ trả **họ tên** trong trường `phoneNumber` với một số người — thấy trên dữ liệu thật ở
+`ERP4`: `phoneNumber = "Trần Hoàng Anh Vinh"`. Trước bản `1.31.2` giá trị đó đi thẳng vào cột
+`so_dien_thoai` rồi ra hồ sơ nhân sự.
+
+Giờ giá trị phải có **ít nhất 7 chữ số** mới được nhận. Không đạt thì ô đó bị bỏ qua — số đang có
+trong hệ thống **giữ nguyên**, không bị xóa — và dòng đó hiện một cảnh báo ở cột *Chi tiết* của
+bảng kết quả:
+
+> ⚠ ERP trả "Trần Hoàng Anh Vinh" trong trường số điện thoại — không phải số, đã bỏ qua ô này
+
+Cảnh báo hiện cả ở dòng **Không đổi**, vì người bị ảnh hưởng thường nằm ở đó — mọi thứ khác đã
+khớp từ lượt trước. **Sửa bên ERP**, không sửa ở đây: lượt đồng bộ sau sẽ đọc lại giá trị cũ.
+
+Quy tắc 7 chữ số là **cố ý lỏng**: đủ để loại tên người, `N/A`, `chưa cập nhật`, dấu gạch; và
+không loại `0912.345.678`, `+84 912 345 678`, `(024) 3822 1234`, hay hai số ghi cạnh nhau. Chặt
+hơn nữa thì sẽ từ chối số thật của người thật, và hỏng theo hướng đó tốn hơn — không ai biết mình
+vừa mất số điện thoại.
+
+Xem những ai đang có giá trị lỗi từ trước:
+
+```sql
+select ma_nv, ho_ten, so_dien_thoai from nhan_vien
+ where so_dien_thoai is not null
+   and length(regexp_replace(so_dien_thoai, '\D', '', 'g')) < 7;
+```
+
+Hệ thống **không tự xóa** những giá trị này — xóa dữ liệu đang có không phải việc nó tự quyết.
+Sửa ở ERP rồi đồng bộ lại, hoặc sửa tay trên hồ sơ.
+
 ---
 
 ## 6. Nhật ký

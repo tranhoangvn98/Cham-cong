@@ -2,6 +2,51 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.31.2] — 2026-08-19
+
+**ERP cũ trả họ tên trong trường số điện thoại, và hệ thống ghi thẳng nó vào cột
+`so_dien_thoai`.** Thấy trên dữ liệu thật, trong đúng báo cáo chạy thử của bộ gộp:
+
+```
+  Sẽ mang sang hồ sơ giữ (ô đang để trống):
+    so_dien_thoai        Trần Hoàng Anh Vinh
+```
+
+`ERP4` có `phoneNumber = "Trần Hoàng Anh Vinh"`. Không có chỗ nào trong hệ thống kiểm ô này —
+không phải chỉ bộ đồng bộ ERP, mà **không nơi nào**: `so_dien_thoai` là ô chữ tự do ở mọi đường
+vào. Nên giá trị đó đi từ ERP vào cơ sở dữ liệu rồi ra hồ sơ nhân sự.
+
+Thêm `la_so_dien_thoai` (đếm **chữ số**, phải có ít nhất 7) dùng chung cho cả hai đường: bộ đồng
+bộ ERP và bộ gộp hồ sơ. Quy tắc lỏng có ý — đủ để loại tên người, `N/A`, `chưa cập nhật`; và
+không loại `0912.345.678`, `+84 912 345 678`, `(024) 3822 1234`. Chặt hơn nữa thì sẽ từ chối số
+thật của người thật, và hỏng theo hướng đó tốn hơn vì không ai biết mình vừa mất số điện thoại.
+
+- Đồng bộ ERP: giá trị không phải số thì **bỏ qua ô đó** (câu `update` đã có
+  `coalesce($4, so_dien_thoai)` nên số đang có được giữ nguyên, không bị xóa), và báo ra ở cột
+  *Chi tiết* của bảng kết quả để nhân sự sửa **bên ERP**.
+- Bộ gộp: không mang giá trị đó sang bản giữ, chỉ cảnh báo.
+
+### `truong_can_doi` phải dùng đúng bộ lọc mà câu ghi dùng
+
+Đây là bài kiểm quan trọng nhất của nhóm này. Bộ đồng bộ so "giá trị ERP" với "giá trị trong cơ
+sở dữ liệu" để quyết định có `cập nhật` hay không. Nếu chỗ so **nhận** một giá trị mà câu ghi
+**bỏ**, thì mỗi lượt đồng bộ sẽ báo `cập nhật` cho người đó, ghi không được gì, rồi báo lại lượt
+sau — mãi mãi, và không ai truy ra được từ giao diện. Đã kiểm bằng cách trả lại `chuan_chuoi`:
+bài kiểm đỏ đúng chỗ.
+
+### `erp/dong_bo_nhan_vien.ts` trước hôm nay không có một bài kiểm nào
+
+Và nó là đoạn mã ghi trực tiếp vào bảng `nhan_vien` của người thật, hàng loạt, từ một hệ thống
+khác không ai ở đây kiểm soát. Thêm `test/dong_bo_erp.test.ts` (7 bài): bộ kiểm số điện thoại với
+dữ liệu thật cả hai chiều, `truong_can_doi` khớp bộ lọc, ERP để trống thì không coi là cần đổi,
+`ly_do_bo_qua`, `ma_nv_tu_erp`, chuẩn hóa email.
+
+Bộ canh danh sách test trong `package.json` đỏ đúng lúc tôi chưa khai tệp mới — đúng việc của nó.
+
+Sửa kèm: báo cáo gộp in `erp_dong_bo_luc` bị cắt còn ngày, giờ in đủ ngày giờ.
+
+459 unit (1 skipped) + 5 proxy + 15 thiết kế + 325 e2e.
+
 ## [1.31.1] — 2026-08-19
 
 **Bộ gộp tự huỷ việc nó vừa làm.** Bản `1.31.0` chạy thật trên VPS ngay hôm nay, gộp `HR-01` ←

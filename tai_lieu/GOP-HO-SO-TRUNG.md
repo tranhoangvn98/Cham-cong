@@ -63,6 +63,11 @@ Nên công cụ mang các ô sau từ bản bỏ sang bản giữ, **chỉ khi b
 Hai bên **đều có** giá trị và khác nhau thì **không ghi đè** — đó là dữ liệu thật cả hai phía, máy
 không chọn được. Báo cáo nói rõ chỗ lệch để sửa tay.
 
+Một ngoại lệ: `so_dien_thoai` **không phải số** thì không mang sang, chỉ cảnh báo. ERP cũ trả họ
+tên trong trường `phoneNumber` với một số người (thấy ở `ERP4`: `Trần Hoàng Anh Vinh`), và chuyển
+rác từ một bản ghi sắp bị xóa vào một hồ sơ còn sống tiếp thì không được gì. Từ bản `1.31.2` bộ
+đồng bộ ERP cũng chặn ở đầu vào — xem [`DONG-BO-ERP.md`](DONG-BO-ERP.md).
+
 Và bốn cột **cố ý không mang theo**:
 
 - `dang_hoat_dong`, `ngay_nghi_viec` — mang theo là có thể âm thầm cho một người đã nghỉ thành

@@ -5688,6 +5688,32 @@ test('gop: chay thu bao truoc se mang gi, nhung KHONG ghi', async () => {
   assert.equal(b?.erp, 990148, 'chay thu ma da xoa cua ban bo');
 });
 
+test('gop: KHONG mang ho ten nam trong o so dien thoai', async () => {
+  // Du lieu that: ERP4 co `so_dien_thoai = 'Trần Hoàng Anh Vinh'` vi ERP cu tra ho ten trong
+  // truong `phoneNumber`. Mang cai do sang ban giu la chuyen rac vao mot ho so con song tiep.
+  const { gop_ho_so } = await import('../src/nhan_vien/gop_trung.ts');
+  const [id_a, id_b] = await cap_gop('MP', 'Trần Hoàng Anh Vinh', 'Trần Hoàng Anh Vinh');
+  await thuc_thi(
+    "update nhan_vien set so_dien_thoai = 'Trần Hoàng Anh Vinh' where id = $1", [id_b]);
+
+  const kq = await gop_ho_so(id_a, id_b, 'that');
+  assert.ok(!kq.mang_theo.some((m) => m.cot === 'so_dien_thoai'),
+    `mang ten nguoi vao o dien thoai: ${JSON.stringify(kq.mang_theo)}`);
+  assert.ok(kq.canh_bao.some((c) => /so_dien_thoai/.test(c) && /không phải số điện thoại/.test(c)),
+    `khong bao: ${JSON.stringify(kq.canh_bao)}`);
+
+  const sau = await truy_van_mot<{ dt: string | null }>(
+    'select so_dien_thoai as dt from nhan_vien where id = $1', [id_a]);
+  assert.equal(sau?.dt, null);
+
+  // Con so THAT thi van mang binh thuong.
+  const [id_c, id_d] = await cap_gop('MQ', 'Vương Thị Số', 'Vương Thị Số');
+  await thuc_thi("update nhan_vien set so_dien_thoai = '0912 345 678' where id = $1", [id_d]);
+  const kq2 = await gop_ho_so(id_c, id_d, 'that');
+  assert.ok(kq2.mang_theo.some((m) => m.cot === 'so_dien_thoai' && m.gia_tri === '0912 345 678'),
+    `khong mang so that: ${JSON.stringify(kq2.mang_theo)}`);
+});
+
 test('gop: nhac dung `sap_xep_tep -- --that`, khong phai `--that`', async () => {
   // `npm run x --that` thi npm an tham so, script chay o che do THU va nguoi doc tuong da don
   // xong. Mot dau gach thieu la mot viec tuong da lam.

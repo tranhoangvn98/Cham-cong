@@ -15,6 +15,22 @@ export class LoiKhongQuyen extends Error {
   readonly ma_http = 403;
 }
 
+/**
+ * Chuoi nay co the la mot so dien thoai khong.
+ *
+ * VI SAO CAN: ERP cu tra HO TEN trong truong `phoneNumber` — thay tren du lieu that
+ * ("Trần Hoàng Anh Vinh" nam trong `so_dien_thoai` cua `ERP4`). Truoc do khong cho nao trong he
+ * thong kiem o nay, nen no di thang tu ERP vao CSDL roi ra giao dien.
+ *
+ * QUY TAC LONG CO Y: dem CHU SO, phai co it nhat 7. Du de loai ten nguoi, "N/A", dau gach; va
+ * khong loai cac cach viet that: `0912.345.678`, `+84 912 345 678`, `024 3822 1234`, so trong
+ * ngoac. Chat hon nua thi se tu choi so that cua nguoi that — hong theo huong do ton hon, vi
+ * khong ai biet minh vua mat so dien thoai.
+ */
+export function la_so_dien_thoai(s: string): boolean {
+  return (s.match(/\d/g) ?? []).length >= 7;
+}
+
 function la_doi_tuong(v: unknown): Record<string, unknown> {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) {
     throw new LoiDauVao('Dữ liệu gửi lên phải là một đối tượng JSON.');
