@@ -49,6 +49,18 @@ const CO_BAN = {
   tru_khac: 0,
 };
 
+/** Mot dong khoan mac dinh — cac test chi ghi de phan minh dang kiem. */
+const KHOAN_GOC = {
+  ma: 'x',
+  loai: 'thu_nhap' as const,
+  cach_tinh: 'nhap_tay' as const,
+  don_gia: null as number | null,
+  don_gia_danh_muc: null as number | null,
+  chiu_thue: true,
+  so_luong: null as number | null,
+  so_tien: null as number | null,
+};
+
 // ================================================================ thue luy tien
 test('thue luy tien: moi bac chi danh vao PHAN nam trong bac do', () => {
   // 20tr: 5tr*5% + 5tr*10% + 8tr*15% + 2tr*20% = 250k + 500k + 1.2tr + 400k = 2.350.000
@@ -200,8 +212,159 @@ test('doi ty le trich trong tham so thi ket qua doi theo — khong hang so trong
 });
 
 test('moi so tien deu la so nguyen dong — khong co xu le', () => {
-  const kq = tinh_phieu_luong({ ...CO_BAN, luong_co_ban: 17_777_777, phut_ot: 137 }, TS);
+  const kq = tinh_phieu_luong({
+    ...CO_BAN,
+    luong_co_ban: 17_777_777,
+    phut_ot: 137,
+    // Ca ba cach tinh khoan deu phai ra so nguyen. `nua_ngay_luong` chia doi mot so le la
+    // cho de sinh ra xu le nhat.
+    khoan: [
+      { ...KHOAN_GOC, ma: 'a', cach_tinh: 'nhap_tay', so_tien: 333_333 },
+      { ...KHOAN_GOC, ma: 'b', cach_tinh: 'so_luong_x_don_gia', so_luong: 7, don_gia: 30_001 },
+      { ...KHOAN_GOC, ma: 'c', loai: 'tru', cach_tinh: 'nua_ngay_luong', so_luong: 3 },
+    ],
+  }, TS);
+
   for (const [ten, v] of Object.entries(kq)) {
-    assert.equal(Number.isInteger(v), true, `${ten} = ${v} phai la so nguyen dong`);
+    if (ten === 'cac_khoan') continue;
+    assert.equal(Number.isInteger(v), true, `${ten} = ${String(v)} phai la so nguyen dong`);
   }
+  assert.equal(kq.cac_khoan.length, 3);
+  for (const k of kq.cac_khoan) {
+    assert.equal(Number.isInteger(k.thanh_tien), true,
+      `khoản ${k.ma} = ${k.thanh_tien} phai la so nguyen dong`);
+    assert.equal(k.don_gia === null || Number.isInteger(k.don_gia), true,
+      `đơn giá khoản ${k.ma} phai la so nguyen dong`);
+  }
+});
+
+// ================================================================ cac khoan
+//
+// Bang luong that cua cong ty co 9 khoan thu nhap va 5 khoan tru. Cac test duoi kiem dung
+// nhung cho de sai tien: co so tinh thue, khoan tinh theo cong thuc, va lam tron khi tra.
+
+test('khoan MIEN THUE khong vao co so tinh thue TNCN', () => {
+  // 20tr luong + 690k phu cap an trua (23 ngay x 30.000). An trua trong han muc thi khong
+  // chiu thue (Thong tu 111/2013), nen thu nhap tinh thue van la 20tr - 11tr giam tru ban
+  // than - 1,9tr bao hiem = 7,1tr. Neu tinh ca 690k thi thue cao hon that.
+  const co_an_trua = tinh_phieu_luong({
+    ...CO_BAN,
+    khoan: [{
+      ...KHOAN_GOC, ma: 'pc_an_trua', cach_tinh: 'so_luong_x_don_gia',
+      so_luong: 23, don_gia: 30_000, chiu_thue: false,
+    }],
+  }, TS);
+
+  const khong_khoan = tinh_phieu_luong(CO_BAN, TS);
+
+  assert.equal(co_an_trua.khoan_thu_nhap, 690_000, '23 x 30.000');
+  assert.equal(co_an_trua.thu_nhap_mien_thue, 690_000);
+  assert.equal(co_an_trua.tong_thu_nhap, 20_690_000, '690k VAN la thu nhap, van duoc tra');
+  assert.equal(co_an_trua.thu_nhap_tinh_thue, khong_khoan.thu_nhap_tinh_thue,
+    'khoan mien thue khong duoc lam tang co so tinh thue');
+  assert.equal(co_an_trua.thue_tncn, khong_khoan.thue_tncn);
+  // Nguoi lao dong nhan them dung 690.000, khong bi thue an bot.
+  assert.equal(co_an_trua.thuc_linh - khong_khoan.thuc_linh, 690_000);
+});
+
+test('khoan CHIU THUE thi vao co so tinh thue', () => {
+  const kq = tinh_phieu_luong({
+    ...CO_BAN,
+    khoan: [{
+      ...KHOAN_GOC, ma: 'pc_kpi', cach_tinh: 'nhap_tay', so_tien: 2_000_000, chiu_thue: true,
+    }],
+  }, TS);
+  const khong_khoan = tinh_phieu_luong(CO_BAN, TS);
+
+  assert.equal(kq.thu_nhap_mien_thue, 0);
+  assert.equal(kq.thu_nhap_tinh_thue, khong_khoan.thu_nhap_tinh_thue + 2_000_000);
+});
+
+test('khoan TRU vao tong tru, khong lam giam co so tinh thue', () => {
+  // Da tam ung 3tr: nguoi lao dong nhan it hon 3tr, nhung thu nhap chiu thue KHONG doi —
+  // tam ung la tra truoc, khong phai giam thu nhap.
+  const kq = tinh_phieu_luong({
+    ...CO_BAN,
+    khoan: [{
+      ...KHOAN_GOC, ma: 'da_tam_ung', loai: 'tru', cach_tinh: 'nhap_tay', so_tien: 3_000_000,
+    }],
+  }, TS);
+  const khong_khoan = tinh_phieu_luong(CO_BAN, TS);
+
+  assert.equal(kq.khoan_tru, 3_000_000);
+  assert.equal(kq.thu_nhap_tinh_thue, khong_khoan.thu_nhap_tinh_thue);
+  assert.equal(kq.thue_tncn, khong_khoan.thue_tncn);
+  assert.equal(kq.tong_tru, khong_khoan.tong_tru + 3_000_000);
+  assert.equal(kq.thuc_linh, khong_khoan.thuc_linh - 3_000_000);
+});
+
+test('khoan "nua ngay luong" tinh theo luong CUA CHINH NGUOI DO', () => {
+  // 22tr / 22 cong = 1.000.000 mot ngay -> nua ngay = 500.000; 3 lan = 1.500.000.
+  const kq = tinh_phieu_luong({
+    ...CO_BAN,
+    luong_co_ban: 22_000_000,
+    khoan: [{
+      ...KHOAN_GOC, ma: 'tru_nua_ngay', loai: 'tru', cach_tinh: 'nua_ngay_luong', so_luong: 3,
+    }],
+  }, TS);
+
+  assert.equal(kq.luong_ngay, 1_000_000);
+  assert.equal(kq.khoan_tru, 1_500_000);
+  assert.equal(kq.cac_khoan[0]!.don_gia, 500_000, 'don gia chup lai la nua ngay luong');
+
+  // Nguoi luong thap hon thi so tien tru phai thap hon — khong phai mot don gia chung.
+  const luong_thap = tinh_phieu_luong({
+    ...CO_BAN,
+    luong_co_ban: 11_000_000,
+    khoan: [{
+      ...KHOAN_GOC, ma: 'tru_nua_ngay', loai: 'tru', cach_tinh: 'nua_ngay_luong', so_luong: 3,
+    }],
+  }, TS);
+  assert.equal(luong_thap.khoan_tru, 750_000);
+});
+
+test('khoan "so luong x don gia" uu tien don gia RIENG cua dong, khong co thi lay danh muc', () => {
+  const theo_danh_muc = tinh_phieu_luong({
+    ...CO_BAN,
+    khoan: [{
+      ...KHOAN_GOC, ma: 'pc_an_trua', cach_tinh: 'so_luong_x_don_gia',
+      so_luong: 10, don_gia: null, don_gia_danh_muc: 30_000,
+    }],
+  }, TS);
+  assert.equal(theo_danh_muc.khoan_thu_nhap, 300_000);
+
+  const theo_dong = tinh_phieu_luong({
+    ...CO_BAN,
+    khoan: [{
+      ...KHOAN_GOC, ma: 'pc_an_trua', cach_tinh: 'so_luong_x_don_gia',
+      so_luong: 10, don_gia: 35_000, don_gia_danh_muc: 30_000,
+    }],
+  }, TS);
+  assert.equal(theo_dong.khoan_thu_nhap, 350_000, 'don gia rieng cua dong phai thang');
+});
+
+test('lam tron thuc linh den 100 dong nhung GIU nguyen so goc', () => {
+  const kq = tinh_phieu_luong({
+    ...CO_BAN, luong_co_ban: 17_777_777, lam_tron_den: 100,
+  }, TS);
+
+  assert.notEqual(kq.thuc_linh, kq.thuc_linh_lam_tron, 'so nay phai co du le de kiem duoc');
+  assert.equal(kq.thuc_linh_lam_tron % 100, 0);
+  assert.equal(Math.abs(kq.thuc_linh_lam_tron - kq.thuc_linh) <= 50, true);
+});
+
+test('khong khai lam tron thi thuc linh lam tron BANG thuc linh', () => {
+  const kq = tinh_phieu_luong({ ...CO_BAN, luong_co_ban: 17_777_777 }, TS);
+  assert.equal(kq.thuc_linh_lam_tron, kq.thuc_linh);
+});
+
+test('khong co khoan nao thi moi tong ve 0 — bang luong cu tinh ra dung so cu', () => {
+  const kq = tinh_phieu_luong(CO_BAN, TS);
+  assert.equal(kq.khoan_thu_nhap, 0);
+  assert.equal(kq.khoan_tru, 0);
+  assert.equal(kq.thu_nhap_mien_thue, 0);
+  assert.deepEqual(kq.cac_khoan, []);
+  // 20tr, du cong: luong theo cong = 20tr, bao hiem NLD = 8+1.5+1 = 10.5% = 2.100.000
+  // nhung BHTN co tran rieng (20 x 4.960.000 = 99,2tr) nen chua cham tran.
+  assert.equal(kq.tong_thu_nhap, 20_000_000);
 });

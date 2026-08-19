@@ -6,6 +6,9 @@
 // KHONG hang so phap ly nao trong tep nay. Ty le trich, tran dong, bac thue, giam tru
 // gia canh deu do ben goi truyen vao tu bang `tham_so_luong` — luat doi thi sua du lieu,
 // khong sua ma nguon.
+import { tinh_cac_khoan, type KhoanDauVao, type KhoanKetQua } from './khoan.ts';
+
+export type { KhoanDauVao, KhoanKetQua };
 
 /** Tham so phap ly co hieu luc cho ky luong dang tinh. */
 export interface ThamSoLuong {
@@ -41,11 +44,28 @@ export interface DauVaoPhieu {
   phu_cap_khac: number;
   so_nguoi_phu_thuoc: number;
   tru_khac: number;
+  /** Cac khoan phu cap / khoan tru cua phieu (xem `khoan.ts`). Bo trong = khong co khoan nao. */
+  khoan?: readonly KhoanDauVao[];
+  /**
+   * Lam tron thuc linh den boi so nay khi TRA. 0 = khong lam tron.
+   * Khong doi `thuc_linh`: so goc van giu nguyen de con doi chieu duoc voi tung khoan.
+   */
+  lam_tron_den?: number;
 }
 
 export interface KetQuaPhieu {
   luong_theo_cong: number;
+  /** Luong MOT NGAY CONG = (luong co ban + phu cap) / cong chuan. Cac khoan tinh theo no. */
+  luong_ngay: number;
   tien_ot: number;
+  /** Tong cac khoan thu nhap tu `phieu_luong_khoan`. */
+  khoan_thu_nhap: number;
+  /** Tong cac khoan tru tu `phieu_luong_khoan`. */
+  khoan_tru: number;
+  /** Phan thu nhap khong chiu thue TNCN. */
+  thu_nhap_mien_thue: number;
+  /** Tung dong khoan da tinh ra tien, de ghi vao `phieu_luong_khoan`. */
+  cac_khoan: KhoanKetQua[];
   tong_thu_nhap: number;
   muc_dong_bh: number;
   bhxh_nld: number;
@@ -59,6 +79,8 @@ export interface KetQuaPhieu {
   thue_tncn: number;
   tong_tru: number;
   thuc_linh: number;
+  /** So TRA THAT sau lam tron. Bang `thuc_linh` khi khong lam tron. */
+  thuc_linh_lam_tron: number;
 }
 
 /**
@@ -119,12 +141,20 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
     ? 0
     : dong((d.luong_co_ban + d.phu_cap) * (d.so_ngay_cong_thuc / d.so_ngay_cong_chuan));
 
+  // Luong MOT NGAY CONG. Cac khoan kieu "nua ngay luong" tinh tu day, nen no phai la mot
+  // con so duoc chup lai chu khong tinh lai o moi cho.
+  const luong_ngay = d.so_ngay_cong_chuan <= 0
+    ? 0
+    : dong((d.luong_co_ban + d.phu_cap) / d.so_ngay_cong_chuan);
+
   // Don gia gio OT lay tren luong co ban theo gio cua thang chuan.
   const gio_chuan_thang = d.so_ngay_cong_chuan * 8;
   const don_gia_gio = gio_chuan_thang <= 0 ? 0 : (d.luong_co_ban + d.phu_cap) / gio_chuan_thang;
   const tien_ot = dong(don_gia_gio * (d.phut_ot / 60) * d.he_so_ot);
 
-  const tong_thu_nhap = luong_theo_cong + tien_ot + d.thuong + d.phu_cap_khac;
+  const khoan = tinh_cac_khoan(d.khoan ?? [], luong_ngay);
+
+  const tong_thu_nhap = luong_theo_cong + tien_ot + d.thuong + d.phu_cap_khac + khoan.thu_nhap;
 
   // ------------------------------------------------------------ bao hiem
   const muc_hop_dong = d.luong_co_ban + d.phu_cap;
@@ -147,15 +177,28 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
     + ts.giam_tru_phu_thuoc * d.so_nguoi_phu_thuoc
     + bao_hiem_nld;
 
-  const thu_nhap_tinh_thue = Math.max(0, tong_thu_nhap - giam_tru_tong);
+  // Cac khoan MIEN THUE (an trua trong han muc, trang phuc trong han muc, hoan lai tien
+  // nhan vien da ung chi ho cong ty...) bi tru khoi co so tinh thue TRUOC giam tru gia canh.
+  // Tinh thue tren ca tien hoan ung la thu thue tren mot khoan khong phai thu nhap.
+  const thu_nhap_chiu_thue = Math.max(0, tong_thu_nhap - khoan.thu_nhap_mien_thue);
+  const thu_nhap_tinh_thue = Math.max(0, thu_nhap_chiu_thue - giam_tru_tong);
   const thue_tncn = thue_luy_tien(thu_nhap_tinh_thue, ts.bac_thue);
 
   // ------------------------------------------------------------ thuc linh
-  const tong_tru = bao_hiem_nld + thue_tncn + d.tru_khac;
+  const tong_tru = bao_hiem_nld + thue_tncn + d.tru_khac + khoan.tru;
+  const thuc_linh = tong_thu_nhap - tong_tru;
+
+  const buoc = d.lam_tron_den ?? 0;
+  const thuc_linh_lam_tron = buoc > 0 ? Math.round(thuc_linh / buoc) * buoc : thuc_linh;
 
   return {
     luong_theo_cong,
+    luong_ngay,
     tien_ot,
+    khoan_thu_nhap: khoan.thu_nhap,
+    khoan_tru: khoan.tru,
+    thu_nhap_mien_thue: khoan.thu_nhap_mien_thue,
+    cac_khoan: khoan.dong,
     tong_thu_nhap,
     muc_dong_bh: muc_bhxh_bhyt,
     bhxh_nld,
@@ -168,6 +211,7 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
     thu_nhap_tinh_thue,
     thue_tncn,
     tong_tru,
-    thuc_linh: tong_thu_nhap - tong_tru,
+    thuc_linh,
+    thuc_linh_lam_tron,
   };
 }

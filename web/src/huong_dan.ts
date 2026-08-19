@@ -136,12 +136,15 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     buoc: [
       { chu: 'Kiểm bảng công tháng đó đã đúng TRƯỚC khi dựng lương.', vai_tro: NHAN_SU },
       { chu: 'Chọn kỳ → Dựng bảng lương. Hệ thống tính từ công, BHXH và thuế TNCN theo tham số.', vai_tro: NHAN_SU },
+      { chu: 'Nút "Khoản" trên từng dòng: nhập phụ cấp và các khoản trừ của người đó.', vai_tro: NHAN_SU },
       { chu: 'Soi các dòng bất thường, sửa gốc rồi dựng lại.', vai_tro: NHAN_SU },
       { chu: 'Gửi duyệt → duyệt. Duyệt xong bảng chốt được lưu lại.', vai_tro: ['admin', 'nhan_su', 'truong_phong_nhan_su'] },
     ],
     luu_y: [
       'Duyệt kỳ lương KHÓA tháng đó: bảng công không tính lại được nữa. Đó là chủ ý — số đã trả lương thì không được đổi sau lưng.',
       'Sửa sau khi duyệt phải mở khóa kỳ, sửa, rồi dựng và duyệt lại. Mọi bước đều vào nhật ký.',
+      'Khoản tính theo công thức (phụ cấp ăn trưa, nửa ngày lương) chỉ nhập SỐ LƯỢNG — tiền do hệ thống nhân ra và tính lại mỗi lần dựng bảng. Gõ tiền tay vào đó thì lần dựng sau bị ghi đè.',
+      'BLLĐ 2019 Điều 127 khoản 3 CẤM phạt tiền và cấm cắt lương thay cho xử lý kỷ luật. Hai khoản "trừ đi muộn" và "trừ nửa ngày lương" mang cảnh báo này ngay tại chỗ nhập. Cách hợp pháp cho thời gian không làm việc là ghi giảm CÔNG trên bảng chấm công, để nó tự vào lương theo ngày công.',
     ],
   },
   {
@@ -229,14 +232,18 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
   },
   {
     duong_dan: '/tham-so-luong',
-    tom_tat: 'Tỷ lệ BHXH, thuế TNCN, giảm trừ gia cảnh, lương tối thiểu vùng.',
+    tom_tat: 'Tỷ lệ BHXH, thuế TNCN, giảm trừ gia cảnh, lương tối thiểu vùng, danh mục khoản.',
     buoc: [
       { chu: 'Kiểm tham số đang áp dụng trước mỗi kỳ lương đầu năm.', vai_tro: NHAN_SU },
       { chu: 'Sửa khi nhà nước thay đổi mức, ghi rõ ngày áp dụng.', vai_tro: NHAN_SU },
+      { chu: 'Danh mục khoản: thêm phụ cấp / khoản trừ mới của công ty ở cuối trang.', vai_tro: ['admin'] },
     ],
     luu_y: [
       'Đổi tham số KHÔNG tự dựng lại bảng lương đã tính. Phải dựng lại kỳ đó.',
       'Mức lương tối thiểu vùng khác nhau theo địa bàn — công ty nhiều văn phòng thì kiểm từng nơi.',
+      'Ô "miễn thuế" của một khoản quyết định thuế TNCN của cả công ty. Chỉ đánh dấu khi có căn cứ — ăn giữa ca và trang phục trong hạn mức (Thông tư 111/2013), hay tiền hoàn lại khoản nhân viên chi hộ.',
+      'Ngừng dùng một khoản chỉ chặn THÊM MỚI. Các phiếu đã tính vẫn giữ khoản đó — tắt không phải là xóa lịch sử.',
+      'Công chuẩn tháng để 0 thì hệ thống đếm ngày làm việc thật của từng tháng. Điền một số cố định là ấn định chung cho mọi tháng: tiện, nhưng tháng 28 ngày và tháng 31 ngày sẽ trả như nhau.',
     ],
   },
   {

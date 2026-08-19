@@ -2,6 +2,78 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.34.0] — 2026-08-20
+
+**Bảng lương mẫu của công ty đã lên phần mềm.** Bảng tính tháng 7/2026 (53 người, 7 sheet) có
+9 khoản thu nhập và 5 khoản trừ. Chúng KHÔNG thành 14 cột mới trong `phieu_luong` — danh sách đó
+đổi gần như hàng tháng, và mỗi lần đổi mà phải thêm cột là một lần di trú, một lần sửa giao diện,
+một lần sửa bộ tính. Thay vào đó là **một bảng danh mục + một bảng dòng**:
+
+- `khoan_luong` — danh mục 15 khoản, gieo sẵn đúng theo bảng tháng 7 của công ty.
+- `phieu_luong_khoan` — từng khoản của từng phiếu, có đơn giá **chụp lại** tại thời điểm tính.
+
+Thêm một khoản mới giờ là **thêm một dòng dữ liệu**, làm được ngay trên giao diện.
+
+### Ba cách ra tiền
+
+| Cách tính | Nhập gì | Ví dụ |
+|---|---|---|
+| `nhap_tay` | số tiền | Thưởng KPI, doanh số |
+| `so_luong_x_don_gia` | số lượng | Phụ cấp ăn trưa 23 ngày × 30.000 |
+| `nua_ngay_luong` | số lần | Nửa lương một ngày **của chính người đó** |
+
+Cách thứ ba là điểm bảng tính cũ làm sai được: hai người đi muộn cùng số lần mà lương khác nhau
+thì số tiền phải khác nhau. Ở đây nó suy từ `luong_ngay` của từng phiếu.
+
+### Thu nhập miễn thuế không còn bị đánh thuế
+
+Trước bản này hệ thống tính thuế TNCN trên **toàn bộ** thu nhập. Nghĩa là tiền hoàn lại khoản nhân
+viên đã ứng ra chi hộ công ty cũng bị tính thuế — thu thuế trên một khoản không phải thu nhập.
+Giờ mỗi khoản mang cờ `chiu_thue`, và phần miễn thuế bị trừ khỏi cơ sở tính thuế **trước** giảm
+trừ gia cảnh. Ba khoản được gieo sẵn là miễn thuế: ăn trưa, trang phục quý (Thông tư 111/2013),
+tiền ứng cho công ty, và không khoản nào khác.
+
+### Điều 127 nói ngay tại chỗ nhập
+
+Bảng của công ty trừ 50.000/lần đi muộn và trừ nửa ngày lương cho người **đã đi làm**. BLLĐ 2019
+Điều 127 khoản 3 cấm phạt tiền và cấm cắt lương thay cho xử lý kỷ luật lao động. Hệ thống **vẫn
+cho ghi nhận** — nhưng hai khoản đó mang cảnh báo hiện ngay cạnh ô nhập, không giấu trong tài
+liệu. Cách hợp pháp cho thời gian không làm việc là ghi giảm **công** trên bảng chấm công, để nó
+tự vào lương theo ngày công.
+
+### Ba lỗi tiền tìm thấy trong bảng tính gốc
+
+Đọc 7 sheet bằng bộ đọc XLSX tự viết (có giải công thức `shared`), ba thứ ảnh hưởng tiền thật:
+
+1. **1.040.000 đ không được trừ.** Cột `AG` (tổng trừ) bỏ sót cột `AF` (trừ nửa ngày do đi muộn)
+   ở 46 trên 51 dòng. Hai người có `AF` khác 0 mà không bao giờ bị trừ: Khuất Thị Kim Thư 880.000
+   và Trần Thị Minh Khánh 160.000.
+2. **Cột `J` dùng 9 mẫu chia khác nhau** — `$D$3`, `D3` (tương đối, trượt theo dòng), `26` cứng,
+   `30` cứng, và chia cho chính số công thực tế; trên ba cột gốc `G`/`H`/`I`. Bốn người cùng chức
+   danh nghỉ cùng số ngày có thể ra bốn số tiền khác nhau.
+3. **Cột `Y` (BHXH công ty) dùng 32% ở dòng 19 và 28**, còn 21,5% ở mọi dòng khác.
+
+Ngoài ra: `AI47 = K47` bỏ qua toàn bộ khoản trừ; `AI41 = W41+W42-...` cộng một **dòng ma** không
+có mã nhân viên, không có họ tên, mang khoản thu nhập thứ hai "Lương HCM" 4.500.000. Dòng ma đó ở
+đây là một khoản bình thường (`luong_dia_diem`), không phải một dòng vô danh phải nhớ mà cộng.
+
+### Thêm
+
+- **Công chuẩn tháng cố định** (`tham_so_luong.cong_chuan_thang`) cho công ty muốn chia theo một
+  số cố định như bảng cũ. Mặc định **0 = đếm theo lịch thật** — hành vi cũ, không đổi lặng lẽ.
+- **Làm tròn thực lĩnh** (`lam_tron_den`, bảng cũ làm tròn 100 đ). Số gốc vẫn giữ trên phiếu.
+- **Loại hợp đồng** chụp vào phiếu — thay ba cột lương gốc tách rời của bảng cũ.
+- `GET /api/ky-luong/:id/xuat-xlsx` — xuất Excel, **cột riêng cho từng khoản** có dùng trong kỳ.
+- Nhân viên xem phiếu của mình thấy **từng khoản**, không phải một con số "phụ cấp" gộp.
+
+### Sửa
+
+- **Bản chốt và tệp tải về từ giao diện giờ dựng từ một chỗ duy nhất** (`bang_xuat.ts`). Trước đó
+  là hai danh sách cột chéo nhau, nên bản được duyệt và bản kế toán đối chiếu là hai tệp khác nhau
+  mang cùng tên tháng.
+- Bộ xem nhanh XLSX cắt ở **30 cột** và không báo gì — một bảng 40 cột hiện ra 30 cột như thể đủ.
+  Nâng lên 64 cột, và cắt cột giờ cũng bật cờ `cat_bot` như cắt dòng.
+
 ## [1.33.2] — 2026-08-20
 
 **Không có đường xóa hồ sơ nhân viên.** Đúng với người thật — nhưng để dọn 8 hồ sơ demo

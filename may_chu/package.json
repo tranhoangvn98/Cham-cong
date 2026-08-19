@@ -1,6 +1,6 @@
 {
   "name": "@cham-cong/may-chu",
-  "version": "1.33.2",
+  "version": "1.34.0",
   "private": true,
   "type": "module",
   "description": "Backend: cong ADMS cho may ZKTeco + REST API cho webapp va app dien thoai",

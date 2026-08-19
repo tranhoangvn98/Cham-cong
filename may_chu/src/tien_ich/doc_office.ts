@@ -140,7 +140,11 @@ export interface TrichBang {
 }
 
 const HANG_TOI_DA = 200;
-const COT_TOI_DA = 30;
+// 30 cot khong du cho mot bang luong: rieng phan co dinh da 33 cot, va moi phu cap / khoan
+// tru la them mot cot nua. Bang luong that cua cong ty chay den cot AO. 64 van la mot TRAN —
+// day chi la ban xem nhanh, khong phai bo doc bang tinh tong quat — nhung phai cat o cho
+// khong lam mat cot "Thuc linh" cua chinh bang luong minh sinh ra.
+const COT_TOI_DA = 64;
 
 /** Doi ten cot Excel ('A', 'AB') sang chi so bat dau tu 0. */
 export function cot_sang_so(chu: string): number {
@@ -174,6 +178,9 @@ export function trich_xlsx(du_lieu: Buffer): TrichBang | null {
   }
 
   const hang: string[][] = [];
+  // Cat cot cung la CAT BOT. Truoc day chi hang moi tinh, nen mot bang 40 cot hien ra 30 cot
+  // ma khong co dau hieu gi — nguoi doc tuong minh dang nhin ca bang.
+  let cat_cot = false;
   for (const r of sheet.match(/<row[\s\S]*?<\/row>/g) ?? []) {
     const dong: string[] = [];
     for (const c of r.match(/<c[\s\S]*?(?:\/>|<\/c>)/g) ?? []) {
@@ -194,6 +201,8 @@ export function trich_xlsx(du_lieu: Buffer): TrichBang | null {
       if (cot >= 0 && cot < COT_TOI_DA) {
         while (dong.length < cot) dong.push('');
         dong[cot] = gia_tri;
+      } else if (cot >= COT_TOI_DA && gia_tri !== '') {
+        cat_cot = true;
       }
     }
     if (dong.some((x) => x !== '')) hang.push(dong);
@@ -204,7 +213,7 @@ export function trich_xlsx(du_lieu: Buffer): TrichBang | null {
   const rong = hang.reduce((m, h) => Math.max(m, h.length), 0);
   for (const h of hang) while (h.length < rong) h.push('');
 
-  return { loai: 'bang', hang, cat_bot: hang.length >= HANG_TOI_DA };
+  return { loai: 'bang', hang, cat_bot: hang.length >= HANG_TOI_DA || cat_cot };
 }
 
 /** Chon bo trich theo duoi tep da luu. */

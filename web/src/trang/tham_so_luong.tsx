@@ -37,6 +37,10 @@ interface ThamSo {
   ty_le_bhtn_nsdld: string;
   giam_tru_ban_than: string;
   giam_tru_phu_thuoc: string;
+  /** Cach tra cua cong ty, khong phai muc luat dinh. 0 = dem cong chuan theo lich. */
+  cong_chuan_thang: string;
+  /** 0 = khong lam tron thuc linh. */
+  lam_tron_den: string;
   can_cu: string | null;
   ghi_chu: string | null;
   tao_luc: string;
@@ -131,6 +135,8 @@ export function TrangThamSoLuong(): ReactNode {
         </>
       )}
 
+      <KhoiDanhMucKhoan />
+
       {dang_tao !== null && (
         <HopThoaiChiTiet ts={dang_tao} khi_dong={() => dat_dang_tao(null)} />
       )}
@@ -199,6 +205,25 @@ function ThePhepTinh({ ts }: { ts: ThamSo }): ReactNode {
           <div className="o-so-nhan">Mỗi người phụ thuộc</div>
           <div className="o-so-gia-tri">{tien(ts.giam_tru_phu_thuoc)} đ</div>
           <div className="o-so-phu">mỗi tháng, cần đã đăng ký</div>
+        </div>
+        {/* Hai o duoi la CACH TRA cua cong ty, khong phai muc luat dinh. */}
+        <div className="o-so">
+          <div className="o-so-nhan">Công chuẩn tháng</div>
+          <div className="o-so-gia-tri">
+            {Number(ts.cong_chuan_thang) > 0 ? Number(ts.cong_chuan_thang) : 'Theo lịch'}
+          </div>
+          <div className="o-so-phu">
+            {Number(ts.cong_chuan_thang) > 0
+              ? 'cố định cho mọi tháng'
+              : 'đếm ngày làm việc thật của từng tháng'}
+          </div>
+        </div>
+        <div className="o-so">
+          <div className="o-so-nhan">Làm tròn thực lĩnh</div>
+          <div className="o-so-gia-tri">
+            {Number(ts.lam_tron_den) > 0 ? `${tien(ts.lam_tron_den)} đ` : 'Không'}
+          </div>
+          <div className="o-so-phu">số gốc vẫn giữ trên phiếu</div>
         </div>
       </div>
 
@@ -276,6 +301,8 @@ function HopThoaiThem(
     ty_le_bhtn_nsdld: mau?.ty_le_bhtn_nsdld ?? '1',
     giam_tru_ban_than: mau?.giam_tru_ban_than ?? '11000000',
     giam_tru_phu_thuoc: mau?.giam_tru_phu_thuoc ?? '4400000',
+    cong_chuan_thang: mau?.cong_chuan_thang ?? '0',
+    lam_tron_den: mau?.lam_tron_den ?? '0',
     can_cu: '',
   });
   const hd = dung_hanh_dong();
@@ -326,6 +353,28 @@ function HopThoaiThem(
       <label>Bản thân người nộp thuế</label>{so('giam_tru_ban_than')}
       <label>Mỗi người phụ thuộc</label>{so('giam_tru_phu_thuoc')}
 
+      <h3>Cách trả lương của công ty</h3>
+      <p className="mo-ta">
+        Hai mục dưới đây <strong>không phải luật định</strong> — chúng là cách công ty chọn
+        tính và trả.
+      </p>
+      <label htmlFor="cct">Công chuẩn tháng cố định — để <strong>0</strong> nếu đếm theo lịch</label>
+      <input id="cct" type="number" step="any" min="0" max="31"
+        value={f.cong_chuan_thang} onChange={dat('cong_chuan_thang')} />
+      <p className="mo-ta">
+        Để 0 thì hệ thống đếm số ngày làm việc thật của từng tháng theo ca làm và ngày lễ —
+        tháng 28 ngày và tháng 31 ngày ra công chuẩn khác nhau. Điền một số (ví dụ 26) là ấn
+        định chung cho mọi tháng và mọi người: tiện, nhưng nghỉ cùng số ngày ở hai tháng khác
+        nhau sẽ ra cùng một số tiền.
+      </p>
+
+      <label htmlFor="ltd">Làm tròn thực lĩnh đến (đ) — 0 là không làm tròn</label>
+      <input id="ltd" type="number" step="any" min="0"
+        value={f.lam_tron_den} onChange={dat('lam_tron_den')} />
+      <p className="mo-ta">
+        Số gốc vẫn được giữ nguyên trên phiếu để đối chiếu; chỉ số <em>trả</em> là số làm tròn.
+      </p>
+
       <label htmlFor="cc">Căn cứ pháp lý</label>
       <input id="cc" value={f.can_cu} onChange={dat('can_cu')}
         placeholder="VD: Nghị định 73/2024/NĐ-CP, Nghị quyết 954/2020/UBTVQH14" />
@@ -347,6 +396,210 @@ function HopThoaiThem(
               body: { ...f, vung: Number(f.vung) },
             }),
             'Đã thêm mốc hiệu lực. Tính lại kỳ lương để áp dụng.',
+          ).then((ok) => { if (ok !== null) khi_xong(); })}
+        >
+          Lưu
+        </button>
+        <button className="nut-phang" onClick={khi_dong}>Hủy</button>
+      </div>
+    </HopThoai>
+  );
+}
+
+// ================================================================ danh muc khoan
+//
+// Cac phu cap / khoan tru cua bang luong. Truoc day chung la 15 COT trong bang tinh Excel,
+// va moi lan cong ty them mot khoan la mot lan sua bang. O day chung la DU LIEU: them mot
+// khoan = them mot dong.
+
+interface KhoanLuong {
+  ma: string;
+  ten: string;
+  loai: 'thu_nhap' | 'tru';
+  cach_tinh: 'nhap_tay' | 'so_luong_x_don_gia' | 'nua_ngay_luong';
+  don_gia: string | null;
+  chiu_thue: boolean;
+  thu_tu: number;
+  dang_dung: boolean;
+  canh_bao: string | null;
+  ghi_chu: string | null;
+}
+
+const NHAN_CACH_TINH: Record<KhoanLuong['cach_tinh'], string> = {
+  nhap_tay: 'Gõ thẳng số tiền',
+  so_luong_x_don_gia: 'Số lượng × đơn giá',
+  nua_ngay_luong: 'Nửa ngày lương × số lần',
+};
+
+function KhoiDanhMucKhoan(): ReactNode {
+  // `ca=true` de thay ca khoan da ngung dung — quan ly danh muc ma chi thay khoan dang bat
+  // thi khong bao gio bat lai duoc khoan da tat.
+  const { du_lieu, dang_tai, loi, nap_lai } =
+    dung_nap<KhoanLuong[]>('/api/khoan-luong?ca=true');
+  const [them, dat_them] = useState(false);
+  const hd = dung_hanh_dong();
+
+  if (dang_tai) return <DangTai />;
+  if (loi !== null) return <HopLoi loi={loi} />;
+  const ds = du_lieu ?? [];
+
+  const bat_tat = (k: KhoanLuong) => (): void => {
+    void hd.chay(
+      () => goi(`/api/khoan-luong/${k.ma}`, {
+        method: 'PATCH', body: { dang_dung: !k.dang_dung },
+      }),
+      k.dang_dung ? `Đã ngừng dùng "${k.ten}".` : `Đã bật lại "${k.ten}".`,
+    ).then(() => nap_lai());
+  };
+
+  return (
+    <>
+      <div className="dau-trang">
+        <div>
+          <h3>Danh mục khoản lương</h3>
+          <p className="mo-ta">
+            Các phụ cấp và khoản trừ xuất hiện trên từng phiếu lương. Ngừng dùng một khoản
+            chỉ chặn <em>thêm mới</em> — các phiếu đã tính vẫn giữ nguyên khoản đó.
+          </p>
+        </div>
+        <div className="hang-nut">
+          <button onClick={() => dat_them(true)} disabled={hd.dang_chay}>Thêm khoản</button>
+        </div>
+      </div>
+
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+
+      <div className="vo-bang">
+        <table className="bang-gon">
+          <thead>
+            <tr>
+              <th>Tên</th>
+              <th>Loại</th>
+              <th>Cách tính</th>
+              <th className="canh-phai">Đơn giá</th>
+              <th>Thuế TNCN</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {ds.map((k) => (
+              <tr key={k.ma} className={k.dang_dung ? undefined : 'mo-ta'}>
+                <td>
+                  <strong>{k.ten}</strong>
+                  {!k.dang_dung && <span className="nhan-xau"> đã ngừng</span>}
+                  <div className="mo-ta"><code>{k.ma}</code></div>
+                  {k.canh_bao !== null && k.canh_bao !== '' && (
+                    <div className="hop-luu-y">{k.canh_bao}</div>
+                  )}
+                </td>
+                <td>{k.loai === 'thu_nhap' ? 'Cộng' : 'Trừ'}</td>
+                <td>{NHAN_CACH_TINH[k.cach_tinh]}</td>
+                <td className="canh-phai">
+                  {k.don_gia === null ? '—' : `${tien(k.don_gia)} đ`}
+                </td>
+                <td>
+                  {k.chiu_thue
+                    ? 'Chịu thuế'
+                    : <span className="nhan-tot">Miễn thuế</span>}
+                </td>
+                <td className="canh-phai">
+                  <button className="nut-nho" disabled={hd.dang_chay} onClick={bat_tat(k)}>
+                    {k.dang_dung ? 'Ngừng dùng' : 'Bật lại'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {them && (
+        <HopThoaiThemKhoan
+          khi_dong={() => dat_them(false)}
+          khi_xong={() => { dat_them(false); nap_lai(); }}
+        />
+      )}
+    </>
+  );
+}
+
+function HopThoaiThemKhoan(
+  { khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [f, dat_f] = useState({
+    ma: '', ten: '', loai: 'thu_nhap', cach_tinh: 'nhap_tay',
+    don_gia: '', chiu_thue: 'true', thu_tu: '100', ghi_chu: '',
+  });
+  const hd = dung_hanh_dong();
+  const dat = (k: keyof typeof f) => (e: { target: { value: string } }) =>
+    dat_f({ ...f, [k]: e.target.value });
+
+  return (
+    <HopThoai tieu_de="Thêm khoản lương" khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+
+      <label htmlFor="k-ma">Mã khoản</label>
+      <input id="k-ma" value={f.ma} onChange={dat('ma')} placeholder="vd: pc_dien_thoai" />
+      <p className="mo-ta">
+        Chỉ chữ thường, số và gạch dưới. <strong>Không đổi được về sau</strong> — các phiếu đã
+        tính tham chiếu tới mã này.
+      </p>
+
+      <label htmlFor="k-ten">Tên hiển thị</label>
+      <input id="k-ten" value={f.ten} onChange={dat('ten')} placeholder="vd: Phụ cấp điện thoại" />
+
+      <label htmlFor="k-loai">Loại</label>
+      <select id="k-loai" value={f.loai} onChange={dat('loai')}>
+        <option value="thu_nhap">Cộng vào thu nhập</option>
+        <option value="tru">Trừ khỏi thực lĩnh</option>
+      </select>
+
+      <label htmlFor="k-ct">Cách tính</label>
+      <select id="k-ct" value={f.cach_tinh} onChange={dat('cach_tinh')}>
+        <option value="nhap_tay">Gõ thẳng số tiền</option>
+        <option value="so_luong_x_don_gia">Số lượng × đơn giá</option>
+        <option value="nua_ngay_luong">Nửa ngày lương × số lần</option>
+      </select>
+
+      {f.cach_tinh === 'so_luong_x_don_gia' && (
+        <>
+          <label htmlFor="k-dg">Đơn giá (đ)</label>
+          <input id="k-dg" type="number" min="0" step="any"
+            value={f.don_gia} onChange={dat('don_gia')} />
+        </>
+      )}
+
+      <label htmlFor="k-thue">Thuế thu nhập cá nhân</label>
+      <select id="k-thue" value={f.chiu_thue} onChange={dat('chiu_thue')}>
+        <option value="true">Chịu thuế</option>
+        <option value="false">Miễn thuế</option>
+      </select>
+      <p className="mo-ta">
+        Chọn <em>miễn thuế</em> chỉ khi có căn cứ — ví dụ phụ cấp ăn giữa ca và phụ cấp trang
+        phục trong hạn mức (Thông tư 111/2013), hay tiền hoàn lại khoản nhân viên đã chi hộ
+        công ty. Đánh dấu sai ở đây là tính sai thuế cho cả công ty.
+      </p>
+
+      <label htmlFor="k-tt">Thứ tự hiển thị</label>
+      <input id="k-tt" type="number" min="0" value={f.thu_tu} onChange={dat('thu_tu')} />
+
+      <label htmlFor="k-gc">Ghi chú</label>
+      <input id="k-gc" value={f.ghi_chu} onChange={dat('ghi_chu')} />
+
+      <div className="hang-nut">
+        <button
+          disabled={hd.dang_chay || f.ma.trim() === '' || f.ten.trim() === ''}
+          onClick={() => void hd.chay(
+            () => goi('/api/khoan-luong', {
+              method: 'POST',
+              body: {
+                ...f,
+                don_gia: f.don_gia === '' ? null : Number(f.don_gia),
+                chiu_thue: f.chiu_thue === 'true',
+                thu_tu: Number(f.thu_tu) || 100,
+              },
+            }),
+            'Đã thêm khoản vào danh mục.',
           ).then((ok) => { if (ok !== null) khi_xong(); })}
         >
           Lưu
