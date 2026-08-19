@@ -243,6 +243,38 @@ export const cau_hinh = {
     token_callback: chu('VCONTRACT_TOKEN_CALLBACK', ''),
   },
 
+  /**
+   * Dong bo kho tep ho so sang thu vien HCNS tren SharePoint. MOT CHIEU, xoa lan theo.
+   *
+   * Dung MOT APP RIENG (`cham-cong-sharepoint-sync`), khong dung lai app dang nhap:
+   *   - App dang nhap chi can `openid profile email`, khong can quyen nao tren SharePoint.
+   *     Gan quyen ghi tep vao no la mo rong be mat cua chinh lop dang nhap.
+   *   - Quyen dung o day la `Sites.Selected`, va no CHI co hieu luc tren nhung site da duoc
+   *     cap ten dich danh — hep hon `Sites.ReadWrite.All` rat nhieu.
+   *
+   * `goc_graph` va `goc_token` de doi duoc VI BO KIEM CAN mot may chu Graph gia tai cho:
+   * phien lam viec dung de xay khong ket noi duoc SharePoint that. Vi chinh dieu do lam
+   * chung thanh mot duong nga tren may that (tro sang may cua ke khac la nop ca client
+   * secret), `goc_an_toan()` trong sharepoint/khach.ts tu choi moi goc la khi NODE_ENV=production.
+   */
+  sharepoint: {
+    site_id: chu('SHAREPOINT_SITE_ID', ''),
+    /** Biet san thi khoi mot luot goi Graph moi lan khoi dong. */
+    drive_id: chu('SHAREPOINT_DRIVE_ID', ''),
+    /** Ten thu vien tai lieu, dung khi khong khai `drive_id`. */
+    thu_vien: chu('SHAREPOINT_THU_VIEN', 'HCNS'),
+    tenant_id: chu('SHAREPOINT_TENANT_ID', chu('MS_TENANT_ID', '')),
+    client_id: chu('SHAREPOINT_CLIENT_ID', ''),
+    client_secret: chu('SHAREPOINT_CLIENT_SECRET', ''),
+    goc_graph: chu('SHAREPOINT_GOC_GRAPH', 'https://graph.microsoft.com/v1.0').replace(/\/+$/, ''),
+    goc_token: chu('SHAREPOINT_GOC_TOKEN', 'https://login.microsoftonline.com').replace(/\/+$/, ''),
+    /**
+     * Day thuc su len SharePoint. TAT mac dinh, va do la co y: cau hinh xong thi van chi
+     * ghi nhan viec can day vao bang, de ban xem bang do truoc roi moi bat.
+     */
+    bat_day: chu('SHAREPOINT_BAT_DAY', '0') === '1',
+  },
+
   /** Noi luu tep dinh kem ho so nhan su (hop dong scan, bien ban...). */
   thu_muc_ho_so: resolve(process.cwd(), chu('THU_MUC_HO_SO', './du_lieu/ho_so')),
 

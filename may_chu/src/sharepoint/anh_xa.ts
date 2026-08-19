@@ -322,9 +322,7 @@ export function duong_dan_sharepoint(d: DauVaoDuongDan): DuongDanSharePoint | nu
  *   3. Khong co `..`, khong bat dau bang `/`, khong vuot 400 ky tu.
  */
 export function duong_dan_an_toan_de_ghi(duong_dan: string): boolean {
-  if (duong_dan.includes('..')) return false;
-  if (duong_dan.startsWith('/') || duong_dan.endsWith('/')) return false;
-  if (duong_dan.length > DUONG_DAN_TOI_DA) return false;
+  if (!khung_duong_dan_hop_le(duong_dan)) return false;
 
   const nhanh = Object.values(NHANH).find((n) => duong_dan.startsWith(`${n}/`));
   if (nhanh === undefined) return false;
@@ -332,5 +330,53 @@ export function duong_dan_an_toan_de_ghi(duong_dan: string): boolean {
   // Con lai phai la dung `<thu muc nhan vien>/<ten tep>` — hai doan, khong hon.
   const con_lai = duong_dan.slice(nhanh.length + 1).split('/');
   if (con_lai.length !== 2) return false;
-  return con_lai.every((p) => p.trim() !== '' && p === lam_sach_ten_sp(p));
+  return con_lai.every(doan_sach);
+}
+
+/**
+ * Duong dan nay co an toan de TAO THU MUC khong?
+ *
+ * Quy tac KHAC voi ghi tep, va phai khac: mot thu muc chi duoc la chinh mot nhanh trong
+ * bang `NHANH`, hoac mot cap nhan vien nam ngay trong nhanh do. Khong co cap thu ba.
+ *
+ * Vi sao tach ham rieng thay vi dung lai `duong_dan_an_toan_de_ghi`: ham do doi DUNG ba cap
+ * (cap cuoi la ten tep), nen muon dung no cho thu muc thi hoac phai noi them mot doan gia,
+ * hoac phai noi long dieu kien. Ca hai deu lam yeu chinh cai hang rao.
+ */
+export function thu_muc_an_toan_de_tao(duong_dan: string): boolean {
+  if (!khung_duong_dan_hop_le(duong_dan)) return false;
+
+  // Chinh mot nhanh: khong tao gi moi, chi bao dam no co (nhanh that thi Graph tra 409).
+  if ((Object.values(NHANH) as string[]).includes(duong_dan)) return true;
+
+  const nhanh = Object.values(NHANH).find((n) => duong_dan.startsWith(`${n}/`));
+  if (nhanh === undefined) return false;
+
+  const con_lai = duong_dan.slice(nhanh.length + 1).split('/');
+  if (con_lai.length !== 1) return false;
+  return doan_sach(con_lai[0] ?? '');
+}
+
+/** Cac dieu kien dung chung cho ca ghi tep va tao thu muc. */
+function khung_duong_dan_hop_le(duong_dan: string): boolean {
+  if (duong_dan.includes('..')) return false;
+  if (duong_dan.startsWith('/') || duong_dan.endsWith('/')) return false;
+  if (duong_dan.length > DUONG_DAN_TOI_DA) return false;
+  return true;
+}
+
+/** Mot doan ten trong duong dan: khong rong, va da la ten SharePoint sach san. */
+function doan_sach(p: string): boolean {
+  return p.trim() !== '' && p === lam_sach_ten_sp(p);
+}
+
+/**
+ * Cac cap thu muc phai bao dam co, theo dung thu tu, truoc khi ghi mot tep.
+ *
+ * Graph KHONG tu tao thu muc cha khi ghi theo duong dan — `PUT /root:/a/b/c.pdf:/content`
+ * voi `a/b` chua ton tai tra 404, chu khong tao `a/b`. Nen phai di tu tren xuong.
+ */
+export function cac_cap_can_tao(duong_dan_thu_muc: string): string[] {
+  const doan = duong_dan_thu_muc.split('/');
+  return doan.map((_, i) => doan.slice(0, i + 1).join('/'));
 }

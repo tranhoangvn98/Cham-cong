@@ -58,6 +58,22 @@ services:
       MS_GOC_WEBAPP: ${MS_GOC_WEBAPP:-}
       MS_TEN_MIEN_CHO_PHEP: ${MS_TEN_MIEN_CHO_PHEP:-}
       MS_TU_DONG_TAO: ${MS_TU_DONG_TAO:-0}
+      # Dong bo kho tep ho so sang thu vien HCNS tren SharePoint. MOT CHIEU, xoa lan theo.
+      # Dung APP RIENG (cham-cong-sharepoint-sync) voi quyen Sites.Selected, khong dung lai
+      # app dang nhap o tren. SHAREPOINT_BAT_DAY=0 thi chi ghi nhan viec can day vao bang,
+      # chua cham vao SharePoint — xem tai_lieu/SHAREPOINT.md.
+      SHAREPOINT_SITE_ID: ${SHAREPOINT_SITE_ID:-}
+      SHAREPOINT_DRIVE_ID: ${SHAREPOINT_DRIVE_ID:-}
+      SHAREPOINT_THU_VIEN: ${SHAREPOINT_THU_VIEN:-HCNS}
+      SHAREPOINT_TENANT_ID: ${SHAREPOINT_TENANT_ID:-}
+      SHAREPOINT_CLIENT_ID: ${SHAREPOINT_CLIENT_ID:-}
+      SHAREPOINT_CLIENT_SECRET: ${SHAREPOINT_CLIENT_SECRET:-}
+      SHAREPOINT_BAT_DAY: ${SHAREPOINT_BAT_DAY:-0}
+      # HAI BIEN DUOI CHI DE BO KIEM DUNG MAY CHU GRAPH GIA. Tren may that PHAI de trong:
+      # tro sang may khac la nop client secret cho may do. Khi NODE_ENV=production, may chu
+      # tu choi moi gia tri khong phai graph.microsoft.com / login.microsoftonline.com.
+      SHAREPOINT_GOC_GRAPH: ${SHAREPOINT_GOC_GRAPH:-}
+      SHAREPOINT_GOC_TOKEN: ${SHAREPOINT_GOC_TOKEN:-}
       ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
       ERP_WEBHOOK_SECRET: ${ERP_WEBHOOK_SECRET:-}
       # Thong bao day toi app dien thoai. Dat 0 de tat (vd: may chu khong ra Internet).
