@@ -16,7 +16,8 @@ import { cau_hinh } from '../cau_hinh.ts';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import {
-  NHAN_LOAI, NHAN_TAI_LIEU, duong_dan_sharepoint, type DauVaoDuongDan,
+  NHAN_LOAI, NHAN_TAI_LIEU, duong_dan_ban_chot_sharepoint, duong_dan_sharepoint,
+  type DauVaoDuongDan,
 } from './anh_xa.ts';
 import { bat_sharepoint, tai_len, xoa, LoiSharePoint } from './khach.ts';
 
@@ -62,6 +63,26 @@ const SQL_MONG_MUON = `
     left join tai_lieu_nhan_vien tln on tln.tep_id = t.id
     left join danh_muc_tai_lieu  dm  on dm.id = tln.danh_muc_id
 `;
+
+/**
+ * Ban chot cap cong ty. `ngay_cuoi_ky` di vao ten tep theo quy uoc DD-MM-YYYY cua HCNS: ngay
+ * cuoi thang la moc co nghia cua mot ban chot thang, con `duyet_luc` thi doi moi lan duyet lai
+ * va se lam ten tep doi theo — tuc la mot tep moi ben canh tep cu.
+ */
+const SQL_BAN_CHOT = `
+  select b.id, b.loai, b.ky, b.kich_thuoc,
+         to_char((to_date(b.ky || '-01', 'YYYY-MM-DD') + interval '1 month - 1 day')::date,
+                 'YYYY-MM-DD') as ngay_cuoi_ky
+    from ban_chot b
+`;
+
+interface DongBanChot {
+  id: string;
+  loai: 'bang_cong' | 'bang_luong';
+  ky: string;
+  kich_thuoc: number;
+  ngay_cuoi_ky: string;
+}
 
 interface DongMongMuon {
   id: string;
@@ -193,6 +214,49 @@ export async function ghi_nhan(chi_tep: string | null = null): Promise<KetQuaGhi
     if (so > 0) so_doi += 1;
   }
 
+  // ---- NGUON THU HAI: ban chot cap cong ty (bang cong thang, bang luong thang).
+  //
+  // Chung khong nam trong `ho_so_tep` va khong thuoc nhan vien nao, nen `nhan_vien_id` la null
+  // va duong dan chi co hai cap: `<nhanh>/<ten tep>`. Xem `NHANH_CAP_CONG_TY`.
+  const ban = await truy_van<DongBanChot>(
+    chi_tep === null
+      ? SQL_BAN_CHOT
+      : `${SQL_BAN_CHOT} where b.id = $1`,
+    chi_tep === null ? [] : [chi_tep],
+  );
+
+  for (const b of ban) {
+    const dd = duong_dan_ban_chot_sharepoint(b.loai, b.ky, b.ngay_cuoi_ky);
+    const so = await thuc_thi(
+      `insert into sharepoint_tep(tep_id, nhan_vien_id, duong_dan_muon, so_byte, ket_qua)
+       values ($1, null, $2, $3, 'chua_lam')
+       on conflict (tep_id) do update
+         set duong_dan_muon = excluded.duong_dan_muon,
+             so_byte        = excluded.so_byte,
+             ket_qua        = case
+                                when sharepoint_tep.duong_dan_muon is distinct from excluded.duong_dan_muon
+                                  or sharepoint_tep.so_byte is distinct from excluded.so_byte
+                                  then 'chua_lam'
+                                else sharepoint_tep.ket_qua
+                              end,
+             so_lan_thu     = case
+                                when sharepoint_tep.duong_dan_muon is distinct from excluded.duong_dan_muon
+                                  or sharepoint_tep.so_byte is distinct from excluded.so_byte
+                                  then 0
+                                else sharepoint_tep.so_lan_thu
+                              end,
+             cap_nhat_luc   = now()
+       where sharepoint_tep.duong_dan_muon is distinct from excluded.duong_dan_muon
+          or sharepoint_tep.so_byte        is distinct from excluded.so_byte`,
+      [b.id, dd?.day_du ?? null, b.kich_thuoc],
+    );
+    if (so > 0) so_doi += 1;
+  }
+
+  // `so_byte` nam trong dieu kien cap nhat CUA RIENG ban chot, khac nguon tren. Ly do: mot ban
+  // chot duyet lai co CUNG duong dan (cung ky) nhung NOI DUNG khac. Neu chi so duong dan thi
+  // ban moi khong bao gio duoc day len, va tren SharePoint mai mai la ban duyet lan dau.
+
   // Tep da bi go khoi CSDL: duong dan mong muon thanh null, de vong quet xoa ban tren
   // SharePoint. Day la ly do bang nay KHONG co khoa ngoai sang ho_so_tep.
   const so_go = await thuc_thi(
@@ -203,10 +267,11 @@ export async function ghi_nhan(chi_tep: string | null = null): Promise<KetQuaGhi
             so_lan_thu     = 0,
             cap_nhat_luc   = now()
       where s.duong_dan_muon is not null
-        and not exists (select 1 from ho_so_tep t where t.id = s.tep_id)`,
+        and not exists (select 1 from ho_so_tep t where t.id = s.tep_id)
+        and not exists (select 1 from ban_chot b where b.id = s.tep_id)`,
   );
 
-  return { so_xet: dong.length, so_doi: so_doi + so_go, so_bo_qua };
+  return { so_xet: dong.length + ban.length, so_doi: so_doi + so_go, so_bo_qua };
 }
 
 function ly_do_bo_qua(nhom: string): string {
@@ -251,9 +316,11 @@ export async function quet(gioi_han = MOI_VONG): Promise<KetQuaQuet> {
   const chi_dem = !cau_hinh.sharepoint.bat_day || !bat_sharepoint();
 
   const dong = await truy_van<DongTrangThai>(
-    `select s.tep_id, t.ten_luu, s.duong_dan_muon, s.duong_dan_da_day, s.so_lan_thu
+    `select s.tep_id, coalesce(t.ten_luu, b.ten_luu) as ten_luu,
+            s.duong_dan_muon, s.duong_dan_da_day, s.so_lan_thu
        from sharepoint_tep s
        left join ho_so_tep t on t.id = s.tep_id
+       left join ban_chot  b on b.id = s.tep_id
       where s.duong_dan_muon is distinct from s.duong_dan_da_day
         and s.so_lan_thu < $1
       order by s.cap_nhat_luc

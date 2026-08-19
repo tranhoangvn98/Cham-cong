@@ -66,8 +66,26 @@ export type TenNhanh = keyof typeof NHANH;
  * them vao roi quen noi tep nao di vao do se lam bo kiem do — thay vi nam im trong bang mai
  * mai, khong ai nhan ra la no chua bao gio nhan mot tep nao.
  */
-export const NHANH_CHUA_CO_NGUON: readonly TenNhanh[] = [
+/**
+ * Nhanh duoc nhan tep CAP CONG TY — tep nam THANG trong nhanh, khong co cap nhan vien.
+ *
+ * Danh sach nay hep co y. Mot tep nam ngay trong `01 HỒ SƠ NHÂN SỰ (201)` thi khong thuoc ve
+ * ai, va do la ly do quy tac chung bat buoc ba cap. Nhung mot BAN CHOT bang cong thang la ho
+ * so cua CA CONG TY — nhet no vao thu muc cua mot nhan vien nao do la sai han.
+ *
+ * Hai nhanh duoi day la hai cho duy nhat co nghia:
+ *   04.1 Thang bảng lương & Bảng lương  <- ban chot bang luong thang
+ *   05.1 Bảng chấm công tháng           <- ban chot bang cham cong thang
+ *
+ * Cac nhanh khac VAN chi nhan tep ba cap. Them mot nhanh vao day la mo mot ngoai le cho hang
+ * rao chinh, nen phai co ly do viet ra.
+ */
+export const NHANH_CAP_CONG_TY: readonly TenNhanh[] = [
+  'bang_luong',
   'cham_cong_thang',
+] as const;
+
+export const NHANH_CHUA_CO_NGUON: readonly TenNhanh[] = [
   'don_tu_phep',
 ] as const;
 
@@ -399,8 +417,18 @@ export function duong_dan_an_toan_de_ghi(duong_dan: string): boolean {
   const nhanh = Object.values(NHANH).find((n) => duong_dan.startsWith(`${n}/`));
   if (nhanh === undefined) return false;
 
-  // Con lai phai la dung `<thu muc nhan vien>/<ten tep>` — hai doan, khong hon.
   const con_lai = duong_dan.slice(nhanh.length + 1).split('/');
+
+  // Mot doan = tep nam thang trong nhanh, tuc la tep CAP CONG TY. Chi cho phep o nhung nhanh
+  // da khai trong `NHANH_CAP_CONG_TY`. O cac nhanh khac, mot tep khong co cap nhan vien la mot
+  // tep khong thuoc ve ai.
+  if (con_lai.length === 1) {
+    const khoa = (Object.keys(NHANH) as TenNhanh[]).find((k) => NHANH[k] === nhanh);
+    if (khoa === undefined || !NHANH_CAP_CONG_TY.includes(khoa)) return false;
+    return doan_sach(con_lai[0] ?? '');
+  }
+
+  // Hai doan = `<thu muc nhan vien>/<ten tep>`. Khong nhan sau hon.
   if (con_lai.length !== 2) return false;
   return con_lai.every(doan_sach);
 }
@@ -451,4 +479,54 @@ function doan_sach(p: string): boolean {
 export function cac_cap_can_tao(duong_dan_thu_muc: string): string[] {
   const doan = duong_dan_thu_muc.split('/');
   return doan.map((_, i) => doan.slice(0, i + 1).join('/'));
+}
+
+// ---------------------------------------------------------------- ban chot cap cong ty
+
+/** Nhanh cho tung loai ban chot. */
+const NHANH_BAN_CHOT = {
+  bang_cong: 'cham_cong_thang',
+  bang_luong: 'bang_luong',
+} as const satisfies Record<string, TenNhanh>;
+
+/** Nhan loai van ban cho tung loai ban chot, dung lam phan `[LOẠI]` cua ten tep. */
+const NHAN_BAN_CHOT = {
+  bang_cong: 'BẢNG CHẤM CÔNG',
+  bang_luong: 'BẢNG LƯƠNG',
+} as const;
+
+/**
+ * Duong dan SharePoint cua mot ban chot cap cong ty.
+ *
+ * Ten theo dung quy uoc cua HCNS, chi khac o phan giua: thay vi ho ten mot nguoi thi la ky —
+ * `BẢNG CHẤM CÔNG - THÁNG 08-2026 - 31-08-2026.xlsx`. Nguoi mo thu muc thay ngay day la bang
+ * cua thang nao ma khong phai mo tep.
+ *
+ * KHONG co cap thu muc nhan vien, va do la ca ly do `NHANH_CAP_CONG_TY` ton tai.
+ */
+export function duong_dan_ban_chot_sharepoint(
+  loai: 'bang_cong' | 'bang_luong',
+  ky: string,
+  ngay_cuoi_ky: string,
+): DuongDanSharePoint | null {
+  const nhanh = NHANH_BAN_CHOT[loai];
+  const thang = ky.slice(5, 7);
+  const nam = ky.slice(0, 4);
+
+  const ten_tep = ten_tep_sharepoint({
+    nhan: NHAN_BAN_CHOT[loai],
+    so: null,
+    ten: `THÁNG ${thang}-${nam}`,
+    ngay: ngay_cuoi_ky,
+    duoi: 'xlsx',
+  });
+
+  const thu_muc = NHANH[nhanh];
+  return {
+    nhanh,
+    thu_muc,
+    ten_tep,
+    day_du: `${thu_muc}/${ten_tep}`,
+    muc_nhay_cam: MUC_NHAY_CAM[nhanh],
+  };
 }

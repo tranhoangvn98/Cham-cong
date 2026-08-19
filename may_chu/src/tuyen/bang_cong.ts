@@ -5,6 +5,8 @@ import { can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai, xem_duoc_tat_ca } from
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { dashboard_cho } from '../dashboard/theo_vai_tro.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
+import { ky_da_chot_luong } from '../luong/ban_chot.ts';
+import { LoiXungDot } from '../tien_ich/kiem_tra.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { khoang_thang, ngay_dia_phuong, phut_thanh_chu } from '../tien_ich/thoi_gian.ts';
 import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
@@ -222,6 +224,21 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
   app.post('/bang-cong/mo-chot-thang', { preHandler: can_nhan_su }, async (req) => {
     const b = than(req.body);
     const thang = chuoi(b, 'thang', { bat_buoc: true, toi_da: 7 }) as string;
+
+    // KHONG mo lai duoc thang da co bang luong DA DUYET.
+    //
+    // Bang luong duoc tinh TU bang cong. Mo lai bang cong sau khi luong da duyet nghia la
+    // co the ton tai mot bang luong da chot — da co nguoi ky, da co ban ket xuat tren
+    // SharePoint — dua tren nhung con so gio khong con nhu the. Khong ai giai thich duoc
+    // trang thai do cho thanh tra lao dong, va cai lam ta phat hien ra thi qua muon.
+    if (await ky_da_chot_luong(thang)) {
+      throw new LoiXungDot(
+        `Tháng ${thang} đã có bảng lương được duyệt, nên bảng công của tháng đó đã chốt cứng. `
+        + 'Muốn sửa thì phải hủy kỳ lương trước — và đó là việc phải có người chịu trách nhiệm, '
+        + 'không phải một lần mở chốt.',
+      );
+    }
+
     const { tu, den } = khoang_thang(thang);
     const so = await thuc_thi(
       'update bang_cong_ngay set da_chot = false where ngay >= $1 and ngay <= $2 and da_chot = true',

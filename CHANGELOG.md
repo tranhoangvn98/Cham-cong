@@ -2,6 +2,86 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.28.0] — 2026-08-19
+
+**Bảng chốt cuối cùng, sau khi được duyệt, lưu SharePoint.** Trước bản này bảng công và bảng
+lương chỉ là **dữ liệu tính ra**, xem trên web — không có tệp nào tồn tại để đẩy đi đâu.
+
+Di trú `022` (`ban_chot`) + bộ sinh XLSX (đã thêm ở 1.27.x) + móc lúc duyệt kỳ lương + trang
+**Bảng lương → Bản chốt đã duyệt**.
+
+### Một lần duyệt sinh ra HAI bảng
+
+Người duyệt bảng lương đang duyệt luôn bảng chấm công mà bảng lương được tính *từ đó*. Tách
+thành hai lần duyệt riêng nghĩa là có thể tồn tại một bảng lương đã duyệt dựa trên một bảng công
+chưa duyệt — không ai giải thích được trạng thái đó cho thanh tra lao động.
+
+| | |
+|---|---|
+| Bảng lương tháng | `04 TIỀN LƯƠNG – THUẾ TNCN/04.1 Thang bảng lương & Bảng lương/` |
+| Bảng chấm công tháng | `05 CHẤM CÔNG – NGHỈ PHÉP/05.1 Bảng chấm công tháng/` |
+
+### Ngoại lệ hẹp cho quy tắc ba cấp
+
+Bảng cả công ty **không thuộc về nhân viên nào**, nên đây là ngoại lệ duy nhất: tệp nằm thẳng
+trong nhánh, không có thư mục nhân viên. Chỉ hai nhánh khai trong `NHANH_CAP_CONG_TY` nhận được
+tệp hai cấp; ở mọi nhánh khác một tệp không có thư mục nhân viên là một tệp không thuộc về ai.
+
+Có bài kiểm chạy qua **toàn bộ** bảng `NHANH` và xác nhận đúng hai nhánh đó cho phép, còn lại từ
+chối. Và hai nhánh đó vẫn nhận tệp ba cấp bình thường — `04.1` giữ cả quyết định lương từng người.
+
+### Khóa cứng bảng công của tháng đã duyệt lương
+
+Lúc duyệt, bảng công của tháng đó bị đặt `da_chot`, và `mo-chot-thang` cho tháng đã có bảng lương
+duyệt bị **từ chối** (`409`).
+
+Đây là một lỗi tính toàn vẹn có thật, tồn tại từ trước và không liên quan đến SharePoint: mở lại
+bảng công sau khi lương đã duyệt nghĩa là có thể tồn tại một bảng lương đã chốt — đã có người ký
+— dựa trên những con số giờ không còn như thế. Muốn sửa thì phải hủy kỳ lương trước.
+
+### Bản gốc pháp lý không phải tệp XLSX
+
+Bản gốc là dữ liệu trong `bang_cong_ngay` / `phieu_luong` cộng với `ban_chot.duyet_boi` và
+`ban_chot.duyet_luc` — chúng trả lời được *"ai chốt con số này, lúc nào"*. Tệp chỉ là bản kết
+xuất, sinh lại được.
+
+Đó là lý do tệp bản chốt **được phép ghi đè** (trả lại rồi duyệt lại thì bản mới thay bản cũ),
+khác hẳn kho tệp hồ sơ nơi bản scan CCCD không bao giờ được ghi đè. `ban_chot` có
+`unique (loai, ky)`: hai bản chốt cùng một tháng là hai con số cùng "chính thức", và không ai
+biết tin bản nào.
+
+### Trên đĩa: `_ban_chot/`
+
+`_ban_chot/<loại>/<YYYY-MM>_<loại>_<hex>.xlsx` — dạng đường dẫn thứ ba, khai tường minh trong
+`ten_tep.ts`. Bắt đầu bằng `_` là cố ý: đường dẫn hồ sơ nhân viên phải bắt đầu bằng chữ hoặc số,
+nên `_ban_chot` không thể trùng với thư mục của bất kỳ nhân viên nào — kể cả một mã nhân viên
+tình cờ đặt tên là `ban_chot`. Trong đường dẫn không có một ký tự nào đến từ người dùng.
+
+`luu_ban_chot` tự kiểm lại kết quả của chính nó bằng `duong_dan_hop_le`: nếu ai sửa bộ sinh lệch
+khỏi bộ kiểm thì tệp ghi được nhưng **không đọc lại được** — im lặng tuyệt đối.
+
+### Bộ san bằng: bản chốt so cả `so_byte`
+
+Khác nguồn hồ sơ nhân viên. Một bản chốt duyệt lại có *cùng* đường dẫn (cùng kỳ) nhưng nội dung
+khác. Chỉ so đường dẫn thì bản mới không bao giờ được đẩy lên, và trên SharePoint mãi mãi là bản
+duyệt lần đầu.
+
+### Nhánh `05.1` đã có nguồn
+
+Nên nó rời `NHANH_CHUA_CO_NGUON`. Bài kiểm "mọi nhánh phải có nguồn" bắt đúng lúc đó, và nó buộc
+tôi dạy cho nó nguồn thứ hai (bản chốt) thay vì để bảng kia nói dối.
+
+`05.2 Đơn từ & Theo dõi phép` vẫn chưa có nguồn — `don_nghi_phep` không có cột tệp. Xem
+`KE-HOACH-TRIEN-KHAI.md` mục 3.2, kèm lưu ý: giấy nghỉ ốm là dữ liệu sức khỏe, tức là dữ liệu cá
+nhân **nhạy cảm** theo NĐ 13/2023.
+
+### Sửa khi viết bộ kiểm
+
+`danh_sach_ban_chot` truy vấn `nguoi_dung.email` — cột không tồn tại (tên thật là
+`ten_dang_nhap`). Trang danh sách trả `500`. Bài kiểm e2e bắt được.
+
+419 unit (1 skipped) + 5 proxy + 15 thiết kế + 287 e2e.
+
 ## [1.27.0] — 2026-08-19
 
 **Mở nhánh `06 TUYỂN DỤNG & THỬ VIỆC` trên SharePoint.** Tên bốn thư mục con của `05` và `06`

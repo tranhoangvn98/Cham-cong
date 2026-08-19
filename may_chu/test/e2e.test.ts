@@ -4802,3 +4802,143 @@ test('sharepoint: bang cap KHONG bi keo sang nhanh 06', async () => {
   assert.ok((d?.duong_dan_muon ?? '').startsWith('01 HỒ SƠ NHÂN SỰ (201)/'),
     `bang cap phai o nhanh 01: ${String(d?.duong_dan_muon)}`);
 });
+
+// ==================================================================== ban chot cap cong ty
+//
+// Yeu cau: "bang chot cuoi cung sau khi duoc duyet thi luu SharePoint". Nhom bai duoi day di
+// qua ca duong that: duyet ky luong -> sinh hai tep XLSX -> ghi vao `ban_chot` -> `sharepoint_tep`
+// nhan duong dan hai cap (khong co thu muc nhan vien).
+//
+// Ky luong cua `NGAY.slice(0,7)` da duoc duyet o nhom bai `luong:` phia tren, nen o day chi
+// doc ket qua chu khong duyet lai.
+
+test('ban chot: duyet ky luong sinh ra HAI ban chot cho thang do', async () => {
+  const ky = NGAY.slice(0, 7);
+  const ds = await truy_van<{ loai: string; so_dong: number; kich_thuoc: number }>(
+    'select loai, so_dong, kich_thuoc from ban_chot where ky = $1 order by loai', [ky]);
+
+  assert.deepEqual(ds.map((d) => d.loai), ['bang_cong', 'bang_luong'],
+    'duyet mot lan phai sinh ca bang cham cong lan bang luong — hai mat cua cung mot con so');
+  for (const d of ds) {
+    assert.ok(d.kich_thuoc > 0, `${d.loai}: tep rong`);
+    assert.ok(d.so_dong > 0, `${d.loai}: ban chot 0 dong — co nguoi phai xem`);
+  }
+});
+
+test('ban chot: tep XLSX doc lai duoc va co dung cot', async () => {
+  const ky = NGAY.slice(0, 7);
+  const { doc_tep_ho_so } = await import('../src/tien_ich/luu_tep.ts');
+  const { trich_xlsx } = await import('../src/tien_ich/doc_office.ts');
+
+  for (const loai of ['bang_cong', 'bang_luong']) {
+    const b = await truy_van_mot<{ ten_luu: string }>(
+      'select ten_luu from ban_chot where ky = $1 and loai = $2', [ky, loai]);
+    // Duong dan tren dia phai la dang `_ban_chot/...` — bat dau bang `_` nen khong the trung
+    // voi thu muc cua bat ky nhan vien nao.
+    assert.ok((b?.ten_luu ?? '').startsWith(`_ban_chot/${loai}/`),
+      `${loai}: duong dan sai -> ${String(b?.ten_luu)}`);
+
+    const du_lieu = await doc_tep_ho_so(b?.ten_luu ?? '');
+    assert.notEqual(du_lieu, null, `${loai}: khong doc lai duoc tep vua ghi`);
+
+    const bang = trich_xlsx(du_lieu!);
+    assert.notEqual(bang, null, `${loai}: tep khong phai XLSX doc duoc`);
+    const tieu_de = bang?.hang[0] ?? [];
+    assert.equal(tieu_de[0], 'Mã NV', `${loai}: cot dau phai la Ma NV`);
+    assert.equal(tieu_de[1], 'Họ tên');
+    if (loai === 'bang_luong') {
+      assert.ok(tieu_de.includes('Thực lĩnh'), 'bang luong thieu cot Thuc linh');
+    }
+  }
+});
+
+test('ban chot: sharepoint nhan duong dan HAI cap, khong co thu muc nhan vien', async () => {
+  const ky = NGAY.slice(0, 7);
+  const { ghi_nhan } = await import('../src/sharepoint/dong_bo.ts');
+  await ghi_nhan();
+
+  const mong: Record<string, string> = {
+    bang_cong: '05 CHẤM CÔNG – NGHỈ PHÉP/05.1 Bảng chấm công tháng/',
+    bang_luong: '04 TIỀN LƯƠNG – THUẾ TNCN/04.1 Thang bảng lương & Bảng lương/',
+  };
+
+  for (const [loai, tien_to] of Object.entries(mong)) {
+    const b = await truy_van_mot<{ id: string }>(
+      'select id from ban_chot where ky = $1 and loai = $2', [ky, loai]);
+    const s = await truy_van_mot<{ duong_dan_muon: string | null; nhan_vien_id: string | null }>(
+      'select duong_dan_muon, nhan_vien_id from sharepoint_tep where tep_id = $1', [b?.id]);
+
+    assert.notEqual(s, null, `${loai}: khong co dong dong bo`);
+    assert.equal(s?.nhan_vien_id, null, `${loai}: ban chot cap cong ty khong thuoc nhan vien nao`);
+
+    const dd = s?.duong_dan_muon ?? '';
+    assert.ok(dd.startsWith(tien_to), `${loai}: nhanh sai -> ${dd}`);
+    // Dung hai cap sau nhanh: nhanh + ten tep, KHONG co thu muc nhan vien o giua.
+    assert.equal(dd.slice(tien_to.length).split('/').length, 1,
+      `${loai}: co thu muc nhan vien trong duong dan ban chot -> ${dd}`);
+    assert.ok(dd.endsWith('.xlsx'), dd);
+
+    const { duong_dan_an_toan_de_ghi } = await import('../src/sharepoint/anh_xa.ts');
+    assert.equal(duong_dan_an_toan_de_ghi(dd), true,
+      `hang rao tu choi duong dan do chinh bo sinh tao ra: ${dd}`);
+  }
+});
+
+test('ban chot: duyet lai KHONG tao ban thu hai cho cung ky', async () => {
+  // Hai ban chot cung mot thang la hai con so cung "chinh thuc", va khong ai biet tin ban nao.
+  const ky = NGAY.slice(0, 7);
+  const { chot_ky } = await import('../src/luong/ban_chot.ts');
+  await chot_ky(ky, null);
+  await chot_ky(ky, null);
+
+  const d = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from ban_chot where ky = $1', [ky]);
+  assert.equal(d?.so, 2, 'phai dung hai dong (bang_cong + bang_luong), khong nhan len');
+});
+
+test('ban chot: nhan su tai ve duoc, nhan vien thuong thi khong', async () => {
+  const ds = await goi('GET', '/api/ban-chot', { token: token_admin });
+  assert.equal(ds.ma, 200, JSON.stringify(ds.body));
+  const danh_sach = ds.body['danh_sach'] as Record<string, unknown>[];
+  assert.ok(danh_sach.length >= 2);
+
+  const id = String(danh_sach[0]!['id']);
+  const tai = await app.inject({
+    method: 'GET', url: `/api/ban-chot/${id}/tai`,
+    headers: { authorization: `Bearer ${token_admin}` },
+  });
+  assert.equal(tai.statusCode, 200);
+  // PHAI la tai xuong, khong bao gio mo inline: webapp va tep dung chung mot goc.
+  assert.match(tai.headers['content-disposition'] as string, /^attachment;/);
+  assert.ok(tai.rawPayload.length > 0);
+
+  const nv = await goi('GET', '/api/ban-chot', { token: token_nhan_vien });
+  assert.equal(nv.ma, 403, 'nhan vien thuong khong duoc xem bang luong ca cong ty');
+});
+
+test('ban chot: KHONG mo chot bang cong duoc khi luong thang do da duyet', async () => {
+  // Bang luong duoc tinh TU bang cong. Mo lai bang cong sau khi luong da duyet nghia la co
+  // the ton tai mot bang luong da chot — da co nguoi ky, da co ban ket xuat tren SharePoint —
+  // dua tren nhung con so gio khong con nhu the.
+  const ky = NGAY.slice(0, 7);
+  const r = await goi('POST', '/api/bang-cong/mo-chot-thang', {
+    token: token_admin, body: { thang: ky },
+  });
+  assert.equal(r.ma, 409, JSON.stringify(r.body));
+  assert.match(String(r.body['loi']), /đã có bảng lương được duyệt/);
+
+  // Va bang cong cua thang do phai dang o trang thai da chot.
+  const d = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from bang_cong_ngay
+      where ngay >= $1 and ngay <= $2 and da_chot = false`,
+    [`${ky}-01`, `${ky}-31`]);
+  assert.equal(d?.so, 0, 'con dong bang cong chua chot trong thang da duyet luong');
+});
+
+test('ban chot: thang KHAC chua duyet luong thi van mo chot duoc', async () => {
+  // Chan phai dung dung thang, khong duoc chan ca he thong.
+  const r = await goi('POST', '/api/bang-cong/mo-chot-thang', {
+    token: token_admin, body: { thang: '2019-01' },
+  });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+});

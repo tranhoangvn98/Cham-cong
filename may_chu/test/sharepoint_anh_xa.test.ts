@@ -27,7 +27,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  DUONG_DAN_TOI_DA, MUC_NHAY_CAM, NHANH, NHANH_CHUA_CO_NGUON, NHAN_LOAI,
+  DUONG_DAN_TOI_DA, MUC_NHAY_CAM, NHANH, NHANH_CAP_CONG_TY, NHANH_CHUA_CO_NGUON,
+  NHAN_LOAI, duong_dan_ban_chot_sharepoint,
   chon_nhanh, duong_dan_an_toan_de_ghi, duong_dan_sharepoint,
   lam_sach_ten_sp, ngay_kieu_hcns, ten_tep_sharepoint, thu_muc_an_toan_de_tao,
   thu_muc_nhan_vien,
@@ -432,6 +433,8 @@ test('MOI nhanh trong NHANH deu co nguon tep, hoac duoc khai la chua co', () => 
     'CV_UNG_VIEN', 'DANH_GIA_THU_VIEC'];
 
   const den_duoc = new Set<string>();
+
+  // Nguon thu nhat: tep ho so tung nguoi, qua `chon_nhanh`.
   for (const nhom of CAC_NHOM) {
     for (const loai of LOAI) {
       for (const ma_tai_lieu of MA_TL) {
@@ -439,6 +442,16 @@ test('MOI nhanh trong NHANH deu co nguon tep, hoac duoc khai la chua co', () => 
         if (n !== null) den_duoc.add(n);
       }
     }
+  }
+
+  // Nguon thu HAI: ban chot cap cong ty. `05.1 Bảng chấm công tháng` chi den duoc bang duong
+  // nay — khong tep ho so nao cua mot nhan vien di vao do. Bo qua nguon nay thi bai kiem se
+  // bao `cham_cong_thang` khong co nguon, va nguoi doc se di khai no vao NHANH_CHUA_CO_NGUON
+  // — mot cai bang noi doi ngay sau khi tinh nang da chay.
+  for (const loai of ['bang_cong', 'bang_luong'] as const) {
+    const dd = duong_dan_ban_chot_sharepoint(loai, '2026-08', '2026-08-31');
+    assert.notEqual(dd, null, `khong sinh duoc duong dan ban chot cho ${loai}`);
+    if (dd !== null) den_duoc.add(dd.nhanh);
   }
 
   const thieu = Object.keys(NHANH)
@@ -524,4 +537,69 @@ test('an toan de ghi: mot nhanh khong duoc la tien to cua nhanh khac', () => {
         `nhanh "${a}" la tien to cua "${b}" — bo kiem se nhan sai cap`);
     }
   }
+});
+
+// ---------------------------------------------------------------- ban chot cap cong ty
+
+test('ban chot: duong dan HAI cap, khong co thu muc nhan vien', () => {
+  // Ban chot bang cong thang la ho so cua CA CONG TY. Nhet no vao thu muc cua mot nhan vien
+  // nao do la sai han — nen day la ngoai le duy nhat cua quy tac ba cap.
+  const cc = duong_dan_ban_chot_sharepoint('bang_cong', '2026-08', '2026-08-31');
+  assert.equal(cc?.thu_muc, NHANH.cham_cong_thang);
+  assert.equal(cc?.day_du, `${NHANH.cham_cong_thang}/${cc?.ten_tep ?? ''}`);
+  assert.equal(cc?.day_du.split('/').length, NHANH.cham_cong_thang.split('/').length + 1);
+
+  const bl = duong_dan_ban_chot_sharepoint('bang_luong', '2026-08', '2026-08-31');
+  assert.equal(bl?.thu_muc, NHANH.bang_luong);
+});
+
+test('ban chot: ten tep noi ro la thang nao, theo quy uoc HCNS', () => {
+  const cc = duong_dan_ban_chot_sharepoint('bang_cong', '2026-08', '2026-08-31');
+  assert.equal(cc?.ten_tep, 'BẢNG CHẤM CÔNG - THÁNG 08-2026 - 31-08-2026.xlsx');
+  const bl = duong_dan_ban_chot_sharepoint('bang_luong', '2026-01', '2026-01-31');
+  assert.equal(bl?.ten_tep, 'BẢNG LƯƠNG - THÁNG 01-2026 - 31-01-2026.xlsx');
+});
+
+test('ban chot: hai ky khac nhau ra hai duong dan khac nhau', () => {
+  // Neu trung thi ban chot thang sau ghi de ban chot thang truoc, va lich su bien mat.
+  const a = duong_dan_ban_chot_sharepoint('bang_cong', '2026-07', '2026-07-31');
+  const b = duong_dan_ban_chot_sharepoint('bang_cong', '2026-08', '2026-08-31');
+  assert.notEqual(a?.day_du, b?.day_du);
+});
+
+test('ban chot: MOI duong dan ban chot deu qua duoc hang rao ghi', () => {
+  for (const loai of ['bang_cong', 'bang_luong'] as const) {
+    for (const ky of ['2026-01', '2026-08', '2026-12', '2030-02']) {
+      const cuoi = `${ky}-28`;
+      const dd = duong_dan_ban_chot_sharepoint(loai, ky, cuoi);
+      assert.notEqual(dd, null);
+      assert.ok(dd !== null && duong_dan_an_toan_de_ghi(dd.day_du),
+        `bo kiem tu choi duong dan ban chot do chinh bo sinh tao ra: ${dd?.day_du ?? ''}`);
+    }
+  }
+});
+
+test('cap cong ty: CHI cac nhanh da khai moi nhan tep hai cap', () => {
+  // Hang rao chinh doi ba cap. Day la ngoai le, va no phai hep: mot tep nam ngay trong
+  // `01 HỒ SƠ NHÂN SỰ (201)` thi khong thuoc ve ai.
+  for (const [ten, duong] of Object.entries(NHANH)) {
+    const hai_cap = `${duong}/BẢNG GÌ ĐÓ - THÁNG 08-2026 - 31-08-2026.xlsx`;
+    const duoc = (NHANH_CAP_CONG_TY as readonly string[]).includes(ten);
+    assert.equal(duong_dan_an_toan_de_ghi(hai_cap), duoc,
+      duoc
+        ? `nhanh ${ten} da khai nhan tep cap cong ty nhung bi tu choi`
+        : `nhanh ${ten} CHUA khai nhan tep cap cong ty nhung lai cho ghi`);
+  }
+});
+
+test('cap cong ty: nhanh cap cong ty VAN nhan tep ba cap', () => {
+  // `04.1` nhan ca hai: quyet dinh luong cua tung nguoi (ba cap) va ban chot bang luong
+  // thang (hai cap). Mo ngoai le hai cap khong duoc lam mat duong ba cap.
+  assert.ok(duong_dan_an_toan_de_ghi(
+    `${NHANH.bang_luong}/NV015-NGUYEN VAN A/QĐ LƯƠNG SỐ 05 - Nguyễn Văn A - 01-01-2026.pdf`));
+});
+
+test('cap cong ty: khong nhan bon cap', () => {
+  assert.ok(!duong_dan_an_toan_de_ghi(`${NHANH.cham_cong_thang}/2026/08/x.xlsx`));
+  assert.ok(!duong_dan_an_toan_de_ghi(`${NHANH.bang_luong}/NV1-A/2026/x.pdf`));
 });

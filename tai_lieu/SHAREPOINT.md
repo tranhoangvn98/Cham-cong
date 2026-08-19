@@ -50,6 +50,8 @@ SharePoint.
 | `bhxh` (ốm đau, thai sản, dưỡng sức, TNLĐ) | `03.2 Hồ sơ hưởng chế độ` |
 | `bhxh` loại `chot_so` | `03.3 Xử lý nợ – Chốt sổ & tờ rời` |
 | `luong` | `04.1 Thang bảng lương & Bảng lương` |
+| **bản chốt bảng lương tháng** | `04.1` — cấp công ty, không có thư mục nhân viên |
+| **bản chốt bảng chấm công tháng** | `05.1 Bảng chấm công tháng` — cấp công ty |
 | `nguoi_phu_thuoc` | `04.2 Thuế TNCN` |
 | `tai_lieu` mã `cv_ung_vien` | `06.1 Yêu cầu tuyển & CV ứng viên` |
 | `tai_lieu` mã `danh_gia_thu_viec` | `06.2 Đánh giá phỏng vấn & thử việc` |
@@ -100,13 +102,11 @@ có thể đảo bằng một dòng trong `chon_nhanh` nếu người phụ trá
 **Bằng cấp và chứng chỉ KHÔNG sang `06`.** Chúng là giấy tờ lúc ứng tuyển, nhưng là hồ sơ 201
 lâu dài — nằm trong `01` cả đời làm việc.
 
-**`05.1` và `05.2` chưa có nguồn tệp nào.** Tên đã khai (nằm trong `NHANH`), nhưng
-`chon_nhanh` chưa trả về chúng, và chúng được khai trong `NHANH_CHUA_CO_NGUON` kèm lý do:
+**`05.1 Bảng chấm công tháng` nhận bản chốt tháng** — xem mục 5 dưới đây.
 
-- `05.1 Bảng chấm công tháng` — bảng công là **dữ liệu tính ra**, không phải tệp. Cần một việc
-  mới: xuất bảng công hằng tháng thành PDF/XLSX.
-- `05.2 Đơn từ & Theo dõi phép` — `don_nghi_phep` và `don_giai_trinh` **không có tệp đính kèm**
-  trong lược đồ hiện tại. Cần thêm cột và một nhóm hồ sơ mới.
+**`05.2 Đơn từ & Theo dõi phép` chưa có nguồn tệp.** `don_nghi_phep` và `don_giai_trinh`
+**không có tệp đính kèm** trong lược đồ hiện tại, nên nó được khai trong
+`NHANH_CHUA_CO_NGUON` kèm lý do. Xem [KE-HOACH-TRIEN-KHAI.md mục 3.2](KE-HOACH-TRIEN-KHAI.md).
 
 Có một bài kiểm bắt buộc điều này phải trung thực: **mọi nhánh trong `NHANH` phải hoặc trả về
 được từ `chon_nhanh`, hoặc nằm trong `NHANH_CHUA_CO_NGUON`** — và ngược lại, một nhánh đã có
@@ -119,7 +119,77 @@ kiểm đỏ, thay vì nằm im trong bảng mãi mãi.
 `QĐ TĂNG LƯƠNG`… Không có nhãn riêng thì dùng nhãn của nhóm. Lý do rất thực dụng: một thư mục
 có ba tệp `HỒ SƠ - Nguyễn Văn A - ...` thì phải mở từng tệp ra mới biết cái nào là gì.
 
-## 3. Ba hàng rào
+## 3. Bản chốt cấp công ty — sau khi được duyệt
+
+Bảng chấm công và bảng lương **không phải hồ sơ của một nhân viên**, nên chúng là ngoại lệ duy
+nhất của quy tắc ba cấp: tệp nằm **thẳng trong nhánh**, không có thư mục nhân viên.
+
+```
+04 TIỀN LƯƠNG – THUẾ TNCN/04.1 Thang bảng lương & Bảng lương/
+  BẢNG LƯƠNG - THÁNG 08-2026 - 31-08-2026.xlsx
+05 CHẤM CÔNG – NGHỈ PHÉP/05.1 Bảng chấm công tháng/
+  BẢNG CHẤM CÔNG - THÁNG 08-2026 - 31-08-2026.xlsx
+```
+
+Ngoại lệ này **hẹp có chủ đích**: chỉ hai nhánh khai trong `NHANH_CAP_CONG_TY` nhận được tệp
+hai cấp. Ở mọi nhánh khác, một tệp không có thư mục nhân viên là một tệp không thuộc về ai — có
+bài kiểm chạy qua **toàn bộ** bảng `NHANH` và xác nhận đúng hai nhánh đó cho phép, còn lại từ
+chối. Và hai nhánh đó **vẫn** nhận tệp ba cấp bình thường (`04.1` giữ cả quyết định lương của
+từng người).
+
+### Thời điểm sinh: lúc kỳ lương được duyệt, không sớm hơn
+
+Một lần duyệt sinh ra **cả hai** bảng. Người duyệt bảng lương đang duyệt luôn bảng chấm công mà
+bảng lương được tính *từ đó*; tách thành hai lần duyệt riêng nghĩa là có thể tồn tại một bảng
+lương đã duyệt dựa trên một bảng công chưa duyệt — không ai giải thích được trạng thái đó cho
+thanh tra lao động.
+
+Kèm theo, lúc duyệt hệ thống **khóa cứng bảng công của tháng đó**, và `mo-chot-thang` cho tháng
+đã có bảng lương duyệt bị **từ chối** (`409`). Mở lại nghĩa là có thể tồn tại một bảng lương đã
+chốt — đã có người ký, đã có bản kết xuất trên SharePoint — dựa trên những con số giờ không còn
+như thế. Muốn sửa thì phải hủy kỳ lương trước, và đó là việc phải có người chịu trách nhiệm.
+
+### Bản gốc pháp lý không phải tệp XLSX
+
+Bản gốc là dữ liệu trong `bang_cong_ngay` / `phieu_luong` cộng với hai cột `duyet_boi` và
+`duyet_luc` trong bảng `ban_chot` — chúng trả lời được *"ai chốt con số này, lúc nào"*. Tệp chỉ
+là bản kết xuất, sinh lại được từ cùng dữ liệu.
+
+Đó là lý do tệp bản chốt **được phép ghi đè** (một kỳ bị trả lại rồi duyệt lại thì bản mới thay
+bản cũ), khác hẳn kho tệp hồ sơ nơi bản scan CCCD và hợp đồng không bao giờ được ghi đè. Và
+`ban_chot` có ràng buộc `unique (loai, ky)`: hai bản chốt cùng một tháng là hai con số cùng
+"chính thức", và không ai biết tin bản nào.
+
+### Trên đĩa: `_ban_chot/`
+
+```
+_ban_chot/bang_cong/2026-08_bang_cong_<hex>.xlsx
+_ban_chot/bang_luong/2026-08_bang_luong_<hex>.xlsx
+```
+
+Bắt đầu bằng `_` là **cố ý**: đường dẫn hồ sơ nhân viên phải bắt đầu bằng chữ hoặc số, nên
+`_ban_chot` không thể trùng với thư mục của bất kỳ nhân viên nào — kể cả một mã nhân viên tình
+cờ đặt tên là `ban_chot`. Trong đường dẫn này không có một ký tự nào đến từ người dùng: loại lấy
+từ một tập đóng, kỳ là `YYYY-MM`, hex do máy chủ sinh. An toàn theo cấu trúc, không phải an
+toàn nhờ lọc.
+
+### Tệp XLSX tự sinh, không dùng thư viện
+
+`may_chu/src/tien_ich/ghi_xlsx.ts`. Bộ **đọc** XLSX đã tự viết rồi, nên bộ kiểm là một **vòng
+kín**: sinh bằng `ghi_xlsx` rồi đọc lại bằng `trich_xlsx`. Nói rõ giới hạn: nó không chứng minh
+Excel thật mở được, vì hai bộ cùng một người viết nên có thể sai giống nhau — nên có thêm bài
+kiểm cấu trúc ZIP bằng byte.
+
+Tệp **tái lập được** (không ghi thời điểm vào ZIP): cùng dữ liệu vào thì ra đúng cùng byte. Nhờ
+thế một bản chốt không đổi không bị coi là bản mới mỗi lần sinh lại, và lịch sử phiên bản trên
+SharePoint không đầy bản trùng nhau.
+
+Lưu ý cho bộ san bằng: với bản chốt, điều kiện cập nhật gồm **cả `so_byte`**, khác nguồn hồ sơ
+nhân viên. Lý do: một bản chốt duyệt lại có *cùng* đường dẫn (cùng kỳ) nhưng nội dung khác. Chỉ
+so đường dẫn thì bản mới không bao giờ được đẩy lên, và trên SharePoint mãi mãi là bản duyệt lần
+đầu.
+
+## 4. Ba hàng rào
 
 Nằm **bên trong** `may_chu/src/sharepoint/khach.ts`, không ở tầng gọi: một chỗ gọi quên kiểm
 là một chỗ có thể xóa tệp của người khác.
@@ -137,7 +207,7 @@ Thêm vào đó, tạo thư mục dùng `conflictBehavior: 'fail'` và coi `409`
 `'replace'` trên một thư mục là **xóa sạch nội dung bên trong** — và các nhánh của HCNS đang
 có dữ liệu thật.
 
-## 4. Bảng trạng thái, không phải hàng đợi
+## 5. Bảng trạng thái, không phải hàng đợi
 
 `sharepoint_tep` giữ hai cột: tệp **nên** ở đường dẫn nào (`duong_dan_muon`) và tệp **đang** ở
 đường dẫn nào (`duong_dan_da_day`). Mỗi vòng quét chỉ làm một việc: cho hai cột bằng nhau.
@@ -158,7 +228,7 @@ Trong một lượt đổi chỗ, thứ tự là **đẩy bản mới trước, 
 hai bước trên SharePoint không còn bản nào, và nếu máy chủ chết đúng lúc đó thì hồ sơ biến
 mất. Đẩy trước thì trường hợp xấu nhất là có **hai** bản — thấy được và sửa được.
 
-## 5. Cấu hình
+## 6. Cấu hình
 
 Dùng **một app đăng ký riêng**, không dùng lại app đăng nhập Microsoft. App đăng nhập chỉ cần
 `openid profile email`; gắn thêm quyền ghi tệp vào nó là mở rộng bề mặt của chính lớp đăng
@@ -272,7 +342,7 @@ dựng một máy chủ Graph giả tại chỗ. Đặt giá trị là nộp cli
 `login.microsoftonline.com`, kiểm theo **tên máy** chứ không theo tiền tố (vì
 `graph.microsoft.com.ke-tan-cong.vn` bắt đầu đúng bằng tiền tố thật).
 
-## 6. Thứ tự bật
+## 7. Thứ tự bật
 
 `SHAREPOINT_BAT_DAY=0` là mặc định, và đó là cố ý: cấu hình xong thì hệ thống vẫn **chỉ tính
 đường dẫn và ghi vào bảng**, chưa chạm vào SharePoint.
@@ -288,7 +358,7 @@ Vòng quét hằng ngày chạy **sau** việc sắp xếp kho tệp, và thứ 
 tên thư mục **trên đĩa**, còn việc này tính đường dẫn **trên SharePoint** từ `ma_nv`/`ho_ten`.
 Làm ngược lại thì đường dẫn vừa tính sẽ lệch ngay trong cùng một vòng.
 
-## 7. Giới hạn đã biết
+## 8. Giới hạn đã biết
 
 - **Chưa chạy thật lần nào.** Toàn bộ 29 bài kiểm chạy trên một máy chủ Graph giả tại chỗ:
   phiên làm việc viết mã này không kết nối được SharePoint thật. Bộ kiểm chứng minh client gọi

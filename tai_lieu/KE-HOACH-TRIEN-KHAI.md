@@ -5,7 +5,7 @@ Cái gì đang chạy, cái gì đang chờ ai, và cái gì cố ý để lại
 Mỗi mục ghi rõ **ai làm** và **thế nào là xong**. Mục nào tôi không tự kiểm được thì nói thẳng
 là không kiểm được, thay vì để nó nằm trong danh sách "đã xong" cho đủ.
 
-Ngày cập nhật: 19-08-2026 — bản 1.27.0.
+Ngày cập nhật: 19-08-2026 — bản 1.28.0.
 
 ---
 
@@ -22,6 +22,7 @@ Ngày cập nhật: 19-08-2026 — bản 1.27.0.
 | Nhắc hạn hợp đồng (BLLĐ Điều 45, Điều 20.2) | chạy thật |
 | Bảng lương từ chấm công + BHXH + thuế TNCN | chạy thật |
 | Vi phạm + KPI | chạy thật |
+| Bản chốt bảng công / bảng lương sau khi duyệt (XLSX) | chạy thật |
 | Dashboard theo vai trò | chạy thật |
 | Đăng nhập Microsoft (Entra ID) | chạy thật |
 | Đồng bộ người dùng từ ERP cũ | chạy thật, đọc được 53 người |
@@ -121,32 +122,21 @@ Bạn quyết định xây dựng sau. Hiện trạng: bảng `khieu_nai` và gi
 `may_chu/src/sharepoint/anh_xa.ts` và bỏ `khieu_nai` khỏi đường `default` của `chon_nhanh`.
 Không cần đổi gì khác — bộ san bằng sẽ tự đẩy các tệp đang chờ.
 
-### 3.2 Nhánh `05 CHẤM CÔNG – NGHỈ PHÉP` chưa có nguồn tệp
+### 3.2 Nhánh `05.2 Đơn từ & Theo dõi phép` chưa có nguồn tệp
 
-`06 TUYỂN DỤNG & THỬ VIỆC` đã xong — xem [SHAREPOINT.md](SHAREPOINT.md). Còn `05` thì tên hai
-thư mục con đã khai đúng (`05.1 Bảng chấm công tháng`, `05.2 Đơn từ & Theo dõi phép`) nhưng
-**hệ thống chưa có tệp nào thuộc về chúng**, nên `chon_nhanh` chưa trả về chúng và chúng nằm
-trong `NHANH_CHUA_CO_NGUON` kèm lý do.
+`05.1 Bảng chấm công tháng` đã xong — nhận bản chốt tháng sau khi kỳ lương được duyệt, xem
+[SHAREPOINT.md mục 3](SHAREPOINT.md). Còn `05.2` thì `don_nghi_phep` và `don_giai_trinh`
+**không có cột tệp** trong lược đồ hiện tại, nên nó nằm trong `NHANH_CHUA_CO_NGUON` kèm lý do.
 
-Muốn `05` có nội dung thì cần **việc mới**, hai việc độc lập:
+Cần: di trú thêm cột, thêm một nhóm hồ sơ vào `CAC_NHOM`, mở rộng ràng buộc
+`ho_so_tep_nhom_check`, sửa giao diện đơn từ trên web và app. Dùng cho giấy nghỉ ốm, giấy tờ
+chứng minh lý do nghỉ.
 
-**a) Đơn từ có tệp đính kèm → `05.2`**
-
-`don_nghi_phep` và `don_giai_trinh` không có cột tệp. Cần: di trú thêm cột, thêm một nhóm hồ sơ
-vào `CAC_NHOM`, mở rộng ràng buộc `ho_so_tep_nhom_check`, sửa giao diện đơn từ trên web và app.
-Dùng cho giấy nghỉ ốm, giấy tờ chứng minh lý do nghỉ.
-
-Lưu ý pháp lý: giấy nghỉ ốm là **dữ liệu sức khỏe**, tức là dữ liệu cá nhân *nhạy cảm* theo NĐ
-13/2023 — nên `05.2` phải được phân loại nhạy cảm, không phải "nội bộ", và quyền đọc phải hẹp
-như nhánh `09`.
-
-**b) Xuất bảng công hằng tháng thành tệp → `05.1`**
-
-Bảng công hiện là dữ liệu tính ra, xem trên web. Cần một chức năng xuất PDF hoặc XLSX chốt theo
-tháng, rồi tệp đó đi vào `05.1`. Việc này còn có giá trị riêng ngoài SharePoint: một bản chốt
-tháng không đổi được là thứ kế toán và thanh tra lao động cần.
-
-Cả hai đều ngoài phạm vi đồng bộ SharePoint. Bạn nói làm thì làm.
+**Lưu ý pháp lý phải quyết trước khi làm:** giấy nghỉ ốm là **dữ liệu sức khỏe**, tức là dữ liệu
+cá nhân *nhạy cảm* theo NĐ 13/2023. Nên `05.2` phải được phân loại nhạy cảm — không phải "nội
+bộ" — và quyền đọc phải hẹp như nhánh `09`. Nếu thư mục `05.2` hiện đang mở cho cả phòng thì
+đính kèm giấy nghỉ ốm vào đó là mở rộng phạm vi truy cập dữ liệu sức khỏe, và việc đó cần đối
+chiếu với người phụ trách trước.
 
 ### 3.3 App điện thoại v2
 

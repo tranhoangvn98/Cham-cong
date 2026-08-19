@@ -7,7 +7,10 @@ import { randomUUID } from 'node:crypto';
 import { dirname, join, resolve, sep } from 'node:path';
 import { cau_hinh } from '../cau_hinh.ts';
 import { LoiDauVao } from './kiem_tra.ts';
-import { duong_dan_hop_le, ten_tep_chuan, ten_thu_muc_nhan_vien } from './ten_tep.ts';
+import {
+  duong_dan_ban_chot, duong_dan_hop_le, ten_tep_chuan, ten_thu_muc_nhan_vien,
+  type LoaiBanChot,
+} from './ten_tep.ts';
 
 /**
  * Khong ghi duoc xuong thu muc luu tru. KHONG phai loi cua nguoi dung.
@@ -177,6 +180,49 @@ export async function luu_tep_ho_so(
     throw loi;
   }
   return { ten_luu, mime: dd.mime, kich_thuoc: du_lieu.length, ma_tep };
+}
+
+/**
+ * Ghi mot BAN CHOT cap cong ty (bang cong thang, bang luong thang) xuong dia.
+ *
+ * Khac `luu_tep_ho_so` o ba diem, va ca ba deu co ly do:
+ *
+ *   1. KHONG thuoc nhan vien nao. Duong dan la `_ban_chot/<loai>/...`, khong co cap nhan vien.
+ *   2. GHI DE DUOC (`flag: 'w'`, khong phai `'wx'`). Ban chot bi tra lai roi duyet lai thi ban
+ *      moi thay ban cu — do la dung. Ban goc phap ly cua no la du lieu trong CSDL cong voi
+ *      dong `ban_chot` ghi ai duyet luc nao; tep chi la ban ket xuat, sinh lai duoc.
+ *      (`luu_tep_ho_so` thi tuyet doi khong ghi de: cho do giu ban scan CCCD, hop dong — mat
+ *      la mat vinh vien.)
+ *   3. KHONG kiem magic byte. Du lieu do CHINH may chu sinh bang `ghi_xlsx`, khong den tu
+ *      client, nen khong co gi phai xac minh.
+ */
+export async function luu_ban_chot(
+  du_lieu: Buffer,
+  loai: LoaiBanChot,
+  ky: string,
+): Promise<{ ten_luu: string; kich_thuoc: number }> {
+  if (du_lieu.length === 0) throw new LoiDauVao('Bản chốt rỗng.');
+  if (!/^\d{4}-\d{2}$/.test(ky)) throw new LoiDauVao(`Kỳ không đúng dạng YYYY-MM: ${ky}`);
+
+  const ten_luu = duong_dan_ban_chot(loai, ky, randomUUID().replace(/-/g, ''));
+  // Tu kiem lai ket qua cua chinh bo sinh: neu ai sua `duong_dan_ban_chot` lech khoi
+  // `duong_dan_hop_le` thi tep ghi duoc nhung KHONG DOC LAI DUOC — im lang tuyet doi.
+  if (!duong_dan_hop_le(ten_luu)) {
+    throw new Error(`Bộ sinh đường dẫn bản chốt tạo ra đường dẫn bộ đọc từ chối: ${ten_luu}`);
+  }
+
+  const thu_muc = ten_luu.slice(0, ten_luu.lastIndexOf('/'));
+  try {
+    await mkdir(join(cau_hinh.thu_muc_ho_so, thu_muc), { recursive: true });
+    await writeFile(join(cau_hinh.thu_muc_ho_so, ten_luu), du_lieu, { mode: 0o600, flag: 'w' });
+  } catch (loi) {
+    const ma = (loi as NodeJS.ErrnoException).code ?? '';
+    if (ma === 'EACCES' || ma === 'EPERM' || ma === 'ENOSPC' || ma === 'EROFS') {
+      throw new LoiThuMucLuu(cau_hinh.thu_muc_ho_so, ma);
+    }
+    throw loi;
+  }
+  return { ten_luu, kich_thuoc: du_lieu.length };
 }
 
 /** Tep nay da co tren dia chua? Duong dan phai da qua `duong_dan_hop_le`. */

@@ -10,6 +10,12 @@ import {
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { tinh_ky_luong } from '../luong/ky_luong.ts';
 import {
+  ban_chot_theo_id, chot_ky, danh_sach_ban_chot, type KetQuaChot,
+} from '../luong/ban_chot.ts';
+import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
+import { ghi_nhan_am_tham } from '../sharepoint/dong_bo.ts';
+import { khoang_thang } from '../tien_ich/thoi_gian.ts';
+import {
   chuoi, chuoi_bat_buoc, ngay_bat_buoc, so_nguyen, than, trong_tap, uuid,
   LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
@@ -186,12 +192,31 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${k.trang_thai}", không quyết được.`);
     }
 
+    let ban_chot: KetQuaChot[] = [];
+
     if (quyet === 'da_duyet') {
       await thuc_thi(
         `update ky_luong set trang_thai = 'da_duyet', nguoi_duyet = $2, duyet_luc = now(),
                 ghi_chu_duyet = $3, cap_nhat_luc = now() where id = $1`,
         [k.id, nd.sub, ghi_chu],
       );
+
+      // KHOA BANG CONG CUA THANG DO. Bang luong vua duyet duoc tinh TU bang cong, nen de
+      // bang cong con sua duoc sau khi duyet la de ton tai mot bang luong da chot dua tren
+      // nhung con so da doi. `mo-chot-thang` cung bi chan — xem tuyen/bang_cong.ts.
+      const { tu, den } = khoang_thang(k.thang);
+      await thuc_thi(
+        'update bang_cong_ngay set da_chot = true where ngay >= $1 and ngay <= $2',
+        [tu, den],
+      );
+
+      // Sinh ban chot: bang cham cong thang VA bang luong thang.
+      //
+      // Duyet la moc duy nhat sinh ra chung, va do la co y: yeu cau la "bang chot cuoi cung
+      // SAU KHI DUOC DUYET thi luu SharePoint". Sinh som hon la day len mot ban chua ai chiu
+      // trach nhiem.
+      ban_chot = await chot_ky(k.thang, nd.sub);
+      for (const bc of ban_chot) await ghi_nhan_am_tham(bc.id);
     } else {
       // Tra lai ve nhap de nhan su sua roi gui lai.
       await thuc_thi(
@@ -200,8 +225,10 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         [k.id, ghi_chu],
       );
     }
-    await ghi_nhat_ky(nd.sub, `ky_luong_${quyet}`, 'ky_luong', k.id, { ghi_chu }, req.ip);
-    return { ok: true };
+    await ghi_nhat_ky(nd.sub, `ky_luong_${quyet}`, 'ky_luong', k.id,
+      { ghi_chu, ban_chot: ban_chot.map((x) => ({ loai: x.loai, so_dong: x.so_dong })) },
+      req.ip);
+    return { ok: true, ban_chot };
   });
 
   app.post('/ky-luong/:id/da-tra', { preHandler: can_admin }, async (req) => {
@@ -296,6 +323,41 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     const k = await lay_ky(lay_id(req));
     return xuat_bang_luong(req, res, k.id, k.thang);
   });
+
+  // ------------------------------------------------------------ ban chot
+
+  /**
+   * Danh sach ban chot da duyet. Nhan su xem duoc.
+   *
+   * Day la thu tra loi cau "bang thang 8 chot luc nao, ai chot" ma khong phai doc log.
+   */
+  app.get('/ban-chot', { preHandler: can_nhan_su }, async () => ({
+    danh_sach: await danh_sach_ban_chot(),
+  }));
+
+  /**
+   * Tai mot ban chot ve.
+   *
+   * LUON tra ve dang tai xuong, khong bao gio mo trong tab — cung ly do nhu tep ho so:
+   * webapp va tep dung chung mot goc, nen mot tep mo inline chay duoc script trong ngu canh
+   * cua chinh webapp.
+   */
+  app.get('/ban-chot/:id/tai', { preHandler: can_nhan_su },
+    async (req: FastifyRequest, res: FastifyReply) => {
+      const b = await ban_chot_theo_id(lay_id(req));
+      if (b === null) throw new LoiKhongTim('Không tìm thấy bản chốt.');
+      const du_lieu = await doc_tep_ho_so(b.ten_luu);
+      if (du_lieu === null) {
+        throw new LoiKhongTim('Bản chốt có dòng trong cơ sở dữ liệu nhưng tệp không còn trên đĩa.');
+      }
+      await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tai_ban_chot', 'ban_chot',
+        lay_id(req), {}, req.ip);
+      return res
+        .header('content-type', b.kieu_mime)
+        .header('content-disposition',
+          `attachment; filename="${b.ten_goc.replace(/[^\w.-]/g, '_')}"`)
+        .send(du_lieu);
+    });
 }
 
 async function xuat_bang_luong(
@@ -350,4 +412,6 @@ function o_csv(v: unknown): string {
 function lay_id(req: { params: unknown }): string {
   const p = req.params as Record<string, string>;
   return uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+
+
 }

@@ -141,11 +141,39 @@ const RE_MOI = new RegExp(
   + `\\.(${DUOI_CHO_PHEP})$`,
 );
 
+/**
+ * Ban chot cap cong ty: `_ban_chot/<loai>/<YYYY-MM>_<loai>_<hex>.xlsx`.
+ *
+ * Bat dau bang `_` LA CO Y, khong phai cho dep. `RE_MOI` doi thu muc nhan vien bat dau bang
+ * chu hoac so, nen `_ban_chot` KHONG THE trung voi thu muc cua bat ky nhan vien nao, du ma
+ * nhan vien co la gi. Mot ma nhan vien tinh co dat ten la "ban_chot" van khong cham vao day.
+ *
+ * Trong duong dan nay khong co MOT ky tu nao den tu nguoi dung: loai lay tu mot tap dong,
+ * ky la YYYY-MM, hex do may chu sinh. An toan theo cau truc, khong phai an toan nho loc.
+ */
+const RE_BAN_CHOT = new RegExp(
+  '^_ban_chot/(bang_cong|bang_luong)'
+  + '/\\d{4}-\\d{2}_(bang_cong|bang_luong)_[0-9a-f]{8,32}\\.xlsx$',
+);
+
 export function duong_dan_hop_le(ten_luu: string): boolean {
   // `..` khong lot qua duoc vi moi doan phai bat dau bang chu hoac so, nhung kiem thang
   // mot lan nua cho ro y dinh — day la cho khong duoc phep "chac la an toan".
   if (ten_luu.includes('..')) return false;
-  return RE_MOI.test(ten_luu) || RE_CU.test(ten_luu);
+  return RE_MOI.test(ten_luu) || RE_CU.test(ten_luu) || RE_BAN_CHOT.test(ten_luu);
+}
+
+export type LoaiBanChot = 'bang_cong' | 'bang_luong';
+
+/** Duong dan tren dia cho mot ban chot. `ma` la hex do may chu sinh. */
+export function duong_dan_ban_chot(loai: LoaiBanChot, ky: string, ma: string): string {
+  const hex = ma.replace(/[^0-9a-f]/g, '').slice(0, 32);
+  return `_ban_chot/${loai}/${ky}_${loai}_${hex}.xlsx`;
+}
+
+/** Duong dan nay la mot ban chot cap cong ty? Dung de phan biet o cac lan quet kho tep. */
+export function la_ban_chot(ten_luu: string): boolean {
+  return RE_BAN_CHOT.test(ten_luu);
 }
 
 /** Duong dan nay theo cay cu (chua sap xep) hay cay moi? */

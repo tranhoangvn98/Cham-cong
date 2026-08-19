@@ -12,6 +12,17 @@ import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
 
+interface BanChot {
+  id: string;
+  loai: 'bang_cong' | 'bang_luong';
+  ky: string;
+  ten_goc: string;
+  kich_thuoc: number;
+  so_dong: number;
+  duyet_luc: string;
+  duyet_boi: string | null;
+}
+
 interface KyLuong {
   id: string;
   thang: string;
@@ -96,6 +107,8 @@ export function TrangBangLuong(): ReactNode {
           <button onClick={() => dat_dang_tao(true)} disabled={hd.dang_chay}>Tạo kỳ lương</button>
         </div>
       </div>
+
+      <KhoiBanChot />
 
       <div className="hop-luu-y">
         <strong>Trước khi trả lương thật:</strong> kế toán phải đối chiếu lại mức lương cơ sở,
@@ -414,5 +427,77 @@ function HopThoaiSuaPhieu(
         <button className="nut-phang" onClick={khi_dong}>Hủy</button>
       </div>
     </HopThoai>
+  );
+}
+
+
+/**
+ * Ban chot da duyet: bang cham cong thang va bang luong thang.
+ *
+ * Duyet ky luong sinh ra CA HAI, va do la co y: nguoi duyet bang luong dang duyet ca bang cong
+ * ma bang luong duoc tinh tu do. Tach ra hai lan duyet rieng nghia la co the ton tai mot bang
+ * luong da duyet dua tren mot bang cong chua duyet.
+ *
+ * Ban goc phap ly KHONG phai tep XLSX — no la du lieu trong CSDL cong voi "ai duyet, luc nao".
+ * Tep chi la ban ket xuat, va man hinh nay noi ro dieu do.
+ */
+function KhoiBanChot(): ReactNode {
+  const { du_lieu, dang_tai, loi } =
+    dung_nap<{ danh_sach: BanChot[] }>('/api/ban-chot');
+  const [dang_tai_tep, dat_dang_tai_tep] = useState('');
+
+  if (dang_tai) return <DangTai />;
+  if (loi !== null) return <HopLoi loi={loi} />;
+  const ds = du_lieu?.danh_sach ?? [];
+  if (ds.length === 0) return null;
+
+  const tai = (b: BanChot) => (): void => {
+    dat_dang_tai_tep(b.id);
+    void tai_tep(`/api/ban-chot/${b.id}/tai`, b.ten_goc)
+      .finally(() => dat_dang_tai_tep(''));
+  };
+
+  return (
+    <div className="the">
+      <h3>Bản chốt đã duyệt</h3>
+      <p className="mo-ta">
+        Sinh ra lúc kỳ lương được duyệt, và đẩy lên thư viện HCNS trên SharePoint —{' '}
+        <code>04.1 Thang bảng lương &amp; Bảng lương</code> cho bảng lương,{' '}
+        <code>05.1 Bảng chấm công tháng</code> cho bảng chấm công.{' '}
+        <strong>Bản gốc pháp lý là dữ liệu trong hệ thống</strong> cùng với thông tin ai duyệt
+        lúc nào; tệp XLSX chỉ là bản kết xuất, sinh lại được.
+      </p>
+      <div className="vo-bang">
+        <table className="bang-gon">
+          <thead>
+            <tr><th>Kỳ</th><th>Loại</th><th>Số dòng</th><th>Duyệt lúc</th><th>Duyệt bởi</th><th /></tr>
+          </thead>
+          <tbody>
+            {ds.map((b) => (
+              <tr key={b.id}>
+                <td><strong>{b.ky}</strong></td>
+                <td>{b.loai === 'bang_cong' ? 'Bảng chấm công' : 'Bảng lương'}</td>
+                <td>
+                  {b.so_dong === 0
+                    ? <span className="nhan-xau">0 — cần người xem</span>
+                    : b.so_dong}
+                </td>
+                <td>{ngay_gio(b.duyet_luc)}</td>
+                <td>{b.duyet_boi ?? <span className="mo-ta">—</span>}</td>
+                <td>
+                  <button
+                    className="nut-nho"
+                    disabled={dang_tai_tep === b.id}
+                    onClick={tai(b)}
+                  >
+                    Tải về
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
