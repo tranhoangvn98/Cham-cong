@@ -64,17 +64,26 @@ chưa có nhánh nào cho nó, và lý do quan trọng hơn: khiếu nại có t
 quyền đọc thư mục đích**. Đẩy nó vào một thư mục đoán bừa là loại sai tệ nhất, nên hàm ánh xạ
 trả `null` và trên trang quản trị nó hiện ở mục *Không đồng bộ* kèm lý do.
 
-### Hai nhánh có người phụ trách riêng
+### Hai nhánh sẽ ghi vào nhưng chưa mở
 
-`05 CHẤM CÔNG – NGHỈ PHÉP` và `06 TUYỂN DỤNG & THỬ VIỆC` đang được **triển khai song song bằng
-tay**, có người phụ trách. Ứng dụng **không ghi vào và không xóa trong** hai nhánh đó.
+`05 CHẤM CÔNG – NGHỈ PHÉP` và `06 TUYỂN DỤNG & THỬ VIỆC` **đã thống nhất là hồ sơ của hệ thống
+sẽ nằm trong đó**, theo đúng phân loại sẵn có của nhánh. Nhưng hai nhánh này đang có người dùng
+thật và có thư mục con sẵn, nên còn thiếu hai thứ — thiếu một trong hai là chưa được ghi:
 
-Đây là một **quyết định**, không phải một thiếu sót — nên nó được ghi thành bảng có tên
-`NHANH_NGUOI_KHAC` trong `anh_xa.ts`. Hàm `duong_dan_an_toan_de_ghi` là danh sách **cho phép**
-nên nó đã từ chối hai nhánh này mà không cần bảng đó; giá trị của bảng nằm ở bài kiểm: nó bắt
-buộc việc thêm một trong hai nhánh vào `NHANH` phải **kèm** việc gỡ nó khỏi `NHANH_NGUOI_KHAC`.
-Tức là một hành động có ý, có đối chiếu với người phụ trách, chứ không phải một dòng thêm vào
-lúc dọn dẹp.
+1. **Tên thư mục con, chính xác từng ký tự.** Đoán tên là Graph **tạo mới** một thư mục nằm
+   cạnh thư mục thật, và hồ sơ bay vào chỗ không ai mở — đúng kiểu lỗi mà dấu gạch ngang dài
+   U+2013 đã suýt gây ra ở nhánh `02.1`.
+2. **Chốt phân loại**: nhóm nào của hệ thống thuộc thư mục con nào. Yêu cầu là hồ sơ phải
+   **tuân thủ** phân loại của nhánh, nên việc này phải đối chiếu với người đang phụ trách.
+
+Trong lúc chờ, hai nhánh nằm trong bảng `NHANH_CHUA_MO` của `anh_xa.ts`. Hàm
+`duong_dan_an_toan_de_ghi` là danh sách **cho phép** nên nó đã từ chối chúng mà không cần bảng
+đó; giá trị của bảng nằm ở bài kiểm: **mở một nhánh ra** (thêm vào `NHANH`) bắt buộc phải kèm
+việc gỡ nó khỏi `NHANH_CHUA_MO` — tức là một hành động có ý, sau khi đã có tên thật và đã chốt
+phân loại.
+
+Xem [KE-HOACH-TRIEN-KHAI.md mục 3.2](KE-HOACH-TRIEN-KHAI.md) để biết hệ thống hiện có tệp nào
+cho hai nhánh này.
 
 ## 3. Ba hàng rào
 

@@ -27,7 +27,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  DUONG_DAN_TOI_DA, MUC_NHAY_CAM, NHANH, NHANH_NGUOI_KHAC, NHAN_LOAI,
+  DUONG_DAN_TOI_DA, MUC_NHAY_CAM, NHANH, NHANH_CHUA_MO, NHAN_LOAI,
   chon_nhanh, duong_dan_an_toan_de_ghi, duong_dan_sharepoint,
   lam_sach_ten_sp, ngay_kieu_hcns, ten_tep_sharepoint, thu_muc_an_toan_de_tao,
   thu_muc_nhan_vien,
@@ -402,31 +402,32 @@ test('an toan de ghi: tu choi ngoai cac nhanh da khai', () => {
   assert.ok(!duong_dan_an_toan_de_ghi(''));
 });
 
-test('an toan de ghi: tu choi MOI nhanh co nguoi phu trach rieng', () => {
-  // `05 CHẤM CÔNG – NGHỈ PHÉP` va `06 TUYỂN DỤNG & THỬ VIỆC` dang duoc trien khai song song
-  // bang tay. Ung dung khong ghi vao va khong xoa trong — do la quyet dinh, khong phai thieu sot.
+test('an toan de ghi: tu choi MOI nhanh chua mo', () => {
+  // `05 CHẤM CÔNG – NGHỈ PHÉP` va `06 TUYỂN DỤNG & THỬ VIỆC` da thong nhat la se ghi vao,
+  // nhung chua biet ten thu muc con va chua chot phan loai. Thieu mot trong hai la khong
+  // duoc ghi — doan ten la Graph tao mot thu muc moi ben canh thu muc that.
   //
-  // Doc tu `NHANH_NGUOI_KHAC` chu khong go tay hai chuoi vao day: them nhanh moi vao danh sach
+  // Doc tu `NHANH_CHUA_MO` chu khong go tay hai chuoi vao day: them nhanh moi vao danh sach
   // do thi bai kiem nay tu bao ve luon nhanh moi.
-  assert.ok(NHANH_NGUOI_KHAC.length > 0, 'danh sach rong thi bai kiem nay khong kiem gi');
-  for (const n of NHANH_NGUOI_KHAC) {
+  assert.ok(NHANH_CHUA_MO.length > 0, 'danh sach rong thi bai kiem nay khong kiem gi');
+  for (const n of NHANH_CHUA_MO) {
     assert.ok(!duong_dan_an_toan_de_ghi(`${n}/NV015-NGUYEN VAN A/x - 01-01-2026.pdf`),
-      `ghi duoc vao nhanh cua nguoi khac: ${n}`);
+      `ghi duoc vao nhanh chua mo: ${n}`);
     assert.ok(!thu_muc_an_toan_de_tao(`${n}/NV015-NGUYEN VAN A`),
-      `tao duoc thu muc trong nhanh cua nguoi khac: ${n}`);
-    assert.ok(!thu_muc_an_toan_de_tao(n), `tao duoc chinh nhanh cua nguoi khac: ${n}`);
+      `tao duoc thu muc trong nhanh chua mo: ${n}`);
+    assert.ok(!thu_muc_an_toan_de_tao(n), `tao duoc chinh nhanh chua mo: ${n}`);
   }
 });
 
-test('mot nhanh khong duoc vua duoc anh xa vua thuoc nguoi khac', () => {
-  // Day la muc dich that cua bang `NHANH_NGUOI_KHAC`. Ngay nao HCNS giao `05` hay `06` cho he
-  // thong thi phai GO no khoi bang do — tuc la mot hanh dong co y, co doi chieu voi nguoi phu
-  // trach. Khong the lang le them mot dong vao `NHANH` luc don dep.
-  for (const n of NHANH_NGUOI_KHAC) {
+test('mot nhanh khong duoc vua duoc anh xa vua nam trong danh sach chua mo', () => {
+  // Day la muc dich that cua bang `NHANH_CHUA_MO`. Mo mot nhanh ra thi phai GO no khoi bang
+  // do — tuc la mot hanh dong co y, sau khi da co ten thu muc con that va da chot phan loai
+  // voi nguoi phu trach. Khong the lang le them mot dong vao `NHANH` luc don dep.
+  for (const n of NHANH_CHUA_MO) {
     for (const [ten, da_khai] of Object.entries(NHANH)) {
       assert.ok(da_khai !== n && !da_khai.startsWith(`${n}/`),
-        `nhanh "${ten}" nam trong "${n}" — nhanh do dang co nguoi phu trach rieng. `
-        + 'Neu da thoa thuan chuyen sang he thong thi go no khoi NHANH_NGUOI_KHAC.');
+        `nhanh "${ten}" nam trong "${n}", ma nhanh do con trong danh sach chua mo. `
+        + 'Da co ten thu muc con that va da chot phan loai thi go no khoi NHANH_CHUA_MO.');
     }
   }
 });

@@ -5,7 +5,7 @@ Cái gì đang chạy, cái gì đang chờ ai, và cái gì cố ý để lại
 Mỗi mục ghi rõ **ai làm** và **thế nào là xong**. Mục nào tôi không tự kiểm được thì nói thẳng
 là không kiểm được, thay vì để nó nằm trong danh sách "đã xong" cho đủ.
 
-Ngày cập nhật: 19-08-2026 — bản 1.26.0.
+Ngày cập nhật: 19-08-2026 — bản 1.26.2.
 
 ---
 
@@ -121,24 +121,67 @@ Bạn quyết định xây dựng sau. Hiện trạng: bảng `khieu_nai` và gi
 `may_chu/src/sharepoint/anh_xa.ts` và bỏ `khieu_nai` khỏi đường `default` của `chon_nhanh`.
 Không cần đổi gì khác — bộ san bằng sẽ tự đẩy các tệp đang chờ.
 
-### 3.2 Hai nhánh có người phụ trách riêng
+### 3.2 Hai nhánh sẽ ghi vào nhưng chưa mở: `05` và `06`
 
-`05 CHẤM CÔNG – NGHỈ PHÉP` và `06 TUYỂN DỤNG & THỬ VIỆC` đang được **triển khai song song bằng
-tay**, có người phụ trách. Ứng dụng **không ghi vào và không xóa trong** hai nhánh này.
+`05 CHẤM CÔNG – NGHỈ PHÉP` và `06 TUYỂN DỤNG & THỬ VIỆC` đang có người dùng thật. Đã thống nhất
+là hồ sơ của hệ thống sẽ nằm trong đó, **theo đúng phân loại sẵn có của nhánh** — không tạo cấu
+trúc riêng.
 
-Đây là một **quyết định**, không phải một thiếu sót — nên nó được ghi thành bảng có tên
-`NHANH_NGUOI_KHAC` trong mã nguồn, và có ba bài kiểm chặn: không ghi, không xóa, không tạo thư
-mục. Một bài kiểm nữa bắt buộc rằng thêm một trong hai nhánh vào `NHANH` phải **kèm** việc gỡ
-nó khỏi `NHANH_NGUOI_KHAC` — tức là một hành động có ý, có đối chiếu với người phụ trách, chứ
-không phải một dòng thêm vào lúc dọn dẹp.
+Ứng dụng **chưa ghi vào**, vì còn thiếu hai thứ và thiếu một trong hai là chưa được ghi:
 
-Hệ thống **đang có** dữ liệu khớp tự nhiên với hai nhánh đó (chấm công, đơn nghỉ phép, hồ sơ
-thử việc). Nếu sau này thống nhất chuyển sang hệ thống thì việc cần làm là:
+1. **Tên thư mục con, chính xác từng ký tự.** Đoán tên là Graph tạo mới một thư mục nằm cạnh
+   thư mục thật, hồ sơ bay vào chỗ không ai mở.
+2. **Chốt phân loại** với người đang phụ trách: nhóm nào của hệ thống thuộc thư mục con nào.
 
-1. Người phụ trách xác nhận cấu trúc thư mục con hiện tại.
-2. Gỡ nhánh khỏi `NHANH_NGUOI_KHAC`, khai vào `NHANH`, thêm `chon_nhanh` cho nhóm tương ứng.
-3. Chạy **Tính lại đường dẫn** với `BAT_DAY=0`, đọc bảng, đối chiếu với người phụ trách, rồi
+Lấy tên thư mục con (chạy trong Azure Cloud Shell):
+
+```bash
+D='<SHAREPOINT_DRIVE_ID>'
+for F in '05 CHẤM CÔNG – NGHỈ PHÉP' '06 TUYỂN DỤNG & THỬ VIỆC'; do
+  P=$(python3 -c "import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1]))" "$F")
+  echo "=== $F"
+  az rest --method get --url "https://graph.microsoft.com/v1.0/drives/$D/root:/$P:/children?\$select=name,folder,file" \
+    --query 'value[].{ten:name, la_thu_muc:folder!=null}' -o table
+done
+```
+
+#### Hệ thống hiện có tệp nào cho hai nhánh này
+
+**`06 TUYỂN DỤNG & THỬ VIỆC` — có.** Đang nằm ở nhánh khác:
+
+| Tệp | Hiện đi vào | Có thể thuộc `06` |
+|---|---|---|
+| `hop_dong` loại `thu_viec` (HĐ thử việc) | `02.1 Quan hệ lao động – HĐLĐ` | hợp đồng thử việc là văn bản thử việc |
+| `tai_lieu` mã `so_yeu_ly_lich` | `01 HỒ SƠ NHÂN SỰ (201)` | sơ yếu lý lịch là hồ sơ ứng tuyển |
+| `tai_lieu` mã `qd_tiep_nhan` | `01` | quyết định tiếp nhận là kết quả thử việc |
+| `tai_lieu` mã `bang_cap`, `chung_chi` | `01` | tài liệu ứng tuyển, nhưng cũng là hồ sơ 201 lâu dài |
+
+Bốn dòng này **phải người phụ trách quyết**, không tự quyết được: cùng một tệp có thể thuộc
+`06` (giai đoạn tuyển dụng) hoặc `01`/`02.1` (hồ sơ nhân sự lâu dài), và đặc tả không nói rõ.
+Đưa hợp đồng thử việc ra khỏi `02.1` đặc biệt cần xác nhận.
+
+**`05 CHẤM CÔNG – NGHỈ PHÉP` — hiện KHÔNG có tệp nào.** `don_nghi_phep` và `don_giai_trinh`
+**không có tệp đính kèm** trong lược đồ hiện tại, và bảng công là dữ liệu tính ra chứ không phải
+tệp. Ánh xạ `05` bây giờ chỉ tạo ra một loạt thư mục rỗng.
+
+Muốn `05` có nội dung thì cần **thêm việc mới**, chọn một trong hai (hoặc cả hai):
+
+- **Đơn nghỉ phép có tệp đính kèm** — thêm cột `tep_id` vào `don_nghi_phep` / `don_giai_trinh`,
+  thêm nhóm hồ sơ mới, sửa giao diện đơn từ. Dùng cho giấy nghỉ ốm, giấy tờ chứng minh.
+- **Xuất bảng công hằng tháng thành tệp** (PDF hoặc XLSX) và đẩy lên. Việc này chưa có.
+
+Cả hai đều là công việc riêng, không nằm trong phạm vi đồng bộ SharePoint.
+
+#### Khi mở nhánh ra, việc phải làm trong code
+
+1. Gỡ nhánh khỏi `NHANH_CHUA_MO` trong `may_chu/src/sharepoint/anh_xa.ts`.
+2. Khai đường dẫn thư mục con vào `NHANH` (khớp từng ký tự) và khai `MUC_NHAY_CAM` cho nó.
+3. Thêm nhánh tương ứng vào `chon_nhanh`.
+4. Chạy **Tính lại đường dẫn** với `BAT_DAY=0`, đọc bảng, đối chiếu với người phụ trách, rồi
    mới bật.
+
+Bốn bài kiểm hiện đang chặn hai nhánh này, và một trong số đó bắt buộc bước 1 phải đi cùng
+bước 2 — không thể lặng lẽ thêm một dòng vào `NHANH`.
 
 ### 3.3 App điện thoại v2
 

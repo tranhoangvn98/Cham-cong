@@ -2,6 +2,42 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.26.2] — 2026-08-19
+
+**Đính chính:** ở 1.26.1 tôi đặt tên bảng `NHANH_NGUOI_KHAC` và viết rằng ứng dụng sẽ không bao
+giờ ghi vào `05 CHẤM CÔNG – NGHỈ PHÉP` và `06 TUYỂN DỤNG & THỬ VIỆC`. Đó là suy luận của tôi từ
+chữ "người phụ trách", và nó **sai chiều**: hồ sơ của hệ thống *sẽ* nằm trong hai nhánh đó, theo
+đúng phân loại sẵn có của nhánh. Cái đúng là "chưa mở", không phải "của người khác".
+
+Bảng đổi tên thành `NHANH_CHUA_MO`, và lý do chặn ghi nêu rõ còn thiếu hai thứ — thiếu một trong
+hai là chưa được ghi:
+
+1. **Tên thư mục con, chính xác từng ký tự.** Hai nhánh này đang có người dùng thật và có thư mục
+   con sẵn. Đoán tên là Graph *tạo mới* một thư mục nằm cạnh thư mục thật — đúng kiểu lỗi mà dấu
+   gạch ngang dài U+2013 đã suýt gây ra ở nhánh `02.1`.
+2. **Chốt phân loại** với người đang phụ trách. Yêu cầu là hồ sơ phải tuân thủ phân loại của
+   nhánh, nên đây không phải việc tự quyết.
+
+Bốn bài kiểm giữ nguyên tác dụng, chỉ đổi tên và đổi thông điệp. Bài quan trọng nhất vẫn là: mở
+một nhánh ra (thêm vào `NHANH`) **bắt buộc** phải kèm việc gỡ nó khỏi `NHANH_CHUA_MO`.
+
+### Kiểm hệ thống có tệp nào cho hai nhánh đó
+
+Kết quả vào `tai_lieu/KE-HOACH-TRIEN-KHAI.md` mục 3.2.
+
+**`06 TUYỂN DỤNG & THỬ VIỆC` — có, và đang nằm ở nhánh khác.** Hợp đồng loại `thu_viec` đang đi
+vào `02.1`; `so_yeu_ly_lich`, `qd_tiep_nhan`, `bang_cap`, `chung_chi` đang đi vào `01`. Bốn dòng
+này phải người phụ trách quyết: cùng một tệp có thể thuộc `06` (giai đoạn tuyển dụng) hoặc
+`01`/`02.1` (hồ sơ nhân sự lâu dài), và đặc tả không nói rõ.
+
+**`05 CHẤM CÔNG – NGHỈ PHÉP` — hiện KHÔNG có tệp nào.** `don_nghi_phep` và `don_giai_trinh` không
+có tệp đính kèm trong lược đồ hiện tại, và bảng công là dữ liệu tính ra chứ không phải tệp. Ánh
+xạ `05` bây giờ chỉ tạo ra một loạt thư mục rỗng. Muốn nó có nội dung thì cần **việc mới**: cho
+đơn nghỉ phép đính kèm được tệp, hoặc xuất bảng công hằng tháng thành tệp. Cả hai đều ngoài phạm
+vi đồng bộ SharePoint.
+
+388 unit (1 skipped) + 5 proxy + 15 thiết kế + 278 e2e.
+
 ## [1.26.1] — 2026-08-19
 
 Hai quyết định của bạn, ghi vào mã nguồn và tài liệu.

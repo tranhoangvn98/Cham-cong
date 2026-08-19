@@ -46,19 +46,27 @@ export const NHANH = {
 export type TenNhanh = keyof typeof NHANH;
 
 /**
- * Cac nhanh CO NGUOI PHU TRACH RIENG. Ung dung khong ghi vao, khong xoa trong.
+ * Cac nhanh SE GHI VAO nhung CHUA MO. Ung dung tam thoi khong cham vao.
  *
- * Day KHONG phai "chua kip anh xa". Chung dang duoc trien khai song song bang tay, va viec
- * ung dung khong cham vao la mot QUYET DINH, khong phai mot thieu sot. Ghi thanh bang co ten
- * de dieu do doc duoc, thay vi de nguoi sau nhin thay hai thu muc thieu trong `NHANH` roi
- * "bo sung cho day du".
+ * Khac han cac nhanh khong co trong `NHANH` vi ly do khac: nhung nhanh kia khong thuoc pham vi,
+ * con hai nhanh nay DA duoc thong nhat la ho so cua he thong se nam trong do — chi la chua
+ * biet du de ghi. Con thieu HAI thu, va thieu mot trong hai la khong duoc ghi:
  *
- * Ham `duong_dan_an_toan_de_ghi` la danh sach CHO PHEP, nen no da tu choi cac nhanh nay ma
- * khong can bang nay. Gia tri cua bang nay nam o bai kiem: no bat buoc viec them mot trong hai
- * nhanh vao `NHANH` phai keo theo viec go no khoi day — tuc la mot hanh dong co y, co doi
- * chieu voi nguoi phu trach, chu khong phai mot dong them vao luc don dep.
+ *   1. TEN THU MUC CON, chinh xac tung ky tu. Hai nhanh nay dang co nguoi dung that va co
+ *      thu muc con san. Doan ten la Graph TAO MOI mot thu muc ben canh thu muc that, va ho so
+ *      bay vao cho khong ai mo — dung kieu loi ma dau gach ngang dai U+2013 da suyt gay ra.
+ *   2. CHOT PHAN LOAI: nhom nao cua he thong thuoc thu muc con nao. Yeu cau la ho so phai
+ *      TUAN THU phan loai cua nhanh, nen viec nay phai doi chieu voi nguoi dang phu trach,
+ *      khong tu quyet.
+ *
+ * Ham `duong_dan_an_toan_de_ghi` la danh sach CHO PHEP nen no da tu choi cac nhanh nay ma
+ * khong can bang nay. Gia tri cua bang nay nam o bai kiem: mo mot nhanh ra (them vao `NHANH`)
+ * BAT BUOC phai keo theo viec go no khoi day. Tuc la mot hanh dong co y, sau khi da co ten
+ * that va da chot phan loai — chu khong phai mot dong them vao luc don dep.
+ *
+ * Xem tai_lieu/KE-HOACH-TRIEN-KHAI.md muc 3.2.
  */
-export const NHANH_NGUOI_KHAC: readonly string[] = [
+export const NHANH_CHUA_MO: readonly string[] = [
   '05 CHẤM CÔNG – NGHỈ PHÉP',
   '06 TUYỂN DỤNG & THỬ VIỆC',
 ] as const;
