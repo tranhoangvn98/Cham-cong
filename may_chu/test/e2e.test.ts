@@ -6089,3 +6089,178 @@ test('API nhan vien: PUT bao canh bao khi ma ERP dang thuoc nguoi khac', async (
     'select ma_erp from nhan_vien where id = $1', [id_b]);
   assert.equal(nv?.ma_erp, 'E-CHUNG');
 });
+
+// -------------------------------------------------------------------- ma bi dung lai / trung
+//
+// Cau hoi that: "ma bi dung lai hoac trung thi giai quyet the nao". Nhom bai nay giu tung tinh
+// huong mot, va tinh huong nguy hiem nhat la PIN may duoc cap lai — vi hau qua cua no la CHAM
+// CONG SAI TEN, am tham, va chi lo ra vao ngay chot luong.
+
+/** Day mot lan quet ATTLOG nhu may that. */
+async function day_quet(pin: string, luc: string): Promise<void> {
+  const r = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=ATTLOG`,
+    headers: { 'content-type': 'text/plain' },
+    payload: `${pin}\t${luc}\t0\t15\t0\n`,
+  });
+  assert.equal(r.statusCode, 200, r.body);
+}
+
+test('dung lai ma: PIN chi co trong BANG (cot trong) van cham cong duoc', async () => {
+  // Truoc ban nay, bo tiep nhan ADMS chi doc cot `nhan_vien.pin_may`. Nghia la mot nguoi co PIN
+  // o hai may thi may thu hai quet vao khong khop ai — dung cai kha nang ma bang dinh danh vua
+  // mo ra lai khong dung duoc.
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a] = await cap_gop('RU1', 'Vũ Văn Hai Máy', 'Vũ Văn Khác');
+  await gan_ma(id_a, 'may_cham_cong', '78001');
+  await gan_ma(id_a, 'may_cham_cong', '78002');   // PIN thu hai, may khac
+
+  // Cot chi chua duoc mot — o day la cai gan sau cung.
+  const cot = await truy_van_mot<{ pin_may: string | null }>(
+    'select pin_may from nhan_vien where id = $1', [id_a]);
+  assert.equal(cot?.pin_may, '78002');
+
+  // Nhung CA HAI PIN deu phai khop ve dung nguoi.
+  await day_quet('78001', `${NGAY} 07:55:00`);
+  await day_quet('78002', `${NGAY} 08:05:00`);
+  const so = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from lan_quet
+      where nhan_vien_id = $1 and pin_may in ('78001','78002')`, [id_a]);
+  assert.equal(so?.so, 2, 'PIN chi nam trong bang dinh danh thi khong khop duoc nguoi');
+});
+
+test('dung lai ma: cap PIN cho nguoi moi thi lan quet SAU thuoc nguoi moi', async () => {
+  // Tinh huong that: PIN 1 cua nguoi da nghi duoc cap lai cho nguoi moi vao.
+  const [id_cu, id_moi] = await cap_gop('RU2', 'Xa Văn Cũ', 'Xa Văn Mới');
+  await goi('POST', `/api/nhan-vien/${id_cu}/ma-dinh-danh`, {
+    token: token_admin, body: { he_thong: 'may_cham_cong', ma: '78003' },
+  });
+  await day_quet('78003', `${NGAY} 08:00:00`);
+
+  // Chuyen sang nguoi moi — phai xac nhan, vi day la chuyen danh tinh giua hai con nguoi.
+  const chuyen = await goi('POST', `/api/nhan-vien/${id_moi}/ma-dinh-danh`, {
+    token: token_admin,
+    body: { he_thong: 'may_cham_cong', ma: '78003', thu_hoi_cua_nguoi_khac: true },
+  });
+  assert.equal(chuyen.ma, 201, JSON.stringify(chuyen.body));
+
+  // COT PHAI DI THEO. Quen buoc nay thi may cham cong van ghi cong cho nguoi cu, khong bao gi.
+  const cu = await truy_van_mot<{ pin_may: string | null }>(
+    'select pin_may from nhan_vien where id = $1', [id_cu]);
+  const moi = await truy_van_mot<{ pin_may: string | null }>(
+    'select pin_may from nhan_vien where id = $1', [id_moi]);
+  assert.equal(cu?.pin_may, null, 'cot cua nguoi cu van giu PIN da bi thu hoi');
+  assert.equal(moi?.pin_may, '78003', 'cot cua nguoi moi khong duoc ghi');
+
+  await day_quet('78003', `${NGAY} 17:00:00`);
+
+  // Lan quet CU van thuoc nguoi cu — no da duoc gan chu ngay luc nhan, va lich su cham cong
+  // khong duoc viet lai.
+  const q_cu = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from lan_quet where nhan_vien_id = $1', [id_cu]);
+  const q_moi = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from lan_quet where nhan_vien_id = $1', [id_moi]);
+  assert.equal(q_cu?.so, 1, 'lan quet cu bi doi chu — lich su cham cong bi viet lai');
+  assert.equal(q_moi?.so, 1, 'lan quet moi khong ve nguoi moi');
+
+  // Va lich su tra loi duoc "PIN nay tung la cua ai".
+  const { tim_theo_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const lich_su = await tim_theo_ma('78003');
+  assert.equal(lich_su.length, 2, 'mat lich su cua PIN da cap lai');
+  assert.equal(lich_su.filter((l) => l.hieu_luc_den === null).length, 1,
+    'hai dong cung dang hieu luc');
+});
+
+test('dung lai ma: dong ma lai thi cot cung duoc go', async () => {
+  const [id_a] = await cap_gop('RU3', 'Yên Văn Đóng', 'Yên Văn Khác');
+  const gan = await goi('POST', `/api/nhan-vien/${id_a}/ma-dinh-danh`, {
+    token: token_admin, body: { he_thong: 'may_cham_cong', ma: '78004' },
+  });
+  assert.equal(gan.ma, 201);
+  const ds = await goi('GET', `/api/nhan-vien/${id_a}/ma-dinh-danh`, { token: token_admin });
+  const id_ma = (ds.body as unknown as { he_thong: string; cac_ma: { id: string }[] }[])
+    .find((n) => n.he_thong === 'may_cham_cong')?.cac_ma[0]?.id ?? '';
+
+  await goi('DELETE', `/api/ma-dinh-danh/${id_ma}`, { token: token_admin });
+  const sau = await truy_van_mot<{ pin_may: string | null }>(
+    'select pin_may from nhan_vien where id = $1', [id_a]);
+  assert.equal(sau?.pin_may, null, 'dong ma lai ma cot van giu -> may van ghi cong cho ho');
+
+  // Va PIN do gio cap cho nguoi khac duoc, khong can xac nhan thu hoi.
+  const [, id_b] = await cap_gop('RU4', 'Yên Văn Khác 2', 'Yên Thị Mới');
+  const lai = await goi('POST', `/api/nhan-vien/${id_b}/ma-dinh-danh`, {
+    token: token_admin, body: { he_thong: 'may_cham_cong', ma: '78004' },
+  });
+  assert.equal(lai.ma, 201, JSON.stringify(lai.body));
+  assert.equal(lai.body['ket_cuc'], 'them_moi');
+});
+
+test('trung ma: them email phu KHONG de len email chinh cua ho so', async () => {
+  // `microsoft_email` cho nhieu ma (alias trong Entra la chuyen thuong), con cot `email` chi
+  // chua duoc mot. Neu them alias ma de len cot thi email chinh bi doi — va do la khoa dang
+  // nhap Microsoft duong du phong.
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a] = await cap_gop('RU5', 'Ẩn Văn Mail', 'Ẩn Văn Khác');
+  await thuc_thi("update nhan_vien set email = 'chinh@vi-du.com' where id = $1", [id_a]);
+  await gan_ma(id_a, 'microsoft_email', 'alias@vi-du.com');
+
+  const sau = await truy_van_mot<{ email: string }>(
+    'select email from nhan_vien where id = $1', [id_a]);
+  assert.equal(sau?.email, 'chinh@vi-du.com', 'alias de len email chinh');
+});
+
+test('trung ma: ma nhan vien KHONG doi duoc tu trang ma dinh danh', async () => {
+  // Doi `ma_nv` con keo theo doi ten thu muc kho tep tren dia va duong dan tren SharePoint. Cho
+  // sua o hai cho la de mot cho quen lam phan con lai.
+  const [id_a] = await cap_gop('RU6', 'Ẫ Văn Mã', 'Ẫ Văn Khác');
+  const r = await goi('POST', `/api/nhan-vien/${id_a}/ma-dinh-danh`, {
+    token: token_admin, body: { he_thong: 'noi_bo', ma: 'MA-MOI-01' },
+  });
+  assert.equal(r.ma, 400, JSON.stringify(r.body));
+  assert.match(String(r.body['loi']), /form hồ sơ/);
+});
+
+test('trung ma: bang va cot noi khac nhau thi BANG thang', async () => {
+  // Bai kiem cua CHINH quy tac uu tien. Cac bai tren khong bat duoc no: o do hai nguon luon
+  // dong y, nen doi thu tu uu tien van xanh. Nen o day tao cho lech BANG SQL THUAN — dung thu
+  // ma mot lan sua tay tren CSDL, hay mot duong ghi con sot, se tao ra.
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_bang, id_cot] = await cap_gop('UT1', 'Ưu Văn Bảng', 'Ưu Văn Cột');
+  await gan_ma(id_bang, 'may_cham_cong', '78010');
+  // Go cot cua nguoi dung, roi dat PIN do cho nguoi KHAC thang vao cot — bang van noi id_bang.
+  await thuc_thi('update nhan_vien set pin_may = null where id = $1', [id_bang]);
+  await thuc_thi('update nhan_vien set pin_may = $2 where id = $1', [id_cot, '78010']);
+
+  await day_quet('78010', `${NGAY} 09:09:00`);
+
+  const q = await truy_van_mot<{ nhan_vien_id: string }>(
+    `select nhan_vien_id from lan_quet where pin_may = '78010'
+      order by thoi_diem desc limit 1`);
+  assert.equal(q?.nhan_vien_id, id_bang,
+    'cot thang bang — mot lan sua tay tren cot doi duoc chu cua lan quet');
+});
+
+test('nhap CSV: PIN vao tep cung vao bang ma dinh danh', async () => {
+  // Duong nhap CSV ghi thang vao cot `pin_may`. Khong ghi vao bang thi hai ben lech ngay sau
+  // mot lan nhap, va bo tiep nhan ADMS (uu tien bang) se ghi cong cho nguoi cu.
+  const csv = 'ma_nv,ho_ten,pin\nCSV-MD-1,Nguyễn Văn Nhập,78020\n';
+  const r = await app.inject({
+    method: 'POST',
+    url: '/api/nhap/nhan-vien',
+    headers: { authorization: `Bearer ${token_admin}`, 'content-type': 'application/json' },
+    payload: { noi_dung: csv, xem_truoc: false },
+  });
+  assert.equal(r.statusCode, 200, r.body);
+
+  const nv = await truy_van_mot<{ id: string }>(
+    "select id from nhan_vien where ma_nv = 'CSV-MD-1'");
+  assert.notEqual(nv, null, 'khong nhap duoc nhan vien tu CSV');
+
+  const ma = await truy_van<{ he_thong: string; ma: string }>(
+    `select he_thong, ma from ma_dinh_danh
+      where nhan_vien_id = $1 and hieu_luc_den is null order by he_thong`, [nv!.id]);
+  const theo = new Map(ma.map((m) => [m.he_thong, m.ma]));
+  assert.equal(theo.get('may_cham_cong'), '78020', 'PIN nhap tu CSV khong vao bang dinh danh');
+  assert.equal(theo.get('noi_bo'), 'CSV-MD-1');
+});

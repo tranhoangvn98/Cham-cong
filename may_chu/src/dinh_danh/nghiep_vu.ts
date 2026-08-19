@@ -8,7 +8,9 @@
 import type pg from 'pg';
 import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
 import { LoiDauVao, LoiKhongTim, LoiXungDot } from '../tien_ich/kiem_tra.ts';
-import { CAC_HE_THONG, chuan_ma, dac_ta_he_thong, type MaHeThong } from './he_thong.ts';
+import {
+  CAC_HE_THONG, chuan_ma, dac_ta_he_thong, type DacTaHeThong, type MaHeThong,
+} from './he_thong.ts';
 
 /** Ai/cai gi tao dong dinh danh. Trung voi cot `nguon` cua bang. */
 export type NguonMa =
@@ -120,7 +122,13 @@ export async function gan_ma(
         where id = $1`,
       [String(dang_co['id']), `Thu hồi để chuyển cho nhân viên khác (${nguon})`],
     );
+    // GO COT CU CUA NGUOI BI THU HOI TRUOC khi ghi cho nguoi moi. Hai ly do, deu bat buoc:
+    //   - `pin_may` la UNIQUE, ghi truoc khi go la va vao rang buoc.
+    //   - Neu quen go, cot van tro nguoi cu trong khi bang tro nguoi moi. Bo tiep nhan ADMS uu
+    //     tien bang, nhung mot he thong noi hai chuyen la mot he thong dang cho hong.
+    await go_cot(chay, d, String(dang_co['nhan_vien_id']), ma_chuan);
     await them_dong(chay, nhan_vien_id, d.ma, ma_sach, ma_chuan, nguon, tuy_chon.ghi_chu ?? null);
+    await ghi_cot(chay, d, nhan_vien_id, ma_sach);
     return {
       ket_cuc: 'thu_hoi_tu_nguoi_khac',
       he_thong: d.ma,
@@ -147,9 +155,47 @@ export async function gan_ma(
   }
 
   await them_dong(chay, nhan_vien_id, d.ma, ma_sach, ma_chuan, nguon, tuy_chon.ghi_chu ?? null);
+  await ghi_cot(chay, d, nhan_vien_id, ma_sach);
   return ma_cu === undefined
     ? { ket_cuc: 'them_moi', he_thong: d.ma, ma: ma_sach }
     : { ket_cuc: 'thay_the', he_thong: d.ma, ma: ma_sach, ma_cu };
+}
+
+/**
+ * Ghi ma vao cot cu tren `nhan_vien`, neu he thong do co khai cot.
+ *
+ * Ten cot den TU BANG DAC TA, khong tu dau vao nguoi dung — khong co cho nao noi chuoi ngoai
+ * vao SQL.
+ */
+async function ghi_cot(
+  chay: BoChay, d: DacTaHeThong, nhan_vien_id: string, ma: string,
+): Promise<void> {
+  const cot = d.cot_nhan_vien;
+  if (cot === null || d.dong_bo_cot === 'khong') return;
+  const dieu_kien = d.dong_bo_cot === 'khi_trong'
+    ? ` and coalesce(${cot}::text, '') = ''`
+    : '';
+  await chay.query(
+    `update nhan_vien set ${cot} = $2, cap_nhat_luc = now() where id = $1${dieu_kien}`,
+    [nhan_vien_id, ma],
+  );
+}
+
+/** Xoa ma khoi cot cu, chi khi cot dang giu DUNG ma do. */
+async function go_cot(
+  chay: BoChay, d: DacTaHeThong, nhan_vien_id: string, ma_chuan: string,
+): Promise<void> {
+  const cot = d.cot_nhan_vien;
+  if (cot === null || d.dong_bo_cot === 'khong') return;
+  // So bang `ma_chuan` qua chinh ham chuan hoa cua he thong thi khong lam duoc trong SQL, nen
+  // doc gia tri ra roi so tren JS. Mot dong, khong phai duong nong.
+  const dong = (await chay.query(
+    `select ${cot}::text as v from nhan_vien where id = $1`, [nhan_vien_id])).rows[0];
+  const v = dong?.['v'];
+  if (typeof v !== 'string' || v.trim() === '') return;
+  if (d.chuan_hoa(v) !== ma_chuan) return;
+  await chay.query(
+    `update nhan_vien set ${cot} = null, cap_nhat_luc = now() where id = $1`, [nhan_vien_id]);
 }
 
 async function them_dong(
@@ -217,16 +263,19 @@ export async function gan_bo_ma_nhan_su(
 
 /** Dong mot ma lai. Khong xoa — lich su la ly do bang nay ton tai. */
 export async function thu_hoi_ma(id: string, ghi_chu: string | null = null): Promise<void> {
-  const d = await truy_van_mot<{ id: string }>(
+  const d = await truy_van_mot<{ nhan_vien_id: string; he_thong: string; ma_chuan: string }>(
     `update ma_dinh_danh
         set hieu_luc_den = now(),
             ghi_chu = case when $2::text is null then ghi_chu
                            else coalesce(ghi_chu || ' | ', '') || $2 end
       where id = $1 and hieu_luc_den is null
-      returning id`,
+      returning nhan_vien_id, he_thong, ma_chuan`,
     [id, ghi_chu],
   );
   if (d === null) throw new LoiKhongTim('Không thấy mã định danh đang hiệu lực với id này.');
+  // Cot cu phai di theo, neu khong thi dong ma lai xong ma may cham cong VAN ghi cong cho
+  // nguoi do — bang noi mot dang, cot noi mot dang.
+  await go_cot(bo_chay_mac_dinh(), dac_ta_he_thong(d.he_thong), d.nhan_vien_id, d.ma_chuan);
 }
 
 export interface MaTheoNhom {

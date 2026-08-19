@@ -95,6 +95,79 @@ trả lời được.
 Với hệ thống **một mã**, gán mã mới cho *chính người đó* thì mã cũ được đóng lại — đổi email, đổi
 mã nhân viên đều là chuyện thường, và mã cũ thành lịch sử chứ không biến mất.
 
+## Mã bị dùng lại hoặc trùng thì xử lý thế nào
+
+Bốn tình huống khác nhau, bốn cách xử lý khác nhau.
+
+### 1. Cấp lại mã cho người khác (PIN 1 của người đã nghỉ → người mới)
+
+Hệ thống **từ chối** lần đầu và nói rõ ai đang giữ. Xác nhận *Thu hồi mã này từ người đang giữ*
+thì:
+
+| Thứ | Sau khi thu hồi |
+|---|---|
+| Dòng của người cũ | **Đóng lại** (`hieu_luc_den = now()`) kèm ghi chú, **không xóa** |
+| Dòng của người mới | Mở mới, đang hiệu lực |
+| Cột `nhan_vien.pin_may` của người cũ | **Được gỡ** |
+| Cột `nhan_vien.pin_may` của người mới | **Được ghi** |
+| Lần quẹt **cũ** | Vẫn thuộc người cũ — lịch sử chấm công không bị viết lại |
+| Lần quẹt **mới** | Thuộc người mới |
+| Tra cứu `78003` | Ra **hai dòng**: người mới (đang dùng), người cũ (đã đóng) |
+
+Hai dòng cột trong bảng là chỗ dễ bỏ sót nhất, và cũng là hậu quả nặng nhất nếu bỏ sót: bộ tiếp
+nhận ADMS vẫn đọc `pin_may`, nên nếu cột còn trỏ người cũ thì **máy chấm công vẫn ghi công cho
+người cũ, không báo gì**, và chỉ lộ ra vào ngày chốt lương. Từ bản `1.32.1` việc gỡ/ghi cột là
+tự động trong cùng giao dịch với việc đổi mã.
+
+**Lần quẹt cũ không bị đổi chủ, và đó là cố ý.** Chủ của một lần quẹt được xác định *lúc nhận*,
+nên bảng công tháng trước không tự viết lại khi PIN sang tay người khác.
+
+### 2. Một người có nhiều mã cùng lúc (PIN ở hai máy, email alias)
+
+Chỉ `may_cham_cong` và `microsoft_email` cho phép. Cả hai mã **cùng hiệu lực**, và cả hai đều
+khớp được người:
+
+- Bộ tiếp nhận ADMS đọc **bảng trước, cột sau**, nên PIN thứ hai — thứ mà cột `pin_may` không
+  chứa nổi — vẫn chấm công đúng người.
+- Cột `pin_may` giữ **mã mới nhất**, chỉ còn là đường dự phòng.
+- Với `microsoft_email`, thêm một alias **không** ghi đè cột `email`: cột chỉ được ghi khi đang
+  trống, vì email chính là khóa đăng nhập Microsoft đường dự phòng.
+
+### 3. Bảng và cột nói khác nhau
+
+Không được phép, nhưng có thể xảy ra — một lần sửa tay trên cơ sở dữ liệu, hay một đường ghi còn
+sót. Quy tắc: **bảng thắng**, và hệ thống ghi một dòng cảnh báo vào log:
+
+```
+[adms] PIN 5: bang dinh danh noi HR-01, cot pin_may noi ERP147. Dung bang.
+       Chay doi soat ma dinh danh de biet vi sao lech.
+```
+
+Rồi **Hệ thống → Mã định danh → Đối soát** liệt kê mọi chỗ lệch, hai chiều. Mọi đường ghi đã biết
+(form hồ sơ, đồng bộ ERP, nhập CSV, đăng nhập Microsoft) đều ghi cả hai nơi, nên báo cáo này sạch
+là trạng thái bình thường — có dòng nào là có việc phải tìm.
+
+### 4. Hai người thật cùng một mã trong dữ liệu cũ
+
+`ma_erp` và `email` **không** có ràng buộc UNIQUE trên cột, nên trước khi có bảng này hai người
+có thể cùng mang một mã ERP mà không ai biết. Lúc backfill, index bộ phận chỉ nhận **một** trong
+hai, người còn lại không có mã đang hiệu lực — và **đối soát báo đúng chỗ đó**. Ai đúng thì người
+xem quyết: gán lại cho người đúng (có xác nhận thu hồi), hoặc gộp hai hồ sơ nếu chúng thật ra là
+một người ([`GOP-HO-SO-TRUNG.md`](GOP-HO-SO-TRUNG.md)).
+
+Trường hợp `ma_erp` trùng khi **sửa hồ sơ**: cột vẫn lưu (không có ràng buộc), mã định danh không
+gán được, và phản hồi kèm `canh_bao` nói rõ ai đang giữ. Hồ sơ **không** bị coi là lưu thất bại —
+nó đã lưu xong.
+
+### Việc gì hệ thống KHÔNG tự làm
+
+- **Không tự chuyển mã** khi thấy trùng. Chuyển danh tính giữa hai con người luôn cần một người
+  xác nhận.
+- **Không viết lại lịch sử chấm công** khi mã sang tay.
+- **Không xóa dòng mã** — chỉ đóng lại.
+- **Không tự xóa mã rác trong cột cũ** (ví dụ họ tên nằm trong ô điện thoại): xóa dữ liệu đang có
+  không phải việc nó tự quyết.
+
 ## Ai ghi vào bảng này
 
 | Đường | Ghi mã gì | Khi nào |
@@ -103,7 +176,8 @@ mã nhân viên đều là chuyện thường, và mã cũ thành lịch sử ch
 | Đồng bộ ERP | `erp_cu`, `erp_cu_tai_khoan`, `microsoft_email` | Mỗi lượt Đồng bộ thật |
 | Đăng nhập Microsoft | `microsoft_oid`, `microsoft_email` | Mỗi lần đăng nhập thành công |
 | Di trú 025 | tất cả, từ các cột cũ | Một lần, lúc cập nhật |
-| Trang Mã định danh | hệ thống nào cũng được | Nhân sự gán tay |
+| Nhập CSV nhân viên | `noi_bo`, `may_cham_cong`, `microsoft_email` | Mỗi lần nhập tệp |
+| Trang Mã định danh | mọi hệ thống trừ `noi_bo` | Nhân sự gán tay |
 
 Hai đường tự động (đồng bộ ERP, đăng nhập Microsoft) **không bao giờ được làm hỏng việc chính của
 chúng** vì một mã trùng:

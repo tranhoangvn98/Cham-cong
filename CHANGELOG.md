@@ -2,6 +2,55 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.32.1] — 2026-08-19
+
+**Bản 1.32.0 mở ra một đường chấm công sai tên.** Câu hỏi "mã bị dùng lại hoặc trùng thì giải
+quyết thế nào" làm tôi đọc lại đường tiếp nhận ADMS, và nó khớp người **chỉ bằng
+`nhan_vien.pin_may`**. Nghĩa là chuyển PIN sang người mới qua trang mã định danh mới thì:
+
+- bảng nói PIN đó là của người mới,
+- cột vẫn trỏ người cũ,
+- và **máy chấm công vẫn ghi công cho người cũ**, không báo gì, cho tới ngày chốt lương.
+
+Đúng cái lỗ mà bảng mã định danh ra đời để bịt.
+
+### Ba chỗ sửa
+
+1. **Ghi mã là ghi cả cột.** Bảng đặc tả giờ khai `cot_nhan_vien` + `dong_bo_cot` cho từng hệ
+   thống. Thu hồi mã từ người khác thì **gỡ cột của người cũ trước rồi mới ghi cột người mới** —
+   `pin_may` là UNIQUE nên thứ tự ngược lại là va vào ràng buộc, đúng bài học của bộ gộp hồ sơ.
+   Đóng mã lại (`DELETE`) cũng gỡ cột.
+2. **ADMS đọc bảng trước, cột sau.** Union hai nguồn nên **không thể mất khớp** so với trước, và
+   thêm được hai thứ: một người có PIN ở **hai máy** giờ chấm công đúng ở cả hai (cột chỉ chứa
+   nổi một), và chuyển PIN có hiệu lực ngay. Hai nguồn nói khác nhau thì bảng thắng và ghi một
+   dòng cảnh báo vào log.
+3. **Nhập CSV cũng ghi vào bảng.** Đây là chỗ tôi phát hiện muộn: nhập CSV ghi thẳng `pin_may` mà
+   không ghi mã định danh, nên một lần nhập là lệch ngay — và vì ADMS ưu tiên bảng, lệch theo
+   chiều đó có nghĩa là chấm công cho **người cũ**. Một đường ghi bỏ qua nguồn sự thật thì cái
+   "nguồn sự thật" chỉ là tên gọi.
+
+`microsoft_email` cố ý chỉ ghi cột **khi cột đang trống**: một người có nhiều alias trong Entra,
+còn cột `email` chỉ chứa một, nên thêm alias không được đè lên email chính — đó là khóa đăng nhập
+Microsoft đường dự phòng.
+
+`ma_nv` thì **không** đổi được từ trang mã định danh nữa (400 kèm lý do): đổi nó còn kéo theo đổi
+tên thư mục kho tệp trên đĩa và đường dẫn trên SharePoint, nên nó chỉ có một cửa là form hồ sơ.
+
+### Bài kiểm đầu tiên của tôi không bắt được quy tắc ưu tiên
+
+Tôi đảo `bang ?? cot` thành `cot ?? bang` để thử, và **cả bộ vẫn xanh** — vì trong mọi bài kiểm
+tôi vừa viết, hai nguồn luôn đồng ý, nên thứ tự ưu tiên không đổi kết quả gì. Bài kiểm đang mô tả
+một tình huống dễ chứ không phải tình huống nó cần canh.
+
+Sửa: thêm một bài **tạo cho lệch bằng SQL thuần** (đặt cột cho một người, bảng cho người khác) rồi
+đòi bảng thắng. Đảo lại thứ tự thì bài đó đỏ. Cộng một bài nhập CSV rồi đòi PIN có mặt trong bảng
+— tắt phần ghi mã đi thì đỏ.
+
+Đây cũng là lần thứ hai trong hai ngày tôi tưởng mình đã chứng minh một bài kiểm mà chưa: lần
+trước đỏ vì `401` do lọc theo tên bài, lần này xanh vì bài kiểm không dựng đúng tình huống.
+
+472 unit (1 skipped) + 5 proxy + 15 thiết kế + 348 e2e.
+
 ## [1.32.0] — 2026-08-19
 
 **Bảng mã định danh: một người, nhiều hệ thống, mỗi hệ thống một mã.** Dữ liệu nhân sự vào hệ

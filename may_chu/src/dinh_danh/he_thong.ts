@@ -48,6 +48,32 @@ export interface DacTaHeThong {
   on_dinh: boolean;
   /** Cot cu tren `nhan_vien` (hoac `nguoi_dung`) ma ma nay tuong ung — de doi soat. */
   cot_cu: string | null;
+  /**
+   * Ten cot tren `nhan_vien` ma duong ghi ma PHAI GIU DONG BO. null = khong co cot nao.
+   *
+   * VI SAO BAT BUOC: cac cot cu VAN LA DUONG DOC cua vai cho — ro nhat la `pin_may`, cai ma
+   * bo tiep nhan ADMS dung de biet lan quet nay cua ai. Neu trang ma dinh danh chuyen PIN 1
+   * sang nguoi moi ma cot van tro nguoi cu thi may cham cong VAN GHI CONG CHO NGUOI CU, khong
+   * bao gi. Do la kieu hong te nhat trong ca he thong nay: sai am tham, tren cham cong, va chi
+   * lo ra vao ngay chot luong.
+   */
+  cot_nhan_vien: string | null;
+  /**
+   * Ghi cot do khi nao.
+   *
+   * `luon`  — moi lan gan ma deu ghi cot.
+   * `khi_trong` — chi ghi khi cot dang trong. Dung cho `microsoft_email`: mot nguoi co nhieu
+   *   email trong Entra, con cot chi chua duoc mot, nen them alias KHONG duoc de len email chinh.
+   * `khong` — khong dung toi cot.
+   */
+  dong_bo_cot: 'luon' | 'khi_trong' | 'khong';
+  /**
+   * Ma nay CHI duoc dat tu form ho so nhan vien, khong tu trang ma dinh danh.
+   *
+   * Chi `noi_bo` (`ma_nv`): doi ma nhan vien con keo theo doi ten thu muc kho tep tren dia va
+   * duong dan tren SharePoint. De hai duong cung sua duoc mot thu do la mot cho de lech.
+   */
+  chi_tu_form_ho_so: boolean;
   /** Chuan hoa de SO SANH. Ban goc van duoc luu nguyen van o cot `ma`. */
   chuan_hoa: (s: string) => string;
   /** Ly do tu choi, hoac null neu hop le. */
@@ -74,6 +100,9 @@ export const CAC_HE_THONG: readonly DacTaHeThong[] = [
     nhieu_ma: false,
     on_dinh: false,
     cot_cu: 'nhan_vien.ma_nv',
+    cot_nhan_vien: 'ma_nv',
+    dong_bo_cot: 'khong',
+    chi_tu_form_ho_so: true,
     chuan_hoa: (s) => s.trim().toUpperCase(),
     kiem: khong_rong,
   },
@@ -84,6 +113,9 @@ export const CAC_HE_THONG: readonly DacTaHeThong[] = [
     nhieu_ma: true,
     on_dinh: false,
     cot_cu: 'nhan_vien.pin_may',
+    cot_nhan_vien: 'pin_may',
+    dong_bo_cot: 'luon',
+    chi_tu_form_ho_so: false,
     chuan_hoa: (s) => s.trim(),
     kiem: (s) => {
       const t = s.trim();
@@ -100,6 +132,9 @@ export const CAC_HE_THONG: readonly DacTaHeThong[] = [
     nhieu_ma: false,
     on_dinh: true,
     cot_cu: 'nhan_vien.erp_user_id',
+    cot_nhan_vien: 'erp_user_id',
+    dong_bo_cot: 'luon',
+    chi_tu_form_ho_so: false,
     chuan_hoa: (s) => s.trim(),
     kiem: (s) => {
       const t = s.trim();
@@ -114,6 +149,9 @@ export const CAC_HE_THONG: readonly DacTaHeThong[] = [
     nhieu_ma: false,
     on_dinh: false,
     cot_cu: 'nhan_vien.erp_username',
+    cot_nhan_vien: 'erp_username',
+    dong_bo_cot: 'luon',
+    chi_tu_form_ho_so: false,
     chuan_hoa: (s) => s.trim().toLowerCase(),
     kiem: khong_rong,
   },
@@ -124,6 +162,9 @@ export const CAC_HE_THONG: readonly DacTaHeThong[] = [
     nhieu_ma: false,
     on_dinh: false,
     cot_cu: 'nhan_vien.ma_erp',
+    cot_nhan_vien: 'ma_erp',
+    dong_bo_cot: 'luon',
+    chi_tu_form_ho_so: false,
     chuan_hoa: (s) => s.trim().toUpperCase(),
     kiem: khong_rong,
   },
@@ -135,6 +176,9 @@ export const CAC_HE_THONG: readonly DacTaHeThong[] = [
     on_dinh: true,
     // Khong co cot cu nao: truoc day ma nay bi bo di sau khi kiem `id_token`.
     cot_cu: null,
+    cot_nhan_vien: null,
+    dong_bo_cot: 'khong',
+    chi_tu_form_ho_so: false,
     chuan_hoa: (s) => s.trim().toLowerCase(),
     kiem: (s) => (RE_UUID.test(s.trim().toLowerCase())
       ? null
@@ -147,6 +191,9 @@ export const CAC_HE_THONG: readonly DacTaHeThong[] = [
     nhieu_ma: true,
     on_dinh: false,
     cot_cu: 'nhan_vien.email',
+    cot_nhan_vien: 'email',
+    dong_bo_cot: 'khi_trong',
+    chi_tu_form_ho_so: false,
     chuan_hoa: (s) => s.trim().toLowerCase(),
     kiem: (s) => {
       const t = s.trim();

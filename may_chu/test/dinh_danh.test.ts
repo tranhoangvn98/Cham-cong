@@ -86,3 +86,39 @@ test('chi cac ma ON DINH duoc coi la khoa khop nguoi tin duoc', () => {
   const on_dinh = CAC_HE_THONG.filter((h) => h.on_dinh).map((h) => h.ma);
   assert.deepEqual(on_dinh.sort(), ['erp_cu', 'microsoft_oid']);
 });
+
+test('cot_cu va cot_nhan_vien phai noi cung mot chuyen', () => {
+  // Hai truong mo ta cung mot cot: `cot_cu` de hien va de doi soat, `cot_nhan_vien` de duong ghi
+  // ma biet phai dong bo cot nao. Lech nhau thi doi soat kiem mot cot ma duong ghi sua cot khac.
+  for (const h of CAC_HE_THONG) {
+    if (h.cot_nhan_vien === null) {
+      assert.equal(h.cot_cu, null, `${h.ma}: co cot_cu nhung khong co cot_nhan_vien`);
+      assert.equal(h.dong_bo_cot, 'khong', `${h.ma}: dong bo cot ma khong biet cot nao`);
+    } else {
+      assert.equal(h.cot_cu, `nhan_vien.${h.cot_nhan_vien}`,
+        `${h.ma}: cot_cu va cot_nhan_vien khong khop`);
+    }
+  }
+});
+
+test('chi `noi_bo` bi chan khoi trang ma dinh danh', () => {
+  // Doi `ma_nv` con keo theo doi ten thu muc kho tep va duong dan SharePoint, nen no chi doi
+  // duoc o form ho so. Con lai thi phai sua duoc tu trang ma dinh danh, neu khong thi khong ai
+  // gan lai duoc PIN cho nguoi moi.
+  const chan = CAC_HE_THONG.filter((h) => h.chi_tu_form_ho_so).map((h) => h.ma);
+  assert.deepEqual(chan, ['noi_bo']);
+});
+
+test('he thong NHIEU MA ma cot chi chua mot thi khong duoc ghi de bua', () => {
+  // `microsoft_email` cho nhieu ma nhung cot `email` chi chua mot: ghi `luon` thi them mot alias
+  // se de len email chinh — khoa dang nhap Microsoft duong du phong. Nen no phai la `khi_trong`.
+  const ms = CAC_HE_THONG.find((h) => h.ma === 'microsoft_email');
+  assert.equal(ms?.nhieu_ma, true);
+  assert.equal(ms?.dong_bo_cot, 'khi_trong');
+
+  // `may_cham_cong` thi CO Y ghi `luon` — cot giu PIN moi nhat, va bo tiep nhan ADMS doc bang
+  // truoc nen ca cac PIN khac van khop. Cot chi con la duong du phong.
+  const pin = CAC_HE_THONG.find((h) => h.ma === 'may_cham_cong');
+  assert.equal(pin?.nhieu_ma, true);
+  assert.equal(pin?.dong_bo_cot, 'luon');
+});

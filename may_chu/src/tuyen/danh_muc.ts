@@ -286,6 +286,17 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const b = than(req.body);
     const he_thong = trong_tap(b, 'he_thong', MA_CAC_HE_THONG, { bat_buoc: true }) as string;
     const ma = chuoi_bat_buoc(b, 'ma', { toi_da: 200 });
+
+    // `ma_nv` chi doi duoc tu form ho so: doi no con keo theo doi ten thu muc kho tep tren dia
+    // va duong dan tren SharePoint (`dong_bo_thu_muc_nhan_vien`). Cho sua o hai cho la de mot
+    // cho quen lam phan con lai.
+    const dt = CAC_HE_THONG.find((h) => h.ma === he_thong);
+    if (dt?.chi_tu_form_ho_so === true) {
+      throw new LoiDauVao(
+        `${dt.ten} chỉ đổi được ở form hồ sơ nhân viên, không đổi ở đây — đổi mã nhân viên `
+        + 'còn kéo theo đổi tên thư mục kho tệp và đường dẫn trên SharePoint.',
+      );
+    }
     // Mac dinh KHONG thu hoi ma cua nguoi khac. Nguoi goi phai noi ro — day la thao tac chuyen
     // danh tinh giua hai con nguoi, khong phai mot o nhap lieu binh thuong.
     const thu_hoi = luan_ly(b, 'thu_hoi_cua_nguoi_khac', false) === true;
