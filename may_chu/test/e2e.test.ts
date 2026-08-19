@@ -2284,8 +2284,15 @@ test('ban truy xuat tep: co duong dan da luu tren dia va tong dung luong', async
   assert.equal(r.ma, 200);
   const ds = r.body['danh_sach'] as Record<string, unknown>[];
   assert.ok(ds.length > 0);
-  assert.match(String(ds[0]?.['ten_luu']), /^\d{4}-\d{2}\/[0-9a-f-]{36}\./,
-    'phai tra ve duong dan tuong doi da luu trong CSDL');
+  // Duong dan theo cay `<MA_NV>_<Ho-ten>/<nhom>/<ngay>_<nhom>_<ten-goc>_<hex>.<duoi>`.
+  // Truoc day la `YYYY-MM/<uuid>.<duoi>` — phang, va mo thu muc len thi khong biet tep nao
+  // cua ai. Kiem bang chinh bo kiem cua may chu, khong viet lai regex o day: viet lai la
+  // mo duong cho bo kiem va bai kiem lech nhau.
+  const { duong_dan_hop_le } = await import('../src/tien_ich/ten_tep.ts');
+  const dd = String(ds[0]?.['ten_luu']);
+  assert.equal(duong_dan_hop_le(dd), true, `duong dan khong hop le: ${dd}`);
+  assert.match(dd, /^[A-Za-z0-9][^/]*\/[a-z_]+\/\d{4}-\d{2}-\d{2}_/,
+    `phai theo cay <MA_NV>_<Ho-ten>/<nhom>/<ngay>_...  nhan duoc: ${dd}`);
   assert.ok(String(ds[0]?.['ma_nv']).length > 0, 'phai biet tep cua ai');
   assert.ok(Number((r.body['tong'] as Record<string, unknown>)['so']) > 0);
   assert.ok(String(r.body['thu_muc_goc']).length > 0, 'phai cho biet thu muc goc tren dia');
@@ -4384,4 +4391,207 @@ test('dashboard: "viec cua nhan su" dem NGUOI chu khong dem dong', async () => {
   assert.ok(thieu <= so_nv,
     `thieu_tai_lieu = ${String(thieu)} > tong ${String(so_nv)} nhan vien `
     + '-> dang dem dong chu khong dem nguoi');
+});
+
+// ==================================================================== cay thu muc kho tep
+//
+// Kho tep truoc day phang: `2026-08/<uuid>.pdf`. Mo thu muc len — hay bung mot ban sao luu
+// ra may khac — thi khong biet tep nao cua ai, loai gi, tu bao gio. Mat CSDL la mat luon y
+// nghia cua ca kho tep.
+//
+// Cay moi: `<MA_NV>_<Ho-ten>/<nhom>/<ngay>_<nhom>_<ten-goc>_<hex>.<duoi>`
+//
+// `ten_luu` trong CSDL VAN LA KHOA DOC — khong cho nao tinh lai duong dan tu ma nhan vien,
+// vi ma nhan vien va ho ten deu doi duoc.
+
+let cay_nv = '';
+let cay_tep = '';
+
+test('cay thu muc: tep tai len nam dung <MA_NV>_<Ho-ten>/<nhom>/', async () => {
+  const nv = await goi('POST', '/api/nhan-vien', {
+    token: token_admin, body: { ma_nv: 'CAY-01', ho_ten: 'Hoàng Minh Ngọc' },
+  });
+  assert.equal(nv.ma, 201, JSON.stringify(nv.body));
+  cay_nv = nv.body['id'] as string;
+
+  cay_tep = await gan_tep(cay_nv, 'hop_dong', 'HĐLĐ Hoàng Minh Ngọc.pdf',
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(64, 0x20)]), token_admin);
+
+  const t = await truy_van_mot<{ ten_luu: string; id: string }>(
+    'select id, ten_luu from ho_so_tep where id = $1', [cay_tep]);
+
+  assert.equal(t?.ten_luu.startsWith('CAY-01_Hoang-Minh-Ngoc/hop_dong/'), true,
+    `duong dan sai cay: ${String(t?.ten_luu)}`);
+  // Dau tieng Viet phai bi bo — ten tep di qua tar, scp, WinSCP, Windows.
+  assert.equal(/[^\x20-\x7e]/.test(t?.ten_luu ?? ''), false,
+    `duong dan phai la ASCII: ${String(t?.ten_luu)}`);
+  assert.equal((t?.ten_luu ?? '').includes(' '), false, 'duong dan khong duoc co dau cach');
+  // Ten goc doc duoc trong ten tep.
+  assert.match(t?.ten_luu ?? '', /HDLD-Hoang-Minh-Ngoc/);
+});
+
+test('cay thu muc: ma tep trong ten tep KHOP voi khoa chinh cua dong CSDL', async () => {
+  // Day la ca loi ich cua quy chuan: mo thu muc len, doc tam ky tu hex, tra nguoc duoc ve
+  // dung dong CSDL. De CSDL sinh ma rieng thi ten tep va khoa chinh khong lien quan gi nhau.
+  const t = await truy_van_mot<{ ten_luu: string }>(
+    'select ten_luu from ho_so_tep where id = $1', [cay_tep]);
+  const hex = cay_tep.replace(/-/g, '').slice(0, 8);
+  assert.match(t?.ten_luu ?? '', new RegExp(`_${hex}\\.pdf$`),
+    `ten tep phai chua 8 ky tu dau cua ma ${cay_tep}`);
+});
+
+test('cay thu muc: TEP THAT nam dung cho tren dia, va tai ve duoc', async () => {
+  const { doc_tep_ho_so } = await import('../src/tien_ich/luu_tep.ts');
+  const t = await truy_van_mot<{ ten_luu: string }>(
+    'select ten_luu from ho_so_tep where id = $1', [cay_tep]);
+
+  const byte = await doc_tep_ho_so(t?.ten_luu ?? '');
+  assert.notEqual(byte, null, 'tep phai co that tren dia o dung duong dan trong CSDL');
+  assert.ok(byte!.subarray(0, 5).equals(Buffer.from('%PDF-')));
+
+  // Va duong tai ve qua HTTP cung phai chay.
+  const ve = await goi('GET', `/api/ho-so/tep/${cay_tep}`, { token: token_admin });
+  assert.equal(ve.ma, 200);
+});
+
+test('cay thu muc: doi MA NHAN VIEN -> thu muc doi theo, ten_luu cap nhat, tep van doc duoc', async () => {
+  const r = await goi('PUT', `/api/nhan-vien/${cay_nv}`, {
+    token: token_admin, body: { ma_nv: 'CAY-02', ho_ten: 'Hoàng Minh Ngọc' },
+  });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+
+  const t = await truy_van_mot<{ ten_luu: string }>(
+    'select ten_luu from ho_so_tep where id = $1', [cay_tep]);
+  assert.equal(t?.ten_luu.startsWith('CAY-02_Hoang-Minh-Ngoc/hop_dong/'), true,
+    `thu muc chua doi theo ma moi: ${String(t?.ten_luu)}`);
+
+  // QUAN TRONG NHAT: doc van phai chay. Doi ten thu muc ma lam mat duong doc thi tinh nang
+  // nay te hon la khong co.
+  const { doc_tep_ho_so } = await import('../src/tien_ich/luu_tep.ts');
+  assert.notEqual(await doc_tep_ho_so(t?.ten_luu ?? ''), null);
+  const ve = await goi('GET', `/api/ho-so/tep/${cay_tep}`, { token: token_admin });
+  assert.equal(ve.ma, 200);
+});
+
+test('cay thu muc: doi HO TEN -> thu muc doi theo', async () => {
+  const r = await goi('PUT', `/api/nhan-vien/${cay_nv}`, {
+    token: token_admin, body: { ma_nv: 'CAY-02', ho_ten: 'Hoàng Minh Ngọc Anh' },
+  });
+  assert.equal(r.ma, 200);
+
+  const t = await truy_van_mot<{ ten_luu: string }>(
+    'select ten_luu from ho_so_tep where id = $1', [cay_tep]);
+  assert.equal(t?.ten_luu.startsWith('CAY-02_Hoang-Minh-Ngoc-Anh/hop_dong/'), true,
+    `thu muc chua doi theo ho ten moi: ${String(t?.ten_luu)}`);
+
+  const ve = await goi('GET', `/api/ho-so/tep/${cay_tep}`, { token: token_admin });
+  assert.equal(ve.ma, 200);
+});
+
+test('cay thu muc: SAP XEP tep dang o cay CU sang cay moi', async () => {
+  // Gia lap mot tep tai len TRUOC khi doi cay: ghi tay xuong dia theo duong dan cu roi tro
+  // dong CSDL vao do. Day la dung tinh huong tren may that luc trien khai ban nay.
+  const { writeFile, mkdir } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const { cau_hinh } = await import('../src/cau_hinh.ts');
+  const { randomUUID } = await import('node:crypto');
+
+  const ma_cu = randomUUID();
+  const ten_cu = `2026-07/${ma_cu}.pdf`;
+  await mkdir(join(cau_hinh.thu_muc_ho_so, '2026-07'), { recursive: true });
+  await writeFile(join(cau_hinh.thu_muc_ho_so, ten_cu),
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(32, 0x21)]));
+
+  await thuc_thi(
+    `insert into ho_so_tep(id, nhan_vien_id, nhom, ten_goc, ten_luu, kieu_mime, kich_thuoc,
+                           tao_luc)
+     values ($1,$2,'hop_dong','Bằng cấp Đại học.pdf',$3,'application/pdf',41,
+             '2026-07-05T03:00:00Z')`,
+    [ma_cu, cay_nv, ten_cu],
+  );
+
+  const { sap_xep_kho } = await import('../src/ho_so/sap_xep_tep.ts');
+
+  // Chay thu KHONG duoc doi gi.
+  const thu = await sap_xep_kho('thu', cay_nv);
+  assert.ok(thu.so_doi_cho >= 1, 'chay thu phai thay tep cay cu can doi cho');
+  const van_cu = await truy_van_mot<{ ten_luu: string }>(
+    'select ten_luu from ho_so_tep where id = $1', [ma_cu]);
+  assert.equal(van_cu?.ten_luu, ten_cu, 'CHAY THU khong duoc doi gi ca');
+
+  // Chay that.
+  const that = await sap_xep_kho('that', cay_nv);
+  assert.ok(that.so_doi_cho >= 1);
+  assert.equal(that.so_mat_tep, 0, JSON.stringify(that.chi_tiet));
+
+  const moi = await truy_van_mot<{ ten_luu: string }>(
+    'select ten_luu from ho_so_tep where id = $1', [ma_cu]);
+  assert.equal(moi?.ten_luu.startsWith('CAY-02_Hoang-Minh-Ngoc-Anh/hop_dong/'), true,
+    `chua sang cay moi: ${String(moi?.ten_luu)}`);
+  // NGAY trong ten tep lay tu `tao_luc` cua dong CSDL, khong lay hom nay — ten tep phai noi
+  // dung luc tep duoc nap.
+  assert.match(moi?.ten_luu ?? '', /\/2026-07-05_hop-dong_Bang-cap-Dai-hoc_/);
+
+  const { doc_tep_ho_so } = await import('../src/tien_ich/luu_tep.ts');
+  assert.notEqual(await doc_tep_ho_so(moi?.ten_luu ?? ''), null, 'tep phai theo sang cho moi');
+});
+
+test('cay thu muc: sap xep GOI LAI DUOC nhieu lan, lan hai khong doi gi', async () => {
+  const { sap_xep_kho } = await import('../src/ho_so/sap_xep_tep.ts');
+  const lan_2 = await sap_xep_kho('that', cay_nv);
+  assert.equal(lan_2.so_doi_cho, 0, 'tep da dung cho thi khong duoc doi nua');
+  assert.ok(lan_2.so_dung_cho >= 2);
+});
+
+test('cay thu muc: dong CSDL tro den tep khong con -> dem vao so_mat_tep, KHONG nem loi', async () => {
+  const { randomUUID } = await import('node:crypto');
+  const ma = randomUUID();
+  await thuc_thi(
+    `insert into ho_so_tep(id, nhan_vien_id, nhom, ten_goc, ten_luu, kieu_mime, kich_thuoc)
+     values ($1,$2,'hop_dong','tep da mat.pdf',$3,'application/pdf',10)`,
+    [ma, cay_nv, `2026-06/${randomUUID()}.pdf`],
+  );
+
+  const { sap_xep_kho } = await import('../src/ho_so/sap_xep_tep.ts');
+  const kq = await sap_xep_kho('that', cay_nv);
+  assert.equal(kq.so_mat_tep, 1, JSON.stringify(kq.chi_tiet));
+  // Mot tep mat khong duoc chan viec sap xep nhung tep con lai.
+  assert.ok(kq.so_xet >= 3);
+
+  await thuc_thi('delete from ho_so_tep where id = $1', [ma]);
+});
+
+test('cay thu muc: duong dan xau trong CSDL duoc BAO RA, khong am tham bo qua', async () => {
+  const { randomUUID } = await import('node:crypto');
+  const ma = randomUUID();
+  await thuc_thi(
+    `insert into ho_so_tep(id, nhan_vien_id, nhom, ten_goc, ten_luu, kieu_mime, kich_thuoc)
+     values ($1,$2,'hop_dong','xau.pdf','../../etc/passwd','application/pdf',10)`,
+    [ma, cay_nv],
+  );
+
+  const { sap_xep_kho } = await import('../src/ho_so/sap_xep_tep.ts');
+  const kq = await sap_xep_kho('that', cay_nv);
+  assert.equal(kq.so_duong_dan_xau, 1, JSON.stringify(kq.chi_tiet));
+  assert.ok(kq.chi_tiet.some((c) => c.ket_qua === 'duong_dan_xau'));
+
+  await thuc_thi('delete from ho_so_tep where id = $1', [ma]);
+});
+
+test('cay thu muc: HAI tep cung ten goc trong cung thu muc KHONG de len nhau', async () => {
+  // Trung ten la mat mot ban goc. Phan hex chong trung, va neu ten ngan da bi chiem thi
+  // dung ca ma.
+  const pdf = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(48, 0x22)]);
+  const a = await gan_tep(cay_nv, 'tai_lieu', 'CCCD.pdf', pdf, token_admin);
+  const b = await gan_tep(cay_nv, 'tai_lieu', 'CCCD.pdf', pdf, token_admin);
+
+  const ds = await truy_van<{ ten_luu: string }>(
+    'select ten_luu from ho_so_tep where id = any($1::uuid[])', [[a, b]]);
+  assert.equal(ds.length, 2);
+  assert.notEqual(ds[0]?.ten_luu, ds[1]?.ten_luu, 'hai tep phai co hai duong dan khac nhau');
+
+  const { doc_tep_ho_so } = await import('../src/tien_ich/luu_tep.ts');
+  for (const d of ds) {
+    assert.notEqual(await doc_tep_ho_so(d.ten_luu), null, `mat tep: ${d.ten_luu}`);
+  }
 });

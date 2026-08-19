@@ -2,6 +2,121 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.25.0] — 2026-08-19
+
+**Kho tệp hồ sơ có cây thư mục đọc được, tên tệp theo quy chuẩn.**
+
+Trước bản này kho tệp phẳng: `2026-08/9e5dbb73-e0b5-4dd7-997a-c6e16cf66ca5.docx`. Mở thư mục
+lên — hay bung một bản sao lưu ra máy khác **không có cơ sở dữ liệu** — thì cả kho là một đống
+tên vô nghĩa. Mất cơ sở dữ liệu là mất luôn ý nghĩa của cả kho tệp.
+
+```
+/du_lieu/ho_so/
+├── HR-01_Hoang-Minh-Ngoc/
+│   ├── hop_dong/2026-08-18_hop-dong_HDLD-07-2026_a1b2c3d4.pdf
+│   ├── tai_lieu/2026-08-18_tai-lieu_CCCD_e5f6a7b8.pdf
+│   └── bhxh/2026-08-18_bhxh_BAO-TANG_9a8b7c6d.pdf
+└── IT-01_Phan-Song-Hao/
+    └── hop_dong/2026-07-01_hop-dong_HDLD-03-2026_5f6a7b8c.pdf
+```
+
+### Ba ràng buộc của tên, và đều có lý do cụ thể
+
+1. **Không dấu, chỉ ASCII.** Tên tệp đi qua `tar`, `scp`, `rsync`, WinSCP, Windows, và qua cả
+   `Content-Disposition`. Mỗi chặng hiểu UTF-8 một cách khác nhau, và cái giá của một chặng
+   hiểu sai là một bản scan hợp đồng không mở được.
+   Riêng **`đ` và `Đ` phải thay tay** — chúng không phải `d` có dấu mà là chữ cái riêng, không
+   tách ra được bằng `normalize('NFD')`. Quên thì `HĐLĐ` thành `HL`.
+2. **Không dấu cách.** Đường dẫn có dấu cách làm vỡ mọi đoạn script một dòng ai đó gõ vội
+   trong lúc sự cố.
+3. **Tám ký tự hex ở cuối** — là **tám ký tự đầu của `ho_so_tep.id`**. Mở thư mục lên là tra
+   ngược được về đúng dòng cơ sở dữ liệu. Mã sinh ở tầng ứng dụng rồi dùng làm khóa chính của
+   dòng, chứ không để cơ sở dữ liệu sinh mã riêng — để mã riêng thì tên tệp và khóa chính
+   không liên quan gì nhau, và cả lợi ích chính của quy chuẩn mất sạch.
+
+Hai tệp cùng tên gốc trong cùng thư mục: phần hex chống trùng, và nếu tên ngắn đã bị chiếm thì
+dùng **cả** mã. Ghi bằng `flag: 'wx'` — tạo mới, **hỏng nếu đã có**. Chỗ này giữ bản gốc giấy
+tờ pháp lý; ghi đè là mất vĩnh viễn.
+
+### Đường đọc vẫn là cơ sở dữ liệu — điểm thiết kế quan trọng nhất
+
+`ho_so_tep.ten_luu` **là khóa đọc**. Không chỗ nào tính lại đường dẫn từ mã nhân viên.
+
+Vì mã nhân viên và họ tên **đều đổi được** — đồng bộ ERP ghi lại họ tên mỗi lần chạy. Nếu đọc
+bằng cách tính lại thì mỗi lần đổi tên là một lần **cả kho tệp biến mất**, và biến mất im
+lặng: không lỗi, chỉ là "không tìm thấy tệp".
+
+Nên **thư mục lệch không làm mất tệp.** Tên thư mục không khớp hồ sơ thì mọi tệp vẫn mở được
+bình thường. Sắp xếp lại là dọn dẹp, không phải cứu hộ.
+
+### Đổi chỗ tệp: thứ tự là cả vấn đề
+
+Không có lệnh nào làm nguyên tử cả "đổi chỗ tệp trên đĩa" và "cập nhật dòng cơ sở dữ liệu" —
+một bên là hệ tệp, một bên là Postgres. Nên phải chọn hỏng ở giữa thì để lại trạng thái nào,
+và **chỉ có một lựa chọn chấp nhận được: trạng thái mà mọi tệp vẫn đọc được.**
+
+```
+1. rename trên đĩa     tệp sang chỗ mới, CSDL còn trỏ chỗ cũ  -> TẠM THỜI HỎNG
+2. update ten_luu      khớp lại, xong
+3. update lỗi          -> rename ngược lại, rồi ném lỗi lên
+```
+
+Cửa sổ hỏng ở bước 1 chỉ dài bằng một lệnh `update`, và bước 3 đóng nó lại. Thứ tự ngược
+(update trước, rename sau) **nghe** an toàn hơn nhưng tệ hơn thật: rename thất bại thì cơ sở
+dữ liệu đã trỏ đến một chỗ không bao giờ có tệp, và không còn thông tin nào để tìm lại.
+
+### Giữ thư mục đúng khi mã nhân viên / họ tên đổi
+
+Có **bốn** chỗ trong hệ thống sửa được hai trường đó: nhân sự sửa tay, nhập CSV, đồng bộ ERP,
+API `/api/v1`. Cả bốn đều được nối vào, và **một chỗ quên là một chỗ lệch im lặng mãi mãi** —
+nên có thêm **một lần quét mỗi ngày** làm lưới hứng. Việc "quên một chỗ" vì thế thành "lệch
+tối đa một ngày".
+
+Hai đường bulk (nhập CSV, đồng bộ ERP) quét **một lần sau cả lô** thay vì gọi từng người: gọi
+từng người là một truy vấn toàn bảng cho mỗi nhân viên.
+
+### Chạy tay
+
+**Hệ thống → Kho tệp hồ sơ → Cây thư mục**, hoặc:
+
+```bash
+docker compose exec may_chu npm run sap_xep_tep            # chạy thử, KHÔNG đổi gì
+docker compose exec may_chu npm run sap_xep_tep -- --that  # đổi chỗ thật
+```
+
+**Mặc định là chạy thử.** Một lệnh mặc định "làm thật" ở đây là một lệnh cho phép gõ nhầm một
+chữ trên bản gốc hợp đồng.
+
+Gọi lại được nhiều lần; tệp đã đúng chỗ thì bỏ qua. Hai con số được báo riêng và **không bao
+giờ bỏ qua im lặng**: **mất tệp** (có dòng CSDL nhưng không có tệp trên đĩa — thường do phục
+hồi sao lưu thiếu volume `ho_so`) và **đường dẫn xấu** (dữ liệu hỏng, cần người xem).
+
+### Hàng rào chống path traversal
+
+`ten_luu` đến từ cơ sở dữ liệu, nhưng một dòng hỏng hay một lần chèn SQL ở chỗ khác đều biến
+nó thành đường đi tùy ý trên đĩa máy chủ. Hai lớp: `duong_dan_hop_le` chặn hình dạng, rồi
+`resolve` đối chiếu với thư mục gốc.
+
+Cây **cũ** vẫn được nhận — tệp chưa sắp xếp phải còn đọc được. Bỏ sớm một ngày là một ngày
+không ai mở được hợp đồng nào.
+
+Bài kiểm quan trọng nhất của nhóm này: **hơn 300 tổ hợp tên do bộ sinh tạo ra đều phải qua
+được bộ kiểm.** Bộ sinh và bộ kiểm lệch nhau thì mỗi lần tải tệp lên sẽ ghi được xuống đĩa rồi
+không đọc lại được — tệp mồ côi ngay từ đầu.
+
+**312 unit (1 bỏ qua khi chạy bằng root) + 5 proxy + 15 thiết kế + 270 e2e, tất cả đạt.**
+
+### Việc cần làm sau khi triển khai
+
+Kho tệp hiện có **rất ít tệp** (mới bắt đầu nạp được từ bản 1.22.2), nên sắp xếp sẽ nhanh:
+
+```bash
+docker compose exec may_chu npm run sap_xep_tep            # xem trước
+docker compose exec may_chu npm run sap_xep_tep -- --that  # rồi đổi
+```
+
+Không chạy cũng được — lần quét hàng ngày sẽ tự làm.
+
 ## [1.24.0] — 2026-08-18
 
 **Trang Tổng quan dựng theo vai trò — và một đường rò rỉ dữ liệu đã tồn tại từ đầu.**

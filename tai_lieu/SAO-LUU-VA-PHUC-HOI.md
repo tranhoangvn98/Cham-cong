@@ -217,3 +217,75 @@ git checkout <mã-bản-cũ> && docker compose up -d --build
 
 Lưu ý: nếu bản mới đã chạy di trú CSDL thì lui mã nguồn **không** lui được lược đồ CSDL.
 Muốn về đúng trạng thái cũ thì phải phục hồi cả CSDL theo mục 6.1.
+
+## 8. Cây thư mục kho hồ sơ
+
+Từ bản 1.25.0, tệp đính kèm hồ sơ nằm theo cây:
+
+```
+/du_lieu/ho_so/
+├── HR-01_Hoang-Minh-Ngoc/
+│   ├── hop_dong/
+│   │   └── 2026-08-18_hop-dong_HDLD-07-2026_a1b2c3d4.pdf
+│   ├── tai_lieu/
+│   │   ├── 2026-08-18_tai-lieu_CCCD_e5f6a7b8.pdf
+│   │   └── 2026-08-18_tai-lieu_SO-YEU-LY-LICH_11c2d3e4.pdf
+│   └── bhxh/
+│       └── 2026-08-18_bhxh_BAO-TANG_9a8b7c6d.pdf
+└── IT-01_Phan-Song-Hao/
+    └── hop_dong/
+        └── 2026-07-01_hop-dong_HDLD-03-2026_5f6a7b8c.pdf
+```
+
+**Vì sao việc này thuộc tài liệu sao lưu:** cây cũ là `2026-08/<uuid>.pdf`. Bung một bản sao
+lưu ra máy khác mà **không có cơ sở dữ liệu** thì cả kho tệp là một đống tên vô nghĩa — không
+biết tệp nào của ai, loại gì. Cây mới đọc được bằng mắt, nên bản sao lưu tự nó có giá trị.
+
+Tám ký tự hex ở cuối tên tệp là **tám ký tự đầu của `ho_so_tep.id`** — mở thư mục lên là tra
+ngược được về đúng dòng cơ sở dữ liệu.
+
+Không dấu tiếng Việt, không dấu cách: tên tệp đi qua `tar`, `scp`, `rsync`, WinSCP, Windows,
+và qua cả header `Content-Disposition`. Mỗi chặng hiểu UTF-8 một cách khác nhau.
+
+### Đường đọc vẫn là cơ sở dữ liệu
+
+`ho_so_tep.ten_luu` **là khóa đọc**. Không chỗ nào tính lại đường dẫn từ mã nhân viên, vì mã
+nhân viên và họ tên **đều đổi được** (đồng bộ ERP ghi lại họ tên mỗi lần chạy).
+
+Nghĩa là: **thư mục lệch không làm mất tệp.** Nếu tên thư mục không khớp hồ sơ, mọi tệp vẫn
+mở được bình thường — chỉ là tên thư mục cũ. Sắp xếp lại là việc dọn dẹp, không phải cứu hộ.
+
+### Sắp xếp lại
+
+Thư mục được đổi **ngay tại chỗ** khi sửa mã nhân viên hoặc họ tên, và có một **lần quét mỗi
+ngày** làm lưới hứng (có bốn chỗ trong hệ thống sửa được hai trường đó).
+
+Chạy tay khi cần — **Hệ thống → Kho tệp hồ sơ → Cây thư mục**, hoặc:
+
+```bash
+# 🖥️ Trên VPS — chạy thử, KHÔNG đổi gì
+cd /root/Cham-cong && docker compose exec may_chu npm run sap_xep_tep
+
+# Đổi chỗ thật
+cd /root/Cham-cong && docker compose exec may_chu npm run sap_xep_tep -- --that
+```
+
+**Mặc định là chạy thử.** Thứ đang di chuyển là bản gốc hợp đồng, CCCD, bằng cấp — không khôi
+phục được từ cơ sở dữ liệu.
+
+Lệnh **gọi lại được nhiều lần**: tệp đã đúng chỗ thì bỏ qua. Việc chỉ di chuyển **trong** kho
+hồ sơ — không xóa, không ghi đè.
+
+### Hai con số cần để ý trong kết quả
+
+| | Nghĩa là gì |
+|---|---|
+| **MẤT TỆP** | có dòng cơ sở dữ liệu nhưng không có tệp trên đĩa. Thường do phục hồi sao lưu **thiếu volume `ho_so`** — xem mục sao lưu ở trên, phải kéo **cả hai** volume. |
+| **ĐƯỜNG DẪN XẤU** | `ten_luu` trong cơ sở dữ liệu không hợp lệ. Dữ liệu hỏng, cần người xem — máy không tự xử lý. |
+
+Lần quét hàng ngày ghi cả hai con số này ra log:
+
+```bash
+cd /root/Cham-cong && docker compose logs may_chu | grep "CANH BAO kho tep"
+```
+

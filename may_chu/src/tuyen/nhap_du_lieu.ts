@@ -8,6 +8,7 @@ import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { tiep_nhan_attlog } from '../adms/tiep_nhan.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
+import { sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
 import { chuan_hoa_tieu_de, doi_chieu_cot, tach_csv, type DongCsv } from '../tien_ich/csv.ts';
 import { chuoi, chuoi_bat_buoc, luan_ly, than, LoiDauVao } from '../tien_ich/kiem_tra.ts';
 
@@ -260,6 +261,17 @@ export async function tuyen_nhap_du_lieu(app: FastifyInstance): Promise<void> {
     const kq = await tiep_nhan_attlog(serial, attlog.van_ban);
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'nhap_lan_quet', 'lan_quet',
       null, { serial, ...kq }, req.ip);
+    // Nhap CSV doi ho ten hang loat, va ten thu muc kho tep mang ho ten. Quet mot lan sau
+    // ca lo. Khong nem loi: du lieu nhan vien da nhap xong va dung.
+    try {
+      const sx = await sap_xep_kho('that');
+      if (sx.so_doi_cho > 0) {
+        req.log.info(`[nhap] da doi cho ${String(sx.so_doi_cho)} tep theo ho ten moi`);
+      }
+    } catch (loi) {
+      req.log.warn(`[nhap] khong sap xep duoc kho tep: ${(loi as Error).message}`);
+    }
+
     return { xem_truoc: false, ...kq };
   });
 }

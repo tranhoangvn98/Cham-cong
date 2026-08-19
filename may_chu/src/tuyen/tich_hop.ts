@@ -19,6 +19,7 @@ import swagger_ui from '@fastify/swagger-ui';
 import { cau_hinh } from '../cau_hinh.ts';
 import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
 import { can_khoa_api, ghi_lan_goi } from '../bao_mat/khoa_api.ts';
+import { dong_bo_thu_muc_nhan_vien } from '../ho_so/sap_xep_tep.ts';
 import {
   LoiKhongTim, chuoi, chuoi_bat_buoc, khoang_ngay, ngay, phan_trang, than,
 } from '../tien_ich/kiem_tra.ts';
@@ -592,6 +593,10 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
       [co.id, ho_ten, email, so_dien_thoai, chuc_danh, pin_may, ma_erp, ngay_vao,
         ngay_nghi_viec, typeof dang_hoat_dong === 'boolean' ? dang_hoat_dong : null],
     );
+
+    // Doi ho ten qua API tich hop cung phai doi ten thu muc kho tep. Bon cho sua duoc
+    // ma_nv/ho_ten, va day la mot trong bon.
+    await dong_bo_thu_muc_nhan_vien(co.id, (m: string) => { req.log.info(m); });
     return { du_lieu: sua, da_tao: false };
   });
 

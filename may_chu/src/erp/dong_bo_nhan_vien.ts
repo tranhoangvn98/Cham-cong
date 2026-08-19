@@ -16,6 +16,7 @@
 //   4. Co che do CHAY THU: xem truoc se tao/sua ai truoc khi ghi that.
 import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { lay_nguoi_dung, type NguoiDungErp } from './khach.ts';
+import { sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
 
 export type HanhDong = 'tao_moi' | 'cap_nhat' | 'khong_doi' | 'bo_qua';
 
@@ -228,6 +229,21 @@ export async function dong_bo_nhan_vien(
       }
     }
   });
+
+  // Dong bo ERP GHI LAI HO TEN cho hang chuc nguoi mot lan, va ten thu muc kho tep mang ho
+  // ten. Quet MOT LAN sau ca lo thay vi goi tung nguoi: goi tung nguoi la mot truy van
+  // toan bang cho moi nhan vien.
+  //
+  // Khong nem loi neu quet hong — dong bo nguoi dung da xong va da dung; ten thu muc lech
+  // thi lan quet dinh ky hang ngay se sua, va trong luc lech moi tep van doc duoc.
+  try {
+    const sx = await sap_xep_kho('that');
+    if (sx.so_doi_cho > 0) {
+      console.log(`[erp] da doi cho ${String(sx.so_doi_cho)} tep theo ho ten moi`);
+    }
+  } catch (loi) {
+    console.warn(`[erp] khong sap xep duoc kho tep sau dong bo: ${(loi as Error).message}`);
+  }
 
   return kq;
 }

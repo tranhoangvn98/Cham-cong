@@ -10,7 +10,7 @@
 // chung, khong the bo sot.
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
-import { can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
+import { can_admin, can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import {
   CAC_NHOM, LY_DO_KHONG_THAY_XOA_DUOC, cac_nhom_doc_duoc, chi_duoc_sua_o, doc_duoc,
   sua_duoc, thay_xoa_tep_duoc,
@@ -23,6 +23,8 @@ import {
   LoiDinhDang, cong_cu_trich, trich_tu_tep, type KetQuaTrich,
 } from '../hop_dong/trich_noi_dung.ts';
 import { hop_dong_sap_het_han, muc_gap } from '../hop_dong/nhac_han.ts';
+import { sap_xep_kho, so_tep_lech } from '../ho_so/sap_xep_tep.ts';
+import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { doc_tep_ho_so, lam_sach_ten, luu_tep_ho_so, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import {
@@ -810,7 +812,7 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
   }, async (req, res) => {
     const nd = nguoi_xem(req);
     const id = doc_id(req);
-    const { bc } = await nap_boi_canh(nd, id);
+    const { nv, bc } = await nap_boi_canh(nd, id);
 
     const truong: Record<string, string> = {};
     let du_lieu: Buffer | null = null;
@@ -842,21 +844,30 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       ? null
       : uuid_bat_buoc(truong, 'thuoc_id');
 
-    const thang = new Date().toISOString().slice(0, 7);
-    const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, thang);
+    // Cay thu muc mang MA NHAN VIEN va HO TEN, nen phai lay tu ban ghi nhan vien chu khong
+    // phai tu than yeu cau. Xem `tien_ich/ten_tep.ts`.
+    const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, {
+      ma_nv: nv.ma_nv,
+      ho_ten: nv.ho_ten,
+      nhom,
+      ngay: ngay_dia_phuong(new Date()),
+    });
 
     // Tep da nam tren dia truoc khi co dong CSDL. Ghi that bai thi PHAI xoa no di: khong
     // xoa thi tep mo coi tren dia khong ai biet den, khong ai xoa duoc qua giao dien, va
     // vi la ban scan ho so nhan su nen no la du lieu ca nhan nam ngoai moi so sach.
     let moi: Record<string, unknown> | null;
     try {
+      // `id` lay tu `da_luu.ma_tep`, KHONG de CSDL sinh: tam ky tu dau cua ma nam trong ten
+      // tep, nen mo thu muc len la tra nguoc duoc ve dung dong CSDL. De CSDL sinh ma rieng
+      // thi ten tep va khoa chinh khong lien quan gi den nhau.
       moi = await truy_van_mot(
-        `insert into ho_so_tep(nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
+        `insert into ho_so_tep(id, nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
                                kich_thuoc, tai_len_boi)
-         values ($1,$2,$3,$4,$5,$6,$7,$8)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
          returning id, nhom, thuoc_id, ten_goc, kieu_mime, kich_thuoc, tao_luc`,
-        [id, nhom, thuoc_id, ten_goc, da_luu.ten_luu, da_luu.mime, da_luu.kich_thuoc,
-          nguoi_dung_hien_tai(req).sub],
+        [da_luu.ma_tep, id, nhom, thuoc_id, ten_goc, da_luu.ten_luu, da_luu.mime,
+          da_luu.kich_thuoc, nguoi_dung_hien_tai(req).sub],
       );
     } catch (loi) {
       await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* da co loi that o tren */ });
@@ -1027,6 +1038,37 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.tim_noi_dung_hop_dong',
       'hop_dong_lao_dong', '', { tu_khoa, so_ket_qua: dong.length }, req.ip);
     return { danh_sach: dong, tu_khoa };
+  });
+
+  // ------------------------------------------------------------ sap xep kho tep
+  //
+  // Duong rieng, khong dat duoi `/ho-so/tep/...`: cho do da co `/ho-so/tep/:tep_id` va mot
+  // doan tinh trung ten voi tham so la mot cho de nham.
+
+  /** Con bao nhieu tep chua dung cho? Chi DEM, khong di chuyen gi. */
+  app.get('/ho-so/sap-xep-tep', { preHandler: can_nhan_su }, async () => so_tep_lech());
+
+  /**
+   * Sap xep kho tep vao dung cay thu muc.
+   *
+   * Chi ADMIN. Day la thao tac DI CHUYEN HANG LOAT tren ban goc hop dong, CCCD, bang cap —
+   * khong khoi phuc duoc tu CSDL. Mac dinh `che_do = 'thu'`: doc va bao se doi gi, khong
+   * ghi gi.
+   */
+  app.post('/ho-so/sap-xep-tep', { preHandler: can_admin }, async (req) => {
+    const b = than(req.body ?? {});
+    const che_do = trong_tap(b, 'che_do', ['thu', 'that'] as const, { mac_dinh: 'thu' })!;
+    const kq = await sap_xep_kho(che_do);
+
+    if (che_do === 'that') {
+      await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.sap_xep_kho_tep', 'ho_so_tep', '',
+        {
+          so_xet: kq.so_xet, so_doi_cho: kq.so_doi_cho,
+          so_mat_tep: kq.so_mat_tep, so_duong_dan_xau: kq.so_duong_dan_xau,
+        }, req.ip);
+    }
+    // Cat bot chi tiet: mot kho vai nghin tep se tra ve mot payload khong ai doc het.
+    return { ...kq, chi_tiet: kq.chi_tiet.slice(0, 200), cat_bot: kq.chi_tiet.length > 200 };
   });
 
   /**

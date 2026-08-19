@@ -9,6 +9,7 @@ import { xep_lenh } from '../adms/tuyen.ts';
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
+import { dong_bo_thu_muc_nhan_vien } from '../ho_so/sap_xep_tep.ts';
 import { PHAM_VI, la_pham_vi, sinh_khoa } from '../bao_mat/khoa_api.ts';
 import { doc_danh_sach_ip } from '../tien_ich/dia_chi_ip.ts';
 import {
@@ -205,6 +206,12 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       'Mã nhân viên hoặc PIN máy đã được dùng cho người khác.',
     );
     if (so === 0) throw new LoiKhongTim('Không tìm thấy nhân viên.');
+
+    // Ten thu muc kho tep mang ma nhan vien va ho ten, nen doi hai truong do thi thu muc
+    // phai doi theo. KHONG nem loi neu doi cho that bai: `ho_so_tep.ten_luu` van tro dung
+    // cho cu nen moi tep van doc duoc, va lan quet dinh ky se sua ten thu muc sau.
+    await dong_bo_thu_muc_nhan_vien(id, (m) => { req.log.info(m); });
+
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'sua_nhan_vien', 'nhan_vien', id, null, req.ip);
     return { ok: true };
   });
