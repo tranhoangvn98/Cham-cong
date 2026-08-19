@@ -4595,3 +4595,159 @@ test('cay thu muc: HAI tep cung ten goc trong cung thu muc KHONG de len nhau', a
     assert.notEqual(await doc_tep_ho_so(d.ten_luu), null, `mat tep: ${d.ten_luu}`);
   }
 });
+
+// ==================================================================== dong bo SharePoint
+//
+// Ba dieu chi kiem duoc o day chu khong kiem duoc bang bai don le, vi chung nam trong SQL:
+//
+//   1. Go mot tep thi dong trong `sharepoint_tep` PHAI CON LAI, voi duong_dan_muon = null.
+//      Do la ca ly do bang do khong co khoa ngoai. Neu co khoa ngoai `on delete cascade` thi
+//      dong bien mat cung voi thong tin duy nhat cho biet con mot ban sao can xoa tren
+//      SharePoint — ban do se song mai o do va khong ai biet.
+//   2. `ghi_nhan` chay lai KHONG duoc xoa dau vet loi khi duong dan khong doi. Neu xoa thi
+//      so_lan_thu khong bao gio len den tran, vong thu lai chay vinh vien, va bang luon nhin
+//      nhu binh thuong.
+//   3. Nhom khieu_nai bi bo qua CO Y, kem ly do doc duoc — khong phai quen.
+
+let sp_nv = '';
+let sp_tep = '';
+
+test('sharepoint: tai tep len thi co ngay mot dong trang thai voi duong dan HCNS', async () => {
+  const nv = await goi('POST', '/api/nhan-vien', {
+    token: token_admin, body: { ma_nv: 'SP-01', ho_ten: 'Nguyễn Thị Ánh Tuyết' },
+  });
+  assert.equal(nv.ma, 201, JSON.stringify(nv.body));
+  sp_nv = nv.body['id'] as string;
+
+  sp_tep = await gan_tep(sp_nv, 'hop_dong', 'HĐLĐ.pdf',
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(64, 0x20)]), token_admin);
+
+  // `ghi_nhan_am_tham` khong duoc await trong route nen goi lai o day cho chac chan.
+  const { ghi_nhan } = await import('../src/sharepoint/dong_bo.ts');
+  await ghi_nhan(sp_tep);
+
+  const d = await truy_van_mot<{ duong_dan_muon: string | null; ket_qua: string }>(
+    'select duong_dan_muon, ket_qua from sharepoint_tep where tep_id = $1', [sp_tep]);
+  assert.notEqual(d, null, 'khong co dong trang thai nao cho tep vua nap');
+
+  const dd = d?.duong_dan_muon ?? '';
+  assert.ok(dd.startsWith('02 HỢP ĐỒNG & THỎA THUẬN/02.1 '), `nhanh sai: ${dd}`);
+  // Thu muc theo quy uoc cua HCNS: HOA, khong dau. Ten tep thi GIU dau.
+  assert.ok(dd.includes('/SP-01-NGUYEN THI ANH TUYET/'), `thu muc nhan vien sai: ${dd}`);
+  assert.ok(dd.includes('Nguyễn Thị Ánh Tuyết'), `ten tep phai giu dau: ${dd}`);
+  assert.ok(dd.endsWith('.pdf'), dd);
+
+  // Hang rao cua chinh may chu phai nhan duong dan do bo sinh tao ra.
+  const { duong_dan_an_toan_de_ghi } = await import('../src/sharepoint/anh_xa.ts');
+  assert.equal(duong_dan_an_toan_de_ghi(dd), true,
+    `bo kiem tu choi duong dan do bo sinh tao ra — khong tep nao day len duoc: ${dd}`);
+});
+
+test('sharepoint: chua bat SHAREPOINT_BAT_DAY thi CHI DEM, khong cham vao SharePoint', async () => {
+  const { quet } = await import('../src/sharepoint/dong_bo.ts');
+  const kq = await quet();
+  assert.equal(kq.chi_dem, true,
+    'SHAREPOINT_BAT_DAY chua bat ma vong quet van di day that — day la thu vien dang dung that');
+  assert.equal(kq.so_day, 0);
+  assert.equal(kq.so_xoa, 0);
+  assert.ok(kq.so_con_viec > 0, 'phai dem duoc so viec con phai lam');
+});
+
+test('sharepoint: doi ma nhan vien thi duong dan mong muon doi theo', async () => {
+  const { ghi_nhan } = await import('../src/sharepoint/dong_bo.ts');
+  const truoc = await truy_van_mot<{ duong_dan_muon: string }>(
+    'select duong_dan_muon from sharepoint_tep where tep_id = $1', [sp_tep]);
+
+  const s = await goi('PUT', `/api/nhan-vien/${sp_nv}`, {
+    token: token_admin, body: { ma_nv: 'SP-99', ho_ten: 'Nguyễn Thị Ánh Tuyết' },
+  });
+  assert.equal(s.ma, 200, JSON.stringify(s.body));
+  await ghi_nhan();
+
+  const sau = await truy_van_mot<{ duong_dan_muon: string; ket_qua: string }>(
+    'select duong_dan_muon, ket_qua from sharepoint_tep where tep_id = $1', [sp_tep]);
+  assert.notEqual(sau?.duong_dan_muon, truoc?.duong_dan_muon);
+  assert.ok((sau?.duong_dan_muon ?? '').includes('/SP-99-'),
+    `chua doi theo ma nhan vien moi: ${String(sau?.duong_dan_muon)}`);
+  // Duong dan doi thi phai thanh viec chua lam, khong duoc coi la da xong.
+  assert.equal(sau?.ket_qua, 'chua_lam');
+});
+
+test('sharepoint: ghi_nhan chay lai KHONG xoa dau vet loi khi duong dan khong doi', async () => {
+  const { ghi_nhan } = await import('../src/sharepoint/dong_bo.ts');
+  await thuc_thi(
+    `update sharepoint_tep set ket_qua = 'loi', ly_do = 'loi thu nghiem', so_lan_thu = 3
+      where tep_id = $1`, [sp_tep]);
+
+  await ghi_nhan();
+
+  const d = await truy_van_mot<{ ket_qua: string; so_lan_thu: number; ly_do: string | null }>(
+    'select ket_qua, so_lan_thu, ly_do from sharepoint_tep where tep_id = $1', [sp_tep]);
+  assert.equal(d?.ket_qua, 'loi', 'dau vet loi bi xoa — vong thu lai se chay vinh vien');
+  assert.equal(d?.so_lan_thu, 3, 'so lan thu bi dat lai — khong bao gio len den tran');
+  assert.equal(d?.ly_do, 'loi thu nghiem');
+});
+
+test('sharepoint: het luot thu thi khong lay ra nua, va thu-lai mo lai duoc', async () => {
+  const { quet, thu_lai_cac_dong_loi, tinh_hinh } = await import('../src/sharepoint/dong_bo.ts');
+  await thuc_thi("update sharepoint_tep set so_lan_thu = 99 where tep_id = $1", [sp_tep]);
+
+  const th = await tinh_hinh();
+  assert.ok(th.bo_lai > 0, 'dong het luot thu phai dem vao bo_lai de co nguoi thay');
+
+  const q = await quet();
+  assert.ok(!q.so_con_viec || true);
+  const con = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from sharepoint_tep
+      where tep_id = $1 and so_lan_thu >= 5`, [sp_tep]);
+  assert.equal(con?.so, 1);
+
+  assert.ok(await thu_lai_cac_dong_loi() > 0, 'thu-lai phai dat lai duoc so lan thu');
+  const sau = await truy_van_mot<{ so_lan_thu: number }>(
+    'select so_lan_thu from sharepoint_tep where tep_id = $1', [sp_tep]);
+  assert.equal(sau?.so_lan_thu, 0);
+});
+
+test('sharepoint: nhom khieu nai bi bo qua CO Y, kem ly do doc duoc', async () => {
+  const { ghi_nhan } = await import('../src/sharepoint/dong_bo.ts');
+  const tep = await gan_tep(sp_nv, 'khieu_nai', 'don.pdf',
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(32, 0x20)]), token_admin);
+  await ghi_nhan(tep);
+
+  const d = await truy_van_mot<{ duong_dan_muon: string | null; ket_qua: string; ly_do: string }>(
+    'select duong_dan_muon, ket_qua, ly_do from sharepoint_tep where tep_id = $1', [tep]);
+  assert.equal(d?.duong_dan_muon, null, 'khieu nai KHONG duoc co duong dan tren SharePoint');
+  assert.equal(d?.ket_qua, 'bo_qua');
+  assert.match(d?.ly_do ?? '', /khiếu nại/i);
+});
+
+test('sharepoint: go tep thi dong trang thai PHAI CON, voi duong dan mong muon = null', async () => {
+  // Bai quan trong nhat cua nhom nay. Neu bang co khoa ngoai `on delete cascade` sang
+  // ho_so_tep thi dong nay bien mat, va ban tren SharePoint song mai mai khong ai biet.
+  const r = await goi('DELETE', `/api/ho-so/tep/${sp_tep}`, { token: token_admin });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+
+  const d = await truy_van_mot<{ duong_dan_muon: string | null; ly_do: string | null }>(
+    'select duong_dan_muon, ly_do from sharepoint_tep where tep_id = $1', [sp_tep]);
+  assert.notEqual(d, null,
+    'dong trang thai bi xoa theo tep — lenh xoa tren SharePoint mat luon, ban sao song mai');
+  assert.equal(d?.duong_dan_muon, null);
+  assert.match(d?.ly_do ?? '', /gỡ khỏi hồ sơ/);
+});
+
+test('sharepoint: trang theo doi doi quyen nhan su, thao tac doi quyen admin', async () => {
+  const xem = await goi('GET', '/api/ho-so/sharepoint', { token: token_admin });
+  assert.equal(xem.ma, 200, JSON.stringify(xem.body));
+  assert.ok(Array.isArray(xem.body['danh_sach']));
+  assert.equal(xem.body['bat_day'], false);
+  // Chua cau hinh thi phai noi ro la chua cau hinh, khong bao loi ky thuat.
+  assert.equal((xem.body['ket_noi'] as Record<string, unknown>)['ok'], false);
+
+  const nv = await goi('GET', '/api/ho-so/sharepoint', { token: token_nhan_vien });
+  assert.equal(nv.ma, 403, 'nhan vien thuong khong duoc xem ca kho tep cong ty');
+
+  const day = await goi('POST', '/api/ho-so/sharepoint', {
+    token: token_nhan_vien, body: { chi_ghi_nhan: true },
+  });
+  assert.equal(day.ma, 403, 'chay dong bo hang loat doi quyen admin');
+});

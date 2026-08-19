@@ -9,6 +9,7 @@ import { chot_ngay_hom_qua } from '../cong/tinh_cong.ts';
 import { don_su_kien_cu } from './hop_thu_di.ts';
 import { ma_viec_nhac_han, quet_nhac_han } from '../hop_dong/nhac_han.ts';
 import { ma_viec_sap_xep, sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
+import { ghi_nhan, ma_viec_dong_bo, quet } from '../sharepoint/dong_bo.ts';
 import { cong_ngay, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. */
@@ -115,6 +116,36 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     } catch (loi) {
       await nha_viec(ma_sap_xep);
       ghi_log(`[lich] LOI khi sap xep kho tep: ${(loi as Error).message}`);
+    }
+  }
+
+  // Doi chieu va day kho tep sang SharePoint, moi ngay mot lan.
+  //
+  // Chay SAU viec sap xep kho tep o tren, va thu tu do la co y: viec sap xep doi ten thu muc
+  // TREN DIA, con viec nay tinh duong dan TREN SHAREPOINT tu ma_nv/ho_ten. Lam nguoc lai thi
+  // duong dan vua tinh se lech ngay trong cung mot vong.
+  //
+  // `ghi_nhan` luon chay, `quet` chi day that khi SHAREPOINT_BAT_DAY=1. Nghia la bang trang
+  // thai luon dung va xem duoc duong dan se la gi TRUOC khi bat dong bo.
+  const ma_sp = ma_viec_dong_bo(hom_nay);
+  if (await nhan_viec(ma_sp)) {
+    try {
+      const gn = await ghi_nhan();
+      const q = await quet();
+      await ghi_ket_qua(ma_sp,
+        `xet ${String(gn.so_xet)}, doi ${String(gn.so_doi)}, con viec ${String(q.so_con_viec)}, `
+        + `day ${String(q.so_day)}, xoa ${String(q.so_xoa)}, loi ${String(q.so_loi)}`
+        + (q.chi_dem ? ' (chi dem, chua bat SHAREPOINT_BAT_DAY)' : ''));
+      if (q.so_day > 0 || q.so_xoa > 0) {
+        ghi_log(`[lich] SharePoint: day ${String(q.so_day)}, xoa ${String(q.so_xoa)}`);
+      }
+      if (q.so_loi > 0) {
+        ghi_log(`[lich] CANH BAO SharePoint: ${String(q.so_loi)} tep loi. `
+          + 'Xem He thong -> Kho tep ho so.');
+      }
+    } catch (loi) {
+      await nha_viec(ma_sp);
+      ghi_log(`[lich] LOI khi dong bo SharePoint: ${(loi as Error).message}`);
     }
   }
 

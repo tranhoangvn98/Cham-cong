@@ -26,6 +26,10 @@ import { hop_dong_sap_het_han, muc_gap } from '../hop_dong/nhac_han.ts';
 import { sap_xep_kho, so_tep_lech } from '../ho_so/sap_xep_tep.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { doc_tep_ho_so, lam_sach_ten, luu_tep_ho_so, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
+import {
+  ghi_nhan, ghi_nhan_am_tham, quet, thu_lai_cac_dong_loi, tinh_hinh,
+} from '../sharepoint/dong_bo.ts';
+import { thu_ket_noi } from '../sharepoint/khach.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import {
   chuoi, chuoi_bat_buoc, luan_ly, ngay, ngay_bat_buoc, phan_trang, so_nguyen, so_thuc, than,
@@ -792,7 +796,12 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       if (t !== null) await xoa_tep_ho_so(t.ten_luu);
       await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.xoa_tep', 'ho_so_tep',
         tep_cu, { nhan_vien_id: id, ly_do: 'thay tệp ở mục tài liệu', ma }, req.ip);
+      await ghi_nhan_am_tham(tep_cu, true);
     }
+
+    // Noi tep vao mot muc danh muc lam DOI duong dan mong muon: nhanh (giay kham suc khoe di
+    // sang 09 chu khong phai 01) va ten tep (phan giua lay ten danh muc) deu doi theo.
+    if (tep_id !== null) await ghi_nhan_am_tham(tep_id);
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.sua_tai_lieu', 'tai_lieu_nhan_vien',
       id, { ma, trang_thai, doi_tep }, req.ip);
@@ -876,6 +885,10 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.tai_tep_len', 'ho_so_tep',
       String(moi?.['id'] ?? ''), { nhan_vien_id: id, nhom, ten_goc }, req.ip);
+
+    // Ghi nhan de dong bo sang SharePoint. Loi o day khong lam do lan nap tep (xem
+    // `ghi_nhan_am_tham`), nhung van cho xong truoc khi tra loi de trang thai doc ra la dung.
+    await ghi_nhan_am_tham(String(moi?.['id'] ?? ''));
     return res.code(201).send(moi);
   });
 
@@ -992,6 +1005,7 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
     await xoa_tep_ho_so(t.ten_luu);
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.xoa_tep', 'ho_so_tep',
       tep_id, { nhan_vien_id: t.nhan_vien_id }, req.ip);
+    await ghi_nhan_am_tham(tep_id, true);
     return { ok: true };
   });
 
@@ -1069,6 +1083,69 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
     }
     // Cat bot chi tiet: mot kho vai nghin tep se tra ve mot payload khong ai doc het.
     return { ...kq, chi_tiet: kq.chi_tiet.slice(0, 200), cat_bot: kq.chi_tiet.length > 200 };
+  });
+
+  // ------------------------------------------------------------ dong bo SharePoint
+
+  /**
+   * Tinh hinh dong bo sang thu vien HCNS, kem danh sach dong con viec / dang loi.
+   *
+   * Doc duoc NGAY CA KHI chua bat dong bo — do la muc dich: xem duong dan se la gi truoc khi
+   * cho ung dung ghi vao mot thu vien dang dung that.
+   */
+  app.get('/ho-so/sharepoint', { preHandler: can_nhan_su }, async (req) => {
+    const q = than(req.query);
+    const loc = trong_tap(q, 'loc', ['con_viec', 'loi', 'bo_qua', 'tat_ca'] as const,
+      { mac_dinh: 'con_viec' })!;
+
+    const dieu_kien = {
+      con_viec: 's.duong_dan_muon is distinct from s.duong_dan_da_day',
+      loi: "s.ket_qua = 'loi'",
+      bo_qua: "s.ket_qua = 'bo_qua'",
+      tat_ca: 'true',
+    }[loc];
+
+    const dong = await truy_van(
+      `select s.tep_id, s.duong_dan_muon, s.duong_dan_da_day, s.ket_qua, s.ly_do,
+              s.so_lan_thu, s.so_byte, s.lam_luc,
+              nv.ma_nv, nv.ho_ten, t.nhom, t.ten_goc
+         from sharepoint_tep s
+         left join nhan_vien nv on nv.id = s.nhan_vien_id
+         left join ho_so_tep t on t.id = s.tep_id
+        where ${dieu_kien}
+        order by s.cap_nhat_luc desc
+        limit 200`,
+    );
+
+    return { ...(await tinh_hinh()), loc, danh_sach: dong, ket_noi: await thu_ket_noi() };
+  });
+
+  /**
+   * Doi chieu lai bang trang thai, va (neu da bat) day / xoa cho khop.
+   *
+   * Chi ADMIN. `chi_ghi_nhan = true` thi chi tinh lai duong dan mong muon, KHONG cham vao
+   * SharePoint — dung de xem truoc. Do cung la hanh vi khi SHAREPOINT_BAT_DAY chua bat, bat
+   * ke tham so nay.
+   */
+  app.post('/ho-so/sharepoint', { preHandler: can_admin }, async (req) => {
+    const b = than(req.body ?? {});
+    const chi_ghi_nhan = luan_ly(b, 'chi_ghi_nhan', false);
+
+    const gn = await ghi_nhan();
+    const q = chi_ghi_nhan ? null : await quet();
+
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.dong_bo_sharepoint', 'sharepoint_tep',
+      '', { so_xet: gn.so_xet, so_doi: gn.so_doi, chi_ghi_nhan, ...(q ?? {}) }, req.ip);
+
+    return { ghi_nhan: gn, quet: q, ...(await tinh_hinh()) };
+  });
+
+  /** Cho phep thu lai cac dong da het luot thu. Chi ADMIN, va chi sau khi da sua nguyen nhan. */
+  app.post('/ho-so/sharepoint/thu-lai', { preHandler: can_admin }, async (req) => {
+    const so = await thu_lai_cac_dong_loi();
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.sharepoint_thu_lai', 'sharepoint_tep',
+      '', { so }, req.ip);
+    return { so, ...(await tinh_hinh()) };
   });
 
   /**

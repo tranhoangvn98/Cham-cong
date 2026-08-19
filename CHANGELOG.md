@@ -2,6 +2,104 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.26.0] — 2026-08-19
+
+**Đồng bộ kho tệp hồ sơ sang thư viện HCNS trên SharePoint.** Một chiều: máy chủ là bản gốc,
+SharePoint là bản sao, gỡ tệp bên này thì bản bên đó bị xóa theo (vào thùng rác của site, giữ
+93 ngày).
+
+Tài liệu: `tai_lieu/SHAREPOINT.md`.
+
+### Quy ước tên là của HCNS, không phải của tôi
+
+Nguồn sự thật là tệp `DANH MỤC HỆ THỐNG FILE HCNS - SHAREPOINT (BỔ SUNG THEO BC 11) -
+15-07-2026_2.xlsx` nằm ngay trong thư viện HCNS. Mỗi hàng trong bảng `NHANH` tra về được một
+dòng trong đặc tả đó.
+
+| | Đường dẫn |
+|---|---|
+| Trên đĩa | `HR-01_Hoang-Minh-Ngoc/hop_dong/2026-08-18_hop-dong_HDLD_a1b2c3d4.pdf` |
+| Trên SharePoint | `01 HỒ SƠ NHÂN SỰ (201)/HR-01-HOANG MINH NGOC/HĐLĐ SỐ 07-2026 - Hoàng Minh Ngọc - 18-08-2026.pdf` |
+
+Hai quy ước cố ý khác nhau: tên trên đĩa phải đi qua tar/scp/rsync nên bỏ dấu, còn quy ước của
+HCNS viết cho người đọc. `ho_so_tep.ten_luu` vẫn là khóa đọc.
+
+Ngày dùng **gạch nối**, không dùng dấu chấm — đặc tả ghi rõ lý do: *"để iOS không hiểu nhầm
+đuôi file"*.
+
+### Nhóm khiếu nại KHÔNG được đồng bộ
+
+Không phải vì quên. Đặc tả HCNS không có nhánh nào cho nó, và khiếu nại có thể là về chính
+người có quyền đọc thư mục đích. Hàm ánh xạ trả `null`, và trên trang quản trị nó hiện ở mục
+*Không đồng bộ* kèm lý do đọc được.
+
+Giấy khám sức khỏe đi sang nhánh `09 AN TOÀN – SỨC KHỎE` chứ không vào `01` — nhánh `09` khai
+đúng việc đó, và theo NĐ 13/2023 dữ liệu sức khỏe là dữ liệu cá nhân **nhạy cảm**.
+
+### Bảng trạng thái, không phải hàng đợi
+
+Di trú `020`. `sharepoint_tep` giữ hai cột: tệp **nên** ở đâu và tệp **đang** ở đâu. Mỗi vòng
+quét chỉ làm một việc — cho hai cột bằng nhau.
+
+Có bốn chỗ đổi được `ma_nv`/`ho_ten` (nhân sự sửa tay, nhập CSV, đồng bộ ERP, API `/api/v1`).
+Với hàng đợi, một chỗ quên phát sự kiện là một tệp nằm sai chỗ vĩnh viễn. Với hai cột thì vòng
+quét hằng ngày tự tìm ra, lệch tối đa một ngày, và chạy lại bao nhiêu lần cũng cho cùng một
+kết quả.
+
+Bảng **cố ý không có khóa ngoại** sang `ho_so_tep`: nếu có `on delete cascade` thì lúc gỡ một
+tệp, dòng này bị xóa theo cùng với thông tin duy nhất cho biết còn một bản sao cần xóa trên
+SharePoint. Có một bài kiểm e2e giữ điều đó.
+
+Trong một lượt đổi chỗ: **đẩy bản mới trước, xóa bản cũ sau.** Ngược lại thì giữa hai bước
+không còn bản nào trên SharePoint, và máy chủ chết đúng lúc đó là hồ sơ biến mất.
+
+### Ba hàng rào, nằm bên trong client
+
+Không ở tầng gọi — một chỗ gọi quên kiểm là một chỗ có thể xóa tệp của người khác.
+
+1. Ghi tệp: đúng ba cấp `<nhánh>/<[Mã NV]-[Họ tên]>/<tên tệp>`, nhánh phải có trong bảng khai.
+2. Tạo thư mục: quy tắc **khác** — chỉ được là chính một nhánh hoặc một cấp nhân viên trong đó.
+3. Xóa: ngoài đường dẫn, còn kiểm đối tượng là **một tệp**. `DELETE` một thư mục trên
+   SharePoint kéo theo mọi tệp bên trong, kể cả tệp do người khác đặt vào.
+
+Tạo thư mục dùng `conflictBehavior: 'fail'` và coi `409` là thành công. Dùng `'replace'` trên
+một thư mục là xóa sạch nội dung bên trong — và các nhánh của HCNS đang có dữ liệu thật. Máy
+chủ Graph giả trong bộ kiểm cài đúng hành vi đó, nên đổi sang `'replace'` làm bài kiểm đỏ.
+
+Hai thư mục `05 CHẤM CÔNG – NGHỈ PHÉP` và `06 TUYỂN DỤNG & THỬ VIỆC` đang có dữ liệu thật và
+chưa được ánh xạ — có bài kiểm từ chối thẳng hai đường dẫn này.
+
+### Quyền hẹp nhất có thể
+
+Dùng một app đăng ký **riêng**, không dùng lại app đăng nhập Microsoft: app đăng nhập chỉ cần
+`openid profile email`, gắn thêm quyền ghi tệp vào nó là mở rộng bề mặt của chính lớp đăng
+nhập. Quyền là `Sites.Selected` — chỉ có hiệu lực trên site được cấp tên đích danh.
+
+`SHAREPOINT_GOC_GRAPH` / `SHAREPOINT_GOC_TOKEN` chỉ để bộ kiểm dựng máy chủ Graph giả. Khi
+`NODE_ENV=production`, máy chủ từ chối mọi giá trị không phải `graph.microsoft.com` /
+`login.microsoftonline.com` — kiểm theo **tên máy** chứ không theo tiền tố, vì
+`graph.microsoft.com.ke-tan-cong.vn` bắt đầu đúng bằng tiền tố thật.
+
+### Đẩy thật mặc định TẮT
+
+`SHAREPOINT_BAT_DAY=0`. Cấu hình xong thì hệ thống vẫn chỉ tính đường dẫn và ghi vào bảng.
+Vào **Hệ thống → Kho tệp hồ sơ → Đồng bộ SharePoint**, đọc cột đường dẫn, thấy đúng rồi mới
+bật. Đích là thư viện đang dùng thật nên thứ tự đó không phải hình thức.
+
+### Nói thẳng về giới hạn
+
+**Chưa chạy thật lần nào.** 28 bài kiểm chạy trên một máy chủ Graph giả tại chỗ — phiên làm
+việc viết mã này không kết nối được SharePoint thật. Bộ kiểm chứng minh client gọi đúng những
+gì tài liệu Graph nói, **không** chứng minh SharePoint thật sẽ nhận.
+
+### Hai lỗi tự tìm ra khi viết bộ kiểm
+
+- Lề an toàn của token có sàn 60 giây, nghĩa là một token báo còn sống 60 giây vẫn được đệm lại
+  đúng 60 giây — dùng nó đến quá hạn. Đổi thành tỉ lệ theo đời token (tối đa nửa đời).
+- `ghi_nhan_am_tham` ban đầu "bắn rồi quên" (không `await`). Hai cái giá: không kiểm được, và
+  truy vấn có thể còn đang chạy khi kết nối đã trả lại pool. Cả hai truy vấn đều là một lệnh
+  có chỉ mục nên `await` không tốn gì.
+
 ## [1.25.1] — 2026-08-19
 
 **`npm run sap_xep_tep` không chạy được trong container.**

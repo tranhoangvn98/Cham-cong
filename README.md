@@ -233,6 +233,7 @@ docker run --rm -v /root/Cham-cong:/app -w /app --network cham-cong_default \
 | [`tai_lieu/HOP-DONG.md`](tai_lieu/HOP-DONG.md) | Trích nội dung hợp đồng (DOCX / PDF / OCR bản scan), nhắc hạn hợp đồng |
 | [`tai_lieu/HOP-DONG-DIEN-TU-VCONTRACT.md`](tai_lieu/HOP-DONG-DIEN-TU-VCONTRACT.md) | Ký hợp đồng điện tử qua vContract (Viettel) |
 | [`tai_lieu/DONG-BO-ERP.md`](tai_lieu/DONG-BO-ERP.md) | Đồng bộ người dùng từ ERP cũ, nối với Microsoft 365 |
+| [`tai_lieu/SHAREPOINT.md`](tai_lieu/SHAREPOINT.md) | Đồng bộ kho tệp hồ sơ sang thư viện HCNS trên SharePoint (một chiều, xóa lan theo) |
 | [`tai_lieu/API-TICH-HOP.md`](tai_lieu/API-TICH-HOP.md) | API `/api/v1` cho hệ thống ngoài: khoá API, Swagger, sinh client |
 | [`tai_lieu/THIET-KE.md`](tai_lieu/THIET-KE.md) | Design token: màu, font, bo góc, breakpoint |
 | [`CLAUDE.md`](CLAUDE.md) | Quy ước code của dự án |
