@@ -27,7 +27,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  DUONG_DAN_TOI_DA, MUC_NHAY_CAM, NHANH, NHANH_CHUA_MO, NHAN_LOAI,
+  DUONG_DAN_TOI_DA, MUC_NHAY_CAM, NHANH, NHANH_CHUA_CO_NGUON, NHAN_LOAI,
   chon_nhanh, duong_dan_an_toan_de_ghi, duong_dan_sharepoint,
   lam_sach_ten_sp, ngay_kieu_hcns, ten_tep_sharepoint, thu_muc_an_toan_de_tao,
   thu_muc_nhan_vien,
@@ -402,34 +402,79 @@ test('an toan de ghi: tu choi ngoai cac nhanh da khai', () => {
   assert.ok(!duong_dan_an_toan_de_ghi(''));
 });
 
-test('an toan de ghi: tu choi MOI nhanh chua mo', () => {
-  // `05 CHẤM CÔNG – NGHỈ PHÉP` va `06 TUYỂN DỤNG & THỬ VIỆC` da thong nhat la se ghi vao,
-  // nhung chua biet ten thu muc con va chua chot phan loai. Thieu mot trong hai la khong
-  // duoc ghi — doan ten la Graph tao mot thu muc moi ben canh thu muc that.
-  //
-  // Doc tu `NHANH_CHUA_MO` chu khong go tay hai chuoi vao day: them nhanh moi vao danh sach
-  // do thi bai kiem nay tu bao ve luon nhanh moi.
-  assert.ok(NHANH_CHUA_MO.length > 0, 'danh sach rong thi bai kiem nay khong kiem gi');
-  for (const n of NHANH_CHUA_MO) {
-    assert.ok(!duong_dan_an_toan_de_ghi(`${n}/NV015-NGUYEN VAN A/x - 01-01-2026.pdf`),
-      `ghi duoc vao nhanh chua mo: ${n}`);
-    assert.ok(!thu_muc_an_toan_de_tao(`${n}/NV015-NGUYEN VAN A`),
-      `tao duoc thu muc trong nhanh chua mo: ${n}`);
-    assert.ok(!thu_muc_an_toan_de_tao(n), `tao duoc chinh nhanh chua mo: ${n}`);
+test('an toan de ghi: tu choi thu muc CHA cua mot nhanh con', () => {
+  // Ho so nam trong nhanh CON (05.1, 05.2, 06.1, 06.2), khong nam thang trong cha. Hai thu
+  // muc cha `05` va `06` dang co nguoi dung that — ghi thang vao do la tho mot tep vao giua
+  // khu vuc cua nguoi khac.
+  for (const cha of ['05 CHẤM CÔNG – NGHỈ PHÉP', '06 TUYỂN DỤNG & THỬ VIỆC',
+    '02 HỢP ĐỒNG & THỎA THUẬN', '03 BẢO HIỂM (BHXH–BHYT–BHTN)', '04 TIỀN LƯƠNG – THUẾ TNCN']) {
+    assert.ok(!duong_dan_an_toan_de_ghi(`${cha}/NV015-NGUYEN VAN A/x - 01-01-2026.pdf`),
+      `ghi duoc thang vao thu muc cha: ${cha}`);
+    assert.ok(!thu_muc_an_toan_de_tao(`${cha}/NV015-NGUYEN VAN A`),
+      `tao duoc thu muc nhan vien thang trong cha: ${cha}`);
   }
 });
 
-test('mot nhanh khong duoc vua duoc anh xa vua nam trong danh sach chua mo', () => {
-  // Day la muc dich that cua bang `NHANH_CHUA_MO`. Mo mot nhanh ra thi phai GO no khoi bang
-  // do — tuc la mot hanh dong co y, sau khi da co ten thu muc con that va da chot phan loai
-  // voi nguoi phu trach. Khong the lang le them mot dong vao `NHANH` luc don dep.
-  for (const n of NHANH_CHUA_MO) {
-    for (const [ten, da_khai] of Object.entries(NHANH)) {
-      assert.ok(da_khai !== n && !da_khai.startsWith(`${n}/`),
-        `nhanh "${ten}" nam trong "${n}", ma nhanh do con trong danh sach chua mo. `
-        + 'Da co ten thu muc con that va da chot phan loai thi go no khoi NHANH_CHUA_MO.');
+test('MOI nhanh trong NHANH deu co nguon tep, hoac duoc khai la chua co', () => {
+  // Bai nay chan mot kieu hong im lang: them mot nhanh vao `NHANH` nhung quen noi tep nao di
+  // vao do. Nhanh se nam trong bang mai mai, khong ai nhan ra la no chua nhan mot tep nao.
+  //
+  // Bo dau vao duoi day phai phu het cac `loai` va `ma_tai_lieu` ma `chon_nhanh` phan biet.
+  // Them mot nhanh moi kem mot `loai` moi ma quen bo sung vao day thi bai kiem bao "khong co
+  // nguon" — dung nhu mong doi.
+  const LOAI = [null, 'phu_luc', 'thoa_thuan', 'cam_ket', 'ky_luat', 'khen_thuong',
+    'bien_ban_hop', 'ban_giao', 'khac', 'bao_tang', 'bao_giam', 'dieu_chinh', 'chot_so',
+    'cap_the_bhyt', 'om_dau', 'thai_san', 'duong_suc', 'tai_nan_lao_dong',
+    'thu_viec', 'xac_dinh', 'khong_xac_dinh'];
+  const MA_TL = [null, 'CCCD', 'SO_YEU_LY_LICH', 'KHAM_SUC_KHOE', 'BANG_CAP', 'HOP_DONG',
+    'CHUNG_CHI', 'PHU_LUC_HD', 'QD_TIEP_NHAN', 'QD_DIEU_CHUYEN', 'QD_TANG_LUONG',
+    'QD_NGHI_VIEC', 'BIEN_BAN_BAN_GIAO', 'CHECKLIST_OFFBOARDING', 'TO_KHAI_BHXH',
+    'CV_UNG_VIEN', 'DANH_GIA_THU_VIEC'];
+
+  const den_duoc = new Set<string>();
+  for (const nhom of CAC_NHOM) {
+    for (const loai of LOAI) {
+      for (const ma_tai_lieu of MA_TL) {
+        const n = chon_nhanh({ nhom, loai, ma_tai_lieu });
+        if (n !== null) den_duoc.add(n);
+      }
     }
   }
+
+  const thieu = Object.keys(NHANH)
+    .filter((n) => !den_duoc.has(n))
+    .filter((n) => !(NHANH_CHUA_CO_NGUON as readonly string[]).includes(n));
+  assert.deepEqual(thieu, [],
+    'Cac nhanh sau nam trong NHANH nhung khong tep nao di vao duoc. Hoac bo sung `chon_nhanh`, '
+    + 'hoac khai vao NHANH_CHUA_CO_NGUON kem ly do: ' + thieu.join(', '));
+
+  // Va nguoc lai: khai "chua co nguon" ma thuc ra co nguon thi cung la sai — bang do se noi doi.
+  const noi_doi = (NHANH_CHUA_CO_NGUON as readonly string[]).filter((n) => den_duoc.has(n));
+  assert.deepEqual(noi_doi, [],
+    'Cac nhanh sau da co tep di vao nhung van bi khai la chua co nguon: ' + noi_doi.join(', '));
+});
+
+test('chon nhanh: CV va danh gia thu viec di sang nhanh 06', () => {
+  // Ten thu muc tra loi luon cau phan loai: `06.1 Yêu cầu tuyển & CV ứng viên` va
+  // `06.2 Đánh giá phỏng vấn & thử việc`.
+  assert.equal(chon_nhanh({ nhom: 'tai_lieu', ma_tai_lieu: 'CV_UNG_VIEN' }), 'tuyen_dung_cv');
+  assert.equal(chon_nhanh({ nhom: 'tai_lieu', ma_tai_lieu: 'cv_ung_vien' }), 'tuyen_dung_cv');
+  assert.equal(chon_nhanh({ nhom: 'tai_lieu', ma_tai_lieu: 'DANH_GIA_THU_VIEC' }),
+    'danh_gia_thu_viec');
+
+  // Bang cap va chung chi KHONG di sang 06: chung la ho so 201 lau dai, nam trong `01` ca doi
+  // lam viec, chu khong phai giay to cua mot lan ung tuyen.
+  assert.equal(chon_nhanh({ nhom: 'tai_lieu', ma_tai_lieu: 'BANG_CAP' }), 'ho_so_201');
+  assert.equal(chon_nhanh({ nhom: 'tai_lieu', ma_tai_lieu: 'CHUNG_CHI' }), 'ho_so_201');
+});
+
+test('chon nhanh: hop dong thu viec VAN o nhanh 02.1, khong sang 06.2', () => {
+  // Quyet dinh co y. `06.2` ten la "Đánh giá phỏng vấn & thử việc" — la van ban DANH GIA, con
+  // hop dong thu viec la mot HOP DONG. No cung nam trong luong nhac han hop dong (BLLD Dieu
+  // 27 ve thong bao ket qua thu viec), nen tach no ra khoi nhanh hop dong la tach mot van ban
+  // khoi dung cho no dang duoc quan ly.
+  assert.equal(chon_nhanh({ nhom: 'hop_dong', loai: 'thu_viec' }), 'hdld');
+  assert.equal(chon_nhanh({ nhom: 'hop_dong', loai: 'xac_dinh' }), 'hdld');
 });
 
 test('an toan de ghi: tu choi ghi thang vao goc nhanh', () => {

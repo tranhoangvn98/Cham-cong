@@ -647,22 +647,36 @@ test('goc an toan: chi nhan dung hai ten may cua Microsoft', async () => {
   assert.equal(kh.goc_an_toan('khong-phai-url', T), false);
 });
 
-// ================================================================ nhanh chua mo
+// ================================================================ thu muc cha cua nhanh con
 
-test('client TU CHOI moi nhanh chua mo, truoc khi goi Graph', async () => {
-  // Bai kiem doc tu `NHANH_CHUA_MO` nen them nhanh moi vao danh sach do la duoc bao ve luon.
+test('client TU CHOI ghi thang vao thu muc cha cua mot nhanh con', async () => {
+  // `05 CHẤM CÔNG – NGHỈ PHÉP` va `06 TUYỂN DỤNG & THỬ VIỆC` la thu muc CHA. Ho so cua he
+  // thong nam trong cac thu muc CON (05.1, 05.2, 06.1, 06.2), khong nam thang trong cha.
   //
-  // Kiem ca `gg.goi.length === 0`: tu choi phai xay ra TRUOC khi noi voi Graph. Neu goi truoc
-  // roi moi kiem thi mot loi 500 tu Graph van co the da tao thu muc.
-  const { NHANH_CHUA_MO } = await import('../src/sharepoint/anh_xa.ts');
-  assert.ok(NHANH_CHUA_MO.length > 0);
-
-  for (const n of NHANH_CHUA_MO) {
+  // Hai thu muc cha nay dang co nguoi dung that. Ghi thang vao do la tho mot tep vao giua khu
+  // vuc cua nguoi khac, va lan xoa lan theo se khong biet no la cua ai.
+  //
+  // Kiem ca `gg.goi.length === 0`: tu choi phai xay ra TRUOC khi noi voi Graph.
+  for (const cha of ['05 CHẤM CÔNG – NGHỈ PHÉP', '06 TUYỂN DỤNG & THỬ VIỆC']) {
     lam_moi();
-    const tep = `${n}/NV1-A/x - 01-01-2026.pdf`;
-    await assert.rejects(() => kh.tai_len(tep, Buffer.from('x')), /Từ chối/, `ghi duoc: ${n}`);
-    await assert.rejects(() => kh.xoa(tep), /Từ chối/, `xoa duoc: ${n}`);
-    await assert.rejects(() => kh.bao_dam_thu_muc(`${n}/NV1-A`), /Từ chối/, `tao duoc: ${n}`);
-    assert.equal(gg.goi.length, 0, `da goi Graph cho nhanh chua mo: ${n}`);
+    const tep = `${cha}/NV1-A/x - 01-01-2026.pdf`;
+    await assert.rejects(() => kh.tai_len(tep, Buffer.from('x')), /Từ chối/, `ghi duoc: ${cha}`);
+    await assert.rejects(() => kh.xoa(tep), /Từ chối/, `xoa duoc: ${cha}`);
+    await assert.rejects(() => kh.bao_dam_thu_muc(`${cha}/NV1-A`), /Từ chối/, `tao duoc: ${cha}`);
+    assert.equal(gg.goi.length, 0, `da goi Graph cho thu muc cha: ${cha}`);
+  }
+});
+
+test('client ghi duoc vao nhanh con 06.1 / 06.2 (da xac minh ten tren SharePoint that)', async () => {
+  const { NHANH } = await import('../src/sharepoint/anh_xa.ts');
+  for (const n of [NHANH.tuyen_dung_cv, NHANH.danh_gia_thu_viec]) {
+    lam_moi();
+    gg.dat('06 TUYỂN DỤNG & THỬ VIỆC', true);
+    gg.dat(n, true);
+    const tep = `${n}/NV015-NGUYEN VAN A/CV - Nguyễn Văn A - 01-01-2026.pdf`;
+    const kq = await kh.tai_len(tep, Buffer.from('x'));
+    assert.equal(kq.duong_dan, tep);
+    assert.ok(gg.kho.has(tep),
+      `tep khong nam dung cho. Cac khoa: ${[...gg.kho.keys()].join(' | ')}`);
   }
 });

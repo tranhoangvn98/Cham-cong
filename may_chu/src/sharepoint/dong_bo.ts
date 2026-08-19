@@ -16,7 +16,7 @@ import { cau_hinh } from '../cau_hinh.ts';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import {
-  NHAN_LOAI, duong_dan_sharepoint, type DauVaoDuongDan,
+  NHAN_LOAI, NHAN_TAI_LIEU, duong_dan_sharepoint, type DauVaoDuongDan,
 } from './anh_xa.ts';
 import { bat_sharepoint, tai_len, xoa, LoiSharePoint } from './khach.ts';
 
@@ -114,7 +114,9 @@ export function tinh_duong_dan_muon(d: DongMongMuon): string | null {
     ma_tai_lieu: d.tai_lieu_ma,
     ma_nv: d.ma_nv,
     ho_ten: d.ho_ten,
-    nhan: NHAN_LOAI[d.nhom] ?? 'HỒ SƠ',
+    // Uu tien nhan theo dung ma danh muc: mot thu muc co ba tep "HỒ SƠ - Nguyễn Văn A - ..."
+    // thi phai mo tung tep moi biet cai nao la CCCD, cai nao la CV.
+    nhan: NHAN_TAI_LIEU[(d.tai_lieu_ma ?? '').toUpperCase()] ?? NHAN_LOAI[d.nhom] ?? 'HỒ SƠ',
     so: d.so_hd ?? d.so_quyet_dinh ?? d.so_ho_so ?? null,
     ten,
     ngay: d.hd_ngay ?? d.bb_ngay ?? d.ql_ngay ?? d.bhxh_ngay ?? d.ngay_tep,

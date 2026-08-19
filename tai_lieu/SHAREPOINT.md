@@ -51,6 +51,8 @@ SharePoint.
 | `bhxh` loại `chot_so` | `03.3 Xử lý nợ – Chốt sổ & tờ rời` |
 | `luong` | `04.1 Thang bảng lương & Bảng lương` |
 | `nguoi_phu_thuoc` | `04.2 Thuế TNCN` |
+| `tai_lieu` mã `cv_ung_vien` | `06.1 Yêu cầu tuyển & CV ứng viên` |
+| `tai_lieu` mã `danh_gia_thu_viec` | `06.2 Đánh giá phỏng vấn & thử việc` |
 | `cong_viec`, `bao_cao` | `07 ĐÀO TẠO & ĐÁNH GIÁ` |
 | **`khieu_nai`** | **không đồng bộ** |
 
@@ -64,26 +66,58 @@ chưa có nhánh nào cho nó, và lý do quan trọng hơn: khiếu nại có t
 quyền đọc thư mục đích**. Đẩy nó vào một thư mục đoán bừa là loại sai tệ nhất, nên hàm ánh xạ
 trả `null` và trên trang quản trị nó hiện ở mục *Không đồng bộ* kèm lý do.
 
-### Hai nhánh sẽ ghi vào nhưng chưa mở
+### Nhánh `05` và `06` — ghi vào thư mục con, không vào thư mục cha
 
-`05 CHẤM CÔNG – NGHỈ PHÉP` và `06 TUYỂN DỤNG & THỬ VIỆC` **đã thống nhất là hồ sơ của hệ thống
-sẽ nằm trong đó**, theo đúng phân loại sẵn có của nhánh. Nhưng hai nhánh này đang có người dùng
-thật và có thư mục con sẵn, nên còn thiếu hai thứ — thiếu một trong hai là chưa được ghi:
+Tên bốn thư mục con đã lấy từ SharePoint thật và khớp từng ký tự:
 
-1. **Tên thư mục con, chính xác từng ký tự.** Đoán tên là Graph **tạo mới** một thư mục nằm
-   cạnh thư mục thật, và hồ sơ bay vào chỗ không ai mở — đúng kiểu lỗi mà dấu gạch ngang dài
-   U+2013 đã suýt gây ra ở nhánh `02.1`.
-2. **Chốt phân loại**: nhóm nào của hệ thống thuộc thư mục con nào. Yêu cầu là hồ sơ phải
-   **tuân thủ** phân loại của nhánh, nên việc này phải đối chiếu với người đang phụ trách.
+```
+05 CHẤM CÔNG – NGHỈ PHÉP/05.1 Bảng chấm công tháng
+05 CHẤM CÔNG – NGHỈ PHÉP/05.2 Đơn từ & Theo dõi phép
+06 TUYỂN DỤNG & THỬ VIỆC/06.1 Yêu cầu tuyển & CV ứng viên
+06 TUYỂN DỤNG & THỬ VIỆC/06.2 Đánh giá phỏng vấn & thử việc
+```
 
-Trong lúc chờ, hai nhánh nằm trong bảng `NHANH_CHUA_MO` của `anh_xa.ts`. Hàm
-`duong_dan_an_toan_de_ghi` là danh sách **cho phép** nên nó đã từ chối chúng mà không cần bảng
-đó; giá trị của bảng nằm ở bài kiểm: **mở một nhánh ra** (thêm vào `NHANH`) bắt buộc phải kèm
-việc gỡ nó khỏi `NHANH_CHUA_MO` — tức là một hành động có ý, sau khi đã có tên thật và đã chốt
-phân loại.
+Ứng dụng ghi vào **thư mục con**, không bao giờ ghi thẳng vào `05` hay `06`. Hai thư mục cha
+đó đang có người dùng thật; thả một tệp vào giữa khu vực của họ thì lượt xóa lan theo cũng
+không biết tệp đó là của ai. Có bài kiểm chặn ở cả tầng ánh xạ và tầng client, và kiểm rằng
+client từ chối **trước khi** gọi Graph.
 
-Xem [KE-HOACH-TRIEN-KHAI.md mục 3.2](KE-HOACH-TRIEN-KHAI.md) để biết hệ thống hiện có tệp nào
-cho hai nhánh này.
+**`06.1` và `06.2` đã có nguồn tệp.** Di trú `021` thêm hai mục vào danh mục tài liệu:
+`cv_ung_vien` → `06.1`, `danh_gia_thu_viec` → `06.2`. Trước đó hệ thống không có loại tệp nào
+thuộc về hai thư mục đó, nên khai nhánh mà không thêm danh mục là khai một chỗ không bao giờ
+nhận tệp.
+
+Cả hai đặt `bat_buoc = false`, và **không được đổi thành `true` mà không nghĩ lại**: hệ thống
+đang có 53 người nhập từ ERP, nên đặt bắt buộc là ngày hôm sau toàn bộ 53 hồ sơ hiện "thiếu tài
+liệu" — không phải vì ai làm sai, mà vì ta vừa đổi thước đo.
+
+**Hợp đồng thử việc vẫn ở `02.1`, không sang `06.2`.** `06.2` tên là *"Đánh giá phỏng vấn & thử
+việc"* — là văn bản **đánh giá**, còn hợp đồng thử việc là một **hợp đồng**. Nó cũng nằm trong
+luồng nhắc hạn hợp đồng (BLLĐ 2019 Điều 27 về thông báo kết quả thử việc), nên tách nó ra khỏi
+nhánh hợp đồng là tách một văn bản khỏi đúng chỗ nó đang được quản lý. Đây là một quyết định
+có thể đảo bằng một dòng trong `chon_nhanh` nếu người phụ trách muốn khác.
+
+**Bằng cấp và chứng chỉ KHÔNG sang `06`.** Chúng là giấy tờ lúc ứng tuyển, nhưng là hồ sơ 201
+lâu dài — nằm trong `01` cả đời làm việc.
+
+**`05.1` và `05.2` chưa có nguồn tệp nào.** Tên đã khai (nằm trong `NHANH`), nhưng
+`chon_nhanh` chưa trả về chúng, và chúng được khai trong `NHANH_CHUA_CO_NGUON` kèm lý do:
+
+- `05.1 Bảng chấm công tháng` — bảng công là **dữ liệu tính ra**, không phải tệp. Cần một việc
+  mới: xuất bảng công hằng tháng thành PDF/XLSX.
+- `05.2 Đơn từ & Theo dõi phép` — `don_nghi_phep` và `don_giai_trinh` **không có tệp đính kèm**
+  trong lược đồ hiện tại. Cần thêm cột và một nhóm hồ sơ mới.
+
+Có một bài kiểm bắt buộc điều này phải trung thực: **mọi nhánh trong `NHANH` phải hoặc trả về
+được từ `chon_nhanh`, hoặc nằm trong `NHANH_CHUA_CO_NGUON`** — và ngược lại, một nhánh đã có
+tệp đi vào thì không được khai là chưa có nguồn. Thêm một nhánh rồi quên nối nguồn sẽ làm bộ
+kiểm đỏ, thay vì nằm im trong bảng mãi mãi.
+
+### Nhãn loại trong tên tệp
+
+`NHAN_TAI_LIEU` cho từng mã danh mục một nhãn riêng: `CV`, `ĐÁNH GIÁ THỬ VIỆC`, `CCCD`, `SYLL`,
+`QĐ TĂNG LƯƠNG`… Không có nhãn riêng thì dùng nhãn của nhóm. Lý do rất thực dụng: một thư mục
+có ba tệp `HỒ SƠ - Nguyễn Văn A - ...` thì phải mở từng tệp ra mới biết cái nào là gì.
 
 ## 3. Ba hàng rào
 

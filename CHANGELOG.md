@@ -2,6 +2,72 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.27.0] — 2026-08-19
+
+**Mở nhánh `06 TUYỂN DỤNG & THỬ VIỆC` trên SharePoint.** Tên bốn thư mục con của `05` và `06`
+đã lấy từ SharePoint thật và khớp từng ký tự:
+
+```
+05 CHẤM CÔNG – NGHỈ PHÉP/05.1 Bảng chấm công tháng
+05 CHẤM CÔNG – NGHỈ PHÉP/05.2 Đơn từ & Theo dõi phép
+06 TUYỂN DỤNG & THỬ VIỆC/06.1 Yêu cầu tuyển & CV ứng viên
+06 TUYỂN DỤNG & THỬ VIỆC/06.2 Đánh giá phỏng vấn & thử việc
+```
+
+Ứng dụng ghi vào **thư mục con**, không bao giờ ghi thẳng vào `05` hay `06`. Hai thư mục cha
+đang có người dùng thật; thả một tệp vào giữa khu vực của họ thì lượt xóa lan theo cũng không
+biết tệp đó là của ai. Bài kiểm chặn ở cả tầng ánh xạ và tầng client, và kiểm rằng client từ
+chối **trước khi** gọi Graph.
+
+### Di trú 021: hai mục danh mục tài liệu
+
+Khai nhánh mà không có nguồn tệp là khai một chỗ không bao giờ nhận gì. Trước bản này hệ thống
+không có loại tệp nào thuộc `06.1` hay `06.2`, nên thêm:
+
+| Mã | Tên | Nhánh |
+|---|---|---|
+| `cv_ung_vien` | CV / Đơn xin việc | `06.1` |
+| `danh_gia_thu_viec` | Biên bản đánh giá thử việc | `06.2` |
+
+Cả hai `bat_buoc = false`, và **không được đổi thành `true` mà không nghĩ lại**: hệ thống đang
+có 53 người nhập từ ERP, nên đặt bắt buộc là ngày hôm sau toàn bộ 53 hồ sơ hiện "thiếu tài
+liệu" — không phải vì ai làm sai, mà vì ta vừa đổi thước đo.
+
+`yeu_cau_tuyen` **không** khai: nó gắn với một vị trí cần tuyển, không gắn với một nhân viên,
+nên `tai_lieu_nhan_vien` không phải chỗ của nó.
+
+### Ba ranh giới phân loại, ghi rõ vì đều dễ sai
+
+- **Hợp đồng thử việc vẫn ở `02.1`, không sang `06.2`.** `06.2` tên là *"Đánh giá phỏng vấn &
+  thử việc"* — là văn bản **đánh giá**, còn hợp đồng thử việc là một **hợp đồng**. Nó cũng nằm
+  trong luồng nhắc hạn hợp đồng (BLLĐ 2019 Điều 27), nên tách ra là tách một văn bản khỏi đúng
+  chỗ nó đang được quản lý. Đảo được bằng một dòng trong `chon_nhanh` nếu người phụ trách muốn
+  khác.
+- **Bằng cấp, chứng chỉ không sang `06`.** Là giấy tờ lúc ứng tuyển, nhưng là hồ sơ 201 lâu dài
+  — nằm trong `01` cả đời làm việc. Có bài kiểm e2e riêng cho ranh giới này.
+- **`05.1` và `05.2` chưa có nguồn tệp.** Tên đã khai nhưng `chon_nhanh` chưa trả về chúng.
+
+### Bài kiểm mới: mọi nhánh phải có nguồn
+
+Chặn một kiểu hỏng im lặng: thêm một nhánh vào `NHANH` nhưng quên nói tệp nào đi vào đó. Nhánh
+sẽ nằm trong bảng mãi mãi, không ai nhận ra nó chưa nhận một tệp nào.
+
+Bài kiểm chạy `chon_nhanh` trên toàn bộ tổ hợp nhóm × `loai` × `ma_tai_lieu`, rồi bắt buộc mọi
+nhánh trong `NHANH` phải **hoặc** trả về được, **hoặc** nằm trong `NHANH_CHUA_CO_NGUON` kèm lý
+do. Và ngược lại: một nhánh đã có tệp đi vào thì không được khai là chưa có nguồn — bảng đó
+không được nói dối. Đã kiểm bằng cách thêm thật một nhánh không nối nguồn: bộ kiểm đỏ đúng chỗ.
+
+`NHANH_CHUA_MO` (thêm ở 1.26.2) bỏ đi — nó nói "chưa mở", giờ tên đã có và nhánh đã ở trong
+`NHANH`, nên điều cần ghi lại là "chưa có nguồn tệp", khác nghĩa.
+
+### Nhãn loại trong tên tệp
+
+`NHAN_TAI_LIEU` cho từng mã danh mục một nhãn riêng: `CV`, `ĐÁNH GIÁ THỬ VIỆC`, `CCCD`, `SYLL`,
+`QĐ TĂNG LƯƠNG`… Lý do thực dụng: một thư mục có ba tệp `HỒ SƠ - Nguyễn Văn A - ...` thì phải
+mở từng tệp mới biết cái nào là gì.
+
+391 unit (1 skipped) + 5 proxy + 15 thiết kế + 280 e2e.
+
 ## [1.26.2] — 2026-08-19
 
 **Đính chính:** ở 1.26.1 tôi đặt tên bảng `NHANH_NGUOI_KHAC` và viết rằng ứng dụng sẽ không bao

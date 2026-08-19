@@ -4751,3 +4751,54 @@ test('sharepoint: trang theo doi doi quyen nhan su, thao tac doi quyen admin', a
   });
   assert.equal(day.ma, 403, 'chay dong bo hang loat doi quyen admin');
 });
+
+test('sharepoint: CV va danh gia thu viec vao dung nhanh 06 (qua CSDL that)', async () => {
+  // Bai nay di qua ca duong that: nap tep -> noi vao muc danh muc -> tinh duong dan. Danh muc
+  // `cv_ung_vien` va `danh_gia_thu_viec` den tu di tru 021, va viec chon nhanh dua vao `ma`
+  // cua danh muc — nen neu ai doi `ma` ben di tru ma quen doi ben anh_xa.ts thi bai kiem do.
+  const { ghi_nhan } = await import('../src/sharepoint/dong_bo.ts');
+  const pdf = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(48, 0x20)]);
+
+  const mong_doi: Record<string, { nhanh: string; nhan: string }> = {
+    cv_ung_vien: { nhanh: '/06.1 Yêu cầu tuyển & CV ứng viên/', nhan: 'CV - ' },
+    danh_gia_thu_viec: {
+      nhanh: '/06.2 Đánh giá phỏng vấn & thử việc/', nhan: 'ĐÁNH GIÁ THỬ VIỆC - ',
+    },
+  };
+
+  for (const [ma, mong] of Object.entries(mong_doi)) {
+    const tep = await gan_tep(sp_nv, 'tai_lieu', `${ma}.pdf`, pdf, token_admin);
+    const noi = await goi('PUT', `/api/nhan-vien/${sp_nv}/tai-lieu/${ma}`, {
+      token: token_admin, body: { trang_thai: 'da_so_hoa', tep_id: tep },
+    });
+    assert.equal(noi.ma, 200, JSON.stringify(noi.body));
+    await ghi_nhan(tep);
+
+    const d = await truy_van_mot<{ duong_dan_muon: string | null }>(
+      'select duong_dan_muon from sharepoint_tep where tep_id = $1', [tep]);
+    const dd = d?.duong_dan_muon ?? '';
+    assert.ok(dd.startsWith('06 TUYỂN DỤNG & THỬ VIỆC/'), `${ma}: nhanh sai -> ${dd}`);
+    assert.ok(dd.includes(mong.nhanh), `${ma}: thu muc con sai -> ${dd}`);
+    // Nhan loai phai la nhan RIENG cua danh muc, khong phai chu "HỒ SƠ" chung: mot thu muc co
+    // ba tep "HỒ SƠ - Nguyễn ..." thi phai mo tung tep moi biet cai nao la gi.
+    assert.ok(dd.includes(`/${mong.nhan}`), `${ma}: nhan loai sai -> ${dd}`);
+  }
+});
+
+test('sharepoint: bang cap KHONG bi keo sang nhanh 06', async () => {
+  // Ranh gioi de sai nhat cua phan loai 06: bang cap va chung chi la giay to luc ung tuyen,
+  // nhung chung la ho so 201 lau dai — nam trong `01` ca doi lam viec.
+  const { ghi_nhan } = await import('../src/sharepoint/dong_bo.ts');
+  const tep = await gan_tep(sp_nv, 'tai_lieu', 'bang.pdf',
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(32, 0x20)]), token_admin);
+  const noi = await goi('PUT', `/api/nhan-vien/${sp_nv}/tai-lieu/bang_cap`, {
+    token: token_admin, body: { trang_thai: 'da_so_hoa', tep_id: tep },
+  });
+  assert.equal(noi.ma, 200, JSON.stringify(noi.body));
+  await ghi_nhan(tep);
+
+  const d = await truy_van_mot<{ duong_dan_muon: string | null }>(
+    'select duong_dan_muon from sharepoint_tep where tep_id = $1', [tep]);
+  assert.ok((d?.duong_dan_muon ?? '').startsWith('01 HỒ SƠ NHÂN SỰ (201)/'),
+    `bang cap phai o nhanh 01: ${String(d?.duong_dan_muon)}`);
+});

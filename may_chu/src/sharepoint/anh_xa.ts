@@ -37,6 +37,10 @@ export const NHANH = {
   bhxh_chot_so: '03 BẢO HIỂM (BHXH–BHYT–BHTN)/03.3 Xử lý nợ – Chốt sổ & tờ rời',
   bang_luong: '04 TIỀN LƯƠNG – THUẾ TNCN/04.1 Thang bảng lương & Bảng lương',
   thue_tncn: '04 TIỀN LƯƠNG – THUẾ TNCN/04.2 Thuế TNCN',
+  cham_cong_thang: '05 CHẤM CÔNG – NGHỈ PHÉP/05.1 Bảng chấm công tháng',
+  don_tu_phep: '05 CHẤM CÔNG – NGHỈ PHÉP/05.2 Đơn từ & Theo dõi phép',
+  tuyen_dung_cv: '06 TUYỂN DỤNG & THỬ VIỆC/06.1 Yêu cầu tuyển & CV ứng viên',
+  danh_gia_thu_viec: '06 TUYỂN DỤNG & THỬ VIỆC/06.2 Đánh giá phỏng vấn & thử việc',
   dao_tao_danh_gia: '07 ĐÀO TẠO & ĐÁNH GIÁ',
   khen_thuong_ky_luat: '08 KHEN THƯỞNG – KỶ LUẬT',
   an_toan_suc_khoe: '09 AN TOÀN – SỨC KHỎE (ATVSLĐ)',
@@ -46,29 +50,25 @@ export const NHANH = {
 export type TenNhanh = keyof typeof NHANH;
 
 /**
- * Cac nhanh SE GHI VAO nhung CHUA MO. Ung dung tam thoi khong cham vao.
+ * Nhanh DA KHAI TEN nhung CHUA CO NGUON tep nao tro toi.
  *
- * Khac han cac nhanh khong co trong `NHANH` vi ly do khac: nhung nhanh kia khong thuoc pham vi,
- * con hai nhanh nay DA duoc thong nhat la ho so cua he thong se nam trong do — chi la chua
- * biet du de ghi. Con thieu HAI thu, va thieu mot trong hai la khong duoc ghi:
+ * Ten cua chung da lay tu SharePoint that va da khop tung ky tu, nen chung nam trong `NHANH`
+ * — khong phai nam ngoai. Chi la `chon_nhanh` chua tra ve chung, vi he thong chua co tep nao
+ * thuoc ve do:
  *
- *   1. TEN THU MUC CON, chinh xac tung ky tu. Hai nhanh nay dang co nguoi dung that va co
- *      thu muc con san. Doan ten la Graph TAO MOI mot thu muc ben canh thu muc that, va ho so
- *      bay vao cho khong ai mo — dung kieu loi ma dau gach ngang dai U+2013 da suyt gay ra.
- *   2. CHOT PHAN LOAI: nhom nao cua he thong thuoc thu muc con nao. Yeu cau la ho so phai
- *      TUAN THU phan loai cua nhanh, nen viec nay phai doi chieu voi nguoi dang phu trach,
- *      khong tu quyet.
+ *   05.1 Bảng chấm công tháng   — bang cong la DU LIEU TINH RA, khong phai tep. Can mot viec
+ *                                 moi: xuat bang cong hang thang thanh PDF/XLSX.
+ *   05.2 Đơn từ & Theo dõi phép — `don_nghi_phep` va `don_giai_trinh` KHONG co tep dinh kem
+ *                                 trong luoc do hien tai. Can them cot va nhom ho so moi.
  *
- * Ham `duong_dan_an_toan_de_ghi` la danh sach CHO PHEP nen no da tu choi cac nhanh nay ma
- * khong can bang nay. Gia tri cua bang nay nam o bai kiem: mo mot nhanh ra (them vao `NHANH`)
- * BAT BUOC phai keo theo viec go no khoi day. Tuc la mot hanh dong co y, sau khi da co ten
- * that va da chot phan loai — chu khong phai mot dong them vao luc don dep.
- *
- * Xem tai_lieu/KE-HOACH-TRIEN-KHAI.md muc 3.2.
+ * Vi sao phai khai ra thay vi de trong: bai kiem `moi nhanh trong NHANH deu co nguon` bat
+ * buoc moi nhanh phai HOAC tra ve duoc tu `chon_nhanh`, HOAC nam o day kem ly do. Mot nhanh
+ * them vao roi quen noi tep nao di vao do se lam bo kiem do — thay vi nam im trong bang mai
+ * mai, khong ai nhan ra la no chua bao gio nhan mot tep nao.
  */
-export const NHANH_CHUA_MO: readonly string[] = [
-  '05 CHẤM CÔNG – NGHỈ PHÉP',
-  '06 TUYỂN DỤNG & THỬ VIỆC',
+export const NHANH_CHUA_CO_NGUON: readonly TenNhanh[] = [
+  'cham_cong_thang',
+  'don_tu_phep',
 ] as const;
 
 /**
@@ -86,6 +86,10 @@ export const MUC_NHAY_CAM: Record<TenNhanh, 'noi_bo' | 'han_che' | 'nhay_cam'> =
   bhxh_chot_so: 'han_che',
   bang_luong: 'nhay_cam',
   thue_tncn: 'nhay_cam',
+  cham_cong_thang: 'han_che',
+  don_tu_phep: 'han_che',
+  tuyen_dung_cv: 'han_che',
+  danh_gia_thu_viec: 'han_che',
   dao_tao_danh_gia: 'han_che',
   khen_thuong_ky_luat: 'nhay_cam',
   an_toan_suc_khoe: 'nhay_cam',
@@ -110,6 +114,23 @@ export interface DauVaoAnhXa {
 /** Ma danh muc tai lieu di sang nhanh 09 thay vi 01 — la du lieu suc khoe. */
 const TAI_LIEU_SUC_KHOE = new Set(['KHAM_SUC_KHOE', 'GIAY_KHAM_SUC_KHOE', 'SUC_KHOE']);
 
+/**
+ * Ma danh muc tai lieu thuoc GIAI DOAN TUYEN DUNG, di sang 06.1.
+ *
+ * `06.1 Yêu cầu tuyển & CV ứng viên` — ten thu muc noi ro la CV ung vien, nen chi CV di vao
+ * day. Bang cap va chung chi KHONG: chung la ho so 201 lau dai, nam trong `01` ca doi lam
+ * viec, chu khong phai giay to cua mot lan ung tuyen.
+ */
+const TAI_LIEU_TUYEN_DUNG = new Set(['CV_UNG_VIEN', 'CV', 'DON_XIN_VIEC']);
+
+/**
+ * Ma danh muc tai lieu la KET QUA THU VIEC, di sang 06.2.
+ *
+ * `06.2 Đánh giá phỏng vấn & thử việc`. Bien ban danh gia thu viec la van ban BLLD 2019 Dieu
+ * 27 doi phai thong bao ket qua thu viec — no thuoc giai doan thu viec, khong phai ho so 201.
+ */
+const TAI_LIEU_THU_VIEC = new Set(['DANH_GIA_THU_VIEC', 'DANH_GIA_PHONG_VAN']);
+
 /** Loai BHXH thuoc "huong che do" (03.2) theo sheet Cây thư mục. */
 const BHXH_CHE_DO = new Set(['om_dau', 'thai_san', 'duong_suc', 'tai_nan_lao_dong']);
 
@@ -122,13 +143,15 @@ const BHXH_CHE_DO = new Set(['om_dau', 'thai_san', 'duong_suc', 'tai_nan_lao_don
  */
 export function chon_nhanh(d: DauVaoAnhXa): TenNhanh | null {
   switch (d.nhom) {
-    case 'tai_lieu':
+    case 'tai_lieu': {
+      const ma = (d.ma_tai_lieu ?? '').toUpperCase();
       // Giay kham suc khoe la DU LIEU SUC KHOE — nhanh 09 khai dung dieu do, con 01 thi
       // liet ke "SYLL, CCCD, van bang". Theo dac ta chu khong theo tien tay.
-      return d.ma_tai_lieu !== null && d.ma_tai_lieu !== undefined
-        && TAI_LIEU_SUC_KHOE.has(d.ma_tai_lieu.toUpperCase())
-        ? 'an_toan_suc_khoe'
-        : 'ho_so_201';
+      if (TAI_LIEU_SUC_KHOE.has(ma)) return 'an_toan_suc_khoe';
+      if (TAI_LIEU_TUYEN_DUNG.has(ma)) return 'tuyen_dung_cv';
+      if (TAI_LIEU_THU_VIEC.has(ma)) return 'danh_gia_thu_viec';
+      return 'ho_so_201';
+    }
 
     case 'thong_tin':
       return 'ho_so_201';
@@ -244,6 +267,29 @@ export function ngay_kieu_hcns(ngay: string): string {
   if (m === null) return ngay;
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
+
+/**
+ * Nhan loai rieng cho mot so ma danh muc tai lieu.
+ *
+ * Khong co o day thi dung nhan cua nhom (`NHAN_LOAI['tai_lieu']` = 'HỒ SƠ'). Chi khai nhung
+ * ma ma chu 'HỒ SƠ' lam ten tep vo nghia: mot thu muc co ba tep `HỒ SƠ - Nguyễn Văn A - ...`
+ * thi phai mo tung tep ra moi biet cai nao la CCCD, cai nao la CV.
+ */
+export const NHAN_TAI_LIEU: Record<string, string> = {
+  CCCD: 'CCCD',
+  SO_YEU_LY_LICH: 'SYLL',
+  BANG_CAP: 'BẰNG CẤP',
+  CHUNG_CHI: 'CHỨNG CHỈ',
+  CV_UNG_VIEN: 'CV',
+  DANH_GIA_THU_VIEC: 'ĐÁNH GIÁ THỬ VIỆC',
+  KHAM_SUC_KHOE: 'GIẤY KHÁM SỨC KHỎE',
+  QD_TIEP_NHAN: 'QĐ TIẾP NHẬN',
+  QD_DIEU_CHUYEN: 'QĐ ĐIỀU CHUYỂN',
+  QD_TANG_LUONG: 'QĐ TĂNG LƯƠNG',
+  QD_NGHI_VIEC: 'QĐ NGHỈ VIỆC',
+  TO_KHAI_BHXH: 'TK1-TS',
+  BIEN_BAN_BAN_GIAO: 'BIÊN BẢN BÀN GIAO',
+};
 
 /** Nhan loai van ban cho tung nhom, dung lam phan `[LOẠI]` cua ten tep. */
 export const NHAN_LOAI: Record<string, string> = {
