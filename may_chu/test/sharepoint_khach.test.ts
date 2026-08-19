@@ -646,3 +646,25 @@ test('goc an toan: chi nhan dung hai ten may cua Microsoft', async () => {
   assert.equal(kh.goc_an_toan('http://127.0.0.1:1234', T), false);
   assert.equal(kh.goc_an_toan('khong-phai-url', T), false);
 });
+
+// ================================================================ nhanh cua nguoi khac
+
+test('client TU CHOI moi nhanh co nguoi phu trach rieng, truoc khi goi Graph', async () => {
+  // `05 CHẤM CÔNG – NGHỈ PHÉP` va `06 TUYỂN DỤNG & THỬ VIỆC` dang duoc trien khai song song
+  // bang tay. Bai kiem nay doc tu `NHANH_NGUOI_KHAC` nen them nhanh moi vao danh sach do la
+  // duoc bao ve luon.
+  //
+  // Kiem ca `gg.goi.length === 0`: tu choi phai xay ra TRUOC khi noi voi Graph. Neu goi truoc
+  // roi moi kiem thi mot loi 500 tu Graph van co the da tao thu muc.
+  const { NHANH_NGUOI_KHAC } = await import('../src/sharepoint/anh_xa.ts');
+  assert.ok(NHANH_NGUOI_KHAC.length > 0);
+
+  for (const n of NHANH_NGUOI_KHAC) {
+    lam_moi();
+    const tep = `${n}/NV1-A/x - 01-01-2026.pdf`;
+    await assert.rejects(() => kh.tai_len(tep, Buffer.from('x')), /Từ chối/, `ghi duoc: ${n}`);
+    await assert.rejects(() => kh.xoa(tep), /Từ chối/, `xoa duoc: ${n}`);
+    await assert.rejects(() => kh.bao_dam_thu_muc(`${n}/NV1-A`), /Từ chối/, `tao duoc: ${n}`);
+    assert.equal(gg.goi.length, 0, `da goi Graph cho nhanh cua nguoi khac: ${n}`);
+  }
+});

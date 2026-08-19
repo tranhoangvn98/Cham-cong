@@ -209,8 +209,12 @@ export async function ghi_nhan(chi_tep: string | null = null): Promise<KetQuaGhi
 
 function ly_do_bo_qua(nhom: string): string {
   if (nhom === 'khieu_nai') {
-    return 'Nhóm khiếu nại KHÔNG được đồng bộ: đặc tả thư mục của HCNS không có nhánh nào cho '
-      + 'nó, và khiếu nại có thể là về chính người có quyền đọc thư mục đích.';
+    // Da thanh mot muc trong ke hoach trien khai, khong phai mot cho quen. Khi nao HCNS lap
+    // nhanh cho khieu nai thi khai vao `NHANH` va bo nhanh nay khoi duong `default` cua
+    // `chon_nhanh` — khong can doi gi khac.
+    return 'Khiếu nại nhân sự sẽ xây dựng ở giai đoạn sau (xem tai_lieu/KE-HOACH-TRIEN-KHAI.md). '
+      + 'Tới lúc đó mới có nhánh trên SharePoint. Hiện tệp chỉ nằm trên máy chủ — và đó là '
+      + 'chỗ an toàn hơn: khiếu nại có thể là về chính người có quyền đọc thư mục đích.';
   }
   return `Nhóm "${nhom}" chưa được khai nhánh nào trong đặc tả thư mục HCNS.`;
 }

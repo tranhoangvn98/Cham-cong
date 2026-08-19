@@ -2,6 +2,42 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.26.1] — 2026-08-19
+
+Hai quyết định của bạn, ghi vào mã nguồn và tài liệu.
+
+### Khiếu nại nhân sự: giai đoạn sau
+
+Thêm `tai_lieu/KE-HOACH-TRIEN-KHAI.md` — cái gì đang chạy, cái gì đang chờ ai, cái gì cố ý để
+lại sau. Khiếu nại vào mục 3.1, kèm ba việc phải quyết khi tới lúc; câu khó nhất là **ai được
+đọc nhánh đó**, vì người phụ trách thư mục HCNS có thể chính là người bị khiếu nại.
+
+Lý do bỏ qua hiện trên trang quản trị đã đổi cho khớp: từ "đặc tả không có nhánh nào" thành
+"sẽ xây dựng ở giai đoạn sau, xem kế hoạch triển khai". Cùng một hành vi, nhưng người đọc bảng
+biết đây là một mục có kế hoạch chứ không phải một chỗ quên.
+
+### Hai nhánh có người phụ trách riêng
+
+`05 CHẤM CÔNG – NGHỈ PHÉP` và `06 TUYỂN DỤNG & THỬ VIỆC` tiếp tục triển khai song song bằng
+tay. Ứng dụng không ghi vào và không xóa trong hai nhánh đó.
+
+Trước bản này, điều đó **đúng nhưng là tình cờ**: `duong_dan_an_toan_de_ghi` là danh sách cho
+phép, nên nó từ chối mọi thứ không có trong bảng `NHANH` — kể cả hai nhánh này. Người đọc mã
+sau tôi sẽ thấy hai thư mục thiếu trong bảng và có thể "bổ sung cho đầy đủ".
+
+Giờ nó là một quyết định có tên: bảng `NHANH_NGUOI_KHAC`, và bốn bài kiểm —
+
+- không ghi được vào, không xóa được trong, không tạo được thư mục (kiểm ở cả tầng ánh xạ và
+  tầng client, và kiểm rằng client từ chối **trước khi** gọi Graph);
+- một nhánh **không được** vừa nằm trong `NHANH` vừa nằm trong `NHANH_NGUOI_KHAC`.
+
+Bài kiểm cuối là mục đích thật của bảng: thêm một trong hai nhánh vào `NHANH` giờ bắt buộc phải
+kèm việc gỡ nó khỏi danh sách kia — một hành động có ý, có đối chiếu với người phụ trách, chứ
+không phải một dòng thêm vào lúc dọn dẹp. Cả hai bài kiểm đọc từ chính bảng đó, nên thêm nhánh
+mới vào danh sách là được bảo vệ luôn.
+
+388 unit (1 skipped) + 5 proxy + 15 thiết kế + 278 e2e.
+
 ## [1.26.0] — 2026-08-19
 
 **Đồng bộ kho tệp hồ sơ sang thư viện HCNS trên SharePoint.** Một chiều: máy chủ là bản gốc,

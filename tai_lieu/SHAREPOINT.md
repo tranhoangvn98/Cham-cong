@@ -58,13 +58,23 @@ Giấy khám sức khỏe đi sang `09` chứ không vào `01` vì nhánh `09` k
 liệt kê "SYLL, CCCD, văn bằng". Theo đặc tả, không theo tiện tay. Và theo NĐ 13/2023 dữ liệu
 sức khỏe là dữ liệu cá nhân **nhạy cảm**, không phải "nội bộ".
 
-`khieu_nai` không đồng bộ **không phải vì quên**. Đặc tả HCNS không có nhánh nào cho nó, và
-khiếu nại có thể là về chính người có quyền đọc thư mục đích. Đẩy nó vào một thư mục đoán bừa
-là loại sai tệ nhất, nên hàm ánh xạ trả `null` và trên trang quản trị nó hiện ở mục *Không
-đồng bộ* kèm lý do.
+`khieu_nai` không đồng bộ **không phải vì quên**. Khiếu nại nhân sự được quyết định xây dựng ở
+giai đoạn sau — xem [KE-HOACH-TRIEN-KHAI.md mục 3.1](KE-HOACH-TRIEN-KHAI.md). Đặc tả HCNS cũng
+chưa có nhánh nào cho nó, và lý do quan trọng hơn: khiếu nại có thể là **về chính người có
+quyền đọc thư mục đích**. Đẩy nó vào một thư mục đoán bừa là loại sai tệ nhất, nên hàm ánh xạ
+trả `null` và trên trang quản trị nó hiện ở mục *Không đồng bộ* kèm lý do.
 
-Hai thư mục `05 CHẤM CÔNG – NGHỈ PHÉP` và `06 TUYỂN DỤNG & THỬ VIỆC` đang có dữ liệu thật và
-**chưa được ánh xạ** — có một bài kiểm từ chối thẳng hai đường dẫn này.
+### Hai nhánh có người phụ trách riêng
+
+`05 CHẤM CÔNG – NGHỈ PHÉP` và `06 TUYỂN DỤNG & THỬ VIỆC` đang được **triển khai song song bằng
+tay**, có người phụ trách. Ứng dụng **không ghi vào và không xóa trong** hai nhánh đó.
+
+Đây là một **quyết định**, không phải một thiếu sót — nên nó được ghi thành bảng có tên
+`NHANH_NGUOI_KHAC` trong `anh_xa.ts`. Hàm `duong_dan_an_toan_de_ghi` là danh sách **cho phép**
+nên nó đã từ chối hai nhánh này mà không cần bảng đó; giá trị của bảng nằm ở bài kiểm: nó bắt
+buộc việc thêm một trong hai nhánh vào `NHANH` phải **kèm** việc gỡ nó khỏi `NHANH_NGUOI_KHAC`.
+Tức là một hành động có ý, có đối chiếu với người phụ trách, chứ không phải một dòng thêm vào
+lúc dọn dẹp.
 
 ## 3. Ba hàng rào
 
@@ -237,7 +247,7 @@ Làm ngược lại thì đường dẫn vừa tính sẽ lệch ngay trong cùn
 
 ## 7. Giới hạn đã biết
 
-- **Chưa chạy thật lần nào.** Toàn bộ 28 bài kiểm chạy trên một máy chủ Graph giả tại chỗ:
+- **Chưa chạy thật lần nào.** Toàn bộ 29 bài kiểm chạy trên một máy chủ Graph giả tại chỗ:
   phiên làm việc viết mã này không kết nối được SharePoint thật. Bộ kiểm chứng minh client gọi
   đúng những gì tài liệu Graph nói — **không** chứng minh SharePoint thật sẽ nhận. Lần chạy
   thật đầu tiên là bước 5 ở trên, và nó nên được làm với `SHAREPOINT_BAT_DAY=1` trên một vài

@@ -46,6 +46,24 @@ export const NHANH = {
 export type TenNhanh = keyof typeof NHANH;
 
 /**
+ * Cac nhanh CO NGUOI PHU TRACH RIENG. Ung dung khong ghi vao, khong xoa trong.
+ *
+ * Day KHONG phai "chua kip anh xa". Chung dang duoc trien khai song song bang tay, va viec
+ * ung dung khong cham vao la mot QUYET DINH, khong phai mot thieu sot. Ghi thanh bang co ten
+ * de dieu do doc duoc, thay vi de nguoi sau nhin thay hai thu muc thieu trong `NHANH` roi
+ * "bo sung cho day du".
+ *
+ * Ham `duong_dan_an_toan_de_ghi` la danh sach CHO PHEP, nen no da tu choi cac nhanh nay ma
+ * khong can bang nay. Gia tri cua bang nay nam o bai kiem: no bat buoc viec them mot trong hai
+ * nhanh vao `NHANH` phai keo theo viec go no khoi day — tuc la mot hanh dong co y, co doi
+ * chieu voi nguoi phu trach, chu khong phai mot dong them vao luc don dep.
+ */
+export const NHANH_NGUOI_KHAC: readonly string[] = [
+  '05 CHẤM CÔNG – NGHỈ PHÉP',
+  '06 TUYỂN DỤNG & THỬ VIỆC',
+] as const;
+
+/**
  * Muc nhay cam theo sheet "Quy ước & phân loại".
  *
  * Giu lai trong ma nguon de mot ngay ai do them nhanh moi thi phai khai luon muc nhay cam,
