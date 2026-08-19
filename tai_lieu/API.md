@@ -109,6 +109,7 @@ curl -X POST http://localhost:8080/api/xac-thuc/dang-nhap \
 | POST | `/nhan-vien` | nhan_su |
 | PUT | `/nhan-vien/:id` | nhan_su |
 | POST | `/nhan-vien/:id/nghi-viec` | nhan_su |
+| DELETE | `/nhan-vien/:id` | nhan_su |
 
 `pin_may` là **khóa nối máy chấm công với nhân viên** — chỉ chữ số, phải khớp User ID
 trên máy. Không có PIN thì log về không map được vào ai.
@@ -134,6 +135,13 @@ khác. Chỉ `thu_hoi_cua_nguoi_khac: true` mới chuyển — và mã của ng�
 chú, không bị xóa. Mã sai dạng (PIN có chữ cái, `oid` không phải UUID) trả **400**.
 
 `duoc_cham_cong_dien_thoai` mặc định `false`; chỉ bật cho người đi công tác.
+
+`DELETE /nhan-vien/:id` dùng để **dọn dữ liệu thử**, không dùng cho người thật. Ba hàng rào, mỗi
+cái chặn một kiểu mất mát khác nhau: phải **đã cho nghỉ việc** (409), **không được có phiếu lương**
+(409 — đã trả lương thì hồ sơ là chứng từ), **không được còn tài khoản đăng nhập** (409). Không
+gửi `xac_nhan: true` thì chỉ **đếm và báo sẽ mất gì**, không xóa. Xóa thật thì mã định danh đi
+theo (PIN được giải phóng) còn **lần quẹt ở lại nhưng thành vô chủ** — bằng chứng gốc không biến
+mất cùng hồ sơ.
 
 ### Máy chấm công
 

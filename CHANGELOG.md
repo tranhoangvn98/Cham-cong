@@ -2,6 +2,34 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.33.2] — 2026-08-20
+
+**Không có đường xóa hồ sơ nhân viên.** Đúng với người thật — nhưng để dọn 8 hồ sơ demo
+(`NVDEMO01`–`08`) thì nhân sự không có công cụ nào ngoài SQL tay, mà xóa tay một nhân viên kéo
+theo **21 bảng cascade** và `set null` ở 5 bảng khác. Không ai nên phải gõ câu đó.
+
+`DELETE /api/nhan-vien/:id` với **ba hàng rào**, mỗi cái chặn một kiểu mất mát khác nhau:
+
+1. **Phải đã cho nghỉ việc.** Xóa là bước thứ hai có ý, không phải một nút cạnh nút sửa.
+2. **Không được có phiếu lương.** Đã trả lương cho ai thì hồ sơ người đó ở lại vĩnh viễn — đó là
+   chứng từ, không phải dữ liệu tiện ích.
+3. **Không được còn tài khoản đăng nhập.** Gỡ tài khoản trước là một quyết định về quyền truy cập,
+   không phải hệ quả phụ của việc xóa hồ sơ.
+
+Và **không gửi `xac_nhan` thì chỉ đếm**: trả về số lần quẹt sẽ thành vô chủ, số ngày công, số tệp
+hồ sơ, số đơn từ sẽ mất. Con số đó phải nhìn thấy *trước* khi bấm, không phải đọc lại trong nhật
+ký sau đó.
+
+Xóa thật thì **mã định danh đi theo** — PIN được giải phóng, đúng như mong đợi khi dọn dữ liệu
+thử: `9001`–`9008` trả lại cho dải cấp phát. Còn **lần quẹt ở lại nhưng thành vô chủ**: bằng chứng
+gốc không biến mất cùng hồ sơ. Có bài kiểm giữ cả hai nửa đó.
+
+### Dữ liệu thật trên VPS
+
+Bốn câu kiểm hôm nay cho thấy: 22 người có họ tên nằm trong ô số điện thoại (đã dọn, cả 22 đều có
+`so_dien_thoai` giống hệt `ho_ten` — lỗi ánh xạ có hệ thống bên ERP, không phải rác ngẫu nhiên),
+và trong 10 PIN đang dùng thì **8 là của hồ sơ demo**. Chỉ 2 PIN thuộc người thật.
+
 ## [1.33.1] — 2026-08-20
 
 **Khai một máy thì xóa không được — chỉ tắt được.** Lộ ra khi chạy bộ giả lập máy trên VPS: muốn

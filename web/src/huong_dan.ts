@@ -81,10 +81,12 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       { chu: 'Cài đúng số đó lên máy chấm công, rồi nhân viên đăng ký khuôn mặt/vân tay tại máy.', vai_tro: NHAN_SU },
       { chu: 'Nạp tài liệu vào tab Tài liệu theo checklist.', vai_tro: NHAN_SU },
       { chu: 'Người nghỉ việc: bấm Cho nghỉ việc, KHÔNG xóa hồ sơ.', vai_tro: NHAN_SU },
+      { chu: 'Chỉ dữ liệu thử mới xóa hẳn: cho nghỉ việc trước, xem báo cáo sẽ mất gì, rồi mới xác nhận.', vai_tro: NHAN_SU },
     ],
     luu_y: [
       'ĐỪNG tự nghĩ ra số PIN. Hệ thống cấp số theo dải của từng máy — tự nghĩ số là cách hai văn phòng cùng đánh số 1 và công của người này chạy sang người kia.',
-      'Cho nghỉ việc giữ nguyên lịch sử chấm công và vô hiệu hóa tài khoản đăng nhập. Xóa hồ sơ là mất bảng công cũ.',
+      'Cho nghỉ việc giữ nguyên lịch sử chấm công và vô hiệu hóa tài khoản đăng nhập. Xóa hồ sơ là mất bảng công cũ — lần quẹt ở lại nhưng thành vô chủ.',
+      'Người đã có phiếu lương thì KHÔNG xóa được, vĩnh viễn. Đã trả lương cho ai thì hồ sơ người đó là chứng từ.',
       'Đổi mã nhân viên hoặc họ tên sẽ đổi luôn tên thư mục kho tệp — bình thường, hệ thống tự dọn.',
     ],
   },

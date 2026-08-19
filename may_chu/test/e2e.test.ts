@@ -6556,3 +6556,90 @@ test('thiet bi: xoa may don luon lenh chua gui', async () => {
     'select count(*)::int as so from lenh_thiet_bi where thiet_bi_serial = $1', [sn]);
   assert.equal(sau?.so, 0, 'lenh chet o lai sau khi xoa may');
 });
+
+// -------------------------------------------------------------------- xoa ho so
+//
+// Xoa mot nhan vien keo theo 21 bang cascade va set null o 5 bang khac. Nhom bai nay giu ba hang
+// rao, va giu ca viec BAO TRUOC se mat gi — con so do phai nhin thay truoc khi bam.
+
+test('xoa ho so: dang lam viec thi TU CHOI', async () => {
+  const [id_a] = await cap_gop('XH1', 'Ẩn Văn Sống', 'Ẩn Văn Khác');
+  const r = await goi('DELETE', `/api/nhan-vien/${id_a}`, {
+    token: token_admin, body: { xac_nhan: true },
+  });
+  assert.equal(r.ma, 409, JSON.stringify(r.body));
+  assert.match(String(r.body['loi']), /Cho nghỉ việc trước/);
+
+  const con = await truy_van_mot<{ id: string }>(
+    'select id from nhan_vien where id = $1', [id_a]);
+  assert.notEqual(con, null, 'da xoa du dang lam viec');
+});
+
+test('xoa ho so: chua xac nhan thi CHI DEM, khong xoa', async () => {
+  const [id_a] = await cap_gop('XH2', 'Ẩn Văn Đếm', 'Ẩn Văn Khác');
+  await gan_tep(id_a, 'tai_lieu', 'x.pdf',
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(32, 0x20)]), token_admin);
+  await goi('POST', `/api/nhan-vien/${id_a}/nghi-viec`, { token: token_admin, body: {} });
+
+  const xem = await goi('DELETE', `/api/nhan-vien/${id_a}`, { token: token_admin, body: {} });
+  assert.equal(xem.ma, 200, JSON.stringify(xem.body));
+  assert.equal(xem.body['da_xoa'], false);
+  const se_mat = xem.body['se_mat'] as Record<string, number>;
+  assert.equal(se_mat['tep_ho_so'], 1, 'khong dem duoc so tep se mat');
+
+  const con = await truy_van_mot<{ id: string }>(
+    'select id from nhan_vien where id = $1', [id_a]);
+  assert.notEqual(con, null, 'chua xac nhan ma da xoa');
+});
+
+test('xoa ho so: co phieu luong thi TU CHOI vinh vien', async () => {
+  // Da tra luong cho ai thi ho so nguoi do la chung tu, khong phai du lieu tien ich.
+  const co_luong = await truy_van_mot<{ nhan_vien_id: string }>(
+    'select nhan_vien_id from phieu_luong limit 1');
+  if (co_luong === null) return;
+  await thuc_thi('update nhan_vien set dang_hoat_dong = false where id = $1',
+    [co_luong.nhan_vien_id]);
+  await thuc_thi('delete from nguoi_dung where nhan_vien_id = $1', [co_luong.nhan_vien_id]);
+
+  const r = await goi('DELETE', `/api/nhan-vien/${co_luong.nhan_vien_id}`, {
+    token: token_admin, body: { xac_nhan: true },
+  });
+  assert.equal(r.ma, 409, JSON.stringify(r.body));
+  assert.match(String(r.body['loi']), /phiếu lương/);
+  await thuc_thi('update nhan_vien set dang_hoat_dong = true where id = $1',
+    [co_luong.nhan_vien_id]);
+});
+
+test('xoa ho so THAT: mã định danh đi theo, lần quẹt thành vô chủ', async () => {
+  // `ma_dinh_danh` cascade theo nhan_vien nen PIN duoc GIAI PHONG — dung nhu mong doi khi don
+  // du lieu thu: 9001-9008 tra lai cho dai cap phat.
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a] = await cap_gop('XH3', 'Ẩn Văn Xóa', 'Ẩn Văn Khác');
+  await gan_ma(id_a, 'may_cham_cong', '81001');
+  const day = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=ATTLOG`,
+    headers: { 'content-type': 'text/plain' },
+    payload: `81001\t${NGAY} 08:02:00\t0\t15\t0\n`,
+  });
+  assert.equal(day.statusCode, 200, day.body);
+  await goi('POST', `/api/nhan-vien/${id_a}/nghi-viec`, { token: token_admin, body: {} });
+
+  const r = await goi('DELETE', `/api/nhan-vien/${id_a}`, {
+    token: token_admin, body: { xac_nhan: true },
+  });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+  assert.equal(r.body['da_xoa'], true);
+  assert.equal((r.body['se_mat'] as Record<string, number>)['lan_quet_thanh_vo_chu'], 1);
+
+  // PIN duoc giai phong.
+  const ma = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from ma_dinh_danh where ma_chuan = '81001'`);
+  assert.equal(ma?.so, 0, 'ma dinh danh khong di theo -> PIN nam ket vinh vien');
+
+  // Lan quet O LAI nhung vo chu — bang chung goc khong bien mat cung ho so.
+  const quet = await truy_van_mot<{ nhan_vien_id: string | null }>(
+    `select nhan_vien_id from lan_quet where pin_may = '81001'`);
+  assert.notEqual(quet, null, 'lan quet bi xoa theo ho so');
+  assert.equal(quet?.nhan_vien_id, null);
+});

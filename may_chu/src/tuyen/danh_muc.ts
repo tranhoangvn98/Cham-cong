@@ -225,6 +225,73 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     return canh_bao.length === 0 ? { ok: true } : { ok: true, canh_bao };
   });
 
+  /**
+   * XOA HAN mot ho so. Dung de don du lieu thu, khong dung cho nguoi that.
+   *
+   * Ba hang rao, va moi cai chan mot kieu mat mat khac nhau:
+   *
+   *   1. PHAI DA CHO NGHI VIEC. Xoa la buoc thu hai co y, khong phai mot nut canh nut sua.
+   *   2. KHONG DUOC CO PHIEU LUONG. Da tra luong cho ai thi ho so nguoi do o lai vinh vien —
+   *      do la chung tu, khong phai du lieu tien ich.
+   *   3. KHONG DUOC CON TAI KHOAN dang nhap. Go tai khoan truoc la mot quyet dinh ve quyen.
+   *
+   * Va no BAO TRUOC se mat gi: `xac_nhan` khong dat thi chi dem, khong xoa. Xoa mot nhan vien
+   * keo theo 21 bang cascade (bang cong, don tu, ho so, KPI...) va set null o 5 bang khac —
+   * lan quet o lai nhung thanh vo chu. Con so do phai nhin thay TRUOC khi bam.
+   */
+  app.delete('/nhan-vien/:id', { preHandler: can_nhan_su }, async (req) => {
+    const id = lay_id(req);
+    const xac_nhan = luan_ly(than(req.body ?? {}), 'xac_nhan', false) === true;
+
+    const nv = await truy_van_mot<{ ma_nv: string; ho_ten: string; dang_hoat_dong: boolean }>(
+      'select ma_nv, ho_ten, dang_hoat_dong from nhan_vien where id = $1', [id]);
+    if (nv === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
+
+    const dem = await truy_van_mot<{
+      quet: number; cong: number; luong: number; tai_khoan: number; tep: number; don: number;
+    }>(
+      `select (select count(*) from lan_quet        where nhan_vien_id = $1)::int as quet,
+              (select count(*) from bang_cong_ngay  where nhan_vien_id = $1)::int as cong,
+              (select count(*) from phieu_luong     where nhan_vien_id = $1)::int as luong,
+              (select count(*) from nguoi_dung      where nhan_vien_id = $1)::int as tai_khoan,
+              (select count(*) from ho_so_tep       where nhan_vien_id = $1)::int as tep,
+              (select count(*) from don_tu          where nhan_vien_id = $1)::int as don`,
+      [id]);
+
+    const se_mat = {
+      lan_quet_thanh_vo_chu: dem?.quet ?? 0,
+      bang_cong_ngay: dem?.cong ?? 0,
+      tep_ho_so: dem?.tep ?? 0,
+      don_tu: dem?.don ?? 0,
+    };
+
+    if (nv.dang_hoat_dong) {
+      throw new LoiXungDot(
+        `"${nv.ma_nv} — ${nv.ho_ten}" đang làm việc. Cho nghỉ việc trước rồi mới xóa được — `
+        + 'xóa là bước thứ hai có ý, không phải một nút cạnh nút sửa.');
+    }
+    if ((dem?.luong ?? 0) > 0) {
+      throw new LoiXungDot(
+        `"${nv.ma_nv} — ${nv.ho_ten}" có ${String(dem?.luong ?? 0)} phiếu lương. Đã trả lương `
+        + 'cho ai thì hồ sơ người đó ở lại vĩnh viễn — đó là chứng từ. Dùng Cho nghỉ việc.');
+    }
+    if ((dem?.tai_khoan ?? 0) > 0) {
+      throw new LoiXungDot(
+        `"${nv.ma_nv} — ${nv.ho_ten}" còn tài khoản đăng nhập. Gỡ tài khoản trước — đó là một `
+        + 'quyết định về quyền truy cập, không phải hệ quả phụ của việc xóa hồ sơ.');
+    }
+
+    if (!xac_nhan) {
+      return { da_xoa: false, ma_nv: nv.ma_nv, ho_ten: nv.ho_ten, se_mat,
+        luu_y: 'Chưa xóa gì. Gửi lại kèm xac_nhan = true để xóa thật.' };
+    }
+
+    await thuc_thi('delete from nhan_vien where id = $1', [id]);
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xoa_nhan_vien', 'nhan_vien', id,
+      { ma_nv: nv.ma_nv, ho_ten: nv.ho_ten, ...se_mat }, req.ip);
+    return { da_xoa: true, ma_nv: nv.ma_nv, ho_ten: nv.ho_ten, se_mat };
+  });
+
   /** Cho nghi viec: giu lai lich su cham cong, chi tat hoat dong. */
   app.post('/nhan-vien/:id/nghi-viec', { preHandler: can_nhan_su }, async (req) => {
     const id = lay_id(req);
