@@ -4,6 +4,7 @@ import {
   DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
+import type { NhomMa as NhomMaDinhDanh } from './ma_dinh_danh.tsx';
 
 interface ThietBi {
   id: string;
@@ -285,15 +286,23 @@ function NapNhanVien(
   { thiet_bi: ThietBi; khi_dong: () => void; khi_xong: () => void },
 ): ReactNode {
   const [nhan_vien_id, dat_nhan_vien_id] = useState('');
+  const [pin, dat_pin] = useState('');
   const hd = dung_hanh_dong();
   const { du_lieu } = dung_nap<NhanVien[]>('/api/nhan-vien?chi_dang_lam=true');
   const co_pin = (du_lieu ?? []).filter((n) => n.pin_may !== null);
+
+  // Mot nguoi co the co NHIEU PIN — moi may mot PIN. Doc tu bang ma dinh danh de chon dung cai
+  // cua may nay; cot `pin_may` chi chua duoc mot.
+  const { du_lieu: cac_nhom } = dung_nap<NhomMaDinhDanh[]>(
+    nhan_vien_id === '' ? null : `/api/nhan-vien/${nhan_vien_id}/ma-dinh-danh`, [nhan_vien_id]);
+  const pin_dang_co = (cac_nhom ?? [])
+    .find((n) => n.he_thong === 'may_cham_cong')?.cac_ma.map((m) => m.ma) ?? [];
 
   const gui = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     const ok = await hd.chay(() => goi(
       `/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/nap-nhan-vien`,
-      { method: 'POST', body: { nhan_vien_id } },
+      { method: 'POST', body: pin === '' ? { nhan_vien_id } : { nhan_vien_id, pin } },
     ));
     if (ok) khi_xong();
   };
@@ -324,8 +333,28 @@ function NapNhanVien(
           )}
         </div>
 
+        {pin_dang_co.length > 1 && (
+          <div className="o-nhap">
+            <label htmlFor="pinchon">PIN nạp xuống máy này *</label>
+            <select id="pinchon" value={pin} onChange={(e) => dat_pin(e.target.value)} required>
+              <option value="">— Chọn PIN —</option>
+              {pin_dang_co.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <div className="goi-y">
+              Người này có {pin_dang_co.length} PIN đang dùng. Chọn PIN đã khai{' '}
+              <strong>trên chính máy {thiet_bi.ten}</strong> — nạp nhầm PIN của máy khác thì họ
+              quẹt vào máy này sẽ không khớp được ai.
+            </div>
+          </div>
+        )}
+
         <div className="hang-nut">
-          <button type="submit" className="nut-chinh" disabled={hd.dang_chay || nhan_vien_id === ''}>
+          <button
+            type="submit"
+            className="nut-chinh"
+            disabled={hd.dang_chay || nhan_vien_id === ''
+              || (pin_dang_co.length > 1 && pin === '')}
+          >
             {hd.dang_chay ? 'Đang xếp lệnh…' : 'Nạp xuống máy'}
           </button>
           <button type="button" onClick={khi_dong}>Hủy</button>

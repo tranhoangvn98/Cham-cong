@@ -377,14 +377,44 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       [nhan_vien_id],
     );
     if (nv === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
-    if (nv.pin_may === null) throw new LoiDauVao('Nhân viên chưa có PIN máy. Hãy gán PIN trước.');
+
+    // PIN lay tu BANG MA DINH DANH, hop voi cot cu — dung nguon ma bo tiep nhan ADMS dung.
+    // Mot nguoi co the co NHIEU PIN (moi may mot PIN), va cot `pin_may` chi chua duoc mot;
+    // nap nham PIN cua may khac thi nguoi do quet vao may nay khong ai nhan ra.
+    const tu_bang = await truy_van<{ ma: string }>(
+      `select ma from ma_dinh_danh
+        where nhan_vien_id = $1 and he_thong = 'may_cham_cong' and hieu_luc_den is null
+        order by hieu_luc_tu`,
+      [nhan_vien_id],
+    );
+    const cac_pin = [...new Set([
+      ...tu_bang.map((x) => x.ma),
+      ...(nv.pin_may === null || nv.pin_may.trim() === '' ? [] : [nv.pin_may]),
+    ])];
+
+    if (cac_pin.length === 0) {
+      throw new LoiDauVao('Nhân viên chưa có PIN máy. Hãy gán PIN trước.');
+    }
+    const pin_chon = chuoi(b, 'pin', { toi_da: 32 });
+    if (pin_chon !== null && !cac_pin.includes(pin_chon)) {
+      throw new LoiDauVao(
+        `PIN "${pin_chon}" không thuộc nhân viên này. Các PIN đang có: ${cac_pin.join(', ')}.`);
+    }
+    // Nhieu PIN ma khong noi ro nap cai nao thi KHONG DOAN — doan sai o day nghia la nguoi do
+    // quet vao may nay ma khong khop duoc ai, va khong co gi bao.
+    if (pin_chon === null && cac_pin.length > 1) {
+      throw new LoiDauVao(
+        `Nhân viên có ${String(cac_pin.length)} PIN đang dùng (${cac_pin.join(', ')}). `
+        + 'Chọn PIN cần nạp xuống máy này.');
+    }
+    const pin_nap = pin_chon ?? cac_pin[0] as string;
 
     await bat_buoc_co_may(serial);
     // Ten tren may ZKTeco chi hien duoc ASCII — bo dau de khong ra ky tu la.
     const ten_may = bo_dau(nv.ho_ten).slice(0, 24);
     const id = await xep_lenh(
       serial,
-      `DATA UPDATE USERINFO PIN=${nv.pin_may}\tName=${ten_may}\tPri=0\tPasswd=\tCard=\tGrp=1\tTZ=0000000000000000`,
+      `DATA UPDATE USERINFO PIN=${pin_nap}\tName=${ten_may}\tPri=0\tPasswd=\tCard=\tGrp=1\tTZ=0000000000000000`,
     );
     return { ok: true, lenh_id: id, luu_y: 'Máy sẽ nhận lệnh ở lần kết nối kế tiếp (thường dưới 10 giây).' };
   });

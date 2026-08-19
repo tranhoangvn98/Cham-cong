@@ -96,15 +96,27 @@ và ngày. Một người vào ca ở VP1 và tan ca ở VP3 vẫn được ghé
 mạch**. Serial máy chỉ dùng để biết quẹt ở đâu và để chống trùng. Thêm văn phòng = khai
 thêm serial vào bảng Thiết bị, trỏ về cùng tên miền.
 
-Đúng **một điều** phải kiểm soát: **PIN của một người phải giống nhau trên mọi máy.**
+Đúng **một điều** phải kiểm soát: **PIN phải duy nhất trên phạm vi TOÀN CÔNG TY**, không
+phải trên từng máy.
 
 PIN chính là danh tính; serial máy không tham gia việc nhận diện. Nếu VP2 khai anh A là
 PIN 1 trong khi VP1 đã có anh B là PIN 1, mọi lần quẹt của anh A ở VP2 sẽ cộng vào công
-của anh B — hệ thống không có cách nào biết. Ràng buộc `pin_may unique` chỉ chặn được việc
-gán trùng *trong phần mềm*, không chặn được người khai máy bấm nhầm.
+của anh B — hệ thống không có cách nào biết đó là hai người.
 
 → Chia dải PIN theo văn phòng ngay từ đầu: VP1 `1001–1999`, VP2 `2001–2999`, VP3
-`3001–3999`. Người đi công tác giữ nguyên PIN gốc ở mọi máy.
+`3001–3999`.
+
+**Một người ĐƯỢC nhiều PIN** (từ bản `1.32.0`): bảng mã định danh giữ nhiều PIN cho cùng một
+người, mỗi máy một PIN nếu dải số đã chia sẵn. Cả hai PIN đều chấm công đúng người, và bảng
+công vẫn gộp thành một ngày liền mạch. Trước đó cột `pin_may` chỉ chứa được một, nên PIN thứ
+hai quẹt vào không khớp ai.
+
+Khi nạp nhân viên xuống máy, hộp thoại **"Nạp NV"** hỏi **nạp PIN nào** nếu người đó có nhiều
+PIN — nạp nhầm PIN của máy khác thì họ quẹt vào máy này sẽ không khớp được ai, và không có gì
+báo: lần quẹt nằm đó với `nhan_vien_id` trống.
+
+Ai đang giữ một PIN thì tra ở **Hệ thống → Mã định danh → Tra cứu** — kể cả PIN đã đóng lại.
+Xem [`MA-DINH-DANH.md`](MA-DINH-DANH.md).
 
 Hai điểm nữa khi mở thêm máy:
 
@@ -113,6 +125,70 @@ Hai điểm nữa khi mở thêm máy:
   Nút "Nạp NV" chạy từng máy một: ba văn phòng là ba lần nạp.
 - Bấm **"Đồng bộ giờ"** cho từng máy. Lệch đồng hồ giữa các máy là nguyên nhân sai công
   phổ biến nhất, và càng nguy hiểm khi giờ vào / giờ ra do hai máy khác nhau ghi.
+
+## 3b. Kiểm tra cấu hình đã tới VPS chưa
+
+Điền thông tin máy trên web **là ghi thẳng vào cơ sở dữ liệu trên VPS** — không có hàng đợi,
+không có bước đồng bộ nào ở giữa. Ba cách kiểm, từ nhẹ đến chắc:
+
+**1. Xem trên web.** Trang **Thiết bị** hiện dòng máy vừa khai. Có dòng đó nghĩa là VPS đã
+nhận — trang này đọc trực tiếp từ cơ sở dữ liệu, không có cache.
+
+**2. Hỏi thẳng cơ sở dữ liệu trên VPS:**
+
+```bash
+cd /root/Cham-cong && docker compose exec -T postgres psql -U chamcong -d chamcong -c \
+  "select serial, ten, vi_tri, dang_bat, dia_chi_ip, thay_lan_cuoi,
+          (select count(*) from lenh_thiet_bi l
+            where l.thiet_bi_serial = t.serial and l.gui_luc is null) as lenh_cho
+     from thiet_bi t order by ten;"
+```
+
+- `thay_lan_cuoi` **trống** = máy chưa gọi tới VPS lần nào → việc còn lại là **cấu hình trên
+  chính máy** (Menu › Comm › Cloud Server), không phải trên web.
+- `dia_chi_ip` cho biết máy ra Internet bằng IP nào — chính con số cần thêm vào
+  `ICLOCK_IP_CHO_PHEP`.
+- `lenh_cho > 0` = có lệnh đang chờ máy đến lấy. Máy online thì con số này về 0 trong khoảng
+  10 giây.
+
+**3. Giả lập một máy, không cần cắm máy thật.** Đây là cách chắc nhất — nó đi hết chặng
+handshake → đẩy log → tính bảng công → lấy lệnh:
+
+```bash
+# Khai serial GIA-LAP-001 trên web trước, rồi:
+node trien_khai/gia_lap_may.mjs --may-chu https://<tên-miền>/chamcong --serial GIA-LAP-001 --pin 1001
+```
+
+Chạy xanh nghĩa là toàn bộ đường dữ liệu đã thông; phần còn lại chỉ là cấu hình mạng của máy
+thật.
+
+### Cái gì đi từ VPS xuống máy, cái gì không
+
+Đây là chỗ hay hiểu ngược. Giao thức ADMS là **máy tự gọi lên**, VPS không gọi xuống được:
+
+| Thông tin | Có xuống máy không |
+|---|---|
+| Tên máy, vị trí, bật/tắt (điền trên web) | **Không.** Chỉ dùng ở phía hệ thống — máy không cần biết |
+| Địa chỉ máy chủ, cổng, chế độ ADMS, Realtime | **Không.** Phải gõ **trên chính máy** |
+| Nhịp gửi, `Realtime`, múi giờ (khối OPTIONS) | **Có**, tự động ở mỗi lần máy handshake |
+| Đồng hồ máy (nút *Đồng bộ giờ*) | **Có**, qua hàng đợi lệnh |
+| User + tên theo PIN (nút *Nạp NV*) | **Có**, qua hàng đợi lệnh |
+| Khuôn mặt / vân tay | **Không bao giờ.** Phải đăng ký tại từng máy |
+
+Lệnh không đi ngay: nó nằm ở `lenh_thiet_bi` và máy **đến lấy** ở lần kết nối kế tiếp — dưới
+10 giây với máy đang online, và **nằm chờ mãi** nếu máy đang tắt. Nút *Xem lệnh* trong trang
+Thiết bị cho biết lệnh nào đã gửi, mã trả về là bao nhiêu.
+
+### Thêm máy thứ hai: đúng bốn việc
+
+1. **Trên web**: Thiết bị → khai serial (số SN dán sau lưng máy).
+2. **Trên máy**: Menu › Comm › Cloud Server — địa chỉ VPS, cổng `8080`, Server Mode `ADMS`,
+   Realtime **bật**, Proxy **tắt**.
+3. **Trong `.env` của VPS**: thêm IP ra Internet của nơi đặt máy vào `ICLOCK_IP_CHO_PHEP`
+   (danh sách, phân cách bằng dấu phẩy), rồi `docker compose up -d`. Bỏ trống ô này nghĩa là
+   **không chặn IP nào** — ai biết serial cũng đẩy được lần quẹt giả vào cơ sở tính lương.
+4. **Bấm *Đồng bộ giờ*** cho máy mới. Lệch đồng hồ giữa hai máy là nguyên nhân sai công phổ
+   biến nhất, và nguy hiểm hơn khi giờ vào / giờ ra do hai máy khác nhau ghi.
 
 ## 4. Các endpoint máy gọi tới
 

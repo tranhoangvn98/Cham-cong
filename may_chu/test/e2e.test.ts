@@ -6264,3 +6264,100 @@ test('nhap CSV: PIN vao tep cung vao bang ma dinh danh', async () => {
   assert.equal(theo.get('may_cham_cong'), '78020', 'PIN nhap tu CSV khong vao bang dinh danh');
   assert.equal(theo.get('noi_bo'), 'CSV-MD-1');
 });
+
+// -------------------------------------------------------------------- nhieu may cham cong
+//
+// Nhieu may thi mot nguoi co the co PIN khac nhau o tung may. Nhom bai nay giu duong "nap nhan
+// vien xuong may": nap nham PIN cua may khac thi nguoi do quet vao may nay khong khop duoc ai,
+// va khong co gi bao — lan quet nam do voi `nhan_vien_id = null`.
+
+test('nhieu may: nap nhan vien lay PIN tu BANG dinh danh', async () => {
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a] = await cap_gop('NM1', 'Ngư Văn Nạp', 'Ngư Văn Khác');
+  // PIN chi nam trong bang, cot `pin_may` trong — truoc ban nay route se bao "chua co PIN".
+  await thuc_thi('update nhan_vien set pin_may = null where id = $1', [id_a]);
+  await gan_ma(id_a, 'may_cham_cong', '79001');
+  await thuc_thi('update nhan_vien set pin_may = null where id = $1', [id_a]);
+
+  const r = await goi('POST', `/api/thiet-bi/${SERIAL}/nap-nhan-vien`, {
+    token: token_admin, body: { nhan_vien_id: id_a },
+  });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+
+  const lenh = await truy_van_mot<{ lenh: string }>(
+    'select lenh from lenh_thiet_bi where id = $1', [r.body['lenh_id']]);
+  assert.match(lenh?.lenh ?? '', /PIN=79001\b/);
+});
+
+test('nhieu may: nhieu PIN thi PHAI noi ro nap cai nao', async () => {
+  // Doan o day la doan sai mot nua thoi gian, va cai gia phai tra la mot nguoi quet vao may ma
+  // khong ai nhan ra. Nen khong doan.
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a] = await cap_gop('NM2', 'Ô Văn Hai Pin', 'Ô Văn Khác');
+  await gan_ma(id_a, 'may_cham_cong', '79002');
+  await gan_ma(id_a, 'may_cham_cong', '79003');
+
+  const mo_ho = await goi('POST', `/api/thiet-bi/${SERIAL}/nap-nhan-vien`, {
+    token: token_admin, body: { nhan_vien_id: id_a },
+  });
+  assert.equal(mo_ho.ma, 400, JSON.stringify(mo_ho.body));
+  assert.match(String(mo_ho.body['loi']), /79002/);
+  assert.match(String(mo_ho.body['loi']), /79003/);
+
+  const ro = await goi('POST', `/api/thiet-bi/${SERIAL}/nap-nhan-vien`, {
+    token: token_admin, body: { nhan_vien_id: id_a, pin: '79003' },
+  });
+  assert.equal(ro.ma, 200, JSON.stringify(ro.body));
+  const lenh = await truy_van_mot<{ lenh: string }>(
+    'select lenh from lenh_thiet_bi where id = $1', [ro.body['lenh_id']]);
+  assert.match(lenh?.lenh ?? '', /PIN=79003\b/);
+
+  // PIN cua nguoi khac thi tu choi, khong im lang nap xuong.
+  const sai = await goi('POST', `/api/thiet-bi/${SERIAL}/nap-nhan-vien`, {
+    token: token_admin, body: { nhan_vien_id: id_a, pin: '79999' },
+  });
+  assert.equal(sai.ma, 400, JSON.stringify(sai.body));
+  assert.match(String(sai.body['loi']), /không thuộc nhân viên này/);
+});
+
+test('nhieu may: hai may khac serial, cung mot nguoi, lan quet ve dung ho', async () => {
+  // Bo tiep nhan khop PIN -> nguoi KHONG phu thuoc serial may. Nen cung mot nguoi quet o hai may
+  // deu vao dung ho so, va bang cong cong lai — dung nhu mong doi khi nhan vien di giua hai kho.
+  const { gan_ma } = await import('../src/dinh_danh/nghiep_vu.ts');
+  const [id_a] = await cap_gop('NM3', 'Phù Văn Hai Kho', 'Phù Văn Khác');
+  await gan_ma(id_a, 'may_cham_cong', '79004');
+
+  const SERIAL_2 = 'MAY-KHO-02';
+  const tao = await goi('POST', '/api/thiet-bi', {
+    token: token_admin, body: { serial: SERIAL_2, ten: 'Máy kho 2', vi_tri: 'Kho 2' },
+  });
+  assert.ok([201, 409].includes(tao.ma), JSON.stringify(tao.body));
+
+  for (const [sn, luc] of [[SERIAL, '07:50:00'], [SERIAL_2, '17:40:00']] as const) {
+    const r = await app.inject({
+      method: 'POST',
+      url: `/iclock/cdata?SN=${sn}&table=ATTLOG`,
+      headers: { 'content-type': 'text/plain' },
+      payload: `79004\t${NGAY} ${luc}\t0\t15\t0\n`,
+    });
+    assert.equal(r.statusCode, 200, r.body);
+  }
+
+  const ds = await truy_van<{ thiet_bi_serial: string }>(
+    `select thiet_bi_serial from lan_quet
+      where nhan_vien_id = $1 and pin_may = '79004' order by thoi_diem`, [id_a]);
+  assert.equal(ds.length, 2, 'lan quet tu hai may khong ve cung mot nguoi');
+  assert.deepEqual(ds.map((d) => d.thiet_bi_serial).sort(), [SERIAL, SERIAL_2].sort());
+});
+
+test('nhieu may: may CHUA khai serial bi tu choi 401', async () => {
+  // Lop chan may la la whitelist theo serial. Them may moi ma quen khai o web thi no bi tu choi,
+  // va do la thiet ke — khong phai loi mang.
+  const r = await app.inject({
+    method: 'POST',
+    url: '/iclock/cdata?SN=MAY-CHUA-KHAI-99&table=ATTLOG',
+    headers: { 'content-type': 'text/plain' },
+    payload: `1\t${NGAY} 08:00:00\t0\t15\t0\n`,
+  });
+  assert.equal(r.statusCode, 401, r.body);
+});

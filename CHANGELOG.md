@@ -2,6 +2,43 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.32.2] — 2026-08-19
+
+**"Nạp NV" xuống máy vẫn đọc cột `pin_may`** — cùng loại lỗi vừa sửa cho đường tiếp nhận ADMS,
+ở đường ngược lại. Tìm ra khi soi lại luồng cấu hình thiết bị trước khi lắp thêm máy.
+
+Hậu quả cụ thể với nhiều máy: một người có PIN `1005` ở kho 1 và `2005` ở kho 2 thì cột chỉ chứa
+được một, nên nạp xuống máy còn lại là **nạp sai PIN** — họ quẹt vào máy đó và không khớp được
+ai. Lần quẹt nằm im với `nhan_vien_id` trống, không có gì báo.
+
+- PIN lấy từ **bảng mã định danh** hợp với cột cũ — đúng nguồn mà bộ tiếp nhận ADMS dùng.
+- Nhiều PIN mà không nói rõ nạp cái nào thì **400 kèm danh sách PIN**, không đoán. Đoán sai ở
+  đây tốn đúng bằng việc không nạp gì.
+- PIN không thuộc người đó thì từ chối, không im lặng nạp xuống.
+- Hộp thoại *Nạp NV* thêm ô chọn PIN khi người đó có nhiều PIN, kèm câu nhắc chọn PIN đã khai
+  **trên chính máy này**.
+
+### Quy tắc PIN cho nhiều máy đã đổi, tài liệu nói ngược
+
+`KET-NOI-MAY-ZKTECO.md` vẫn viết *"PIN của một người phải giống nhau trên mọi máy"* — đúng với
+thời `pin_may` là một cột, sai từ bản `1.32.0`. Quy tắc bây giờ: **PIN duy nhất trên phạm vi toàn
+công ty** (index bộ phận bảo đảm), còn **một người được nhiều PIN**, mỗi máy một PIN nếu dải số
+đã chia sẵn. Chia dải PIN theo văn phòng vẫn cần — nó chống trùng giữa **hai người**, việc mà
+phần mềm không thể biết khi người khai máy bấm nhầm.
+
+### Thêm mục *Kiểm tra cấu hình đã tới VPS chưa*
+
+Ba cách kiểm từ nhẹ đến chắc (xem trang Thiết bị → hỏi thẳng Postgres → chạy `gia_lap_may.mjs`),
+cộng một bảng nói rõ **cái gì đi từ VPS xuống máy và cái gì không** — chỗ hay hiểu ngược, vì ADMS
+là máy tự gọi lên chứ VPS không gọi xuống được. Tên máy / vị trí điền trên web **không** xuống
+máy và không cần xuống; địa chỉ máy chủ thì phải gõ **trên chính máy**.
+
+Và bốn việc khi thêm máy thứ hai, trong đó việc dễ quên nhất là thêm IP của nơi đặt máy vào
+`ICLOCK_IP_CHO_PHEP` — bỏ trống ô đó nghĩa là không chặn IP nào, ai biết serial cũng đẩy được lần
+quẹt giả vào cơ sở tính lương.
+
+472 unit (1 skipped) + 5 proxy + 15 thiết kế + 352 e2e.
+
 ## [1.32.1] — 2026-08-19
 
 **Bản 1.32.0 mở ra một đường chấm công sai tên.** Câu hỏi "mã bị dùng lại hoặc trùng thì giải
