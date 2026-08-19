@@ -2,6 +2,35 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.30.1] — 2026-08-19
+
+**Nhãn loại bị lặp vào giữa tên tệp.** Dữ liệu thật trên VPS lộ ra ngay ở lần xem trước đường dẫn
+đầu tiên:
+
+```
+CCCD - CCCD (scan 2 mặt) - 18-08-2026.pdf
+CV - CV Đơn xin việc - 19-08-2026.pdf
+```
+
+Quy ước HCNS là `[LOẠI] SỐ [MÃ] - [TÊN CÓ DẤU] - DD-MM-YYYY`. Phần `[LOẠI]` đã nói **là gì**, nên
+phần giữa phải nói **là của ai**. Tôi để nó ưu tiên tên danh mục tài liệu, nên nhãn lặp lại chính
+nó và tên người mất hẳn — mở thư mục ra thì thấy ba tệp cùng một tên của ba người khác nhau.
+
+Sửa: với `tai_lieu` / `thong_tin`, phần giữa là **họ tên**. `bien_ban` thì giữ nguyên trích yếu —
+nhãn của nó là 'BIÊN BẢN', một từ chung, nên trích yếu ("Cam kết bảo mật") mới là thứ phân biệt
+được, đúng như ví dụ `QĐ SỐ 05 - BỔ NHIỆM - 15-07-2026` của đặc tả.
+
+Mã danh mục chưa có nhãn riêng thì dùng **chính tên danh mục viết hoa** thay vì chữ "HỒ SƠ" chung
+chung — `PHỤ LỤC HĐLĐ - Nguyễn Văn A - …` thay vì `HỒ SƠ - Nguyễn Văn A - …`.
+
+### Bài kiểm cũ vẫn xanh, và đó là vấn đề
+
+Bài e2e chỉ kiểm nhãn **có mặt** (`dd.includes('/CV - ')`) nên `CV - CV Đơn xin việc` vẫn qua.
+Siết lại: tên tệp phải chứa họ tên nhân viên, và nhãn không được xuất hiện quá một lần. Đã kiểm
+bằng cách đặt lại đúng dòng cũ — bài kiểm đỏ đúng chỗ.
+
+431 unit (1 skipped) + 5 proxy + 15 thiết kế + 311 e2e.
+
 ## [1.30.0] — 2026-08-19
 
 **Bốn loại đơn còn thiếu: làm thêm giờ, đổi ca, đi công tác, thôi việc.** Nhân viên tự lên đơn

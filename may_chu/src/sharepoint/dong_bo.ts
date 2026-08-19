@@ -108,6 +108,20 @@ interface DongMongMuon {
   tai_lieu_ten: string | null;
 }
 
+/**
+ * Nhan `[LOẠI]` cho mot tep.
+ *
+ * Ba muc uu tien: nhan rieng cua ma danh muc -> ten danh muc viet hoa -> nhan cua nhom.
+ */
+function nhan_loai_tep(d: DongMongMuon): string {
+  const ma = (d.tai_lieu_ma ?? '').toUpperCase();
+  if (ma !== '') {
+    const ten_dm = (d.tai_lieu_ten ?? '').trim().toUpperCase();
+    return NHAN_TAI_LIEU[ma] ?? (ten_dm === '' ? 'HỒ SƠ' : ten_dm);
+  }
+  return NHAN_LOAI[d.nhom] ?? 'HỒ SƠ';
+}
+
 /** Duoi tep, lay tu ten nguoi dung dat; khong co thi lay tu ten luu tren dia. */
 function duoi_tep(ten_goc: string, ten_luu: string): string {
   for (const t of [ten_goc, ten_luu]) {
@@ -125,9 +139,20 @@ function duoi_tep(ten_goc: string, ten_luu: string): string {
 export function tinh_duong_dan_muon(d: DongMongMuon): string | null {
   const loai = d.nhom === 'bien_ban' ? d.bb_loai : d.nhom === 'bhxh' ? d.bhxh_loai : null;
 
-  // Phan giua ten tep: uu tien trich yeu (tieu de bien ban, ten danh muc tai lieu) vi thu muc
-  // da mang ten nguoi roi. Khong co trich yeu thi dung ho ten — dung vi du cua dac ta.
-  const ten = d.bb_tieu_de ?? d.tai_lieu_ten ?? d.ho_ten;
+  // Phan giua ten tep — quy uoc HCNS: `[LOẠI] SỐ [MÃ] - [TÊN CÓ DẤU] - DD-MM-YYYY`.
+  //
+  // NHAN DA NOI "LA GI", NEN PHAN GIUA PHAI NOI "LA CUA AI".
+  //
+  // Lan dau toi uu tien ten danh muc tai lieu, va ket qua tren du lieu that la:
+  //     CCCD - CCCD (scan 2 mặt) - 18-08-2026.pdf
+  //     CV - CV Đơn xin việc - 19-08-2026.pdf
+  // Nhan lap lai chinh no, va ten nguoi mat han. Mo thu muc ra thi thay ba tep cung ten kieu
+  // do cua ba nguoi khac nhau.
+  //
+  // `bien_ban` thi KHAC va van dung trich yeu: nhan cua no la 'BIÊN BẢN' — mot tu chung —
+  // nen trich yeu ("Cam kết bảo mật") moi la thu phan biet duoc, dung nhu vi du cua dac ta
+  // `QĐ SỐ 05 - BỔ NHIỆM - 15-07-2026`.
+  const ten = d.bb_tieu_de ?? d.ho_ten;
 
   const dv: DauVaoDuongDan = {
     nhom: d.nhom,
@@ -135,9 +160,12 @@ export function tinh_duong_dan_muon(d: DongMongMuon): string | null {
     ma_tai_lieu: d.tai_lieu_ma,
     ma_nv: d.ma_nv,
     ho_ten: d.ho_ten,
-    // Uu tien nhan theo dung ma danh muc: mot thu muc co ba tep "HỒ SƠ - Nguyễn Văn A - ..."
-    // thi phai mo tung tep moi biet cai nao la CCCD, cai nao la CV.
-    nhan: NHAN_TAI_LIEU[(d.tai_lieu_ma ?? '').toUpperCase()] ?? NHAN_LOAI[d.nhom] ?? 'HỒ SƠ',
+    // Nhan theo dung ma danh muc: mot thu muc co ba tep "HỒ SƠ - Nguyễn Văn A - ..." thi phai
+    // mo tung tep moi biet cai nao la CCCD, cai nao la CV.
+    //
+    // Ma danh muc chua co nhan rieng thi dung CHINH TEN DANH MUC (viet hoa) — van tot hon chu
+    // "HỒ SƠ" chung chung. Chi khi khong co ma danh muc nao moi lui ve nhan cua nhom.
+    nhan: nhan_loai_tep(d),
     so: d.so_hd ?? d.so_quyet_dinh ?? d.so_ho_so ?? null,
     ten,
     ngay: d.hd_ngay ?? d.bb_ngay ?? d.ql_ngay ?? d.bhxh_ngay ?? d.ngay_tep,

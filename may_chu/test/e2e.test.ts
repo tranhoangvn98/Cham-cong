@@ -4782,6 +4782,19 @@ test('sharepoint: CV va danh gia thu viec vao dung nhanh 06 (qua CSDL that)', as
     // Nhan loai phai la nhan RIENG cua danh muc, khong phai chu "HỒ SƠ" chung: mot thu muc co
     // ba tep "HỒ SƠ - Nguyễn ..." thi phai mo tung tep moi biet cai nao la gi.
     assert.ok(dd.includes(`/${mong.nhan}`), `${ma}: nhan loai sai -> ${dd}`);
+
+    // PHAN GIUA PHAI LA TEN NGUOI, khong phai nhan lap lai.
+    //
+    // Bai kiem nay them vao sau khi du lieu that lo ra loi: `CCCD - CCCD (scan 2 mặt) - ...`
+    // va `CV - CV Đơn xin việc - ...`. Ban truoc chi kiem nhan CO MAT nen van xanh, va tep
+    // thi mat ten nguoi — mo thu muc ra thay ba tep cung ten cua ba nguoi khac nhau.
+    const chi_ten_tep = dd.slice(dd.lastIndexOf('/') + 1);
+    assert.ok(chi_ten_tep.includes('Nguyễn Thị Ánh Tuyết'),
+      `${ma}: ten tep khong noi la cua ai -> ${chi_ten_tep}`);
+    const nhan_khong_dau_cach = mong.nhan.replace(' - ', '');
+    assert.equal(
+      chi_ten_tep.split(nhan_khong_dau_cach).length - 1, 1,
+      `${ma}: nhan "${nhan_khong_dau_cach}" xuat hien nhieu hon mot lan -> ${chi_ten_tep}`);
   }
 });
 
