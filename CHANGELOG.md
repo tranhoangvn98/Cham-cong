@@ -27,6 +27,26 @@ một comment khẳng định ngược lại. Đọc lại `SQL_MONG_MUON`: đư
 Khối đồng bộ tách thành hàm riêng `dong_bo_sharepoint()` để đọc ra ngay là nó **không** nằm sau
 cửa chặn giờ.
 
+## [1.44.0] — 2026-08-20
+
+**Đường xóa SharePoint đã chạy thật**, và giữ lại dấu vết đã xóa gì.
+
+Xác nhận trên máy thật: gỡ một tệp trong ứng dụng, vòng quét kế tiếp xóa bản trên SharePoint. Nên
+`xoa()` không còn là "chỉ đúng theo tài liệu Graph" nữa — cả hai nửa của đồng bộ đã chạy thật.
+
+Nhưng đọc lại `xoa_ban_cu()` thấy một lỗ: xóa xong thì **cả hai** cột đường dẫn về `null` và
+`ly_do` bị xóa trắng, nên dòng đó không còn nói được nó từng ở đâu. Đây là hành vi **phá hủy** trên
+một thư viện **dùng chung** — nếu chị HCNS hỏi *"sao tệp này biến mất"* thì hệ thống không trả lời
+được. Nhật ký thao tác có ghi việc gỡ tệp **trong ứng dụng**, nhưng không ghi việc xóa **trên
+SharePoint**.
+
+Giờ `ly_do` giữ lại `Đã xóa bản trên SharePoint: <đường dẫn>`. Dùng lại cột có sẵn — không chỗ nào
+dựa vào `ly_do IS NULL` để quyết định gì, nó chỉ được hiện ra màn hình; và `ghi_nhan` chỉ ghi đè
+`ly_do` khi đường dẫn mong muốn đổi, mà dòng đã gỡ thì nó đứng yên ở `null`.
+
+Đã dựng lại đúng tình huống trên máy chủ Graph giả và xác nhận hai phía: Graph nhận `DELETE`, và
+dòng CSDL ra `xong` / `duong_dan_da_day = null` / `sp_item_id = null` kèm đúng đường dẫn đã xóa.
+
 ## [1.43.0] — 2026-08-20
 
 **Đồng bộ SharePoint chạy mỗi 15 phút, không phải mỗi ngày một lần.**

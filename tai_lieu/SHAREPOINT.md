@@ -532,21 +532,19 @@ việc gì phải làm* — ví dụ tệp đã bị gỡ ở cả hai bên — 
 
 ## 9. Giới hạn đã biết
 
-- **Đường ĐẨY đã chạy thật; đường XÓA thì chưa.** Ngày 20-08-2026, 4 tệp lên thư viện HCNS thật:
-  16/16 nhánh khớp tên, `sp_item_id` do Graph cấp cho cả 4, `duong_dan_da_day` bằng
-  `duong_dan_muon`. Nên `tai_len` và `bao_dam_thu_muc` không còn là "chỉ đúng theo tài liệu
-  Graph" nữa.
-
-  Nhưng `xoa()` **chưa chạy thật lần nào**, và nó hỏng **im lặng**: hồ sơ đã gỡ ở hệ thống vẫn
-  sống trên SharePoint và không có gì báo. Nên hãy thử đường xóa **trong cùng lượt test**, bằng
-  chính những tệp vừa đẩy: gỡ tệp trong ứng dụng, chạy lại `npm run dong_bo_sharepoint`, và chờ
-  cột `đã xóa` khác 0.
+- **Cả hai nửa đã chạy thật (20-08-2026).** Đẩy: 4 tệp lên thư viện HCNS thật, 16/16 nhánh khớp
+  tên, `sp_item_id` do Graph cấp, `duong_dan_da_day` bằng `duong_dan_muon`. Xóa: gỡ một tệp trong
+  ứng dụng, vòng quét kế tiếp xóa bản trên SharePoint và `kiem_sharepoint` xác nhận từ phía Graph.
 
   Phần còn lại của bộ kiểm vẫn chạy trên máy chủ Graph giả tại chỗ — nó chứng minh client gọi
   đúng những gì tài liệu Graph nói, **không** chứng minh SharePoint thật sẽ nhận. Và máy giả đã
   từng nói dối một lần: xem mục *Thư viện : root* ở trên.
 
   `npm run kiem_sharepoint` là lượt gọi Graph thật **an toàn nhất** để làm trước: nó chỉ đọc.
+
+- **Xóa xong thì `ly_do` ghi lại đã xóa gì**: `Đã xóa bản trên SharePoint: <đường dẫn>`. Sau khi
+  xóa, cả hai cột đường dẫn về `null` nên dòng đó không còn nói được nó từng ở đâu — mà đây là
+  hành vi phá hủy trên thư viện dùng chung, phải trả lời được câu *"sao tệp này biến mất"*.
 - Tệp lớn hơn 4 MB đi qua `createUploadSession`, chia khúc 3,2 MB. Mỗi khúc (trừ khúc cuối)
   phải là bội số của 320 KiB — Graph từ chối kích thước khác bằng một thông báo không hề nhắc
   đến ràng buộc này.

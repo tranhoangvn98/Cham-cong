@@ -384,14 +384,30 @@ export async function quet(gioi_han = MOI_VONG): Promise<KetQuaQuet> {
   return kq;
 }
 
+/**
+ * Ly do ghi lai sau khi da xoa mot ban tren SharePoint.
+ *
+ * VI SAO GHI LAI THAY VI XOA TRANG: xoa xong thi CA HAI cot duong dan deu ve null, nen dong do
+ * khong con noi duoc no tung o dau. Day la mot hanh vi PHA HUY tren mot thu vien DUNG CHUNG —
+ * neu chi HCNS hoi "sao tep nay bien mat" thi phai tra loi duoc. Nhat ky thao tac co ghi viec
+ * go tep TRONG UNG DUNG, nhung khong ghi viec xoa tren SharePoint.
+ *
+ * Dung lai cot `ly_do` san co: khong cho nao dua vao `ly_do IS NULL` de quyet dinh gi, no chi
+ * duoc hien ra man hinh. Va `ghi_nhan` chi ghi de `ly_do` khi duong dan mong muon DOI — voi dong
+ * da go thi no dung yen o null, nen dong nay song lau.
+ */
+export function ly_do_da_xoa(duong_dan: string): string {
+  return `Đã xóa bản trên SharePoint: ${duong_dan}`;
+}
+
 async function xoa_ban_cu(d: DongTrangThai): Promise<void> {
   if (d.duong_dan_da_day !== null) await xoa(d.duong_dan_da_day);
   await thuc_thi(
     `update sharepoint_tep
-        set duong_dan_da_day = null, sp_item_id = null, ket_qua = 'xong', ly_do = null,
+        set duong_dan_da_day = null, sp_item_id = null, ket_qua = 'xong', ly_do = $2,
             so_lan_thu = 0, lam_luc = now(), cap_nhat_luc = now()
       where tep_id = $1`,
-    [d.tep_id],
+    [d.tep_id, d.duong_dan_da_day === null ? null : ly_do_da_xoa(d.duong_dan_da_day)],
   );
 }
 
