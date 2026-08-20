@@ -98,6 +98,7 @@ services:
       # Bat o day (khac mac dinh production) vi anh Docker luon mang dung ban di tru hop
       # voi ma nguon trong no — deploy la len phien ban moi ngay, khong co buoc thu cong.
       TU_DONG_DI_TRU: ${TU_DONG_DI_TRU:-1}
+      LICH_CHU_KY_PHUT: ${LICH_CHU_KY_PHUT:-5}
       # Chi lenh seed doc hai bien nay (docker compose exec may_chu node dist/csdl/seed.js).
       # Thieu chung thi seed KHONG tao duoc tai khoan admin dau tien.
       ADMIN_TEN_DANG_NHAP: ${ADMIN_TEN_DANG_NHAP:-admin}

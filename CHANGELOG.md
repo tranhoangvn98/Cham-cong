@@ -2,6 +2,31 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.44.0] — 2026-08-20
+
+**Chu kỳ vòng lịch: 5 phút, và khai được trong `.env`.**
+
+`LICH_CHU_KY_PHUT`, mặc định **5** (trước là 15 cứng trong mã), chặn trong `[1, 60]` — gõ 0 hay
+số âm thì `setInterval` bắn liên tục, còn số quá lớn thì việc cuối ngày trượt hạn cả ngày.
+
+15 phút không phải một quyết định, nó là con số thừa hưởng. Mọi việc trong vòng lịch (chốt bảng
+công, nhắc hạn hợp đồng, sắp xếp kho tệp) đều khóa *một lần một ngày*, nên chu kỳ chỉ quyết định
+**độ trễ** chứ không quyết định khối lượng. Riêng việc đồng bộ SharePoint chạy mỗi vòng — và khi
+không còn tệp nào chờ thì nó kết thúc sau **một** câu SQL có chỉ mục, không gọi Graph lần nào.
+
+**Đồng bộ không còn bị chặn trước 01:00.** Cửa chặn `gio_may < GIO_CHAY` tồn tại cho các việc
+*cuối ngày*: phải chờ máy chấm công đẩy hết log của ngày hôm trước rồi mới chốt bảng công. Việc
+copy tệp lên SharePoint không liên quan gì đến điều đó, nhưng nó nằm sau cửa chặn nên mỗi đêm có
+một **cửa sổ một tiếng** không đồng bộ gì: tệp nạp lúc 00:10 phải chờ đến 01:00.
+
+Thứ tự với việc sắp xếp kho tệp **không còn là ràng buộc**, và điều đó cần nói rõ vì trước đây có
+một comment khẳng định ngược lại. Đọc lại `SQL_MONG_MUON`: đường dẫn SharePoint tính từ `ma_nv` /
+`ho_ten` và siêu dữ liệu văn bản, còn `ten_luu` chỉ dùng để lấy **đuôi tệp** — mà sắp xếp không
+đổi đuôi tệp.
+
+Khối đồng bộ tách thành hàm riêng `dong_bo_sharepoint()` để đọc ra ngay là nó **không** nằm sau
+cửa chặn giờ.
+
 ## [1.43.0] — 2026-08-20
 
 **Đồng bộ SharePoint chạy mỗi 15 phút, không phải mỗi ngày một lần.**

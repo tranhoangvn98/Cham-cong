@@ -275,6 +275,19 @@ export const cau_hinh = {
     bat_day: chu('SHAREPOINT_BAT_DAY', '0') === '1',
   },
 
+  /**
+   * Chu ky cua vong lich, phut. Cang nho thi tep moi nap len cang som co tren SharePoint.
+   *
+   * Mac dinh 5. Truoc day la 15 va do la mot con so thua huong, khong phai mot quyet dinh: moi
+   * viec trong vong lich deu khoa "mot lan mot ngay" nen chu ky chi quyet dinh do TRE, khong
+   * quyet dinh khoi luong. Rieng viec dong bo SharePoint chay MOI VONG, va khi khong con viec
+   * thi no ket thuc sau mot cau SQL co chi muc — khong mot luot goi Graph nao.
+   *
+   * Chan trong [1, 60]: go 0 hay so am thi `setInterval` ban lien tuc, con so qua lon thi viec
+   * cuoi ngay co the truot han ca ngay.
+   */
+  lich_chu_ky_phut: Math.min(60, Math.max(1, Math.round(so('LICH_CHU_KY_PHUT', 5)))),
+
   /** Noi luu tep dinh kem ho so nhan su (hop dong scan, bien ban...). */
   thu_muc_ho_so: resolve(process.cwd(), chu('THU_MUC_HO_SO', './du_lieu/ho_so')),
 
