@@ -411,6 +411,7 @@ Lệnh in ba dòng đầu là **thư viện đang nối tới**, rồi từng nh
 
 ```
 Thư viện : HCNS
+Đường dẫn: https://thvn23.sharepoint.com/sites/hcns/HCNS
 Drive id : b!HrLZ...
 Khai sẵn : có — SHAREPOINT_DRIVE_ID
 
@@ -428,10 +429,18 @@ màn hình gần như không phân biệt được, còn `U+2013` với `U+002D`
 được tên nào gần giống thì lệnh liệt kê **tên thật** của các thư mục đang có ở đó, để sao lại
 từng ký tự thay vì gõ lại.
 
-Ba dòng đầu trả lời một câu hỏi khác, và cũng đã từng cần: **đúng thư viện chưa.**
+Bốn dòng đầu trả lời một câu hỏi khác, và cũng đã từng cần: **đúng thư viện chưa.**
 `GET /sites/{id}/drive` (số ít) trả về thư viện **mặc định** của site — *Tài liệu* / *Shared
 Documents* — chứ không phải HCNS. Ai lấy drive id bằng đường đó sẽ cấu hình đúng site nhưng sai
 thư viện, và mọi nhánh sẽ báo `THIẾU`. Dòng `Thư viện : Tài liệu` nói ra điều đó ngay.
+
+Tên thư viện lấy từ `GET /drives/{id}`, **không** từ `GET /drives/{id}/root`: Graph trả `"root"`
+cho trường `name` của mục gốc. Bản đầu của lệnh này đọc sai chỗ đó và in ra `Thư viện : root` —
+vô dụng đúng vào việc dòng đó tồn tại để làm. Có bài kiểm riêng cho nó.
+
+Khi khai thẳng `SHAREPOINT_DRIVE_ID`, tên thư viện **không được kiểm ở đâu cả** — id đó đi trực
+tiếp vào mọi lượt gọi Graph. Nên nếu tên thật khác `SHAREPOINT_THU_VIEN`, lệnh in thêm một dòng
+`CHÚ Ý`. Thư viện bị đổi tên thì không sao; trỏ sai thư viện thì hồ sơ vào chỗ khác.
 
 Còn một nhánh `THIẾU` hoặc một dòng `LỖI` thì **chưa nên** đặt `SHAREPOINT_BAT_DAY=1` — lệnh
 thoát với mã 1 để dùng được trong kịch bản. `LỖI` khác `THIẾU`: `LỖI` là Graph từ chối (403 =

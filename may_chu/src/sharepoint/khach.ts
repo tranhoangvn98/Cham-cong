@@ -598,14 +598,28 @@ export interface KetQuaThu {
   ok: boolean;
   thong_diep: string;
   drive_id?: string;
+  /** Ten THU VIEN, vi du "HCNS" — khong phai ten muc goc. */
   ten_thu_vien?: string;
+  /** URL cua thu vien tren SharePoint. Ket thuc bang duong dan thu vien, nen doc la biet ngay. */
+  web_url?: string;
 }
 
 /**
- * Thu ket noi mot lan, khong ghi gi. Dung cho trang quan tri va cho `/health`.
+ * Thu ket noi mot lan, khong ghi gi. Dung cho trang quan tri va cho lenh kiem nhanh.
  *
  * KHONG nem loi: cho quan tri xem duoc "sai o dau" ngay tren man hinh la muc dich cua ham
  * nay, con nem loi thi thong tin do nam trong log ma khong ai mo.
+ *
+ * HAI LUOT GOI, va can ca hai:
+ *
+ *   1. `GET /drives/{id}` — lay TEN THU VIEN. Truoc day ham nay doc `name` cua
+ *      `GET /drives/{id}/root`, va Graph that tra ve `"root"` o do: ten cua MUC GOC, khong phai
+ *      ten thu vien. Tren may that dong bao ra `Thư viện : root` — vo dung dung vao viec no ton
+ *      tai de lam, la tra loi cau hoi "co dang tro vao thu vien HCNS hay vao thu vien mac dinh
+ *      cua site". May chu Graph gia tra `"HCNS"` o cho do nen bai kiem xanh trong khi thuc te
+ *      sai; bo kiem gio giu dung hanh vi that.
+ *   2. `GET /drives/{id}/root` — chung minh DOC DUOC muc goc. Doc duoc metadata cua drive khong
+ *      dong nghia doc duoc noi dung ben trong.
  */
 export async function thu_ket_noi(): Promise<KetQuaThu> {
   if (!bat_sharepoint()) {
@@ -613,12 +627,14 @@ export async function thu_ket_noi(): Promise<KetQuaThu> {
   }
   try {
     const d = await lay_drive_id();
-    const kq = await goi_graph(`/drives/${d}/root?$select=id,name,webUrl`);
+    const kq = await goi_graph(`/drives/${d}?$select=id,name,webUrl`);
+    await goi_graph(`/drives/${d}/root?$select=id`);
     return {
       ok: true,
       thong_diep: 'Kết nối được và đọc được gốc thư viện.',
       drive_id: d,
       ten_thu_vien: String(kq.than['name'] ?? ''),
+      web_url: String(kq.than['webUrl'] ?? ''),
     };
   } catch (loi) {
     const l = loi as { thong_diep_cong_khai?: string; message?: string };

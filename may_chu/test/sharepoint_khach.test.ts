@@ -202,8 +202,19 @@ class GraphGia {
     const dd = this.doc_duong_dan(url);
 
     // GET /drives/{d}/root?$select=...
+    //
+    // `name` la `"root"`, KHONG phai ten thu vien. Day la hanh vi cua Graph that, va may chu
+    // gia nay tung tra `"HCNS"` o day — mot cai bay: `thu_ket_noi()` doc `name` cua muc goc va
+    // bai kiem xanh, con tren may that no in ra `Thư viện : root`.
     if (dd === null && /\/root(\?|$)/.test(url)) {
-      return this.json(ph, 200, { id: 'root', name: 'HCNS' });
+      return this.json(ph, 200, { id: 'root', name: 'root' });
+    }
+
+    // GET /drives/{d}?$select=... — metadata cua chinh thu vien. Day moi la cho co TEN THU VIEN.
+    if (dd === null && /^\/drives\/drive-hcns(\?|$)/.test(url)) {
+      return this.json(ph, 200, {
+        id: 'drive-hcns', name: 'HCNS', webUrl: 'https://x/sites/hcns/HCNS',
+      });
     }
     if (dd === null) return this.loi(ph, 400, `url la: ${url}`);
 
@@ -601,6 +612,20 @@ test('403: thong diep chi dung nguyen nhan that (Sites.Selected chua cap tren si
   lam_moi();
   gg.luon_403 = true;
   await assert.rejects(() => kh.lay_drive_id(), /Sites\.Selected/);
+});
+
+test('thu ket noi: tra TEN THU VIEN, khong tra ten muc goc', async () => {
+  // Bai nay co mot ly do rat cu the. Truoc day `thu_ket_noi()` doc `name` cua
+  // `GET /drives/{id}/root`, va Graph that tra ve `"root"` o do. Tren may that lenh
+  // `kiem_sharepoint` in ra `Thư viện : root` — vo dung dung vao viec dong do ton tai de lam:
+  // tra loi "co dang tro vao HCNS hay vao thu vien mac dinh cua site". Bai kiem cu van xanh vi
+  // may chu gia tra `"HCNS"` o cho do.
+  lam_moi();
+  const kq = await kh.thu_ket_noi();
+  assert.equal(kq.ok, true, kq.thong_diep);
+  assert.equal(kq.ten_thu_vien, 'HCNS',
+    `phai la ten thu vien; "root" nghia la dang doc name cua muc goc: ${String(kq.ten_thu_vien)}`);
+  assert.match(String(kq.web_url), /\/HCNS$/, 'thieu webUrl de doi chieu bang mat');
 });
 
 test('thu ket noi: khong nem loi, tra ly do doc duoc', async () => {

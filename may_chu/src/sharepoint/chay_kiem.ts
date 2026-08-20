@@ -28,11 +28,22 @@ if (!ket.ok) {
 //
 // `GET /sites/{id}/drive` (so it) tra ve thu vien MAC DINH cua site — "Tài liệu" / "Shared
 // Documents" — chu khong phai thu vien HCNS. Ai lay drive id bang duong do se cau hinh dung
-// mot site dung nhung sai thu vien, va moi nhanh se bao "thiếu" ma khong hieu vi sao. Dong
+// mot site dung nhung sai thu vien, va moi nhanh se bao "thiếu" ma khong hieu vi sao. Bon dong
 // duoi day tra loi cau hoi do ngay truoc khi danh sach hien ra.
-console.log(`Thư viện : ${ket.ten_thu_vien ?? '(không rõ tên)'}`);
+const ten_tv = ket.ten_thu_vien ?? '';
+console.log(`Thư viện : ${ten_tv === '' ? '(không rõ tên)' : ten_tv}`);
+console.log(`Đường dẫn: ${ket.web_url === '' || ket.web_url === undefined ? '(không rõ)' : ket.web_url}`);
 console.log(`Drive id : ${ket.drive_id ?? '(không rõ)'}`);
 console.log(`Khai sẵn : ${cau_hinh.sharepoint.drive_id === '' ? 'không — tra theo tên SHAREPOINT_THU_VIEN' : 'có — SHAREPOINT_DRIVE_ID'}`);
+
+// Khai thang `SHAREPOINT_DRIVE_ID` thi ten thu vien KHONG duoc kiem o dau ca — id do di thang
+// vao moi luot goi Graph. Day la cho duy nhat con doi chieu duoc no voi y dinh da khai.
+const muon_tv = cau_hinh.sharepoint.thu_vien;
+if (muon_tv !== '' && ten_tv !== '' && ten_tv.toLowerCase() !== muon_tv.toLowerCase()) {
+  console.log('');
+  console.log(`CHÚ Ý: SHAREPOINT_THU_VIEN khai "${muon_tv}" nhưng drive id đang trỏ vào "${ten_tv}".`);
+  console.log('       Thư viện bị đổi tên thì không sao; trỏ sai thư viện thì hồ sơ sẽ vào chỗ khác.');
+}
 console.log('');
 
 const bc = await kiem_cac_nhanh();

@@ -78,7 +78,14 @@ class GraphGia {
     else if (/\/root\/children/.test(url)) cha = '';
 
     if (cha === null) {
-      if (/\/root(\?|$)/.test(url)) return this.json(ph, 200, { id: 'root', name: 'HCNS' });
+      // `name` cua muc goc la `"root"` — hanh vi that cua Graph. Ten THU VIEN nam o
+      // `GET /drives/{id}`, khong nam o day.
+      if (/\/root(\?|$)/.test(url)) return this.json(ph, 200, { id: 'root', name: 'root' });
+      if (/^\/drives\/drive-hcns(\?|$)/.test(url)) {
+        return this.json(ph, 200, {
+          id: 'drive-hcns', name: 'HCNS', webUrl: 'https://x/sites/hcns/HCNS',
+        });
+      }
       return this.json(ph, 400, { error: { message: `url la ${url}` } });
     }
     if (cha !== '' && !this.kho.has(cha)) {

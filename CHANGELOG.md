@@ -2,6 +2,28 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.38.1] — 2026-08-20
+
+**Sửa: `kiem_sharepoint` in `Thư viện : root`.** Lượt chạy thật đầu tiên trên VPS bắt được lỗi
+này. `thu_ket_noi()` đọc trường `name` của `GET /drives/{id}/root`, và Graph thật trả về `"root"`
+ở đó — tên của **mục gốc**, không phải tên thư viện.
+
+Dòng đó vô dụng đúng vào việc nó tồn tại để làm: trả lời *"drive id đang trỏ vào HCNS hay vào
+thư viện mặc định của site"*. Trỏ nhầm sang *Tài liệu* thì nó cũng in `root` và không cảnh báo gì.
+
+Tên thư viện giờ lấy từ `GET /drives/{id}`; `GET /drives/{id}/root` vẫn được gọi nhưng để chứng
+minh **đọc được** mục gốc — đọc được metadata của drive không đồng nghĩa đọc được nội dung trong
+đó. Thêm dòng `Đường dẫn` in `webUrl`, vì nó kết thúc bằng đường dẫn thư viện nên đối chiếu bằng
+mắt là xong.
+
+**Vì sao bộ kiểm không bắt được:** máy chủ Graph giả trả `name: "HCNS"` cho mục gốc — một cái bẫy
+tự đặt. Bài kiểm xanh trong khi thực tế sai. Máy giả giờ trả `"root"` đúng như Graph thật, và có
+một bài kiểm riêng đòi `ten_thu_vien === 'HCNS'` (đã chứng minh đỏ khi hoàn lại mã cũ).
+
+Kèm theo: khai thẳng `SHAREPOINT_DRIVE_ID` thì tên thư viện **không được kiểm ở đâu cả** — id đó
+đi trực tiếp vào mọi lượt gọi Graph. Lệnh giờ in một dòng `CHÚ Ý` khi tên thật khác
+`SHAREPOINT_THU_VIEN`. Thư viện bị đổi tên thì không sao; trỏ sai thư viện thì hồ sơ vào chỗ khác.
+
 ## [1.38.0] — 2026-08-20
 
 **`npm run kiem_sharepoint` — đối chiếu bảng `NHANH` với cây thư mục thật.** Chỉ đọc: không tạo,
