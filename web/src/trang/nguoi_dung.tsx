@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { goi, nguoi_dung_hien_tai } from '../api.ts';
 import {
   DangTai, HopLoi, HopTot, HopThoai, TEN_VAI_TRO, Trong,
-  dung_hanh_dong, dung_nap, ngay_gio,
+  dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio,
 } from '../thanh_phan.tsx';
 
 interface TaiKhoan {
@@ -36,11 +36,21 @@ export function TrangNguoiDung(): ReactNode {
   const [phan_quyen_cho, dat_phan_quyen_cho] = useState<TaiKhoan | null>(null);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<TaiKhoan[]>('/api/nguoi-dung');
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
   const toi = nguoi_dung_hien_tai();
 
   const bat_tat = async (tk: TaiKhoan): Promise<void> => {
-    const chu = tk.dang_hoat_dong ? 'vô hiệu hóa' : 'bật lại';
-    if (!window.confirm(`Bạn muốn ${chu} tài khoản "${tk.ten_dang_nhap}"?`)) return;
+    const dong_y = await xn.hoi({
+      tieu_de: `${tk.dang_hoat_dong ? 'Vô hiệu hóa' : 'Bật lại'} tài khoản`,
+      mo_ta: tk.dang_hoat_dong
+        ? <>Tài khoản <strong>{tk.ten_dang_nhap}</strong> sẽ không đăng nhập được nữa, và mọi
+          thiết bị đang đăng nhập bằng tài khoản này bị đăng xuất ngay. Hồ sơ nhân sự và lịch
+          sử chấm công KHÔNG bị ảnh hưởng.</>
+        : <>Tài khoản <strong>{tk.ten_dang_nhap}</strong> đăng nhập lại được.</>,
+      chu_dong_y: tk.dang_hoat_dong ? 'Vô hiệu hóa' : 'Bật lại',
+      nguy_hiem: tk.dang_hoat_dong,
+    });
+    if (!dong_y) return;
     await hd.chay(
       () => goi(`/api/nguoi-dung/${tk.id}`, {
         method: 'PATCH', body: { dang_hoat_dong: !tk.dang_hoat_dong },
@@ -91,7 +101,7 @@ export function TrangNguoiDung(): ReactNode {
                       )}
                     </td>
                     <td>
-                      {tk.ho_ten ?? <span style={{ color: 'var(--chu-mo)' }}>—</span>}
+                      {tk.ho_ten ?? <span className="chu-mo">—</span>}
                       {tk.ma_nv !== null && <div className="o-so-phu">{tk.ma_nv}</div>}
                     </td>
                     <td>
@@ -104,9 +114,9 @@ export function TrangNguoiDung(): ReactNode {
                         </div>
                       )}
                     </td>
-                    <td style={{ fontSize: 12 }}>
+                    <td className="chu-nho">
                       {tk.email_microsoft === null
-                        ? <span style={{ color: 'var(--chu-mo)' }}>chưa nối</span>
+                        ? <span className="chu-mo">chưa nối</span>
                         : tk.email_microsoft}
                     </td>
                     <td>
@@ -116,9 +126,9 @@ export function TrangNguoiDung(): ReactNode {
                           ? <span className="nhan nhan-canh-bao">chờ đổi mật khẩu</span>
                           : <span className="nhan nhan-tot">bình thường</span>}
                     </td>
-                    <td className="khong-ngat" style={{ fontSize: 12 }}>
+                    <td className="khong-ngat chu-nho">
                       {tk.dang_nhap_cuoi === null
-                        ? <span style={{ color: 'var(--chu-mo)' }}>chưa đăng nhập</span>
+                        ? <span className="chu-mo">chưa đăng nhập</span>
                         : ngay_gio(tk.dang_nhap_cuoi)}
                     </td>
                     <td>
@@ -173,6 +183,7 @@ export function TrangNguoiDung(): ReactNode {
           khi_xong={() => { dat_noi_ms_cho(null); nap_lai(); }}
         />
       )}
+      {xn.hop_thoai}
     </>
   );
 }
@@ -329,16 +340,16 @@ export function TrangNhatKy(): ReactNode {
               <tbody>
                 {(du_lieu ?? []).map((n) => (
                   <tr key={n.id}>
-                    <td className="khong-ngat" style={{ fontSize: 12 }}>{ngay_gio(n.luc)}</td>
+                    <td className="khong-ngat chu-nho">{ngay_gio(n.luc)}</td>
                     <td>{n.ten_dang_nhap ?? '—'}</td>
-                    <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>
+                    <td className="so chu-nho">
                       {n.hanh_dong}
                     </td>
-                    <td style={{ fontSize: 12 }}>{n.thuc_the ?? '—'}</td>
+                    <td className="chu-nho">{n.thuc_the ?? '—'}</td>
                     <td style={{ fontSize: 11.5, maxWidth: 280, wordBreak: 'break-word' }}>
                       {n.chi_tiet === null ? '—' : JSON.stringify(n.chi_tiet)}
                     </td>
-                    <td className="so" style={{ fontSize: 12 }}>{n.dia_chi_ip ?? '—'}</td>
+                    <td className="so chu-nho">{n.dia_chi_ip ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>

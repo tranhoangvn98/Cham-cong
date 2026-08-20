@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { goi, tai_anh } from '../api.ts';
 import {
   DangTai, HopLoi, HopTot, HopThoai, NhanDon, TEN_LOAI_NGHI, Trong,
-  dung_hanh_dong, dung_nap, gio_ngan, ngay_gio, ngay_viet,
+  dung_hanh_dong, dung_nap, dung_nhap_chu, gio_ngan, khoa_tinh, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
 
 type Tab = 'nghi_phep' | 'giai_trinh' | 'quet_dien_thoai' | 'don_khac';
@@ -269,7 +269,7 @@ function BangNghiPhep({ kq, quyet, dang_chay }: BangProps<DonNghiPhep>): ReactNo
                 <td className="khong-ngat">{ngay_viet(d.tu_ngay)}</td>
                 <td className="khong-ngat">{ngay_viet(d.den_ngay)}</td>
                 <td style={{ maxWidth: 220, fontSize: 12.5 }}>{d.ly_do ?? '—'}</td>
-                <td className="khong-ngat" style={{ fontSize: 12 }}>{ngay_gio(d.tao_luc)}</td>
+                <td className="khong-ngat chu-nho">{ngay_gio(d.tao_luc)}</td>
                 <td>
                   <NhanDon trang_thai={d.trang_thai} />
                   {d.ghi_chu_duyet !== null && (
@@ -394,7 +394,7 @@ function BangQuetDienThoai({ kq, quyet, dang_chay }: BangProps<QuetDienThoai>): 
                       {Number(d.trang_thai) === 0 ? 'Vào' : 'Ra'}
                     </span>
                   </td>
-                  <td style={{ fontSize: 12 }}>
+                  <td className="chu-nho">
                     {d.khoang_cach_m === null ? (
                       'Không đối chiếu được'
                     ) : (
@@ -420,7 +420,7 @@ function BangQuetDienThoai({ kq, quyet, dang_chay }: BangProps<QuetDienThoai>): 
                       </div>
                     )}
                   </td>
-                  <td style={{ maxWidth: 180, fontSize: 12 }}>{d.ghi_chu ?? '—'}</td>
+                  <td className="chu-nho" style={{ maxWidth: 180 }}>{d.ghi_chu ?? '—'}</td>
                   <td>
                     <NutQuyet nhom="quet-dien-thoai" id={d.id} quyet={quyet} dang_chay={dang_chay} />
                   </td>
@@ -489,6 +489,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
 }): ReactNode {
   const [loc_loai, dat_loc_loai] = useState('');
   const [canh_bao, dat_canh_bao] = useState<Record<string, string[]>>({});
+  const nc = dung_nhap_chu();
 
   const ten_loai = (ma: string): string => loai_don.find((l) => l.ma === ma)?.ten ?? ma;
 
@@ -570,8 +571,8 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                 <td style={{ maxWidth: 260 }}>
                   {d.ly_do ?? <span className="mo-ta">—</span>}
                   {canh_bao[d.id] !== undefined && (
-                    <div className="hop-luu-y" style={{ marginTop: 6 }}>
-                      {canh_bao[d.id]!.map((c, i) => <div key={i}>{c}</div>)}
+                    <div className="hop-luu-y">
+                      {canh_bao[d.id]!.map((c, i) => <div key={khoa_tinh(c, i)}>{c}</div>)}
                     </div>
                   )}
                 </td>
@@ -589,10 +590,20 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                       <button
                         className="nut-nho nut-nguy"
                         disabled={dang_chay}
-                        onClick={() => {
-                          const gc = window.prompt('Lý do từ chối (tuỳ chọn):') ?? undefined;
-                          quyet(d.id, 'tu_choi', gc);
-                        }}
+                        onClick={() => void nc.hoi({
+                          tieu_de: `Từ chối đơn của ${d.ho_ten}`,
+                          nhan: 'Lý do từ chối',
+                          mo_ta: <>
+                            Người gửi <strong>đọc được</strong> lý do này. Để trống cũng được,
+                            nhưng một đơn bị từ chối không có lý do là một câu hỏi quay lại.
+                          </>,
+                          cho_trong: true,
+                          chu_dong_y: 'Từ chối đơn',
+                        }).then((gc) => {
+                          // `null` = nguoi dung huy hop thoai, khong phai "ly do rong".
+                          if (gc === null) return;
+                          quyet(d.id, 'tu_choi', gc === '' ? undefined : gc);
+                        })}
                       >
                         Từ chối
                       </button>
@@ -609,6 +620,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
           </tbody>
         </table>
       </div>
+      {nc.hop_thoai}
     </>
   );
 }

@@ -2,6 +2,115 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.36.0] — 2026-08-20
+
+Rà soát toàn bộ giao diện web và dựng lại phần điều hướng. Không viết lại — kiến trúc, design
+token, RBAC lấy máy chủ làm nguồn sự thật, múi giờ neo theo máy chấm công, router tự viết né CVE
+đều giữ nguyên.
+
+### 11 mục cấu hình gom thành một mục "Cài đặt"
+
+Nhóm *Hệ thống* có 11 mục nằm thẳng trên thanh bên: Thiết bị, Ca làm việc, Địa điểm, Ngày lễ,
+Tài khoản, Tham số lương, Đồng bộ ERP, Khóa API, Kho tệp, Mã định danh, Nhật ký. Thanh bên dài
+gấp đôi phần việc hằng ngày, và người dùng phải quét qua "Khóa API" mỗi lần tìm "Bảng công".
+
+Cấu hình là thứ sửa vài lần một năm; việc hằng ngày là thứ mở vài lần một ngày. Hai loại đó không
+nên cùng một cấp. Giờ là **một** mục `Cài đặt` mở ra sub-nav bốn nhóm:
+
+| Nhóm | Mục |
+|---|---|
+| Chấm công | Thiết bị · Ca làm việc · Địa điểm · Ngày lễ |
+| Nhân sự & lương | Tham số lương |
+| Tài khoản & bảo mật | Tài khoản · Khóa API · Nhật ký thao tác |
+| Tích hợp & dữ liệu | Đồng bộ ERP · Kho tệp hồ sơ · Mã định danh |
+
+Mỗi mục con giữ **đường dẫn riêng** (`/cai-dat/thiet-bi`) chứ không phải tab trong một trang —
+bookmark, Ctrl-click và nút Lui đều phải chạy, và tab thì cả ba đều không.
+
+**Đường dẫn cũ vẫn sống.** 11 đường cũ tự chuyển sang đường mới (`replaceState`, nên nút Lui không
+kẹt giữa hai đường). Bookmark cũ không hỏng, và có bài kiểm giữ cho mọi đường trong bảng chuyển
+hướng trỏ tới một đường **có thật**.
+
+Phân quyền từng mục con giờ đọc **một chỗ** — cột `quyen` của bảng `MENU_CAI_DAT` — thay vì mỗi
+`case` tự gọi `la_admin()` / `la_nhan_su()`. Thêm một mục con mới chỉ phải khai quyền một lần.
+
+`/cai-dat` không tự nhảy sang mục đầu tiên: "mục đầu tiên" khác nhau theo vai trò, nên cùng một
+đường dẫn sẽ dẫn hai người tới hai chỗ. Nó liệt kê các nhóm ra, để trả lời được câu "ở đây sửa
+được những gì".
+
+### Trang hồ sơ nhân viên không còn mất tiêu đề
+
+`/nhan-vien/<uuid>` không khớp mục menu nào, nên thanh bên **không mục nào sáng** và tiêu đề
+header rơi về "Chấm công". Người dùng đang xem hồ sơ của một người cụ thể mà thanh tiêu đề không
+nói họ đang ở đâu, cũng không có đường lui.
+
+Giờ khớp active theo **tiền tố**, và có một ngữ cảnh tiêu đề nhỏ để trang tự đặt tên người + đường
+mòn `Nhân viên › Hồ sơ` lên header. Trang không dùng hook đó thì header giữ nhãn của MENU — không
+cần mọi trang phải biết đến cơ chế này.
+
+### Không còn hộp thoại gốc của trình duyệt
+
+16 chỗ dùng `window.confirm` / `alert` / `prompt`. Chúng không theo chế độ tối, không theo font và
+màu của app, không tô đỏ được nút xóa khác nút hủy — và ở nhiều trình duyệt có ô *"chặn trang này
+hiện hộp thoại"*: người dùng tick vào thì từ đó mỗi lần bấm Xóa sẽ **không hỏi gì mà cũng không
+xóa**. Một thao tác mất dữ liệu không được phép phụ thuộc vào thứ đó.
+
+Thay bằng `dung_xac_nhan()` và `dung_nhap_chu()` — dựng trên `HopThoai` đã có, trả
+`Promise<boolean>` / `Promise<string | null>`. Đi kèm hai thứ:
+
+- **Nội dung nói rõ sẽ mất gì**, không phải "Bạn có chắc?". Xóa tệp hồ sơ nói thẳng "đây là bản gốc
+  giấy tờ pháp lý và nó không còn ở đâu khác"; vô hiệu hóa tài khoản nói rõ hồ sơ và lịch sử chấm
+  công **không** bị ảnh hưởng.
+- **Bấm ra ngoài hoặc Esc = KHÔNG đồng ý.** Một hộp thoại xác nhận đóng lại mà coi là đồng ý thì
+  một cú bấm lạc cũng xóa được dữ liệu.
+
+`window.alert` khi trình duyệt không cho định vị giờ báo **ngay trong form** — người dùng đang gõ
+vào form đó, nên câu trả lời phải ở cạnh ô nhập, và ở đó còn nói được cách làm thay thế (mở Google
+Maps, bấm giữ, dán cặp số vào hai ô dưới).
+
+### Sửa
+
+- **Icon trùng trong thanh bên**: `fingerprint` dùng cho cả *Chấm công* và *Mã định danh*, `key`
+  cho cả *Tài khoản* và *Khóa API*, `receipt-2` cho cả *Bảng lương* và *Phụ cấp*. Hai mục cùng
+  icon thì thanh bên mất tác dụng quét nhanh. Đổi sang `search` / `lock` / `user-check` / `plus`
+  — đều đã có trong font subset, không phải cắt lại font.
+- **`key={i}`** ở 4 chỗ. Chỉ số mảng làm `key` thì ngay khi danh sách bị lọc / xóa / sắp xếp,
+  React gán lại trạng thái của dòng này cho dòng khác. Nhật ký khóa API giờ khóa theo bốn trường
+  xác định duy nhất một lần gọi; các danh sách chỉ đọc dùng `khoa_tinh(nội_dung, i)` — vẫn có vị
+  trí nhưng nói rõ ý đồ bằng một cái tên.
+- **Hàng bảng bấm được không dùng được bằng bàn phím**: `<tr onClick>` ở bảng công thiếu
+  `tabIndex` / `role` / `onKeyDown`. Với người không dùng chuột, hàng đó không tồn tại.
+
+### Tinh chỉnh Metronic
+
+- **Vòng focus** `:focus-visible` cho mọi phần tử tương tác — điều kiện để dùng được bằng bàn phím.
+- **Đường mòn** trên header cho trang con (hồ sơ, các mục Cài đặt).
+- **Khung xương lúc tải** thay dòng chữ "Đang tải…" ở các trang danh sách: chữ đó không nói gì về
+  hình dạng thứ đang tới, nên mỗi lần tải xong là một lần bố cục nhảy. Tôn trọng
+  `prefers-reduced-motion`.
+- **Cột đầu dính** khi cuộn ngang bảng công / bảng lương — cuộn mà cột tên trôi mất thì các con số
+  bên phải không còn thuộc về ai.
+- **Lớp thay style nội tuyến**: `.chu-nho` / `.chu-mo` / `.chu-xau` (36 bản sao), `.hang-bam`,
+  `.manh`, `.so-canh-bao`, `.so-xau`, `.so-tot`, và `.nut-light` cho nút thứ cấp. Bản viết bằng mã
+  màu cứng thì không theo được chế độ tối.
+
+### Bảy hàng rào mới (`thiet_ke/giao_dien.test.mjs`)
+
+Bảy thứ trên đều "chạy được" nên typecheck và build không bắt được — và lần nào cũng quay lại nếu
+không có bài kiểm giữ:
+
+| Hàng rào | Bắt được gì |
+|---|---|
+| Không dùng hộp thoại gốc | `window.confirm` / `alert` / `prompt` quay lại |
+| Icon riêng biệt trong từng danh sách | hai mục cùng icon |
+| Hàng bảng bấm được có `tabIndex` + `onKeyDown` | hàng chỉ dùng được bằng chuột |
+| Không dùng chỉ số mảng làm `key` | `key={i}` quay lại |
+| Mục con Cài đặt ↔ `case` định tuyến, hai chiều | mục menu ra trang trắng, hoặc `case` không ai vào được |
+| Mọi mục menu cấp một có `case` | bấm vào ra "Không có trang này" |
+| Đường dẫn cũ trỏ tới đường mới **có thật** | bookmark cũ thành 404, hoặc vòng lặp chuyển hướng |
+
+Cả bảy đã được **chứng minh là bắt được lỗi thật** bằng cách cố tình phá mã nguồn rồi chạy lại.
+
 ## [1.35.0] — 2026-08-20
 
 **Phụ cấp khai một lần, không phải gõ lại mỗi tháng.** Bản 1.34.0 cho ghi phụ cấp của từng người

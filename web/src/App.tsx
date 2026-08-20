@@ -3,7 +3,9 @@ import {
   da_dang_nhap, dang_xuat, la_admin, la_nhan_su, nguoi_dung_hien_tai, nhan_phien_tu_neo,
 } from './api.ts';
 import { CungCapTuyen, LienKet, dung_tuyen } from './dinh_tuyen.tsx';
-import { TEN_VAI_TRO } from './thanh_phan.tsx';
+import { CungCapTieuDe, DuongMon, type TieuDeTrang } from './tieu_de_trang.tsx';
+import { DangTai, TEN_VAI_TRO } from './thanh_phan.tsx';
+import { ChonMucCaiDat, TrangCaiDat } from './trang/cai_dat_tong.tsx';
 import { TrangChoDuyet, TrangDangNhap, TrangDoiMatKhau } from './trang/dang_nhap.tsx';
 import { TrangDashboard } from './trang/dashboard.tsx';
 import { TrangBangCong } from './trang/bang_cong.tsx';
@@ -61,26 +63,77 @@ const MENU: MucMenu[] = [
   { duong_dan: '/vi-pham', ten: 'Vi phạm', icon: 'alert-triangle', nhom: 'Quản trị nhân sự', phu: 'Nội quy lao động, kỷ luật' },
   { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Quản trị nhân sự', phu: 'Chấm điểm từ dữ liệu thật' },
   { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Tính từ chấm công, gửi duyệt', quyen: 'nhan_su' },
-  { duong_dan: '/phu-cap', ten: 'Phụ cấp', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Chính sách phụ cấp từng người', quyen: 'nhan_su' },
+  { duong_dan: '/phu-cap', ten: 'Phụ cấp', icon: 'plus', nhom: 'Quản trị nhân sự', phu: 'Chính sách phụ cấp từng người', quyen: 'nhan_su' },
   { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Quản trị nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
 
-  { duong_dan: '/thiet-bi', ten: 'Thiết bị', icon: 'device-desktop', nhom: 'Hệ thống', phu: 'Máy chấm công ZKTeco', quyen: 'nhan_su' },
-  { duong_dan: '/ca-lam', ten: 'Ca làm việc', icon: 'clock', nhom: 'Hệ thống', phu: 'Giờ vào/ra, dung sai, ngưỡng OT' },
-  { duong_dan: '/dia-diem', ten: 'Địa điểm', icon: 'map-pin', nhom: 'Hệ thống', phu: 'Đối chiếu GPS khi đi công tác' },
-  { duong_dan: '/ngay-le', ten: 'Ngày lễ', icon: 'star', nhom: 'Hệ thống', phu: 'Tết Nguyên đán phải tự thêm mỗi năm' },
-  { duong_dan: '/tai-khoan', ten: 'Tài khoản', icon: 'key', nhom: 'Hệ thống', phu: 'Người dùng và vai trò', quyen: 'admin' },
-  { duong_dan: '/tham-so-luong', ten: 'Tham số lương', icon: 'settings', nhom: 'Hệ thống', phu: 'BHXH, thuế TNCN, giảm trừ gia cảnh', quyen: 'nhan_su' },
-  { duong_dan: '/dong-bo-erp', ten: 'Đồng bộ ERP', icon: 'refresh', nhom: 'Hệ thống', phu: 'Kéo người dùng từ ERP cũ', quyen: 'admin' },
-  { duong_dan: '/khoa-api', ten: 'Khóa API', icon: 'key', nhom: 'Hệ thống', phu: 'Cho hệ thống ngoài gọi vào', quyen: 'admin' },
-  { duong_dan: '/kho-tep', ten: 'Kho tệp hồ sơ', icon: 'file-text', nhom: 'Hệ thống', phu: 'Tệp đính kèm và đường dẫn đã lưu', quyen: 'nhan_su' },
-  { duong_dan: '/ma-dinh-danh', ten: 'Mã định danh', icon: 'fingerprint', nhom: 'Hệ thống', phu: 'Tra cứu theo mã, đối soát các nguồn', quyen: 'nhan_su' },
-  { duong_dan: '/nhat-ky', ten: 'Nhật ký thao tác', icon: 'list-details', nhom: 'Hệ thống', phu: 'Ai sửa gì, khi nào', quyen: 'admin' },
+  { duong_dan: '/cai-dat', ten: 'Cài đặt', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp' },
 ];
+
+/**
+ * Cac muc CON cua trang Cai dat.
+ *
+ * VI SAO GOM: 11 muc cau hinh nam thang tren thanh ben lam no dai gap doi phan viec hang ngay,
+ * va nguoi dung phai quet qua "Khoa API" moi lan tim "Bang cong". Cau hinh la thu sua vai lan
+ * mot nam; viec hang ngay la thu mo vai lan mot ngay. Hai loai do khong nen cung mot cap.
+ *
+ * DUONG DAN CON GIU RIENG (`/cai-dat/thiet-bi`) chu khong phai tab trong mot trang: bookmark,
+ * Ctrl-click, va nut Lui cua trinh duyet deu phai chay. Duong dan CU van song — xem
+ * `CHUYEN_HUONG` ben duoi.
+ *
+ * Bang nay o LAI App.tsx cung `MENU` vi ca hai deu la dieu huong, va bai kiem
+ * `thiet_ke/huong_dan.test.mjs` doc `duong_dan:` tu chinh tep nay de doi chieu voi bang huong
+ * dan. Chuyen no sang tep khac la lam mat cai doi chieu do ma khong co gi bao.
+ */
+const MENU_CAI_DAT: MucMenu[] = [
+  { duong_dan: '/cai-dat/thiet-bi', ten: 'Thiết bị', icon: 'device-desktop', nhom: 'Chấm công', phu: 'Máy chấm công ZKTeco', quyen: 'nhan_su' },
+  { duong_dan: '/cai-dat/ca-lam', ten: 'Ca làm việc', icon: 'clock', nhom: 'Chấm công', phu: 'Giờ vào/ra, dung sai, ngưỡng OT' },
+  { duong_dan: '/cai-dat/dia-diem', ten: 'Địa điểm', icon: 'map-pin', nhom: 'Chấm công', phu: 'Đối chiếu GPS khi đi công tác' },
+  { duong_dan: '/cai-dat/ngay-le', ten: 'Ngày lễ', icon: 'star', nhom: 'Chấm công', phu: 'Tết Nguyên đán phải tự thêm mỗi năm' },
+
+  { duong_dan: '/cai-dat/tham-so-luong', ten: 'Tham số lương', icon: 'receipt-2', nhom: 'Nhân sự & lương', phu: 'BHXH, thuế TNCN, giảm trừ gia cảnh', quyen: 'nhan_su' },
+
+  { duong_dan: '/cai-dat/tai-khoan', ten: 'Tài khoản', icon: 'user-check', nhom: 'Tài khoản & bảo mật', phu: 'Người dùng và vai trò', quyen: 'admin' },
+  { duong_dan: '/cai-dat/khoa-api', ten: 'Khóa API', icon: 'lock', nhom: 'Tài khoản & bảo mật', phu: 'Cho hệ thống ngoài gọi vào', quyen: 'admin' },
+  { duong_dan: '/cai-dat/nhat-ky', ten: 'Nhật ký thao tác', icon: 'list-details', nhom: 'Tài khoản & bảo mật', phu: 'Ai sửa gì, khi nào', quyen: 'admin' },
+
+  { duong_dan: '/cai-dat/dong-bo-erp', ten: 'Đồng bộ ERP', icon: 'refresh', nhom: 'Tích hợp & dữ liệu', phu: 'Kéo người dùng từ ERP cũ', quyen: 'admin' },
+  { duong_dan: '/cai-dat/kho-tep', ten: 'Kho tệp hồ sơ', icon: 'file-text', nhom: 'Tích hợp & dữ liệu', phu: 'Tệp đính kèm và đường dẫn đã lưu', quyen: 'nhan_su' },
+  { duong_dan: '/cai-dat/ma-dinh-danh', ten: 'Mã định danh', icon: 'search', nhom: 'Tích hợp & dữ liệu', phu: 'Tra cứu theo mã, đối soát các nguồn', quyen: 'nhan_su' },
+];
+
+/**
+ * Duong dan cu -> duong dan moi.
+ *
+ * 11 trang cau hinh doi duong dan khi gom vao Cai dat. Nguoi dung da bookmark
+ * `/tham-so-luong`, da dan `/thiet-bi` vao mot ghi chu noi bo, va tai lieu trong repo con nhac
+ * ten cu. Tra 404 cho ho la mot loi ta tu gay ra, nen duong cu chuyen huong sang duong moi
+ * (thay the trong lich su, de nut Lui khong ket giua hai duong).
+ */
+const CHUYEN_HUONG: Record<string, string> = {
+  '/thiet-bi': '/cai-dat/thiet-bi',
+  '/ca-lam': '/cai-dat/ca-lam',
+  '/dia-diem': '/cai-dat/dia-diem',
+  '/ngay-le': '/cai-dat/ngay-le',
+  '/tham-so-luong': '/cai-dat/tham-so-luong',
+  '/tai-khoan': '/cai-dat/tai-khoan',
+  '/khoa-api': '/cai-dat/khoa-api',
+  '/nhat-ky': '/cai-dat/nhat-ky',
+  '/dong-bo-erp': '/cai-dat/dong-bo-erp',
+  '/kho-tep': '/cai-dat/kho-tep',
+  '/ma-dinh-danh': '/cai-dat/ma-dinh-danh',
+};
 
 function duoc_xem(m: MucMenu): boolean {
   if (m.quyen === 'admin') return la_admin();
   if (m.quyen === 'nhan_su') return la_nhan_su();
   return true;
+}
+
+/** Muc menu dang mo — ke ca khi duong dan la trang con cua no. */
+function muc_dang_mo(duong_dan: string, cac_muc: MucMenu[]): MucMenu | null {
+  return cac_muc.find((m) => m.duong_dan === duong_dan)
+    ?? cac_muc.find((m) => m.duong_dan !== '/' && duong_dan.startsWith(`${m.duong_dan}/`))
+    ?? null;
 }
 
 const RE_HO_SO = /^\/nhan-vien\/([0-9a-f-]{36})$/i;
@@ -90,30 +143,69 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
   const ho_so = RE_HO_SO.exec(duong_dan);
   if (ho_so !== null) return <TrangHoSo nhan_vien_id={ho_so[1] as string} />;
 
+  // Duong dan cu: `BoCuc` dang chuyen huong trong mot hieu ung. Ve o cho de khong nhay qua
+  // "Không có trang này" mot khung hinh roi moi doi.
+  if (CHUYEN_HUONG[duong_dan] !== undefined) return <DangTai />;
+
+  if (duong_dan === '/cai-dat' || duong_dan.startsWith('/cai-dat/')) {
+    return <KhungCaiDat duong_dan={duong_dan} />;
+  }
+
   switch (duong_dan) {
     case '/': return <TrangDashboard />;
     case '/bang-cong': return <TrangBangCong />;
     case '/lan-quet': return <TrangLanQuet />;
     case '/duyet-don': return <TrangDuyetDon />;
     case '/nhan-vien': return <TrangNhanVien />;
-    case '/thiet-bi': return la_nhan_su() ? <TrangThietBi /> : <KhongCoQuyen />;
-    case '/ca-lam': return <TrangCaLam />;
-    case '/dia-diem': return <TrangDiaDiem />;
-    case '/ngay-le': return <TrangNgayLe />;
-    case '/tai-khoan': return la_admin() ? <TrangNguoiDung /> : <KhongCoQuyen />;
-    case '/khoa-api': return la_admin() ? <TrangKhoaApi /> : <KhongCoQuyen />;
     case '/bang-luong': return la_nhan_su() ? <TrangBangLuong /> : <KhongCoQuyen />;
     case '/phu-cap': return la_nhan_su() ? <TrangPhuCap /> : <KhongCoQuyen />;
-    case '/tham-so-luong': return la_nhan_su() ? <TrangThamSoLuong /> : <KhongCoQuyen />;
     case '/vi-pham': return <TrangViPham />;
     case '/kpi': return <TrangKpi />;
-    case '/dong-bo-erp': return la_admin() ? <TrangDongBoErp /> : <KhongCoQuyen />;
-    case '/kho-tep': return la_nhan_su() ? <TrangKhoTep /> : <KhongCoQuyen />;
-    case '/ma-dinh-danh': return la_nhan_su() ? <TrangMaDinhDanh /> : <KhongCoQuyen />;
     case '/hop-dong': return la_nhan_su() ? <TrangHopDong /> : <KhongCoQuyen />;
-    case '/nhat-ky': return la_admin() ? <TrangNhatKy /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;
   }
+}
+
+/** Trang cua tung muc con trong Cai dat. Tach ra de `KhungCaiDat` chi lo phan vo. */
+function NoiDungCaiDat({ duong_dan }: { duong_dan: string }): ReactNode {
+  switch (duong_dan) {
+    case '/cai-dat/thiet-bi': return <TrangThietBi />;
+    case '/cai-dat/ca-lam': return <TrangCaLam />;
+    case '/cai-dat/dia-diem': return <TrangDiaDiem />;
+    case '/cai-dat/ngay-le': return <TrangNgayLe />;
+    case '/cai-dat/tham-so-luong': return <TrangThamSoLuong />;
+    case '/cai-dat/tai-khoan': return <TrangNguoiDung />;
+    case '/cai-dat/khoa-api': return <TrangKhoaApi />;
+    case '/cai-dat/nhat-ky': return <TrangNhatKy />;
+    case '/cai-dat/dong-bo-erp': return <TrangDongBoErp />;
+    case '/cai-dat/kho-tep': return <TrangKhoTep />;
+    case '/cai-dat/ma-dinh-danh': return <TrangMaDinhDanh />;
+    default: return <KhongTimThay duong_dan={duong_dan} />;
+  }
+}
+
+/**
+ * Vo cua khu Cai dat: sub-nav ben trai + noi dung muc con ben phai.
+ *
+ * Phan quyen kiem o DAY chu khong phai trong `NoiDungCaiDat`: mot cho duy nhat doc `quyen` cua
+ * bang `MENU_CAI_DAT`, nen them mot muc con moi chi phai khai quyen mot lan. Truoc day moi
+ * `case` tu goi `la_admin()` / `la_nhan_su()`, va mot `case` quen goi thi khong co gi bao.
+ */
+function KhungCaiDat({ duong_dan }: { duong_dan: string }): ReactNode {
+  const cac_muc = MENU_CAI_DAT.filter(duoc_xem);
+  const muc = MENU_CAI_DAT.find((m) => m.duong_dan === duong_dan) ?? null;
+
+  let ben_trong: ReactNode;
+  if (duong_dan === '/cai-dat') ben_trong = <ChonMucCaiDat cac_muc={cac_muc} />;
+  else if (muc === null) ben_trong = <KhongTimThay duong_dan={duong_dan} />;
+  else if (!duoc_xem(muc)) ben_trong = <KhongCoQuyen />;
+  else ben_trong = <NoiDungCaiDat duong_dan={duong_dan} />;
+
+  return (
+    <TrangCaiDat cac_muc={cac_muc} duong_dan={duong_dan} muc={muc}>
+      {ben_trong}
+    </TrangCaiDat>
+  );
 }
 
 function KhongCoQuyen(): ReactNode {
@@ -164,11 +256,13 @@ function dang_toi(c: CheDo): boolean {
 }
 
 function BoCuc(): ReactNode {
-  const { duong_dan } = dung_tuyen();
+  const { duong_dan, di_toi } = dung_tuyen();
   const nd = nguoi_dung_hien_tai();
   const [dang_doi_mk, dat_dang_doi_mk] = useState(false);
   const [ben_mo, dat_ben_mo] = useState(false);
   const [che_do, dat_che_do] = useState<CheDo>(doc_che_do);
+  // Tieu de do TRANG dat (vd ten nhan vien tren trang ho so). `null` = dung nhan cua MENU.
+  const [tieu_de_trang, dat_tieu_de_trang] = useState<TieuDeTrang | null>(null);
 
   useEffect(() => {
     ap_che_do(che_do);
@@ -178,6 +272,13 @@ function BoCuc(): ReactNode {
 
   // Dong thanh ben khi doi trang: o man nho no dang phu len noi dung.
   useEffect(() => { dat_ben_mo(false); }, [duong_dan]);
+
+  // Duong dan cu cua 11 trang cau hinh -> duong dan moi trong Cai dat. `thay_the = true` de
+  // nut Lui khong ket giua duong cu va duong moi.
+  useEffect(() => {
+    const moi = CHUYEN_HUONG[duong_dan];
+    if (moi !== undefined) di_toi(moi, true);
+  }, [duong_dan, di_toi]);
 
   if (dang_doi_mk) {
     return (
@@ -190,7 +291,10 @@ function BoCuc(): ReactNode {
 
   const duoc_thay = MENU.filter(duoc_xem);
   const nhom_menu = [...new Set(duoc_thay.map((m) => m.nhom))];
-  const muc = duoc_thay.find((m) => m.duong_dan === duong_dan) ?? null;
+  // Khop theo TIEN TO: `/nhan-vien/<uuid>` va `/cai-dat/khoa-api` deu phai lam sang muc cha
+  // cua no. Truoc day chi so khop chinh xac, nen trang ho so khong muc nao sang va tieu de
+  // header roi ve "Chấm công".
+  const muc = muc_dang_mo(duong_dan, duoc_thay);
   const chu_dau = (nd?.ho_ten ?? nd?.ten_dang_nhap ?? '?')
     .split(' ').filter((t) => t.length > 0).slice(-2).map((t) => t[0]).join('').toUpperCase();
 
@@ -213,7 +317,7 @@ function BoCuc(): ReactNode {
                 <LienKet
                   key={m.duong_dan}
                   den={m.duong_dan}
-                  lop={duong_dan === m.duong_dan ? 'dang-chon' : undefined}
+                  lop={muc?.duong_dan === m.duong_dan ? 'dang-chon' : undefined}
                 >
                   <i className={`bt bt-${m.icon}`} aria-hidden="true" /> {m.ten}
                 </LienKet>
@@ -263,8 +367,15 @@ function BoCuc(): ReactNode {
               <i className="bt bt-menu-2" aria-hidden="true" />
             </button>
             <div style={{ minWidth: 0 }}>
-              <div className="dau-app-tieu-de">{muc?.ten ?? 'Chấm công'}</div>
-              {muc?.phu !== undefined && <div className="dau-app-phu">{muc.phu}</div>}
+              {tieu_de_trang?.duong_mon !== undefined && (
+                <DuongMon cac_chang={tieu_de_trang.duong_mon} />
+              )}
+              <div className="dau-app-tieu-de">
+                {tieu_de_trang?.tieu_de ?? muc?.ten ?? 'Chấm công'}
+              </div>
+              {(tieu_de_trang?.phu ?? muc?.phu) !== undefined && (
+                <div className="dau-app-phu">{tieu_de_trang?.phu ?? muc?.phu}</div>
+              )}
             </div>
           </div>
 
@@ -293,7 +404,9 @@ function BoCuc(): ReactNode {
             trang quen, va cai quen do khong bao gio do test.
           */}
           <KhungHuongDan key={duong_dan} duong_dan={duong_dan} />
-          <NoiDung duong_dan={duong_dan} />
+          <CungCapTieuDe dat={dat_tieu_de_trang}>
+            <NoiDung duong_dan={duong_dan} />
+          </CungCapTieuDe>
         </div>
       </main>
     </div>

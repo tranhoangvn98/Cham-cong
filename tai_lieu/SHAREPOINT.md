@@ -354,7 +354,7 @@ dựng một máy chủ Graph giả tại chỗ. Đặt giá trị là nộp cli
      [`GOP-HO-SO-TRUNG.md`](GOP-HO-SO-TRUNG.md). Một người có hai hồ sơ sẽ thành **hai thư mục
      nhân viên** trên SharePoint với tệp chia đôi giữa hai thư mục đó.
 1. Khai `SHAREPOINT_*` (trừ `BAT_DAY`), `docker compose up -d`.
-2. Vào **Hệ thống → Kho tệp hồ sơ → Đồng bộ SharePoint**, bấm **Tính lại đường dẫn**.
+2. Vào **Cài đặt → Kho tệp hồ sơ → Đồng bộ SharePoint**, bấm **Tính lại đường dẫn**.
 3. Đọc cột *Đường dẫn trên SharePoint*. Nhánh đúng chưa, thư mục nhân viên đúng chưa, tên tệp
    đọc được chưa.
 4. Thấy đúng rồi thì đặt `SHAREPOINT_BAT_DAY=1` và `docker compose up -d`.

@@ -34,7 +34,7 @@ Sửa sau khi duyệt thì phải **trả lại** kỳ về nháp — không có
 
 ```
 khoan_luong            DANH MỤC — công ty có những khoản nào
-   (Hệ thống → Tham số lương → Danh mục khoản lương, chỉ admin)
+   (Cài đặt → Tham số lương → Danh mục khoản lương, chỉ admin)
         ↓
 chinh_sach_phu_cap     CHÍNH SÁCH — ai được hưởng khoản nào, từ ngày nào
    (Quản trị nhân sự → Phụ cấp)
@@ -55,7 +55,7 @@ hàng tháng. Nên chúng **không phải cột** trong `phieu_luong` mà là **
 `phieu_luong_khoan`, mỗi dòng trỏ về một dòng danh mục `khoan_luong`.
 
 Thêm một khoản mới = thêm một dòng dữ liệu, làm ngay trên giao diện
-(*Hệ thống → Tham số lương → Danh mục khoản lương*, chỉ admin).
+(*Cài đặt → Tham số lương → Danh mục khoản lương*, chỉ admin).
 
 ### Ba cách ra tiền
 

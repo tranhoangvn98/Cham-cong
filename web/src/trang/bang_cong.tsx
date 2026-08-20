@@ -137,7 +137,7 @@ export function TrangBangCong(): ReactNode {
           />
         ) : (
           <div className="vo-bang">
-            <table>
+            <table className="bang-neo-cot-dau">
               <thead>
                 <tr>
                   <th>Mã NV</th>
@@ -154,23 +154,35 @@ export function TrangBangCong(): ReactNode {
               </thead>
               <tbody>
                 {(du_lieu ?? []).map((d) => (
+                  // Ca hang mo chi tiet, nen no phai la mot dich den cua ban phim: `tabIndex`
+                  // de Tab toi duoc, `role` de trinh doc man hinh biet bam duoc, va Enter /
+                  // Space lam dung viec cua chuot. Thieu chung thi voi nguoi khong dung chuot
+                  // hang nay khong ton tai.
                   <tr
                     key={d.nhan_vien_id}
-                    style={{ cursor: 'pointer' }}
+                    className="hang-bam"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Xem chi tiết công của ${d.ho_ten}`}
                     onClick={() => dat_xem_chi_tiet({ id: d.nhan_vien_id, ten: d.ho_ten })}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      // Space cuon trang neu khong chan.
+                      e.preventDefault();
+                      dat_xem_chi_tiet({ id: d.nhan_vien_id, ten: d.ho_ten });
+                    }}
                   >
                     <td className="so">{d.ma_nv}</td>
                     <td>{d.ho_ten}</td>
                     <td>{d.phong_ban ?? '—'}</td>
-                    <td className="canh-phai so" style={{ fontWeight: 650 }}>
+                    <td className="canh-phai so manh">
                       {Number(d.tong_cong).toFixed(1)}
                     </td>
                     <td className="canh-phai so">{phut_thanh_chu(Number(d.tong_phut_lam))}</td>
                     <td className="canh-phai so">{phut_thanh_chu(Number(d.tong_phut_ot))}</td>
                     <td className="canh-phai so">{Number(d.so_lan_di_muon) || '—'}</td>
-                    <td className="canh-phai so" style={
-                      Number(d.tong_phut_muon) > 0 ? { color: 'var(--canh-bao)' } : undefined
-                    }>
+                    <td className={Number(d.tong_phut_muon) > 0
+                      ? 'canh-phai so so-canh-bao' : 'canh-phai so'}>
                       {phut_thanh_chu(Number(d.tong_phut_muon))}
                     </td>
                     <td className="canh-phai so" style={
@@ -228,7 +240,7 @@ function ChiTietThang({ nhan_vien_id, ho_ten, thang, khi_dong, khi_doi }: ChiTie
           <Trong tieu_de="Chưa có ngày công nào trong tháng" />
         ) : (
           <div className="vo-bang">
-            <table>
+            <table className="bang-neo-cot-dau">
               <thead>
                 <tr>
                   <th>Ngày</th>
@@ -261,7 +273,7 @@ function ChiTietThang({ nhan_vien_id, ho_ten, thang, khi_dong, khi_doi }: ChiTie
                     <td className="canh-phai so" style={{ fontWeight: 600 }}>
                       {Number(d.so_cong).toFixed(1)}
                     </td>
-                    <td style={{ maxWidth: 200, fontSize: 12 }}>
+                    <td className="chu-nho" style={{ maxWidth: 200 }}>
                       {d.co_dieu_chinh && <span className="nhan nhan-lanh" style={{ marginRight: 4 }}>
                         sửa
                       </span>}

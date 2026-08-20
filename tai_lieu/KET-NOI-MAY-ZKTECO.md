@@ -137,7 +137,7 @@ Khi nạp nhân viên xuống máy, hộp thoại **"Nạp NV"** hỏi **nạp P
 PIN — nạp nhầm PIN của máy khác thì họ quẹt vào máy này sẽ không khớp được ai, và không có gì
 báo: lần quẹt nằm đó với `nhan_vien_id` trống.
 
-Ai đang giữ một PIN thì tra ở **Hệ thống → Mã định danh → Tra cứu** — kể cả PIN đã đóng lại.
+Ai đang giữ một PIN thì tra ở **Cài đặt → Mã định danh → Tra cứu** — kể cả PIN đã đóng lại.
 Xem [`MA-DINH-DANH.md`](MA-DINH-DANH.md).
 
 Hai điểm nữa khi mở thêm máy:

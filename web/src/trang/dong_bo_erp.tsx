@@ -6,6 +6,7 @@ import { useState, type ReactNode } from 'react';
 import { goi } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  XuongDanhSach,
 } from '../thanh_phan.tsx';
 
 interface Luot {
@@ -84,7 +85,7 @@ export function TrangDongBoErp(): ReactNode {
   const [xem_thieu, dat_xem_thieu] = useState(false);
   const hd = dung_hanh_dong();
 
-  if (dang_tai) return <DangTai />;
+  if (dang_tai) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
   const tt = du_lieu ?? { da_cau_hinh: false, so_da_noi: 0, lich_su: [] };
 

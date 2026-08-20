@@ -123,10 +123,10 @@ export function TrangLanQuet(): ReactNode {
                 {(chua_map.du_lieu ?? []).map((c) => (
                   <tr key={`${c.pin_may}|${c.thiet_bi_serial ?? ''}`}>
                     <td className="so"><strong>{c.pin_may}</strong></td>
-                    <td className="so" style={{ fontSize: 12 }}>{c.thiet_bi_serial ?? '—'}</td>
+                    <td className="so chu-nho">{c.thiet_bi_serial ?? '—'}</td>
                     <td className="canh-phai so">{c.so_lan}</td>
-                    <td className="khong-ngat" style={{ fontSize: 12 }}>{ngay_gio(c.lan_dau)}</td>
-                    <td className="khong-ngat" style={{ fontSize: 12 }}>{ngay_gio(c.lan_cuoi)}</td>
+                    <td className="khong-ngat chu-nho">{ngay_gio(c.lan_dau)}</td>
+                    <td className="khong-ngat chu-nho">{ngay_gio(c.lan_cuoi)}</td>
                     <td>
                       <button className="nut-nho" onClick={() => dat_gan_lai_pin(c.pin_may)}>
                         Gán lại
@@ -246,8 +246,8 @@ export function TrangLanQuet(): ReactNode {
                     </td>
                     <td className="so">{q.pin_may ?? '—'}</td>
                     <td className="khong-ngat">{q.nhan_trang_thai}</td>
-                    <td className="khong-ngat" style={{ fontSize: 12 }}>{q.nhan_xac_thuc}</td>
-                    <td style={{ fontSize: 12 }}>
+                    <td className="khong-ngat chu-nho">{q.nhan_xac_thuc}</td>
+                    <td className="chu-nho">
                       {TEN_NGUON[q.nguon] ?? q.nguon}
                       {q.thiet_bi !== null && <div className="o-so-phu">{q.thiet_bi}</div>}
                       {q.dia_diem !== null && (

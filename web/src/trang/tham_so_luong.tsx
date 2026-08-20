@@ -13,6 +13,7 @@ import { useState, type ReactNode } from 'react';
 import { goi } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  XuongDanhSach,
 } from '../thanh_phan.tsx';
 
 interface BacThue {
@@ -62,7 +63,7 @@ export function TrangThamSoLuong(): ReactNode {
   const [dang_tao, dat_dang_tao] = useState<ThamSo | null>(null);
   const [tao_moi, dat_tao_moi] = useState(false);
 
-  if (dang_tai) return <DangTai />;
+  if (dang_tai) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
   const ds = du_lieu ?? [];
   // API tra theo hieu_luc_tu giam dan -> phan tu dau la bo dang ap dung.

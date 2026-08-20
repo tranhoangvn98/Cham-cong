@@ -6,7 +6,8 @@
 import { useState, type ReactNode } from 'react';
 import { goi } from '../api.ts';
 import {
-  DangTai, HopLoi, HopThoaiXemTep, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  DangTai, HopLoi, HopThoaiXemTep, Trong,
+  dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio,
 } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
 
@@ -207,7 +208,7 @@ export function TrangKhoTep(): ReactNode {
                       {t.ten_luu}
                     </td>
                     <td className="canh-phai so">{co_gon(t.kich_thuoc)}</td>
-                    <td style={{ fontSize: 12 }}>
+                    <td className="chu-nho">
                       <div className="khong-ngat">{ngay_gio(t.tao_luc)}</div>
                       <div className="o-so-phu">{t.tai_len_boi ?? '—'}</div>
                     </td>
@@ -249,19 +250,27 @@ function KhoiSapXep(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<TinhTrangSapXep>('/api/ho-so/sap-xep-tep');
   const [kq, dat_kq] = useState<KetQuaSapXep | null>(null);
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
   const tt = du_lieu ?? { tong: 0, lech: 0, cay_cu: 0, duong_dan_xau: 0 };
   const co_viec = tt.lech > 0 || tt.duong_dan_xau > 0;
 
-  const chay = (che_do: 'thu' | 'that') => (): void => {
-    if (che_do === 'that' && !window.confirm(
-      `Đổi chỗ ${String(tt.lech)} tệp trên đĩa máy chủ?\n\n`
-      + 'Chỉ di chuyển TRONG kho hồ sơ — không xóa, không ghi đè, và đường dẫn trong cơ sở '
-      + 'dữ liệu được cập nhật cùng lúc nên mọi tệp vẫn mở được.')) return;
+  const chay = (che_do: 'thu' | 'that') => async (): Promise<void> => {
+    if (che_do === 'that') {
+      const dong_y = await xn.hoi({
+        tieu_de: `Đổi chỗ ${String(tt.lech)} tệp trên đĩa máy chủ?`,
+        mo_ta: <>
+          Chỉ di chuyển <strong>trong</strong> kho hồ sơ — không xóa, không ghi đè, và đường dẫn
+          trong cơ sở dữ liệu được cập nhật cùng lúc nên mọi tệp vẫn mở được.
+        </>,
+        chu_dong_y: 'Sắp xếp thật',
+      });
+      if (!dong_y) return;
+    }
 
-    void hd.chay_lay<KetQuaSapXep>(
+    await hd.chay_lay<KetQuaSapXep>(
       () => goi<KetQuaSapXep>('/api/ho-so/sap-xep-tep', { method: 'POST', body: { che_do } }),
       che_do === 'thu' ? 'Đã chạy thử — chưa đổi gì.' : 'Đã sắp xếp.',
     ).then((r) => {
@@ -298,7 +307,7 @@ function KhoiSapXep(): ReactNode {
         {tt.duong_dan_xau > 0 && (
           <div className="o-so">
             <div className="o-so-nhan">Đường dẫn xấu</div>
-            <div className="o-so-gia-tri" style={{ color: 'var(--xau)' }}>{tt.duong_dan_xau}</div>
+            <div className="o-so-gia-tri chu-xau">{tt.duong_dan_xau}</div>
             <div className="o-so-phu">dữ liệu hỏng — cần người xem</div>
           </div>
         )}
@@ -364,6 +373,7 @@ function KhoiSapXep(): ReactNode {
           {kq.cat_bot && <p className="mo-ta">Hiển thị 200 dòng đầu.</p>}
         </>
       )}
+      {xn.hop_thoai}
     </div>
   );
 }
@@ -383,20 +393,29 @@ function KhoiSharePoint(): ReactNode {
     dung_nap<TinhHinhSharePoint>(`/api/ho-so/sharepoint?loc=${loc}`);
   const [kq, dat_kq] = useState<KetQuaDongBo | null>(null);
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
   if (du_lieu === null) return null;
 
-  const chay = (chi_ghi_nhan: boolean) => (): void => {
-    if (!chi_ghi_nhan && du_lieu.bat_day && !window.confirm(
-      `Đẩy ${String(du_lieu.con_viec)} tệp lên thư viện HCNS trên SharePoint?\n\n`
-      + 'Một chiều: bản trên SharePoint bị ghi đè theo bản trên máy chủ, và tệp đã gỡ ở đây '
-      + 'sẽ bị xóa ở đó (vào thùng rác của site, giữ 93 ngày).\n\n'
-      + 'Ứng dụng chỉ ghi vào các nhánh đã khai và chỉ trong thư mục của từng nhân viên — '
-      + 'không chạm vào tệp do người khác xếp tay.')) return;
+  const chay = (chi_ghi_nhan: boolean) => async (): Promise<void> => {
+    if (!chi_ghi_nhan && du_lieu.bat_day) {
+      const dong_y = await xn.hoi({
+        tieu_de: `Đẩy ${String(du_lieu.con_viec)} tệp lên thư viện HCNS trên SharePoint?`,
+        mo_ta: <>
+          <p><strong>Một chiều:</strong> bản trên SharePoint bị ghi đè theo bản trên máy chủ, và
+          tệp đã gỡ ở đây sẽ bị xóa ở đó — vào thùng rác của site, giữ 93 ngày.</p>
+          <p>Ứng dụng chỉ ghi vào các nhánh đã khai và chỉ trong thư mục của từng nhân viên —
+          không chạm vào tệp do người khác xếp tay.</p>
+        </>,
+        chu_dong_y: 'Đẩy lên SharePoint',
+        nguy_hiem: true,
+      });
+      if (!dong_y) return;
+    }
 
-    void hd.chay_lay<KetQuaDongBo>(
+    await hd.chay_lay<KetQuaDongBo>(
       () => goi<KetQuaDongBo>('/api/ho-so/sharepoint', { method: 'POST', body: { chi_ghi_nhan } }),
       chi_ghi_nhan ? 'Đã tính lại đường dẫn — chưa đẩy gì.' : 'Đã chạy đồng bộ.',
     ).then((r) => {
@@ -577,6 +596,7 @@ function KhoiSharePoint(): ReactNode {
           )}.
         </p>
       )}
+      {xn.hop_thoai}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { useState, type ReactNode } from 'react';
 import { goi } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap,
+  XuongDanhSach,
 } from '../thanh_phan.tsx';
 
 interface KhoanDanhMuc {
@@ -107,7 +108,7 @@ export function TrangPhuCap(): ReactNode {
   const [dong, dat_dong] = useState<ChinhSach | null>(null);
   const hd = dung_hanh_dong();
 
-  if (dang_tai) return <DangTai />;
+  if (dang_tai) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
   const ds = du_lieu ?? [];
 

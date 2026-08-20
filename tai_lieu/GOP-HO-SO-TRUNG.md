@@ -129,7 +129,7 @@ Bản `1.31.0` **chưa** mang khóa nối theo. Nếu bạn đã gộp bằng b�
 select ma_nv, ho_ten, email, erp_user_id from nhan_vien where erp_user_id is null;
 ```
 
-1. Vào **Hệ thống → Đồng bộ ERP**, bấm **Chạy thử**. Nó đọc ERP và cho biết sẽ tạo/sửa ai, không
+1. Vào **Cài đặt → Đồng bộ ERP**, bấm **Chạy thử**. Nó đọc ERP và cho biết sẽ tạo/sửa ai, không
    ghi gì.
 2. Nếu người đó hiện ở dòng `tạo mới`, xem email ERP của họ và đặt đúng email đó cho hồ sơ giữ
    (**Hồ sơ nhân sự → Thông tin chung**).

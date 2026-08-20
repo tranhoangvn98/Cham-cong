@@ -10,8 +10,9 @@
 import type { ReactNode } from 'react';
 import { LienKet } from '../dinh_tuyen.tsx';
 import {
-  DangTai, HopLoi, OSo, Trong, dung_nap, gio_ngan, ngay_gio, ngay_viet,
+  HopLoi, OSo, Trong, dung_nap, gio_ngan, ngay_gio, ngay_viet,
   phut_thanh_chu, thu_cua_ngay,
+  XuongDanhSach,
 } from '../thanh_phan.tsx';
 
 interface ThietBi {
@@ -120,7 +121,7 @@ const TEN_TRANG_THAI: Record<string, string> = {
 export function TrangDashboard(): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<Dashboard>('/api/dashboard');
 
-  if (dang_tai) return <DangTai />;
+  if (dang_tai) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
   if (du_lieu === null) return null;
 
@@ -435,7 +436,7 @@ function KhoiHeThong({ ht }: { ht: HeThong }): ReactNode {
     <>
       {ht.thiet_bi.length === 0 && (
         <div className="hop-thong-bao hop-luu-y">
-          Chưa khai báo máy chấm công nào. Vào <LienKet den="/thiet-bi">Máy chấm công</LienKet> để
+          Chưa khai báo máy chấm công nào. Vào <LienKet den="/cai-dat/thiet-bi">Máy chấm công</LienKet> để
           khai báo serial máy — máy chưa khai báo sẽ bị hệ thống từ chối.
         </div>
       )}

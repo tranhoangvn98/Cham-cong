@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { goi, la_nhan_su } from '../api.ts';
 import {
-  DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  DangTai, HopLoi, HopTot, HopThoai, Trong,
+  dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio,
 } from '../thanh_phan.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
 import type { NhomMa as NhomMaDinhDanh } from './ma_dinh_danh.tsx';
@@ -33,6 +34,7 @@ export function TrangThietBi(): ReactNode {
   const [xem_lenh, dat_xem_lenh] = useState<ThietBi | null>(null);
   const [nap_nv_cho, dat_nap_nv_cho] = useState<ThietBi | null>(null);
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<ThietBi[]>('/api/thiet-bi');
 
@@ -47,10 +49,16 @@ export function TrangThietBi(): ReactNode {
   // Xoa han: chi hien khi may DA TAT. Hoi lai vi day la thao tac khong hoan tac duoc — du lich
   // su quet o lai, ban ghi khai bao may thi mat.
   const xoa = async (tb: ThietBi): Promise<void> => {
-    const dong_y = window.confirm(
-      `Xóa hẳn máy "${tb.ten}" (${tb.serial})?\n\n`
-      + 'Lịch sử lần quẹt của máy này VẪN GIỮ NGUYÊN — bảng công cũ không đổi. '
-      + 'Chỉ bản ghi khai báo máy và các lệnh chưa gửi bị xóa.');
+    const dong_y = await xn.hoi({
+      tieu_de: `Xóa hẳn máy "${tb.ten}"?`,
+      mo_ta: <>
+        Serial <code>{tb.serial}</code>. Lịch sử lần quẹt của máy này <strong>vẫn giữ
+        nguyên</strong> — bảng công cũ không đổi. Chỉ bản ghi khai báo máy và các lệnh chưa
+        gửi bị xóa.
+      </>,
+      chu_dong_y: 'Xóa hẳn máy',
+      nguy_hiem: true,
+    });
     if (!dong_y) return;
     await hd.chay(
       () => goi(`/api/thiet-bi/${tb.id}`, { method: 'DELETE' }),
@@ -127,8 +135,8 @@ export function TrangThietBi(): ReactNode {
                         </>
                       )}
                     </td>
-                    <td style={{ fontSize: 12 }}>{tb.phien_ban_firmware ?? '—'}</td>
-                    <td className="so" style={{ fontSize: 12 }}>{tb.dia_chi_ip ?? '—'}</td>
+                    <td className="chu-nho">{tb.phien_ban_firmware ?? '—'}</td>
+                    <td className="so chu-nho">{tb.dia_chi_ip ?? '—'}</td>
                     <td className="khong-ngat">{ngay_gio(tb.thay_lan_cuoi)}</td>
                     <td className="canh-giua so">
                       {Number(tb.lenh_cho) > 0
@@ -194,6 +202,7 @@ export function TrangThietBi(): ReactNode {
           khi_xong={() => { dat_nap_nv_cho(null); nap_lai(); }}
         />
       )}
+      {xn.hop_thoai}
     </>
   );
 }
@@ -309,7 +318,7 @@ function LichSuLenh({ thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () =>
                   </td>
                   <td>
                     {l.ma_tra_ve === null
-                      ? <span style={{ color: 'var(--chu-mo)' }}>—</span>
+                      ? <span className="chu-mo">—</span>
                       : l.ma_tra_ve === 0
                         ? <span className="nhan nhan-tot">thành công</span>
                         : <span className="nhan nhan-xau">lỗi {l.ma_tra_ve}</span>}
@@ -370,7 +379,7 @@ function NapNhanVien(
             ))}
           </select>
           {co_pin.length === 0 && (
-            <div className="goi-y" style={{ color: 'var(--xau)' }}>
+            <div className="goi-y chu-xau">
               Chưa có nhân viên nào được gán PIN máy.
             </div>
           )}

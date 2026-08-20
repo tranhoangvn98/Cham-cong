@@ -143,7 +143,7 @@ sót. Quy tắc: **bảng thắng**, và hệ thống ghi một dòng cảnh bá
        Chay doi soat ma dinh danh de biet vi sao lech.
 ```
 
-Rồi **Hệ thống → Mã định danh → Đối soát** liệt kê mọi chỗ lệch, hai chiều. Mọi đường ghi đã biết
+Rồi **Cài đặt → Mã định danh → Đối soát** liệt kê mọi chỗ lệch, hai chiều. Mọi đường ghi đã biết
 (form hồ sơ, đồng bộ ERP, nhập CSV, đăng nhập Microsoft) đều ghi cả hai nơi, nên báo cáo này sạch
 là trạng thái bình thường — có dòng nào là có việc phải tìm.
 
@@ -207,7 +207,7 @@ người là cách chắc chắn nhất để một sai sót trong backfill làm
 một cách im lặng** — và lần quẹt không khớp thì không ai thấy gì, nó chỉ nằm đó với
 `nhan_vien_id = null`.
 
-Nên trong giai đoạn này cả hai cùng tồn tại, và **Hệ thống → Mã định danh → Đối soát** so hai
+Nên trong giai đoạn này cả hai cùng tồn tại, và **Cài đặt → Mã định danh → Đối soát** so hai
 chiều:
 
 - Cột cũ có giá trị mà bảng không có mã đang hiệu lực nào → backfill bỏ sót, hoặc hai người trùng
@@ -218,7 +218,7 @@ Khi báo cáo này sạch thì mới bỏ được các cột cũ. Bỏ sớm h�
 
 ## Tra cứu theo mã
 
-**Hệ thống → Mã định danh → Tra cứu**: gõ một mã bất kỳ, không cần biết nó thuộc hệ thống nào.
+**Cài đặt → Mã định danh → Tra cứu**: gõ một mã bất kỳ, không cần biết nó thuộc hệ thống nào.
 Tìm cả **mã đã đóng**, và đó là công dụng chính — một bảng công in tháng trước ghi PIN cũ, một
 công văn ghi mã `ERP147`.
 

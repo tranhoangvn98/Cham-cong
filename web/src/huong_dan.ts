@@ -179,7 +179,22 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/thiet-bi',
+    duong_dan: '/cai-dat',
+    tom_tat: 'Toàn bộ mục cấu hình, gom thành bốn nhóm.',
+    buoc: [
+      { chu: 'Chấm công: máy, ca làm việc, địa điểm, ngày lễ — khai trước khi chạy thật.', vai_tro: NHAN_SU },
+      { chu: 'Nhân sự & lương: tham số BHXH/thuế và danh mục khoản lương.', vai_tro: NHAN_SU },
+      { chu: 'Tài khoản & bảo mật: người dùng, khóa API, nhật ký thao tác.', vai_tro: ['admin'] },
+      { chu: 'Tích hợp & dữ liệu: đồng bộ ERP, kho tệp, mã định danh.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Chỉ hiện những mục vai trò của bạn được sửa. Thiếu một mục nghĩa là tài khoản không có quyền ở đó, không phải hệ thống thiếu tính năng.',
+      'Các mục này trước đây nằm thẳng trên thanh bên (/thiet-bi, /tham-so-luong…). Đường dẫn cũ vẫn chạy — nó tự chuyển sang đường mới, nên bookmark cũ không hỏng.',
+      'Đây là nơi sửa QUY TẮC, không phải sửa số. Đổi quy tắc ca hay tham số lương KHÔNG tự tính lại dữ liệu cũ — phải bấm tính lại ở trang tương ứng.',
+    ],
+  },
+  {
+    duong_dan: '/cai-dat/thiet-bi',
     tom_tat: 'Máy chấm công: khai serial, dải PIN, và các lệnh gửi xuống máy.',
     buoc: [
       { chu: 'Khai serial lấy ở Menu › Hệ thống › Thông tin thiết bị TRÊN CHÍNH MÁY.', vai_tro: NHAN_SU },
@@ -198,7 +213,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/ca-lam',
+    duong_dan: '/cai-dat/ca-lam',
     tom_tat: 'Khung giờ, dung sai, ngưỡng tăng ca và các ngày phải đi làm.',
     buoc: [
       { chu: 'Sửa ca Hành chính cho khớp giờ thật của công ty.', vai_tro: NHAN_SU },
@@ -212,7 +227,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/dia-diem',
+    duong_dan: '/cai-dat/dia-diem',
     tom_tat: 'Điểm và bán kính để đối chiếu GPS khi chấm công bằng điện thoại.',
     buoc: [
       { chu: 'Thêm địa điểm: tọa độ + bán kính cho phép.', vai_tro: NHAN_SU },
@@ -224,7 +239,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/ngay-le',
+    duong_dan: '/cai-dat/ngay-le',
     tom_tat: 'Ngày nghỉ hưởng lương — ảnh hưởng trực tiếp đến số công.',
     buoc: [
       { chu: 'Đầu mỗi năm: thêm Tết Nguyên đán và các ngày nghỉ bù theo lịch âm.', vai_tro: NHAN_SU },
@@ -236,7 +251,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/tai-khoan',
+    duong_dan: '/cai-dat/tai-khoan',
     tom_tat: 'Tài khoản đăng nhập và vai trò.',
     buoc: [
       { chu: 'Tạo tài khoản, gán đúng vai trò và nối với hồ sơ nhân viên.', vai_tro: ['admin'] },
@@ -249,7 +264,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/tham-so-luong',
+    duong_dan: '/cai-dat/tham-so-luong',
     tom_tat: 'Tỷ lệ BHXH, thuế TNCN, giảm trừ gia cảnh, lương tối thiểu vùng, danh mục khoản.',
     buoc: [
       { chu: 'Kiểm tham số đang áp dụng trước mỗi kỳ lương đầu năm.', vai_tro: NHAN_SU },
@@ -265,7 +280,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/dong-bo-erp',
+    duong_dan: '/cai-dat/dong-bo-erp',
     tom_tat: 'Kéo danh sách người dùng từ ERP cũ và nối với Microsoft 365.',
     buoc: [
       { chu: 'Bấm Chạy thử — đọc ERP, cho biết sẽ tạo/sửa ai, KHÔNG ghi gì.', vai_tro: ['admin'] },
@@ -280,7 +295,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/khoa-api',
+    duong_dan: '/cai-dat/khoa-api',
     tom_tat: 'Khóa cho hệ thống ngoài gọi vào API tích hợp.',
     buoc: [
       { chu: 'Tạo khóa, chọn ĐÚNG phạm vi tối thiểu cần dùng.', vai_tro: ['admin'] },
@@ -293,7 +308,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/kho-tep',
+    duong_dan: '/cai-dat/kho-tep',
     tom_tat: 'Toàn bộ tệp đã nạp vào hồ sơ, và cây thư mục trên đĩa.',
     buoc: [
       { chu: 'Tra cứu một tệp theo người, theo nhóm, hoặc theo tên.', vai_tro: NHAN_SU },
@@ -307,7 +322,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/ma-dinh-danh',
+    duong_dan: '/cai-dat/ma-dinh-danh',
     tom_tat: 'Mã của một người ở các hệ thống khác: PIN máy, ERP cũ, Microsoft.',
     buoc: [
       { chu: 'Tra cứu: gõ một mã bất kỳ để biết nó là của ai — kể cả mã đã đóng.', vai_tro: NHAN_SU },
@@ -320,7 +335,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/nhat-ky',
+    duong_dan: '/cai-dat/nhat-ky',
     tom_tat: 'Ai sửa gì, khi nào, từ IP nào.',
     buoc: [
       { chu: 'Lọc theo người dùng, hành động, hoặc khoảng thời gian.', vai_tro: ['admin'] },

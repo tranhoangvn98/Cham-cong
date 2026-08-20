@@ -10,6 +10,7 @@ import { goi, tai_tep } from '../api.ts';
 import { la_admin } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  XuongDanhSach,
 } from '../thanh_phan.tsx';
 
 interface BanChot {
@@ -137,7 +138,7 @@ export function TrangBangLuong(): ReactNode {
   const [dang_tao, dat_dang_tao] = useState(false);
   const hd = dung_hanh_dong();
 
-  if (dang_tai) return <DangTai />;
+  if (dang_tai) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
   const ds = du_lieu ?? [];
 
@@ -159,7 +160,7 @@ export function TrangBangLuong(): ReactNode {
       <div className="hop-luu-y">
         <strong>Trước khi trả lương thật:</strong> kế toán phải đối chiếu lại mức lương cơ sở,
         lương tối thiểu vùng, giảm trừ gia cảnh và biểu thuế trong mục{' '}
-        <em>Hệ thống → Tham số lương</em>. Hệ thống gieo sẵn mức áp dụng từ 01/7/2024; các mức
+        <em>Cài đặt → Tham số lương</em>. Hệ thống gieo sẵn mức áp dụng từ 01/7/2024; các mức
         này thay đổi theo năm và phần mềm không tự biết.
       </div>
 
@@ -360,7 +361,7 @@ function HopThoaiChiTiet(
         <Trong tieu_de="Chưa có phiếu nào" mo_ta={String.raw`Bấm "Tính lương" để sinh phiếu từ dữ liệu chấm công của tháng.`} />
       ) : (
         <div className="vo-bang">
-          <table className="bang-gon">
+          <table className="bang-gon bang-neo-cot-dau">
             <thead>
               <tr>
                 <th>Mã NV</th><th>Họ tên</th><th>Loại HĐ</th>
