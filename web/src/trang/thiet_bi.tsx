@@ -32,6 +32,7 @@ interface Lenh {
 export function TrangThietBi(): ReactNode {
   const [dang_them, dat_dang_them] = useState(false);
   const [xem_lenh, dat_xem_lenh] = useState<ThietBi | null>(null);
+  const [lay_log_cho, dat_lay_log_cho] = useState<ThietBi | null>(null);
   const [nap_nv_cho, dat_nap_nv_cho] = useState<ThietBi | null>(null);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
@@ -158,8 +159,13 @@ export function TrangThietBi(): ReactNode {
                           </button>
                           <button className="nut-nho"
                             onClick={() => lenh_may(tb.serial, 'gui-lai-log',
-                              'Đã yêu cầu máy gửi lại log. Bản ghi trùng sẽ tự bị bỏ qua.')}>
+                              'Đã yêu cầu máy gửi lại log. Bản ghi trùng sẽ tự bị bỏ qua.')}
+                            title="Máy gửi những bản ghi NÓ CHO LÀ chưa đồng bộ">
                             Gửi lại log
+                          </button>
+                          <button className="nut-nho" onClick={() => dat_lay_log_cho(tb)}
+                            title="Xin log theo khoảng ngày — dùng khi máy tưởng đã gửi hết">
+                            Lấy log cũ
                           </button>
                           <button className="nut-nho nut-phang" onClick={() => dat_xem_lenh(tb)}>
                             Lịch sử lệnh
@@ -189,6 +195,10 @@ export function TrangThietBi(): ReactNode {
           khi_dong={() => dat_dang_them(false)}
           khi_xong={() => { dat_dang_them(false); nap_lai(); }}
         />
+      )}
+
+      {lay_log_cho !== null && (
+        <FormLayLog thiet_bi={lay_log_cho} khi_dong={() => dat_lay_log_cho(null)} />
       )}
 
       {xem_lenh !== null && (
@@ -489,5 +499,70 @@ function HuongDanCauHinh(): ReactNode {
         nhau ở nhiều lô máy và ADMS chỉ gửi lên số sê ri firmware.
       </p>
     </div>
+  );
+}
+
+/**
+ * Xin log theo khoang ngay — khac "Gui lai log".
+ *
+ * "Gui lai log" (`CHECK`) hoi may "con gi CHUA GUI khong". Con tro "da gui toi dau" nam TRONG
+ * MAY: mot may tung noi vao may chu ADMS khac co the da danh dau het la da gui, va luc do
+ * `CHECK` tra ve 0 ban ghi — khong phai hong, ma la may tin rang no khong con gi.
+ *
+ * Duong nay hoi thang "dua toi log tu ngay A den ngay B", nen khong phu thuoc con tro do.
+ */
+function FormLayLog(
+  { thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () => void },
+): ReactNode {
+  const [tu, dat_tu] = useState('');
+  const [den, dat_den] = useState('');
+  const hd = dung_hanh_dong();
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    await hd.chay(
+      () => goi(`/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/lay-log`, {
+        method: 'POST',
+        body: { tu, den },
+      }),
+      'Đã xếp lệnh. Máy nhận ở lần kết nối kế tiếp — xem kết quả ở Lịch sử lệnh.',
+    );
+  };
+
+  return (
+    <HopThoai tieu_de={`Lấy log cũ từ ${thiet_bi.ten}`} khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+        <HopTot chu={hd.tot} />
+
+        <div className="hop-thong-bao hop-tin">
+          Dùng khi máy <strong>không tự đẩy</strong> dữ liệu cũ. Nút <em>Gửi lại log</em> chỉ hỏi
+          "còn gì chưa gửi" — mà máy từng nối vào máy chủ khác có thể đã đánh dấu hết là đã gửi.
+          Đường này hỏi thẳng theo khoảng ngày.
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="ll-tu">Từ ngày *</label>
+          <input id="ll-tu" type="date" value={tu} onChange={(e) => dat_tu(e.target.value)} required />
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="ll-den">Đến ngày *</label>
+          <input id="ll-den" type="date" value={den} onChange={(e) => dat_den(e.target.value)} required />
+          <div className="goi-y">
+            Bản ghi trùng tự bị bỏ qua, nên chạy nhiều lần hay chọn khoảng rộng đều an toàn.
+            Firmware cũ có thể không hỗ trợ lệnh này — khi đó xuất ra USB rồi dùng
+            <em> Nhật ký quẹt → Nhập lịch sử từ file</em>.
+          </div>
+        </div>
+
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh"
+            disabled={hd.dang_chay || tu === '' || den === ''}>
+            {hd.dang_chay ? 'Đang xếp lệnh…' : 'Xin log'}
+          </button>
+          <button type="button" onClick={khi_dong}>Đóng</button>
+        </div>
+      </form>
+    </HopThoai>
   );
 }

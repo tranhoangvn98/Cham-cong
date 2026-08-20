@@ -7269,3 +7269,53 @@ test('mot may thoi: gan lai khong can khai serial (giu duong cu)', async () => {
   assert.equal(r.ma, 200, JSON.stringify(r.body));
   assert.equal(r.body['so_ban_ghi'], 1);
 });
+
+test('lay log theo khoang ngay: xep dung lenh DATA QUERY ATTLOG', async () => {
+  // `CHECK` hoi may "con gi chua gui". Mot may tung noi vao may chu ADMS khac co the da danh
+  // dau het la da gui, nen `CHECK` tra 0 ban ghi. Duong nay hoi thang theo khoang ngay.
+  const r = await goi('POST', `/api/thiet-bi/${SERIAL}/lay-log`, {
+    token: token_admin,
+    body: { tu: '2026-06-01', den: '2026-06-30' },
+  });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+
+  // KHONG neo `^`: mot luot poll mang theo den 20 lenh, ke ca lenh con ton tu bai truoc.
+  const xuong = await goi('GET', `/iclock/getrequest?SN=${SERIAL}`);
+  assert.match(
+    xuong.tho,
+    /C:\d+:DATA QUERY ATTLOG StartTime=2026-06-01 00:00:00\tEndTime=2026-06-30 23:59:59\n/,
+  );
+});
+
+test('lay log: chan ngay xau va khoang nguoc', async () => {
+  for (const than of [
+    { tu: '2026-06-01' },
+    { tu: '2026-06-01', den: '2026-02-30' },
+    { tu: '2026-06-30', den: '2026-06-01' },
+    { tu: '2026-06-01', den: 'CLEAR DATA' },
+  ]) {
+    const r = await goi('POST', `/api/thiet-bi/${SERIAL}/lay-log`, {
+      token: token_admin, body: than,
+    });
+    assert.equal(r.ma, 400, `nhan sai: ${JSON.stringify(than)} -> ${JSON.stringify(r.body)}`);
+  }
+});
+
+test('KHONG co duong nao gui lenh tu do xuong may cham cong', async () => {
+  // Mot route "gui lenh bat ky" tien hon nhieu, va cung la duong cho phep dat `CLEAR DATA`
+  // xuong may — xoa sach du lieu cham cong cua ca cong ty bang mot loi goi API.
+  //
+  // Kiem theo MA NGUON chu khong theo mot danh sach duong dan: them route moi thi bai nay van
+  // thay. `xep_lenh` chi duoc goi voi chuoi lenh dung san, khong bao giờ voi chuoi tu than yeu cau.
+  const { readFileSync } = await import('node:fs');
+  const ma = readFileSync(
+    new URL('../src/tuyen/danh_muc.ts', import.meta.url), 'utf8',
+  ).replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  for (const goi_lenh of ma.match(/xep_lenh\([\s\S]{0,200}?\)/g) ?? []) {
+    assert.ok(
+      !/chuoi\(|chuoi_bat_buoc\(|than\(|b\[/.test(goi_lenh),
+      `xep_lenh dang nhan chuoi tu than yeu cau — duong dat lenh tu do:\n${goi_lenh}`,
+    );
+  }
+});

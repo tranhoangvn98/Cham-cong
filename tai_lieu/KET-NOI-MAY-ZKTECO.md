@@ -232,8 +232,8 @@ Thứ tự đúng, **đối chiếu trước khi cắm**:
    `docker compose up -d`.
 4. **Đồng bộ giờ** cho máy cũ **trước khi** nó đẩy log. Đồng hồ máy cũ có thể lệch hàng tháng;
    log về với dấu thời gian sai thì bảng công sai theo và sửa rất mệt.
-5. **Cắm mạng.** Máy tự đẩy: handshake trả `ATTLOGStamp=None` nên nó gửi lại mọi bản ghi chưa
-   đồng bộ. Không thấy gì thì bấm **Gửi lại log** (lệnh `CHECK`).
+5. **Cắm mạng.** Máy tự đẩy: handshake trả `ATTLOGStamp=None` nên nó gửi lại mọi bản ghi nó cho
+   là chưa đồng bộ. Không thấy gì thì bấm **Gửi lại log**, rồi **Lấy log cũ** — xem ngay dưới.
 6. **Đối chiếu ở *Nhật ký quẹt* → "PIN chưa gán cho nhân viên nào".** Bảng liệt kê theo từng
    **(PIN, máy)** kèm *lần đầu* / *lần cuối* — đối chiếu với bảng ở bước 1.
 7. **Gán từng dòng.** Hộp thoại *Gán lại* nói rõ nó chỉ chuyển lần quẹt **của máy đó**. Cùng số
@@ -252,7 +252,30 @@ nên nó không còn nằm trong danh sách "chưa gán" để sửa bằng mộ
 > `POST /api/lan-quet/gan-lai` **từ chối** khi cùng một PIN đang có bản ghi chưa gán ở nhiều máy
 > mà không nói rõ máy nào — thay vì đoán. Thông báo lỗi liệt kê từng máy kèm số lần.
 
-**Nếu máy cũ không chịu đẩy** (firmware quá cũ, hoặc bộ nhớ đã bị xóa): xuất log ra USB —
+#### "Gửi lại log" trả về 0 bản ghi — vì sao, và làm gì
+
+**Con trỏ *đã đồng bộ tới đâu* nằm TRONG MÁY, không nằm ở hệ thống này.** Nút *Gửi lại log* gửi
+lệnh `CHECK`, tức là hỏi máy *"còn gì CHƯA GỬI không"*. Một máy từng nối vào máy chủ ADMS khác có
+thể đã đánh dấu toàn bộ log là **đã gửi** — lúc đó `CHECK` trả về 0 bản ghi. Không phải hỏng: máy
+tin rằng nó không còn gì. Đổi địa chỉ máy chủ thường làm máy quên con trỏ đó, nhưng **tùy
+firmware**, không có gì bảo đảm.
+
+Cho đúng trường hợp này có nút **Lấy log cũ** (Thiết bị → máy → *Lấy log cũ*). Nó gửi
+`DATA QUERY ATTLOG StartTime=… EndTime=…` — **không** hỏi "còn gì chưa gửi" mà hỏi *"đưa tôi log
+từ ngày A đến ngày B"*, nên không phụ thuộc con trỏ.
+
+Chọn khoảng rộng cũng được: bản ghi trùng tự bị bỏ qua nhờ khóa chống trùng, nên chạy nhiều lần
+vẫn an toàn.
+
+Hỗ trợ **tùy firmware**. Máy không hiểu thì *Lịch sử lệnh* hiện `lỗi <mã>` — khi đó dùng đường USB
+ở dưới.
+
+> Không có đường API nào gửi **lệnh tự do** xuống máy, và đó là cố ý: hai mốc ngày đi qua bộ kiểm
+> `YYYY-MM-DD` rồi mới được ghép vào chuỗi lệnh. Một route "gửi lệnh bất kỳ" sẽ tiện hơn nhiều, và
+> cũng là một đường cho phép đặt `CLEAR DATA` xuống máy chấm công. Có bài kiểm soi mã nguồn để
+> `xep_lenh` không bao giờ nhận chuỗi lấy từ thân yêu cầu.
+
+**Nếu máy cũ vẫn không chịu đẩy** (firmware quá cũ, hoặc bộ nhớ đã bị xóa): xuất log ra USB —
 Menu › USB › Download › Attendance Data — rồi *Nhật ký quẹt* → **Nhập lịch sử từ file**, và ở ô
 *"Ghi nhận là của máy"* **chọn đúng máy cũ**. Chọn đúng máy thì khóa chống trùng khớp với bản ghi
 máy đã đẩy (nếu sau này nó đẩy được), nên không tạo bản sao.
@@ -350,8 +373,12 @@ Nếu lệch đúng một số giờ tròn (ví dụ đúng 7 tiếng) thì ki�
 
 ### Nghi mất dữ liệu của một khoảng thời gian
 
-Webapp → **Máy chấm công** → **"Gửi lại log"**. Máy sẽ đẩy lại các bản ghi nó còn giữ.
+Webapp → **Máy chấm công** → **"Gửi lại log"**. Máy sẽ đẩy lại các bản ghi nó cho là chưa đồng bộ.
 Bản ghi đã có sẽ tự bị bỏ qua nhờ khóa chống trùng, nên chạy nhiều lần vẫn an toàn.
+
+Trả về **0 bản ghi** thì dùng **"Lấy log cũ"** với khoảng ngày cụ thể: `CHECK` hỏi *"còn gì chưa
+gửi"* và con trỏ đó nằm trong máy, còn `DATA QUERY ATTLOG` hỏi thẳng theo ngày. Chi tiết ở mục
+*Nạp lại dữ liệu từ một máy cũ*.
 
 ### Lệnh gửi xuống máy không thực thi
 

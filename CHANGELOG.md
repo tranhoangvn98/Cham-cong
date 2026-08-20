@@ -2,6 +2,33 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.41.0] — 2026-08-20
+
+**Nút "Lấy log cũ" — xin log theo khoảng ngày, không phụ thuộc con trỏ đồng bộ của máy.**
+
+Nút *Gửi lại log* gửi lệnh `CHECK`, tức là hỏi máy *"còn gì CHƯA GỬI không"*. Nhưng con trỏ
+*đã gửi tới đâu* nằm **trong máy**, không nằm ở hệ thống này — nên một máy từng nối vào máy chủ
+ADMS khác có thể đã đánh dấu toàn bộ log là đã gửi, và `CHECK` trả về 0 bản ghi. Không phải hỏng:
+máy tin rằng nó không còn gì. Đổi địa chỉ máy chủ thường làm máy quên con trỏ đó, nhưng tùy
+firmware.
+
+`POST /api/thiet-bi/:serial/lay-log` gửi `DATA QUERY ATTLOG StartTime=… EndTime=…` — hỏi thẳng
+*"đưa tôi log từ ngày A đến ngày B"*. Bản ghi trùng tự bị bỏ qua nên chọn khoảng rộng vẫn an toàn.
+Hỗ trợ tùy firmware; máy không hiểu thì *Lịch sử lệnh* hiện mã lỗi, và đường chắc chắn còn lại là
+xuất USB rồi *Nhập lịch sử từ file*.
+
+**Không có đường API nào gửi lệnh tự do xuống máy**, và đó là cố ý: hai mốc ngày đi qua bộ kiểm
+`YYYY-MM-DD` (ngày không tồn tại bị chặn) rồi mới được ghép vào chuỗi lệnh. Một route "gửi lệnh
+bất kỳ" sẽ tiện hơn nhiều, và cũng là một đường cho phép đặt `CLEAR DATA` xuống máy chấm công —
+xóa sạch dữ liệu chấm công của cả công ty bằng một lời gọi API.
+
+Ba bài kiểm e2e, đã chứng minh bắt lỗi thật (đổi `xep_lenh` sang nhận chuỗi từ thân yêu cầu thì
+hai bài đỏ, trong đó có bài soi mã nguồn):
+
+- lệnh xếp xuống máy đúng định dạng `DATA QUERY ATTLOG`,
+- chặn ngày sai dạng, ngày không tồn tại, khoảng ngược, và chuỗi lệnh nhét vào ô ngày,
+- soi mã nguồn: `xep_lenh` không nhận chuỗi lấy từ thân yêu cầu ở bất kỳ route nào.
+
 ## [1.40.0] — 2026-08-20
 
 **Sửa lỗi công chạy sang người khác khi có máy chấm công thứ hai.**
