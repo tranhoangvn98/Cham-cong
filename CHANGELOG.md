@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.42.1] — 2026-08-20
+
+**`ghi_nhan_am_tham` không còn nuốt lỗi không dấu vết.** Nó là chỗ ghi nhận "tệp này cần đẩy lên
+SharePoint", gọi ngay sau khi nạp tệp và sau khi gán tệp vào một ô checklist. Nuốt lỗi ở đây là
+**đúng** — nạp tệp là việc chính, đồng bộ là việc phụ, và vòng quét hằng ngày sẽ dọn nốt. Nhưng
+`catch {}` trơn nghĩa là khi ai đó hỏi *"tôi vừa thêm tệp mà sao không thấy đồng bộ"* thì không
+có chỗ nào trả lời được: không dòng trong bảng, không dòng trong log, không gì cả. Giờ nó ghi một
+dòng vào log máy chủ.
+
 ## [1.42.0] — 2026-08-20
 
 **`kiem_sharepoint` hỏi ngược Graph về từng tệp đã đẩy, và in URL bấm được.**

@@ -526,7 +526,19 @@ export async function ghi_nhan_am_tham(tep_id: string | null, da_go = false): Pr
   try {
     if (da_go && tep_id !== null) await danh_dau_da_go(tep_id);
     else await ghi_nhan(tep_id);
-  } catch {
-    // Lan quet hang ngay se don not.
+  } catch (loi) {
+    // Lan quet hang ngay se don not — NHUNG VAN PHAI DE LAI DAU VET.
+    //
+    // Truoc day day la `catch {}` tron. Nuot loi o day la dung (nap tep la viec chinh, dong bo
+    // la viec phu), nhung nuot ma khong ghi gi thi khi ai do hoi "toi vua them tep ma sao khong
+    // thay dong bo" thi khong co cho nao tra loi duoc: khong co dong trong bang, khong co dong
+    // trong log, khong co gi. Ta chi biet noi "cho vong quet hang ngay". Mot dong log bien no
+    // thanh mot cau tra loi.
+    //
+    // Dung `console.error` chu khong phai logger cua Fastify: ham nay duoc goi ca tu vong quet
+    // hang ngay va tu lenh CLI, la nhung cho khong co request nao.
+    console.error(
+      `[sharepoint] khong ghi nhan duoc tep ${tep_id ?? '(tat ca)'}: ${(loi as Error).message}`,
+    );
   }
 }
