@@ -2,6 +2,24 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.39.0] — 2026-08-20
+
+**`npm run dong_bo_sharepoint` — kích một vòng đồng bộ từ dòng lệnh.**
+
+Trước bản này, cách duy nhất chạy một vòng quét ngay là bấm **Đồng bộ ngay** trên giao diện — nút
+đó đòi đăng nhập. Còn lại là chờ vòng quét hằng ngày sau 01:00. Nhưng người đang cấu hình
+SharePoint thì làm việc trong terminal của VPS, và **`SHAREPOINT_BAT_DAY=1` chỉ CHO PHÉP đẩy, nó
+không tự đẩy**: bật xong, `/health` báo `bat — 4 tep cho` và bảng vẫn `chua_lam` với
+`so_lan_thu = 0`. Đúng như thiết kế, và rất dễ đoán sai thành "hỏng".
+
+- `--chi_tinh` chỉ tính lại đường dẫn mong muốn, **không chạm vào SharePoint**. An toàn chạy bất
+  cứ lúc nào, kể cả khi chưa bật `SHAREPOINT_BAT_DAY`.
+- Chưa bật `SHAREPOINT_BAT_DAY` mà chạy không cờ thì lệnh vẫn đếm việc rồi nói rõ vì sao không
+  đẩy, kèm đúng hai bước cần làm — thay vì im lặng báo "0 đã đẩy".
+- Một vòng làm tối đa `MOI_VONG` việc. Còn việc chưa tới lượt thì lệnh **nói ra**, vì im lặng ở
+  đây đọc thành "đã xong hết".
+- Thoát mã 1 khi có dòng lỗi, để dùng được trong kịch bản.
+
 ## [1.38.1] — 2026-08-20
 
 **Sửa: `kiem_sharepoint` in `Thư viện : root`.** Lượt chạy thật đầu tiên trên VPS bắt được lỗi

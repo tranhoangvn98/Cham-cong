@@ -383,7 +383,24 @@ dựng một máy chủ Graph giả tại chỗ. Đặt giá trị là nộp cli
 4. Đọc cột *Đường dẫn trên SharePoint*. Nhánh đúng chưa, thư mục nhân viên đúng chưa, tên tệp
    đọc được chưa.
 5. Thấy đúng rồi thì đặt `SHAREPOINT_BAT_DAY=1` và `docker compose up -d`.
-6. Bấm **Đồng bộ ngay**, hoặc chờ vòng quét hằng ngày (sau 01:00 giờ máy chấm công).
+6. Chạy `npm run dong_bo_sharepoint`, hoặc bấm **Đồng bộ ngay**, hoặc chờ vòng quét hằng ngày
+   (sau 01:00 giờ máy chấm công).
+
+**`SHAREPOINT_BAT_DAY=1` chỉ CHO PHÉP đẩy, nó không tự đẩy.** Bật xong mà không kích vòng quét
+thì `/health` báo `bat — N tep cho` và bảng vẫn `chua_lam` với `so_lan_thu = 0` — rất dễ đoán sai
+thành "hỏng".
+
+```bash
+cd /root/Cham-cong
+
+# Tính lại đường dẫn VÀ đẩy lên
+docker compose exec may_chu npm run dong_bo_sharepoint
+
+# CHỈ tính lại đường dẫn, không chạm vào SharePoint — an toàn chạy bất cứ lúc nào
+docker compose exec may_chu npm run dong_bo_sharepoint -- --chi_tinh
+```
+
+Một vòng làm tối đa `MOI_VONG` việc; còn việc thì lệnh nói ra và chạy lại là làm tiếp.
 
 Vòng quét hằng ngày chạy **sau** việc sắp xếp kho tệp, và thứ tự đó là cố ý: việc sắp xếp đổi
 tên thư mục **trên đĩa**, còn việc này tính đường dẫn **trên SharePoint** từ `ma_nv`/`ho_ten`.
