@@ -52,7 +52,7 @@ export function TrangLanQuet(): ReactNode {
   const [nguon, dat_nguon] = useState('');
   const [trang_thai_duyet, dat_trang_thai_duyet] = useState('');
   const [so_dong, dat_so_dong] = useState(MOI_TRANG);
-  const [gan_lai_pin, dat_gan_lai_pin] = useState<string | null>(null);
+  const [gan_lai_pin, dat_gan_lai_pin] = useState<GanLai | null>(null);
   const [dang_nhap_tep, dat_dang_nhap_tep] = useState(false);
   const [serial_nhap, dat_serial_nhap] = useState('');
   const hd = dung_hanh_dong();
@@ -128,7 +128,12 @@ export function TrangLanQuet(): ReactNode {
                     <td className="khong-ngat chu-nho">{ngay_gio(c.lan_dau)}</td>
                     <td className="khong-ngat chu-nho">{ngay_gio(c.lan_cuoi)}</td>
                     <td>
-                      <button className="nut-nho" onClick={() => dat_gan_lai_pin(c.pin_may)}>
+                      <button
+                        className="nut-nho"
+                        onClick={() => dat_gan_lai_pin({
+                          pin: c.pin_may, serial: c.thiet_bi_serial ?? null,
+                        })}
+                      >
                         Gán lại
                       </button>
                     </td>
@@ -327,7 +332,7 @@ export function TrangLanQuet(): ReactNode {
 
       {gan_lai_pin !== null && (
         <FormGanLai
-          pin={gan_lai_pin}
+          muc={gan_lai_pin}
           khi_dong={() => dat_gan_lai_pin(null)}
           khi_xong={() => {
             dat_gan_lai_pin(null);
@@ -340,9 +345,22 @@ export function TrangLanQuet(): ReactNode {
   );
 }
 
+/**
+ * PIN can gan, VA may da ghi nhan no.
+ *
+ * Serial di kem chu khong bi bo lai: moi may cap so PIN rieng, nen cung mot so co the la hai
+ * nguoi khac nhau. Bang o tren liet ke theo tung (PIN, may) — bo serial o day la gan mot dong
+ * ma cap nhat nhieu dong, im lang.
+ */
+interface GanLai {
+  pin: string;
+  serial: string | null;
+}
+
 function FormGanLai(
-  { pin, khi_dong, khi_xong }: { pin: string; khi_dong: () => void; khi_xong: () => void },
+  { muc, khi_dong, khi_xong }: { muc: GanLai; khi_dong: () => void; khi_xong: () => void },
 ): ReactNode {
+  const { pin, serial } = muc;
   const [nhan_vien_id, dat_nhan_vien_id] = useState('');
   const hd = dung_hanh_dong();
   const { du_lieu } = dung_nap<NhanVien[]>('/api/nhan-vien?chi_dang_lam=true');
@@ -352,7 +370,7 @@ function FormGanLai(
     const ok = await hd.chay(
       () => goi('/api/lan-quet/gan-lai', {
         method: 'POST',
-        body: { pin_may: pin, nhan_vien_id },
+        body: { pin_may: pin, nhan_vien_id, ...(serial === null ? {} : { thiet_bi_serial: serial }) },
       }),
       'Đã gán lại và tính lại bảng công các ngày liên quan.',
     );
@@ -366,8 +384,15 @@ function FormGanLai(
         <HopTot chu={hd.tot} />
 
         <div className="hop-thong-bao hop-tin">
-          Mọi lần quẹt của PIN <strong>{pin}</strong> chưa gán ai sẽ được chuyển sang nhân viên bạn
-          chọn, và bảng công những ngày đó được tính lại.
+          Mọi lần quẹt của PIN <strong>{pin}</strong> chưa gán ai
+          {serial === null
+            ? ' (không gắn máy nào) '
+            : <> trên máy <strong>{serial}</strong> </>}
+          sẽ được chuyển sang nhân viên bạn chọn, và bảng công những ngày đó được tính lại.
+          {serial !== null && (
+            <> Lần quẹt cùng số PIN ở <strong>máy khác</strong> KHÔNG bị ảnh hưởng — mỗi máy cấp
+            số PIN riêng nên cùng một số có thể là hai người.</>
+          )}
         </div>
 
         <div className="o-nhap">

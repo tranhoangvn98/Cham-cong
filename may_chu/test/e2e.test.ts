@@ -7174,3 +7174,98 @@ test('xoa ho so THAT: mã định danh đi theo, lần quẹt thành vô chủ',
   assert.notEqual(quet, null, 'lan quet bi xoa theo ho so');
   assert.equal(quet?.nhan_vien_id, null);
 });
+
+// ============================================================ HAI MAY, CUNG SO PIN
+//
+// Kich ban that: dau noi mot may cham cong THU HAI cung model de nap lai du lieu cu. Hai may
+// cap so PIN doc lap, nen PIN 7007 tren may cu la NGUOI KHAC voi PIN 7007 tren may dang chay.
+//
+// Truoc ban sua, `POST /api/lan-quet/gan-lai` khong loc theo may: gan PIN 7007 la keo theo moi
+// lan quet PIN 7007 chua map cua MOI may — cong cua nguoi nay chay sang nguoi kia, im lang. Ma
+// bang "PIN chua gan" tren giao dien lai liet ke theo tung (PIN, may).
+test('hai may cung so PIN: gan lai CHI anh huong may da chon', async () => {
+  const MAY_CU = 'MAY-CU-0002';
+  const PIN_TRUNG = '7007';
+  const ngay = '2026-07-15';
+
+  await goi('POST', '/api/thiet-bi', {
+    token: token_admin,
+    body: { serial: MAY_CU, ten: 'May cu VP2', vi_tri: 'Kho' },
+  });
+
+  // Cung mot so PIN, hai may, hai nguoi khac nhau.
+  for (const [sn, gio] of [[SERIAL, '08:10:00'], [MAY_CU, '09:20:00']] as const) {
+    const r = await app.inject({
+      method: 'POST',
+      url: `/iclock/cdata?SN=${sn}&table=ATTLOG`,
+      headers: { 'content-type': 'text/plain' },
+      payload: `${PIN_TRUNG}\t${ngay} ${gio}\t0\t15\t0\n`,
+    });
+    assert.equal(r.statusCode, 200, r.body);
+  }
+
+  // Bang chua-map phai tach theo may — day la thu nguoi bam nut nhin thay.
+  const ds = (await goi('GET', '/api/lan-quet/chua-map', { token: token_admin }))
+    .body as unknown as { pin_may: string; thiet_bi_serial: string | null }[];
+  const cua_pin = ds.filter((d) => d.pin_may === PIN_TRUNG);
+  assert.equal(cua_pin.length, 2, `phai co 2 dong (mot may mot dong): ${JSON.stringify(cua_pin)}`);
+
+  const nguoi_moi = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: { ma_nv: 'NV7007', ho_ten: 'Nguoi May Cu', ngay_vao: '2026-07-01' },
+  });
+  assert.equal(nguoi_moi.ma, 201, JSON.stringify(nguoi_moi.body));
+  const id_moi = nguoi_moi.body['id'] as string;
+
+  // KHONG khai may ma PIN dang co o hai may -> tu choi, khong doan.
+  const doan = await goi('POST', '/api/lan-quet/gan-lai', {
+    token: token_admin,
+    body: { pin_may: PIN_TRUNG, nhan_vien_id: id_moi },
+  });
+  assert.equal(doan.ma, 400, `phai tu choi khi PIN co o nhieu may: ${JSON.stringify(doan.body)}`);
+  assert.match(String(doan.body['loi']), /2 máy/);
+
+  // Khai dung may -> chi mot ban ghi doi chu.
+  const gan = await goi('POST', '/api/lan-quet/gan-lai', {
+    token: token_admin,
+    body: { pin_may: PIN_TRUNG, nhan_vien_id: id_moi, thiet_bi_serial: MAY_CU },
+  });
+  assert.equal(gan.ma, 200, JSON.stringify(gan.body));
+  assert.equal(gan.body['so_ban_ghi'], 1, 'gan lan sang ca may khac');
+
+  const con_lai = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from lan_quet
+      where pin_may = $1 and thiet_bi_serial = $2 and nhan_vien_id is null`,
+    [PIN_TRUNG, SERIAL],
+  );
+  assert.equal(con_lai?.so, 1,
+    'lan quet cung so PIN o MAY KHAC da bi gan theo — cong cua nguoi khac');
+
+  const da_gan = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from lan_quet
+      where pin_may = $1 and thiet_bi_serial = $2 and nhan_vien_id = $3`,
+    [PIN_TRUNG, MAY_CU, id_moi],
+  );
+  assert.equal(da_gan?.so, 1, 'ban ghi cua may da chon khong duoc gan');
+});
+
+test('mot may thoi: gan lai khong can khai serial (giu duong cu)', async () => {
+  const PIN_LE = '7008';
+  await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=ATTLOG`,
+    headers: { 'content-type': 'text/plain' },
+    payload: `${PIN_LE}\t2026-07-16 08:05:00\t0\t15\t0\n`,
+  });
+
+  const nv = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: { ma_nv: 'NV7008', ho_ten: 'Nguoi Mot May', ngay_vao: '2026-07-01' },
+  });
+  const r = await goi('POST', '/api/lan-quet/gan-lai', {
+    token: token_admin,
+    body: { pin_may: PIN_LE, nhan_vien_id: nv.body['id'] },
+  });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+  assert.equal(r.body['so_ban_ghi'], 1);
+});

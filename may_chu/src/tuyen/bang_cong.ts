@@ -343,22 +343,61 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
     ),
   );
 
-  /** Gan lai cac lan quet chua map cho mot nhan vien (sau khi da khai PIN). */
+  /**
+   * Gan lai cac lan quet chua map cho mot nhan vien (sau khi da khai PIN).
+   *
+   * `thiet_bi_serial` GIOI HAN theo may, va no khong phai mot tuy chon cho tien.
+   *
+   * PIN la danh tinh o pham vi TOAN CONG TY (xem di tru 026), nhung SO PIN thi do tung may cap
+   * — nen hai may co the cung co PIN 5 cua HAI NGUOI KHAC NHAU. Truoc ban nay cau UPDATE khong
+   * loc theo may: gan PIN 5 la keo theo moi lan quet PIN 5 chua map cua MOI may, tuc la cong
+   * cua nguoi nay chay sang nguoi kia. Va bang "PIN chua gan" tren giao dien lai liet ke theo
+   * tung (PIN, may) — nguoi bam nut tin rang minh dang gan dung mot dong.
+   *
+   * Tinh huong nay khong phai gia thuyet: no den dung luc dau noi may cham cong THU HAI (cung
+   * model, dang PIN rieng), va thuong la luc nap lai du lieu cu tu may do.
+   *
+   * Khong khai serial ma PIN do dang co ban ghi chua map o NHIEU MAY thi TU CHOI, khong doan —
+   * cung loi voi `DATA UPDATE USERINFO` khi mot nguoi co nhieu PIN.
+   */
   app.post('/lan-quet/gan-lai', { preHandler: can_nhan_su }, async (req) => {
     const b = than(req.body);
     const pin = chuoi(b, 'pin_may', { bat_buoc: true, toi_da: 32 }) as string;
     const nhan_vien_id = uuid(b, 'nhan_vien_id', { bat_buoc: true }) as string;
+    const serial = chuoi(b, 'thiet_bi_serial', { toi_da: 64 });
 
     const nv = await truy_van_mot<{ id: string }>(
       'select id from nhan_vien where id = $1', [nhan_vien_id],
     );
     if (nv === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
 
+    if (serial === null) {
+      const may = await truy_van<{ thiet_bi_serial: string | null; so_lan: number }>(
+        `select thiet_bi_serial, count(*)::int as so_lan
+           from lan_quet
+          where pin_may = $1 and nhan_vien_id is null
+          group by thiet_bi_serial
+          order by count(*) desc`,
+        [pin],
+      );
+      if (may.length > 1) {
+        const ke = may.map(
+          (m) => `${m.thiet_bi_serial ?? '(không gắn máy)'} (${String(m.so_lan)} lần)`,
+        );
+        throw new LoiDauVao(
+          `PIN ${pin} đang có bản ghi chưa gán ở ${String(may.length)} máy: ${ke.join(', ')}. `
+          + 'Mỗi máy cấp số PIN riêng nên cùng một số có thể là hai người khác nhau. '
+          + 'Chọn đúng máy cần gán.',
+        );
+      }
+    }
+
     const ngay_anh_huong = await truy_van<{ ngay: string }>(
       `update lan_quet set nhan_vien_id = $2
         where pin_may = $1 and nhan_vien_id is null
+          and ($4::text is null or thiet_bi_serial = $4)
         returning (thoi_diem + make_interval(hours => $3::int))::date::text as ngay`,
-      [pin, nhan_vien_id, cau_hinh.device_tz_offset_hours],
+      [pin, nhan_vien_id, cau_hinh.device_tz_offset_hours, serial],
     );
 
     // Tinh lai tung ngay bi anh huong.
@@ -366,7 +405,8 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
     for (const ng of cac_ngay) await tinh_lai_khoang(ng, ng, nhan_vien_id);
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'gan_lai_lan_quet', 'lan_quet',
-      null, { pin, nhan_vien_id, so_ban_ghi: ngay_anh_huong.length }, req.ip);
+      null, { pin, nhan_vien_id, thiet_bi_serial: serial, so_ban_ghi: ngay_anh_huong.length },
+      req.ip);
     return { ok: true, so_ban_ghi: ngay_anh_huong.length, so_ngay_tinh_lai: cac_ngay.length };
   });
 

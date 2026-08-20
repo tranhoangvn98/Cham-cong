@@ -2,6 +2,32 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.40.0] — 2026-08-20
+
+**Sửa lỗi công chạy sang người khác khi có máy chấm công thứ hai.**
+
+`POST /api/lan-quet/gan-lai` không lọc theo máy: gán PIN 5 là kéo theo **mọi** lần quẹt PIN 5 chưa
+gán của **mọi** máy. Mà bảng *"PIN chưa gán cho nhân viên nào"* trên giao diện lại liệt kê theo
+từng **(PIN, máy)**, và nút *Gán lại* chỉ gửi PIN — người bấm tin rằng mình đang gán đúng một
+dòng.
+
+PIN là danh tính ở phạm vi **toàn công ty** (di trú 026), nhưng **số** PIN thì do từng máy cấp:
+hai máy có thể cùng có PIN 5 của **hai người khác nhau**. Với một máy thì lỗi này vô hại. Nó thành
+tiền ngay khi đấu máy thứ hai — thường là lúc nạp lại dữ liệu cũ từ một máy đã dùng ở nơi khác.
+
+- `thiet_bi_serial` giới hạn phạm vi `UPDATE`; giao diện truyền serial của đúng dòng đã bấm.
+- Không khai serial mà PIN đó đang có bản ghi chưa gán ở **nhiều máy** thì **từ chối**, kèm danh
+  sách từng máy và số lần — không đoán. Cùng lối với `DATA UPDATE USERINFO` khi một người nhiều PIN.
+- Hộp thoại nói rõ nó chỉ chuyển lần quẹt của máy nào, và cùng số PIN ở máy khác không bị ảnh hưởng.
+- Một máy thì đường cũ giữ nguyên: không cần khai serial.
+
+Hai bài kiểm e2e, đã chứng minh bắt lỗi thật: bỏ điều kiện lọc theo máy thì bài "hai máy cùng số
+PIN" đỏ.
+
+Kèm tài liệu: mục **Nạp lại dữ liệu từ một máy cũ** trong `KET-NOI-MAY-ZKTECO.md` — thứ tự
+*đối chiếu PIN trước khi cắm*, vì sau khi gán sai thì bản ghi không còn trong danh sách "chưa gán"
+để sửa bằng một cú bấm.
+
 ## [1.39.1] — 2026-08-20
 
 **Đường đẩy SharePoint đã chạy thật.** 4 tệp lên thư viện HCNS thật: 16/16 nhánh khớp tên,

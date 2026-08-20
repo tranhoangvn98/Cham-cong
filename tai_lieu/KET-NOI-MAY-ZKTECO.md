@@ -212,6 +212,51 @@ Thiết bị cho biết lệnh nào đã gửi, mã trả về là bao nhiêu.
 4. **Bấm *Đồng bộ giờ*** cho máy mới. Lệch đồng hồ giữa hai máy là nguyên nhân sai công phổ
    biến nhất, và nguy hiểm hơn khi giờ vào / giờ ra do hai máy khác nhau ghi.
 
+### Nạp lại dữ liệu từ một máy cũ
+
+Đấu một máy **đã dùng ở nơi khác** vào hệ thống để lấy log cũ còn trong bộ nhớ nó. Khác hẳn "thêm
+máy thứ hai": máy này mang theo **dãy PIN của riêng nó**, và đó là chỗ hỏng được.
+
+**PIN 5 trên máy cũ không phải PIN 5 trên máy đang chạy.** Số PIN do từng máy cấp; hệ thống chỉ
+thấy chuỗi `"5"`. Nạp mà không đối chiếu trước là cộng công của người này cho người kia — và
+không có gì báo, vì với phần mềm thì cả hai đều là "PIN 5".
+
+Thứ tự đúng, **đối chiếu trước khi cắm**:
+
+1. **Lấy danh sách người trên máy cũ trước.** Ngay trên máy: Menu › User Mgt — đọc từng PIN và
+   tên. Hoặc xuất ra USB: Menu › USB › Download › User Data. Cần một bảng *PIN cũ → người thật*
+   **do người biết việc xác nhận**, không phải suy từ số.
+2. **Khai máy cũ vào hệ thống** (Thiết bị → serial của nó). Chưa khai thì `/iclock` trả `401` và
+   máy không đẩy được gì — đó là hàng rào, không phải lỗi.
+3. **Thêm IP nơi đặt máy vào `ICLOCK_IP_CHO_PHEP`** nếu ô này đang có giá trị, rồi
+   `docker compose up -d`.
+4. **Đồng bộ giờ** cho máy cũ **trước khi** nó đẩy log. Đồng hồ máy cũ có thể lệch hàng tháng;
+   log về với dấu thời gian sai thì bảng công sai theo và sửa rất mệt.
+5. **Cắm mạng.** Máy tự đẩy: handshake trả `ATTLOGStamp=None` nên nó gửi lại mọi bản ghi chưa
+   đồng bộ. Không thấy gì thì bấm **Gửi lại log** (lệnh `CHECK`).
+6. **Đối chiếu ở *Nhật ký quẹt* → "PIN chưa gán cho nhân viên nào".** Bảng liệt kê theo từng
+   **(PIN, máy)** kèm *lần đầu* / *lần cuối* — đối chiếu với bảng ở bước 1.
+7. **Gán từng dòng.** Hộp thoại *Gán lại* nói rõ nó chỉ chuyển lần quẹt **của máy đó**. Cùng số
+   PIN ở máy khác không bị ảnh hưởng.
+
+Hai điều làm việc này an toàn hơn nó trông:
+
+- **Khóa chống trùng có cả serial** (`may|<serial>|<PIN>|<thời điểm>|<trạng thái>`). Nên log của
+  máy cũ không đè log máy đang chạy, và **đẩy lại nhiều lần vẫn an toàn**.
+- **PIN chưa map thì lần quẹt VẪN được lưu**, chỉ là `nhan_vien_id` để trống. Không mất dữ liệu
+  vì chưa khai kịp; gán sau vẫn tính bù được bảng công.
+
+Điều **không** an toàn: gán sai người rồi phát hiện muộn. Lúc đó lần quẹt đã mang `nhan_vien_id`
+nên nó không còn nằm trong danh sách "chưa gán" để sửa bằng một cú bấm nữa.
+
+> `POST /api/lan-quet/gan-lai` **từ chối** khi cùng một PIN đang có bản ghi chưa gán ở nhiều máy
+> mà không nói rõ máy nào — thay vì đoán. Thông báo lỗi liệt kê từng máy kèm số lần.
+
+**Nếu máy cũ không chịu đẩy** (firmware quá cũ, hoặc bộ nhớ đã bị xóa): xuất log ra USB —
+Menu › USB › Download › Attendance Data — rồi *Nhật ký quẹt* → **Nhập lịch sử từ file**, và ở ô
+*"Ghi nhận là của máy"* **chọn đúng máy cũ**. Chọn đúng máy thì khóa chống trùng khớp với bản ghi
+máy đã đẩy (nếu sau này nó đẩy được), nên không tạo bản sao.
+
 ### Bỏ một máy đã ngừng dùng
 
 **Tắt trước, rồi Xóa** — nút Xóa chỉ hiện khi máy đã tắt. Hai bước là cố ý: xóa một máy đang chạy
@@ -291,8 +336,9 @@ Webapp → **Nhật ký quẹt** → khối "PIN chưa gán cho nhân viên nào
 Nguyên nhân: PIN trên máy khác PIN khai trong hệ thống. Cách xử lý:
 
 1. Sửa PIN của nhân viên ở trang **Nhân viên** cho khớp máy.
-2. Về **Nhật ký quẹt**, bấm **"Gán lại"** — hệ thống chuyển toàn bộ lần quẹt cũ của PIN
-   đó sang nhân viên và tính lại bảng công những ngày liên quan.
+2. Về **Nhật ký quẹt**, bấm **"Gán lại"** — hệ thống chuyển lần quẹt cũ của PIN đó **trên đúng
+   máy bạn bấm** sang nhân viên, và tính lại bảng công những ngày liên quan. Cùng số PIN ở máy
+   khác **không** bị ảnh hưởng: mỗi máy cấp số PIN riêng nên cùng một số có thể là hai người.
 
 ### Giờ công lệch so với thực tế
 
