@@ -252,6 +252,23 @@ az ad sp create --id $APP
 az ad app permission add --id $APP --api $GRAPH --api-permissions $SEL=Role
 ```
 
+### Ai chạy được, và đăng nhập bằng gì
+
+Cấp **application permission của Microsoft Graph** cần vai trò **Global Administrator** (hoặc
+Privileged Role Administrator). *Application Administrator* / *Cloud Application Administrator*
+có thể **không đủ** cho riêng nhóm quyền này — nếu admin của anh chỉ có vai trò đó và lệnh trả
+`Insufficient privileges`, đó là lý do, không phải lệnh sai.
+
+Và phải đăng nhập bằng **tài khoản người thật**, không phải managed identity của Cloud Shell:
+
+```bash
+az login --allow-no-subscriptions       # đăng nhập bằng tài khoản admin
+az account show --query user -o json    # phải ra "user", KHÔNG phải "servicePrincipal"
+```
+
+Managed identity của Cloud Shell không lấy được token cho các audience cần thiết — đó là nguồn
+của cả hai lỗi dưới đây.
+
 **`az ad app permission admin-consent` có thể không chạy trong Azure Cloud Shell** — nó gọi
 qua endpoint Azure AD Graph cũ mà managed identity của Cloud Shell không lấy được token cho
 audience đó (`Audience 74658136-... is not a supported MSI token audience`). Admin consent cho
@@ -275,6 +292,13 @@ không có scope đó, nên `az rest` trả `403 accessDenied`.
 
 Cách vòng: cấp **tạm** FullControl cho chính app này, dùng token của nó để tự cấp quyền site,
 rồi **gỡ FullControl ngay**.
+
+> **Rủi ro của cách vòng, nói thẳng:** trong khoảng vài phút giữa hai bước, app có toàn quyền
+> đọc/ghi/xóa trên **mọi** site SharePoint của tenant — kể cả site tài chính, site ban giám đốc.
+> Nên chạy liền một mạch, đừng để qua đêm, và bước gỡ ở dưới là **bắt buộc**. Nếu tenant có
+> chính sách không cho phép cửa sổ đó, dùng PnP PowerShell
+> (`Grant-PnPAzureADAppSitePermission`) — nhưng cách đó cần app *PnP Management Shell* được
+> consent trong tenant, bản thân nó cũng là một app có quyền rộng, nên không hẳn ít rủi ro hơn.
 
 ```bash
 FULL=$(az ad sp show --id $GRAPH --query "appRoles[?value=='Sites.FullControl.All'].id | [0]" -o tsv)

@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.37.1] — 2026-08-20
+
+Tài liệu SharePoint: bổ sung hai điều đã làm lần cấp quyền đầu tiên thất bại.
+
+- **Ai chạy được.** Cấp application permission của Microsoft Graph cần **Global Administrator**
+  (hoặc Privileged Role Administrator). *Application Administrator* có thể không đủ cho riêng
+  nhóm quyền này — gặp `Insufficient privileges` thì đó là lý do, không phải lệnh sai.
+- **Đăng nhập bằng gì.** Phải là tài khoản người thật, không phải managed identity của Cloud
+  Shell (`az account show --query user` phải ra `user`, không phải `servicePrincipal`). MSI
+  không lấy được token cho các audience cần thiết — đó là nguồn của cả lỗi
+  `not a supported MSI token audience` lẫn `403 accessDenied`.
+- **Rủi ro của cách vòng, nói thẳng.** Giữa hai bước bootstrap, app có toàn quyền trên **mọi**
+  site của tenant — kể cả site tài chính, site ban giám đốc. Phải chạy liền một mạch và bước gỡ
+  là bắt buộc.
+
 ## [1.37.0] — 2026-08-20
 
 **`/health` nói trạng thái đồng bộ SharePoint.** Tính năng này có **hai công tắc** và cả hai tắt
