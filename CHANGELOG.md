@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.39.1] — 2026-08-20
+
+**Đường đẩy SharePoint đã chạy thật.** 4 tệp lên thư viện HCNS thật: 16/16 nhánh khớp tên,
+`sp_item_id` do Graph cấp cho cả 4, `duong_dan_da_day` bằng `duong_dan_muon`. Nên `tai_len` và
+`bao_dam_thu_muc` không còn là "chỉ đúng theo tài liệu Graph" nữa.
+
+Tài liệu sửa theo — dòng *"Chưa chạy thật lần nào"* giờ đã sai, và một giới hạn đã hết hiệu lực
+còn nằm trong tài liệu thì lần sau không ai biết cái nào còn thật.
+
+`xoa()` **vẫn chưa chạy thật lần nào**, và nó hỏng **im lặng**: hồ sơ đã gỡ ở hệ thống vẫn sống
+trên SharePoint và không có gì báo. Tài liệu giờ nói rõ phải thử đường xóa trong cùng lượt test,
+bằng chính những tệp vừa đẩy.
+
 ## [1.39.0] — 2026-08-20
 
 **`npm run dong_bo_sharepoint` — kích một vòng đồng bộ từ dòng lệnh.**

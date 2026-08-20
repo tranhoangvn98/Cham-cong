@@ -514,12 +514,21 @@ việc gì phải làm* — ví dụ tệp đã bị gỡ ở cả hai bên — 
 
 ## 9. Giới hạn đã biết
 
-- **Chưa chạy thật lần nào.** Toàn bộ bài kiểm của client chạy trên một máy chủ Graph giả tại
-  chỗ: phiên làm việc viết mã này không kết nối được SharePoint thật. Bộ kiểm chứng minh client
-  gọi đúng những gì tài liệu Graph nói — **không** chứng minh SharePoint thật sẽ nhận. Lần chạy
-  thật đầu tiên là bước 6 ở trên, và nó nên được làm với `SHAREPOINT_BAT_DAY=1` trên một vài
-  tệp trước khi mở cho cả kho. `npm run kiem_sharepoint` là lượt gọi Graph thật **an toàn nhất**
-  để làm trước: nó chỉ đọc.
+- **Đường ĐẨY đã chạy thật; đường XÓA thì chưa.** Ngày 20-08-2026, 4 tệp lên thư viện HCNS thật:
+  16/16 nhánh khớp tên, `sp_item_id` do Graph cấp cho cả 4, `duong_dan_da_day` bằng
+  `duong_dan_muon`. Nên `tai_len` và `bao_dam_thu_muc` không còn là "chỉ đúng theo tài liệu
+  Graph" nữa.
+
+  Nhưng `xoa()` **chưa chạy thật lần nào**, và nó hỏng **im lặng**: hồ sơ đã gỡ ở hệ thống vẫn
+  sống trên SharePoint và không có gì báo. Nên hãy thử đường xóa **trong cùng lượt test**, bằng
+  chính những tệp vừa đẩy: gỡ tệp trong ứng dụng, chạy lại `npm run dong_bo_sharepoint`, và chờ
+  cột `đã xóa` khác 0.
+
+  Phần còn lại của bộ kiểm vẫn chạy trên máy chủ Graph giả tại chỗ — nó chứng minh client gọi
+  đúng những gì tài liệu Graph nói, **không** chứng minh SharePoint thật sẽ nhận. Và máy giả đã
+  từng nói dối một lần: xem mục *Thư viện : root* ở trên.
+
+  `npm run kiem_sharepoint` là lượt gọi Graph thật **an toàn nhất** để làm trước: nó chỉ đọc.
 - Tệp lớn hơn 4 MB đi qua `createUploadSession`, chia khúc 3,2 MB. Mỗi khúc (trừ khúc cuối)
   phải là bội số của 320 KiB — Graph từ chối kích thước khác bằng một thông báo không hề nhắc
   đến ràng buộc này.
