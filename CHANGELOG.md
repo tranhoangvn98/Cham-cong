@@ -2,6 +2,23 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.42.0] — 2026-08-20
+
+**`kiem_sharepoint` hỏi ngược Graph về từng tệp đã đẩy, và in URL bấm được.**
+
+`sharepoint_tep.duong_dan_da_day` là **ghi chép của ta**: nó nói *"ta đã ghi tệp này lên"*. Nó
+**không** nói tệp còn ở đó bây giờ. Tệp có thể bị ai đó di chuyển hoặc xóa tay sau khi đẩy, và
+bảng của ta vẫn báo `xong` mãi mãi.
+
+Lệnh giờ có thêm một phần: với mỗi dòng đã đẩy, `GET /drives/{id}/root:/{đường dẫn}` và in
+
+- `CÒN` kèm số byte và **`webUrl`** — trả lời được câu hỏi hay gặp nhất sau lần đẩy đầu tiên,
+  *"tệp nằm ở đâu"*, thay vì phải mở tay từng cấp thư mục;
+- `KHÔNG CÒN` khi Graph trả 404 — hệ thống tưởng đã đẩy nhưng SharePoint không có. Thoát mã 1.
+
+`webUrl` cũng là cách nhanh nhất phát hiện *đúng site nhưng sai thư viện*: URL in ra chứa tên
+thư viện thật.
+
 ## [1.41.0] — 2026-08-20
 
 **Nút "Lấy log cũ" — xin log theo khoảng ngày, không phụ thuộc con trỏ đồng bộ của máy.**

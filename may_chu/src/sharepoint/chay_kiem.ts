@@ -7,8 +7,9 @@
 //
 // Quyen can thiet chi la `Sites.Selected` muc read tren site — khong can Sites.FullControl.All.
 import { kiem_cac_nhanh } from './kiem_nhanh.ts';
-import { bat_sharepoint, thu_ket_noi } from './khach.ts';
+import { bat_sharepoint, doc_muc, thu_ket_noi } from './khach.ts';
 import { cau_hinh } from '../cau_hinh.ts';
+import { dong_pool, truy_van } from '../csdl/ket_noi.ts';
 
 if (!bat_sharepoint()) {
   console.error(
@@ -88,3 +89,55 @@ if (bc.so_thieu === 0 && bc.so_loi === 0) {
   console.log('nhánh thật, và hồ sơ sẽ nằm ở chỗ không ai mở.');
   process.exitCode = 1;
 }
+
+// -------------------------------------------------------------------- cac tep da day
+//
+// HOI NGUOC GRAPH, khong doc bang cua ta.
+//
+// `sharepoint_tep.duong_dan_da_day` la GHI CHEP CUA TA: no noi "ta da ghi tep nay len". No
+// KHONG noi tep con o do bay gio. Tep co the bi ai do di chuyen hoac xoa tay sau do, va bang
+// cua ta van bao 'xong' mai mai.
+//
+// Va cau hoi hay gap nhat sau lan day dau tien khong phai "co day duoc khong" ma la "tep nam o
+// dau" — `webUrl` do Graph tra ve la cau tra loi bam duoc, thay vi mo tay tung cap thu muc.
+const da_day = await truy_van<{ duong_dan_da_day: string }>(
+  `select duong_dan_da_day from sharepoint_tep
+    where duong_dan_da_day is not null
+    order by duong_dan_da_day`,
+);
+
+if (da_day.length === 0) {
+  console.log('');
+  console.log('Chưa có tệp nào được đẩy lên (bảng sharepoint_tep không có dòng nào đã đẩy).');
+} else {
+  console.log('');
+  console.log(`Các tệp hệ thống ĐÃ ĐẨY (${String(da_day.length)}) — hỏi lại Graph xem còn không:`);
+  let mat = 0;
+  for (const d of da_day) {
+    let muc;
+    try {
+      muc = await doc_muc(d.duong_dan_da_day);
+    } catch (loi) {
+      console.log(`  LỖI     ${d.duong_dan_da_day}`);
+      console.log(`          ${(loi as Error).message}`);
+      mat += 1;
+      continue;
+    }
+    if (muc === null) {
+      console.log(`  KHÔNG CÒN  ${d.duong_dan_da_day}`);
+      console.log('             hệ thống ghi là đã đẩy, nhưng SharePoint trả 404 — đã bị xóa hoặc di chuyển tay');
+      mat += 1;
+      continue;
+    }
+    console.log(`  CÒN     ${d.duong_dan_da_day}`);
+    console.log(`          ${String(muc.so_byte)} byte`);
+    console.log(`          ${muc.web_url}`);
+  }
+  if (mat > 0) {
+    console.log('');
+    console.log(`${String(mat)} tệp hệ thống tưởng đã đẩy nhưng SharePoint không có.`);
+    process.exitCode = 1;
+  }
+}
+
+await dong_pool();

@@ -339,6 +339,39 @@ export interface MucCon {
 /** Chan mot vong lap phan trang khong bao gio ket thuc. 50 trang x 200 = 10.000 muc. */
 const TRANG_TOI_DA = 50;
 
+export interface MucSharePoint {
+  id: string;
+  ten: string;
+  /** URL mo duoc tren trinh duyet. Day la thu tra loi cau hoi "tep nam o dau". */
+  web_url: string;
+  so_byte: number;
+  la_thu_muc: boolean;
+}
+
+/**
+ * Doc mot muc theo duong dan. Tra `null` khi khong co (404).
+ *
+ * CHI DOC. Dung de tra loi "tep da day len BAY GIO co con o do khong, va o dau" — mot cau hoi
+ * KHAC voi "he thong co ghi la da day chua". Bang `sharepoint_tep` chi noi duoc dieu thu hai:
+ * no la ghi chep cua ta, khong phai cua Microsoft. Tep co the da bi ai do di chuyen hoac xoa
+ * tay sau khi day len, va luc do bang cua ta van bao 'xong'.
+ */
+export async function doc_muc(duong_dan: string): Promise<MucSharePoint | null> {
+  const d = await lay_drive_id();
+  const kq = await goi_graph(
+    `/drives/${d}/root:/${ma_hoa_duong_dan(duong_dan)}?$select=id,name,webUrl,size,folder`,
+    { cho_phep: [404] },
+  );
+  if (kq.ma === 404) return null;
+  return {
+    id: String(kq.than['id'] ?? ''),
+    ten: String(kq.than['name'] ?? ''),
+    web_url: String(kq.than['webUrl'] ?? ''),
+    so_byte: Number(kq.than['size'] ?? 0),
+    la_thu_muc: kq.than['folder'] !== undefined,
+  };
+}
+
 /**
  * Liet ke muc con cua mot thu muc. Tra `null` khi thu muc do khong ton tai (404).
  *

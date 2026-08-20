@@ -459,6 +459,24 @@ Khi khai thẳng `SHAREPOINT_DRIVE_ID`, tên thư viện **không được kiể
 tiếp vào mọi lượt gọi Graph. Nên nếu tên thật khác `SHAREPOINT_THU_VIEN`, lệnh in thêm một dòng
 `CHÚ Ý`. Thư viện bị đổi tên thì không sao; trỏ sai thư viện thì hồ sơ vào chỗ khác.
 
+Sau phần nhánh, lệnh liệt kê **từng tệp hệ thống đã đẩy** và hỏi ngược Graph xem còn không:
+
+```
+Các tệp hệ thống ĐÃ ĐẨY (4) — hỏi lại Graph xem còn không:
+  CÒN     01 HỒ SƠ NHÂN SỰ (201)/ERP124-BUI TIEN SON/CCCD - Bùi Tiến Sơn - 19-08-2026.pdf
+          1113312 byte
+          https://thvn23.sharepoint.com/sites/hcns/HCNS/01%20H%E1%BB%92%20S%C6%A0.../CCCD...pdf
+```
+
+`duong_dan_da_day` trong bảng là **ghi chép của ta** — nó nói *"ta đã ghi tệp này lên"*, không nói
+tệp còn ở đó bây giờ. Tệp bị ai đó di chuyển hay xóa tay sau khi đẩy thì bảng của ta vẫn báo
+`xong` mãi mãi. Dòng `KHÔNG CÒN` là lúc hai bên lệch nhau.
+
+**`webUrl` là câu trả lời cho "tệp nằm ở đâu".** Sau lần đẩy đầu tiên, câu hỏi hay gặp nhất không
+phải "có đẩy được không" mà là "sao tôi không thấy" — thường vì đang mở **thư viện mặc định** của
+site (*Tài liệu* / *Documents*) chứ không phải HCNS. Dán `webUrl` vào trình duyệt là xong, và tên
+thư viện thật nằm ngay trong URL đó.
+
 Còn một nhánh `THIẾU` hoặc một dòng `LỖI` thì **chưa nên** đặt `SHAREPOINT_BAT_DAY=1` — lệnh
 thoát với mã 1 để dùng được trong kịch bản. `LỖI` khác `THIẾU`: `LỖI` là Graph từ chối (403 =
 `Sites.Selected` chưa cấp trên site), còn `THIẾU` là kết nối được nhưng tên không khớp.
