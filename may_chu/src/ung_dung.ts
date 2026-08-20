@@ -21,6 +21,7 @@ import { tuyen_toi } from './tuyen/toi.ts';
 import { tuyen_tich_hop } from './tuyen/tich_hop.ts';
 import { truy_van_mot } from './csdl/ket_noi.ts';
 import { kiem_tra_luu_tru } from './tien_ich/luu_tep.ts';
+import { bat_sharepoint } from './sharepoint/khach.ts';
 
 /** Loi nghiep vu co ma HTTP rieng (LoiDauVao, LoiKhongTim, ...). */
 interface LoiCoMa extends Error {
@@ -135,6 +136,7 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
         trang_thai: 'ok',
         csdl: 'ok',
         luu_tru: hong.length === 0 ? 'ok' : `KHONG GHI DUOC — ${hong.join('; ')}`,
+        sharepoint: await trang_thai_sharepoint(),
         luc: new Date().toISOString(),
       };
     } catch (loi) {
@@ -169,4 +171,40 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   await app.register(tuyen_vcontract, { prefix: '/vcontract' });
 
   return app;
+}
+
+/**
+ * Mot dong ve dong bo SharePoint cho `/health`.
+ *
+ * VI SAO O DAY: kich ban trien khai IN nguyen than `/health` ra man hinh moi lan cap nhat. Dong
+ * bo SharePoint co HAI cong tac va ca hai TAT mac dinh, nen trang thai binh thuong cua no la
+ * "khong day gi ca" — dung nhu thiet ke, nhung nhin tu ngoai thi giong hong. Truoc dong nay,
+ * cach duy nhat biet la mo dung mot trang trong ung dung; ai khong biet co trang do thi chi
+ * thay SharePoint trong tron va khong co gi giai thich.
+ *
+ * KHONG goi Graph o day. `/health` bi trinh giam sat va kich ban trien khai goi lien tuc; mot
+ * luot goi mang moi lan la them do tre va them mot duong cham tran gioi han cua Microsoft. Chi
+ * doc trang thai CUC BO: da khai cau hinh chua, da bat day chua, con bao nhieu viec.
+ *
+ * KHONG in site_id / client_id: `/health` khong doi dang nhap.
+ */
+async function trang_thai_sharepoint(): Promise<string> {
+  if (!bat_sharepoint()) {
+    return 'tat — chua khai SHAREPOINT_SITE_ID / CLIENT_ID / CLIENT_SECRET / TENANT_ID trong .env';
+  }
+
+  const d = await truy_van_mot<{ con_viec: string; loi: string }>(
+    `select count(*) filter (where duong_dan_muon is distinct from duong_dan_da_day)::text
+              as con_viec,
+            count(*) filter (where ket_qua = 'loi')::text as loi
+       from sharepoint_tep`,
+  );
+  const con_viec = Number(d?.con_viec ?? 0);
+  const loi = Number(d?.loi ?? 0);
+  const duoi = `${String(con_viec)} tep cho, ${String(loi)} loi`;
+
+  if (!cau_hinh.sharepoint.bat_day) {
+    return `chi dem — chua dat SHAREPOINT_BAT_DAY=1 nen KHONG day gi len (${duoi})`;
+  }
+  return loi > 0 ? `bat — ${duoi}, xem trang Kho tep ho so` : `bat — ${duoi}`;
 }

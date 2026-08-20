@@ -188,6 +188,34 @@ test('health tra ve ok va ket noi duoc CSDL', async () => {
   assert.equal(r.body['csdl'], 'ok');
 });
 
+test('health noi ro trang thai dong bo SharePoint', async () => {
+  // Dong bo SharePoint co HAI cong tac va ca hai TAT mac dinh, nen trang thai binh thuong cua
+  // no la "khong day gi ca" — dung nhu thiet ke, nhung tu ngoai nhin thi giong hong. Kich ban
+  // trien khai in nguyen than /health, nen dong nay la cho de thay nhat.
+  const r = await goi('GET', '/health');
+  const sp = String(r.body['sharepoint'] ?? '');
+
+  // Bo kiem chay khong khai SHAREPOINT_* nen phai ra dung nhanh "tat", va phai NEU TEN bien
+  // con thieu — mot chu "tat" tran thi nguoi doc khong biet phai lam gi.
+  assert.match(sp, /^tat —/, `mong doi nhanh "tat", nhan duoc: ${sp}`);
+  assert.match(sp, /SHAREPOINT_SITE_ID/);
+
+  // `/health` KHONG doi dang nhap, nen khong duoc ro GIA TRI cua bien nao. Neu TEN bien thi
+  // duoc — do chinh la phan huu ich. Kiem theo gia tri that trong cau hinh, de bai nay con
+  // dung ca khi may that da khai day du.
+  const { cau_hinh } = await import('../src/cau_hinh.ts');
+  for (const [ten, gt] of Object.entries({
+    site_id: cau_hinh.sharepoint.site_id,
+    drive_id: cau_hinh.sharepoint.drive_id,
+    client_id: cau_hinh.sharepoint.client_id,
+    client_secret: cau_hinh.sharepoint.client_secret,
+    tenant_id: cau_hinh.sharepoint.tenant_id,
+  })) {
+    if (gt === '') continue;
+    assert.equal(sp.includes(gt), false, `/health ro gia tri cua ${ten}`);
+  }
+});
+
 test('dang nhap sai mat khau tra 401 va khong tiet lo ly do', async () => {
   const r = await goi('POST', '/api/xac-thuc/dang-nhap', {
     body: { ten_dang_nhap: 'admin', mat_khau: 'sai_mat_khau_1' },

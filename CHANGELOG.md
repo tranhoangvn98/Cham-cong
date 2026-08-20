@@ -2,6 +2,43 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.37.0] — 2026-08-20
+
+**`/health` nói trạng thái đồng bộ SharePoint.** Tính năng này có **hai công tắc** và cả hai tắt
+mặc định, nên trạng thái *bình thường* của nó là "không đẩy gì cả" — đúng như thiết kế, nhưng từ
+ngoài nhìn thì giống hỏng. Trước bản này, cách duy nhất biết là mở đúng một trang trong ứng dụng;
+ai không biết có trang đó thì chỉ thấy SharePoint trống trơn và không có gì giải thích.
+
+Kịch bản triển khai in nguyên thân `/health` sau mỗi lần cập nhật, nên đó là chỗ dễ thấy nhất:
+
+| Dòng `sharepoint` | Nghĩa |
+|---|---|
+| `tat — chua khai SHAREPOINT_SITE_ID / …` | Công tắc 1 tắt: chưa có credential trong `.env` |
+| `chi dem — chua dat SHAREPOINT_BAT_DAY=1 …` | Công tắc 2 tắt: kết nối được nhưng **cố ý** chưa đẩy |
+| `bat — N tep cho, M loi` | Đang chạy thật |
+
+Hai điều dòng này **không** làm:
+
+- **Không gọi Graph.** `/health` bị trình giám sát và kịch bản triển khai gọi liên tục; một lượt
+  gọi mạng mỗi lần là thêm độ trễ và thêm một đường chạm trần giới hạn của Microsoft. Chỉ đọc
+  trạng thái cục bộ. Muốn thử credential thật thì mở *Cài đặt → Kho tệp hồ sơ* — trang đó gọi
+  Graph một lần và in lỗi ra màn hình.
+- **Không in giá trị của biến nào** (`/health` không đòi đăng nhập). Tên biến thì in — đó chính là
+  phần hữu ích. Có bài kiểm e2e đối chiếu theo **giá trị thật trong cấu hình**, nên bài đó còn
+  đúng cả khi máy thật đã khai đầy đủ; đã chứng minh nó bắt được rò rỉ bằng cách cố tình in
+  client secret ra rồi chạy lại.
+
+### Tài liệu
+
+`tai_lieu/SHAREPOINT.md` thêm mục **"Chưa thấy tệp nào trên SharePoint — soi ở đâu"**: bảng tra
+theo dòng `/health`, và ba câu lệnh kiểm nhanh trên VPS (câu đầu chỉ in **tên** biến, không in
+giá trị).
+
+Kèm một điểm dễ đọc sai: `sharepoint_tep.ket_qua = 'xong'` **không** có nghĩa là tệp đã lên
+SharePoint. Một dòng thành `xong` khi tệp bị gỡ khỏi hồ sơ mà trên SharePoint chưa từng có bản
+nào để xóa — tức *không có việc gì phải làm*. Bằng chứng duy nhất rằng một tệp đã thật sự lên là
+`duong_dan_da_day is not null`.
+
 ## [1.36.0] — 2026-08-20
 
 Rà soát toàn bộ giao diện web và dựng lại phần điều hướng. Không viết lại — kiến trúc, design

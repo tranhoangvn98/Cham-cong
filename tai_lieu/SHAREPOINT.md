@@ -364,7 +364,56 @@ Vòng quét hằng ngày chạy **sau** việc sắp xếp kho tệp, và thứ 
 tên thư mục **trên đĩa**, còn việc này tính đường dẫn **trên SharePoint** từ `ma_nv`/`ho_ten`.
 Làm ngược lại thì đường dẫn vừa tính sẽ lệch ngay trong cùng một vòng.
 
-## 8. Giới hạn đã biết
+## 8. "Chưa thấy tệp nào trên SharePoint" — soi ở đâu
+
+Trạng thái **bình thường** của tính năng này là *không đẩy gì cả*: có **hai công tắc** và cả hai
+tắt mặc định. Nhìn từ ngoài thì giống hỏng, nên chỗ đầu tiên phải xem là dòng `sharepoint` của
+`/health` — kịch bản triển khai in nguyên thân `/health` sau mỗi lần cập nhật:
+
+```bash
+curl -s http://127.0.0.1:8080/health | python3 -m json.tool
+```
+
+| Dòng `sharepoint` | Nghĩa | Làm gì |
+|---|---|---|
+| `tat — chua khai SHAREPOINT_SITE_ID / …` | **Công tắc 1 đang tắt.** Chưa có credential nào trong `.env` | Khai `SHAREPOINT_*` rồi `docker compose up -d` |
+| `chi dem — chua dat SHAREPOINT_BAT_DAY=1 …` | **Công tắc 2 đang tắt.** Đã kết nối được nhưng cố ý chưa đẩy | Xem bảng đường dẫn, đúng rồi thì đặt `SHAREPOINT_BAT_DAY=1` |
+| `bat — N tep cho, 0 loi` | Đang chạy thật | Bấm **Đồng bộ ngay**, hoặc chờ vòng quét sau 01:00 |
+| `bat — N tep cho, M loi` | Có dòng lỗi | Mở **Cài đặt → Kho tệp hồ sơ**, đọc cột *Lý do* |
+
+Dòng này chỉ đọc trạng thái **cục bộ** — nó **không** gọi Graph. `/health` bị trình giám sát và
+kịch bản triển khai gọi liên tục; một lượt gọi mạng mỗi lần là thêm độ trễ và thêm một đường
+chạm trần giới hạn của Microsoft. Muốn biết credential có dùng được thật hay không thì mở
+**Cài đặt → Kho tệp hồ sơ → Đồng bộ SharePoint** — trang đó gọi Graph một lần và in lỗi ra màn
+hình.
+
+`/health` **không** in giá trị của biến nào (nó không đòi đăng nhập). Có bài kiểm e2e đối chiếu
+theo giá trị thật trong cấu hình, nên bài đó còn đúng cả khi máy thật đã khai đầy đủ.
+
+### Kiểm nhanh trên VPS
+
+```bash
+cd /root/Cham-cong
+
+# 1) Có dòng SHAREPOINT_ nào chưa? (chỉ in TÊN biến, không in giá trị)
+grep -o '^SHAREPOINT_[A-Z_]*' .env || echo 'KHONG CO DONG SHAREPOINT_ NAO'
+
+# 2) Máy chủ đang thấy gì
+curl -s http://127.0.0.1:8080/health | python3 -m json.tool
+
+# 3) Bảng trạng thái: mỗi tệp đang ở đâu
+docker compose exec -T postgres psql -U chamcong -d chamcong -c \
+  "select ket_qua, count(*), count(*) filter (where duong_dan_da_day is not null) as da_len
+     from sharepoint_tep group by ket_qua order by ket_qua;"
+```
+
+Ở bước 3, `duong_dan_da_day is not null` là **bằng chứng duy nhất** rằng một tệp thật sự đã lên
+SharePoint. Cột `ket_qua = 'xong'` mà `da_len = 0` nghĩa là dòng đó "xong" theo nghĩa *không có
+việc gì phải làm* — ví dụ tệp đã bị gỡ ở cả hai bên — chứ không phải đã đẩy lên.
+
+---
+
+## 9. Giới hạn đã biết
 
 - **Chưa chạy thật lần nào.** Toàn bộ 29 bài kiểm chạy trên một máy chủ Graph giả tại chỗ:
   phiên làm việc viết mã này không kết nối được SharePoint thật. Bộ kiểm chứng minh client gọi
