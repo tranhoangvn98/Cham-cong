@@ -378,15 +378,64 @@ dựng một máy chủ Graph giả tại chỗ. Đặt giá trị là nộp cli
      [`GOP-HO-SO-TRUNG.md`](GOP-HO-SO-TRUNG.md). Một người có hai hồ sơ sẽ thành **hai thư mục
      nhân viên** trên SharePoint với tệp chia đôi giữa hai thư mục đó.
 1. Khai `SHAREPOINT_*` (trừ `BAT_DAY`), `docker compose up -d`.
-2. Vào **Cài đặt → Kho tệp hồ sơ → Đồng bộ SharePoint**, bấm **Tính lại đường dẫn**.
-3. Đọc cột *Đường dẫn trên SharePoint*. Nhánh đúng chưa, thư mục nhân viên đúng chưa, tên tệp
+2. **Đối chiếu cây thư mục** — `npm run kiem_sharepoint`, xem ngay dưới. Chỉ đọc, không ghi gì.
+3. Vào **Cài đặt → Kho tệp hồ sơ → Đồng bộ SharePoint**, bấm **Tính lại đường dẫn**.
+4. Đọc cột *Đường dẫn trên SharePoint*. Nhánh đúng chưa, thư mục nhân viên đúng chưa, tên tệp
    đọc được chưa.
-4. Thấy đúng rồi thì đặt `SHAREPOINT_BAT_DAY=1` và `docker compose up -d`.
-5. Bấm **Đồng bộ ngay**, hoặc chờ vòng quét hằng ngày (sau 01:00 giờ máy chấm công).
+5. Thấy đúng rồi thì đặt `SHAREPOINT_BAT_DAY=1` và `docker compose up -d`.
+6. Bấm **Đồng bộ ngay**, hoặc chờ vòng quét hằng ngày (sau 01:00 giờ máy chấm công).
 
 Vòng quét hằng ngày chạy **sau** việc sắp xếp kho tệp, và thứ tự đó là cố ý: việc sắp xếp đổi
 tên thư mục **trên đĩa**, còn việc này tính đường dẫn **trên SharePoint** từ `ma_nv`/`ho_ten`.
 Làm ngược lại thì đường dẫn vừa tính sẽ lệch ngay trong cùng một vòng.
+
+### Đối chiếu bảng `NHANH` với cây thư mục thật
+
+```bash
+cd /root/Cham-cong
+docker compose exec may_chu npm run kiem_sharepoint
+```
+
+**Chỉ đọc** — không tạo, không ghi, không xóa. Quyền cần là `Sites.Selected` mức *read*; không
+cần `Sites.FullControl.All`.
+
+Bảng `NHANH` trong `may_chu/src/sharepoint/anh_xa.ts` là một bản **sao chép tay** từ thư viện
+HCNS. Tên thư mục ở đó có dấu gạch ngang dài `–` (U+2013), có `&`, có `(...)`, có số thứ tự
+`02.1`. Sai một ký tự thì Graph **không báo lỗi**: nó tạo một thư mục **mới** bên cạnh thư mục
+thật, và hồ sơ của 53 người sẽ nằm trong một cây không ai mở. Triệu chứng duy nhất là *"chị HCNS
+không thấy tệp"*.
+
+Và đây không phải việc làm một lần: chị HCNS đổi tên hoặc thêm số thứ tự là bảng này lệch.
+
+Lệnh in ba dòng đầu là **thư viện đang nối tới**, rồi từng nhánh một:
+
+```
+Thư viện : HCNS
+Drive id : b!HrLZ...
+Khai sẵn : có — SHAREPOINT_DRIVE_ID
+
+  OK      01 HỒ SƠ NHÂN SỰ (201)
+  THIẾU   02 HỢP ĐỒNG & THỎA THUẬN/02.1 [A] Quan hệ lao động – HĐLĐ
+          không thấy đoạn: "02.1 [A] Quan hệ lao động – HĐLĐ"
+          trong thư mục  : 02 HỢP ĐỒNG & THỎA THUẬN
+          tên thật rất giống: "02.1 [A] Quan hệ lao động - HĐLĐ"
+          khác ở: ký tự thứ 27: cần "–" (U+2013), trên SharePoint là "-" (U+002D)
+          → sửa bảng NHANH trong may_chu/src/sharepoint/anh_xa.ts cho khớp tên thật
+```
+
+Dòng `khác ở` in **mã Unicode** của cả hai ký tự, và đó là lý do nó tồn tại: `–` với `-` in ra
+màn hình gần như không phân biệt được, còn `U+2013` với `U+002D` thì không thể nhầm. Không tìm
+được tên nào gần giống thì lệnh liệt kê **tên thật** của các thư mục đang có ở đó, để sao lại
+từng ký tự thay vì gõ lại.
+
+Ba dòng đầu trả lời một câu hỏi khác, và cũng đã từng cần: **đúng thư viện chưa.**
+`GET /sites/{id}/drive` (số ít) trả về thư viện **mặc định** của site — *Tài liệu* / *Shared
+Documents* — chứ không phải HCNS. Ai lấy drive id bằng đường đó sẽ cấu hình đúng site nhưng sai
+thư viện, và mọi nhánh sẽ báo `THIẾU`. Dòng `Thư viện : Tài liệu` nói ra điều đó ngay.
+
+Còn một nhánh `THIẾU` hoặc một dòng `LỖI` thì **chưa nên** đặt `SHAREPOINT_BAT_DAY=1` — lệnh
+thoát với mã 1 để dùng được trong kịch bản. `LỖI` khác `THIẾU`: `LỖI` là Graph từ chối (403 =
+`Sites.Selected` chưa cấp trên site), còn `THIẾU` là kết nối được nhưng tên không khớp.
 
 ## 8. "Chưa thấy tệp nào trên SharePoint" — soi ở đâu
 
@@ -439,11 +488,12 @@ việc gì phải làm* — ví dụ tệp đã bị gỡ ở cả hai bên — 
 
 ## 9. Giới hạn đã biết
 
-- **Chưa chạy thật lần nào.** Toàn bộ 29 bài kiểm chạy trên một máy chủ Graph giả tại chỗ:
-  phiên làm việc viết mã này không kết nối được SharePoint thật. Bộ kiểm chứng minh client gọi
-  đúng những gì tài liệu Graph nói — **không** chứng minh SharePoint thật sẽ nhận. Lần chạy
-  thật đầu tiên là bước 5 ở trên, và nó nên được làm với `SHAREPOINT_BAT_DAY=1` trên một vài
-  tệp trước khi mở cho cả kho.
+- **Chưa chạy thật lần nào.** Toàn bộ bài kiểm của client chạy trên một máy chủ Graph giả tại
+  chỗ: phiên làm việc viết mã này không kết nối được SharePoint thật. Bộ kiểm chứng minh client
+  gọi đúng những gì tài liệu Graph nói — **không** chứng minh SharePoint thật sẽ nhận. Lần chạy
+  thật đầu tiên là bước 6 ở trên, và nó nên được làm với `SHAREPOINT_BAT_DAY=1` trên một vài
+  tệp trước khi mở cho cả kho. `npm run kiem_sharepoint` là lượt gọi Graph thật **an toàn nhất**
+  để làm trước: nó chỉ đọc.
 - Tệp lớn hơn 4 MB đi qua `createUploadSession`, chia khúc 3,2 MB. Mỗi khúc (trừ khúc cuối)
   phải là bội số của 320 KiB — Graph từ chối kích thước khác bằng một thông báo không hề nhắc
   đến ràng buộc này.

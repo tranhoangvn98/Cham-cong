@@ -329,6 +329,62 @@ export async function lay_drive_id(): Promise<string> {
   return drive_id;
 }
 
+// ---------------------------------------------------------------- doc thu muc
+
+export interface MucCon {
+  ten: string;
+  la_thu_muc: boolean;
+}
+
+/** Chan mot vong lap phan trang khong bao gio ket thuc. 50 trang x 200 = 10.000 muc. */
+const TRANG_TOI_DA = 50;
+
+/**
+ * Liet ke muc con cua mot thu muc. Tra `null` khi thu muc do khong ton tai (404).
+ *
+ * CHI DOC — khong tao, khong ghi, khong xoa. Nen o day KHONG co hang rao `duong_dan_an_toan_*`:
+ * hang rao do ton tai de bao ve tep cua nguoi khac khoi bi ghi de va xoa, con doc thi khong
+ * lam gi duoc ai. Doi lai, ham nay duoc dung dung vao viec doi chieu ten thu muc, ma cai can
+ * doi chieu chinh la nhung thu muc NGOAI bang `NHANH` — mot hang rao o day se chan dung viec
+ * do.
+ *
+ * Quyen can thiet chi la `Sites.Selected` muc read tren site — khong can FullControl.
+ */
+export async function liet_ke(duong_dan: string): Promise<MucCon[] | null> {
+  const d = await lay_drive_id();
+  const goc = cau_hinh.sharepoint.goc_graph;
+
+  let api = duong_dan === ''
+    ? `/drives/${d}/root/children?$select=name,folder&$top=200`
+    : `/drives/${d}/root:/${ma_hoa_duong_dan(duong_dan)}:/children?$select=name,folder&$top=200`;
+
+  const ra: MucCon[] = [];
+  for (let trang = 0; trang < TRANG_TOI_DA; trang++) {
+    const kq = await goi_graph(api, { cho_phep: [404] });
+    if (kq.ma === 404) return null;
+
+    for (const m of (kq.than['value'] ?? []) as { name?: string; folder?: unknown }[]) {
+      ra.push({ ten: String(m.name ?? ''), la_thu_muc: m.folder !== undefined });
+    }
+
+    const tiep = kq.than['@odata.nextLink'];
+    if (typeof tiep !== 'string' || tiep === '') return ra;
+
+    // `nextLink` DEN TU PHAN HOI, tuc la mot URL do phia ben kia viet ra. Di theo no ma khong
+    // kiem la gui Bearer token cua ung dung den bat ky may nao URL do tro tOi. Chi di theo khi
+    // no van nam trong dung goc Graph dang dung.
+    if (!tiep.startsWith(`${goc}/`)) {
+      throw new LoiSharePoint(
+        'Graph tra ve nextLink tro ra ngoai goc đang dùng — không đi theo.', 502,
+      );
+    }
+    api = tiep.slice(goc.length);
+  }
+  throw new LoiSharePoint(
+    `Thư mục "${duong_dan}" có quá nhiều mục con (hơn ${String(TRANG_TOI_DA * 200)}).`, 502,
+  );
+}
+
 // ---------------------------------------------------------------- tao thu muc
 
 /** Cac cap thu muc da biet la co — khoi goi lai Graph cho moi tep cua cung mot nguoi. */

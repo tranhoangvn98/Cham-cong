@@ -54,12 +54,15 @@ KHÔNG còn FullControl), và `POST /sites/{id}/permissions` đã trả về `ro
 
 ### 2.3 Chạy thật đồng bộ SharePoint lần đầu
 
-**Đây là lần chạy thật đầu tiên.** Toàn bộ 29 bài kiểm của client chạy trên một máy chủ Graph
+**Đây là lần chạy thật đầu tiên.** Toàn bộ bài kiểm của client chạy trên một máy chủ Graph
 giả tại chỗ, vì phiên làm việc viết mã không kết nối được SharePoint thật. Bộ kiểm chứng minh
 client gọi đúng những gì tài liệu Graph nói — **không** chứng minh SharePoint thật sẽ nhận.
 
-Thứ tự: khai `SHAREPOINT_*` với `BAT_DAY=0` → **Tính lại đường dẫn** → đọc bảng → `BAT_DAY=1`
-→ đẩy thử vài tệp → mở cho cả kho.
+Thứ tự: khai `SHAREPOINT_*` với `BAT_DAY=0` → `npm run kiem_sharepoint` (chỉ đọc, đối chiếu tên
+16 nhánh) → **Tính lại đường dẫn** → đọc bảng → `BAT_DAY=1` → đẩy thử vài tệp → mở cho cả kho.
+
+Lượt gọi Graph thật đầu tiên nên là `kiem_sharepoint`: nó chỉ đọc, nên cấu hình sai cũng không
+để lại gì trong thư viện của HCNS.
 
 **Xong khi:** mở thư viện HCNS trên trình duyệt và thấy hồ sơ nằm đúng nhánh, đúng thư mục
 `[Mã NV]-[Họ tên]`, tên tệp đọc được.

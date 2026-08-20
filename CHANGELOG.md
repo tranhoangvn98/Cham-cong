@@ -2,6 +2,46 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.38.0] — 2026-08-20
+
+**`npm run kiem_sharepoint` — đối chiếu bảng `NHANH` với cây thư mục thật.** Chỉ đọc: không tạo,
+không ghi, không xóa. Quyền cần là `Sites.Selected` mức *read*.
+
+Bảng `NHANH` là một bản **sao chép tay** từ thư viện HCNS, và tên thư mục ở đó có `–` (U+2013),
+`&`, `(...)`, số thứ tự `02.1`. Sai một ký tự thì Graph **không báo lỗi** — nó tạo một thư mục
+mới bên cạnh thư mục thật, và hồ sơ của 53 người nằm trong một cây không ai mở. Triệu chứng duy
+nhất là *"chị HCNS không thấy tệp"*. Và nó không phải việc làm một lần: HCNS đổi tên thư mục là
+bảng này lệch.
+
+Với mỗi nhánh thiếu, lệnh in tên **thật** lấy từ SharePoint kèm chỗ khác nhau tính theo **mã
+Unicode**:
+
+```
+khác ở: ký tự thứ 27: cần "–" (U+2013), trên SharePoint là "-" (U+002D)
+```
+
+Mã ký tự là điểm chính: `–` với `-` in ra màn hình gần như không phân biệt được. Không có tên nào
+gần giống thì lệnh liệt kê tên thật của các thư mục đang có ở đó, để sao lại từng ký tự.
+
+Ba dòng đầu in **thư viện đang nối tới**. Đó là câu hỏi khác và cũng đã từng cần:
+`GET /sites/{id}/drive` (số ít) trả về thư viện **mặc định** của site — *Tài liệu* / *Shared
+Documents* — không phải HCNS. Ai lấy drive id bằng đường đó sẽ đúng site nhưng sai thư viện, và
+mọi nhánh báo `THIẾU` mà không rõ vì sao.
+
+`LỖI` tách khỏi `THIẾU`: `LỖI` là Graph từ chối (403 = `Sites.Selected` chưa cấp trên site), còn
+`THIẾU` là kết nối được nhưng tên không khớp. Gom hai thứ vào một là đẩy người đọc đi đổi tên
+thư mục trong khi vấn đề là quyền. Thoát mã 1 khi còn nhánh thiếu hoặc lỗi.
+
+Kèm theo, trong client Graph:
+
+- `liet_ke()` — liệt kê mục con của một thư mục, `null` khi thư mục không có (404 không thành
+  lỗi). Đi theo `@odata.nextLink` để không bỏ mất trang sau, nhưng **chỉ khi** nextLink còn nằm
+  trong đúng gốc Graph đang dùng: nextLink đến từ *phản hồi*, và đi theo nó một cách mù là gửi
+  Bearer token của ứng dụng đến bất kỳ máy nào URL đó trỏ tới.
+- Không hàng rào `duong_dan_an_toan_*` ở đây, và đó là cố ý: hàng rào đó tồn tại để bảo vệ tệp
+  của người khác khỏi bị ghi đè và xóa. Việc cần đối chiếu chính là những thư mục **ngoài** bảng
+  `NHANH` — một hàng rào ở đây sẽ chặn đúng việc đó.
+
 ## [1.37.1] — 2026-08-20
 
 Tài liệu SharePoint: bổ sung hai điều đã làm lần cấp quyền đầu tiên thất bại.
