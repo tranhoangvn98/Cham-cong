@@ -5,6 +5,7 @@ import {
   DangTai, HopLoi, HopTot, HopThoai, TEN_VAI_TRO, Trong,
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio,
 } from '../thanh_phan.tsx';
+import type { NhanVien } from './nhan_vien.tsx';
 
 interface TaiKhoan {
   id: string;
@@ -31,6 +32,7 @@ const VAI_TRO_CAP: { ma: string; ten: string; mo_ta: string }[] = [
 ];
 
 export function TrangNguoiDung(): ReactNode {
+  const [dang_tao, dat_dang_tao] = useState(false);
   const [dat_lai_cho, dat_dat_lai_cho] = useState<TaiKhoan | null>(null);
   const [noi_ms_cho, dat_noi_ms_cho] = useState<TaiKhoan | null>(null);
   const [phan_quyen_cho, dat_phan_quyen_cho] = useState<TaiKhoan | null>(null);
@@ -65,9 +67,12 @@ export function TrangNguoiDung(): ReactNode {
       <div className="dau-trang">
         <div>
           <p className="mo-ta">
-            Tài khoản nhân viên dùng để đăng nhập app điện thoại. Tạo tài khoản ở trang Nhân viên.
+            Tài khoản để đăng nhập webapp và app điện thoại. Cấp cho nhân viên thì nhanh hơn khi
+            làm từ hồ sơ của họ ở trang <strong>Nhân viên</strong>; ở đây tạo được cả tài khoản
+            KHÔNG gắn hồ sơ nhân viên — nhân sự thuê ngoài, kế toán, tài khoản quản trị.
           </p>
         </div>
+        <button className="nut-chinh" onClick={() => dat_dang_tao(true)}>+ Tạo tài khoản</button>
       </div>
 
       <HopLoi loi={hd.loi} />
@@ -160,6 +165,13 @@ export function TrangNguoiDung(): ReactNode {
         )}
       </div>
 
+      {dang_tao && (
+        <FormTaoTaiKhoan
+          khi_dong={() => dat_dang_tao(false)}
+          khi_xong={() => { dat_dang_tao(false); nap_lai(); }}
+        />
+      )}
+
       {dat_lai_cho !== null && (
         <FormDatLaiMatKhau
           tai_khoan={dat_lai_cho}
@@ -240,6 +252,134 @@ function FormNoiMicrosoft(
         <div className="hang-nut">
           <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>
             {hd.dang_chay ? 'Đang lưu…' : 'Lưu'}
+          </button>
+          <button type="button" onClick={khi_dong}>Hủy</button>
+        </div>
+      </form>
+    </HopThoai>
+  );
+}
+
+/**
+ * Tao mot tai khoan dang nhap moi.
+ *
+ * VI SAO CO O DAY, khong chi o trang Nhan vien: trang Nhan vien cap tai khoan CHO MOT HO SO
+ * NHAN VIEN. Nhung `nhan_su` va `admin` KHONG doi phai co ho so — ke toan thue ngoai, tai khoan
+ * quan tri ky thuat. Truoc form nay, may chu co san `POST /api/nguoi-dung` nhung khong duong nao
+ * tren giao dien goi tOi, nen nhung tai khoan do khong tao duoc bang tay.
+ *
+ * `nhan_vien` va hai vai tro truong phong thi BAT BUOC chon nhan vien, va do khong phai de cho
+ * gon: `truong_phong_nhan_su` la vai tro duy nhat go duoc ban goc giay to phap ly cua nguoi khac,
+ * nen nhat ky thao tac phai truy nguoc duoc ve mot con nguoi cu the chu khong dung o mot ten
+ * dang nhap. May chu tu choi neu thieu; o day chan som de nguoi dung khong phai doan.
+ */
+function FormTaoTaiKhoan(
+  { khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [ten_dang_nhap, dat_ten] = useState('');
+  const [mat_khau, dat_mat_khau] = useState('');
+  const [vai_tro, dat_vai_tro] = useState('nhan_su');
+  const [nhan_vien_id, dat_nhan_vien_id] = useState('');
+  const hd = dung_hanh_dong();
+  const { du_lieu: ds_nv } = dung_nap<NhanVien[]>('/api/nhan-vien?chi_dang_lam=true');
+
+  // Giu dong bo voi VAI_TRO_CAN_HO_SO cua may chu (tuyen/danh_muc.ts).
+  const can_ho_so = ['nhan_vien', 'truong_phong', 'truong_phong_nhan_su'].includes(vai_tro);
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    const ok = await hd.chay(
+      () => goi('/api/nguoi-dung', {
+        method: 'POST',
+        body: {
+          ten_dang_nhap: ten_dang_nhap.trim(),
+          mat_khau,
+          vai_tro,
+          ...(nhan_vien_id === '' ? {} : { nhan_vien_id }),
+        },
+      }),
+      'Đã tạo tài khoản. Đọc mật khẩu tạm cho người dùng — họ phải đổi ở lần đăng nhập đầu.',
+    );
+    if (ok) setTimeout(khi_xong, 1200);
+  };
+
+  const mo_ta_vai_tro = VAI_TRO_CAP.find((v) => v.ma === vai_tro)?.mo_ta ?? '';
+
+  return (
+    <HopThoai tieu_de="Tạo tài khoản đăng nhập" khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+        <HopTot chu={hd.tot} />
+
+        <div className="o-nhap">
+          <label htmlFor="tdn">Tên đăng nhập *</label>
+          <input
+            id="tdn"
+            value={ten_dang_nhap}
+            onChange={(e) => dat_ten(e.target.value)}
+            placeholder="ngoc.hr"
+            required
+            autoFocus
+          />
+          <div className="goi-y">
+            Chữ không dấu, số và các ký tự <code>. _ -</code>. Dùng email công ty cũng được.
+          </div>
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="mkt">Mật khẩu tạm *</label>
+          <input id="mkt" value={mat_khau} onChange={(e) => dat_mat_khau(e.target.value)} required />
+          <div className="goi-y">
+            Tối thiểu 8 ký tự, có cả chữ và số. Đọc trực tiếp cho người dùng — họ bị buộc đổi ở
+            lần đăng nhập đầu.
+          </div>
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="vtm">Vai trò *</label>
+          <select id="vtm" value={vai_tro} onChange={(e) => dat_vai_tro(e.target.value)} required>
+            {VAI_TRO_CAP.map((v) => (
+              <option key={v.ma} value={v.ma}>{v.ten}</option>
+            ))}
+          </select>
+          {mo_ta_vai_tro !== '' && <div className="goi-y">{mo_ta_vai_tro}</div>}
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="nvm">Nhân viên {can_ho_so ? '*' : '(không bắt buộc)'}</label>
+          <select
+            id="nvm"
+            value={nhan_vien_id}
+            onChange={(e) => dat_nhan_vien_id(e.target.value)}
+            required={can_ho_so}
+          >
+            <option value="">— Không gắn hồ sơ nhân viên —</option>
+            {(ds_nv ?? []).map((n) => (
+              <option key={n.id} value={n.id}>{n.ma_nv} — {n.ho_ten}</option>
+            ))}
+          </select>
+          <div className="goi-y">
+            {can_ho_so
+              ? 'Vai trò này bắt buộc phải nối với một hồ sơ nhân viên, nếu không họ đăng nhập vào mà không xem được gì.'
+              : 'Để trống nếu người này không có hồ sơ nhân viên trong hệ thống — kế toán thuê ngoài, tài khoản quản trị kỹ thuật.'}
+          </div>
+        </div>
+
+        {vai_tro === 'truong_phong_nhan_su' && (
+          <div className="hop-thong-bao hop-luu-y">
+            Trưởng phòng nhân sự là vai trò <strong>duy nhất</strong> được thay hoặc gỡ tệp đã nạp
+            vào hồ sơ. Cấp cho ai là một quyết định về bằng chứng gốc.
+          </div>
+        )}
+
+        <div className="hang-nut">
+          <button
+            type="submit"
+            className="nut-chinh"
+            disabled={hd.dang_chay || ten_dang_nhap.trim() === '' || mat_khau === ''
+              || (can_ho_so && nhan_vien_id === '')}
+          >
+            {hd.dang_chay ? 'Đang tạo…' : 'Tạo tài khoản'}
           </button>
           <button type="button" onClick={khi_dong}>Hủy</button>
         </div>

@@ -185,3 +185,62 @@ test('duong dan cu chuyen huong toi duong moi CO THAT', () => {
   const dam = cap.map(([cu]) => cu).filter((cu) => dang_dung.has(cu));
   assert.deepEqual(dam, [], `Duong dan cu trung voi muc menu that: ${dam.join(', ')}`);
 });
+
+// ============================================================ lop CSS co that khong
+test('moi className dung trong web deu co dinh nghia trong mot tep .css', () => {
+  // VI SAO CAN: `className` la MOT CHUOI. Go sai ten lop thi tsc khong bao gi, build khong bao
+  // gi, va tren man hinh ra mot khoi khong co kieu — nhin nhu "quen thiet ke" chu khong nhu mot
+  // loi. Bai kiem nay sinh ra sau khi chinh toi go `hop-canh-bao` (lop khong ton tai; lop that
+  // la `hop-luu-y`) va khong co gi bat duoc.
+  //
+  // Quet phat hien 4 lop da nam san trong ma nguon ma khong co dinh nghia nao: `dieu-huong-khoi`,
+  // `hang-nhan`, `o`, `o-chon` — tuc la 4 cho tren app dang khong co kieu.
+  //
+  // CHI kiem `className="..."` dang chuoi hang. Lop tinh theo bieu thuc (`className={...}`) thi
+  // khong doc duoc bang cach nay, va co gang doc se ra canh bao gia.
+  const css = ['kieu.css', 'icon.css', 'token_thiet_ke.css']
+    .map((t) => readFileSync(join(GOC, t), 'utf8')).join('\n');
+  const co = new Set([...css.matchAll(/\.([a-z][a-z0-9-]*)/g)].map((m) => m[1]));
+
+  const thieu = new Map();
+  for (const [tep, goc] of cac_tep()) {
+    if (!tep.endsWith('.tsx')) continue;
+    const ma = bo_ghi_chu(goc);
+    for (const m of ma.matchAll(/className="([^"{}]+)"/g)) {
+      for (const lop of m[1].split(/\s+/).filter((x) => x !== '')) {
+        if (!co.has(lop)) {
+          if (!thieu.has(lop)) thieu.set(lop, new Set());
+          thieu.get(lop).add(tep);
+        }
+      }
+    }
+  }
+
+  assert.deepEqual([...thieu.keys()], [],
+    'Cac lop CSS sau duoc dung trong markup nhung KHONG co dinh nghia trong tep .css nao:\n'
+    + [...thieu].map(([k, v]) => `  ${k}  <- ${[...v].join(', ')}`).join('\n')
+    + '\nGo sai ten lop khong lam do build — no chi lam khoi do mat kieu, im lang.');
+});
+
+// ============================================================ vai tro can ho so: hai ben
+test('danh sach vai tro BAT BUOC co ho so khop giua may chu va giao dien', () => {
+  // May chu tu choi tao tai khoan `nhan_vien` / `truong_phong` / `truong_phong_nhan_su` ma khong
+  // co `nhan_vien_id`. Giao dien lap lai danh sach do de danh dau o "Nhan vien" la bat buoc va
+  // chan nut Tao som. Hai ben lech nhau thi mot trong hai kieu hong:
+  //   - giao dien rong hon: nguoi dung bam Tao roi an 400 khong hieu vi sao,
+  //   - giao dien hep hon: bat khai nhan vien cho mot vai tro khong can, khong tao duoc tai khoan
+  //     nhan su thue ngoai.
+  const may = readFileSync(join(GOC, '..', '..', 'may_chu', 'src', 'tuyen', 'danh_muc.ts'), 'utf8');
+  const web = readFileSync(join(GOC, 'trang', 'nguoi_dung.tsx'), 'utf8');
+
+  const m = /const VAI_TRO_CAN_HO_SO = \[([^\]]+)\]/.exec(may);
+  assert.ok(m !== null, 'khong tim thay VAI_TRO_CAN_HO_SO trong tuyen/danh_muc.ts');
+  const ben_may = [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]).sort();
+
+  const w = /const can_ho_so = \[([^\]]+)\]\.includes\(vai_tro\)/.exec(web);
+  assert.ok(w !== null, 'khong tim thay danh sach can_ho_so trong trang nguoi_dung.tsx');
+  const ben_web = [...w[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]).sort();
+
+  assert.deepEqual(ben_web, ben_may,
+    `giao dien: ${ben_web.join(', ')}\nmay chu : ${ben_may.join(', ')}`);
+});

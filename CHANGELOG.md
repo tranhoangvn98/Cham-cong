@@ -2,6 +2,46 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.45.0] — 2026-08-20
+
+**Thiếu hẳn chức năng tạo tài khoản trên trang Cài đặt → Tài khoản.**
+
+Máy chủ có `POST /api/nguoi-dung` (chỉ admin) từ đầu, nhưng **không đường nào trên giao diện gọi
+tới**. Trang Tài khoản chỉ có Đổi vai trò / Đặt lại mật khẩu / Nối Microsoft / Vô hiệu hóa — mà
+chính khối hướng dẫn của nó lại ghi bước 1 là *"Tạo tài khoản…"*, còn dòng mô tả bên dưới đẩy
+người đọc sang trang Nhân viên.
+
+Trang Nhân viên **có** cấp tài khoản, nhưng chỉ cho một hồ sơ nhân viên. Còn `nhan_su` và `admin`
+thì **không đòi** phải có hồ sơ — kế toán thuê ngoài, tài khoản quản trị kỹ thuật. Những tài khoản
+đó không tạo được bằng tay ở đâu cả (tài khoản `ngoc.hr@…` đang chạy thật chính là loại này).
+
+Form mới, chỉ admin: tên đăng nhập, mật khẩu tạm, vai trò, và nhân viên — **bắt buộc** với
+`nhan_vien` / `truong_phong` / `truong_phong_nhan_su`, để trống được với các vai trò còn lại. Chọn
+`truong_phong_nhan_su` thì hiện cảnh báo: đó là vai trò duy nhất gỡ được tệp đã nạp vào hồ sơ.
+
+### Hai hàng rào mới cho giao diện
+
+**Mọi `className` phải có định nghĩa trong một tệp `.css`.** Bài kiểm này sinh ra vì chính tôi gõ
+`hop-canh-bao` — một lớp không tồn tại, lớp thật là `hop-luu-y`. `className` là một chuỗi: gõ sai
+thì tsc không báo, build không báo, và trên màn hình ra một khối không có kiểu. Nhìn như "quên
+thiết kế" chứ không như một lỗi.
+
+Lượt quét đầu tiên tìm ra **4 lớp đã nằm sẵn trong mã nguồn mà không có định nghĩa nào** — 4 chỗ
+trên app đang mất kiểu:
+
+| Lớp | Ở đâu | Xử lý |
+|---|---|---|
+| `o`, `o-chon` | hộp thoại *Mã định danh* | đổi sang `o-nhap` / `o-nhap-ngang` — đúng quy ước 9 chỗ khác đang dùng |
+| `hang-nhan` | khối *Xem trước* của màn nhập dữ liệu | thêm định nghĩa: các nhãn dính sát nhau |
+| `dieu-huong-khoi` | nhóm mục trong thanh bên | thêm định nghĩa: khoảng cách giữa các nhóm |
+
+**Danh sách vai trò bắt buộc có hồ sơ phải khớp giữa máy chủ và giao diện.** Giao diện lặp lại
+`VAI_TRO_CAN_HO_SO` để đánh dấu ô *Nhân viên* là bắt buộc. Lệch nhau thì hoặc người dùng bấm Tạo
+rồi ăn 400 không hiểu vì sao, hoặc bị bắt khai nhân viên cho một vai trò không cần.
+
+Cả hai đã chứng minh bắt lỗi thật: gõ lại tên lớp sai thì bài đầu đỏ kèm đúng tên lớp và tệp; bỏ
+một vai trò khỏi danh sách của giao diện thì bài thứ hai đỏ.
+
 ## [1.44.0] — 2026-08-20
 
 **Chu kỳ vòng lịch: 5 phút, và khai được trong `.env`.**

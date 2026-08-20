@@ -952,3 +952,16 @@ textarea:focus-visible,
 .chu-nho { font-size: 12px; }
 .chu-mo { color: var(--chu-mo); }
 .chu-xau { color: var(--xau); }
+
+/* Mot hang cac nhan (badge) — vi du khoi "Xem truoc" cua man nhap du lieu.
+   Truoc day markup dung `.hang-nhan` ma khong co dinh nghia nao, nen cac nhan dinh sat nhau. */
+.hang-nhan {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Mot nhom muc trong thanh ben. Chi de tach cac nhom ra khoi nhau; nhan cua nhom da co
+   `.dieu-huong-nhom` lo phan chu. Truoc day lop nay khong co dinh nghia nao. */
+.dieu-huong-khoi + .dieu-huong-khoi { margin-top: 2px; }
