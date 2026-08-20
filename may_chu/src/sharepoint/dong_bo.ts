@@ -485,8 +485,30 @@ export async function thu_lai_cac_dong_loi(): Promise<number> {
 }
 
 /** Ma viec cho lich chay hang ngay. */
-export function ma_viec_dong_bo(ngay: string): string {
-  return `dong_bo_sharepoint:${ngay}`;
+export function ma_viec_dong_bo(moc: string): string {
+  return `dong_bo_sharepoint:${moc}`;
+}
+
+/**
+ * Moc thoi gian cho `ma_viec_dong_bo` — mot o moi `CHU_KY_PHUT` phut, KHONG phai moi ngay.
+ *
+ * VI SAO DOI TU MOI-NGAY SANG MOI-15-PHUT: khoa "mot lan mot ngay" la dung cho viec chot bang
+ * cong (chay hai lan la sai so lieu), nhung SAI cho viec nay. Nap mot tep luc 13:00 chi GHI NHAN
+ * la co viec can day; viec day nam o vong quet. Voi khoa theo ngay, vong quet cua hom nay da
+ * chay xong tu 01:00 — nen tep phai cho den 01:00 SANG MAI. Ca mot ngay, va nguoi nap tep khong
+ * co cach nao biet.
+ *
+ * Chay nhieu lan o day KHONG SAO, va do la dieu cho phep doi: `ghi_nhan` la upsert, `quet` chi
+ * cham nhung dong co `duong_dan_muon` khac `duong_dan_da_day`, va khong con viec thi `quet` ket
+ * thuc sau MOT cau SQL co chi muc — khong mot luot goi Graph nao.
+ *
+ * Va thu tu trong mot vong VAN giu: viec nay chay sau viec sap xep kho tep. Duong dan SharePoint
+ * tinh tu `ma_nv`/`ho_ten` chu khong tu ten tep tren dia, nen mot vong chay truoc luot sap xep
+ * cung khong tinh sai gi.
+ */
+export function moc_dong_bo(bay_gio: Date, chu_ky_phut: number): string {
+  const o = Math.floor(bay_gio.getTime() / (chu_ky_phut * 60 * 1000));
+  return `o${String(o)}`;
 }
 
 /**

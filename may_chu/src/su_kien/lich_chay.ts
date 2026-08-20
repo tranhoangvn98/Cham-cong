@@ -9,7 +9,7 @@ import { chot_ngay_hom_qua } from '../cong/tinh_cong.ts';
 import { don_su_kien_cu } from './hop_thu_di.ts';
 import { ma_viec_nhac_han, quet_nhac_han } from '../hop_dong/nhac_han.ts';
 import { ma_viec_sap_xep, sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
-import { ghi_nhan, ma_viec_dong_bo, quet } from '../sharepoint/dong_bo.ts';
+import { ghi_nhan, ma_viec_dong_bo, moc_dong_bo, quet } from '../sharepoint/dong_bo.ts';
 import { cong_ngay, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. */
@@ -33,6 +33,22 @@ async function nhan_viec(ma_viec: string): Promise<boolean> {
     [ma_viec],
   );
   return so > 0;
+}
+
+/**
+ * Don so ghi cong viec cu.
+ *
+ * Khoa cua viec dong bo SharePoint la mot O 15 PHUT, tuc ~92 dong moi ngay. Cac viec khac deu
+ * la mot dong moi ngay nen truoc day bang nay khong can don. Them mot nguon sinh dong deu deu
+ * ma khong don la de lai mot cho phinh len mai mai — nho, nhung khong bao gio dung lai.
+ *
+ * Giu 7 ngay: du de doc lai `ket_qua` cua nhung vong gan day khi go loi.
+ */
+async function don_viec_cu(): Promise<void> {
+  await thuc_thi(
+    `delete from cong_viec_da_chay
+      where ma_viec like 'dong_bo_sharepoint:%' and chay_luc < now() - interval '7 days'`,
+  );
 }
 
 /** Nha viec ra de vong sau thu lai (dung khi viec that bai). */
@@ -119,7 +135,16 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     }
   }
 
-  // Doi chieu va day kho tep sang SharePoint, moi ngay mot lan.
+  // Doi chieu va day kho tep sang SharePoint, MOI VONG (15 phut) — khong phai moi ngay mot lan.
+  //
+  // Truoc day khoa la `dong_bo_sharepoint:<ngay>`, tuc mot lan mot ngay. Hau qua: nap mot tep
+  // luc 13:00 chi GHI NHAN la co viec can day, con vong quet cua hom nay da chay xong tu 01:00
+  // — nen tep phai cho den 01:00 SANG MAI. Ca mot ngay, va nguoi nap tep khong co cach nao
+  // biet. Da gap dung tinh huong nay tren may that.
+  //
+  // Chay moi 15 phut khong sao: `ghi_nhan` la upsert, `quet` chi cham dong co hai cot lech
+  // nhau, va khong con viec thi `quet` ket thuc sau MOT cau SQL co chi muc — khong mot luot
+  // goi Graph nao. Xem `moc_dong_bo`.
   //
   // Chay SAU viec sap xep kho tep o tren, va thu tu do la co y: viec sap xep doi ten thu muc
   // TREN DIA, con viec nay tinh duong dan TREN SHAREPOINT tu ma_nv/ho_ten. Lam nguoc lai thi
@@ -127,8 +152,9 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
   //
   // `ghi_nhan` luon chay, `quet` chi day that khi SHAREPOINT_BAT_DAY=1. Nghia la bang trang
   // thai luon dung va xem duoc duong dan se la gi TRUOC khi bat dong bo.
-  const ma_sp = ma_viec_dong_bo(hom_nay);
+  const ma_sp = ma_viec_dong_bo(moc_dong_bo(bay_gio, CHU_KY_PHUT));
   if (await nhan_viec(ma_sp)) {
+    await don_viec_cu();
     try {
       const gn = await ghi_nhan();
       const q = await quet();

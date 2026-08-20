@@ -2,6 +2,31 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.43.0] — 2026-08-20
+
+**Đồng bộ SharePoint chạy mỗi 15 phút, không phải mỗi ngày một lần.**
+
+Vòng lịch vốn đã tick mỗi 15 phút, nhưng việc đồng bộ khóa theo `dong_bo_sharepoint:<ngày>` —
+một lần một ngày. Hậu quả: nạp một tệp lúc 13:00 chỉ **ghi nhận** là có việc cần đẩy, còn vòng
+quét của hôm nay đã chạy xong từ 01:00. Tệp phải chờ đến **01:00 sáng mai**. Cả một ngày, và
+người nạp tệp không có cách nào biết.
+
+Đã gặp đúng tình huống này trên máy thật: thêm tệp cho một nhân sự, không thấy đồng bộ, không có
+gì sai cả — chỉ là chưa tới lượt.
+
+Khóa "một lần một ngày" là **đúng** cho việc chốt bảng công (chạy hai lần là sai số liệu) nhưng
+**sai** cho việc này. Đồng bộ vốn đã idempotent: `ghi_nhan` là upsert, `quet` chỉ chạm dòng có
+`duong_dan_muon` khác `duong_dan_da_day`, và không còn việc thì `quet` kết thúc sau **một** câu
+SQL có chỉ mục — không một lượt gọi Graph nào.
+
+Thứ tự trong một vòng vẫn giữ: việc này chạy sau việc sắp xếp kho tệp. Đường dẫn SharePoint tính
+từ `ma_nv`/`ho_ten` chứ không từ tên tệp trên đĩa, nên một vòng chạy trước lượt sắp xếp cũng không
+tính sai gì.
+
+Kèm theo: khóa theo ô 15 phút sinh ~92 dòng mỗi ngày trong `cong_viec_da_chay`, mà bảng đó không
+có chỗ nào dọn. Thêm dọn dòng `dong_bo_sharepoint:*` cũ hơn 7 ngày — giữ đủ để đọc lại `ket_qua`
+của những vòng gần đây khi gỡ lỗi.
+
 ## [1.42.1] — 2026-08-20
 
 **`ghi_nhan_am_tham` không còn nuốt lỗi không dấu vết.** Nó là chỗ ghi nhận "tệp này cần đẩy lên

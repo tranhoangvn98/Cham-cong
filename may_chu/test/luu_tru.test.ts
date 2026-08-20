@@ -248,3 +248,25 @@ test('moi lenh npm tro vao dist deu co tep that sau khi build', async () => {
   assert.deepEqual(thieu, [],
     'Lenh npm tro vao tep dist khong ton tai sau khi build. Kiem lai duong dan.');
 });
+
+// ============================================================ moc dong bo SharePoint
+test('moc dong bo doi moi chu ky, khong phai moi ngay', async () => {
+  // Khoa "mot lan mot ngay" la dung cho viec chot bang cong (chay hai lan la sai so lieu) nhung
+  // SAI cho viec dong bo: nap mot tep luc 13:00 se phai cho den 01:00 sang mai. Da gap that.
+  const { moc_dong_bo } = await import('../src/sharepoint/dong_bo.ts');
+
+  const t = new Date('2026-08-20T13:00:00Z');
+  const sau_15 = new Date(t.getTime() + 15 * 60 * 1000);
+  const sau_5 = new Date(t.getTime() + 5 * 60 * 1000);
+
+  assert.notEqual(moc_dong_bo(t, 15), moc_dong_bo(sau_15, 15),
+    'hai o cach nhau 15 phut phai ra hai moc khac nhau');
+  assert.equal(moc_dong_bo(t, 15), moc_dong_bo(sau_5, 15),
+    'trong cung mot o thi phai ra cung moc — khong thi hai instance chay trung');
+
+  // Va no PHAI khac nhau trong cung mot ngay: day chinh la loi cu.
+  const sang = new Date('2026-08-20T01:00:00Z');
+  const chieu = new Date('2026-08-20T13:00:00Z');
+  assert.notEqual(moc_dong_bo(sang, 15), moc_dong_bo(chieu, 15),
+    'cung mot ngay ma ra cung moc = quay ve loi "cho den sang mai"');
+});
