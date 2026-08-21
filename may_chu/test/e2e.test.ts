@@ -5501,6 +5501,41 @@ test('ban chot: thang KHAC chua duyet luong thi van mo chot duoc', async () => {
 let bd_nv = '';
 let bd_don = '';
 
+/**
+ * Ngay cua don trong nhom bai nay. PHAI la moc TUONG DOI, khong duoc go ngay co dinh.
+ *
+ * Quy tac "khong duoc co hai don trum khoang ngay" la theo TUNG NGUOI, va ca nhom bai nay dung
+ * chung mot nhan vien (NV001) voi cac bai nghi phep o tren — nhung bai do dat ngay theo
+ * `hom nay + N` voi N thuoc {3, 20, 25, 30, 60, 90}.
+ *
+ * Truoc day ba ngay o nhom nay go co dinh ('2026-09-10', '2026-10-01', '2026-11-02'). Bo kiem
+ * xanh moi ngay TRU DUNG MOT NGAY trong nam: 21.08.2026, khi `hom nay + 20` (don nghi om o bai
+ * tren) roi dung vao 10.09.2026 — 8 bai do cung mot luc voi thong bao "Ban da co don nghi phep
+ * trum khoang ngay nay", va khong mot dong ma san pham nao doi.
+ *
+ * Moc tuong doi voi do lech RIENG thi khong bao gio trung, chay ngay nao cung the.
+ */
+const bd_tu = cong_ngay(ngay_dia_phuong(new Date()), 200);
+const bd_den = cong_ngay(bd_tu, 1);
+/** Cung ngay do o dang nguoi Viet doc — ban don DOCX in theo dang DD/MM/YYYY. */
+const bd_tu_viet = bd_tu.split('-').reverse().join('/');
+/** Hai don khac trong nhom, moi don mot do lech rieng. */
+const bd_khac = cong_ngay(ngay_dia_phuong(new Date()), 210);
+const bd_tu_choi = cong_ngay(ngay_dia_phuong(new Date()), 220);
+
+test('ban don: khong don nghi phep nao trong bo kiem go ngay co dinh', async () => {
+  const { readFileSync } = await import('node:fs');
+  const ma = readFileSync(new URL(import.meta.url), 'utf8');
+
+  // Chan chinh cai loi vua ke o tren quay lai: mot ngay go co dinh trong than don nghi phep.
+  const vi_pham = ma.split('\n')
+    .filter((d) => /\b(?:tu_ngay|den_ngay)\s*:\s*'\d{4}-\d{2}-\d{2}'/.test(d))
+    .map((d) => d.trim());
+  assert.deepEqual(vi_pham, [],
+    `Ngay go co dinh trong don nghi phep. Dung cong_ngay(ngay_dia_phuong(new Date()), N) voi N`
+    + ` rieng, khong trung cac N da dung:\n${vi_pham.join('\n')}`);
+});
+
 test('ban don: nhan vien tu lam don nghi phep duoc', async () => {
   const nv = await truy_van_mot<{ id: string }>(
     'select id from nhan_vien where ma_nv = $1', ['NV001']);
@@ -5510,7 +5545,7 @@ test('ban don: nhan vien tu lam don nghi phep duoc', async () => {
   const r = await goi('POST', '/api/toi/nghi-phep', {
     token: token_nhan_vien,
     body: {
-      loai: 'phep_nam', tu_ngay: '2026-09-10', den_ngay: '2026-09-11',
+      loai: 'phep_nam', tu_ngay: bd_tu, den_ngay: bd_den,
       ly_do: 'Về quê có việc gia đình',
     },
   });
@@ -5546,7 +5581,7 @@ test('ban don: DOCX doc lai duoc, co du thong tin don VA vet duyet', async () =>
   const chu = (trich_docx(du_lieu!)?.doan ?? []).join(' | ');
   assert.ok(chu.includes('ĐƠN XIN NGHỈ PHÉP'), chu.slice(0, 200));
   assert.ok(chu.includes('Nghỉ phép năm'), 'thieu loai nghi');
-  assert.ok(chu.includes('10/09/2026'), 'thieu ngay bat dau dang DD/MM/YYYY');
+  assert.ok(chu.includes(bd_tu_viet), 'thieu ngay bat dau dang DD/MM/YYYY');
   assert.ok(chu.includes('Về quê có việc gia đình'), 'mat ly do — hoac mat dau tieng Viet');
   // VET DUYET la ly do ban don ton tai. Khong co dong nay thi no chi la ban in lai form nhap.
   assert.ok(chu.includes('ĐÃ DUYỆT'), 'thieu ket qua duyet');
@@ -5605,7 +5640,7 @@ test('ban don: KHONG sinh ban don cho don chua duyet', async () => {
   const { ban_don_nghi_phep } = await import('../src/don_tu/ban_don.ts');
   const moi = await goi('POST', '/api/toi/nghi-phep', {
     token: token_nhan_vien,
-    body: { loai: 'khong_luong', tu_ngay: '2026-10-01', den_ngay: '2026-10-01', ly_do: 'x' },
+    body: { loai: 'khong_luong', tu_ngay: bd_khac, den_ngay: bd_khac, ly_do: 'x' },
   });
   assert.equal(moi.ma, 201, JSON.stringify(moi.body));
   const id = moi.body['id'] as string;
@@ -5651,7 +5686,7 @@ test('ban don: don giai trinh duoc duyet cung sinh ban don', async () => {
 test('ban don: don bi TU CHOI thi KHONG sinh ban don', async () => {
   const moi = await goi('POST', '/api/toi/nghi-phep', {
     token: token_nhan_vien,
-    body: { loai: 'phep_nam', tu_ngay: '2026-11-02', den_ngay: '2026-11-02', ly_do: 'y' },
+    body: { loai: 'phep_nam', tu_ngay: bd_tu_choi, den_ngay: bd_tu_choi, ly_do: 'y' },
   });
   const id = moi.body['id'] as string;
   const q = await goi('POST', `/api/duyet/nghi-phep/${id}/quyet`, {
