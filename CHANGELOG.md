@@ -2,6 +2,76 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.48.0] — 2026-08-22
+
+**Bước 3: bỏ đường đăng nhập riêng.** Một công tắc, `CONG_SSO_BO_DANG_NHAP_RIENG`, và
+**mặc định TẮT**. Mã xong hoàn toàn: bật là chấm công dùng chung cổng, tắt là về như cũ.
+
+Vì sao có công tắc thay vì xoá thẳng: bật nó là đóng cửa đăng nhập **duy nhất đang dùng
+được**. Nếu cổng chưa phát được token dùng được thì cả công ty không vào được hệ thống lúc 8
+giờ sáng, và cái đó không lùi lại bằng một dòng. Công tắc là cơ chế chuyển tiếp có thời hạn,
+không phải một lựa chọn lâu dài — hợp đồng bảo mật cấm phân hệ tự hiện form đăng nhập, nên khi
+cổng chứng minh chạy được thì xoá cả công tắc lẫn nhánh mã cũ.
+
+### Hàng rào chống tự khoá cả công ty
+
+`bo_dang_nhap_rieng()` đòi **cả hai** điều kiện: công tắc bật **và** `CONG_SSO_GOC` đã khai. Bỏ
+cửa cũ mà chưa có cửa mới là không còn cửa nào. Có bài kiểm giữ đúng chuyện đó, và đã thử đột
+biến: bỏ `&& bat_cong_sso()` thì bài kiểm đỏ.
+
+### Sáu chỗ nhận mật khẩu, giờ trả 410
+
+`410 Gone` chứ không phải 404 hay 400: đường này **từng** tồn tại và bị bỏ có chủ đích, nên app
+cũ gọi vào đọc được thông điệp nói rõ phải đi đâu.
+
+| Đường | |
+|---|---|
+| `POST /xac-thuc/dang-nhap` | cửa đăng nhập |
+| `POST /xac-thuc/lam-moi` | token làm mới của hệ thống này chỉ sinh ra từ hai cửa cũ |
+| `POST /xac-thuc/doi-mat-khau` | mật khẩu do cổng giữ |
+| `POST /nguoi-dung` | tạo tài khoản kèm mật khẩu tạm |
+| `POST /nguoi-dung/:id/dat-lai-mat-khau` | |
+| `GET /xac-thuc/microsoft/*` | luồng Entra riêng — cổng đã làm việc đó; giữ thêm là thừa một client secret, thừa một redirect URI, và thừa một cửa danh tính thứ hai phải canh |
+
+### Webapp: không còn form, và đọc token của cổng
+
+`GET /xac-thuc/cau-hinh` trả thêm `dang_nhap_rieng`. `false` là tín hiệu duy nhất webapp cần để
+**không hiện form nào cả** mà chuyển hướng sang cổng — quyết định nằm ở máy chủ, nên đổi một
+biến môi trường là webapp đổi theo ngay, không chờ build lại.
+
+Token đọc từ `localStorage['cong_phien']` (webapp cùng origin với cổng). Hai điều đáng ghi:
+
+- **Nhận ra token theo `iss`, không theo tên trường.** Tên trường bên trong `cong_phien` là hợp
+  đồng của cổng; cổng đổi `token_truy_cap` thành `access_token` là ta gãy, và gãy im lặng. Quét
+  mọi chuỗi trong đó rồi lấy cái nào là JWT có `iss` đúng và `loai: 'tc'` thì miễn nhiễm.
+- **Không chép token sang khoá riêng của mình.** Cổng là chủ sở hữu: nó xoay token, nó thu hồi
+  token. Giữ một bản là giữ một phiên dài hơn phiên của cổng — đúng cái hợp đồng cấm. Nên mỗi
+  lần gọi API đều **đọc lại** từ `cong_phien`, và nhờ thế cổng xoay token ở tab khác thì ta nhận
+  ngay bản mới, không phải tải lại trang.
+
+Gặp 401 thì **không** làm mới token của cổng — nó không phải của ta. Đọc lại một lần (cổng có
+thể vừa xoay ở tab khác), còn không thì về cổng đăng nhập, mang theo đường đang mở qua
+`?quay_lai=` với đúng phép kiểm của cổng: một `/` đầu, không `//`, không `\`, không ký tự điều
+khiển.
+
+### Một cái bẫy chết người đã chặn trước
+
+Ở chế độ cổng, `/doi-mat-khau` trả 410. Nếu webapp vẫn hiện màn hình **bắt buộc đổi mật khẩu**
+cho một tài khoản cũ còn `phai_doi_mat_khau = true`, người đó sẽ thấy một màn hình không bao giờ
+đổi được: vào hệ thống không được, mà cũng không có đường nào thoát. Màn hình đó giờ bị bỏ qua ở
+chế độ cổng, kèm lý do ghi ngay tại chỗ.
+
+Tương tự, quyền rỗng ra màn hình giải thích chứ **không** ra form đăng nhập — đăng nhập lại bao
+nhiêu lần cũng không làm xuất hiện một quyền.
+
+### Chưa làm, nói thẳng
+
+- **Chưa chạy thử với cổng thật.** Không có cổng nào trong môi trường dựng nên toàn bộ nửa web
+  chỉ được typecheck và build, chưa nhìn thấy nó chạy trong trình duyệt. Phép thử thật là bật
+  công tắc trên VPS rồi mở `/chamcong`.
+- Các nút quản trị mật khẩu (tạo tài khoản, đặt lại mật khẩu) **vẫn hiện** ở chế độ cổng; bấm
+  vào thì nhận 410 kèm thông điệp chỉ sang `/cong/quan-tri`. Nên ẩn hẳn, chưa làm.
+
 ## [1.47.0] — 2026-08-21
 
 **Bước 2: token của cổng đi được vào hệ thống.** Hook `can_dang_nhap` giờ nhận **cả hai** loại

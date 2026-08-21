@@ -66,6 +66,54 @@ export function bat_cong_sso(): boolean {
 }
 
 /**
+ * Da bo duong dang nhap rieng cua cham cong chua?
+ *
+ * `&& bat_cong_sso()` KHONG phai thua: bo cua cu ma chua khai cua moi la khong con cua nao, va
+ * ca cong ty khong vao duoc he thong. Cong tac nay chi co hieu luc khi cong da duoc khai.
+ */
+export function bo_dang_nhap_rieng(): boolean {
+  return cau_hinh.cong_sso.bo_dang_nhap_rieng && bat_cong_sso();
+}
+
+/**
+ * 410 Gone, khong phai 404 hay 400: duong nay TUNG ton tai va da bi bo co y. App cu goi vao se
+ * doc duoc thong diep noi ro phai di dau, thay vi mot loi chung khong ai hieu.
+ */
+export class LoiDaBoCuaCu extends Error {
+  ma_http = 410;
+
+  constructor(thong_diep: string) {
+    super(thong_diep);
+    this.name = 'LoiDaBoCuaCu';
+  }
+}
+
+/**
+ * Chan mot duong con nhan mat khau, khi da chuyen sang cong.
+ *
+ * Goi o DAU moi route nhu vay. Gom vao mot ham de khong noi nao tu soan thong diep rieng —
+ * nguoi dung gap sau cua nay can biet dung mot dieu: di dau de dang nhap.
+ */
+export function chan_cua_cu(): void {
+  if (!bo_dang_nhap_rieng()) return;
+  throw new LoiDaBoCuaCu(
+    'Chấm công đã dùng chung cổng đăng nhập nội bộ. Mật khẩu do cổng quản lý, hệ thống này '
+    + `không còn nhận mật khẩu. Hãy đăng nhập tại ${cau_hinh.cong_sso.goc_dang_nhap} rồi mở lại `
+    + `${cau_hinh.cong_sso.tien_to}/.`,
+  );
+}
+
+/** Nhu tren nhung cho viec quan tri tai khoan — chi ro cho cap quyen o dau. */
+export function chan_quan_tri_cua_cu(): void {
+  if (!bo_dang_nhap_rieng()) return;
+  throw new LoiDaBoCuaCu(
+    'Tài khoản và mật khẩu do cổng nội bộ quản lý, không tạo hay đặt lại ở đây nữa. '
+    + `Cấp quyền cho người dùng tại ${cau_hinh.cong_sso.goc_dang_nhap}cong/quan-tri, `
+    + 'mục Module → chamcong.',
+  );
+}
+
+/**
  * URL JWKS co an toan de goi khong.
  *
  * Tren production PHAI la HTTPS: tai bo khoa cong khai qua HTTP la de ke dung giua thay khoa,

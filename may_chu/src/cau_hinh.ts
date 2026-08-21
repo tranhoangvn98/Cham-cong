@@ -194,6 +194,18 @@ export const cau_hinh = {
       tien_to: `/${chu('CONG_SSO_TIEN_TO', 'chamcong').replace(/^\/+|\/+$/g, '')}`,
       /** Man dang nhap cua cong. Mac dinh la goc ten mien cua cong. */
       goc_dang_nhap,
+      /**
+       * 1 = BO duong dang nhap rieng cua cham cong: khong con cho nao nhan mat khau, chua co
+       * token thi chuyen huong sang cong.
+       *
+       * MAC DINH TAT, va do la co y. Bat cai nay la dong cua dang nhap duy nhat dang dung
+       * duoc; neu cong chua phat duoc token dung duoc thi CA CONG TY khong vao duoc he thong.
+       * Bat sau khi da dang nhap thu thanh cong qua cong mot lan.
+       *
+       * Chi co hieu luc khi da khai `CONG_SSO_GOC` — xem `bo_dang_nhap_rieng()`. Bo cua cu ma
+       * khong co cua moi la khong con cua nao.
+       */
+      bo_dang_nhap_rieng: chu('CONG_SSO_BO_DANG_NHAP_RIENG', '0') === '1',
     };
   })(),
 

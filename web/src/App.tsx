@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  da_dang_nhap, dang_xuat, la_admin, la_nhan_su, nguoi_dung_hien_tai, nhan_phien_tu_neo,
+  cau_hinh_dang_nhap, da_dang_nhap, dang_xuat, di_cong_dang_nhap, doc_token_cong, dung_cong_sso,
+  la_admin, la_nhan_su, nap_phien_cong, nguoi_dung_hien_tai, nhan_phien_tu_neo,
 } from './api.ts';
 import { CungCapTuyen, LienKet, dung_tuyen } from './dinh_tuyen.tsx';
 import { CungCapTieuDe, DuongMon, type TieuDeTrang } from './tieu_de_trang.tsx';
@@ -420,6 +421,32 @@ export function App(): ReactNode {
   // nhap trong luc do se nhap nhay mot nhip roi bien mat.
   const [dang_doc_neo, dat_dang_doc_neo] = useState(() => window.location.hash !== '');
   const [loi_sso, dat_loi_sso] = useState<string | null>(null);
+  // Chua hoi may chu xong thi CHUA BIET he thong con duong dang nhap rieng hay khong. Ve
+  // trang dang nhap trong luc do la hien dung cai man hinh ma buoc 3 muon bo — dung mot nhip,
+  // nhung du de nguoi dung go mat khau cong ty vao dung cho khong nen go.
+  const [dang_hoi_cau_hinh, dat_dang_hoi_cau_hinh] = useState(true);
+  const [loi_cong, dat_loi_cong] = useState<string | null>(null);
+
+  // Khoi dong: hoi may chu con duong dang nhap rieng hay khong. Neu KHONG thi lay token cua
+  // cong tu localStorage; khong co token thi ve cong dang nhap, co ma chua duoc cap quyen thi
+  // hien man hinh giai thich — KHONG day ve trang dang nhap, vi ho da dang nhap that roi.
+  useEffect(() => {
+    let con_gan = true;
+    void (async () => {
+      await cau_hinh_dang_nhap();
+      if (!con_gan) return;
+      if (dung_cong_sso() && !da_dang_nhap()) {
+        if (doc_token_cong() === null) { di_cong_dang_nhap(); return; }
+        const loi = await nap_phien_cong();
+        if (!con_gan) return;
+        if (loi !== null) { dat_loi_cong(loi); }
+        else if (!da_dang_nhap()) { di_cong_dang_nhap(); return; }
+      }
+      dat_dang_hoi_cau_hinh(false);
+      dat_lan((n) => n + 1);
+    })();
+    return () => { con_gan = false; };
+  }, []);
 
   // Quay ve tu Microsoft: token nam trong phan neo cua URL.
   useEffect(() => {
@@ -433,8 +460,26 @@ export function App(): ReactNode {
   const nd = nguoi_dung_hien_tai();
 
   if (dang_doc_neo) return <div className="dang-tai-toan-trang">Đang hoàn tất đăng nhập…</div>;
+  if (dang_hoi_cau_hinh && loi_cong === null) {
+    return <div className="dang-tai-toan-trang">Đang kiểm tra phiên đăng nhập…</div>;
+  }
+
+  // Da dang nhap o cong nhung chua duoc cap quyen o phan he nay. Man hinh giai thich, KHONG
+  // phai form dang nhap: dang nhap lai bao nhieu lan cung khong lam xuat hien mot quyen.
+  if (loi_cong !== null) {
+    return (
+      <div className="vo-dang-nhap">
+        <div className="the-dang-nhap">
+          <h1>Chấm công</h1>
+          <div className="hop-luu-y" style={{ marginTop: 16 }}>{loi_cong}</div>
+        </div>
+      </div>
+    );
+  }
 
   if (!da_dang_nhap()) {
+    // O che do cong thi khong bao gio toi day: khong co token la da chuyen huong o tren.
+    if (dung_cong_sso()) { di_cong_dang_nhap(); return null; }
     return <TrangDangNhap khi_xong={() => dat_lan(lan + 1)} loi_sso={loi_sso} />;
   }
 
@@ -446,7 +491,12 @@ export function App(): ReactNode {
   }
 
   // Tai khoan moi tao / vua duoc dat lai mat khau: bat buoc doi truoc khi vao he thong.
-  if (nd !== null && nd.phai_doi_mat_khau) {
+  //
+  // `!dung_cong_sso()` KHONG phai thua, va bo no ra la mot cai bay chet nguoi: o che do cong,
+  // may chu tra 410 cho `/doi-mat-khau`, nen mot tai khoan cu con co `phai_doi_mat_khau = true`
+  // se thay man hinh bat buoc doi mat khau ma khong bao gio doi duoc — vao he thong khong duoc,
+  // ma cung khong co duong nao thoat. Mat khau da thuoc cong quan ly.
+  if (nd !== null && nd.phai_doi_mat_khau && !dung_cong_sso()) {
     return <TrangDoiMatKhau bat_buoc khi_xong={() => dat_lan(lan + 1)} />;
   }
 

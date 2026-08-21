@@ -66,6 +66,9 @@ services:
       CONG_SSO_MA_MODULE: ${CONG_SSO_MA_MODULE:-}
       CONG_SSO_TIEN_TO: ${CONG_SSO_TIEN_TO:-}
       CONG_SSO_GOC_DANG_NHAP: ${CONG_SSO_GOC_DANG_NHAP:-}
+      # 1 = bo han duong dang nhap rieng. MAC DINH 0: bat khi chua dang nhap thu duoc
+      # qua cong la dong cua duy nhat dang dung duoc.
+      CONG_SSO_BO_DANG_NHAP_RIENG: ${CONG_SSO_BO_DANG_NHAP_RIENG:-0}
       # Dong bo kho tep ho so sang thu vien HCNS tren SharePoint. MOT CHIEU, xoa lan theo.
       # Dung APP RIENG (cham-cong-sharepoint-sync) voi quyen Sites.Selected, khong dung lai
       # app dang nhap o tren. SHAREPOINT_BAT_DAY=0 thi chi ghi nhan viec can day vao bang,

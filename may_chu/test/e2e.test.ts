@@ -7571,3 +7571,121 @@ test('cong: /iclock KHONG di qua lop xac thuc nao', async () => {
   assert.equal(r.statusCode, 200, r.body.slice(0, 200));
   assert.match(r.body, /GET OPTION FROM:/);
 });
+
+// ==================================================================== bo cua dang nhap cu
+//
+// Buoc 3 cua viec noi vao cong: khong con cho nao nhan mat khau. Cong tac
+// `CONG_SSO_BO_DANG_NHAP_RIENG` mac dinh TAT, va nhom bai nay bat no len trong pham vi cua
+// chinh no roi tra lai — cac bai khac trong tep van chay bang duong mat khau.
+//
+// BAI QUAN TRONG NHAT cua nhom la bai cuoi: cong tac PHAI vo hieu khi chua khai cong. Bo cua
+// cu ma khong co cua moi la khong con cua nao, va hau qua khong phai "mot tinh nang khong
+// chay" — la ca cong ty khong vao duoc he thong luc 8 gio sang.
+
+/** Bat/tat cong tac ngay trong bo nho. `cau_hinh` la `as const` nen phai ep kieu. */
+async function dat_bo_cua_cu(bat: boolean): Promise<void> {
+  const { cau_hinh } = await import('../src/cau_hinh.ts');
+  (cau_hinh.cong_sso as { bo_dang_nhap_rieng: boolean }).bo_dang_nhap_rieng = bat;
+}
+
+/**
+ * Goi mot duong CO GIOI HAN TAN SUAT, tu mot IP rieng cho tung bai.
+ *
+ * `/dang-nhap` chan 10 luot moi phut theo IP, va cac bai o tren trong tep nay da dung het han
+ * muc cua 127.0.0.1. Lop chan tan suat chay TRUOC handler nen khong doi 410 ma doi 429 — dung
+ * ve nghiep vu (ca hai deu la tu choi) nhung lam bai kiem mat y nghia. Moi IP la mot han muc
+ * rieng, nen dat `remoteAddress` khac nhau la co lai han muc sach.
+ */
+let dem_ip = 0;
+async function goi_tu_ip_rieng(
+  duong: string, than_yc?: Record<string, unknown>,
+): Promise<{ ma: number; body: Record<string, unknown> }> {
+  dem_ip += 1;
+  const r = await app.inject({
+    method: 'POST', url: duong,
+    remoteAddress: `10.99.0.${String(dem_ip)}`,
+    headers: { authorization: `Bearer ${token_admin}`, 'content-type': 'application/json' },
+    payload: JSON.stringify(than_yc ?? {}),
+  });
+  let body: Record<string, unknown> = {};
+  try { body = JSON.parse(r.body) as Record<string, unknown>; } catch { /* khong phai JSON */ }
+  return { ma: r.statusCode, body };
+}
+
+test('bo cua cu: MOI duong nhan mat khau deu tra 410', async () => {
+  await dat_bo_cua_cu(true);
+  try {
+    const cac_duong: Array<['POST', string, Record<string, unknown>, string]> = [
+      ['POST', '/api/xac-thuc/dang-nhap', { ten_dang_nhap: 'admin', mat_khau: 'x' }, 'cua dang nhap'],
+      ['POST', '/api/xac-thuc/lam-moi', { token_lam_moi: 'x' }, 'lam moi token'],
+      ['POST', '/api/xac-thuc/doi-mat-khau', { mat_khau_cu: 'a', mat_khau_moi: 'b' }, 'doi mat khau'],
+      ['POST', '/api/nguoi-dung',
+        { ten_dang_nhap: 'ai_do', mat_khau: 'MatKhauDaiDeQua123', vai_tro: 'nhan_su' }, 'tao tai khoan'],
+    ];
+    for (const [, duong, than_yc, ten] of cac_duong) {
+      const r = await goi_tu_ip_rieng(duong, than_yc);
+      assert.equal(r.ma, 410, `${ten}: ${JSON.stringify(r.body)}`);
+      // Thong diep phai noi ro di dau, khong phai mot loi chung.
+      assert.match(String(r.body['loi']), /cổng/i, `${ten} khong chi duong di dau`);
+    }
+
+    // Dat lai mat khau ho nguoi khac.
+    const nd = await truy_van_mot<{ id: string }>(
+      "select id from nguoi_dung where ten_dang_nhap = 'admin'");
+    const r = await goi('POST', `/api/nguoi-dung/${String(nd?.id)}/dat-lai-mat-khau`,
+      { token: token_admin, body: { mat_khau_moi: 'MatKhauDaiDeQua123' } });
+    assert.equal(r.ma, 410, JSON.stringify(r.body));
+
+    // Luong Microsoft rieng cung dong: cong da lam Entra, giu them la thua mot client secret.
+    const ms = await app.inject({ method: 'GET', url: '/api/xac-thuc/microsoft/bat-dau' });
+    assert.equal(ms.statusCode, 410, ms.body.slice(0, 200));
+  } finally {
+    await dat_bo_cua_cu(false);
+  }
+});
+
+test('bo cua cu: /cau-hinh noi cho webapp biet phai chuyen huong', async () => {
+  const truoc = await goi('GET', '/api/xac-thuc/cau-hinh');
+  assert.equal(truoc.body['dang_nhap_rieng'], true, 'mac dinh phai con duong rieng');
+  assert.equal(truoc.body['cong_sso'], null);
+
+  await dat_bo_cua_cu(true);
+  try {
+    const r = await goi('GET', '/api/xac-thuc/cau-hinh');
+    assert.equal(r.ma, 200);
+    assert.equal(r.body['dang_nhap_rieng'], false);
+    assert.equal(r.body['dang_nhap_microsoft'], false, 'khong duoc con nut Microsoft rieng');
+    const c = r.body['cong_sso'] as Record<string, unknown>;
+    assert.equal(typeof c['goc_dang_nhap'], 'string');
+    assert.equal(c['tien_to'], '/chamcong');
+  } finally {
+    await dat_bo_cua_cu(false);
+  }
+});
+
+test('bo cua cu: token cua cong VAN vao duoc — cua moi phai mo truoc khi dong cua cu', async () => {
+  await dat_bo_cua_cu(true);
+  try {
+    const r = await goi('GET', '/api/nhan-vien', { token: token_cong() });
+    assert.equal(r.ma, 200, JSON.stringify(r.body));
+  } finally {
+    await dat_bo_cua_cu(false);
+  }
+});
+
+test('bo cua cu: cong tac VO HIEU khi chua khai cong — khong the tu khoa het moi nguoi', async () => {
+  // Day la hang rao chong mot su co that: bat cong tac tren mot may chua khai `CONG_SSO_GOC`
+  // thi khong con cua nao. `bo_dang_nhap_rieng()` doi CA HAI dieu kien, va bai nay giu no.
+  const { cau_hinh } = await import('../src/cau_hinh.ts');
+  const iss_cu = cau_hinh.cong_sso.iss;
+  await dat_bo_cua_cu(true);
+  (cau_hinh.cong_sso as { iss: string }).iss = '';   // nhu the chua khai CONG_SSO_GOC
+  try {
+    const r = await goi_tu_ip_rieng('/api/xac-thuc/dang-nhap',
+      { ten_dang_nhap: 'admin', mat_khau: 'ChamCong2026' });
+    assert.equal(r.ma, 200, `duong mat khau phai con song: ${JSON.stringify(r.body)}`);
+  } finally {
+    (cau_hinh.cong_sso as { iss: string }).iss = iss_cu;
+    await dat_bo_cua_cu(false);
+  }
+});

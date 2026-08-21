@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { can_admin, can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { bam_mat_khau, LoiMatKhau } from '../bao_mat/mat_khau.ts';
+import { chan_quan_tri_cua_cu } from '../bao_mat/cong_sso.ts';
 import { lenh_dong_bo_gio } from '../adms/giao_thuc.ts';
 import { xep_lenh } from '../adms/tuyen.ts';
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
@@ -811,6 +812,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   );
 
   app.post('/nguoi-dung', { preHandler: can_admin }, async (req, res) => {
+    chan_quan_tri_cua_cu();
     const b = than(req.body);
     const ten_dang_nhap = chuoi_bat_buoc(b, 'ten_dang_nhap', { toi_da: 100, toi_thieu: 3 });
     if (!/^[a-zA-Z0-9._-]+$/.test(ten_dang_nhap)) {
@@ -847,6 +849,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
 
   /** Dat lai mat khau ho nhan vien (nguoi dung bat buoc doi o lan dang nhap sau). */
   app.post('/nguoi-dung/:id/dat-lai-mat-khau', { preHandler: can_admin }, async (req) => {
+    chan_quan_tri_cua_cu();
     const id = lay_id(req);
     const b = than(req.body);
     const mat_khau = chuoi_bat_buoc(b, 'mat_khau_moi', { toi_da: 200 });
