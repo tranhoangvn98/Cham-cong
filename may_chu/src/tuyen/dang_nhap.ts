@@ -14,7 +14,7 @@ import { cau_hinh } from '../cau_hinh.ts';
 import { chuoi_bat_buoc, LoiDauVao, than } from '../tien_ich/kiem_tra.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { gan_ma_am_tham } from '../dinh_danh/nghiep_vu.ts';
-import { chan_cua_cu, bo_dang_nhap_rieng } from '../bao_mat/cong_sso.ts';
+import { chan_cua_cu, chan_cua_cu_web, bo_dang_nhap_rieng } from '../bao_mat/cong_sso.ts';
 import { cau_hinh as ch_sso } from '../cau_hinh.ts';
 import {
   bat_dang_nhap_microsoft,
@@ -94,7 +94,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     // Chong do mat khau: gioi han theo IP.
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
   }, async (req, res) => {
-    chan_cua_cu();
+    chan_cua_cu_web(req);
     const b = than(req.body);
     const ten_dang_nhap = chuoi_bat_buoc(b, 'ten_dang_nhap', { toi_da: 100 });
     const mat_khau = chuoi_bat_buoc(b, 'mat_khau', { toi_da: 200 });
@@ -152,7 +152,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
   }, async (req, res) => {
     // Token lam moi cua he thong nay chi sinh ra tu duong mat khau / Microsoft rieng. Bo hai
     // duong do thi khong con token lam moi nao hop le, va cong tu lo viec xoay token cua no.
-    chan_cua_cu();
+    chan_cua_cu_web(req);
     const b = than(req.body);
     const token = chuoi_bat_buoc(b, 'token_lam_moi', { toi_da: 4000 });
 
@@ -257,7 +257,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     preHandler: can_dang_nhap_ke_ca_cho_duyet,
     config: { rateLimit: { max: 5, timeWindow: '5 minutes' } },
   }, async (req, res) => {
-    chan_cua_cu();
+    chan_cua_cu_web(req);
     const nd = nguoi_dung_hien_tai(req);
     const b = than(req.body);
     const cu = chuoi_bat_buoc(b, 'mat_khau_cu', { toi_da: 200 });

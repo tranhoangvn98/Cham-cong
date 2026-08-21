@@ -2,6 +2,46 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.49.0] — 2026-08-22
+
+**Trình duyệt buộc đi qua cổng; app điện thoại tạm giữ đường cũ.** Yêu cầu là *vào `/chamcong`
+mà chưa đăng nhập thì bắt buộc về cổng, không có luồng đăng nhập riêng*. Bản 1.48.0 đã làm được
+điều đó, nhưng bật nó lên là **app điện thoại chết cho toàn bộ nhân viên**: app đăng nhập bằng
+mật khẩu, giữ token làm mới 30 ngày, và chưa có đường đi qua cổng.
+
+Nên đường mật khẩu giờ bị chặn **theo phía gọi**: trình duyệt bị chặn, app native thì chưa.
+
+### Phân biệt bằng thứ trang web không giả được
+
+`Origin` do trình duyệt tự đặt trên mọi POST, `Sec-Fetch-*` trên mọi request, và **mã
+JavaScript trong trang không xoá được chúng**. `fetch` của React Native không gửi header nào
+trong số đó. Nên "không còn form đăng nhập nào chạy được trong trình duyệt" là một điều **có thể
+buộc**, không chỉ là một lời hứa — một trang web không thể tự khai mình là app để đi cửa sau.
+
+Chỉ cần **một** trong ba header là đủ để chặn, không đòi cả ba: bài kiểm thử từng cái một.
+
+**Nói thẳng: đây không phải ranh giới bảo mật.** `curl` không gửi `Origin` nên đi được đường app.
+Nó là ranh giới **trải nghiệm**, và nó đạt đúng cái đích của bước 3 — không nhân viên nào còn
+được dạy gõ mật khẩu công ty vào một trang không phải cổng.
+
+### Để nó không thành vĩnh viễn
+
+Một cửa vào không MFA chưa đóng mà không ai nhìn thấy thì nó ở đó mãi. Hai thứ chống điều đó:
+
+- `GET /health` trả `dang_nhap`: `rieng` · `cong+rieng` · **`cong+app_tam`**. Trạng thái chuyển
+  tiếp hiện ngay trên cùng cái màn hình người ta xem mỗi lần cập nhật.
+- Máy chủ ghi một dòng cảnh báo **mỗi lần** đường app tạm được dùng, để biết con số đó đã về 0
+  chưa trước khi xoá hẳn — chứ không phải đoán.
+
+Chú thích của `chan_cua_cu_web()` ghi rõ ba việc phải làm khi app có đường mới: xoá hàm đó, đổi
+các chỗ gọi sang `chan_cua_cu()`, xoá `cong+app_tam` khỏi `/health`.
+
+### Kiểm cả hai chiều
+
+Hai đột biến đã thử, mỗi chiều một bài đỏ: chặn luôn cả app native → bài "app vẫn đăng nhập
+được" đỏ; không chặn ai cả → bài "mọi đường nhận mật khẩu đều 410" đỏ. Một guard chỉ đúng một
+chiều thì không giữ được gì.
+
 ## [1.48.1] — 2026-08-22
 
 **Sửa: `/chamcong/chamcong/` ra trang "Không có trang này" ngay cửa vào.**

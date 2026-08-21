@@ -7598,13 +7598,24 @@ async function dat_bo_cua_cu(bat: boolean): Promise<void> {
  */
 let dem_ip = 0;
 async function goi_tu_ip_rieng(
-  duong: string, than_yc?: Record<string, unknown>,
+  duong: string, than_yc?: Record<string, unknown>, nhu_trinh_duyet = true,
 ): Promise<{ ma: number; body: Record<string, unknown> }> {
   dem_ip += 1;
+  // `origin` + `sec-fetch-*` la thu TRINH DUYET tu dat va ma trong trang khong xoa duoc. Dat
+  // chung o day nghia la "gia lap mot request tu trinh duyet"; bo chung ra la gia lap app
+  // native (`fetch` cua React Native khong gui header nao trong so do).
+  const cua_trinh_duyet = {
+    origin: 'https://teams.tranhoangvietnam.com',
+    'sec-fetch-site': 'same-origin',
+    'sec-fetch-mode': 'cors',
+  };
   const r = await app.inject({
     method: 'POST', url: duong,
     remoteAddress: `10.99.0.${String(dem_ip)}`,
-    headers: { authorization: `Bearer ${token_admin}`, 'content-type': 'application/json' },
+    headers: {
+      authorization: `Bearer ${token_admin}`, 'content-type': 'application/json',
+      ...(nhu_trinh_duyet ? cua_trinh_duyet : {}),
+    },
     payload: JSON.stringify(than_yc ?? {}),
   });
   let body: Record<string, unknown> = {};
@@ -7668,6 +7679,54 @@ test('bo cua cu: token cua cong VAN vao duoc — cua moi phai mo truoc khi dong 
   try {
     const r = await goi('GET', '/api/nhan-vien', { token: token_cong() });
     assert.equal(r.ma, 200, JSON.stringify(r.body));
+  } finally {
+    await dat_bo_cua_cu(false);
+  }
+});
+
+test('bo cua cu: app native VAN dang nhap duoc — giai doan chuyen tiep', async () => {
+  // Chan luon ca app la 59 nhan vien mat cham cong tren dien thoai trong nhieu ngay, vi app
+  // chua co duong di qua cong. Nen o giai doan chuyen tiep: TRINH DUYET bi chan, app thi khong.
+  //
+  // Phan biet bang `Origin` / `Sec-Fetch-*` — trinh duyet tu dat, ma trong trang khong xoa
+  // duoc. Nen mot trang web KHONG the tu gia dang thanh app. Day khong phai ranh gioi bao mat
+  // (curl di duoc duong app), ma la ranh gioi trai nghiem.
+  await dat_bo_cua_cu(true);
+  try {
+    const web = await goi_tu_ip_rieng('/api/xac-thuc/dang-nhap',
+      { ten_dang_nhap: 'admin', mat_khau: 'ChamCong2026' }, true);
+    assert.equal(web.ma, 410, `tu trinh duyet phai bi chan: ${JSON.stringify(web.body)}`);
+
+    const app_native = await goi_tu_ip_rieng('/api/xac-thuc/dang-nhap',
+      { ten_dang_nhap: 'admin', mat_khau: 'ChamCong2026' }, false);
+    assert.equal(app_native.ma, 200, `app native phai con vao duoc: ${JSON.stringify(app_native.body)}`);
+    assert.equal(typeof app_native.body['token_truy_cap'], 'string');
+
+    // Va CHI mot header cua trinh duyet cung du de chan — khong doi ca ba.
+    for (const h of ['origin', 'sec-fetch-site', 'sec-fetch-mode']) {
+      dem_ip += 1;
+      const r = await app.inject({
+        method: 'POST', url: '/api/xac-thuc/dang-nhap',
+        remoteAddress: `10.98.0.${String(dem_ip)}`,
+        headers: { 'content-type': 'application/json', [h]: 'x' },
+        payload: JSON.stringify({ ten_dang_nhap: 'admin', mat_khau: 'ChamCong2026' }),
+      });
+      assert.equal(r.statusCode, 410, `chi co header ${h} cung phai bi chan`);
+    }
+  } finally {
+    await dat_bo_cua_cu(false);
+  }
+});
+
+test('bo cua cu: /health noi ro dang o giai doan chuyen tiep', async () => {
+  const truoc = await goi('GET', '/health');
+  assert.equal(truoc.body['dang_nhap'], 'cong+rieng');
+
+  await dat_bo_cua_cu(true);
+  try {
+    const r = await goi('GET', '/health');
+    // Con mot cua vao khong MFA chua dong thi phai NHIN THAY duoc, khong thi no thanh vinh vien.
+    assert.equal(r.body['dang_nhap'], 'cong+app_tam');
   } finally {
     await dat_bo_cua_cu(false);
   }

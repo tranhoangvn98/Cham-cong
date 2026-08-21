@@ -22,6 +22,7 @@ import { tuyen_tich_hop } from './tuyen/tich_hop.ts';
 import { truy_van_mot } from './csdl/ket_noi.ts';
 import { kiem_tra_luu_tru } from './tien_ich/luu_tep.ts';
 import { bat_sharepoint } from './sharepoint/khach.ts';
+import { bat_cong_sso, bo_dang_nhap_rieng } from './bao_mat/cong_sso.ts';
 
 /** Loi nghiep vu co ma HTTP rieng (LoiDauVao, LoiKhongTim, ...). */
 interface LoiCoMa extends Error {
@@ -137,6 +138,11 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
         csdl: 'ok',
         luu_tru: hong.length === 0 ? 'ok' : `KHONG GHI DUOC — ${hong.join('; ')}`,
         sharepoint: await trang_thai_sharepoint(),
+        // Duong dang nhap dang mo. `cong+app_tam` la GIAI DOAN CHUYEN TIEP: trinh duyet buoc
+        // phai qua cong, con app native con di duong mat khau. Thay dong nay tren /health la
+        // biet con mot cua vao khong MFA chua dong — de no khong tro thanh vinh vien vi khong
+        // ai nhin thay.
+        dang_nhap: !bat_cong_sso() ? 'rieng' : (bo_dang_nhap_rieng() ? 'cong+app_tam' : 'cong+rieng'),
         luc: new Date().toISOString(),
       };
     } catch (loi) {

@@ -218,6 +218,36 @@ lực trong vòng một phút, còn thu hồi **bên cổng** thì tối đa 15 
   là bước sửa Caddyfile dùng chung, cái duy nhất có thể làm sập bot Teams đang chạy trên cùng
   tên miền.
 
+### Giai đoạn chuyển tiếp đang chạy: trình duyệt qua cổng, app tạm giữ đường cũ
+
+Bật `CONG_SSO_BO_DANG_NHAP_RIENG=1` thì đường mật khẩu bị chặn **cho trình duyệt**, còn app
+native tạm thời vẫn đi được. Phân biệt bằng `Origin` và `Sec-Fetch-*`: trình duyệt tự đặt chúng
+và **mã JavaScript trong trang không xoá được** — nên một trang web không thể tự giả dạng thành
+app. `fetch` của React Native không gửi header nào trong số đó.
+
+Nhờ vậy *"không còn form đăng nhập nào chạy được trong trình duyệt"* trở thành một điều **có
+thể buộc**, không chỉ là một lời hứa.
+
+**Đây KHÔNG phải một ranh giới bảo mật.** `curl` không gửi `Origin` nên đi được đường app. Nó là
+ranh giới **trải nghiệm**, và nó đạt đúng cái đích của bước 3: không nhân viên nào còn được dạy
+gõ mật khẩu công ty vào một trang không phải cổng — mà cũng không ai mất chấm công trên điện
+thoại trong lúc chờ app có đường mới.
+
+`GET /health` trả `dang_nhap` để trạng thái này **nhìn thấy được**, vì một cửa vào không MFA
+chưa đóng mà không ai thấy thì nó thành vĩnh viễn:
+
+| `dang_nhap` | Nghĩa |
+|---|---|
+| `rieng` | chưa khai cổng, chỉ có đường đăng nhập riêng |
+| `cong+rieng` | đã khai cổng, hai đường song song (công tắc tắt) |
+| `cong+app_tam` | **giai đoạn chuyển tiếp**: trình duyệt buộc qua cổng, app còn đường cũ |
+
+Và máy chủ ghi một dòng cảnh báo mỗi lần đường app tạm được dùng, để con số đó giảm về 0 trước
+khi xoá hẳn — chứ không phải đoán.
+
+**Khi app đã có đường qua cổng:** xoá `chan_cua_cu_web()`, đổi các chỗ gọi nó sang
+`chan_cua_cu()`, và xoá `cong+app_tam` khỏi `/health`. Ghi ngay trong chú thích của hàm đó.
+
 ### App điện thoại — ba lối, và lối thứ ba là lối đúng
 
 App hiện đăng nhập bằng `POST /api/xac-thuc/dang-nhap` và giữ token làm mới 30 ngày của chính

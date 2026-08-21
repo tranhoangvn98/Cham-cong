@@ -103,6 +103,53 @@ export function chan_cua_cu(): void {
   );
 }
 
+/**
+ * Request nay den tu TRINH DUYET khong?
+ *
+ * `Origin` do trinh duyet tu dat tren moi POST, va `Sec-Fetch-*` tren moi request. Ma
+ * JavaScript trong trang KHONG xoa duoc chung — day la diem quan trong: mot trang web khong
+ * the tu gia dang thanh app native. Con `fetch` cua React Native thi khong gui header nao
+ * trong so do.
+ *
+ * Nho vay "khong con form dang nhap nao chay duoc trong trinh duyet" tro thanh mot dieu CO THE
+ * BUOC, khong chi la mot loi hua.
+ *
+ * KHONG phai mot ranh gioi bao mat: `curl` khong gui `Origin` nen di duoc duong cu. Do la mot
+ * ranh gioi TRAI NGHIEM, va no dat dung cai dich cua buoc 3: khong nhan vien nao con duoc day
+ * go mat khau cong ty vao mot trang khong phai cong.
+ */
+export function la_tu_trinh_duyet(yc: { headers: Record<string, unknown> }): boolean {
+  const h = yc.headers;
+  return typeof h['origin'] === 'string'
+    || typeof h['sec-fetch-site'] === 'string'
+    || typeof h['sec-fetch-mode'] === 'string';
+}
+
+/**
+ * Chan duong mat khau khi goi TU TRINH DUYET, con app native thi tam thoi cho qua.
+ *
+ * GIAI DOAN CHUYEN TIEP CO THOI HAN. App dien thoai hien dang nhap bang mat khau va giu token
+ * lam moi 30 ngay; app chua co duong di qua cong (loi "trinh duyet he thong + custom scheme").
+ * Chan luon ca app la 59 nhan vien mat cham cong tren dien thoai trong nhieu ngay.
+ *
+ * KHI APP DA CO DUONG QUA CONG: xoa ham nay, doi cac cho goi no sang `chan_cua_cu()`, va xoa
+ * `dang_nhap_app_tam` khoi /health. De nguyen la giu mot cua vao khong MFA song song mai mai.
+ */
+export function chan_cua_cu_web(
+  yc: { headers: Record<string, unknown>; log?: { warn: (o: unknown, s: string) => void } },
+): void {
+  if (!bo_dang_nhap_rieng()) return;
+  if (la_tu_trinh_duyet(yc)) {
+    throw new LoiDaBoCuaCu(
+      'Chấm công đã dùng chung cổng đăng nhập nội bộ. Hãy đăng nhập tại '
+      + `${cau_hinh.cong_sso.goc_dang_nhap} rồi mở lại ${cau_hinh.cong_sso.tien_to}/.`,
+    );
+  }
+  // Con dung duong cu = app cu con ngoai kia. Ghi lai de con so nay giam ve 0 truoc khi xoa
+  // han duong nay, chu khong phai doan.
+  yc.log?.warn({}, 'dang nhap bang mat khau qua duong app tam (giai doan chuyen tiep)');
+}
+
 /** Nhu tren nhung cho viec quan tri tai khoan — chi ro cho cap quyen o dau. */
 export function chan_quan_tri_cua_cu(): void {
   if (!bo_dang_nhap_rieng()) return;
