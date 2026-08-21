@@ -2,6 +2,98 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.47.0] — 2026-08-21
+
+**Bước 2: token của cổng đi được vào hệ thống.** Hook `can_dang_nhap` giờ nhận **cả hai** loại
+token — token nội bộ (HS256) và token của cổng (RS256) — và cả hai đều ra cùng một kiểu
+`NoiDungToken`, nên không route nghiệp vụ nào phải biết người dùng đến từ đâu. Đường đăng nhập
+riêng **vẫn còn**; bỏ nó là bước 3, và có một bài kiểm giữ điều đó để app điện thoại không mất
+kết nối trước khi có ai quyết định.
+
+Thứ tự thử là cố ý: token nội bộ trước, vì phép kiểm của nó không chạm CSDL và không chạm mạng.
+Token của cổng là RS256 nên `giai_ma_token` từ chối ngay ở bước đọc `alg`, không tốn gì. Ngược
+lại thì mỗi request của app điện thoại phải đi qua lớp xác minh của cổng trước.
+
+### Khóa móc là `sub`, không phải email
+
+`migrations/029_cong_sso.sql` thêm `nguoi_dung.cong_sub`. Cổng bảo đảm `sub` ổn định vĩnh viễn;
+email đổi được — đổi tên người, đổi tên miền, đổi phòng. Hệ thống này đã dính đúng cái bẫy đó ở
+đường đăng nhập Microsoft: trước 1.32.0 chỉ khớp bằng email, nên đổi email bên Entra là mất
+khớp, và lần đăng nhập kế tiếp **tạo một tài khoản thứ hai** cho cùng một người. Email vẫn dùng
+để đối chiếu lần đầu, rồi ghi `cong_sub` lại để từ đó không phải đoán nữa.
+
+### Vai trò lấy từ token — và một bài kiểm ban đầu không chứng minh được điều đó
+
+Cột `nguoi_dung.vai_tro` chỉ để hiển thị trên trang Tài khoản. Đọc nó để phân quyền nghĩa là
+**thu hồi quyền bên cổng không còn tác dụng** — điều tệ nhất có thể làm với một hệ SSO.
+
+Bài kiểm cho việc này lúc đầu **vô giá trị**, và tôi chỉ biết vì đã thử đột biến. `dong_bo_vai_tro`
+ghi cột trong CSDL cho khớp token, nên *sau* khi nó chạy thì đọc từ token và đọc từ bản ghi ra
+**cùng một giá trị**: một bản sửa thành `vai_tro: dong.vai_tro` chạy đúng y hệt và bộ kiểm vẫn
+xanh. Sửa bằng cách **dựng xong kết quả trước khi đồng bộ** — thứ tự đó là thứ duy nhất làm hai
+đường khác nhau thật. Sau khi sửa, cùng đột biến đó làm **ba** bài đỏ. Lý do ghi ngay tại chỗ
+trong mã để người sau không dọn nhầm.
+
+Đây là lần thứ hai trong hai bản liên tiếp một bài kiểm bảo mật hóa ra không giữ được điều nó
+tuyên bố (lần trước là phép kiểm `alg`). Cả hai chỉ lộ ra khi cố tình phá mã nguồn rồi chạy lại.
+
+### Ba trạng thái "đã đăng nhập thật nhưng chưa vào được" — cả ba là 403
+
+| Trạng thái | Cờ trong thân phản hồi |
+|---|---|
+| `quyen` rỗng hoặc thiếu khóa `chamcong` | `chua_cap_quyen` |
+| Vai trò cần hồ sơ mà tài khoản chưa nối hồ sơ | `chua_noi_ho_so` |
+| Tài khoản bị vô hiệu hoá bên chấm công | — |
+
+Không cái nào được là 401. 401 làm giao diện đẩy người dùng về trang đăng nhập: họ đăng nhập
+lại, thành công, rồi lại bị đẩy ra — một vòng lặp không bao giờ thoát, và việc duy nhất họ làm
+được là gọi cho hỗ trợ.
+
+Trạng thái thứ hai đáng nói riêng: nếu cho qua với `nv = null` thì mọi đường `/api/toi/*` trả về
+rỗng — trông y như hệ thống mất dữ liệu, và người dùng không biết phải gọi ai. Nên nó trả 403
+kèm **đúng email** cần khai.
+
+Ánh xạ danh tính cache 60 giây; **quyết định phân quyền thì không** — tính lại từ token ở mỗi
+request. Hệ quả phải biết: vô hiệu hoá tài khoản bên chấm công có hiệu lực trong vòng một phút,
+thu hồi bên cổng tối đa 15 phút.
+
+### 13 bài e2e đi qua đường thật
+
+Token ký bằng khóa RSA thật, JWKS lấy từ một cổng giả trong tiến trình, bản ghi `nguoi_dung` tạo
+ra thật trong CSDL. Bốn đột biến đã thử, cả bốn làm bộ kiểm đỏ: trả 401 thay vì 403 cho quyền
+rỗng · đọc vai trò từ CSDL · bỏ phép kiểm "chưa nối hồ sơ" · tin header `X-Cong-Nguoi-Dung`.
+
+Và một bài giữ R9: `/iclock/cdata` phải trả 200 **không qua lớp xác thực nào**. Ngày nào ai thêm
+`preHandler: can_dang_nhap` vào tuyến iclock thì bài đó đỏ — trước khi bảng lương mất dữ liệu cả
+tháng.
+
+### Hai chỗ vênh bên cổng đã được sửa, ghi lại vì cả hai đều im lặng
+
+**Sổ đăng ký khai `admin`, mã của ta đọc `quan_tri`.** `ma` là thứ đi vào token, nên cấp
+`chamcong.admin` là cấp một vai trò mà mã của ta không bao giờ nhận ra — không báo lỗi ở đâu,
+người được cấp chỉ đơn giản là không có quyền. Quản trị cổng đã sửa thành đúng năm mã.
+
+**`bat = false` làm `token.quyen['chamcong']` luôn rỗng**, vì `doc_quyen` bên cổng có
+`join module m on ... and m.bat`. Hợp đồng bản đầu lại bắt làm xong checklist *trước* khi bật
+`bat` — làm theo thứ tự đó là cấp quyền, đăng nhập, thấy quyền rỗng, rồi đi tìm lỗi trong mã của
+chính mình. Đã sửa: `bat = true` bật ngay ở bước 2. Bật `bat` không mở đường vào phân hệ, nên
+cũng **đừng dựa vào `bat = false` để chặn truy cập**.
+
+### App điện thoại: lối thứ ba, và một điểm phải chốt cùng nó
+
+Quản trị cổng đề xuất lối thứ ba, tốt hơn cả hai lối tôi nêu ở 1.46.0: **trình duyệt hệ thống +
+custom scheme** (`AuthSession` của Expo) — chuẩn cho app native, app không bao giờ thấy mật khẩu.
+Lý do bác WebView nhúng là thực tế: Microsoft khuyến nghị không dùng, và một số cấu hình
+Conditional Access từ chối hẳn.
+
+Điểm phải chốt cùng lối 3, đã ghi vào tài liệu: **custom scheme bị chiếm được** — trên Android
+một app khác đăng ký cùng `thvcc://` là nhận được cú redirect. Nên đường quay về **không được
+mang token**, phải mang một mã uỷ quyền dùng một lần (code + PKCE). Nếu cổng đặt access token và
+refresh token vào fragment của `thvcc://...` giống cách đường Microsoft hiện tại làm với webapp,
+thì một app độc hại chiếm scheme lấy được **refresh token 30 ngày**. Mạnh hơn nữa nếu cổng làm
+được: App Links / Universal Links trên chính `teams.tranhoangvietnam.com` — không app nào chiếm
+được.
+
 ## [1.46.0] — 2026-08-21
 
 **Bước 1 của việc nối vào cổng SSO nội bộ: lớp xác minh token.** Chưa route nào đổi, chưa đường

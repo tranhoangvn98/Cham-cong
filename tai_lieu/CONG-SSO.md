@@ -15,7 +15,7 @@ quản trị cổng phát hành — đọc tài liệu đó để biết *vỡ t
 | Bước | Việc | Sửa gì | Rủi ro nếu làm sai |
 |---|---|---|---|
 | 1 | Xác minh token của cổng | chỉ mã của chấm công | chỉ chấm công không vào được |
-| 2 | Khai phân hệ vào sổ đăng ký của cổng | phía cổng | chưa ai có quyền |
+| 2 | Khai phân hệ vào sổ đăng ký của cổng, **bật `bat = true`** | phía cổng | chưa ai có quyền |
 | 3 | **Bỏ đường đăng nhập riêng** | mã + webapp của chấm công | — |
 | 4 | Bật cổng gác cho `/chamcong` | **Caddyfile dùng chung** | làm sập phân hệ của người khác |
 | 5 | Chạy 12 lệnh tự kiểm, ký nhận | — | — |
@@ -131,33 +131,121 @@ Xong bước này khi: đăng nhập bằng tài khoản thử thì `token.quyen
 mong đợi, và một tài khoản **chưa** được cấp quyền thì thấy màn hình "chưa được cấp quyền" chứ
 không phải vòng lặp đăng nhập.
 
+> ### `bat = true` phải bật NGAY ở bước 2, không để tới lúc ký nhận
+>
+> Bản đầu của hợp đồng bảo mật viết: *"module chưa qua đủ checklist thì chưa được bật
+> `bat = true`"*. Nhưng bên cổng, `doc_quyen` có `join module m on m.ma = q.module_ma and m.bat`
+> — nên `bat = false` làm `token.quyen['chamcong']` **luôn rỗng**. Làm theo thứ tự đó thì ta cấp
+> quyền, đăng nhập, thấy quyền rỗng, và đi tìm lỗi trong mã của chính mình. Quản trị cổng đã
+> phát hiện và sửa lại tài liệu.
+>
+> Bật `bat` **không** mở đường vào phân hệ: nó chỉ thêm một thẻ trên trang chủ cho người đã
+> được cấp quyền, và cho vai trò chảy vào token. Cái có hậu quả là **bước 4** (cổng gác) và
+> việc cấp quyền cho **người dùng thật** — hai thứ đó mới là chốt của checklist.
+>
+> Cũng vì vậy: **đừng dựa vào `bat = false` để chặn truy cập.** Nó chỉ ẩn mục menu và bỏ vai trò
+> khỏi token **mới**; token đã phát còn mang vai trò tới 15 phút, và bản thân phân hệ vẫn chạy
+> và vẫn phục vụ. Muốn chặn thật thì tắt khối `handle` ở Caddy hoặc tắt dịch vụ; muốn chặn một
+> **người** thì vô hiệu hoá tài khoản.
+
+### Một chỗ vênh đã xảy ra thật, ở đúng bước này
+
+Sổ đăng ký lúc đầu khai mã vai trò là **`admin`**, còn mã của chúng ta đọc là **`quan_tri`**.
+Đó là vênh **âm thầm** theo đúng nghĩa xấu nhất: `ma` là thứ đi vào token và vào
+`quyen_nguoi_dung`, nên cấp `chamcong.admin` là cấp một vai trò mà mã của ta **không bao giờ
+nhận ra** — không báo lỗi ở đâu, người được cấp chỉ đơn giản là không có quyền. Quản trị cổng
+đã sửa thành đúng năm mã ở bảng trên.
+
+Đây chính là lý do bảng `DOI_VAI_TRO` được gọi là *một nửa của một hợp đồng*. Sau khi bên cổng
+deploy, kiểm lại năm mã đã vào đúng — một dòng trên VPS:
+
+```bash
+docker compose exec -T csdl_cong psql -U cong -d cong -tAc \
+  "select jsonb_pretty(vai_tro) from module where ma='chamcong';"
+```
+
 ---
 
-## 4. Bước 3 và 4 — chưa làm
+## 4. Bước 2 phía mã — ĐÃ XONG
 
-Còn hai việc, theo thứ tự:
+Ba tệp:
 
-- **Bước 3:** nối `cong_sso.ts` vào hook xác thực, rồi bỏ đường đăng nhập riêng — không còn chỗ
-  nào nhận mật khẩu, webapp không hiện form mà chuyển hướng sang
-  `https://teams.tranhoangvietnam.com/?quay_lai=/chamcong/<đường muốn tới>`. Phép kiểm
-  `quay_lai` (đúng một `/` đầu, không `//`, không `\`, không ký tự điều khiển) đã có sẵn ở
-  `la_duong_dan_noi_bo()`.
-- **Bước 4:** chạy `chan_duong.sh /chamcong` trên VPS. Chỉ sau khi bước 3 xong.
+- `migrations/029_cong_sso.sql` — thêm `nguoi_dung.cong_sub` (id tài khoản bên cổng) và một
+  chỉ mục duy nhất trên nó.
+- `may_chu/src/bao_mat/cong_phien.ts` — móc một token của cổng sang một bản ghi `nguoi_dung`.
+- `may_chu/src/bao_mat/xac_thuc.ts` — hook `can_dang_nhap` nhận **cả hai** loại token.
 
-Một điểm cần quyết trước khi làm bước 3: **app điện thoại**. App hiện đăng nhập bằng
-`POST /api/xac-thuc/dang-nhap` và giữ token làm mới 30 ngày của chính hệ thống chấm công. Cổng
-không phát token cho app di động theo đường đó, nên có hai lối:
+**Khoá móc là `sub`, không phải email.** Cổng bảo đảm `sub` ổn định vĩnh viễn; email đổi được —
+đổi tên người, đổi tên miền, đổi phòng. Hệ thống này đã dính đúng cái bẫy đó ở đường đăng nhập
+Microsoft: trước 1.32.0 chỉ khớp bằng email, nên đổi email bên Entra là mất khớp, và lần đăng
+nhập kế tiếp **tạo một tài khoản thứ hai** cho cùng một người. Email vẫn dùng để đối chiếu
+**lần đầu**, rồi ghi `cong_sub` lại để từ đó không phải đoán nữa.
+
+**Vai trò lấy từ token, không lấy từ cột `nguoi_dung.vai_tro`.** Cột đó chỉ để hiển thị trên
+trang Tài khoản, và được cập nhật theo token để nó không nói dối — nhưng không một quyết định
+phân quyền nào đọc nó. Đọc cột trong CSDL nghĩa là **thu hồi quyền bên cổng không còn tác
+dụng**, và đó là điều tệ nhất có thể làm với một hệ SSO.
+
+Ba trạng thái "đã đăng nhập thật nhưng chưa vào được", cả ba đều ra **403** kèm cờ riêng trong
+thân phản hồi, **không** ra 401:
+
+| Trạng thái | Cờ | Nghĩa |
+|---|---|---|
+| `quyen` rỗng hoặc thiếu khóa `chamcong` | `chua_cap_quyen` | cổng chưa cấp vai trò |
+| Vai trò cần hồ sơ mà tài khoản chưa nối hồ sơ | `chua_noi_ho_so` | nhân sự chưa khai hồ sơ |
+| Tài khoản bị vô hiệu hoá **bên ta** | — | khoá tại chấm công |
+
+401 ở ba chỗ này làm giao diện đẩy người dùng về trang đăng nhập: họ đăng nhập lại, thành công,
+rồi lại bị đẩy ra — một vòng lặp không bao giờ thoát, và việc duy nhất họ làm được là gọi cho
+hỗ trợ.
+
+Trạng thái thứ hai đáng nói riêng. Nếu cho qua với `nv = null` thì mọi đường `/api/toi/*` trả về
+rỗng — trông y như hệ thống mất dữ liệu, và người dùng không có cách nào biết phải gọi ai.
+
+**Ánh xạ danh tính được cache 60 giây**, còn **quyết định phân quyền thì không** — nó tính lại
+từ token ở mỗi request. Hệ quả phải biết: vô hiệu hoá một tài khoản **bên chấm công** có hiệu
+lực trong vòng một phút, còn thu hồi **bên cổng** thì tối đa 15 phút (tuổi của access token).
+
+---
+
+## 5. Bước 3 và 4 — chưa làm
+
+- **Bước 3:** bỏ đường đăng nhập riêng — không còn chỗ nào nhận mật khẩu, webapp không hiện
+  form mà chuyển hướng sang `https://teams.tranhoangvietnam.com/?quay_lai=/chamcong/<đường muốn
+  tới>`. Phép kiểm `quay_lai` (đúng một `/` đầu, không `//`, không `\`, không ký tự điều khiển)
+  đã có sẵn ở `la_duong_dan_noi_bo()`.
+- **Bước 4:** chạy `chan_duong.sh /chamcong` trên VPS. **DỪNG và báo quản trị cổng trước** — đây
+  là bước sửa Caddyfile dùng chung, cái duy nhất có thể làm sập bot Teams đang chạy trên cùng
+  tên miền.
+
+### App điện thoại — ba lối, và lối thứ ba là lối đúng
+
+App hiện đăng nhập bằng `POST /api/xac-thuc/dang-nhap` và giữ token làm mới 30 ngày của chính
+hệ thống chấm công. Cổng không phát token cho app di động theo đường đó.
 
 | Lối | Được | Mất |
 |---|---|---|
-| App mở màn đăng nhập của cổng trong WebView | một chỗ giữ mật khẩu duy nhất, thu hồi ở cổng có hiệu lực với cả app | phải sửa app, và phải phát hành lại bản build |
-| Giữ đường mật khẩu **riêng cho app**, web đi qua cổng | không phải sửa app | vẫn còn một đường mật khẩu — vi phạm chính điều bước 3 muốn đạt, và R4 của sổ rủi ro |
+| WebView nhúng mở màn đăng nhập cổng | app không giữ mật khẩu | phải phát hành lại app. Và Microsoft **khuyến nghị không dùng** WebView nhúng: một số cấu hình Conditional Access (đòi thiết bị đã đăng ký, hoặc đòi broker) **từ chối** WebView nhúng — nên nút Microsoft 365 trong WebView có thể đơn giản là không chạy |
+| Giữ đường mật khẩu riêng cho app | không phải sửa app | vi phạm đúng cái bước 3 muốn bỏ, và duy trì một cửa vào **không MFA** song song |
+| **Trình duyệt hệ thống + custom scheme** (`AuthSession` của Expo) | chuẩn cho app native (RFC 8252), Entra hỗ trợ đầy đủ, app không bao giờ thấy mật khẩu, dùng lại được phiên trình duyệt sẵn có | vẫn phải phát hành lại app, và cần cổng thêm danh sách trắng redirect URI dạng `thvcc://` |
 
-Lối thứ nhất là lối đúng. Lối thứ hai chỉ nên dùng như một giai đoạn chuyển tiếp có thời hạn.
+Lối 3 tốn thêm việc ở phía cổng nhưng là lối duy nhất không phải làm lại lần nữa. Phần việc bên
+cổng (danh sách trắng redirect + test) do quản trị cổng làm, không phải đội chấm công.
+
+> **Một điểm bảo mật phải chốt cùng lối 3.** Custom scheme **bị chiếm được**: trên Android một
+> app khác có thể đăng ký cùng `thvcc://` và nhận cú redirect. Nên đường quay về **không được
+> mang token** — nó phải mang một **mã uỷ quyền dùng một lần** (authorization code + PKCE), thứ
+> vô dụng với ai không giữ `code_verifier`. Nếu cổng đặt access token và refresh token vào
+> fragment của `thvcc://...` giống cách đường Microsoft hiện tại làm với webapp, thì một app
+> độc hại chiếm scheme sẽ lấy được **refresh token 30 ngày**.
+>
+> Mạnh hơn nữa, nếu cổng làm được: dùng **App Links / Universal Links** —
+> `https://teams.tranhoangvietnam.com/chamcong/app-goi-ve`, xác thực bằng quyền sở hữu tên miền
+> — thì không app nào chiếm được đường quay về. Cổng đã sở hữu tên miền đó.
 
 ---
 
-## 5. Tự kiểm
+## 6. Tự kiểm
 
 Sau khi bật, chạy 12 lệnh ở mục 6 của `BAOMATCONGSSO.md`. Bốn lệnh quan trọng nhất, và cũng là
 bốn lệnh hay bỏ sót nhất:

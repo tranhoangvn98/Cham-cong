@@ -38,6 +38,51 @@ if (!ten_db.startsWith('chamcong_test')) {
   );
 }
 
+// ==================================================================== cong SSO gia
+//
+// Cong SSO noi bo phat token RS256 va cong bo khoa cong khai qua JWKS. De kiem duong do that
+// thi phai co mot cong gia — nhung `cau_hinh.ts` doc `process.env` DUNG MOT LAN luc nap, con
+// cong cua may chu gia chi biet duoc sau khi da `listen`. Nen khoi nay nam TRUOC moi `import`
+// cua src, y het ly do o `test/cong_sso.test.ts`.
+const { generateKeyPairSync, createSign } = await import('node:crypto');
+const { once: cho_su_kien } = (await import('node:events')).default;
+
+const KHOA_CONG = (() => {
+  const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const jwk = publicKey.export({ format: 'jwk' }) as Record<string, unknown>;
+  return { kid: 'cong-kiem-thu-1', rieng: privateKey, jwk: { ...jwk, kid: 'cong-kiem-thu-1', alg: 'RS256', use: 'sig' } };
+})();
+
+const may_jwks = createServer((_yc, ph) => {
+  ph.writeHead(200, { 'content-type': 'application/json' })
+    .end(JSON.stringify({ keys: [KHOA_CONG.jwk] }));
+});
+may_jwks.listen(0, '127.0.0.1');
+await cho_su_kien(may_jwks, 'listening');
+const CONG_JWKS_CONG = (may_jwks.address() as { port: number }).port;
+
+const CONG_ISS = 'https://cong-kiem-thu.test/cong';
+process.env['CONG_SSO_GOC'] = CONG_ISS;
+process.env['CONG_SSO_JWKS'] = `http://127.0.0.1:${String(CONG_JWKS_CONG)}/jwks.json`;
+
+/** Ky mot token cua cong. `them` ghi de bat ky truong nao — dung cho cac bai tu choi. */
+function token_cong(them: Record<string, unknown> = {}): string {
+  const gio = Math.floor(Date.now() / 1000);
+  const than = {
+    iss: CONG_ISS, aud: 'cong-noi-bo',
+    sub: 'cong-tk-0001', oid: null, nhan_su: null,
+    email: null, ten: 'Người Của Cổng',
+    quyen: { chamcong: ['quan_tri'] },
+    loai: 'tc', jti: `jti-${String(gio)}`, iat: gio, exp: gio + 900,
+    ...them,
+  };
+  const b64 = (v: unknown): string => Buffer.from(JSON.stringify(v)).toString('base64url');
+  const p_dau = b64({ alg: 'RS256', typ: 'JWT', kid: KHOA_CONG.kid });
+  const p_than = b64(than);
+  const ky = createSign('RSA-SHA256').update(`${p_dau}.${p_than}`).sign(KHOA_CONG.rieng);
+  return `${p_dau}.${p_than}.${ky.toString('base64url')}`;
+}
+
 const { dung_ung_dung } = await import('../src/ung_dung.ts');
 const { chay_di_tru } = await import('../src/csdl/di_tru.ts');
 const { thuc_thi, truy_van, truy_van_mot, dong_pool } = await import('../src/csdl/ket_noi.ts');
@@ -177,6 +222,7 @@ after(async () => {
   await app?.close();
   await new Promise<void>((ok) => { may_expo === null ? ok() : may_expo.close(() => { ok(); }); });
   await new Promise<void>((ok) => { may_erp === null ? ok() : may_erp.close(() => { ok(); }); });
+  await new Promise<void>((ok) => { may_jwks.close(() => { ok(); }); });
   await dong_pool();
 });
 
@@ -7353,4 +7399,175 @@ test('KHONG co duong nao gui lenh tu do xuong may cham cong', async () => {
       `xep_lenh dang nhan chuoi tu than yeu cau — duong dat lenh tu do:\n${goi_lenh}`,
     );
   }
+});
+
+// ==================================================================== cong SSO noi bo
+//
+// Duong thu hai vao he thong: token RS256 do cong `teams.tranhoangvietnam.com/cong` phat.
+// Nhom bai nay di qua ca duong that — token ky bang khoa that, JWKS lay tu may chu gia, ban
+// ghi `nguoi_dung` tao ra that trong CSDL.
+//
+// BA BAI QUAN TRONG NHAT, va ly do:
+//
+//   1. Gia header `X-Cong-*` phai KHONG co tac dung. Day la phep thu quan trong nhat cua ca
+//      viec noi vao cong: Caddy chi GHI DE hai header do, nen request den tu bat cu dau khac
+//      ngoai Caddy thi ke goi tu khai minh la ai.
+//   2. Quyen rong phai ra 403 kem `chua_cap_quyen`, KHONG ra 401. 401 lam giao dien day nguoi
+//      dung vao vong lap dang nhap: dang nhap lai, thanh cong, roi lai bi day ra.
+//   3. Vai tro lay tu TOKEN, khong tu cot `vai_tro` trong CSDL. Doc cot nghia la thu hoi quyen
+//      ben cong khong con tac dung.
+
+test('cong: token quan_tri goi duoc API quan tri, va tao ban ghi nguoi_dung', async () => {
+  const r = await goi('GET', '/api/nguoi-dung', { token: token_cong() });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+
+  const dong = await truy_van_mot<{ vai_tro: string; ten_dang_nhap: string; cong_sub: string }>(
+    'select vai_tro, ten_dang_nhap, cong_sub from nguoi_dung where cong_sub = $1',
+    ['cong-tk-0001']);
+  assert.notEqual(dong, null, 'dang nhap qua cong ma khong tao ban ghi nao');
+  assert.equal(dong?.vai_tro, 'admin', 'cot vai_tro phai theo token de trang Tai khoan khong noi doi');
+});
+
+test('cong: GIA HEADER X-Cong-* khong co tac dung — 401', async () => {
+  // Uy quyen duy nhat la token da xac minh chu ky.
+  const r = await app.inject({
+    method: 'GET', url: '/api/nguoi-dung',
+    headers: {
+      'x-cong-email': 'giam.doc@tranhoangvietnam.com',
+      'x-cong-nguoi-dung': 'cong-tk-0001',
+    },
+  });
+  assert.equal(r.statusCode, 401, r.body.slice(0, 200));
+});
+
+test('cong: gia header KEM token quyen rong cung khong nang duoc quyen', async () => {
+  const r = await app.inject({
+    method: 'GET', url: '/api/nguoi-dung',
+    headers: {
+      authorization: `Bearer ${token_cong({ sub: 'cong-tk-rong', quyen: {} })}`,
+      'x-cong-email': 'giam.doc@tranhoangvietnam.com',
+      'x-cong-nguoi-dung': 'cong-tk-0001',
+    },
+  });
+  assert.equal(r.statusCode, 403, r.body.slice(0, 200));
+});
+
+test('cong: quyen rong ra 403 kem chua_cap_quyen, KHONG ra 401', async () => {
+  for (const quyen of [{}, { chamcong: [] }, { chatbot: ['quan_tri'] }]) {
+    const r = await goi('GET', '/api/nhan-vien', {
+      token: token_cong({ sub: 'cong-tk-chua-quyen', quyen }),
+    });
+    assert.equal(r.ma, 403, `quyen=${JSON.stringify(quyen)} -> ${JSON.stringify(r.body)}`);
+    assert.equal(r.body['chua_cap_quyen'], true, JSON.stringify(r.body));
+  }
+  // Va KHONG tao ban ghi nao: chua duoc cap quyen thi chua phai la nguoi dung cua phan he.
+  const dong = await truy_van_mot('select id from nguoi_dung where cong_sub = $1',
+    ['cong-tk-chua-quyen']);
+  assert.equal(dong, null, 'tao tai khoan cho nguoi chua duoc cap quyen');
+});
+
+test('cong: token lam moi (loai lm) khong goi API duoc', async () => {
+  const r = await goi('GET', '/api/nhan-vien', { token: token_cong({ loai: 'lm' }) });
+  assert.equal(r.ma, 401, JSON.stringify(r.body));
+});
+
+test('cong: token cua cong khac, aud khac, het han — deu 401', async () => {
+  const gio = Math.floor(Date.now() / 1000);
+  for (const them of [
+    { iss: 'https://cong-la.test/cong' },
+    { aud: 'he-thong-khac' },
+    { exp: gio - 3600 },
+  ]) {
+    const r = await goi('GET', '/api/nhan-vien', { token: token_cong(them) });
+    assert.equal(r.ma, 401, `${JSON.stringify(them)} -> ${JSON.stringify(r.body)}`);
+  }
+});
+
+test('cong: email khop ho so nhan vien thi noi vao dung nguoi', async () => {
+  // NV001 duoc gieo o `before` khong co email, nen gan mot email vao roi dang nhap bang no.
+  await thuc_thi('update nhan_vien set email = $2 where ma_nv = $1',
+    ['NV001', 'nv001.cong@tranhoangvietnam.com']);
+
+  const r = await goi('GET', '/api/toi/hom-nay', {
+    token: token_cong({
+      sub: 'cong-tk-nv001', email: 'nv001.cong@tranhoangvietnam.com',
+      quyen: { chamcong: ['nhan_vien'] },
+    }),
+  });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+
+  const dong = await truy_van_mot<{ nhan_vien_id: string; vai_tro: string }>(
+    'select nhan_vien_id, vai_tro from nguoi_dung where cong_sub = $1', ['cong-tk-nv001']);
+  assert.equal(dong?.nhan_vien_id, nhan_vien_id, 'khong noi dung ho so nhan vien');
+  assert.equal(dong?.vai_tro, 'nhan_vien');
+});
+
+test('cong: vai tro nhan_vien ma chua co ho so thi 403 chua_noi_ho_so, khong phai 200 rong', async () => {
+  // Neu cho qua voi `nv = null` thi moi duong /api/toi/* tra ve rong — trong nhu he thong mat
+  // du lieu, va nguoi dung khong co cach nao biet phai goi ai.
+  const r = await goi('GET', '/api/toi/hom-nay', {
+    token: token_cong({
+      sub: 'cong-tk-khong-hoso', email: 'khong.co.hoso@tranhoangvietnam.com',
+      quyen: { chamcong: ['nhan_vien'] },
+    }),
+  });
+  assert.equal(r.ma, 403, JSON.stringify(r.body));
+  assert.equal(r.body['chua_noi_ho_so'], true, JSON.stringify(r.body));
+  assert.match(String(r.body['loi']), /khong\.co\.hoso@tranhoangvietnam\.com/,
+    'phai chi ro email can khai, neu khong nhan su khong biet tim ai');
+});
+
+test('cong: VAI TRO LAY TU TOKEN, khong tu cot vai_tro trong CSDL', async () => {
+  const { xoa_dem_phien_cong } = await import('../src/bao_mat/cong_phien.ts');
+
+  // Ban ghi nay dang la `admin` trong CSDL (bai dau nhom nay dat the).
+  const truoc = await truy_van_mot<{ vai_tro: string }>(
+    'select vai_tro from nguoi_dung where cong_sub = $1', ['cong-tk-0001']);
+  assert.equal(truoc?.vai_tro, 'admin');
+
+  // Cong ha quyen xuong `nhan_su`. Neu ma doc cot trong CSDL thi nguoi nay VAN la admin —
+  // tuc la thu hoi quyen ben cong khong con tac dung.
+  xoa_dem_phien_cong();
+  const r = await goi('POST', '/api/nguoi-dung', {
+    token: token_cong({ quyen: { chamcong: ['nhan_su'] } }),
+    body: { ten_dang_nhap: 'thu_nghiem_cong', mat_khau: 'MatKhauDaiDeQua123', vai_tro: 'nhan_su' },
+  });
+  assert.equal(r.ma, 403, `nhan_su khong duoc tao tai khoan: ${JSON.stringify(r.body)}`);
+
+  // Va cot trong CSDL di theo token, de trang Tai khoan khong hien mot vai tro khong con dung.
+  const sau = await truy_van_mot<{ vai_tro: string }>(
+    'select vai_tro from nguoi_dung where cong_sub = $1', ['cong-tk-0001']);
+  assert.equal(sau?.vai_tro, 'nhan_su');
+});
+
+test('cong: tai khoan bi vo hieu hoa ben ta thi khong vao duoc du token con han', async () => {
+  const { xoa_dem_phien_cong } = await import('../src/bao_mat/cong_phien.ts');
+  await thuc_thi('update nguoi_dung set dang_hoat_dong = false where cong_sub = $1',
+    ['cong-tk-0001']);
+  xoa_dem_phien_cong();
+
+  const r = await goi('GET', '/api/nhan-vien', { token: token_cong() });
+  assert.equal(r.ma, 403, JSON.stringify(r.body));
+
+  await thuc_thi('update nguoi_dung set dang_hoat_dong = true where cong_sub = $1',
+    ['cong-tk-0001']);
+  xoa_dem_phien_cong();
+});
+
+test('cong: token noi bo van dung duoc — duong dang nhap rieng chua bi bo', async () => {
+  // Buoc 3 moi bo duong nay. Neu bai nay do o buoc 2 thi app dien thoai da mat ket noi truoc
+  // khi co ai quyet dinh dieu do.
+  const r = await goi('GET', '/api/nhan-vien', { token: token_admin });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+});
+
+test('cong: /iclock KHONG di qua lop xac thuc nao', async () => {
+  // R9 cua so rui ro: may cham cong khong co token va khong dang nhap duoc. Mot ngay nao do
+  // ai them `preHandler: can_dang_nhap` vao tuyen iclock thi bai nay do — truoc khi bang luong
+  // mat du lieu ca thang.
+  const r = await app.inject({
+    method: 'GET', url: `/iclock/cdata?SN=${SERIAL}&options=all`,
+  });
+  assert.equal(r.statusCode, 200, r.body.slice(0, 200));
+  assert.match(r.body, /GET OPTION FROM:/);
 });
