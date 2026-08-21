@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.49.1] — 2026-08-22
+
+**`?quay_lai=/chamcong/` thay vì `?quay_lai=%2Fchamcong%2F`.** `encodeURIComponent` mã hoá cả
+dấu `/`, nên trên thanh địa chỉ người dùng đọc thấy một chuỗi rác. Dấu `/` là ký tự hợp lệ
+trong giá trị của chuỗi truy vấn nên giữ nguyên nó vừa đúng vừa đọc được.
+
+Vẫn mã hoá mọi ký tự khác, và đó không phải làm đẹp: một đường dẫn chứa `&` hay `#` mà không mã
+hoá sẽ làm cổng đọc nhầm tham số — hoặc cắt mất phần sau của đường dẫn.
+
 ## [1.49.0] — 2026-08-22
 
 **Trình duyệt buộc đi qua cổng; app điện thoại tạm giữ đường cũ.** Yêu cầu là *vào `/chamcong`

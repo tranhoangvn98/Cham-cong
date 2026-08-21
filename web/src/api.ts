@@ -197,13 +197,27 @@ export function la_duong_dan_noi_bo(duong: string): boolean {
   return !/[\u0000-\u001f\u007f]/.test(duong);
 }
 
+/**
+ * Ma hoa duong dan cho `?quay_lai=` — ma hoa moi thu TRU dau `/`.
+ *
+ * `encodeURIComponent` bien `/chamcong/` thanh `%2Fchamcong%2F`: dung ve ky thuat nhung nguoi
+ * dung doc thanh dia chi thay mot chuoi rac. Dau `/` la ky tu hop le trong gia tri cua chuoi
+ * truy van, nen giu nguyen no vua dung vua doc duoc: `?quay_lai=/chamcong/`.
+ *
+ * VAN ma hoa moi ky tu khac, va do khong phai lam dep: mot duong dan chua `&` hay `#` ma khong
+ * ma hoa se lam cong doc nham tham so — hoac cat mat phan sau cua duong dan.
+ */
+function ma_hoa_quay_lai(duong: string): string {
+  return encodeURIComponent(duong).replace(/%2F/g, '/');
+}
+
 /** Chuyen sang man dang nhap cua cong, nho duong dang mo de quay lai dung cho. */
 export function di_cong_dang_nhap(): void {
   const c = cau_hinh_cong;
   if (c === null) return;
   const dang_o = window.location.pathname + window.location.search;
   const q = la_duong_dan_noi_bo(dang_o) ? dang_o : `${c.tien_to}/`;
-  window.location.href = `${c.goc_dang_nhap}?quay_lai=${encodeURIComponent(q)}`;
+  window.location.href = `${c.goc_dang_nhap}?quay_lai=${ma_hoa_quay_lai(q)}`;
 }
 
 /** Cau hinh cong khai cua may chu. Goi MOT lan luc khoi dong. */
