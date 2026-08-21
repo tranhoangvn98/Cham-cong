@@ -433,10 +433,62 @@ export function url_dang_nhap_cong(quay_lai: string | null): string {
   return `${goc}?quay_lai=${encodeURIComponent(quay_lai)}`;
 }
 
-/** Dung phep kiem cua cong: mot `/` dau, khong `//`, khong `\`, khong ky tu dieu khien. */
+/**
+ * Ky tu bi tu choi trong mot duong dan: MOI ky tu dieu khien, ke ca tab, LF, CR.
+ *
+ * Tab/LF/CR la ba ky tu ma bo phan tich URL theo WHATWG XOA khi doc mot URL. Nen
+ * `/<tab>/evil.com` KHONG phai duong dan noi bo — sau khi phan tich no la `//evil.com`, mot URL
+ * tuong doi giao thuc tro RA NGOAI. Mot phep kiem `startsWith('//')` chay tren chuoi CHUA xoa
+ * khong bat duoc gi, vi luc do ky tu dieu khien con nam giua hai dau gach.
+ *
+ * Da xac minh tren Chromium that, khong suy tu dac ta:
+ *   ?quay_lai=/%09/evil.com  ->  https://evil.com/
+ *   ?quay_lai=/%0a/evil.com  ->  https://evil.com/
+ *   ?quay_lai=/%0d/evil.com  ->  https://evil.com/
+ *
+ * Vi sao dang so: ke tan cong gui link dang nhap THAT cua cong ty. Nan nhan doc thanh dia chi,
+ * thay dung ten mien, dung chung chi, go mat khau, roi bi day sang trang gia — moi thu ho duoc
+ * day phai kiem deu dung.
+ */
+const KY_TU_TU_CHOI = /[\u0000-\u001f\u007f]/;
+
+/**
+ * Duong dan noi bo hop le de dat vao `?quay_lai=` hay de chuyen huong toi.
+ *
+ * PHEP KIEM CHAY TREN CHUOI MA BO PHAN TICH URL SE THAY, khong phai chuoi nhan duoc. Thu tu do
+ * la thu tu duy nhat dung, va dao no lai la mo mot duong chuyen huong mo:
+ *
+ *   nhan duoc      `/<tab>/evil.com`
+ *   kiem `//` trom  -> khong khop, vi luc nay tab con nam giua hai dau gach
+ *   trinh duyet xoa -> `//evil.com`  = ra ngoai ten mien
+ *
+ * Da xac minh tren Chromium that, khong suy tu dac ta: `/%09/evil.com`, `/%0a/evil.com`,
+ * `/%0d/evil.com` deu dan ra `https://evil.com/`.
+ *
+ * Vi sao dieu nay dang so: ke tan cong gui link dang nhap THAT cua cong ty. Nan nhan doc thanh
+ * dia chi, thay dung ten mien, dung chung chi, roi bi day sang trang gia sau khi dang nhap —
+ * moi thu ho duoc day phai kiem deu dung.
+ */
 export function la_duong_dan_noi_bo(duong: string): boolean {
-  if (typeof duong !== 'string' || duong.length === 0 || duong.length > 512) return false;
-  if (!duong.startsWith('/') || duong.startsWith('//')) return false;
-  if (duong.includes('\\')) return false;
-  return !/[\u0000-\u001f\u007f]/.test(duong);
+  return lam_sach_duong_dan_noi_bo(duong) !== null;
+}
+
+/**
+ * Tra ve duong dan DA LAM SACH neu noi bo, `null` neu khong.
+ *
+ * Tang goi nen dung ban tra ve nay chu khong dung chuoi goc: nhu the thu duoc kiem va thu duoc
+ * dung la MOT chuoi. Dung chuoi goc van an toan (bo phan tich xoa dung nhung ky tu ta da xoa)
+ * nhung no de mot khoang cach de nguoi sau vo tinh lam rong ra.
+ */
+export function lam_sach_duong_dan_noi_bo(duong: string): string | null {
+  if (typeof duong !== 'string' || duong.length === 0 || duong.length > 512) return null;
+  // TU CHOI, khong phai "xoa roi kiem lai". Xem chu thich tren ve WHATWG: neu ta xoa roi kiem
+  // thi `/chamcong<CR><LF>Set-Cookie: x=1` tro thanh mot duong dan "hop le", va lop chan chen
+  // header bien mat. Tu choi han thi chuoi da kiem LUON bang chuoi goc — khong con cho de tang
+  // goi vo tinh dung chuoi chua kiem.
+  if (KY_TU_TU_CHOI.test(duong)) return null;
+  if (!duong.startsWith('/') || duong.startsWith('//')) return null;
+  // `\\` bi mot so trinh duyet coi nhu `/`, nen `/\\evil.com` cung thanh URL tuong doi giao thuc.
+  if (duong.includes('\\')) return null;
+  return duong;
 }

@@ -1,6 +1,6 @@
 {
   "name": "@cham-cong/web",
-  "version": "1.49.1",
+  "version": "1.50.0",
   "private": true,
   "type": "module",
   "description": "Webapp cho nhan su: dashboard, bang cong, duyet don, quan ly may cham cong",

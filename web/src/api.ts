@@ -190,11 +190,51 @@ export function doc_token_cong(): string | null {
  * Khong kiem la mo duong chuyen huong mo — ke tan cong gui link dang nhap THAT roi day nan
  * nhan sang trang gia sau khi dang nhap xong, va nan nhan vua go mat khau o mot trang that.
  */
+/**
+ * Ky tu bi tu choi trong mot duong dan: MOI ky tu dieu khien, ke ca tab, LF, CR.
+ *
+ * Tab/LF/CR la ba ky tu ma bo phan tich URL theo WHATWG XOA khi doc mot URL. Nen
+ * `/<tab>/evil.com` KHONG phai duong dan noi bo — sau khi phan tich no la `//evil.com`, mot URL
+ * tuong doi giao thuc tro RA NGOAI. Mot phep kiem `startsWith('//')` chay tren chuoi CHUA xoa
+ * khong bat duoc gi, vi luc do ky tu dieu khien con nam giua hai dau gach.
+ *
+ * Da xac minh tren Chromium that, khong suy tu dac ta:
+ *   ?quay_lai=/%09/evil.com  ->  https://evil.com/
+ *   ?quay_lai=/%0a/evil.com  ->  https://evil.com/
+ *   ?quay_lai=/%0d/evil.com  ->  https://evil.com/
+ *
+ * Vi sao dang so: ke tan cong gui link dang nhap THAT cua cong ty. Nan nhan doc thanh dia chi,
+ * thay dung ten mien, dung chung chi, go mat khau, roi bi day sang trang gia — moi thu ho duoc
+ * day phai kiem deu dung.
+ */
+const KY_TU_TU_CHOI = /[\u0000-\u001f\u007f]/;
+
 export function la_duong_dan_noi_bo(duong: string): boolean {
-  if (typeof duong !== 'string' || duong.length === 0 || duong.length > 512) return false;
-  if (!duong.startsWith('/') || duong.startsWith('//')) return false;
-  if (duong.includes('\\')) return false;
-  return !/[\u0000-\u001f\u007f]/.test(duong);
+  return lam_sach_duong_dan_noi_bo(duong) !== null;
+}
+
+/**
+ * BAN SAO CO Y cua `lam_sach_duong_dan_noi_bo` o may_chu/src/bao_mat/cong_sso.ts.
+ *
+ * Hai ban vi webapp va may chu la hai bundle khac nhau, khong nhap chung module duoc. Co hang
+ * rao o `thiet_ke/giao_dien.test.mjs` doi chieu than hai ham nay tung dong — lech nhau thi bai
+ * kiem do, vi mot lop kiem chuyen huong mo co hai ban khac nhau la mot lop kiem chi manh bang
+ * ban yeu hon.
+ *
+ * PHEP KIEM CHAY TREN CHUOI MA BO PHAN TICH URL SE THAY: tab/LF/CR bi xoa TRUOC, roi moi kiem
+ * `//`. Dao thu tu la `/<tab>/evil.com` di qua duoc va thanh `//evil.com` — ra ngoai ten mien.
+ */
+export function lam_sach_duong_dan_noi_bo(duong: string): string | null {
+  if (typeof duong !== 'string' || duong.length === 0 || duong.length > 512) return null;
+  // TU CHOI, khong phai "xoa roi kiem lai". Xem chu thich tren ve WHATWG: neu ta xoa roi kiem
+  // thi `/chamcong<CR><LF>Set-Cookie: x=1` tro thanh mot duong dan "hop le", va lop chan chen
+  // header bien mat. Tu choi han thi chuoi da kiem LUON bang chuoi goc — khong con cho de tang
+  // goi vo tinh dung chuoi chua kiem.
+  if (KY_TU_TU_CHOI.test(duong)) return null;
+  if (!duong.startsWith('/') || duong.startsWith('//')) return null;
+  // `\\` bi mot so trinh duyet coi nhu `/`, nen `/\\evil.com` cung thanh URL tuong doi giao thuc.
+  if (duong.includes('\\')) return null;
+  return duong;
 }
 
 /**

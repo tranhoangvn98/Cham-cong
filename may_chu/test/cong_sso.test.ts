@@ -96,7 +96,8 @@ process.env['CONG_SSO_MA_MODULE'] = 'chamcong';
 
 const {
   xac_minh_token_cong, vai_tro_tu_quyen, xoa_dem_khoa_cong, bat_cong_sso,
-  url_an_toan, la_duong_dan_noi_bo, url_dang_nhap_cong, MA_VAI_TRO_CONG,
+  url_an_toan, la_duong_dan_noi_bo, lam_sach_duong_dan_noi_bo, url_dang_nhap_cong,
+  MA_VAI_TRO_CONG,
 } = await import('../src/bao_mat/cong_sso.ts');
 
 // ================================================================ tien ich soan token
@@ -496,6 +497,103 @@ test('ma nguon KHONG doc header X-Cong-* o bat cu dau', async () => {
   di(goc, '');
   assert.deepEqual(vi_pham, [], `Ma dang doc header X-Cong-*:\n${vi_pham.join('\n')}`);
   assert.equal(cho_phep_nhac.length, 1);
+});
+
+test('la_duong_dan_noi_bo: ky tu dieu khien lam URL thanh //evil.com — PHAI tu choi', async () => {
+  // BA VECTOR NAY DA DUOC XAC MINH TREN CHROMIUM THAT, khong suy tu dac ta:
+  //   ?quay_lai=/%09/evil.com  ->  https://evil.com/
+  //   ?quay_lai=/%0a/evil.com  ->  https://evil.com/
+  //   ?quay_lai=/%0d/evil.com  ->  https://evil.com/
+  //
+  // Co che: bo phan tich URL theo WHATWG XOA tab/LF/CR trong luc doc URL. Nen mot phep kiem
+  // `slice(0,2) === '//'` chay TRUOC khi xoa se khong bat duoc gi — luc do ky tu dieu khien con
+  // nam giua hai dau gach.
+  //
+  // Vi sao dieu nay dang so: ke tan cong gui link dang nhap THAT cua cong ty. Nan nhan doc thanh
+  // dia chi, thay dung ten mien, dung chung chi, go mat khau, roi bi day sang trang gia. Moi thu
+  // ho duoc day phai kiem deu dung.
+  for (const d of ['/\t/evil.com', '/\n/evil.com', '/\r/evil.com']) {
+    assert.equal(la_duong_dan_noi_bo(d), false, `${JSON.stringify(d)} dan ra NGOAI ten mien`);
+  }
+  // Nhieu ky tu, va tron lan.
+  for (const d of ['/\t\t/evil.com', '/\r\n/evil.com', '/\t/\t/evil.com', '/\t\\evil.com']) {
+    assert.equal(la_duong_dan_noi_bo(d), false, JSON.stringify(d));
+  }
+  // TU CHOI HAN, khong "xoa roi kiem lai". Ban xoa-roi-kiem tra ve true cho
+  // `/chamcong<CR><LF>Set-Cookie: x=1` — dung ve cau hoi "dich co noi bo khong" nhung lam mat
+  // lop chan chen header, va de mot khoang cach cho tang goi dung chuoi GOC thay vi chuoi sach.
+  // Bai kiem cu ngay trong tep nay da bat dung dieu do khi thu huong xoa-roi-kiem.
+  assert.equal(lam_sach_duong_dan_noi_bo('/bang-cong\t'), null);
+  assert.equal(lam_sach_duong_dan_noi_bo('/bang\tcong'), null);
+  assert.equal(lam_sach_duong_dan_noi_bo('/\t/evil.com'), null);
+  assert.equal(lam_sach_duong_dan_noi_bo('\t\r\n'), null);
+  // Chuoi hop le thi tra ve CHINH NO — chuoi da kiem luon bang chuoi duoc dung.
+  assert.equal(lam_sach_duong_dan_noi_bo('/bang-cong?thang=2026-08'), '/bang-cong?thang=2026-08');
+});
+
+test('la_duong_dan_noi_bo: hai ban may chu va webapp phai doi chieu GIONG NHAU', async () => {
+  // Webapp va may chu la hai bundle khac nhau nen khong nhap chung module duoc — co hai ban.
+  // Mot lop chan chuyen huong mo co hai ban khac nhau thi chi manh bang BAN YEU HON, va hom nay
+  // da co mot su co that dung theo kieu do o cong: ban may chu du, ban JavaScript thieu phep
+  // chan ky tu dieu khien, va ban chay ngay truoc `window.location.href = ...` la ban yeu.
+  //
+  // Bai nay chay CUNG MOT BO DAU VAO qua ca hai ban va doi chung tra ve giong nhau.
+  const { readFileSync } = await import('node:fs');
+  const ma_web = readFileSync(new URL('../../web/src/api.ts', import.meta.url), 'utf8');
+
+  // Trich than ham ben webapp roi chay no, thay vi chep logic sang day.
+  const m = /export function lam_sach_duong_dan_noi_bo\(duong: string\): string \| null \{([\s\S]*?)\n\}/
+    .exec(ma_web);
+  assert.notEqual(m, null, 'khong tim thay lam_sach_duong_dan_noi_bo trong web/src/api.ts');
+  // Hang o pham vi module nen `new Function` khong thay — trich no ra roi chen vao dau than.
+  const mh = /const KY_TU_TU_CHOI = (\/\[[^\]]*\]\/);/.exec(ma_web);
+  assert.notEqual(mh, null, 'khong tim thay KY_TU_TU_CHOI trong web/src/api.ts');
+  const than_web = `const KY_TU_TU_CHOI = ${mh![1]!};\n${m![1]!}`;
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval
+  const ban_web = new Function('duong', than_web) as (d: string) => string | null;
+
+  const dau_vao = [
+    '/', '/bang-cong', '/chamcong/bang-cong?thang=2026-08', '/a#neo',
+    '//evil.com', '/\\evil.com', '\\\\evil.com', 'khong-co-gach-dau', '',
+    '/\t/evil.com', '/\n/evil.com', '/\r/evil.com', '/\t\t/evil.com',
+    '/bang-cong\t', '\t\r\n', `/${'a'.repeat(600)}`,
+  ];
+  for (const d of dau_vao) {
+    assert.equal(ban_web(d), lam_sach_duong_dan_noi_bo(d),
+      `hai ban khac nhau o dau vao ${JSON.stringify(d)}`);
+  }
+});
+
+test('MOI cho doc `quay_lai` deu phai di qua lam_sach_duong_dan_noi_bo', async () => {
+  // Chan ca LOP loi, khong chi mot ca. Lo hom nay o `/microsoft/bat-dau` la mot phep kiem TU
+  // VIET (`/^\\/[^/\\\\]/`) — trong hop ly, thieu mot thu, va khong ai doc lai. Bai nay do neu
+  // mot route moi lai tu viet phep kiem cho `quay_lai`.
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const goc = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+
+  const vi_pham: string[] = [];
+  const di = (thu_muc: string, tien_to: string): void => {
+    for (const muc of readdirSync(thu_muc, { withFileTypes: true })) {
+      const duong = join(thu_muc, muc.name);
+      const ten = tien_to === '' ? muc.name : `${tien_to}/${muc.name}`;
+      if (muc.isDirectory()) { di(duong, ten); continue; }
+      if (!muc.name.endsWith('.ts')) continue;
+      const ma = readFileSync(duong, 'utf8');
+      const dong = ma.split('\n');
+      dong.forEach((d, i) => {
+        if (!/quay_lai/.test(d)) return;
+        if (d.trimStart().startsWith('//') || d.trimStart().startsWith('*')) return;
+        // Dong nao gan mot bieu thuc chinh quy la dau hieu tu viet phep kiem.
+        if (!/\.test\(|match\(|startsWith\(/.test(d)) return;
+        vi_pham.push(`${ten}:${String(i + 1)}  ${d.trim()}`);
+      });
+    }
+  };
+  di(goc, '');
+  assert.deepEqual(vi_pham, [],
+    `Phep kiem quay_lai tu viet — phai dung lam_sach_duong_dan_noi_bo():\n${vi_pham.join('\n')}`);
 });
 
 test.after(async () => { await jwks.dong(); });

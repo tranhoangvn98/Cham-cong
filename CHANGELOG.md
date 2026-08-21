@@ -2,6 +2,62 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.50.0] — 2026-08-22
+
+**Vá một lỗ chuyển hướng mở trong chấm công, cùng loại với lỗ quản trị cổng vừa tìm ra ở cổng —
+và ở đây hậu quả nặng hơn.**
+
+Quản trị cổng phát hiện bản kiểm `quay_lai` trong JavaScript của trang đăng nhập thiếu phép chặn
+ký tự điều khiển, xác minh trên Chromium thật: `?quay_lai=/%09/evil.com` dẫn ra
+`https://evil.com/`. Cơ chế là bộ phân tích URL theo WHATWG **xoá** tab/LF/CR khi đọc URL, nên
+`/<tab>/evil.com` trở thành `//evil.com` — URL tương đối giao thức, trỏ ra ngoài. Phép kiểm
+`startsWith('//')` chạy trên chuỗi **chưa** xoá không bắt được gì.
+
+Đọc xong tôi soi lại ba chỗ kiểm `quay_lai` của chấm công. Hai chỗ đủ. Chỗ thứ ba —
+`GET /xac-thuc/microsoft/bat-dau` — dùng một phép kiểm **tự viết**: `/^\/[^/\\]/`. Nó đòi ký tự
+thứ hai không phải `/` hay `\`, và `/<tab>/evil.com` đi qua được, vì lúc kiểm thì tab còn nằm
+giữa hai dấu gạch.
+
+**Ở đây nặng hơn một trang phishing thông thường.** Đường đó kết thúc bằng một chuyển hướng
+**chở sẵn token trong phần neo**. Lọt ra ngoài tên miền là nộp cả token truy cập **và** token làm
+mới cho tên miền của kẻ tấn công — nạn nhân không phải gõ gì cả. Lỗ ở cổng lấy được mật khẩu qua
+một trang giả; lỗ này lấy được token trực tiếp.
+
+Khai thác được khi `MS_GOC_WEBAPP` để trống — lúc đó `ve_webapp()` trả về đường dẫn trần và
+`res.redirect('/<tab>/evil.com#token…')` thành `//evil.com#token…`. Biến đó **mặc định trống**.
+
+### Từ chối hẳn, không "xoá rồi kiểm lại"
+
+Lần sửa đầu tôi làm theo hướng xoá tab/LF/CR trước rồi mới kiểm `//`. Một **bài kiểm cũ trong
+chính tệp đó** bắt được: `/chamcong<CR><LF>Set-Cookie: x=1` trở thành một đường dẫn "hợp lệ" —
+đúng về câu hỏi *"đích có nội bộ không"*, nhưng làm mất lớp chặn chèn header, và để một khoảng
+cách cho tầng gọi dùng chuỗi **gốc** thay vì chuỗi đã làm sạch.
+
+Nên: **từ chối** mọi ký tự điều khiển. Mạnh hơn cả hai — ba vector bị chặn, lớp chèn header còn
+nguyên, và chuỗi đã kiểm **luôn bằng** chuỗi được dùng.
+
+### Ba hàng rào, và đột biến chứng minh từng cái
+
+- **Ba vector của cổng** thành bài kiểm, ghi kèm kết quả Chromium để người sau không phải thử lại.
+- **Hai bản phải đồng ý trên từng đầu vào.** Webapp và máy chủ là hai bundle nên có hai bản. Bài
+  kiểm **trích thân hàm từ tệp `web/src/api.ts` rồi chạy nó** — không chép logic — và so với bản
+  máy chủ trên 16 đầu vào. Đột biến làm yếu **chỉ bản web**, đúng kiểu sự cố đã xảy ra ở cổng,
+  làm bài này đỏ.
+- **Không route nào được tự viết phép kiểm `quay_lai`.** Quét toàn bộ `may_chu/src`. Lỗ hôm nay
+  chính là một phép kiểm tự viết trông hợp lý, thiếu một thứ, và không ai đọc lại.
+
+### Trả lời đề nghị của cổng: chọn C, và A của tôi sai
+
+Quản trị cổng bác cả A và B, đề xuất C: giữ `?quay_lai=` trong hợp đồng, trang đăng nhập tự dọn
+thanh địa chỉ bằng `sessionStorage` + `history.replaceState`.
+
+**A không chạy được, và lý do họ nêu là đúng:** sau bước 4, lệnh chuyển hướng do Caddy phát;
+trước bước 4 thì máy chủ phát 302. Không cái nào ghi được `sessionStorage`. Tôi đề xuất A mà
+không xét *ai* thực sự phát lệnh chuyển hướng.
+
+**C không cần chấm công sửa gì:** hợp đồng không đổi, phép kiểm quyết định vẫn ở máy chủ, và
+không sinh thêm một bản kiểm thứ hai nào — điều đáng giá nhất sau chuyện hôm nay.
+
 ## [1.49.1] — 2026-08-22
 
 **`?quay_lai=/chamcong/` thay vì `?quay_lai=%2Fchamcong%2F`.** `encodeURIComponent` mã hoá cả

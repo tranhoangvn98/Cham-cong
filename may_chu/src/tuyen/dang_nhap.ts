@@ -14,7 +14,9 @@ import { cau_hinh } from '../cau_hinh.ts';
 import { chuoi_bat_buoc, LoiDauVao, than } from '../tien_ich/kiem_tra.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { gan_ma_am_tham } from '../dinh_danh/nghiep_vu.ts';
-import { chan_cua_cu, chan_cua_cu_web, bo_dang_nhap_rieng } from '../bao_mat/cong_sso.ts';
+import {
+  chan_cua_cu, chan_cua_cu_web, bo_dang_nhap_rieng, lam_sach_duong_dan_noi_bo,
+} from '../bao_mat/cong_sso.ts';
 import { cau_hinh as ch_sso } from '../cau_hinh.ts';
 import {
   bat_dang_nhap_microsoft,
@@ -337,8 +339,17 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     const q = req.query as Record<string, unknown>;
     // Chi nhan duong dan noi bo — nhan URL tuyet doi la mo duong chuyen huong mo (open
     // redirect): ke tan cong gui link "dang nhap" roi day nan nhan sang trang gia.
-    const quay_lai_tho = typeof q['quay_lai'] === 'string' ? q['quay_lai'] : '';
-    const quay_lai = /^\/[^/\\]/.test(quay_lai_tho) ? quay_lai_tho : null;
+    //
+    // TRUOC DAY phep kiem o day la `/^\/[^/\\]/` — doi ky tu thu hai khong phai `/` hay `\`.
+    // NO CO LO: `/<tab>/evil.com` di qua duoc, vi luc kiem thi tab con nam giua hai dau gach.
+    // Bo phan tich URL cua trinh duyet XOA tab/LF/CR, nen no thanh `//evil.com` — mot URL
+    // tuong doi giao thuc tro RA NGOAI ten mien.
+    //
+    // O DAY HAU QUA NANG HON MOT TRANG PHISHING THONG THUONG: duong nay ket thuc bang mot
+    // chuyen huong CHO SAN TOKEN TRONG PHAN NEO. Lot ra ngoai ten mien la nop ca token truy cap
+    // VA token lam moi cho ten mien cua ke tan cong — nan nhan khong phai go gi ca.
+    const quay_lai = lam_sach_duong_dan_noi_bo(
+      typeof q['quay_lai'] === 'string' ? q['quay_lai'] : '');
 
     const state = sinh_chuoi_ngau_nhien();
     const nonce = sinh_chuoi_ngau_nhien();
