@@ -58,6 +58,14 @@ services:
       MS_GOC_WEBAPP: ${MS_GOC_WEBAPP:-}
       MS_TEN_MIEN_CHO_PHEP: ${MS_TEN_MIEN_CHO_PHEP:-}
       MS_TU_DONG_TAO: ${MS_TU_DONG_TAO:-0}
+      # Cong SSO noi bo. De trong CONG_SSO_GOC = tat han, dang nhap bang duong rieng nhu truoc.
+      # Phan he chi nhan khoa CONG KHAI qua JWKS — khong bao gio nhan khoa rieng cua cong.
+      CONG_SSO_GOC: ${CONG_SSO_GOC:-}
+      CONG_SSO_JWKS: ${CONG_SSO_JWKS:-}
+      CONG_SSO_AUD: ${CONG_SSO_AUD:-}
+      CONG_SSO_MA_MODULE: ${CONG_SSO_MA_MODULE:-}
+      CONG_SSO_TIEN_TO: ${CONG_SSO_TIEN_TO:-}
+      CONG_SSO_GOC_DANG_NHAP: ${CONG_SSO_GOC_DANG_NHAP:-}
       # Dong bo kho tep ho so sang thu vien HCNS tren SharePoint. MOT CHIEU, xoa lan theo.
       # Dung APP RIENG (cham-cong-sharepoint-sync) voi quyen Sites.Selected, khong dung lai
       # app dang nhap o tren. SHAREPOINT_BAT_DAY=0 thi chi ghi nhan viec can day vao bang,

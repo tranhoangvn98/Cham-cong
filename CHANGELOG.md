@@ -2,6 +2,80 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.46.0] — 2026-08-21
+
+**Bước 1 của việc nối vào cổng SSO nội bộ: lớp xác minh token.** Chưa route nào đổi, chưa đường
+đăng nhập nào bị bỏ — bật hay tắt bằng đúng một biến `CONG_SSO_GOC`, để trống là hệ thống chạy y
+như trước. Đó là chủ ý: hợp đồng bảo mật của cổng quy định thứ tự, và bước 1 là bước duy nhất
+**không** làm gì ảnh hưởng phân hệ khác. Làm sai thì chỉ chấm công không vào được.
+
+Toàn bộ nằm ở một tệp, `may_chu/src/bao_mat/cong_sso.ts`: RS256 danh sách trắng **cứng trong mã**,
+kiểm chữ ký **trước** khi đọc bất kỳ trường nào, rồi `iss` đúng chuỗi, `aud === 'cong-noi-bo'`
+(là chuỗi, không phải mảng), `exp` với lệch đồng hồ 30 giây, `loai ∈ {tc, dv}` — token làm mới
+30 ngày bị từ chối — và chỉ đọc `quyen['chamcong']`, không đọc khóa của phân hệ khác.
+
+### Ba tính chất, và cái giá của việc làm sai từng cái
+
+**Fail closed.** Không tải được JWKS thì **từ chối**. Nhưng nếu đã có bộ khóa trong đệm thì vẫn
+dùng tiếp: cổng chết 5 phút không được làm đứt phiên của cả công ty. Hai vế ngược nhau, nên mỗi vế
+một bài kiểm. Cái loại lỗi mà tài liệu của cổng gọi là "phổ biến nhất trong loại mã này" xuất hiện
+dưới dạng một `try { } catch { /* bỏ qua */ }` trông vô hại — nên trong tệp này **không nhánh
+`catch` nào** dẫn tới "cho qua".
+
+**JWKS có giới hạn tần suất, không chỉ có cache.** Đệm 1 giờ và nạp lại khi gặp `kid` lạ là hai
+việc hiển nhiên. Cái không hiển nhiên: nạp lại **mỗi lần** gặp `kid` lạ nghĩa là kẻ tấn công gửi
+một loạt token với `kid` bịa và biến phân hệ thành cái búa đánh vào chính cổng. Chốt ở 3 lượt mỗi
+phút — đủ để tự phục hồi ngay sau một lần cổng xoay khóa, mà 20 token `kid` bịa chỉ tốn hết chùm
+lượt đó. Bài kiểm khẳng định cả hai: xoay khóa xong dùng được ngay, và 20 token bịa chỉ gọi cổng
+3 lần.
+
+**Không đọc `X-Cong-*`.** Caddy chuyển `X-Cong-Nguoi-Dung` và `X-Cong-Email` sang, và chúng trông
+rất tiện. Nhưng Caddy chỉ **ghi đè** chúng: request đến từ bất cứ đâu khác ngoài Caddy — gọi thẳng
+`127.0.0.1:8080`, một lỗ SSRF ở phân hệ khác, một container cùng mạng Docker — thì kẻ gọi **tự
+khai mình là ai**, chỉ bằng cách đặt header. Uỷ quyền duy nhất là token đã xác minh chữ ký, nên có
+một bài kiểm **quét toàn bộ `may_chu/src`** và bắt mọi dòng mã (không phải chú thích) nhắc tới
+`X-Cong-`.
+
+### Bài kiểm alg mà ba bài kiểm alg khác không thay được
+
+`alg: none` và HS256-ký-bằng-khóa-công-khai đều bị từ chối — nhưng khi tôi thử **bỏ hẳn** phép kiểm
+`alg` thì cả hai bài **vẫn xanh**. Lý do: lớp này luôn xác minh bằng RSA-SHA256 bất kể header ghi
+gì, nên hai đòn đó vỡ ở chỗ khác. Nghĩa là hai bài đó **không** giữ được danh sách trắng: một bản
+viết lại kiểu "đọc `alg` rồi chọn bộ xác minh theo đó" sẽ đi qua chúng.
+
+Bài giữ được nó là: chữ ký RSA-SHA256 **thật và hợp lệ**, chỉ cái nhãn `alg` trong header ghi
+`RS512`. Mã có danh sách trắng cứng thì từ chối; mã tin theo header thì nhận. Hai đột biến khác
+(bỏ kiểm chữ ký, đọc `quyen` của mọi phân hệ) cũng đã được thử và đều làm bộ kiểm đỏ.
+
+### Vai trò đối chiếu theo `ma`, không theo `ten`
+
+`quan_tri → admin`, còn `nhan_su` / `truong_phong_nhan_su` / `truong_phong` / `nhan_vien` giữ
+nguyên tên. Nhiều vai trò thì lấy quyền cao nhất. `ma` nằm trong token nên không đổi được; `ten`
+chỉ là nhãn hiển thị — đối chiếu theo `ten` là để một người sửa nhãn tiếng Việt thành gỡ quyền của
+cả phòng. `cho_duyet` **không** có trong bảng: ở mô hình cổng, "đã đăng nhập nhưng chưa được cấp
+quyền" là `quyen` **rỗng**, và mảng rỗng với thiếu hẳn khóa `chamcong` đều nghĩa như vậy — không
+cái nào nghĩa là "cho qua".
+
+Bảng đổi vai trò là **một nửa của một hợp đồng**; nửa kia là danh sách khai bên sổ đăng ký của
+cổng. Bỏ khai một vai trò bên đó **không** thu hồi quyền ở phía chấm công — cổng lọc token nhưng
+không sửa mã của ta — nên xóa một bên thì phải xóa bên kia. Ghi rõ ở `tai_lieu/CONG-SSO.md`.
+
+### `/iclock/*` không bao giờ được gác
+
+Ghi vào tài liệu ngay ở bước 1, trước khi có ai chạm vào Caddyfile. `/iclock/*` là đường máy chấm
+công gọi vào: máy không có token, và firmware ZKTeco coi mọi phản hồi 3xx là lỗi rồi **bỏ luôn lô
+dữ liệu đang gửi**. Gác đường đó nghĩa là máy vẫn kêu bíp, nhân viên vẫn tưởng đã chấm công, mà dữ
+liệu không tới máy chủ — và hậu quả hiện ra ở **bảng lương**, chậm hơn cả tháng, không dựng lại
+được. Lớp bảo vệ của đường đó là danh sách IP, không phải cổng gác.
+
+### Còn lại
+
+Bước 2 (nối vào hook xác thực), bước 3 (bỏ đường đăng nhập riêng) và bước 4 (bật cổng gác) chưa
+làm. Một điểm phải quyết trước bước 3, đã ghi ở `tai_lieu/CONG-SSO.md` mục 4: app điện thoại hiện
+giữ token làm mới 30 ngày của chính hệ thống chấm công, nên hoặc app mở màn đăng nhập của cổng
+trong WebView (lối đúng, phải phát hành lại bản build), hoặc tạm giữ một đường mật khẩu riêng cho
+app (còn một đường mật khẩu — đúng cái mà bước 3 muốn bỏ).
+
 ## [1.45.0] — 2026-08-20
 
 **Thiếu hẳn chức năng tạo tài khoản trên trang Cài đặt → Tài khoản.**

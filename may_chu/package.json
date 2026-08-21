@@ -1,6 +1,6 @@
 {
   "name": "@cham-cong/may-chu",
-  "version": "1.45.0",
+  "version": "1.46.0",
   "private": true,
   "type": "module",
   "description": "Backend: cong ADMS cho may ZKTeco + REST API cho webapp va app dien thoai",
@@ -21,7 +21,7 @@
     "dong_bo_sharepoint": "node dist/sharepoint/chay_dong_bo.js",
     "dong_bo_sharepoint_ma_nguon": "node --experimental-strip-types src/sharepoint/chay_dong_bo.ts",
     "kiem_sharepoint_ma_nguon": "node --experimental-strip-types src/sharepoint/chay_kiem.ts",
-    "test": "node --experimental-strip-types --test test/giao_thuc.test.ts test/tinh_cong.test.ts test/bao_mat.test.ts test/dia_chi_ip.test.ts test/microsoft.test.ts test/csv.test.ts test/quyen_ho_so.test.ts test/che_du_lieu.test.ts test/doc_office.test.ts test/khoa_api.test.ts test/openapi.test.ts test/tinh_luong.test.ts test/vcontract.test.ts test/cham_diem_kpi.test.ts test/bien_moi_truong.test.ts test/trich_noi_dung.test.ts test/nhac_han.test.ts test/luu_tru.test.ts test/ten_tep.test.ts test/ghi_xlsx.test.ts test/ghi_docx.test.ts test/loai_don.test.ts test/dong_bo_erp.test.ts test/dinh_danh.test.ts test/chinh_sach_phu_cap.test.ts test/sharepoint_anh_xa.test.ts test/sharepoint_khach.test.ts test/sharepoint_kiem_nhanh.test.ts test/moi_test_deu_chay.test.ts && node --experimental-strip-types --test test/proxy_tin_cay.test.ts",
+    "test": "node --experimental-strip-types --test test/giao_thuc.test.ts test/tinh_cong.test.ts test/bao_mat.test.ts test/dia_chi_ip.test.ts test/microsoft.test.ts test/cong_sso.test.ts test/csv.test.ts test/quyen_ho_so.test.ts test/che_du_lieu.test.ts test/doc_office.test.ts test/khoa_api.test.ts test/openapi.test.ts test/tinh_luong.test.ts test/vcontract.test.ts test/cham_diem_kpi.test.ts test/bien_moi_truong.test.ts test/trich_noi_dung.test.ts test/nhac_han.test.ts test/luu_tru.test.ts test/ten_tep.test.ts test/ghi_xlsx.test.ts test/ghi_docx.test.ts test/loai_don.test.ts test/dong_bo_erp.test.ts test/dinh_danh.test.ts test/chinh_sach_phu_cap.test.ts test/sharepoint_anh_xa.test.ts test/sharepoint_khach.test.ts test/sharepoint_kiem_nhanh.test.ts test/moi_test_deu_chay.test.ts && node --experimental-strip-types --test test/proxy_tin_cay.test.ts",
     "kiem_tra_kieu": "tsc -p tsconfig.kiem_tra.json",
     "test_e2e": "node --experimental-strip-types --test test/e2e.test.ts",
     "test_tat_ca": "npm test && npm run test_e2e"

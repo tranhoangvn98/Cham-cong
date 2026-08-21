@@ -162,6 +162,42 @@ export const cau_hinh = {
   },
 
   /**
+   * Cong SSO noi bo (`teams.tranhoangvietnam.com/cong`).
+   *
+   * De TRONG `CONG_SSO_GOC` = tat han: he thong dung duong dang nhap rieng nhu truoc. Khai vao
+   * = chap nhan them token do cong phat hanh. Xem tai_lieu/CONG-SSO.md.
+   *
+   * `iss` phai khop DUNG TUNG KY TU voi truong `iss` trong token — day la ranh gioi giua "token
+   * cua cong nay" va "token cua mot cong khac". Vi vay no lay thang tu `CONG_SSO_GOC`, khong
+   * chuan hoa gi ngoai viec bo dau `/` cuoi.
+   *
+   * `ma_module` la khoa doc trong `token.quyen`. Doc khoa cua phan he khac la vuot ranh gioi,
+   * nen o day chi co MOT gia tri va no khong phai danh sach.
+   */
+  cong_sso: (() => {
+    const goc = chu('CONG_SSO_GOC', '').replace(/\/+$/, '');
+    let goc_dang_nhap = chu('CONG_SSO_GOC_DANG_NHAP', '');
+    if (goc_dang_nhap === '' && goc !== '') {
+      try {
+        goc_dang_nhap = new URL(goc).origin + '/';
+      } catch {
+        throw new Error(`CONG_SSO_GOC khong phai URL hop le: ${goc}`);
+      }
+    }
+    return {
+      iss: goc,
+      jwks_url: chu('CONG_SSO_JWKS', goc === '' ? '' : `${goc}/.well-known/jwks.json`),
+      /** `aud` la CHUOI, khong phai mang — so sanh `===`. */
+      aud: chu('CONG_SSO_AUD', 'cong-noi-bo'),
+      ma_module: chu('CONG_SSO_MA_MODULE', 'chamcong'),
+      /** Tien to duong dan cua phan he tren cong — dung de dung `?quay_lai=`. */
+      tien_to: `/${chu('CONG_SSO_TIEN_TO', 'chamcong').replace(/^\/+|\/+$/g, '')}`,
+      /** Man dang nhap cua cong. Mac dinh la goc ten mien cua cong. */
+      goc_dang_nhap,
+    };
+  })(),
+
+  /**
    * He thong ERP cu (Tran Hoang Viet Nam).
    *
    * `webhook_*` la chieu DI: outbox cua ta POST su kien sang ERP.
