@@ -74,6 +74,68 @@ dữ liệu giả vào bảng công, không phải lỗi cấu hình.
 
 Sau khoảng 10 giây, trạng thái máy trong webapp chuyển thành **Kết nối**.
 
+### 2b. Danh sách IP — bắt buộc khi máy chủ đặt trên VPS
+
+Số sê ri **không phải mật khẩu**: nó in ngay trên vỏ máy. Giao thức ADMS của ZKTeco không có
+xác thực nào cả, nên khi máy chủ đặt trên VPS thì `/iclock` phơi ra Internet và số sê ri là
+lớp chặn duy nhất. Ai biết tên miền cộng một số sê ri **đã khai** thì làm được ba việc:
+
+1. Đẩy lần quét giả vào bảng công — tức là vào căn cứ tính lương.
+2. Đọc hàng đợi lệnh của số máy đó qua `getrequest`. Lệnh đăng ký người có dạng
+   `DATA UPDATE USERINFO PIN=... Name=...`, nên đây là đường rò **tên và PIN nhân viên**.
+3. Cướp lệnh của máy thật: lệnh đã giao cho kẻ khác thì máy thật không nhận được nữa.
+
+Nên khai `ICLOCK_IP_CHO_PHEP` bằng IP văn phòng. **Để trống nghĩa là cho phép tất cả**, không
+phải "tắt tính năng".
+
+Trước khi bật, kiểm `PROXY_TIN_CAY` đã khai dải mạng của reverse proxy (mạng Docker:
+`172.16.0.0/12`). Khai sai thì mọi request đều mang IP của proxy và danh sách trắng **chặn
+sạch mọi máy** ngay lập tức. Cách xác nhận: xem log `may_chu`, trường `remoteAddress` phải là
+IP thật của văn phòng chứ không phải IP container.
+
+> **Sau khi bật, `curl` từ chính VPS tới `/iclock` sẽ trả `403` — đó là đúng.** Request đó đi
+> ra Internet rồi quay lại nên nó mang IP của VPS, không phải IP văn phòng. Đừng dùng `curl` để
+> kiểm máy nữa; dùng dấu vết của chính máy thật:
+>
+> ```bash
+> docker compose exec -T postgres psql -U chamcong -d chamcong -c \
+>   "select serial, now() - thay_lan_cuoi as im_lang from thiet_bi where dang_bat;"
+> ```
+>
+> `im_lang` dưới 30 giây là máy vẫn gửi bình thường.
+
+Lớp chặn IP nằm ở hook `onRequest` của cả nhóm `/iclock`, chạy **trước** mọi handler — nên máy
+bị chặn thì `thay_lan_cuoi` không được cập nhật, và tiến trình giám sát sẽ báo máy offline sau
+`MAY_OFFLINE_SAU_GIAY`. Chặn oan thì hỏng **ồn ào**, không im lặng. Muốn lùi: đặt lại thành
+rỗng rồi `docker compose up -d`.
+
+Nếu IP văn phòng là IP **động** thì đừng khai một IP: hôm nào nhà mạng đổi IP là mọi máy ngừng
+gửi. Khai dải của nhà mạng — hẹp hơn cả Internet rất nhiều mà không đứt khi IP thay đổi.
+
+### 2c. Đã kiểm trên production (21.08.2026)
+
+Ba điều đã xác nhận trên VPS thật, ghi lại vì cả ba đều từng bị đoán sai:
+
+- **Máy gọi được qua HTTP cổng 80 trên tên miền dùng chung** (`teams.tranhoangvietnam.com`),
+  không cần thêm khối `http://` nào vào Caddyfile. Bằng chứng: request tới
+  `http://teams.tranhoangvietnam.com/iclock/cdata?SN=...` được **chính ứng dụng** trả lời
+  (`401` cho serial chưa khai) — bộ chuyển hướng của Caddy không bao giờ trả `401`. Điều này
+  quan trọng vì sửa Caddyfile là việc duy nhất trong quy trình nối máy có thể làm sập phân hệ
+  của người khác trên cùng tên miền.
+- **Bật hay tắt cổng SSO không ảnh hưởng đường máy.** `/iclock/*` nằm ngoài lớp xác thực hoàn
+  toàn; máy vẫn gửi bình thường xuyên qua một lần `docker compose up -d --build`. Có bài kiểm
+  e2e giữ điều đó (`/iclock/cdata` phải trả 200 không qua hook nào).
+- **Lỗi lệnh gửi xuống máy hiện KHÔNG nổi lên giao diện.** Một lệnh đăng ký người thất bại
+  (`ma_tra_ve = -629`) chỉ nằm trong log máy chủ, nên việc đó chìm một tuần trong khi mọi người
+  tin là đã đăng ký xong. Cột `ma_tra_ve` khác 0, và cột `ma_tra_ve` **rỗng** (máy nhận lệnh
+  nhưng không bao giờ báo về — hay gặp với `SET OPTION DateTime`, tức là đồng bộ đồng hồ không
+  xác nhận được), đều phải kiểm bằng tay:
+  ```bash
+  docker compose exec -T postgres psql -U chamcong -d chamcong -c \
+    "select id, thiet_bi_serial, lenh, gui_luc, ma_tra_ve from lenh_thiet_bi
+      where ma_tra_ve is null or ma_tra_ve <> 0 order by id desc limit 20;"
+  ```
+
 ## 3. Đăng ký nhân viên lên máy
 
 **Hệ thống cấp số, máy làm theo — không bao giờ ngược lại.**
