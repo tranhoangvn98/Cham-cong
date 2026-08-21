@@ -2,6 +2,29 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.48.1] — 2026-08-22
+
+**Sửa: `/chamcong/chamcong/` ra trang "Không có trang này" ngay cửa vào.**
+
+Webapp chạy dưới tiền tố `/chamcong/`. Một liên kết ghép tiền tố lên một đường dẫn **đã có**
+tiền tố tạo ra `/chamcong/chamcong/`; router bỏ tiền tố **một lần**, còn lại `/chamcong/`,
+không khớp tuyến nào, và người dùng đứng ở một trang 404 ngay trang đầu — trông như hệ thống
+hỏng, dù chỉ là một liên kết sai.
+
+Router giờ bỏ tiền tố **lặp** (giới hạn 5 lần để một URL bịa không thành vòng lặp), và
+`replaceState` sửa luôn thanh địa chỉ — nếu không thì F5, dấu trang và nút Lui đều đưa người
+dùng về đúng cái URL sai vừa chữa.
+
+Phép bỏ lặp chỉ an toàn khi không tuyến nào tên đúng bằng tiền tố. Hiện mọi tuyến dùng tên có
+gạch ngang (`/bang-cong`, `/nhan-vien`) nên không trùng, và có **hàng rào mới** giữ điều đó:
+thêm một tuyến tên `chamcong` hay `cham-cong` thì bài kiểm đỏ, kèm chú thích nói rõ lúc đó phải
+chọn giữa đổi tên tuyến và bỏ phép bỏ lặp.
+
+Chưa xác định nguồn của liên kết sai — có thể là `href` tương đối ở thẻ module bên cổng, hoặc
+cổng hiểu `quay_lai` là đường dẫn **tương đối với tiền tố module** thay vì đường dẫn tuyệt đối
+của site như hợp đồng ghi. Bản sửa này làm cả hai trường hợp đều chạy đúng, nhưng nguồn vẫn nên
+được xác nhận với quản trị cổng.
+
 ## [1.48.0] — 2026-08-22
 
 **Bước 3: bỏ đường đăng nhập riêng.** Một công tắc, `CONG_SSO_BO_DANG_NHAP_RIENG`, và

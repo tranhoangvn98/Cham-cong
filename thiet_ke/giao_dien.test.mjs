@@ -244,3 +244,23 @@ test('danh sach vai tro BAT BUOC co ho so khop giua may chu va giao dien', () =>
   assert.deepEqual(ben_web, ben_may,
     `giao dien: ${ben_web.join(', ')}\nmay chu : ${ben_may.join(', ')}`);
 });
+
+// ============================================================ tien to trien khai vs tuyen
+test('khong tuyen nao trung voi tien to trien khai', () => {
+  // `duong_dan_sach()` trong dinh_tuyen.tsx bo tien to trien khai LAP LAI, de mot lien ket
+  // ghep tien to len duong dan da co tien to (`/chamcong/chamcong/`) khong dua nguoi dung vao
+  // mot trang 404 ngay cua vao. Phep bo lap do chi an toan khi khong tuyen nao TEN DUNG BANG
+  // tien to — neu co, mot nguoi go thang `/chamcong/chamcong` de mo tuyen `/chamcong` se bi
+  // dua ve `/`, va khong co gi bao vi sao.
+  //
+  // Moi tuyen hien tai dung ten co gach ngang (`/bang-cong`, `/nhan-vien`) nen khong trung.
+  // Bai nay do la luc phai chon: doi ten tuyen, hoac bo phep bo lap va nhan lai loi 404 kia.
+  const tien_to = ['chamcong', 'cham-cong'];
+  const app = readFileSync(join(GOC, 'App.tsx'), 'utf8');
+  const tuyen = [...app.matchAll(/case '(\/[^']*)':/g)].map((m) => m[1]);
+  assert.ok(tuyen.length > 10, `chi tim thay ${tuyen.length} tuyen — bieu thuc tim da lac`);
+
+  const trung = tuyen.filter((t) => tien_to.includes(t.replace(/^\//, '')));
+  assert.deepEqual(trung, [],
+    `Tuyen ${trung.join(', ')} trung voi tien to trien khai. Xem chu thich cua bai kiem nay.`);
+});
