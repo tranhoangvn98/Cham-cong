@@ -224,13 +224,23 @@ Hai mục còn lại:
 
 ## Chúng tôi làm gì tiếp
 
-Không chờ ai:
+**Đã xong, bản `1.51.0`** — không chờ ai:
 
-1. Truyền mốc thời gian của từng bản ghi vào `map_pin_nhan_vien` (lỗi 1 của §5).
-2. Bắt buộc khoảng ngày cho `/lan-quet/gan-lai`, kèm bảng đếm theo tháng (lỗi 2 của §5).
-3. Bài kiểm §9.5 + bài "lô đến muộn 5 ngày" làm chuẩn nghiệm thu cho cả hai.
-4. Lệnh dò `pin_trung_khoang.sh`, chỉ đọc. Ràng buộc `exclude` để một đợt riêng sau khi dò sạch.
-5. Bài kiểm 403 cho từng tuyến có luật phạm vi (§3), không phải một bài chung.
+1. ✅ Mỗi bản ghi ADMS tra PIN theo **mốc thời gian của chính nó**. Luật tra nằm ở module thuần
+   `dinh_danh/tra_pin.ts` để kiểm được bằng dữ liệu mẫu (lỗi 1 của §5).
+2. ✅ `/lan-quet/gan-lai` bắt buộc có khoảng ngày, mặc định lấy từ `ma_dinh_danh`, và **từ chối**
+   tháng đã có bảng lương được duyệt. Thêm `GET /lan-quet/chua-map/thang` để người bấm nút thấy
+   mình đang chạm vào những tháng nào (lỗi 2 của §5).
+3. ✅ Bài kiểm §9.5 + bài "lô đến muộn 5 ngày, PIN đổi chủ ngày thứ 3", ở cả hai lớp. Đã chứng
+   minh bắt được lỗi: quay `tra_pin` về `hieu_luc_den is null` làm đỏ 5 bài đơn vị; bỏ hai điều
+   kiện ngày khỏi câu UPDATE làm đỏ 2 bài e2e.
+4. ✅ `trien_khai/pin_trung_khoang.sh`, chỉ đọc. Ràng buộc `exclude` để một đợt riêng sau khi dò
+   sạch — không gộp việc dò và việc thêm ràng buộc vào một lần chạy.
+
+Còn lại:
+
+5. Bài kiểm 403 cho **từng tuyến** có luật phạm vi (§3), không phải một bài chung — chờ bước 1 của
+   §7 vì bài kiểm ấy cần token thật của cổng mang vai trò thật.
 
 Chờ các bạn:
 

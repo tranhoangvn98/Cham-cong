@@ -357,20 +357,43 @@ interface GanLai {
   serial: string | null;
 }
 
+/** Mot thang co lan quet chua gan cua PIN nay. */
+interface ThangChuaMap {
+  thang: string;
+  so_lan: number;
+  ngay_dau: string;
+  ngay_cuoi: string;
+}
+
 function FormGanLai(
   { muc, khi_dong, khi_xong }: { muc: GanLai; khi_dong: () => void; khi_xong: () => void },
 ): ReactNode {
   const { pin, serial } = muc;
   const [nhan_vien_id, dat_nhan_vien_id] = useState('');
+  const [tu, dat_tu] = useState('');
+  const [den, dat_den] = useState('');
   const hd = dung_hanh_dong();
   const { du_lieu } = dung_nap<NhanVien[]>('/api/nhan-vien?chi_dang_lam=true');
+
+  // Nguoi bam nut phai THAY minh dang cham vao nhung thang nao truoc khi bam. Mot con so tong
+  // ("142 lan quet") khong noi duoc rang 22 trong so do thuoc thang 6 da chot luong.
+  const theo_thang = dung_nap<ThangChuaMap[]>(
+    `/api/lan-quet/chua-map/thang?pin_may=${encodeURIComponent(pin)}`
+    + (serial === null ? '' : `&thiet_bi_serial=${encodeURIComponent(serial)}`),
+  );
+  const cac_thang = theo_thang.du_lieu ?? [];
+  const nhieu_thang = cac_thang.length > 1;
 
   const gui = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     const ok = await hd.chay(
       () => goi('/api/lan-quet/gan-lai', {
         method: 'POST',
-        body: { pin_may: pin, nhan_vien_id, ...(serial === null ? {} : { thiet_bi_serial: serial }) },
+        body: {
+          pin_may: pin, nhan_vien_id,
+          ...(serial === null ? {} : { thiet_bi_serial: serial }),
+          ...(tu === '' || den === '' ? {} : { tu, den }),
+        },
       }),
       'Đã gán lại và tính lại bảng công các ngày liên quan.',
     );
@@ -384,16 +407,47 @@ function FormGanLai(
         <HopTot chu={hd.tot} />
 
         <div className="hop-thong-bao hop-tin">
-          Mọi lần quẹt của PIN <strong>{pin}</strong> chưa gán ai
+          Lần quẹt của PIN <strong>{pin}</strong> chưa gán ai
           {serial === null
             ? ' (không gắn máy nào) '
             : <> trên máy <strong>{serial}</strong> </>}
-          sẽ được chuyển sang nhân viên bạn chọn, và bảng công những ngày đó được tính lại.
+          <strong>trong khoảng ngày bên dưới</strong> sẽ được chuyển sang nhân viên bạn chọn, và
+          bảng công những ngày đó được tính lại.
           {serial !== null && (
             <> Lần quẹt cùng số PIN ở <strong>máy khác</strong> KHÔNG bị ảnh hưởng — mỗi máy cấp
             số PIN riêng nên cùng một số có thể là hai người.</>
           )}
         </div>
+
+        {cac_thang.length > 0 && (
+          <div className="o-nhap">
+            <label>Đang có lần quẹt chưa gán ở những tháng này</label>
+            <div className="vo-bang">
+              <table>
+                <thead>
+                  <tr><th>Tháng</th><th>Số lần</th><th>Từ ngày</th><th>Đến ngày</th></tr>
+                </thead>
+                <tbody>
+                  {cac_thang.map((t) => (
+                    <tr key={t.thang}>
+                      <td>{t.thang}</td>
+                      <td>{t.so_lan}</td>
+                      <td>{t.ngay_dau}</td>
+                      <td>{t.ngay_cuoi}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {nhieu_thang && (
+              <div className="hop-thong-bao hop-luu-y">
+                PIN này có lần quẹt ở <strong>{cac_thang.length} tháng</strong>. Nếu PIN từng đổi
+                chủ thì gán cả dải là chuyển công của người cũ sang người mới — hãy khai khoảng
+                ngày cho đúng người.
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="o-nhap">
           <label htmlFor="nv">Nhân viên *</label>
@@ -408,6 +462,22 @@ function FormGanLai(
           <div className="goi-y">
             Nhớ sửa PIN của nhân viên này thành {pin} ở trang Nhân viên, nếu không log mới vẫn không map được.
           </div>
+        </div>
+
+        <div className="luoi luoi-2">
+          <div className="o-nhap">
+            <label htmlFor="gl-tu">Từ ngày</label>
+            <input id="gl-tu" type="date" value={tu} onChange={(e) => dat_tu(e.target.value)} />
+          </div>
+          <div className="o-nhap">
+            <label htmlFor="gl-den">Đến ngày</label>
+            <input id="gl-den" type="date" value={den} onChange={(e) => dat_den(e.target.value)} />
+          </div>
+        </div>
+        <div className="goi-y">
+          Để trống cả hai thì hệ thống lấy đúng khoảng nhân viên này giữ PIN {pin} theo bảng Mã
+          định danh. Nhân viên chưa từng được khai PIN đó thì máy chủ từ chối — nó không đoán.
+          Tháng đã có bảng lương được duyệt cũng bị từ chối.
         </div>
 
         <div className="hang-nut">

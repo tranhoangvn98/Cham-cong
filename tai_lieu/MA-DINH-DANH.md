@@ -122,6 +122,37 @@ tự động trong cùng giao dịch với việc đổi mã.
 **Lần quẹt cũ không bị đổi chủ, và đó là cố ý.** Chủ của một lần quẹt được xác định *lúc nhận*,
 nên bảng công tháng trước không tự viết lại khi PIN sang tay người khác.
 
+#### 1b. Lô đến muộn: tra theo mốc của lần quẹt, không phải "hôm nay ai giữ"
+
+Câu ở trên chỉ đúng khi lô đến **đúng lúc**. Lô đến **muộn** thì không: máy mất mạng vài ngày,
+hoặc nhân sự nạp lại dữ liệu cũ từ máy. Đến bản `1.50` bộ tiếp nhận vẫn tra bằng
+
+```sql
+... and md.hieu_luc_den is null     -- "ai đang giữ PIN hôm nay"
+```
+
+nên một lô đến muộn mang lần quẹt tháng 6 sẽ gán hết cho người đang giữ PIN hôm nay — sai bảng
+công tháng 6, tức là sai lương.
+
+Từ bản `1.51` mỗi bản ghi được tra theo **mốc thời gian của chính nó** (`dinh_danh/tra_pin.ts`).
+Bốn luật, và ba trong số đó tồn tại để **không làm mất khớp** so với trước:
+
+1. **Khoảng đầu tiên mở về phía trước.** `hieu_luc_tu` của dòng đầu không phải một sự thật nghiệp
+   vụ — với dữ liệu cũ nó là `nhan_vien.tao_luc`, do backfill của di trú 025 đặt vào. Tin nó thì
+   mọi lần quẹt nhập từ lịch sử CSV trước ngày tạo hồ sơ thành "không biết là ai". Chỉ **ranh giới
+   giữa hai dòng** mới mang nghĩa thật: đó là lúc PIN đổi chủ.
+2. **Bảng có dòng nào cho PIN này là bảng nói cuối.** PIN đã đóng lại mà chưa cấp cho ai thì trả
+   *không biết* — **không** rơi xuống cột `pin_may`. Rơi xuống cột là quay lại đúng cái lỗi này.
+3. **Chỉ khi bảng không có dòng nào** mới đọc cột. Đường này dành cho PIN vừa gõ tay trên form hồ
+   sơ mà chưa kịp sinh dòng ở bảng.
+4. **Khoảng chồng nhau:** dòng có `hieu_luc_tu` muộn nhất thắng. Index của di trú 025 chỉ bảo đảm
+   các dòng *đang* hiệu lực không trùng nhau, nên lịch sử vẫn chồng nhau được. Chồng nhau là dữ
+   liệu cần sửa tay — chạy `trien_khai/pin_trung_khoang.sh` (chỉ đọc) để dò.
+
+Cùng lý do đó, **nút "Gán lại" của nhân sự phải có khoảng ngày**. Để trống thì hệ thống lấy đúng
+khoảng người đó giữ PIN theo bảng này; người chưa từng được khai PIN đó thì **từ chối** chứ không
+đoán; và tháng đã có bảng lương được duyệt cũng bị từ chối.
+
 ### 2. Một người có nhiều mã cùng lúc (PIN ở hai máy, email alias)
 
 Chỉ `may_cham_cong` và `microsoft_email` cho phép. Cả hai mã **cùng hiệu lực**, và cả hai đều

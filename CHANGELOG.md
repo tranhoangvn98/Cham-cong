@@ -2,6 +2,89 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.51.0] — 2026-08-22
+
+**PIN máy chấm công có chiều thời gian ở cả hai đường tra. Hai lỗi lương tiềm ẩn, tìm ra khi đọc
+`LIEN-THONG-NHAN-SU.md` của đội cổng.**
+
+Đội cổng chỉ đúng bệnh: cột phẳng `nhan_vien.pin_may` không trả lời được *"PIN 042 tháng 6 là
+ai"*. Thuốc thì khác — chiều thời gian đã có sẵn từ di trú 025 (`ma_dinh_danh` với `hieu_luc_tu` /
+`hieu_luc_den`), nên thêm một bảng nữa là để một PIN ở ba chỗ. Vấn đề thật là **hai phép tra đang
+bỏ qua chiều thời gian đó**, và cả hai đều là lỗi thật:
+
+### Sửa: bộ tiếp nhận ADMS tra "ai giữ PIN hôm nay"
+
+`adms/tiep_nhan.ts` lọc `md.hieu_luc_den is null`. Với lô đến đúng lúc thì không sai. Với lô đến
+**muộn** — máy mất mạng vài ngày (có hẳn bộ theo dõi máy offline chính vì thế), hoặc nạp lại dữ
+liệu cũ từ máy — nó gán lần quẹt của tháng trước cho người đang giữ PIN hôm nay.
+
+Luật tra chuyển sang module thuần `dinh_danh/tra_pin.ts`, mỗi bản ghi tra theo **mốc thời gian của
+chính nó**. Bốn luật, và ba trong số đó tồn tại để **không làm mất khớp** so với trước bản này —
+rõ nhất là *khoảng đầu tiên mở về phía trước*: `hieu_luc_tu` của dòng đầu là `nhan_vien.tao_luc` do
+backfill 025 đặt vào, không phải một sự thật nghiệp vụ, nên tin nó là biến mọi lần quẹt nhập từ
+lịch sử CSV thành "không biết là ai". Chỉ **ranh giới giữa hai dòng** mới mang nghĩa.
+
+Câu đọc bảng cũng bỏ lọc `dang_hoat_dong`, và đó là cố ý: lần quẹt tháng 6 của người đã nghỉ tháng
+7 vẫn phải gắn đúng tên họ, nếu không thì bảng công tháng 6 sai.
+
+### Sửa: nút "Gán lại lần quẹt" không lọc theo ngày
+
+`POST /api/lan-quet/gan-lai` giới hạn theo **máy** (đã sửa ở 1.35 vì hai máy cấp PIN riêng) nhưng
+không giới hạn theo **ngày**: gán một PIN là kéo theo *mọi* lần quẹt chưa gán của PIN đó, kể cả
+tháng đã chốt lương. Nặng hơn lỗi trên vì có người bấm nút và tin rằng mình gán một dòng.
+
+Ba hàng rào, thứ tự có chủ ý:
+
+1. Máy — như cũ. Báo trước vì đó là lỗi về **hình dạng** của yêu cầu, sửa được bằng một lần.
+2. **Khoảng ngày** — mới. Để trống thì lấy đúng khoảng người đó giữ PIN theo `ma_dinh_danh`; người
+   chưa từng được khai PIN đó thì **từ chối**, không đoán. Không có mặc định "tất cả": mặc định đó
+   chính là chỗ lỗi này quay lại.
+3. **Tháng đã có bảng lương được duyệt** thì từ chối cả lần gán, không gán một nửa.
+   `/bang-cong/mo-chot` đã có luật này từ trước; đường "gán lại" đi vòng qua nó.
+
+`GET /api/lan-quet/chua-map/thang` mới: đếm lần quẹt chưa gán **theo từng tháng**, hiện ngay trong
+hộp thoại. Một con số tổng ("142 lần quẹt") không nói được rằng 22 trong số đó thuộc tháng 6.
+
+### Điều đang che hai lỗi này lại
+
+`lan_quet.nhan_vien_id` được giải ra **lúc tiếp nhận và lưu lại**, không tính lại khi đọc. Nên bảng
+công cũ đang đóng băng và chưa lần nào ra lương sai. Lỗi tiềm ẩn, không phải lỗi đang chảy — nhưng
+cả hai đường trên đều mở được nó.
+
+### Thêm
+
+- `trien_khai/pin_trung_khoang.sh` — dò các PIN có khoảng hiệu lực **chồng nhau**, chỉ đọc. Đây là
+  điều kiện để bước sau (ràng buộc `exclude using gist` cho cả lịch sử) chạy được: di trú đó sẽ
+  **thất bại** nếu còn khoảng chồng nhau, và thất bại giữa một lần triển khai là thứ không ai muốn
+  gặp. Dò trước, sửa tay, rồi mới thêm ràng buộc — không gộp hai việc vào một lần chạy.
+- `tai_lieu/TRA-LOI-LIEN-THONG-NHAN-SU.md` — trả lời từng mục tài liệu của đội cổng, gồm hai chỗ ý
+  kiến khác (§5 ở trên, và §8: `truong_phong_nhan_su` là mức quyền thứ ba thật, vì
+  `xem_duoc_tat_ca` cho vai trò này xem toàn công ty chứ không phải một phòng ban).
+
+### Kiểm thử
+
+14 bài đơn vị thuần cho `tra_pin` (`test/tra_pin.test.ts`) và 7 bài e2e. **Đã chứng minh bắt được
+lỗi thật** bằng cách phá mã rồi chạy lại:
+
+| Phá gì | Bài đỏ |
+|---|---|
+| Quay `tra_pin` về `hieu_luc_den is null` | 5 đơn vị |
+| Bỏ hai điều kiện ngày khỏi câu UPDATE của `gan-lai` | 2 e2e |
+
+Bài bắt buộc theo §9.5 của đội cổng — *PIN 042 đổi chủ 01.07, bảng công tháng 6 của người cũ phải
+còn đúng* — có trong cả hai lớp. Thêm bài **"lô đến muộn 5 ngày, PIN đổi chủ ngày thứ 3"**: một lô
+duy nhất phải tách cho hai người theo ngày.
+
+Ba bài kiểm cũ phải sửa vì chúng mã hóa giả định cũ, và cả ba đều đáng ghi lại:
+
+- *"cấp PIN cho người mới thì lần quẹt SAU thuộc người mới"* dùng mốc `HÔM QUA 17:00` cho chữ
+  "sau". Với luật mới thì đó là **trước** lúc chuyển PIN, nên lần quẹt ấy thuộc người cũ — đúng.
+  Bài kiểm giờ dùng mốc thật sau lúc chuyển.
+- Hai bài về "gán lại" gọi thẳng vào PIN chưa khai cho ai. Giờ phải khai PIN trước, đúng như nhân
+  sự làm thật.
+
+Tổng: **572 + 5** đơn vị, **417** e2e, **30** thiết kế — tất cả xanh.
+
 ## [1.50.0] — 2026-08-22
 
 **Vá một lỗ chuyển hướng mở trong chấm công, cùng loại với lỗ quản trị cổng vừa tìm ra ở cổng —
