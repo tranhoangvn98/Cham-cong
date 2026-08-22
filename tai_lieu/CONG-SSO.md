@@ -131,6 +131,32 @@ Xong bước này khi: đăng nhập bằng tài khoản thử thì `token.quyen
 mong đợi, và một tài khoản **chưa** được cấp quyền thì thấy màn hình "chưa được cấp quyền" chứ
 không phải vòng lặp đăng nhập.
 
+> ### Cấp quyền là việc của NGƯỜI THẬT — không tự động hoá được
+>
+> Cổng có một chốt gọi là `can_nguoi_that`: **cấp quyền, đặt mật khẩu và tạo bí mật dịch vụ chỉ
+> người thật đang đăng nhập làm được.** Token dịch vụ bị từ chối **403** ở ba việc đó, kể cả khi
+> nó có `cong.quan_tri`.
+>
+> Hệ quả cần biết trước khi lập kế hoạch: **đừng thiết kế luồng nào tự cấp quyền cổng cho nhân
+> viên** — ví dụ "nhân sự khai hồ sơ xong thì hệ thống tự cấp `chamcong: nhan_vien`". Nó sẽ ăn
+> 403, và đó là chốt làm đúng việc của nó chứ không phải lỗi. Kể cả script deploy của cổng cũng
+> chỉ cấp `cong.quan_tri` (đường vào tối thiểu để quản trị viên mở được trang) và **không bao
+> giờ** cấp quyền module.
+>
+> Cấp bằng tay ở `/cong/quan-tri` → tab **Người dùng** → **Quyền**. Đường đó `PUT .../quyen`
+> xoá hết quyền cũ rồi chèn lại bộ mới **trong một giao dịch**, nên nó cũng là cách dọn một
+> dòng quyền mồ côi (xem R13a): cấp lại bằng mã đúng thì dòng mã cũ biến luôn.
+>
+> Và một cái bẫy đọc log: bước khởi tạo của `len_vps.sh` in `[module] chamcong — tat` ở **mọi**
+> lần deploy, kể cả khi module đang bật. Dòng đó in hằng số trong mã nguồn, không phải giá trị
+> trong CSDL — `on conflict do update` của cổng không đụng `bat`. Muốn biết trạng thái thật thì
+> hỏi CSDL:
+>
+> ```bash
+> cd /srv/cong && docker compose exec -T csdl_cong psql -U cong -d cong \
+>   -c "select ma, bat from module order by ma;"
+> ```
+
 > ### `bat = true` phải bật NGAY ở bước 2, không để tới lúc ký nhận
 >
 > Bản đầu của hợp đồng bảo mật viết: *"module chưa qua đủ checklist thì chưa được bật
