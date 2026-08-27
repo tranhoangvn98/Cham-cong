@@ -265,14 +265,39 @@ Thiết bị cho biết lệnh nào đã gửi, mã trả về là bao nhiêu.
 
 ### Thêm máy thứ hai: đúng bốn việc
 
-1. **Trên web**: Thiết bị → khai serial (số SN dán sau lưng máy).
-2. **Trên máy**: Menu › Comm › Cloud Server — địa chỉ VPS, cổng `8080`, Server Mode `ADMS`,
-   Realtime **bật**, Proxy **tắt**.
+1. **Trên web**: Thiết bị → khai serial. Lấy số ở **Menu › Hệ thống › Thông tin thiết bị › Số
+   sê ri** trên chính máy đó, **không** phải số dán sau lưng máy — xem lại hộp cảnh báo ở §2.
+2. **Trên máy**: Menu › Comm › Cloud Server — Server Mode `ADMS`, Realtime **bật**, Proxy
+   **tắt**, và cổng theo đúng nơi đặt máy chủ: **`8080` nếu máy chủ trong LAN, `80` nếu máy chủ
+   trên VPS qua tên miền**. Xem bảng ở §1; điền 8080 cho bản triển khai VPS là máy im lặng
+   không báo lỗi.
 3. **Trong `.env` của VPS**: thêm IP ra Internet của nơi đặt máy vào `ICLOCK_IP_CHO_PHEP`
    (danh sách, phân cách bằng dấu phẩy), rồi `docker compose up -d`. Bỏ trống ô này nghĩa là
    **không chặn IP nào** — ai biết serial cũng đẩy được lần quẹt giả vào cơ sở tính lương.
+   Máy mới đặt cùng văn phòng với máy cũ thì dùng chung một IP, không phải thêm gì.
 4. **Bấm *Đồng bộ giờ*** cho máy mới. Lệch đồng hồ giữa hai máy là nguyên nhân sai công phổ
    biến nhất, và nguy hiểm hơn khi giờ vào / giờ ra do hai máy khác nhau ghi.
+
+### Hai máy một cửa: cổng vào và cổng ra
+
+Trường hợp khác hẳn "nhiều văn phòng", và luật chia dải PIN ở trên **không áp vào đây**.
+
+Hai máy đặt hai bên cùng một cửa phục vụ **cùng một nhóm người**, nên:
+
+- **Không chia dải PIN.** Để trống dải ở cả hai máy, hoặc khai **cùng một dải**. Một người phải
+  mang **đúng một PIN giống nhau trên cả hai máy** — quẹt vào ở máy này, quẹt ra ở máy kia, cùng
+  một danh tính. Chia dải là biến một người thành hai người.
+- **Nạp nhân viên xuống CẢ HAI máy**, mỗi máy một lần. Khuôn mặt / vân tay không liên thông giữa
+  các máy, nên phải đăng ký sinh trắc ở từng máy. Nạp thiếu một máy thì người ta quẹt được ở
+  cửa vào mà không quẹt được ở cửa ra.
+- **Đồng bộ giờ cả hai, cùng lúc.** Ở đây lệch đồng hồ nguy hiểm nhất: giờ vào và giờ ra do hai
+  máy khác nhau ghi, nên lệch 5 phút giữa hai máy là mọi ngày công đều sai 5 phút.
+
+**Chiều vào / ra khai trên máy không ảnh hưởng gì tới bảng công.** Bộ tính công đọc các lần quẹt
+của một người trong ngày rồi lấy **mốc sớm nhất làm giờ vào, mốc muộn nhất làm giờ ra**
+(`cong/quy_tac_tinh_cong.ts`) — nó không đọc cờ in/out mà firmware gửi kèm. Nghĩa là quẹt lẫn máy
+không sai công, và cũng nghĩa là đừng trông vào cờ đó để phân biệt vào/ra. Cờ chỉ hiện trên trang
+Lần quẹt để người đọc đối chiếu.
 
 ### Nạp lại dữ liệu từ một máy cũ
 
