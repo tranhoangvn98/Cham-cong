@@ -153,6 +153,39 @@ Cùng lý do đó, **nút "Gán lại" của nhân sự phải có khoảng ngà
 khoảng người đó giữ PIN theo bảng này; người chưa từng được khai PIN đó thì **từ chối** chứ không
 đoán; và tháng đã có bảng lương được duyệt cũng bị từ chối.
 
+#### 1c. Đóng một mã KHÔNG ngăn nó hút lịch sử — mã khai thử thì phải xóa hẳn
+
+Đây là hệ quả trực tiếp của luật 1 ở trên, và nó đã làm hỏng dữ liệu thật ngày **27.08.2026**.
+
+Luật 1 nói khoảng **đầu tiên** mở về vô cực phía trước. Nên một dòng đã đóng lại không phải là
+`[hieu_luc_tu, hieu_luc_den)` như trực giác đọc — nếu nó là dòng đầu tiên của PIN đó thì nó là:
+
+```
+(-∞, hieu_luc_den)
+```
+
+Tức là **đóng lại chỉ chặn tương lai, không chặn quá khứ**. Mọi lần quẹt có mốc trước ngày đóng
+vẫn gán cho người giữ dòng ấy.
+
+Chuyện đã xảy ra: PIN 1 và 2 được khai **thử** cho hai người thật trên máy demo, rồi đóng lại
+trước khi kéo 40 nghìn lần quẹt lịch sử từ hai máy thật về. Phép kiểm lúc đó chỉ liệt kê mã *đang*
+hiệu lực nên báo "không còn PIN nào", và người đọc tin là sạch. Kết quả: **353 lần quẹt gán sai
+người**, trong đó 340 lần là của một người **đã nghỉ việc** chảy vào bảng công của một người đang
+làm — đúng cái kiểu hỏng âm thầm mà bảng này sinh ra để chặn.
+
+Hai điều rút ra, và cả hai đã thành mã:
+
+1. **Mã khai THỬ thì XÓA HẲN, không đóng lại.** Đóng lại dành cho mã từng **là thật** — đó mới là
+   lúc lịch sử của nó cần được giữ. Một dòng chưa bao giờ mô tả sự thật mà để lại thì mỗi lần
+   nhập lịch sử sau này nó lại hút sai một lần nữa. Gỡ hậu quả:
+   `trien_khai/go_gan_sai.sh <pin>... --that` (gỡ gán, dọn bảng công đã sinh, xóa hẳn dòng mã).
+2. **Trước khi nhập bất kỳ lô lịch sử nào, liệt kê CẢ mã đã đóng.**
+   `trien_khai/kiem_nhanh.sh truoc` — khối A nay in cả ba đường có thể hút lần quẹt: mã đang hiệu
+   lực, mã **đã đóng** (kèm cảnh báo "vẫn hút lần quẹt trước ngày đó"), và cột `pin_may`.
+
+Câu chốt: *một phép kiểm không kiểm đúng thứ nó hứa thì tệ hơn là không kiểm* — không có phép
+kiểm thì người ta còn dè chừng, có phép kiểm sai thì người ta yên tâm làm bậy.
+
 ### 2. Một người có nhiều mã cùng lúc (PIN ở hai máy, email alias)
 
 Chỉ `may_cham_cong` và `microsoft_email` cho phép. Cả hai mã **cùng hiệu lực**, và cả hai đều
@@ -195,7 +228,8 @@ nó đã lưu xong.
 - **Không tự chuyển mã** khi thấy trùng. Chuyển danh tính giữa hai con người luôn cần một người
   xác nhận.
 - **Không viết lại lịch sử chấm công** khi mã sang tay.
-- **Không xóa dòng mã** — chỉ đóng lại.
+- **Không xóa dòng mã** — chỉ đóng lại. Ngoại lệ duy nhất là mã **khai thử**, và nó phải do người
+  vận hành xóa tay bằng `trien_khai/go_gan_sai.sh`, xem [§1c](#1c-đóng-một-mã-không-ngăn-nó-hút-lịch-sử--mã-khai-thử-thì-phải-xóa-hẳn).
 - **Không tự xóa mã rác trong cột cũ** (ví dụ họ tên nằm trong ô điện thoại): xóa dữ liệu đang có
   không phải việc nó tự quyết.
 
