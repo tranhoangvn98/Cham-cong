@@ -25,6 +25,12 @@
 #   va tep goc do khong con o dau khac. Ngay nap cua no khong noi gi ve viec no that hay thu.
 #   Muon xoa nhung thu nay thi phai xoa co chon, tung ho so, qua giao dien — khong theo ngay.
 #
+#   MOT NGOAI LE, va bang bao cao phai noi ro: ho so NVDEMO* bi xoa thi cac bang nhom 2 CUA
+#   CHINH HO cung mat theo FK cascade. Ban dau bang "GIU LAI" dem toan bo `ho_so_tep` roi hua
+#   giu — chay that thi 46 con 45, vi mot tep thuoc mot NVDEMO. Con so hua khong khop con so
+#   thuc la loi nang hon ban than cai tep bi mat: ca bang do ton tai de nguoi doc tin duoc.
+#   Nay dem tach: nhom 2 cua NGUOI THAT o bang GIU LAI, nhom 2 cua NVDEMO o bang SE XOA.
+#
 # Nhom 3 — CAU HINH va NHAT KY. KHONG XOA:
 #   ca_lam · ngay_le · phong_ban · dia_diem · khoan_luong · tham_so_luong · bac_thue_tncn ·
 #   danh_muc_* · loai_vi_pham · quy_tac_vi_pham · thiet_bi · khoa_api · nguoi_dung ·
@@ -89,6 +95,10 @@ union all select 'vi_pham', count(*)::text, '-' from vi_pham where tao_luc < $M
 union all select 'hop_thu_di', count(*)::text, '-' from hop_thu_di where tao_luc < $M
 union all select 'nhan_vien NVDEMO* (va moi thu cua ho)', count(*)::text, '-'
   from nhan_vien where ma_nv like 'NVDEMO%'
+union all select '  .. ho_so_tep cua NVDEMO (theo cascade)', count(*)::text, '-'
+  from ho_so_tep t join nhan_vien nv on nv.id = t.nhan_vien_id where nv.ma_nv like 'NVDEMO%'
+union all select '  .. ma_dinh_danh cua NVDEMO (theo cascade)', count(*)::text, '-'
+  from ma_dinh_danh md join nhan_vien nv on nv.id = md.nhan_vien_id where nv.ma_nv like 'NVDEMO%'
 union all select 'thiet_bi THU001', count(*)::text, '-' from thiet_bi where serial = 'THU001';
 "
 
@@ -102,7 +112,8 @@ union all select '?? lan_quet TU MOC, may KHAC (xem ghi chu cuoi)', count(*)::te
     and (thiet_bi_serial is null or thiet_bi_serial not in ($MAY_THAT))
 union all select '>> nhan_vien nguoi that', count(*)::text
   from nhan_vien where ma_nv not like 'NVDEMO%'
-union all select '>> ho_so_tep (ban goc giay to)', count(*)::text from ho_so_tep
+union all select '>> ho_so_tep cua NGUOI THAT (ban goc giay to)', count(*)::text
+  from ho_so_tep t join nhan_vien nv on nv.id = t.nhan_vien_id where nv.ma_nv not like 'NVDEMO%'
 union all select '>> hop_dong_lao_dong', count(*)::text from hop_dong_lao_dong
 union all select '>> quyet_dinh_luong', count(*)::text from quyet_dinh_luong
 union all select '>> nguoi_phu_thuoc', count(*)::text from nguoi_phu_thuoc
@@ -178,7 +189,8 @@ union all select 'nhan_vien NVDEMO* (phai = 0)', count(*)::text
   from nhan_vien where ma_nv like 'NVDEMO%'
 union all select '>> lan_quet con lai', count(*)::text from lan_quet
 union all select '>> nhan_vien con lai', count(*)::text from nhan_vien
-union all select '>> ho_so_tep con lai', count(*)::text from ho_so_tep;
+union all select '>> ho_so_tep cua nguoi that con lai', count(*)::text
+  from ho_so_tep t join nhan_vien nv on nv.id = t.nhan_vien_id where nv.ma_nv not like 'NVDEMO%';
 "
 
 echo
