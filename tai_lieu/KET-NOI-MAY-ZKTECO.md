@@ -20,7 +20,7 @@ cùng giao thức nên thường chạy được, nhưng nên chạy thử một
 | Server Mode | `ADMS` | `ADMS` |
 | Enable Domain Name | **Tắt** | **Bật** |
 | Server Address | `192.168.1.10` | `chamcong.congty.vn` |
-| Server Port | `8080` | `80` |
+| Server Port | `8080` | `80` — hoặc **không có ô này**, xem hộp dưới |
 | Enable Proxy Server | **Tắt** | **Tắt** |
 | HTTPS | **Tắt** | **Tắt** |
 
@@ -51,6 +51,20 @@ Firmware cài tiếng Việt đặt tên khác, màn hình tên là **"Cài đ�
 Khi `Khởi động tên miền` bật, nhiều firmware **tự thêm** `http://` và dấu `/` vào ô địa chỉ
 rồi hiển thị nguyên URL (`http://chamcong.congty.vn/`). Đó là bình thường — chỉ gõ phần tên
 miền, để firmware tự ghép, đừng gõ tay `http://`.
+
+> **Không thấy ô "Cổng máy chủ" là bình thường — và đừng bật ủy nhiệm để tìm nó.**
+>
+> Trên một số firmware (đã gặp thật ở máy văn phòng, 23.08.2026), bật `Khởi động tên miền` làm
+> **ô cổng biến mất hẳn**: firmware coi ô địa chỉ là URL và dùng cổng 80. Đúng cái cần cho bản
+> triển khai VPS, nên màn hình chỉ còn bốn dòng là đủ.
+>
+> Ô port xuất hiện khi bật `Cho phép máy chủ ủy nhiệm` **không phải cổng máy chủ** — đó là cổng
+> của **proxy**. Bật lên là máy thôi gửi thẳng tới tên miền và đẩy toàn bộ qua proxy đã khai;
+> ô proxy thường trống thành `0.0.0.0`, tức là dữ liệu không đi đâu cả. Máy không báo lỗi, màn
+> hình vẫn bình thường, và máy chủ không nhận được gì.
+>
+> Cách kiểm chắc chắn nhất không phải đọc màn hình mà là **so với một máy đang chạy thật**: mở
+> đúng màn hình này trên máy đã gửi dữ liệu về được rồi so từng dòng.
 
 **Menu › Comm › Ethernet** (hoặc Wi-Fi): đặt IP tĩnh hoặc DHCP reservation cho máy, để
 địa chỉ máy không đổi sau khi mất điện.
