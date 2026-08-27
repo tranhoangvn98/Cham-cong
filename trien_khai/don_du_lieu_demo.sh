@@ -62,15 +62,39 @@ select 'thiet bi THU001',
        count(*)::text from thiet_bi where serial = 'THU001';
 "
 
+# Phieu luong la thu duy nhat co the CHAN lan don nay, nen in ro no thuoc ky nao va ky do dang
+# o trang thai gi — de nguoi doc quyet duoc truoc khi go `--that`.
+vang '=== Phieu luong cua ho so NVDEMO* nam trong ky nao ==='
+sql -c "
+select kl.thang as ky_luong, kl.trang_thai,
+       count(*)::text as so_phieu_demo,
+       case when kl.trang_thai in ('da_duyet','da_tra') then 'CHAN — ky da chot, khong xoa'
+            else 'xoa duoc — ky chua chot' end as ket_luan
+  from phieu_luong pl
+  join nhan_vien nv on nv.id = pl.nhan_vien_id
+  join ky_luong kl on kl.id = pl.ky_luong_id
+ where nv.ma_nv like 'NVDEMO%'
+ group by kl.thang, kl.trang_thai order by kl.thang;
+"
+
 # ---------------------------------------------------------------- 2. Hang rao
 # Cung ba hang rao ma `DELETE /api/nhan-vien/:id` dat ra. Lap lai o day chu khong tin rang
 # "du lieu demo thi chac khong co gi" — neu ai da tinh luong hoac cap tai khoan cho mot ho so
 # NVDEMO thi no khong con la du lieu demo nua.
+# Ban dau hang rao nay chan MOI phieu luong. Qua chat: du lieu demo duoc nap kem mot ky luong
+# thu, nen ho so demo nao cung co dung mot phieu — va the la khong bao gio don duoc.
+#
+# Cai dang chan la KY DA CHOT: xoa mot phieu khoi ky `da_duyet`/`da_tra` la doi tong so cua mot
+# ky da duyet, tuc la sua chung tu. Ky con `nhap` hay `huy` thi phieu demo chi la so nhap dang
+# do — xoa duoc, chi phai bam "Tinh luong" lai cho ky do.
 CHAN=$(sql -tAc "
 select coalesce(string_agg(x, '; '), '') from (
-  select nv.ma_nv || ' co ' || count(*) || ' phieu luong' as x
-    from phieu_luong pl join nhan_vien nv on nv.id = pl.nhan_vien_id
-   where nv.ma_nv like 'NVDEMO%' group by nv.ma_nv
+  select 'ky ' || kl.thang || ' (' || kl.trang_thai || ') co ' || count(*) || ' phieu demo' as x
+    from phieu_luong pl
+    join nhan_vien nv on nv.id = pl.nhan_vien_id
+    join ky_luong kl on kl.id = pl.ky_luong_id
+   where nv.ma_nv like 'NVDEMO%' and kl.trang_thai in ('da_duyet','da_tra')
+   group by kl.thang, kl.trang_thai
   union all
   select nv.ma_nv || ' co tai khoan dang nhap'
     from nguoi_dung nd join nhan_vien nv on nv.id = nd.nhan_vien_id
@@ -79,7 +103,7 @@ select coalesce(string_agg(x, '; '), '') from (
 ")
 if [[ -n "$CHAN" ]]; then
   do_ "TU CHOI: $CHAN"
-  do_ 'Da tra luong hoac cap tai khoan cho ho so nao thi ho so do o lai — do la chung tu.'
+  do_ 'Ky luong da chot la chung tu. Huy duyet ky do truoc, hoac de ho so demo o lai.'
   exit 1
 fi
 
@@ -120,8 +144,16 @@ union all
 select 'thiet bi THU001', count(*)::text from thiet_bi where serial = 'THU001';
 "
 
+# Phieu luong demo bi xoa theo cascade cua `nhan_vien`, nen tong so cua ky luong do da doi.
+KY=$(sql -tAc "select string_agg(distinct thang, ', ') from ky_luong where trang_thai in ('nhap','cho_duyet');")
 echo
 xanh 'Xong. Ba dong tren phai bang 0.'
+if [[ -n "$KY" ]]; then
+  echo
+  vang "Ky luong chua chot: $KY"
+  echo '  Phieu luong cua ho so demo da bi xoa theo cascade, nen tong so cua ky do da doi.'
+  echo '  Vao web -> Bang luong -> ky do -> bam "Tinh luong" de dung lai cho dung.'
+fi
 cat <<'HD'
 
 Con MOT thu KHONG do script nay xoa, va co y:
