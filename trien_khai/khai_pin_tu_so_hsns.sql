@@ -30,6 +30,12 @@ begin;
 -- KHONG dung khe thoi gian giua hai may lam can cu. Hai dau doc nam sat nhau nen mot nguoi quet
 -- qua ca hai trong vai giay la binh thuong — phep kiem do khong phan biet duoc gi o day.
 --
+-- PIN 39 (Nguyen Tuan Anh, Giam doc) la PIN duy nhat duoi nguong 90% — 43/51 ngay. Da kiem rieng
+-- va van la MOT nguoi: 8 ngay le do XEN KE ca hai may (4 ngay cong vao, 4 ngay cong ra), rai tu
+-- thang 4 den thang 8; neu mot may la cua nguoi thu hai thi 8 ngay le se don ve mot may. Hai may
+-- deu dung 47 ngay, cung khoang 16/04-26/08. Cac ngay le mang dang quet le chu khong phai mot ca
+-- lam viec rieng: 21/06 mot lan luc 23:16, 25/08 hai lan cach nhau mot giay luc 17:30.
+--
 -- May thu ba `NYU7261300256` ('VP1 - Cua chinh', 69 To Huu, firmware khac, 1 lan quet) KHONG
 -- nam trong danh sach: chua biet dai PIN cua no co trung he danh so nay khong. Lan quet cua no
 -- duoc BO LAI, khong gan, va se hien o phan "PIN con treo".
@@ -219,7 +225,7 @@ select ma_chuan, count(*) as so_nguoi from ma_dinh_danh
  group by ma_chuan having count(*) > 1;
 
 \echo ''
-\echo '=== KIEM TRA 5: bang cong hien co — TAT CA dang la vang vi chua tinh lai ==='
+\echo '=== KIEM TRA 5: bang cong hien co — chua tinh lai ==='
 select trang_thai, count(*) as so_dong, min(ngay) as tu, max(ngay) as den
   from bang_cong_ngay group by trang_thai order by count(*) desc;
 
@@ -230,8 +236,11 @@ select trang_thai, count(*) as so_dong, min(ngay) as tu, max(ngay) as den
 \echo '#  Dung roi: doi dong cuoi thanh  commit;  roi chay lai.'
 \echo '#'
 \echo '#  SAU KHI COMMIT phai bam "Tinh lai bang cong" tren web cho ca khoang'
-\echo '#  03/04/2026 -> 27/08/2026, chia hai lan vi moi lan toi da 92 ngay.'
-\echo '#  Truoc khi tinh lai, 305 dong bang cong hien co dang la VANG cho ca 51 nguoi.'
+\echo '#  03/04/2026 -> 27/08/2026, chia hai lan vi moi lan toi da 92 ngay:'
+\echo '#  03/04-30/06 (89 ngay) va 01/07-27/08 (58 ngay).'
+\echo '#  Bang cong hien co (305 dong, 26-31/08, ca 51 nguoi) dang la 203 VANG + 102 NGHI TUAN,'
+\echo '#  vi chua lan quet nao duoc gan. Tinh lai se viet lai chung. Luu y no con co dong cho'
+\echo '#  28-31/08 la ngay chua toi.'
 \echo '################################################################'
 
 rollback;
