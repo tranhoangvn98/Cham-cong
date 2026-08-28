@@ -1,32 +1,46 @@
 -- ============================================================================
--- KHAI PIN 23 (Tran Minh Khanh), 34 (Tran Duc Hoang), 57 (Hoang Minh Ngoc)
--- VA GAN NGUOC LAN QUET
+-- KHAI NOT 9 PIN CON LAI CUA NGUOI DANG DI LAM, VA GAN NGUOC LAN QUET
 --
--- MAC DINH ROLLBACK. Doc phan KIEM TRA, dung roi thi doi dong cuoi thanh `commit;`.
+-- MAC DINH ROLLBACK. Doc phan DOI CHIEU va BO LAI, dung roi thi doi dong cuoi thanh `commit;`.
 --
--- Ba PIN nay bi bo lai khoi dot khai 29 PIN vi BA LY DO KHAC NHAU:
+-- Thay cho `khai_pin_23_34_57.sql`: cung co che, nhung phu het 9 PIN thay vi 3, de khong ai
+-- phai chay hai script chong nhau len cung mot bang.
 --
---   PIN 23 — may khai ten "Tran Thi Minh Khanh", ho so trong he thong ghi "Tran Minh Khanh".
---            Lech mot chu dem nen phep noi theo ten khop tuyet doi truot. 115 ngay quet dang
---            mo coi trong `lan_quet`, khong mat.
---   PIN 34 — KHONG co trong so HSNS (so do chi co 40 dong), nen doi chieu tu dong khong the
---            ra ten. Chinh chu da xac nhan truc tiep day la PIN cua minh. 72 ngay quet deu tu
---            13/04, thang 8 co 14 ngay — khop voi mot nguoi di lam that.
---   PIN 57 — trong `nhan_vien` co HAI ho so trung ten "Hoang Minh Ngoc". Script cu tu choi
---            chon ho, va tu choi dung: gan nham mot trong hai la cong cua nguoi nay chay sang
---            ho so kia.
+-- Dot khai dau (`khai_pin_tu_so_hsns.sql`) lam 29 PIN. Sheet "Khai ngay" cua file doi chieu co
+-- 36 PIN, cong them PIN 34 va 43 do HR tra loi ve sau. Con lai dung 9 cai duoi day, moi cai
+-- rot vi mot ly do rieng:
 --
--- VI SAO SCRIPT NAY KHONG HARDCODE `ma_nv` (khac script 29 PIN):
---   Dung hai cho nay la hai cho ten khong dang tin, nen hardcode mot ma la gia vo rang toi da
---   biet chac. Thay vao do script DO ra ung vien, IN HET ra, va chi khai khi ket qua khong con
---   cho nao de chon nham:
---     * dung 1 ung vien            -> khai
---     * nhieu ung vien, dung 1 nguoi DANG HOAT DONG -> khai nguoi do
---     * con lai (0 ung vien, hay >=2 nguoi dang hoat dong) -> BO LAI, in ro ly do, KHONG doan
---   Ban mac dinh la rollback nen anh doc bang "DOI CHIEU" o duoi truoc, roi moi commit.
+--   PIN  4 (Tran Hoang Anh Vinh)  — trong `nhan_vien` co HAI ho so trung ten.
+--   PIN 14 (Ngo Trung Kien)       — co trong so HSNS, quet 120 ngay, chua ro da co ho so chua.
+--   PIN 23 (Tran Thi Minh Khanh)  — may khai co chu dem "Thi", ho so ghi khong co.
+--   PIN 31 (Phan Song Hao)        — nghi lech dau / lech chinh ta giua hai nguon.
+--   PIN 32 (Dao Thanh Binh)       — ho so co the ghi DAO NGUOC thu tu tu ("Thanh Binh Dao").
+--   PIN 34 (Tran Duc Hoang)       — khong co trong so HSNS. May chi hien "Sep". Chinh chu xac
+--                                   nhan la minh; va PIN 4 (anh Vinh) quet SONG SONG lien tuc
+--                                   ca 5 thang voi PIN 34, nen hai PIN nay khong the cung mot
+--                                   nguoi — loai tru duoc kha nang "Sep" la anh Vinh.
+--   PIN 37 (Tran Van Dinh)        — co trong so HSNS, quet 109 ngay, chua ro da co ho so chua.
+--   PIN 43 (Than Thi Van Anh)     — khong co trong so HSNS. HR cho ten, va cho biet chi lam kho
+--                                   Trung Quoc — giai thich duoc dang quet thua hai dao roi
+--                                   nhau ma du lieu khong tu phan giai duoc.
+--   PIN 57 (Hoang Minh Ngoc)      — trong `nhan_vien` co HAI ho so trung ten.
 --
--- Sau khi commit PHAI bam "Tinh lai bang cong" — script nay khong tinh lai (do la
--- `tinh_lai_khoang` ben TypeScript).
+-- VI SAO KHONG HARDCODE `ma_nv` (khac script 29 PIN):
+--   Chin cho nay dung la chin cho ten khong dang tin — lech chu dem, lech dau, dao thu tu tu,
+--   trung ten, hoac khong co trong so. Hardcode mot ma o day la gia vo rang toi da biet chac.
+--   Script DO ung vien theo TUNG TU (moi tu trong ten phai xuat hien, khong ke thu tu), IN HET
+--   ra, va chi khai khi khong con cho chon nham:
+--     * dung 1 ung vien                              -> khai
+--     * nhieu ung vien nhung dung 1 nguoi DANG HOAT DONG -> khai nguoi do
+--     * con lai (0 ung vien, hay >=2 nguoi dang hoat dong) -> BO LAI, in ro ly do
+--   Bang "BO LAI" chinh la danh sach ho so ma nhan su phai lap / phai gop, khong phai loi.
+--
+-- LUU Y ve file Excel doi chieu: cau #5/#6/#7 trong sheet "Can hoi" bao "lap ho so" cho PIN 14,
+-- 23, 37. File do dung TEN KHOP TUYET DOI va duoc sinh TRUOC khi doi chieu voi bang `nhan_vien`,
+-- nen voi PIN 23 (va co the 31, 32) no bao thieu ho so trong khi ho so da co duoi mot cach viet
+-- khac. Lap them la tao ho so trung. Bang DOI CHIEU duoi day moi la cau tra loi that.
+--
+-- Sau khi commit PHAI bam "Tinh lai bang cong" — script nay khong tinh lai.
 -- ============================================================================
 \set ON_ERROR_STOP on
 \pset pager off
@@ -34,52 +48,65 @@
 
 begin;
 
--- Hai dau doc cua MOT cua (xem lap luan day du trong khai_pin_tu_so_hsns.sql). Lan quet tren
--- may ngoai danh sach nay duoc BO LAI chu khong gan, vi so PIN do tung may cap.
+-- Hai dau doc cua MOT cua (lap luan day du trong khai_pin_tu_so_hsns.sql). Lan quet tren may
+-- ngoai danh sach nay duoc BO LAI chu khong gan, vi so PIN do TUNG MAY cap.
 create temp table may_dung_chung (serial text primary key);
 insert into may_dung_chung values ('8116254600435'), ('8116254600440');
 
--- Chuan hoa ten truoc khi so: bo khoang trang thua, ha chu thuong. Khong bo dau — hai nguon
--- (so HSNS va `nhan_vien`) cung mot bang ma, lech la lech chu chu khong phai lech dau.
-create temp table ung_vien (pin text primary key, nhan text, mo_ta text);
+-- Khop theo TUNG TU chu khong theo ca chuoi: moi tu phai xuat hien o dau do trong ho ten, khong
+-- ke thu tu. Chiu duoc ca ba kieu lech gap o day — thieu chu dem ("Tran Thi Minh Khanh" vs
+-- "Tran Minh Khanh"), dao thu tu ("Dao Thanh Binh" vs "Thanh Binh Dao"), va thua khoang trang.
+-- Long hon LIKE ca chuoi, nhung long o day la an toan: luat chon ben duoi tu chan khi ra nhieu
+-- nguoi, con chan sai thi chi mat mot vong hoi lai.
+create temp table ung_vien (pin text primary key, tu text[], mo_ta text);
 insert into ung_vien values
-  ('23', 'trần%minh khánh', 'may khai "Trần Thị Minh Khánh" — ho so ghi "Trần Minh Khánh"'),
-  ('34', 'trần đức hoàng',  'khong co trong so HSNS — chinh chu xac nhan day la PIN cua minh'),
-  ('57', 'hoàng minh ngọc', 'may khai "Hoàng Minh Ngọc" — he thong co ho so trung ten');
+  ('4',  array['trần','hoàng','anh','vinh'],  'ho so trung ten'),
+  ('14', array['ngô','trung','kiên'],         'co trong so HSNS, quet 120 ngay'),
+  ('23', array['trần','minh','khánh'],        'may khai them chu dem "Thị"'),
+  ('31', array['phan','song','hào'],          'nghi lech dau/chinh ta giua hai nguon'),
+  ('32', array['đào','thanh','bình'],         'ho so co the dao thu tu tu'),
+  ('34', array['trần','đức','hoàng'],         'may chi hien "Sep" — chinh chu xac nhan'),
+  ('37', array['trần','văn','định'],          'co trong so HSNS, quet 109 ngay'),
+  ('43', array['thân','vân','anh'],           'HR cho ten; chi lam kho Trung Quoc'),
+  ('57', array['hoàng','minh','ngọc'],        'ho so trung ten');
+
+create temp table nv_chuan as
+select nv.id, nv.ma_nv, nv.ho_ten, nv.dang_hoat_dong, nv.ngay_vao, nv.ngay_nghi_viec,
+       nv.pin_may, nv.ca_lam_id,
+       lower(regexp_replace(btrim(coalesce(nv.ho_ten, '')), '\s+', ' ', 'g')) as ten_chuan
+  from nhan_vien nv;
 
 create temp table doi_chieu as
-select uv.pin, uv.mo_ta, nv.id, nv.ma_nv, nv.ho_ten, nv.dang_hoat_dong,
-       nv.ngay_vao, nv.ngay_nghi_viec, nv.pin_may as pin_dang_co,
+select uv.pin, uv.mo_ta, n.id, n.ma_nv, n.ho_ten, n.dang_hoat_dong,
+       n.ngay_vao, n.ngay_nghi_viec, n.pin_may as pin_dang_co,
        coalesce(cl.ten, '(chua gan ca)') as ca_lam,
-       (select count(*) from bang_cong_ngay bc where bc.nhan_vien_id = nv.id)  as dong_bang_cong,
-       (select count(*) from lan_quet lq   where lq.nhan_vien_id = nv.id)      as lan_quet_da_co
+       (select count(*) from bang_cong_ngay bc where bc.nhan_vien_id = n.id) as dong_bang_cong,
+       (select count(*) from lan_quet lq   where lq.nhan_vien_id = n.id)     as lan_quet_da_co
   from ung_vien uv
-  join nhan_vien nv
-    on lower(regexp_replace(btrim(coalesce(nv.ho_ten, '')), '\s+', ' ', 'g')) like uv.nhan
-  left join ca_lam cl on cl.id = nv.ca_lam_id;
+  join nv_chuan n
+    on not exists (select 1 from unnest(uv.tu) t where n.ten_chuan not like '%' || t || '%')
+  left join ca_lam cl on cl.id = n.ca_lam_id;
 
 \echo ''
-\echo '=== DOI CHIEU: PIN nay dang co nhung ho so nao khop ten ==='
+\echo '=== DOI CHIEU: moi PIN dang khop voi nhung ho so nao ==='
 select pin, ma_nv, ho_ten, dang_hoat_dong, ngay_vao, ngay_nghi_viec,
        coalesce(pin_dang_co, '-') as pin_dang_co, ca_lam, dong_bang_cong, lan_quet_da_co
   from doi_chieu order by pin::int, dang_hoat_dong desc, ma_nv;
 
--- Luat chon, viet mot lan o day chu khong rai trong nhieu cau:
---   dung 1 ung vien -> lay. Nhieu ung vien nhung dung 1 nguoi dang hoat dong -> lay nguoi do.
---   Con lai -> khong lay.
+-- Luat chon, viet mot lan o day chu khong rai trong nhieu cau.
 create temp table khai (pin text primary key, ma_nv text unique not null);
 insert into khai (pin, ma_nv)
 select pin, ma_nv from (
   select pin, ma_nv, dang_hoat_dong,
-         count(*)                                  over (partition by pin) as so_ung_vien,
-         count(*) filter (where dang_hoat_dong)     over (partition by pin) as so_dang_hd
+         count(*)                              over (partition by pin) as so_ung_vien,
+         count(*) filter (where dang_hoat_dong) over (partition by pin) as so_dang_hd
     from doi_chieu
 ) t
  where so_ung_vien = 1
     or (so_dang_hd = 1 and dang_hoat_dong);
 
 \echo ''
-\echo '=== SE KHAI: PIN -> ho so ==='
+\echo '=== SE KHAI ==='
 select k.pin, k.ma_nv, nv.ho_ten, nv.dang_hoat_dong,
        (select count(*) from lan_quet lq
          where lq.pin_may = k.pin and lq.nguon = 'may' and lq.nhan_vien_id is null
@@ -88,22 +115,24 @@ select k.pin, k.ma_nv, nv.ho_ten, nv.dang_hoat_dong,
  order by k.pin::int;
 
 \echo ''
-\echo '=== BO LAI: PIN khong khai duoc, va ly do ==='
+\echo '=== BO LAI: PIN khong khai duoc, va viec phai lam ==='
+\echo '    Day la DANH SACH VIEC cho nhan su, khong phai loi cua script.'
 select uv.pin, uv.mo_ta,
-       (select count(*) from doi_chieu d where d.pin = uv.pin) as so_ho_so_khop_ten,
+       (select count(*) from doi_chieu d where d.pin = uv.pin) as so_ho_so_khop,
        (select count(*) from doi_chieu d where d.pin = uv.pin and d.dang_hoat_dong)
          as so_ho_so_dang_hoat_dong,
        case when (select count(*) from doi_chieu d where d.pin = uv.pin) = 0
-              then 'KHONG co ho so nao khop ten — kiem lai ten trong nhan_vien'
-            else 'NHIEU ho so cung dang hoat dong — chay `npm run gop_trung` gop ho so trung '
-                 'truoc, roi chay lai script nay' end as phai_lam_gi
+              then 'CHUA CO HO SO — lap ho so nhan su cho nguoi nay roi chay lai script'
+            else 'HO SO TRUNG, ca hai deu dang hoat dong — chay `npm run gop_trung` gop truoc, '
+                 'roi chay lai script' end as phai_lam_gi
   from ung_vien uv
- where uv.pin not in (select pin from khai);
+ where uv.pin not in (select pin from khai)
+ order by uv.pin::int;
 
 -- ============================================================ HANG RAO
 
--- 1. Ky luong da duyet trong khoang du lieu thi DUNG. Gan nguoc lan quet lam bang cong doi,
---    ma bang luong tinh TU bang cong. Bang khong ton tai cung dung: fail-closed.
+-- 1. Ky luong da duyet trong khoang du lieu thi DUNG. Gan nguoc lan quet lam bang cong doi, ma
+--    bang luong tinh TU bang cong. Bang khong ton tai cung dung: fail-closed.
 do $$
 declare n int; ke text;
 begin
@@ -127,11 +156,11 @@ begin
   if n = 0 then
     raise exception 'Khong khai duoc PIN nao. Doc bang "BO LAI" o tren de biet phai lam gi.';
   end if;
-  raise notice 'Se khai % PIN.', n;
+  raise notice 'Se khai % / 9 PIN.', n;
 end $$;
 
--- 3. PIN dang hieu luc cho NGUOI KHAC thi DUNG. Thu hoi phai la mot hanh dong co y, lam tren
---    web, chu khong phai tac dung phu cua mot script khai.
+-- 3. PIN dang hieu luc cho NGUOI KHAC thi DUNG. Thu hoi phai la hanh dong co y tren web, chu
+--    khong phai tac dung phu cua mot script khai.
 do $$
 declare xung text;
 begin
@@ -145,9 +174,9 @@ begin
   end if;
 end $$;
 
--- 4. Lan quet cua hai PIN nay tren may NGOAI danh sach dung chung: bao ra, va BO LAI.
+-- 4. Lan quet cua cac PIN nay tren may NGOAI danh sach dung chung: bao ra, va BO LAI.
 \echo ''
-\echo '--- HANG RAO 4: lan quet cua PIN nay tren may NGOAI danh sach -> BO LAI (khong gan) ---'
+\echo '--- HANG RAO 4: lan quet tren may NGOAI danh sach -> BO LAI (khong gan) ---'
 select lq.thiet_bi_serial, tb.ten, tb.vi_tri, lq.pin_may, count(*) as so_lan,
        min((lq.thoi_diem + interval '7 hours')::date) as tu,
        max((lq.thoi_diem + interval '7 hours')::date) as den
@@ -160,12 +189,13 @@ select lq.thiet_bi_serial, tb.ten, tb.vi_tri, lq.pin_may, count(*) as so_lan,
  group by lq.thiet_bi_serial, tb.ten, tb.vi_tri, lq.pin_may
  order by lq.pin_may::int, lq.thiet_bi_serial;
 
--- PIN 34 se hien 'XEM LAI' o bang duoi: no quet o ca hai may khoang 79% so ngay, duoi nguong
--- 90%. Nguong do la mot phep DO GIAN TIEP, dung khi khong biet chu PIN la ai — o day chinh chu
--- da xac nhan, tuc la co bang chung manh hon con so. Dang quet thua o mot may cung khop voi
--- PIN 39 (Giam doc): nguoi hay ra vao le gio thi khong quet du doi cong vao/cong ra moi ngay.
+-- PIN 34 va 43 se hien 'XEM LAI' o bang duoi vi ty le quet du doi cong-vao/cong-ra thap.
+-- Nguong 90% la phep DO GIAN TIEP, dung khi khong biet chu PIN la ai. Voi hai PIN nay da co
+-- cau tra loi truc tiep tu nguoi that, tuc bang chung manh hon con so — bo qua nhan do.
+-- PIN 43 (lam kho Trung Quoc) va PIN 34 (Sep) deu thuoc dang ra vao le gio, khong quet du doi
+-- moi ngay, y het PIN 39 (Giam doc) da kiem rieng o dot truoc.
 \echo ''
-\echo '--- Can cu: PIN nay quet o ca hai may trong bao nhieu ngay ---'
+\echo '--- Can cu: moi PIN quet o ca hai may trong bao nhieu ngay ---'
 select k.pin, d.ngay_ca_hai_may, d.ngay_mot_may, d.tong_ngay,
        case when d.ngay_mot_may = 0 then 'ca hai may MOI ngay'
             when d.ngay_ca_hai_may::numeric / d.tong_ngay >= 0.9 then 'ca hai may >=90% ngay'
@@ -185,14 +215,14 @@ select k.pin, d.ngay_ca_hai_may, d.ngay_mot_may, d.tong_ngay,
  order by (k.pin::int);
 
 -- ============================================================ VIEC 1: dong ma_dinh_danh
--- `hieu_luc_tu` lay lan quet dau tien cua chinh PIN do. Khong can lui them: luat 1 cua
--- `tra_pin` mo khoang dau tien ve phia truoc, nen dong duy nhat nay om het lich su cua PIN.
+-- `hieu_luc_tu` lay lan quet dau tien cua chinh PIN do. Khong can lui them: luat 1 cua `tra_pin`
+-- mo khoang dau tien ve phia truoc, nen dong duy nhat nay om het lich su cua PIN.
 insert into ma_dinh_danh (nhan_vien_id, he_thong, ma, ma_chuan, hieu_luc_tu, nguon, ghi_chu)
 select nv.id, 'may_cham_cong', k.pin, k.pin,
        coalesce((select min(lq.thoi_diem) from lan_quet lq
                   where lq.pin_may = k.pin and lq.nguon = 'may'
                     and lq.thiet_bi_serial in (select serial from may_dung_chung)), now()),
-       'nhap_csv', 'Khai bu PIN 23/34/57 sau dot 29 PIN — 28/08/2026'
+       'nhap_csv', 'Khai bu 9 PIN con lai theo tra loi cua HR — 28/08/2026'
   from khai k join nhan_vien nv on nv.ma_nv = k.ma_nv
  where not exists (
    select 1 from ma_dinh_danh md
@@ -203,7 +233,7 @@ select nv.id, 'may_cham_cong', k.pin, k.pin,
 \echo '--- VIEC 1: dong ma_dinh_danh vua them ---'
 select nv.ma_nv, nv.ho_ten, md.ma_chuan as pin, md.hieu_luc_tu::date as hieu_luc_tu
   from ma_dinh_danh md join nhan_vien nv on nv.id = md.nhan_vien_id
- where md.ghi_chu = 'Khai bu PIN 23/34/57 sau dot 29 PIN — 28/08/2026'
+ where md.ghi_chu = 'Khai bu 9 PIN con lai theo tra loi cua HR — 28/08/2026'
  order by md.ma_chuan::int;
 
 -- ============================================================ VIEC 2: cot nhan_vien.pin_may
@@ -255,12 +285,12 @@ select count(*) filter (where nhan_vien_id is null)     as chua_biet,
   from lan_quet where nguon = 'may';
 
 \echo ''
-\echo '=== KIEM TRA 2: PIN con treo, 15 cai nhieu lan nhat ==='
+\echo '=== KIEM TRA 2: PIN con treo, 25 cai nhieu lan nhat ==='
+\echo '    Sau lan chay nay, phan lon phai la 20 PIN nguoi da nghi (sheet "Da nghi") + PIN 1.'
 select pin_may, count(*) as so_lan,
-       string_agg(distinct thiet_bi_serial, ' | ') as cac_may,
        max((thoi_diem + interval '7 hours')::date) as quet_cuoi
   from lan_quet where nguon = 'may' and nhan_vien_id is null
- group by pin_may order by count(*) desc limit 15;
+ group by pin_may order by count(*) desc limit 25;
 
 \echo ''
 \echo '=== KIEM TRA 3: cot va bang noi cung mot chuyen (PHAI RONG) ==='
@@ -280,11 +310,23 @@ select ma_chuan, count(*) as so_nguoi from ma_dinh_danh
 
 \echo ''
 \echo '=== KIEM TRA 5: ho da co ca lam viec chua (khong co ca thi bang cong sai) ==='
-select nv.ma_nv, nv.ho_ten, coalesce(cl.ten, '>>> CHUA CO CA <<<') as ca_lam,
-       nv.dang_hoat_dong
+select nv.ma_nv, nv.ho_ten, coalesce(cl.ten, '>>> CHUA CO CA <<<') as ca_lam, nv.dang_hoat_dong
   from khai k join nhan_vien nv on nv.ma_nv = k.ma_nv
   left join ca_lam cl on cl.id = nv.ca_lam_id
  order by k.pin::int;
+
+\echo ''
+\echo '=== KIEM TRA 6: PIN 1 — quet gion hay nguoi that? ==='
+\echo '    HR tra loi "khong biet la ai, cung khong phai van tay admin". 13 lan quet trong dung'
+\echo '    2 ngay. Neu cac lan quet don cum trong vai phut thi la thu van tay luc dang ky;'
+\echo '    neu rai deu ca ngay thi la nguoi that va phai di tim ten.'
+select (thoi_diem + interval '7 hours')::date as ngay,
+       count(*) as so_lan,
+       min((thoi_diem + interval '7 hours')::time) as som_nhat,
+       max((thoi_diem + interval '7 hours')::time) as muon_nhat,
+       extract(epoch from (max(thoi_diem) - min(thoi_diem)))/60 as trai_dai_phut
+  from lan_quet where nguon = 'may' and pin_may = '1'
+ group by 1 order by 1;
 
 \echo ''
 \echo '################################################################'
@@ -293,12 +335,11 @@ select nv.ma_nv, nv.ho_ten, coalesce(cl.ten, '>>> CHUA CO CA <<<') as ca_lam,
 \echo '#     commit;     -> ghi that'
 \echo '#'
 \echo '#  Truoc khi doi sang commit, doc ba thu:'
-\echo '#   1. Bang "DOI CHIEU" — ho so duoc chon co dung nguoi khong.'
-\echo '#   2. Bang "BO LAI" — PIN nao khong khai duoc va vi sao.'
+\echo '#   1. Bang DOI CHIEU — ho so duoc chon co dung nguoi khong.'
+\echo '#   2. Bang BO LAI   — day la danh sach viec cho nhan su (lap ho so / gop ho so).'
 \echo '#   3. KIEM TRA 3 va 4 phai RONG.'
 \echo '#'
-\echo '#  SAU KHI COMMIT phai bam "Tinh lai bang cong" cho khoang co lan quet vua gan'
-\echo '#  (xem bang "cac thang phai tinh lai"), moi lan toi da 92 ngay.'
+\echo '#  SAU KHI COMMIT phai bam "Tinh lai bang cong" cho khoang co lan quet vua gan.'
 \echo '################################################################'
 
 rollback;
