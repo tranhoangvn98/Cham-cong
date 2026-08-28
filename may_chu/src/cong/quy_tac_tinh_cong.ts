@@ -160,13 +160,17 @@ export function khoang_lay_quet(ngay: string, ca_goc: CaLam | null): { tu: Date;
 
 /**
  * So phut LAM THEM DUOC TINH: phan GIAO giua thoi gian co mat that va cac khoang da dang ky
- * trong don `lam_them` DA DUYET.
+ * trong don `lam_them` DA DUYET, DA TRU GIO NGHI.
  *
  * GIAO chu khong phai mot trong hai, va ca hai chieu deu co ly do:
  *   - Dang ky ma khong lam thi khong duoc tra. Don la KE HOACH, khong phai ket qua.
  *   - Lam ma khong dang ky thi khong duoc tra. Day la yeu cau nghiep vu, va no cung dung
  *     BLLD 2019 Dieu 107: lam them gio phai co su dong y cua nguoi lao dong — mot he thong tu
  *     ket luan "o lai muon = lam them" la tu tao ra nghia vu tra tien tu mot lan quet the.
+ *
+ * TRU GIO NGHI tren dung doan da kep. Voi OT sau gio tan ca thi khong khac gi (17:30-19:00
+ * khong cham gio nghi trua), nhung mot don lam them CA NGAY le hay CA NGAY Chu nhat ma khong
+ * tru thi thanh tra tien cho 90 phut nghi trua.
  *
  * Cac khoang duoc HOP NHAT truoc khi cong: hai don chong nhau trong cung mot ngay khong duoc
  * tinh hai lan.
@@ -192,18 +196,22 @@ function phut_lam_them_da_duyet(
   if (khoang.length === 0) return 0;
 
   khoang.sort((a, b) => a.tu - b.tu);
-  let tong = 0;
-  let hien = khoang[0] as { tu: number; den: number };
+  const hop_nhat: { tu: number; den: number }[] = [khoang[0] as { tu: number; den: number }];
   for (let i = 1; i < khoang.length; i++) {
     const k = khoang[i] as { tu: number; den: number };
-    if (k.tu <= hien.den) {
-      hien = { tu: hien.tu, den: Math.max(hien.den, k.den) };
-    } else {
-      tong += phut_giao_nhau(vao, ra, new Date(hien.tu), new Date(hien.den));
-      hien = k;
-    }
+    const cuoi = hop_nhat[hop_nhat.length - 1] as { tu: number; den: number };
+    if (k.tu <= cuoi.den) cuoi.den = Math.max(cuoi.den, k.den);
+    else hop_nhat.push({ tu: k.tu, den: k.den });
   }
-  tong += phut_giao_nhau(vao, ra, new Date(hien.tu), new Date(hien.den));
+
+  let tong = 0;
+  for (const k of hop_nhat) {
+    // Kep vao thoi gian co mat that, roi tru gio nghi TREN DUNG DOAN DA KEP.
+    const a = new Date(Math.max(vao.getTime(), k.tu));
+    const b = new Date(Math.min(ra.getTime(), k.den));
+    if (b.getTime() <= a.getTime()) continue;
+    tong += Math.max(0, so_phut(a, b) - phut_nghi_giao(a, b, ngay, ca));
+  }
   return tong;
 }
 
