@@ -2,6 +2,40 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.53.0] — 2026-08-28
+
+**Giai đoạn 1 của kế hoạch bổ sung: hai hàm thuần suy ra CHIỀU (vào/ra) và chạy máy trạng
+thái RA/VÀO văn phòng cho một ngày. Chưa nối vào bảng công — chỉ đo, chưa trừ.**
+
+### Suy ra chiều một lần quẹt — `may_chu/src/cong/chieu_quet.ts`
+
+`chieu_quet(chieu_may, status, chi_co_status_0)` trả `'vao' | 'ra' | 'khong_ro'`. Ưu tiên chiều
+KHAI SẴN của máy (máy đặt ở cổng vào thì mọi lần quẹt là `'vao'`) vì đó là vật lý, tin hơn
+firmware. Máy khai `'hai_chieu'` mới đọc mã Status ATTLOG. **Bẫy ZKTeco:** rất nhiều máy chạy mặc
+định luôn đẩy Status = 0; nếu cả máy chỉ thấy Status 0 thì Status vô nghĩa → trả `'khong_ro'` chứ
+không coi là `'vao'`, tránh việc cả công ty "vào khi đang trong" mỗi buổi chiều.
+
+### Máy trạng thái ra/vào một ngày — `may_chu/src/cong/ra_vao.ts`
+
+`suy_luan_ra_vao(quet, ngay, ca)` trả về: `gio_den` (lần quẹt đầu, bất kể chiều), `gio_ra_ve`
+(lần quẹt kết thúc ngày), danh sách `phien_ra_ngoai` + tổng `phut_ra_ngoai` (đã trừ phần trùm giờ
+nghỉ trưa), `con_trong_van_phong`, và `loi[]` các mâu thuẫn logic: `QUEN_QUET_VAO`,
+`QUEN_QUET_RA`, `VAO_KHI_DANG_TRONG`, `RA_KHI_DANG_NGOAI`, `CHI_MOT_LAN_QUET`.
+
+Theo mục 1.2b kế hoạch: **trạng thái chỉ đổi khi có log** — ở lại trong văn phòng buổi trưa không
+sinh sự kiện, không cảnh báo; chỉ log MÂU THUẪN mới là cảnh báo. **Không đoán giờ còn thiếu:** biết
+có lần không quẹt nhưng không biết mấy giờ → chỉ ghi lỗi, không cộng/trừ phút. Lần quẹt chiều
+`'khong_ro'` (máy Status-0) thì ĐẢO trạng thái, KHÔNG bắt lỗi mâu thuẫn (vì chiều là suy đoán).
+
+Kèm 17 kiểm thử thuần (`may_chu/test/ra_vao.test.ts`), không chạm CSDL.
+
+### Chốt năm quyết định chính sách (mục 7 kế hoạch)
+
+Chủ công ty chốt 28.08.2026: (1) phút ra ngoài **chỉ đo, không trừ công**; (2) đơn nộp sau hạn
+**tự từ chối** — trừ loại cần chứng từ (ốm, thai sản, kết hôn, hiếu) vẫn chuyển người; (3) nghỉ
+**≥ 3 ngày làm việc** thì người duyệt xem; (4) hạn nộp = **giờ vào ca − 30 phút** (không hard-code
+07:30); (5) nghỉ nửa ngày chiều vẫn dùng chung hạn ở (4).
+
 ## [1.52.0] — 2026-08-28
 
 **OT chỉ tính khi có đơn làm thêm đã duyệt. Và hai script đưa dữ liệu thật lên hệ thống:

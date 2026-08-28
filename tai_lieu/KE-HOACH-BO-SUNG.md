@@ -727,23 +727,30 @@ khoản nội quy về đo thời gian rời văn phòng.*
 
 ---
 
-## 7. Hai quyết định cần bạn chốt trước khi code
+## 7. Năm quyết định — chủ công ty CHỐT 28.08.2026
 
-**Quyết định 1 — phút ra ngoài có trừ vào công không?**
+| # | Câu hỏi | Quyết định | Code dùng gì |
+|---|---|---|---|
+| 1 | Phút ra ngoài có trừ công? | **Phương án A — chỉ đo và hiện, KHÔNG trừ công** | `TRU_PHUT_RA_NGOAI = false`, cố định giai đoạn này |
+| 2 | Đơn nộp sau hạn thì sao? | **Từ chối** (`qua_han_xu_ly = 'tu_choi'`) — trừ loại cần chứng từ, xem dưới | quy tắc `NOP_MUON` → `tu_choi` |
+| 3 | Nghỉ dài mấy ngày thì người duyệt xem? | **≥ 3 ngày làm việc** | `nguong_don_dai = 3`, quy tắc `DON_DAI` → `chuyen_nguoi` |
+| 4 | Hạn nộp đơn | **Trước giờ vào ca 30 phút**, tính trên ngày đầu của đơn | `han_nop = gio_vao_ca − 30 phút` |
+| 5 | Nghỉ nửa ngày chiều | **Vẫn hạn 07:30** (không phải trước giờ nghỉ trưa) | dùng chung `han_nop` ở #4 — vì hạn bám giờ vào ca, không bám phần nghỉ |
 
-| Phương án | Nội dung | Phù hợp khi |
-|---|---|---|
-| A (khuyến nghị) | Chỉ **đo và hiện**, không trừ công. Vượt ngưỡng thì cảnh báo, HR xử lý bằng người | Muốn có dữ liệu trước, chưa muốn đụng lương |
-| B | Trừ thẳng vào `phut_lam` | Đã có điều khoản trong nội quy, và chấp nhận việc số công tháng đầu giảm |
-| C | Trừ nhưng có hạn mức miễn trừ (vd 30 phút/ngày không tính) | Muốn siết mà không làm khó việc đi ngân hàng, gặp khách |
+**Câu 4+5 gộp thành một quy tắc gọn:** hạn nộp = **giờ vào ca − 30 phút**, so với ngày ĐẦU của
+đơn. Ca hành chính vào 08:00 → hạn 07:30, đúng cho cả nghỉ cả ngày lẫn nghỉ nửa ngày chiều. Không
+hard-code 07:30 — ca kho/lái xe vào giờ khác thì hạn tự dịch theo. Đơn cho ngày mai trở đi thì
+`now` luôn trước hạn nên không bao giờ vướng `NOP_MUON` — đúng ý "báo trước 30 phút".
 
-Code viết như nhau cho cả ba — khác nhau ở một tham số. Nhưng phải chốt **trước khi bật**, vì
-đổi giữa kỳ lương là phải tính lại và giải thích lại.
+**Một ngoại lệ bắt buộc giữ, dù câu 2 chọn "từ chối":** loại đơn **cần chứng từ** (`om`,
+`thai_san`, `ket_hon`, `hieu`) thì **không tự từ chối vì nộp muộn** — ốm đột xuất, hiếu hỉ không
+báo trước 30 phút được (BLLĐ Điều 115). Các loại này luôn `chuyen_nguoi` cho người duyệt xem chứng
+từ. Tức thứ tự quy tắc: `LOAI_CAN_CHUNG_TU` (chuyển người) đứng **trước** `NOP_MUON` (từ chối).
+`NOP_MUON` chỉ áp cho `phep_nam` và `khong_luong`.
 
-**Quyết định 2 — đơn nghỉ nộp sau 7h30 thì tự từ chối hay chuyển người?**
-
-Khuyến nghị `chuyen_nguoi` (lý do ở mục 5.2). Nếu bạn chọn `tu_choi`, cần bổ sung điều khoản
-tương ứng vào nội quy lao động và thông báo trước ít nhất một kỳ lương.
+Hệ quả của câu 2 khớp đúng ý "quá ngày phép thì nghỉ không phép": đơn `phep_nam` nộp muộn bị từ
+chối → người vẫn nghỉ → ngày đó `nghi_khong_phep`, 0 công. Cần **khai điều khoản hạn nộp vào nội
+quy lao động đã đăng ký** (BLLĐ Điều 118) trước khi bật, vì tự từ chối là chế tài hành chính.
 
 ---
 
