@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { goi, la_nhan_su } from '../api.ts';
 import {
-  DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  DangTai, HopLoi, HopTot, HopThoai, Trong,
+  dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio,
 } from '../thanh_phan.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
 import type { NhomMa as NhomMaDinhDanh } from './ma_dinh_danh.tsx';
@@ -31,8 +32,11 @@ interface Lenh {
 export function TrangThietBi(): ReactNode {
   const [dang_them, dat_dang_them] = useState(false);
   const [xem_lenh, dat_xem_lenh] = useState<ThietBi | null>(null);
+  const [lay_log_cho, dat_lay_log_cho] = useState<ThietBi | null>(null);
   const [nap_nv_cho, dat_nap_nv_cho] = useState<ThietBi | null>(null);
+  const [xoa_nv_cho, dat_xoa_nv_cho] = useState<ThietBi | null>(null);
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<ThietBi[]>('/api/thiet-bi');
 
@@ -47,10 +51,16 @@ export function TrangThietBi(): ReactNode {
   // Xoa han: chi hien khi may DA TAT. Hoi lai vi day la thao tac khong hoan tac duoc — du lich
   // su quet o lai, ban ghi khai bao may thi mat.
   const xoa = async (tb: ThietBi): Promise<void> => {
-    const dong_y = window.confirm(
-      `Xóa hẳn máy "${tb.ten}" (${tb.serial})?\n\n`
-      + 'Lịch sử lần quẹt của máy này VẪN GIỮ NGUYÊN — bảng công cũ không đổi. '
-      + 'Chỉ bản ghi khai báo máy và các lệnh chưa gửi bị xóa.');
+    const dong_y = await xn.hoi({
+      tieu_de: `Xóa hẳn máy "${tb.ten}"?`,
+      mo_ta: <>
+        Serial <code>{tb.serial}</code>. Lịch sử lần quẹt của máy này <strong>vẫn giữ
+        nguyên</strong> — bảng công cũ không đổi. Chỉ bản ghi khai báo máy và các lệnh chưa
+        gửi bị xóa.
+      </>,
+      chu_dong_y: 'Xóa hẳn máy',
+      nguy_hiem: true,
+    });
     if (!dong_y) return;
     await hd.chay(
       () => goi(`/api/thiet-bi/${tb.id}`, { method: 'DELETE' }),
@@ -127,8 +137,8 @@ export function TrangThietBi(): ReactNode {
                         </>
                       )}
                     </td>
-                    <td style={{ fontSize: 12 }}>{tb.phien_ban_firmware ?? '—'}</td>
-                    <td className="so" style={{ fontSize: 12 }}>{tb.dia_chi_ip ?? '—'}</td>
+                    <td className="chu-nho">{tb.phien_ban_firmware ?? '—'}</td>
+                    <td className="so chu-nho">{tb.dia_chi_ip ?? '—'}</td>
                     <td className="khong-ngat">{ngay_gio(tb.thay_lan_cuoi)}</td>
                     <td className="canh-giua so">
                       {Number(tb.lenh_cho) > 0
@@ -142,6 +152,10 @@ export function TrangThietBi(): ReactNode {
                             title="Nạp một nhân viên xuống máy">
                             Nạp NV
                           </button>
+                          <button className="nut-nho" onClick={() => dat_xoa_nv_cho(tb)}
+                            title="Xoá một PIN khỏi máy — kèm cả vân tay / khuôn mặt đã đăng ký">
+                            Xoá NV
+                          </button>
                           <button className="nut-nho"
                             onClick={() => lenh_may(tb.serial, 'dong-bo-gio',
                               'Đã xếp lệnh đồng bộ giờ. Máy sẽ nhận ở lần kết nối kế tiếp.')}
@@ -150,8 +164,13 @@ export function TrangThietBi(): ReactNode {
                           </button>
                           <button className="nut-nho"
                             onClick={() => lenh_may(tb.serial, 'gui-lai-log',
-                              'Đã yêu cầu máy gửi lại log. Bản ghi trùng sẽ tự bị bỏ qua.')}>
+                              'Đã yêu cầu máy gửi lại log. Bản ghi trùng sẽ tự bị bỏ qua.')}
+                            title="Máy gửi những bản ghi NÓ CHO LÀ chưa đồng bộ">
                             Gửi lại log
+                          </button>
+                          <button className="nut-nho" onClick={() => dat_lay_log_cho(tb)}
+                            title="Xin log theo khoảng ngày — dùng khi máy tưởng đã gửi hết">
+                            Lấy log cũ
                           </button>
                           <button className="nut-nho nut-phang" onClick={() => dat_xem_lenh(tb)}>
                             Lịch sử lệnh
@@ -183,6 +202,10 @@ export function TrangThietBi(): ReactNode {
         />
       )}
 
+      {lay_log_cho !== null && (
+        <FormLayLog thiet_bi={lay_log_cho} khi_dong={() => dat_lay_log_cho(null)} />
+      )}
+
       {xem_lenh !== null && (
         <LichSuLenh thiet_bi={xem_lenh} khi_dong={() => dat_xem_lenh(null)} />
       )}
@@ -194,6 +217,15 @@ export function TrangThietBi(): ReactNode {
           khi_xong={() => { dat_nap_nv_cho(null); nap_lai(); }}
         />
       )}
+      {xoa_nv_cho !== null && (
+        <XoaNhanVienKhoiMay
+          thiet_bi={xoa_nv_cho}
+          khi_dong={() => dat_xoa_nv_cho(null)}
+          khi_xong={() => { dat_xoa_nv_cho(null); nap_lai(); }}
+        />
+      )}
+
+      {xn.hop_thoai}
     </>
   );
 }
@@ -309,7 +341,7 @@ function LichSuLenh({ thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () =>
                   </td>
                   <td>
                     {l.ma_tra_ve === null
-                      ? <span style={{ color: 'var(--chu-mo)' }}>—</span>
+                      ? <span className="chu-mo">—</span>
                       : l.ma_tra_ve === 0
                         ? <span className="nhan nhan-tot">thành công</span>
                         : <span className="nhan nhan-xau">lỗi {l.ma_tra_ve}</span>}
@@ -370,7 +402,7 @@ function NapNhanVien(
             ))}
           </select>
           {co_pin.length === 0 && (
-            <div className="goi-y" style={{ color: 'var(--xau)' }}>
+            <div className="goi-y chu-xau">
               Chưa có nhân viên nào được gán PIN máy.
             </div>
           )}
@@ -399,6 +431,70 @@ function NapNhanVien(
               || (pin_dang_co.length > 1 && pin === '')}
           >
             {hd.dang_chay ? 'Đang xếp lệnh…' : 'Nạp xuống máy'}
+          </button>
+          <button type="button" onClick={khi_dong}>Hủy</button>
+        </div>
+      </form>
+    </HopThoai>
+  );
+}
+
+/**
+ * Xoa mot PIN khoi may cham cong.
+ *
+ * ADMS xoa duoc tu xa, KHAC voi dang ky: `DATA DELETE USERINFO PIN=...` go ca user lan van tay
+ * / khuon mat da luu tren may. Chieu nguoc lai thi khong — sinh trac hoc phai dang ky truc tiep
+ * tai may.
+ *
+ * KHONG dung danh sach nhan vien de chon nhu form "Nap NV": cai can xoa thuong la PIN KHONG
+ * thuoc ai — van tay thu luc dang ky, hay nguoi da nghi tu truoc khi lap so. Nen o day nhap
+ * thang so PIN.
+ */
+function XoaNhanVienKhoiMay(
+  { thiet_bi, khi_dong, khi_xong }:
+  { thiet_bi: ThietBi; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [pin, dat_pin] = useState('');
+  const hd = dung_hanh_dong();
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    const ok = await hd.chay(() => goi(
+      `/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/nhan-vien/${encodeURIComponent(pin.trim())}`,
+      { method: 'DELETE' },
+    ));
+    if (ok) khi_xong();
+  };
+
+  return (
+    <HopThoai tieu_de={`Xoá PIN khỏi ${thiet_bi.ten}`} khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+
+        <div className="hop-thong-bao hop-luu-y">
+          Lệnh này xoá user khỏi <strong>chính máy này</strong>, kèm vân tay và khuôn mặt đã đăng
+          ký trên đó. Không lấy lại được — người đó phải ra máy đăng ký lại từ đầu.
+        </div>
+
+        <div className="hop-thong-bao hop-tin">
+          Số PIN do <strong>từng máy</strong> cấp. Nếu công ty có nhiều máy dùng chung một hệ
+          đánh số thì phải xoá trên <strong>từng máy một</strong>; xoá ở đây không đụng tới máy khác.
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="pinxoa">Số PIN cần xoá *</label>
+          <input id="pinxoa" value={pin} onChange={(e) => dat_pin(e.target.value)}
+            required maxLength={32} autoComplete="off" />
+          <div className="goi-y">
+            Lần quẹt cũ của PIN này <strong>vẫn nằm nguyên</strong> trong hệ thống — xoá trên máy
+            chỉ chặn quẹt mới, không xoá lịch sử chấm công.
+          </div>
+        </div>
+
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh nut-nguy"
+            disabled={hd.dang_chay || pin.trim() === ''}>
+            {hd.dang_chay ? 'Đang xếp lệnh…' : 'Xoá khỏi máy'}
           </button>
           <button type="button" onClick={khi_dong}>Hủy</button>
         </div>
@@ -480,5 +576,70 @@ function HuongDanCauHinh(): ReactNode {
         nhau ở nhiều lô máy và ADMS chỉ gửi lên số sê ri firmware.
       </p>
     </div>
+  );
+}
+
+/**
+ * Xin log theo khoang ngay — khac "Gui lai log".
+ *
+ * "Gui lai log" (`CHECK`) hoi may "con gi CHUA GUI khong". Con tro "da gui toi dau" nam TRONG
+ * MAY: mot may tung noi vao may chu ADMS khac co the da danh dau het la da gui, va luc do
+ * `CHECK` tra ve 0 ban ghi — khong phai hong, ma la may tin rang no khong con gi.
+ *
+ * Duong nay hoi thang "dua toi log tu ngay A den ngay B", nen khong phu thuoc con tro do.
+ */
+function FormLayLog(
+  { thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () => void },
+): ReactNode {
+  const [tu, dat_tu] = useState('');
+  const [den, dat_den] = useState('');
+  const hd = dung_hanh_dong();
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    await hd.chay(
+      () => goi(`/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/lay-log`, {
+        method: 'POST',
+        body: { tu, den },
+      }),
+      'Đã xếp lệnh. Máy nhận ở lần kết nối kế tiếp — xem kết quả ở Lịch sử lệnh.',
+    );
+  };
+
+  return (
+    <HopThoai tieu_de={`Lấy log cũ từ ${thiet_bi.ten}`} khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+        <HopTot chu={hd.tot} />
+
+        <div className="hop-thong-bao hop-tin">
+          Dùng khi máy <strong>không tự đẩy</strong> dữ liệu cũ. Nút <em>Gửi lại log</em> chỉ hỏi
+          "còn gì chưa gửi" — mà máy từng nối vào máy chủ khác có thể đã đánh dấu hết là đã gửi.
+          Đường này hỏi thẳng theo khoảng ngày.
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="ll-tu">Từ ngày *</label>
+          <input id="ll-tu" type="date" value={tu} onChange={(e) => dat_tu(e.target.value)} required />
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="ll-den">Đến ngày *</label>
+          <input id="ll-den" type="date" value={den} onChange={(e) => dat_den(e.target.value)} required />
+          <div className="goi-y">
+            Bản ghi trùng tự bị bỏ qua, nên chạy nhiều lần hay chọn khoảng rộng đều an toàn.
+            Firmware cũ có thể không hỗ trợ lệnh này — khi đó xuất ra USB rồi dùng
+            <em> Nhật ký quẹt → Nhập lịch sử từ file</em>.
+          </div>
+        </div>
+
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh"
+            disabled={hd.dang_chay || tu === '' || den === ''}>
+            {hd.dang_chay ? 'Đang xếp lệnh…' : 'Xin log'}
+          </button>
+          <button type="button" onClick={khi_dong}>Đóng</button>
+        </div>
+      </form>
+    </HopThoai>
   );
 }

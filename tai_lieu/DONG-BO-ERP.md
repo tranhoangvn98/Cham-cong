@@ -42,7 +42,7 @@ Xác thực bằng header `X-Api-Key`, **không phải** Bearer token.
 
 ## 3. Cách chạy
 
-Vào **Hệ thống → Đồng bộ ERP** (chỉ admin).
+Vào **Cài đặt → Đồng bộ ERP** (chỉ admin).
 
 1. **Chạy thử** — đọc ERP, tính ra sẽ tạo/sửa ai, **không ghi gì**. Xem kỹ bảng kết quả.
 2. **Đồng bộ thật** — mới ghi vào hệ thống.

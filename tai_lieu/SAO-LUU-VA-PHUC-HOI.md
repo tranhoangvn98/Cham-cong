@@ -260,7 +260,7 @@ mở được bình thường — chỉ là tên thư mục cũ. Sắp xếp l�
 Thư mục được đổi **ngay tại chỗ** khi sửa mã nhân viên hoặc họ tên, và có một **lần quét mỗi
 ngày** làm lưới hứng (có bốn chỗ trong hệ thống sửa được hai trường đó).
 
-Chạy tay khi cần — **Hệ thống → Kho tệp hồ sơ → Cây thư mục**, hoặc:
+Chạy tay khi cần — **Cài đặt → Kho tệp hồ sơ → Cây thư mục**, hoặc:
 
 ```bash
 # 🖥️ Trên VPS — chạy thử, KHÔNG đổi gì

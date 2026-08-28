@@ -7,9 +7,10 @@ import { useState, type CSSProperties, type ReactNode } from 'react';
 import { goi, gui_tep, tai_tep } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, HopThoaiXemTep, HopTot, OSo, Trong,
-  dung_hanh_dong, dung_nap, ngay_viet, ngay_gio,
+  dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet, ngay_gio,
 } from '../thanh_phan.tsx';
 import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
+import { dung_dat_tieu_de } from '../tieu_de_trang.tsx';
 import { NhanCachTrich } from './hop_dong.tsx';
 import { TheMaDinhDanh } from './ma_dinh_danh.tsx';
 
@@ -187,6 +188,15 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
   const [nhom, dat_nhom] = useState<Nhom | null>(null);
   const tq = dung_nap<TongQuan>(`/api/nhan-vien/${nhan_vien_id}/ho-so`, [nhan_vien_id]);
 
+  // Tieu de header + duong mon. Goi TRUOC cac nhanh tra ve som — hook phai chay moi lan ve.
+  // `null` khi chua co du lieu: luc do header giu nhan "Nhân viên" cua muc menu.
+  const nguoi = tq.du_lieu?.nhan_vien ?? null;
+  dung_dat_tieu_de(nguoi === null ? null : {
+    tieu_de: nguoi.ho_ten,
+    phu: nguoi.ma_nv,
+    duong_mon: [{ ten: 'Nhân viên', den: '/nhan-vien' }, { ten: 'Hồ sơ' }],
+  });
+
   if (tq.dang_tai) return <DangTai />;
   if (tq.loi !== null) {
     return (
@@ -362,11 +372,18 @@ function BangNhom(
   const [dang_gan_tep, dat_dang_gan_tep] = useState(false);
   const [xem_noi_dung, dat_xem_noi_dung] = useState<string | null>(null);
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   const lam_moi = (): void => { nap_lai(); khi_doi(); };
 
   const xoa = async (id: string): Promise<void> => {
-    if (!window.confirm('Xóa bản ghi này? Thao tác không hoàn tác được.')) return;
+    const dong_y = await xn.hoi({
+      tieu_de: `Xóa bản ghi trong mục ${TEN_NHOM[nhom]}?`,
+      mo_ta: 'Thao tác này không hoàn tác được. Tệp đính kèm của bản ghi cũng bị xóa theo.',
+      chu_dong_y: 'Xóa bản ghi',
+      nguy_hiem: true,
+    });
+    if (!dong_y) return;
     const ok = await hd.chay(
       () => goi(`/api/${DUONG_NHOM[nhom]}/${id}`, { method: 'DELETE' }),
       'Đã xóa.',
@@ -462,6 +479,7 @@ function BangNhom(
           khi_dong={() => dat_xem_noi_dung(null)}
         />
       )}
+      {xn.hop_thoai}
     </>
   );
 }
@@ -534,7 +552,7 @@ const COT: Record<Nhom, Cot[]> = {
     { nhan: 'Phản hồi', ve: (r) => <div style={{ maxWidth: 240 }}>{co(r['phan_hoi'])}</div> },
   ],
   khieu_nai: [
-    { nhan: 'Gửi lúc', ve: (r) => <span className="khong-ngat so" style={{ fontSize: 12 }}>{ngay_gio(String(r['tao_luc']))}</span> },
+    { nhan: 'Gửi lúc', ve: (r) => <span className="khong-ngat so chu-nho">{ngay_gio(String(r['tao_luc']))}</span> },
     { nhan: 'Loại', ve: (r) => <Nhan ma={r['loai']} bang="loai_khieu_nai" /> },
     { nhan: 'Mức độ', ve: (r) => <Nhan ma={r['muc_do']} bang="uu_tien" /> },
     { nhan: 'Nội dung', ve: (r) => (
@@ -588,9 +606,9 @@ const COT: Record<Nhom, Cot[]> = {
         )}
       </>
     ) },
-    { nhan: 'Số sê-ri', ve: (r) => <span className="so" style={{ fontSize: 12 }}>{co(r['so_seri'])}</span> },
+    { nhan: 'Số sê-ri', ve: (r) => <span className="so chu-nho">{co(r['so_seri'])}</span> },
     { nhan: 'Địa chỉ IP', ve: (r) => <span className="so">{co(r['dia_chi_ip'])}</span> },
-    { nhan: 'MAC', ve: (r) => <span className="so" style={{ fontSize: 12 }}>{co(r['dia_chi_mac'])}</span> },
+    { nhan: 'MAC', ve: (r) => <span className="so chu-nho">{co(r['dia_chi_mac'])}</span> },
     { nhan: 'Ngày cấp', ve: (r) => <span className="khong-ngat">{r['ngay_cap'] === null ? '—' : ngay_viet(String(r['ngay_cap']))}</span> },
     { nhan: 'Tình trạng', ve: (r) => <Nhan ma={r['tinh_trang']} bang="tinh_trang_tb" /> },
   ],
@@ -602,6 +620,7 @@ function DanhSachTep(
   { tep, sua_duoc, khi_doi }: { tep: TepDinhKem[]; sua_duoc: boolean; khi_doi: () => void },
 ): ReactNode {
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
   const [dang_xem, dat_dang_xem] = useState<TepDinhKem | null>(null);
   if (tep.length === 0) return null;
 
@@ -609,7 +628,13 @@ function DanhSachTep(
     await hd.chay(() => tai_tep(`/api/ho-so/tep/${t.id}`, t.ten_goc), 'Đã tải tệp.');
   };
   const xoa = async (t: TepDinhKem): Promise<void> => {
-    if (!window.confirm(`Xóa tệp "${t.ten_goc}"?`)) return;
+    const dong_y = await xn.hoi({
+      tieu_de: `Xóa tệp "${t.ten_goc}"?`,
+      mo_ta: 'Tệp bị xóa hẳn khỏi máy chủ, không khôi phục được.',
+      chu_dong_y: 'Xóa tệp',
+      nguy_hiem: true,
+    });
+    if (!dong_y) return;
     const ok = await hd.chay(() => goi(`/api/ho-so/tep/${t.id}`, { method: 'DELETE' }), 'Đã xóa tệp.');
     if (ok) khi_doi();
   };
@@ -625,10 +650,10 @@ function DanhSachTep(
             {tep.map((t) => (
               <tr key={t.id}>
                 <td>{t.ten_goc}</td>
-                <td className="canh-phai so" style={{ fontSize: 12 }}>
+                <td className="canh-phai so chu-nho">
                   {Math.max(1, Math.round(t.kich_thuoc / 1024))} KB
                 </td>
-                <td className="khong-ngat" style={{ fontSize: 12 }}>{ngay_gio(t.tao_luc)}</td>
+                <td className="khong-ngat chu-nho">{ngay_gio(t.tao_luc)}</td>
                 <td className="khong-ngat">
                   <button className="nut-nho nut-phang" onClick={() => dat_dang_xem(t)}>Xem</button>{' '}
                   <button className="nut-nho" onClick={() => void tai(t)}>Tải về</button>
@@ -649,6 +674,7 @@ function DanhSachTep(
           khi_dong={() => dat_dang_xem(null)}
         />
       )}
+      {xn.hop_thoai}
     </div>
   );
 }
@@ -704,6 +730,7 @@ function HopThoaiNoiDungHopDong(
   const [kq, dat_kq] = useState<KetQuaTrich | null>(null);
   const [chon_tep, dat_chon_tep] = useState('');
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   // Chi liet ke tep trich duoc. Mot tep .xlsx trong danh sach chi de nguoi dung chon roi
   // an loi la lang phi mot vong thu.
@@ -713,8 +740,17 @@ function HopThoaiNoiDungHopDong(
   const trich = async (): Promise<void> => {
     if (chon_tep === '') return;
     const co = du_lieu?.so_ky_tu ?? 0;
-    if (co > 0 && !window.confirm(
-      'Hợp đồng này đã có nội dung. Trích lại sẽ ghi đè bản đang có. Tiếp tục?')) return;
+    if (co > 0) {
+      const dong_y = await xn.hoi({
+        tieu_de: 'Trích lại nội dung hợp đồng?',
+        mo_ta: <>
+          Hợp đồng này đã có nội dung ({co.toLocaleString('vi-VN')} ký tự). Trích lại{' '}
+          <strong>ghi đè</strong> bản đang có. Tệp gốc không bị ảnh hưởng.
+        </>,
+        chu_dong_y: 'Trích lại',
+      });
+      if (!dong_y) return;
+    }
 
     // `chay_lay` vi ta CAN ket qua: canh bao ("day la ban scan, OCR khong doc duoc chu
     // nao") nam trong do, va do la thu duy nhat giai thich vi sao khong co gi duoc luu.
@@ -816,11 +852,16 @@ function HopThoaiNoiDungHopDong(
                 <button
                   className="nut-nho nut-nguy"
                   disabled={hd.dang_chay}
-                  onClick={() => {
-                    if (!window.confirm('Xóa nội dung đã trích? Tệp gốc vẫn còn.')) return;
-                    void hd.chay(() => goi(duong, { method: 'DELETE' }), 'Đã xóa nội dung.')
+                  onClick={() => void xn.hoi({
+                    tieu_de: 'Xóa nội dung đã trích?',
+                    mo_ta: 'Tệp gốc vẫn còn — chỉ bản text dùng để tìm kiếm bị xóa. Trích lại được.',
+                    chu_dong_y: 'Xóa nội dung',
+                    nguy_hiem: true,
+                  }).then((dong_y) => {
+                    if (!dong_y) return;
+                    return hd.chay(() => goi(duong, { method: 'DELETE' }), 'Đã xóa nội dung.')
                       .then(() => { dat_kq(null); nap_lai(); });
-                  }}
+                  })}
                 >
                   Xóa nội dung đã trích
                 </button>
@@ -829,6 +870,7 @@ function HopThoaiNoiDungHopDong(
           )}
         </>
       )}
+      {xn.hop_thoai}
     </HopThoai>
   );
 }
@@ -1343,6 +1385,7 @@ function PanelTaiLieu(
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<KetQuaTaiLieu>(duong, [nhan_vien_id]);
   const [dang_sua, dat_dang_sua] = useState<DongTaiLieu | null>(null);
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   if (dang_tai) return <DangTai />;
   const ds = du_lieu?.danh_sach ?? [];
@@ -1364,10 +1407,17 @@ function PanelTaiLieu(
    * cua mot con nguoi, va no khong con o dau khac.
    */
   const go_tep = async (d: DongTaiLieu): Promise<void> => {
-    if (!window.confirm(
-      `Gỡ tệp "${d.tep_ten ?? 'này'}" khỏi mục ${d.ten}?\n\n`
-      + 'Tệp sẽ bị XÓA HẲN khỏi máy chủ, không khôi phục được. '
-      + 'Đây là bản gốc giấy tờ pháp lý và nó không còn ở đâu khác.')) return;
+    const dong_y = await xn.hoi({
+      tieu_de: `Gỡ tệp "${d.tep_ten ?? 'này'}" khỏi mục ${d.ten}?`,
+      mo_ta: <>
+        Tệp sẽ bị <strong>xóa hẳn</strong> khỏi máy chủ, không khôi phục được. Đây là bản gốc
+        giấy tờ pháp lý và nó không còn ở đâu khác. Dòng checklist quay về trạng thái{' '}
+        <em>Thiếu</em>.
+      </>,
+      chu_dong_y: 'Gỡ và xóa tệp',
+      nguy_hiem: true,
+    });
+    if (!dong_y) return;
 
     const ok = await hd.chay(async () => {
       await goi(`/api/nhan-vien/${nhan_vien_id}/tai-lieu/${d.ma}`, {
@@ -1443,7 +1493,7 @@ function PanelTaiLieu(
                 <tr key={d.ma} style={d.tam_mien ? { opacity: 0.6 } : undefined}>
                   <td>
                     <strong>{d.ten}</strong>
-                    {d.bat_buoc && !d.tam_mien && <span style={{ color: 'var(--xau)' }}> *</span>}
+                    {d.bat_buoc && !d.tam_mien && <span className="chu-xau"> *</span>}
                     {d.tam_mien && <span className="nhan nhan-mo" style={{ marginLeft: 6 }}>khi nghỉ việc</span>}
                     {d.mo_ta !== null && <div className="o-so-phu" style={{ maxWidth: 300 }}>{d.mo_ta}</div>}
                   </td>
@@ -1507,6 +1557,7 @@ function PanelTaiLieu(
           khi_xong={() => { dat_dang_sua(null); nap_lai(); khi_doi(); }}
         />
       )}
+      {xn.hop_thoai}
     </>
   );
 }

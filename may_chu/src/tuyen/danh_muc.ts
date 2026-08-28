@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { can_admin, can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { bam_mat_khau, LoiMatKhau } from '../bao_mat/mat_khau.ts';
+import { chan_quan_tri_cua_cu } from '../bao_mat/cong_sso.ts';
 import { lenh_dong_bo_gio } from '../adms/giao_thuc.ts';
 import { xep_lenh } from '../adms/tuyen.ts';
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
@@ -588,6 +589,46 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     return { ok: true, lenh_id: id, luu_y: 'Bản ghi trùng sẽ tự bị bỏ qua nhờ khóa chống trùng.' };
   });
 
+  /**
+   * Xin log theo KHOANG NGAY, khong phu thuoc con tro dong bo cua may.
+   *
+   * VI SAO KHAC `gui-lai-log`: `CHECK` hoi may "con gi CHUA GUI khong". Con tro "da gui toi dau"
+   * nam TRONG MAY, khong nam o he thong nay — nen mot may tung noi vao mot may chu ADMS khac co
+   * the da danh dau toan bo log la da gui. Luc do `CHECK` tra ve 0 ban ghi: khong phai hong, ma
+   * la may tin rang no khong con gi. Doi dia chi may chu thuong lam may quen con tro do, nhung
+   * tuy firmware — khong co gi bao dam.
+   *
+   * `DATA QUERY ATTLOG` KHONG hoi "con gi chua gui" ma hoi "dua toi log tu ngay A den ngay B".
+   * Do la duong duy nhat lay lai du lieu cu qua ADMS khi con tro cua may da chay qua.
+   *
+   * Ho tro TUY FIRMWARE. May khong hieu thi bao loi o *Lich su lenh*, va duong chac chan con lai
+   * la xuat ra USB roi nhap tep — xem KET-NOI-MAY-ZKTECO.md.
+   *
+   * KHONG CO DUONG NAO NHAN LENH TU DO, va do la co y. Hai moc ngay di qua `ngay_bat_buoc` (dang
+   * YYYY-MM-DD, ngay khong ton tai bi chan) roi moi duoc ghep vao chuoi lenh. Mot route "gui lenh
+   * bat ky" se tien hon nhieu, va cung la mot duong cho phep dat `CLEAR DATA` xuong may cham cong.
+   */
+  app.post('/thiet-bi/:serial/lay-log', { preHandler: can_nhan_su }, async (req) => {
+    const serial = lay_serial_param(req);
+    const b = than(req.body);
+    const tu = ngay_bat_buoc(b, 'tu');
+    const den = ngay_bat_buoc(b, 'den');
+    if (den < tu) throw new LoiDauVao('Ngày kết thúc phải từ ngày bắt đầu trở đi.');
+    await bat_buoc_co_may(serial);
+
+    // Cac truong cua lenh ADMS phan tach bang TAB, giong `DATA UPDATE USERINFO`.
+    const id = await xep_lenh(
+      serial,
+      `DATA QUERY ATTLOG StartTime=${tu} 00:00:00\tEndTime=${den} 23:59:59`,
+    );
+    return {
+      ok: true,
+      lenh_id: id,
+      luu_y: 'Máy nhận lệnh ở lần kết nối kế tiếp. Bản ghi trùng tự bị bỏ qua. '
+        + 'Firmware cũ có thể không hỗ trợ lệnh này — xem kết quả ở Lịch sử lệnh.',
+    };
+  });
+
   // ------------------------------------------------------------ khoa API tich hop
   //
   // Chi admin. Khoa API mo duong vao du lieu cham cong va ho so nhan su cua ca cong ty
@@ -771,6 +812,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   );
 
   app.post('/nguoi-dung', { preHandler: can_admin }, async (req, res) => {
+    chan_quan_tri_cua_cu();
     const b = than(req.body);
     const ten_dang_nhap = chuoi_bat_buoc(b, 'ten_dang_nhap', { toi_da: 100, toi_thieu: 3 });
     if (!/^[a-zA-Z0-9._-]+$/.test(ten_dang_nhap)) {
@@ -807,6 +849,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
 
   /** Dat lai mat khau ho nhan vien (nguoi dung bat buoc doi o lan dang nhap sau). */
   app.post('/nguoi-dung/:id/dat-lai-mat-khau', { preHandler: can_admin }, async (req) => {
+    chan_quan_tri_cua_cu();
     const id = lay_id(req);
     const b = than(req.body);
     const mat_khau = chuoi_bat_buoc(b, 'mat_khau_moi', { toi_da: 200 });

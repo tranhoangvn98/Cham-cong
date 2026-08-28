@@ -122,6 +122,70 @@ tự động trong cùng giao dịch với việc đổi mã.
 **Lần quẹt cũ không bị đổi chủ, và đó là cố ý.** Chủ của một lần quẹt được xác định *lúc nhận*,
 nên bảng công tháng trước không tự viết lại khi PIN sang tay người khác.
 
+#### 1b. Lô đến muộn: tra theo mốc của lần quẹt, không phải "hôm nay ai giữ"
+
+Câu ở trên chỉ đúng khi lô đến **đúng lúc**. Lô đến **muộn** thì không: máy mất mạng vài ngày,
+hoặc nhân sự nạp lại dữ liệu cũ từ máy. Đến bản `1.50` bộ tiếp nhận vẫn tra bằng
+
+```sql
+... and md.hieu_luc_den is null     -- "ai đang giữ PIN hôm nay"
+```
+
+nên một lô đến muộn mang lần quẹt tháng 6 sẽ gán hết cho người đang giữ PIN hôm nay — sai bảng
+công tháng 6, tức là sai lương.
+
+Từ bản `1.51` mỗi bản ghi được tra theo **mốc thời gian của chính nó** (`dinh_danh/tra_pin.ts`).
+Bốn luật, và ba trong số đó tồn tại để **không làm mất khớp** so với trước:
+
+1. **Khoảng đầu tiên mở về phía trước.** `hieu_luc_tu` của dòng đầu không phải một sự thật nghiệp
+   vụ — với dữ liệu cũ nó là `nhan_vien.tao_luc`, do backfill của di trú 025 đặt vào. Tin nó thì
+   mọi lần quẹt nhập từ lịch sử CSV trước ngày tạo hồ sơ thành "không biết là ai". Chỉ **ranh giới
+   giữa hai dòng** mới mang nghĩa thật: đó là lúc PIN đổi chủ.
+2. **Bảng có dòng nào cho PIN này là bảng nói cuối.** PIN đã đóng lại mà chưa cấp cho ai thì trả
+   *không biết* — **không** rơi xuống cột `pin_may`. Rơi xuống cột là quay lại đúng cái lỗi này.
+3. **Chỉ khi bảng không có dòng nào** mới đọc cột. Đường này dành cho PIN vừa gõ tay trên form hồ
+   sơ mà chưa kịp sinh dòng ở bảng.
+4. **Khoảng chồng nhau:** dòng có `hieu_luc_tu` muộn nhất thắng. Index của di trú 025 chỉ bảo đảm
+   các dòng *đang* hiệu lực không trùng nhau, nên lịch sử vẫn chồng nhau được. Chồng nhau là dữ
+   liệu cần sửa tay — chạy `trien_khai/pin_trung_khoang.sh` (chỉ đọc) để dò.
+
+Cùng lý do đó, **nút "Gán lại" của nhân sự phải có khoảng ngày**. Để trống thì hệ thống lấy đúng
+khoảng người đó giữ PIN theo bảng này; người chưa từng được khai PIN đó thì **từ chối** chứ không
+đoán; và tháng đã có bảng lương được duyệt cũng bị từ chối.
+
+#### 1c. Đóng một mã KHÔNG ngăn nó hút lịch sử — mã khai thử thì phải xóa hẳn
+
+Đây là hệ quả trực tiếp của luật 1 ở trên, và nó đã làm hỏng dữ liệu thật ngày **27.08.2026**.
+
+Luật 1 nói khoảng **đầu tiên** mở về vô cực phía trước. Nên một dòng đã đóng lại không phải là
+`[hieu_luc_tu, hieu_luc_den)` như trực giác đọc — nếu nó là dòng đầu tiên của PIN đó thì nó là:
+
+```
+(-∞, hieu_luc_den)
+```
+
+Tức là **đóng lại chỉ chặn tương lai, không chặn quá khứ**. Mọi lần quẹt có mốc trước ngày đóng
+vẫn gán cho người giữ dòng ấy.
+
+Chuyện đã xảy ra: PIN 1 và 2 được khai **thử** cho hai người thật trên máy demo, rồi đóng lại
+trước khi kéo 40 nghìn lần quẹt lịch sử từ hai máy thật về. Phép kiểm lúc đó chỉ liệt kê mã *đang*
+hiệu lực nên báo "không còn PIN nào", và người đọc tin là sạch. Kết quả: **353 lần quẹt gán sai
+người**, trong đó 340 lần là của một người **đã nghỉ việc** chảy vào bảng công của một người đang
+làm — đúng cái kiểu hỏng âm thầm mà bảng này sinh ra để chặn.
+
+Hai điều rút ra, và cả hai đã thành mã:
+
+1. **Mã khai THỬ thì XÓA HẲN, không đóng lại.** Đóng lại dành cho mã từng **là thật** — đó mới là
+   lúc lịch sử của nó cần được giữ. Một dòng chưa bao giờ mô tả sự thật mà để lại thì mỗi lần
+   nhập lịch sử sau này nó lại hút sai một lần nữa. Gỡ hậu quả:
+   `trien_khai/go_gan_sai.sh <pin>... --that` (gỡ gán, dọn bảng công đã sinh, xóa hẳn dòng mã).
+2. **Trước khi nhập bất kỳ lô lịch sử nào, liệt kê CẢ mã đã đóng.**
+   `trien_khai/kiem_nhanh.sh truoc` — khối A nay in cả ba đường có thể hút lần quẹt: mã đang hiệu
+   lực, mã **đã đóng** (kèm cảnh báo "vẫn hút lần quẹt trước ngày đó"), và cột `pin_may`.
+
+Câu chốt: *một phép kiểm không kiểm đúng thứ nó hứa thì tệ hơn là không kiểm* — không có phép
+kiểm thì người ta còn dè chừng, có phép kiểm sai thì người ta yên tâm làm bậy.
+
 ### 2. Một người có nhiều mã cùng lúc (PIN ở hai máy, email alias)
 
 Chỉ `may_cham_cong` và `microsoft_email` cho phép. Cả hai mã **cùng hiệu lực**, và cả hai đều
@@ -143,7 +207,7 @@ sót. Quy tắc: **bảng thắng**, và hệ thống ghi một dòng cảnh bá
        Chay doi soat ma dinh danh de biet vi sao lech.
 ```
 
-Rồi **Hệ thống → Mã định danh → Đối soát** liệt kê mọi chỗ lệch, hai chiều. Mọi đường ghi đã biết
+Rồi **Cài đặt → Mã định danh → Đối soát** liệt kê mọi chỗ lệch, hai chiều. Mọi đường ghi đã biết
 (form hồ sơ, đồng bộ ERP, nhập CSV, đăng nhập Microsoft) đều ghi cả hai nơi, nên báo cáo này sạch
 là trạng thái bình thường — có dòng nào là có việc phải tìm.
 
@@ -164,7 +228,8 @@ nó đã lưu xong.
 - **Không tự chuyển mã** khi thấy trùng. Chuyển danh tính giữa hai con người luôn cần một người
   xác nhận.
 - **Không viết lại lịch sử chấm công** khi mã sang tay.
-- **Không xóa dòng mã** — chỉ đóng lại.
+- **Không xóa dòng mã** — chỉ đóng lại. Ngoại lệ duy nhất là mã **khai thử**, và nó phải do người
+  vận hành xóa tay bằng `trien_khai/go_gan_sai.sh`, xem [§1c](#1c-đóng-một-mã-không-ngăn-nó-hút-lịch-sử--mã-khai-thử-thì-phải-xóa-hẳn).
 - **Không tự xóa mã rác trong cột cũ** (ví dụ họ tên nằm trong ô điện thoại): xóa dữ liệu đang có
   không phải việc nó tự quyết.
 
@@ -207,7 +272,7 @@ người là cách chắc chắn nhất để một sai sót trong backfill làm
 một cách im lặng** — và lần quẹt không khớp thì không ai thấy gì, nó chỉ nằm đó với
 `nhan_vien_id = null`.
 
-Nên trong giai đoạn này cả hai cùng tồn tại, và **Hệ thống → Mã định danh → Đối soát** so hai
+Nên trong giai đoạn này cả hai cùng tồn tại, và **Cài đặt → Mã định danh → Đối soát** so hai
 chiều:
 
 - Cột cũ có giá trị mà bảng không có mã đang hiệu lực nào → backfill bỏ sót, hoặc hai người trùng
@@ -218,7 +283,7 @@ Khi báo cáo này sạch thì mới bỏ được các cột cũ. Bỏ sớm h�
 
 ## Tra cứu theo mã
 
-**Hệ thống → Mã định danh → Tra cứu**: gõ một mã bất kỳ, không cần biết nó thuộc hệ thống nào.
+**Cài đặt → Mã định danh → Tra cứu**: gõ một mã bất kỳ, không cần biết nó thuộc hệ thống nào.
 Tìm cả **mã đã đóng**, và đó là công dụng chính — một bảng công in tháng trước ghi PIN cũ, một
 công văn ghi mã `ERP147`.
 

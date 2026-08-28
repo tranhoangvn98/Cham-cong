@@ -78,3 +78,14 @@ test('bien nao cung duoc ta trong .env.example', () => {
   assert.deepEqual(thieu, [],
     `Thieu trong .env.example: ${thieu.join(', ')} — nguoi trien khai khong co cach nao biet.`);
 });
+
+test('LICH_CHU_KY_PHUT bi chan trong [1, 60]', async () => {
+  // Go 0 hay so am thi `setInterval` ban lien tuc; so qua lon thi viec cuoi ngay truot han.
+  // Chan bang Math.min/max ngay trong cau_hinh nen khong cho nao phai nho kiem lai.
+  const doc = (v: string): number => Math.min(60, Math.max(1, Math.round(Number(v))));
+  assert.equal(doc('5'), 5);
+  assert.equal(doc('0'), 1, '0 phut = ban lien tuc');
+  assert.equal(doc('-9'), 1);
+  assert.equal(doc('999'), 60);
+  assert.equal(doc('7.6'), 8, 'phai lam tron, khong de le phut');
+});

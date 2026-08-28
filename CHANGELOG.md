@@ -2,6 +2,1178 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.53.0] — 2026-08-28
+
+**Giai đoạn 1 của kế hoạch bổ sung: hai hàm thuần suy ra CHIỀU (vào/ra) và chạy máy trạng
+thái RA/VÀO văn phòng cho một ngày. Chưa nối vào bảng công — chỉ đo, chưa trừ.**
+
+### Suy ra chiều một lần quẹt — `may_chu/src/cong/chieu_quet.ts`
+
+`chieu_quet(chieu_may, status, chi_co_status_0)` trả `'vao' | 'ra' | 'khong_ro'`. Ưu tiên chiều
+KHAI SẴN của máy (máy đặt ở cổng vào thì mọi lần quẹt là `'vao'`) vì đó là vật lý, tin hơn
+firmware. Máy khai `'hai_chieu'` mới đọc mã Status ATTLOG. **Bẫy ZKTeco:** rất nhiều máy chạy mặc
+định luôn đẩy Status = 0; nếu cả máy chỉ thấy Status 0 thì Status vô nghĩa → trả `'khong_ro'` chứ
+không coi là `'vao'`, tránh việc cả công ty "vào khi đang trong" mỗi buổi chiều.
+
+### Máy trạng thái ra/vào một ngày — `may_chu/src/cong/ra_vao.ts`
+
+`suy_luan_ra_vao(quet, ngay, ca)` trả về: `gio_den` (lần quẹt đầu, bất kể chiều), `gio_ra_ve`
+(lần quẹt kết thúc ngày), danh sách `phien_ra_ngoai` + tổng `phut_ra_ngoai` (đã trừ phần trùm giờ
+nghỉ trưa), `con_trong_van_phong`, và `loi[]` các mâu thuẫn logic: `QUEN_QUET_VAO`,
+`QUEN_QUET_RA`, `VAO_KHI_DANG_TRONG`, `RA_KHI_DANG_NGOAI`, `CHI_MOT_LAN_QUET`.
+
+Theo mục 1.2b kế hoạch: **trạng thái chỉ đổi khi có log** — ở lại trong văn phòng buổi trưa không
+sinh sự kiện, không cảnh báo; chỉ log MÂU THUẪN mới là cảnh báo. **Không đoán giờ còn thiếu:** biết
+có lần không quẹt nhưng không biết mấy giờ → chỉ ghi lỗi, không cộng/trừ phút. Lần quẹt chiều
+`'khong_ro'` (máy Status-0) thì ĐẢO trạng thái, KHÔNG bắt lỗi mâu thuẫn (vì chiều là suy đoán).
+
+Kèm 17 kiểm thử thuần (`may_chu/test/ra_vao.test.ts`), không chạm CSDL.
+
+### Chốt năm quyết định chính sách (mục 7 kế hoạch)
+
+Chủ công ty chốt 28.08.2026: (1) phút ra ngoài **chỉ đo, không trừ công**; (2) đơn nộp sau hạn
+**tự từ chối** — trừ loại cần chứng từ (ốm, thai sản, kết hôn, hiếu) vẫn chuyển người; (3) nghỉ
+**≥ 3 ngày làm việc** thì người duyệt xem; (4) hạn nộp = **giờ vào ca − 30 phút** (không hard-code
+07:30); (5) nghỉ nửa ngày chiều vẫn dùng chung hạn ở (4).
+
+## [1.52.0] — 2026-08-28
+
+**OT chỉ tính khi có đơn làm thêm đã duyệt. Và hai script đưa dữ liệu thật lên hệ thống:
+khai PIN máy chấm công từ sổ HSNS, gán ca làm việc cho toàn công ty.**
+
+### Sửa: hệ thống tự sinh nghĩa vụ trả tiền làm thêm
+
+`quy_tac_tinh_cong.ts` suy ra OT từ **giờ quẹt**: ở lại quá `nguong_ot_phut` (mặc định 30) sau
+giờ tan ca thì toàn bộ phần dôi ra thành OT, và cả ngày lễ / ngày nghỉ tuần / ngày đang nghỉ
+phép thì **mọi phút có mặt** thành OT.
+
+Máy chấm công đặt ở cổng toà nhà, nên lần quẹt cuối cùng trong ngày là **lúc rời toà nhà**, chứ
+không phải lúc ngừng làm việc. Trên dữ liệu thật: giờ ra trung vị của công ty là 17:45 với ca tan
+17:30 — nghĩa là gần như **mỗi người, mỗi ngày** đều vượt ngưỡng 30 phút ở một số ngày; cá biệt có
+ngày quẹt lúc 19:23, tức 113 phút OT sinh ra từ một người đi ăn tối rồi mới về.
+
+Không ai đăng ký, không ai duyệt, nhưng bảng công đã ghi thành số giờ phải trả.
+
+Nay OT là **giao của hai thứ**: khoảng thời gian thực sự có mặt, và khoảng ghi trong đơn
+`lam_them` đã ở trạng thái `da_duyet` của đúng người đúng ngày. Nhiều đơn trong một ngày thì
+**gộp khoảng trước khi cộng**, nên hai đơn chồng nhau không tính tiền hai lần. Giờ nghỉ trưa bị
+trừ khỏi phần OT nằm vắt qua nó — một đơn 11:00–14:00 ra 90 phút chứ không phải 180.
+
+Bốn nhánh sinh OT (ngày lễ, ngày nghỉ tuần, ngày nghỉ phép, sau giờ tan ca) đều đi qua cùng một
+phép tính này. Nhánh "chưa gán ca làm việc" cũng vậy.
+
+**Làm mà không có đơn thì không mất dấu.** Bảng công ghi chú thích ngay trên dòng đó —
+*"Ở lại 113 phút sau giờ tan ca nhưng không có đơn làm thêm đã duyệt"* — để nhân sự thấy và hỏi
+lại, thay vì hệ thống tự quyết hộ. Giờ công (`phut_lam`) không đổi, chỉ `phut_ot` đổi.
+
+### Bỏ ô nhập "Ngưỡng tính OT" khỏi trang Ca làm
+
+Nhãn cũ là *"Ngưỡng tính OT (phút sau giờ tan ca)"* — mô tả đúng cái luật vừa bị gỡ. Sau bản này
+nó không điều khiển gì nữa, mà vẫn nhận số và vẫn lưu: một ô nhập nói dối với người quản trị.
+
+Chỗ đó giờ là một dòng giải thích OT tính theo đơn. **Cột `nguong_ot_phut` trong CSDL vẫn giữ** —
+không có di trú, không mất giá trị đã khai — và mỗi lần sửa ca vẫn gửi lại giá trị đang có, để
+lần sửa ca không lặng lẽ ghi đè nó về 30.
+
+Cân nhắc rồi bỏ: dùng ngưỡng ấy làm sàn cho OT đã duyệt. Một đơn 20 phút được nhân sự duyệt mà ra
+0 phút OT thì không giải thích được với người lao động — ngưỡng sinh ra để lọc nhiễu cho một phép
+**suy đoán**, mà đăng ký thì đã hết nhiễu. Có bài kiểm khoá hành vi này.
+
+### Thêm: `trien_khai/khai_pin_tu_so_hsns.sql`
+
+Khai PIN máy chấm công cho 29 người theo `ma_nv`, ghi vào `ma_dinh_danh` (có chiều thời gian) và
+cột `nhan_vien.pin_may`, rồi gán lại các lần quẹt cũ đang mồ côi. Mặc định `rollback`.
+
+Bốn hàng rào, hàng rào thứ tư đáng nói: chỉ gán lại lần quẹt **của những máy đã biết là dùng chung
+một hệ đánh số PIN**. Đánh số PIN là theo từng máy, nên cùng một số trên hai máy có thể là hai
+người; script khai thẳng danh sách máy dùng chung thay vì suy đoán. Lần quẹt trên máy khác được
+**bỏ qua chứ không làm hỏng cả lần chạy**, để chỗ chưa biết ở lại trạng thái chưa biết.
+
+### Thêm: `trien_khai/gan_ca_lam_viec.sql`
+
+Gán ca cho toàn bộ nhân viên đang hoạt động, khai khung giờ riêng cho **sáng thứ Bảy**
+(08:00–12:00), và hạ `phut_du_cong` từ 480 xuống 420.
+
+**Vì sao 480 là sai:** ca 08:00–17:30 nghỉ 12:00–13:30 cho tối đa **đúng 480 phút** làm việc. Đặt
+ngưỡng đủ công bằng 480 nghĩa là chỉ ai vào đúng 08:00:00 và ra đúng 17:30 mới đủ một công; vào
+lúc 08:06 là 474 phút và ra **nửa công**. Dung sai đi muộn không cứu được: nó chỉ trừ vào cột
+`phut_muon`, còn `phut_lam` vẫn kẹp theo giờ quẹt thật. Giờ vào trung vị của công ty là 08:05:50.
+
+Mô phỏng trên 2.025 ngày-người quẹt thật:
+
+| Ngưỡng | Đủ 1 công | Nửa công | 0 công |
+|---|---|---|---|
+| 480 (cũ) | 22,4% | 72,1% | 5,5% |
+| 420 (mới) | 86,4% | 10,4% | 3,2% |
+
+Script **in cả hai bảng này trước khi ghi**, và có hai hàng rào dữ liệu tự dừng nếu giờ ra trung vị
+thực tế lệch quá 60 phút so với giờ khai của ca — để không ai gán một ca sai cho cả công ty rồi mới
+biết.
+
+### Kiểm thử
+
+`test/tinh_cong.test.ts`: **51 bài, xanh hết**, chạy trên bản sao sạch bằng Node 22. Sáu bài cũ
+phải sửa vì chúng mã hoá đúng cái giả định vừa bị gỡ (chúng khẳng định ở lại quá ngưỡng thì thành
+OT); 11 bài mới, trong đó:
+
+| Bài | Khoá điều gì |
+|---|---|
+| Ở lại 90 phút, không có đơn | `phut_ot = 0` **và** có chú thích |
+| Đơn 20 phút được duyệt | vẫn tính đủ 20 — ngưỡng không còn chặn |
+| Đơn 11:00–14:00 | ra 90 phút, không phải 180 (trừ nghỉ trưa) |
+| Hai đơn chồng nhau | gộp khoảng, không cộng hai lần |
+| Đơn dài hơn giờ có mặt | chỉ tính phần thực sự có mặt |
+| Ngày lễ / nghỉ tuần / nghỉ phép, không đơn | `phut_ot = 0` |
+
+`thiet_ke/*.test.mjs`: **30 bài, xanh hết** sau khi bỏ ô nhập ngưỡng OT.
+
+Toàn bộ: **584 + 5** đơn vị, **418** e2e, **30** thiết kế — tất cả xanh. `tsc` sạch ở cả `may_chu`
+và `web`.
+
+**Hai bài e2e đỏ vì đúng lý do**, và cả hai đều mã hoá luật cũ:
+
+- *"máy đẩy ATTLOG → tính luôn bảng công"* khẳng định ra 18:05 thì sinh 65 phút OT.
+- *"thêm ngày lễ"* khẳng định đi làm ngày lễ thì **toàn bộ 517 phút** có mặt thành OT.
+
+Cả hai nay khẳng định `phut_ot = 0` **kèm ghi chú**, đúng như luật mới.
+
+**Một bài e2e mới** đi hết đường sinh OT qua CSDL thật: chèn một đơn `lam_them` đã duyệt
+17:00–18:00, tính lại, và OT ra đúng 60 phút — phần giao với giờ có mặt — trong khi `phut_lam`
+không đổi. Bài này phủ câu `select don_tu` ở `tinh_cong.ts`, thứ mà bài kiểm đơn vị (chạy trên dữ
+liệu dựng sẵn) không chạm tới. **Đã chứng minh nó bắt được lỗi thật**: đổi `da_duyet` thành
+`cho_duyet` trong câu truy vấn đó làm bài này đỏ.
+
+Ghi lại một chỗ tôi đã kết luận sai giữa chừng: 12 bài báo đỏ lúc đầu, tôi ghi nguyên nhân là
+thiếu gói `pg` / `@fastify/swagger`. Nguyên nhân thật là **chưa đặt biến môi trường**
+(`JWT_SECRET`, `DATABASE_URL`…) — `cau_hinh.ts` dừng ngay lúc nạp module. Không có gói nào thiếu.
+
+## [1.51.0] — 2026-08-22
+
+**PIN máy chấm công có chiều thời gian ở cả hai đường tra. Hai lỗi lương tiềm ẩn, tìm ra khi đọc
+`LIEN-THONG-NHAN-SU.md` của đội cổng.**
+
+Đội cổng chỉ đúng bệnh: cột phẳng `nhan_vien.pin_may` không trả lời được *"PIN 042 tháng 6 là
+ai"*. Thuốc thì khác — chiều thời gian đã có sẵn từ di trú 025 (`ma_dinh_danh` với `hieu_luc_tu` /
+`hieu_luc_den`), nên thêm một bảng nữa là để một PIN ở ba chỗ. Vấn đề thật là **hai phép tra đang
+bỏ qua chiều thời gian đó**, và cả hai đều là lỗi thật:
+
+### Sửa: bộ tiếp nhận ADMS tra "ai giữ PIN hôm nay"
+
+`adms/tiep_nhan.ts` lọc `md.hieu_luc_den is null`. Với lô đến đúng lúc thì không sai. Với lô đến
+**muộn** — máy mất mạng vài ngày (có hẳn bộ theo dõi máy offline chính vì thế), hoặc nạp lại dữ
+liệu cũ từ máy — nó gán lần quẹt của tháng trước cho người đang giữ PIN hôm nay.
+
+Luật tra chuyển sang module thuần `dinh_danh/tra_pin.ts`, mỗi bản ghi tra theo **mốc thời gian của
+chính nó**. Bốn luật, và ba trong số đó tồn tại để **không làm mất khớp** so với trước bản này —
+rõ nhất là *khoảng đầu tiên mở về phía trước*: `hieu_luc_tu` của dòng đầu là `nhan_vien.tao_luc` do
+backfill 025 đặt vào, không phải một sự thật nghiệp vụ, nên tin nó là biến mọi lần quẹt nhập từ
+lịch sử CSV thành "không biết là ai". Chỉ **ranh giới giữa hai dòng** mới mang nghĩa.
+
+Câu đọc bảng cũng bỏ lọc `dang_hoat_dong`, và đó là cố ý: lần quẹt tháng 6 của người đã nghỉ tháng
+7 vẫn phải gắn đúng tên họ, nếu không thì bảng công tháng 6 sai.
+
+### Sửa: nút "Gán lại lần quẹt" không lọc theo ngày
+
+`POST /api/lan-quet/gan-lai` giới hạn theo **máy** (đã sửa ở 1.35 vì hai máy cấp PIN riêng) nhưng
+không giới hạn theo **ngày**: gán một PIN là kéo theo *mọi* lần quẹt chưa gán của PIN đó, kể cả
+tháng đã chốt lương. Nặng hơn lỗi trên vì có người bấm nút và tin rằng mình gán một dòng.
+
+Ba hàng rào, thứ tự có chủ ý:
+
+1. Máy — như cũ. Báo trước vì đó là lỗi về **hình dạng** của yêu cầu, sửa được bằng một lần.
+2. **Khoảng ngày** — mới. Để trống thì lấy đúng khoảng người đó giữ PIN theo `ma_dinh_danh`; người
+   chưa từng được khai PIN đó thì **từ chối**, không đoán. Không có mặc định "tất cả": mặc định đó
+   chính là chỗ lỗi này quay lại.
+3. **Tháng đã có bảng lương được duyệt** thì từ chối cả lần gán, không gán một nửa.
+   `/bang-cong/mo-chot` đã có luật này từ trước; đường "gán lại" đi vòng qua nó.
+
+`GET /api/lan-quet/chua-map/thang` mới: đếm lần quẹt chưa gán **theo từng tháng**, hiện ngay trong
+hộp thoại. Một con số tổng ("142 lần quẹt") không nói được rằng 22 trong số đó thuộc tháng 6.
+
+### Điều đang che hai lỗi này lại
+
+`lan_quet.nhan_vien_id` được giải ra **lúc tiếp nhận và lưu lại**, không tính lại khi đọc. Nên bảng
+công cũ đang đóng băng và chưa lần nào ra lương sai. Lỗi tiềm ẩn, không phải lỗi đang chảy — nhưng
+cả hai đường trên đều mở được nó.
+
+### Thêm
+
+- `trien_khai/pin_trung_khoang.sh` — dò các PIN có khoảng hiệu lực **chồng nhau**, chỉ đọc. Đây là
+  điều kiện để bước sau (ràng buộc `exclude using gist` cho cả lịch sử) chạy được: di trú đó sẽ
+  **thất bại** nếu còn khoảng chồng nhau, và thất bại giữa một lần triển khai là thứ không ai muốn
+  gặp. Dò trước, sửa tay, rồi mới thêm ràng buộc — không gộp hai việc vào một lần chạy.
+- `tai_lieu/TRA-LOI-LIEN-THONG-NHAN-SU.md` — trả lời từng mục tài liệu của đội cổng, gồm hai chỗ ý
+  kiến khác (§5 ở trên, và §8: `truong_phong_nhan_su` là mức quyền thứ ba thật, vì
+  `xem_duoc_tat_ca` cho vai trò này xem toàn công ty chứ không phải một phòng ban).
+
+### Kiểm thử
+
+14 bài đơn vị thuần cho `tra_pin` (`test/tra_pin.test.ts`) và 7 bài e2e. **Đã chứng minh bắt được
+lỗi thật** bằng cách phá mã rồi chạy lại:
+
+| Phá gì | Bài đỏ |
+|---|---|
+| Quay `tra_pin` về `hieu_luc_den is null` | 5 đơn vị |
+| Bỏ hai điều kiện ngày khỏi câu UPDATE của `gan-lai` | 2 e2e |
+
+Bài bắt buộc theo §9.5 của đội cổng — *PIN 042 đổi chủ 01.07, bảng công tháng 6 của người cũ phải
+còn đúng* — có trong cả hai lớp. Thêm bài **"lô đến muộn 5 ngày, PIN đổi chủ ngày thứ 3"**: một lô
+duy nhất phải tách cho hai người theo ngày.
+
+Ba bài kiểm cũ phải sửa vì chúng mã hóa giả định cũ, và cả ba đều đáng ghi lại:
+
+- *"cấp PIN cho người mới thì lần quẹt SAU thuộc người mới"* dùng mốc `HÔM QUA 17:00` cho chữ
+  "sau". Với luật mới thì đó là **trước** lúc chuyển PIN, nên lần quẹt ấy thuộc người cũ — đúng.
+  Bài kiểm giờ dùng mốc thật sau lúc chuyển.
+- Hai bài về "gán lại" gọi thẳng vào PIN chưa khai cho ai. Giờ phải khai PIN trước, đúng như nhân
+  sự làm thật.
+
+Tổng: **572 + 5** đơn vị, **417** e2e, **30** thiết kế — tất cả xanh.
+
+## [1.50.0] — 2026-08-22
+
+**Vá một lỗ chuyển hướng mở trong chấm công, cùng loại với lỗ quản trị cổng vừa tìm ra ở cổng —
+và ở đây hậu quả nặng hơn.**
+
+Quản trị cổng phát hiện bản kiểm `quay_lai` trong JavaScript của trang đăng nhập thiếu phép chặn
+ký tự điều khiển, xác minh trên Chromium thật: `?quay_lai=/%09/evil.com` dẫn ra
+`https://evil.com/`. Cơ chế là bộ phân tích URL theo WHATWG **xoá** tab/LF/CR khi đọc URL, nên
+`/<tab>/evil.com` trở thành `//evil.com` — URL tương đối giao thức, trỏ ra ngoài. Phép kiểm
+`startsWith('//')` chạy trên chuỗi **chưa** xoá không bắt được gì.
+
+Đọc xong tôi soi lại ba chỗ kiểm `quay_lai` của chấm công. Hai chỗ đủ. Chỗ thứ ba —
+`GET /xac-thuc/microsoft/bat-dau` — dùng một phép kiểm **tự viết**: `/^\/[^/\\]/`. Nó đòi ký tự
+thứ hai không phải `/` hay `\`, và `/<tab>/evil.com` đi qua được, vì lúc kiểm thì tab còn nằm
+giữa hai dấu gạch.
+
+**Ở đây nặng hơn một trang phishing thông thường.** Đường đó kết thúc bằng một chuyển hướng
+**chở sẵn token trong phần neo**. Lọt ra ngoài tên miền là nộp cả token truy cập **và** token làm
+mới cho tên miền của kẻ tấn công — nạn nhân không phải gõ gì cả. Lỗ ở cổng lấy được mật khẩu qua
+một trang giả; lỗ này lấy được token trực tiếp.
+
+Khai thác được khi `MS_GOC_WEBAPP` để trống — lúc đó `ve_webapp()` trả về đường dẫn trần và
+`res.redirect('/<tab>/evil.com#token…')` thành `//evil.com#token…`. Biến đó **mặc định trống**.
+
+### Từ chối hẳn, không "xoá rồi kiểm lại"
+
+Lần sửa đầu tôi làm theo hướng xoá tab/LF/CR trước rồi mới kiểm `//`. Một **bài kiểm cũ trong
+chính tệp đó** bắt được: `/chamcong<CR><LF>Set-Cookie: x=1` trở thành một đường dẫn "hợp lệ" —
+đúng về câu hỏi *"đích có nội bộ không"*, nhưng làm mất lớp chặn chèn header, và để một khoảng
+cách cho tầng gọi dùng chuỗi **gốc** thay vì chuỗi đã làm sạch.
+
+Nên: **từ chối** mọi ký tự điều khiển. Mạnh hơn cả hai — ba vector bị chặn, lớp chèn header còn
+nguyên, và chuỗi đã kiểm **luôn bằng** chuỗi được dùng.
+
+### Ba hàng rào, và đột biến chứng minh từng cái
+
+- **Ba vector của cổng** thành bài kiểm, ghi kèm kết quả Chromium để người sau không phải thử lại.
+- **Hai bản phải đồng ý trên từng đầu vào.** Webapp và máy chủ là hai bundle nên có hai bản. Bài
+  kiểm **trích thân hàm từ tệp `web/src/api.ts` rồi chạy nó** — không chép logic — và so với bản
+  máy chủ trên 16 đầu vào. Đột biến làm yếu **chỉ bản web**, đúng kiểu sự cố đã xảy ra ở cổng,
+  làm bài này đỏ.
+- **Không route nào được tự viết phép kiểm `quay_lai`.** Quét toàn bộ `may_chu/src`. Lỗ hôm nay
+  chính là một phép kiểm tự viết trông hợp lý, thiếu một thứ, và không ai đọc lại.
+
+### Trả lời đề nghị của cổng: chọn C, và A của tôi sai
+
+Quản trị cổng bác cả A và B, đề xuất C: giữ `?quay_lai=` trong hợp đồng, trang đăng nhập tự dọn
+thanh địa chỉ bằng `sessionStorage` + `history.replaceState`.
+
+**A không chạy được, và lý do họ nêu là đúng:** sau bước 4, lệnh chuyển hướng do Caddy phát;
+trước bước 4 thì máy chủ phát 302. Không cái nào ghi được `sessionStorage`. Tôi đề xuất A mà
+không xét *ai* thực sự phát lệnh chuyển hướng.
+
+**C không cần chấm công sửa gì:** hợp đồng không đổi, phép kiểm quyết định vẫn ở máy chủ, và
+không sinh thêm một bản kiểm thứ hai nào — điều đáng giá nhất sau chuyện hôm nay.
+
+## [1.49.1] — 2026-08-22
+
+**`?quay_lai=/chamcong/` thay vì `?quay_lai=%2Fchamcong%2F`.** `encodeURIComponent` mã hoá cả
+dấu `/`, nên trên thanh địa chỉ người dùng đọc thấy một chuỗi rác. Dấu `/` là ký tự hợp lệ
+trong giá trị của chuỗi truy vấn nên giữ nguyên nó vừa đúng vừa đọc được.
+
+Vẫn mã hoá mọi ký tự khác, và đó không phải làm đẹp: một đường dẫn chứa `&` hay `#` mà không mã
+hoá sẽ làm cổng đọc nhầm tham số — hoặc cắt mất phần sau của đường dẫn.
+
+## [1.49.0] — 2026-08-22
+
+**Trình duyệt buộc đi qua cổng; app điện thoại tạm giữ đường cũ.** Yêu cầu là *vào `/chamcong`
+mà chưa đăng nhập thì bắt buộc về cổng, không có luồng đăng nhập riêng*. Bản 1.48.0 đã làm được
+điều đó, nhưng bật nó lên là **app điện thoại chết cho toàn bộ nhân viên**: app đăng nhập bằng
+mật khẩu, giữ token làm mới 30 ngày, và chưa có đường đi qua cổng.
+
+Nên đường mật khẩu giờ bị chặn **theo phía gọi**: trình duyệt bị chặn, app native thì chưa.
+
+### Phân biệt bằng thứ trang web không giả được
+
+`Origin` do trình duyệt tự đặt trên mọi POST, `Sec-Fetch-*` trên mọi request, và **mã
+JavaScript trong trang không xoá được chúng**. `fetch` của React Native không gửi header nào
+trong số đó. Nên "không còn form đăng nhập nào chạy được trong trình duyệt" là một điều **có thể
+buộc**, không chỉ là một lời hứa — một trang web không thể tự khai mình là app để đi cửa sau.
+
+Chỉ cần **một** trong ba header là đủ để chặn, không đòi cả ba: bài kiểm thử từng cái một.
+
+**Nói thẳng: đây không phải ranh giới bảo mật.** `curl` không gửi `Origin` nên đi được đường app.
+Nó là ranh giới **trải nghiệm**, và nó đạt đúng cái đích của bước 3 — không nhân viên nào còn
+được dạy gõ mật khẩu công ty vào một trang không phải cổng.
+
+### Để nó không thành vĩnh viễn
+
+Một cửa vào không MFA chưa đóng mà không ai nhìn thấy thì nó ở đó mãi. Hai thứ chống điều đó:
+
+- `GET /health` trả `dang_nhap`: `rieng` · `cong+rieng` · **`cong+app_tam`**. Trạng thái chuyển
+  tiếp hiện ngay trên cùng cái màn hình người ta xem mỗi lần cập nhật.
+- Máy chủ ghi một dòng cảnh báo **mỗi lần** đường app tạm được dùng, để biết con số đó đã về 0
+  chưa trước khi xoá hẳn — chứ không phải đoán.
+
+Chú thích của `chan_cua_cu_web()` ghi rõ ba việc phải làm khi app có đường mới: xoá hàm đó, đổi
+các chỗ gọi sang `chan_cua_cu()`, xoá `cong+app_tam` khỏi `/health`.
+
+### Kiểm cả hai chiều
+
+Hai đột biến đã thử, mỗi chiều một bài đỏ: chặn luôn cả app native → bài "app vẫn đăng nhập
+được" đỏ; không chặn ai cả → bài "mọi đường nhận mật khẩu đều 410" đỏ. Một guard chỉ đúng một
+chiều thì không giữ được gì.
+
+## [1.48.1] — 2026-08-22
+
+**Sửa: `/chamcong/chamcong/` ra trang "Không có trang này" ngay cửa vào.**
+
+Webapp chạy dưới tiền tố `/chamcong/`. Một liên kết ghép tiền tố lên một đường dẫn **đã có**
+tiền tố tạo ra `/chamcong/chamcong/`; router bỏ tiền tố **một lần**, còn lại `/chamcong/`,
+không khớp tuyến nào, và người dùng đứng ở một trang 404 ngay trang đầu — trông như hệ thống
+hỏng, dù chỉ là một liên kết sai.
+
+Router giờ bỏ tiền tố **lặp** (giới hạn 5 lần để một URL bịa không thành vòng lặp), và
+`replaceState` sửa luôn thanh địa chỉ — nếu không thì F5, dấu trang và nút Lui đều đưa người
+dùng về đúng cái URL sai vừa chữa.
+
+Phép bỏ lặp chỉ an toàn khi không tuyến nào tên đúng bằng tiền tố. Hiện mọi tuyến dùng tên có
+gạch ngang (`/bang-cong`, `/nhan-vien`) nên không trùng, và có **hàng rào mới** giữ điều đó:
+thêm một tuyến tên `chamcong` hay `cham-cong` thì bài kiểm đỏ, kèm chú thích nói rõ lúc đó phải
+chọn giữa đổi tên tuyến và bỏ phép bỏ lặp.
+
+Chưa xác định nguồn của liên kết sai — có thể là `href` tương đối ở thẻ module bên cổng, hoặc
+cổng hiểu `quay_lai` là đường dẫn **tương đối với tiền tố module** thay vì đường dẫn tuyệt đối
+của site như hợp đồng ghi. Bản sửa này làm cả hai trường hợp đều chạy đúng, nhưng nguồn vẫn nên
+được xác nhận với quản trị cổng.
+
+## [1.48.0] — 2026-08-22
+
+**Bước 3: bỏ đường đăng nhập riêng.** Một công tắc, `CONG_SSO_BO_DANG_NHAP_RIENG`, và
+**mặc định TẮT**. Mã xong hoàn toàn: bật là chấm công dùng chung cổng, tắt là về như cũ.
+
+Vì sao có công tắc thay vì xoá thẳng: bật nó là đóng cửa đăng nhập **duy nhất đang dùng
+được**. Nếu cổng chưa phát được token dùng được thì cả công ty không vào được hệ thống lúc 8
+giờ sáng, và cái đó không lùi lại bằng một dòng. Công tắc là cơ chế chuyển tiếp có thời hạn,
+không phải một lựa chọn lâu dài — hợp đồng bảo mật cấm phân hệ tự hiện form đăng nhập, nên khi
+cổng chứng minh chạy được thì xoá cả công tắc lẫn nhánh mã cũ.
+
+### Hàng rào chống tự khoá cả công ty
+
+`bo_dang_nhap_rieng()` đòi **cả hai** điều kiện: công tắc bật **và** `CONG_SSO_GOC` đã khai. Bỏ
+cửa cũ mà chưa có cửa mới là không còn cửa nào. Có bài kiểm giữ đúng chuyện đó, và đã thử đột
+biến: bỏ `&& bat_cong_sso()` thì bài kiểm đỏ.
+
+### Sáu chỗ nhận mật khẩu, giờ trả 410
+
+`410 Gone` chứ không phải 404 hay 400: đường này **từng** tồn tại và bị bỏ có chủ đích, nên app
+cũ gọi vào đọc được thông điệp nói rõ phải đi đâu.
+
+| Đường | |
+|---|---|
+| `POST /xac-thuc/dang-nhap` | cửa đăng nhập |
+| `POST /xac-thuc/lam-moi` | token làm mới của hệ thống này chỉ sinh ra từ hai cửa cũ |
+| `POST /xac-thuc/doi-mat-khau` | mật khẩu do cổng giữ |
+| `POST /nguoi-dung` | tạo tài khoản kèm mật khẩu tạm |
+| `POST /nguoi-dung/:id/dat-lai-mat-khau` | |
+| `GET /xac-thuc/microsoft/*` | luồng Entra riêng — cổng đã làm việc đó; giữ thêm là thừa một client secret, thừa một redirect URI, và thừa một cửa danh tính thứ hai phải canh |
+
+### Webapp: không còn form, và đọc token của cổng
+
+`GET /xac-thuc/cau-hinh` trả thêm `dang_nhap_rieng`. `false` là tín hiệu duy nhất webapp cần để
+**không hiện form nào cả** mà chuyển hướng sang cổng — quyết định nằm ở máy chủ, nên đổi một
+biến môi trường là webapp đổi theo ngay, không chờ build lại.
+
+Token đọc từ `localStorage['cong_phien']` (webapp cùng origin với cổng). Hai điều đáng ghi:
+
+- **Nhận ra token theo `iss`, không theo tên trường.** Tên trường bên trong `cong_phien` là hợp
+  đồng của cổng; cổng đổi `token_truy_cap` thành `access_token` là ta gãy, và gãy im lặng. Quét
+  mọi chuỗi trong đó rồi lấy cái nào là JWT có `iss` đúng và `loai: 'tc'` thì miễn nhiễm.
+- **Không chép token sang khoá riêng của mình.** Cổng là chủ sở hữu: nó xoay token, nó thu hồi
+  token. Giữ một bản là giữ một phiên dài hơn phiên của cổng — đúng cái hợp đồng cấm. Nên mỗi
+  lần gọi API đều **đọc lại** từ `cong_phien`, và nhờ thế cổng xoay token ở tab khác thì ta nhận
+  ngay bản mới, không phải tải lại trang.
+
+Gặp 401 thì **không** làm mới token của cổng — nó không phải của ta. Đọc lại một lần (cổng có
+thể vừa xoay ở tab khác), còn không thì về cổng đăng nhập, mang theo đường đang mở qua
+`?quay_lai=` với đúng phép kiểm của cổng: một `/` đầu, không `//`, không `\`, không ký tự điều
+khiển.
+
+### Một cái bẫy chết người đã chặn trước
+
+Ở chế độ cổng, `/doi-mat-khau` trả 410. Nếu webapp vẫn hiện màn hình **bắt buộc đổi mật khẩu**
+cho một tài khoản cũ còn `phai_doi_mat_khau = true`, người đó sẽ thấy một màn hình không bao giờ
+đổi được: vào hệ thống không được, mà cũng không có đường nào thoát. Màn hình đó giờ bị bỏ qua ở
+chế độ cổng, kèm lý do ghi ngay tại chỗ.
+
+Tương tự, quyền rỗng ra màn hình giải thích chứ **không** ra form đăng nhập — đăng nhập lại bao
+nhiêu lần cũng không làm xuất hiện một quyền.
+
+### Chưa làm, nói thẳng
+
+- **Chưa chạy thử với cổng thật.** Không có cổng nào trong môi trường dựng nên toàn bộ nửa web
+  chỉ được typecheck và build, chưa nhìn thấy nó chạy trong trình duyệt. Phép thử thật là bật
+  công tắc trên VPS rồi mở `/chamcong`.
+- Các nút quản trị mật khẩu (tạo tài khoản, đặt lại mật khẩu) **vẫn hiện** ở chế độ cổng; bấm
+  vào thì nhận 410 kèm thông điệp chỉ sang `/cong/quan-tri`. Nên ẩn hẳn, chưa làm.
+
+## [1.47.0] — 2026-08-21
+
+**Bước 2: token của cổng đi được vào hệ thống.** Hook `can_dang_nhap` giờ nhận **cả hai** loại
+token — token nội bộ (HS256) và token của cổng (RS256) — và cả hai đều ra cùng một kiểu
+`NoiDungToken`, nên không route nghiệp vụ nào phải biết người dùng đến từ đâu. Đường đăng nhập
+riêng **vẫn còn**; bỏ nó là bước 3, và có một bài kiểm giữ điều đó để app điện thoại không mất
+kết nối trước khi có ai quyết định.
+
+Thứ tự thử là cố ý: token nội bộ trước, vì phép kiểm của nó không chạm CSDL và không chạm mạng.
+Token của cổng là RS256 nên `giai_ma_token` từ chối ngay ở bước đọc `alg`, không tốn gì. Ngược
+lại thì mỗi request của app điện thoại phải đi qua lớp xác minh của cổng trước.
+
+### Khóa móc là `sub`, không phải email
+
+`migrations/029_cong_sso.sql` thêm `nguoi_dung.cong_sub`. Cổng bảo đảm `sub` ổn định vĩnh viễn;
+email đổi được — đổi tên người, đổi tên miền, đổi phòng. Hệ thống này đã dính đúng cái bẫy đó ở
+đường đăng nhập Microsoft: trước 1.32.0 chỉ khớp bằng email, nên đổi email bên Entra là mất
+khớp, và lần đăng nhập kế tiếp **tạo một tài khoản thứ hai** cho cùng một người. Email vẫn dùng
+để đối chiếu lần đầu, rồi ghi `cong_sub` lại để từ đó không phải đoán nữa.
+
+### Vai trò lấy từ token — và một bài kiểm ban đầu không chứng minh được điều đó
+
+Cột `nguoi_dung.vai_tro` chỉ để hiển thị trên trang Tài khoản. Đọc nó để phân quyền nghĩa là
+**thu hồi quyền bên cổng không còn tác dụng** — điều tệ nhất có thể làm với một hệ SSO.
+
+Bài kiểm cho việc này lúc đầu **vô giá trị**, và tôi chỉ biết vì đã thử đột biến. `dong_bo_vai_tro`
+ghi cột trong CSDL cho khớp token, nên *sau* khi nó chạy thì đọc từ token và đọc từ bản ghi ra
+**cùng một giá trị**: một bản sửa thành `vai_tro: dong.vai_tro` chạy đúng y hệt và bộ kiểm vẫn
+xanh. Sửa bằng cách **dựng xong kết quả trước khi đồng bộ** — thứ tự đó là thứ duy nhất làm hai
+đường khác nhau thật. Sau khi sửa, cùng đột biến đó làm **ba** bài đỏ. Lý do ghi ngay tại chỗ
+trong mã để người sau không dọn nhầm.
+
+Đây là lần thứ hai trong hai bản liên tiếp một bài kiểm bảo mật hóa ra không giữ được điều nó
+tuyên bố (lần trước là phép kiểm `alg`). Cả hai chỉ lộ ra khi cố tình phá mã nguồn rồi chạy lại.
+
+### Ba trạng thái "đã đăng nhập thật nhưng chưa vào được" — cả ba là 403
+
+| Trạng thái | Cờ trong thân phản hồi |
+|---|---|
+| `quyen` rỗng hoặc thiếu khóa `chamcong` | `chua_cap_quyen` |
+| Vai trò cần hồ sơ mà tài khoản chưa nối hồ sơ | `chua_noi_ho_so` |
+| Tài khoản bị vô hiệu hoá bên chấm công | — |
+
+Không cái nào được là 401. 401 làm giao diện đẩy người dùng về trang đăng nhập: họ đăng nhập
+lại, thành công, rồi lại bị đẩy ra — một vòng lặp không bao giờ thoát, và việc duy nhất họ làm
+được là gọi cho hỗ trợ.
+
+Trạng thái thứ hai đáng nói riêng: nếu cho qua với `nv = null` thì mọi đường `/api/toi/*` trả về
+rỗng — trông y như hệ thống mất dữ liệu, và người dùng không biết phải gọi ai. Nên nó trả 403
+kèm **đúng email** cần khai.
+
+Ánh xạ danh tính cache 60 giây; **quyết định phân quyền thì không** — tính lại từ token ở mỗi
+request. Hệ quả phải biết: vô hiệu hoá tài khoản bên chấm công có hiệu lực trong vòng một phút,
+thu hồi bên cổng tối đa 15 phút.
+
+### 13 bài e2e đi qua đường thật
+
+Token ký bằng khóa RSA thật, JWKS lấy từ một cổng giả trong tiến trình, bản ghi `nguoi_dung` tạo
+ra thật trong CSDL. Bốn đột biến đã thử, cả bốn làm bộ kiểm đỏ: trả 401 thay vì 403 cho quyền
+rỗng · đọc vai trò từ CSDL · bỏ phép kiểm "chưa nối hồ sơ" · tin header `X-Cong-Nguoi-Dung`.
+
+Và một bài giữ R9: `/iclock/cdata` phải trả 200 **không qua lớp xác thực nào**. Ngày nào ai thêm
+`preHandler: can_dang_nhap` vào tuyến iclock thì bài đó đỏ — trước khi bảng lương mất dữ liệu cả
+tháng.
+
+### Hai chỗ vênh bên cổng đã được sửa, ghi lại vì cả hai đều im lặng
+
+**Sổ đăng ký khai `admin`, mã của ta đọc `quan_tri`.** `ma` là thứ đi vào token, nên cấp
+`chamcong.admin` là cấp một vai trò mà mã của ta không bao giờ nhận ra — không báo lỗi ở đâu,
+người được cấp chỉ đơn giản là không có quyền. Quản trị cổng đã sửa thành đúng năm mã.
+
+**`bat = false` làm `token.quyen['chamcong']` luôn rỗng**, vì `doc_quyen` bên cổng có
+`join module m on ... and m.bat`. Hợp đồng bản đầu lại bắt làm xong checklist *trước* khi bật
+`bat` — làm theo thứ tự đó là cấp quyền, đăng nhập, thấy quyền rỗng, rồi đi tìm lỗi trong mã của
+chính mình. Đã sửa: `bat = true` bật ngay ở bước 2. Bật `bat` không mở đường vào phân hệ, nên
+cũng **đừng dựa vào `bat = false` để chặn truy cập**.
+
+### App điện thoại: lối thứ ba, và một điểm phải chốt cùng nó
+
+Quản trị cổng đề xuất lối thứ ba, tốt hơn cả hai lối tôi nêu ở 1.46.0: **trình duyệt hệ thống +
+custom scheme** (`AuthSession` của Expo) — chuẩn cho app native, app không bao giờ thấy mật khẩu.
+Lý do bác WebView nhúng là thực tế: Microsoft khuyến nghị không dùng, và một số cấu hình
+Conditional Access từ chối hẳn.
+
+Điểm phải chốt cùng lối 3, đã ghi vào tài liệu: **custom scheme bị chiếm được** — trên Android
+một app khác đăng ký cùng `thvcc://` là nhận được cú redirect. Nên đường quay về **không được
+mang token**, phải mang một mã uỷ quyền dùng một lần (code + PKCE). Nếu cổng đặt access token và
+refresh token vào fragment của `thvcc://...` giống cách đường Microsoft hiện tại làm với webapp,
+thì một app độc hại chiếm scheme lấy được **refresh token 30 ngày**. Mạnh hơn nữa nếu cổng làm
+được: App Links / Universal Links trên chính `teams.tranhoangvietnam.com` — không app nào chiếm
+được.
+
+## [1.46.0] — 2026-08-21
+
+**Bước 1 của việc nối vào cổng SSO nội bộ: lớp xác minh token.** Chưa route nào đổi, chưa đường
+đăng nhập nào bị bỏ — bật hay tắt bằng đúng một biến `CONG_SSO_GOC`, để trống là hệ thống chạy y
+như trước. Đó là chủ ý: hợp đồng bảo mật của cổng quy định thứ tự, và bước 1 là bước duy nhất
+**không** làm gì ảnh hưởng phân hệ khác. Làm sai thì chỉ chấm công không vào được.
+
+Toàn bộ nằm ở một tệp, `may_chu/src/bao_mat/cong_sso.ts`: RS256 danh sách trắng **cứng trong mã**,
+kiểm chữ ký **trước** khi đọc bất kỳ trường nào, rồi `iss` đúng chuỗi, `aud === 'cong-noi-bo'`
+(là chuỗi, không phải mảng), `exp` với lệch đồng hồ 30 giây, `loai ∈ {tc, dv}` — token làm mới
+30 ngày bị từ chối — và chỉ đọc `quyen['chamcong']`, không đọc khóa của phân hệ khác.
+
+### Ba tính chất, và cái giá của việc làm sai từng cái
+
+**Fail closed.** Không tải được JWKS thì **từ chối**. Nhưng nếu đã có bộ khóa trong đệm thì vẫn
+dùng tiếp: cổng chết 5 phút không được làm đứt phiên của cả công ty. Hai vế ngược nhau, nên mỗi vế
+một bài kiểm. Cái loại lỗi mà tài liệu của cổng gọi là "phổ biến nhất trong loại mã này" xuất hiện
+dưới dạng một `try { } catch { /* bỏ qua */ }` trông vô hại — nên trong tệp này **không nhánh
+`catch` nào** dẫn tới "cho qua".
+
+**JWKS có giới hạn tần suất, không chỉ có cache.** Đệm 1 giờ và nạp lại khi gặp `kid` lạ là hai
+việc hiển nhiên. Cái không hiển nhiên: nạp lại **mỗi lần** gặp `kid` lạ nghĩa là kẻ tấn công gửi
+một loạt token với `kid` bịa và biến phân hệ thành cái búa đánh vào chính cổng. Chốt ở 3 lượt mỗi
+phút — đủ để tự phục hồi ngay sau một lần cổng xoay khóa, mà 20 token `kid` bịa chỉ tốn hết chùm
+lượt đó. Bài kiểm khẳng định cả hai: xoay khóa xong dùng được ngay, và 20 token bịa chỉ gọi cổng
+3 lần.
+
+**Không đọc `X-Cong-*`.** Caddy chuyển `X-Cong-Nguoi-Dung` và `X-Cong-Email` sang, và chúng trông
+rất tiện. Nhưng Caddy chỉ **ghi đè** chúng: request đến từ bất cứ đâu khác ngoài Caddy — gọi thẳng
+`127.0.0.1:8080`, một lỗ SSRF ở phân hệ khác, một container cùng mạng Docker — thì kẻ gọi **tự
+khai mình là ai**, chỉ bằng cách đặt header. Uỷ quyền duy nhất là token đã xác minh chữ ký, nên có
+một bài kiểm **quét toàn bộ `may_chu/src`** và bắt mọi dòng mã (không phải chú thích) nhắc tới
+`X-Cong-`.
+
+### Bài kiểm alg mà ba bài kiểm alg khác không thay được
+
+`alg: none` và HS256-ký-bằng-khóa-công-khai đều bị từ chối — nhưng khi tôi thử **bỏ hẳn** phép kiểm
+`alg` thì cả hai bài **vẫn xanh**. Lý do: lớp này luôn xác minh bằng RSA-SHA256 bất kể header ghi
+gì, nên hai đòn đó vỡ ở chỗ khác. Nghĩa là hai bài đó **không** giữ được danh sách trắng: một bản
+viết lại kiểu "đọc `alg` rồi chọn bộ xác minh theo đó" sẽ đi qua chúng.
+
+Bài giữ được nó là: chữ ký RSA-SHA256 **thật và hợp lệ**, chỉ cái nhãn `alg` trong header ghi
+`RS512`. Mã có danh sách trắng cứng thì từ chối; mã tin theo header thì nhận. Hai đột biến khác
+(bỏ kiểm chữ ký, đọc `quyen` của mọi phân hệ) cũng đã được thử và đều làm bộ kiểm đỏ.
+
+### Vai trò đối chiếu theo `ma`, không theo `ten`
+
+`quan_tri → admin`, còn `nhan_su` / `truong_phong_nhan_su` / `truong_phong` / `nhan_vien` giữ
+nguyên tên. Nhiều vai trò thì lấy quyền cao nhất. `ma` nằm trong token nên không đổi được; `ten`
+chỉ là nhãn hiển thị — đối chiếu theo `ten` là để một người sửa nhãn tiếng Việt thành gỡ quyền của
+cả phòng. `cho_duyet` **không** có trong bảng: ở mô hình cổng, "đã đăng nhập nhưng chưa được cấp
+quyền" là `quyen` **rỗng**, và mảng rỗng với thiếu hẳn khóa `chamcong` đều nghĩa như vậy — không
+cái nào nghĩa là "cho qua".
+
+Bảng đổi vai trò là **một nửa của một hợp đồng**; nửa kia là danh sách khai bên sổ đăng ký của
+cổng. Bỏ khai một vai trò bên đó **không** thu hồi quyền ở phía chấm công — cổng lọc token nhưng
+không sửa mã của ta — nên xóa một bên thì phải xóa bên kia. Ghi rõ ở `tai_lieu/CONG-SSO.md`.
+
+### `/iclock/*` không bao giờ được gác
+
+Ghi vào tài liệu ngay ở bước 1, trước khi có ai chạm vào Caddyfile. `/iclock/*` là đường máy chấm
+công gọi vào: máy không có token, và firmware ZKTeco coi mọi phản hồi 3xx là lỗi rồi **bỏ luôn lô
+dữ liệu đang gửi**. Gác đường đó nghĩa là máy vẫn kêu bíp, nhân viên vẫn tưởng đã chấm công, mà dữ
+liệu không tới máy chủ — và hậu quả hiện ra ở **bảng lương**, chậm hơn cả tháng, không dựng lại
+được. Lớp bảo vệ của đường đó là danh sách IP, không phải cổng gác.
+
+### Còn lại
+
+Bước 2 (nối vào hook xác thực), bước 3 (bỏ đường đăng nhập riêng) và bước 4 (bật cổng gác) chưa
+làm. Một điểm phải quyết trước bước 3, đã ghi ở `tai_lieu/CONG-SSO.md` mục 4: app điện thoại hiện
+giữ token làm mới 30 ngày của chính hệ thống chấm công, nên hoặc app mở màn đăng nhập của cổng
+trong WebView (lối đúng, phải phát hành lại bản build), hoặc tạm giữ một đường mật khẩu riêng cho
+app (còn một đường mật khẩu — đúng cái mà bước 3 muốn bỏ).
+
+## [1.45.0] — 2026-08-20
+
+**Thiếu hẳn chức năng tạo tài khoản trên trang Cài đặt → Tài khoản.**
+
+Máy chủ có `POST /api/nguoi-dung` (chỉ admin) từ đầu, nhưng **không đường nào trên giao diện gọi
+tới**. Trang Tài khoản chỉ có Đổi vai trò / Đặt lại mật khẩu / Nối Microsoft / Vô hiệu hóa — mà
+chính khối hướng dẫn của nó lại ghi bước 1 là *"Tạo tài khoản…"*, còn dòng mô tả bên dưới đẩy
+người đọc sang trang Nhân viên.
+
+Trang Nhân viên **có** cấp tài khoản, nhưng chỉ cho một hồ sơ nhân viên. Còn `nhan_su` và `admin`
+thì **không đòi** phải có hồ sơ — kế toán thuê ngoài, tài khoản quản trị kỹ thuật. Những tài khoản
+đó không tạo được bằng tay ở đâu cả (tài khoản `ngoc.hr@…` đang chạy thật chính là loại này).
+
+Form mới, chỉ admin: tên đăng nhập, mật khẩu tạm, vai trò, và nhân viên — **bắt buộc** với
+`nhan_vien` / `truong_phong` / `truong_phong_nhan_su`, để trống được với các vai trò còn lại. Chọn
+`truong_phong_nhan_su` thì hiện cảnh báo: đó là vai trò duy nhất gỡ được tệp đã nạp vào hồ sơ.
+
+### Hai hàng rào mới cho giao diện
+
+**Mọi `className` phải có định nghĩa trong một tệp `.css`.** Bài kiểm này sinh ra vì chính tôi gõ
+`hop-canh-bao` — một lớp không tồn tại, lớp thật là `hop-luu-y`. `className` là một chuỗi: gõ sai
+thì tsc không báo, build không báo, và trên màn hình ra một khối không có kiểu. Nhìn như "quên
+thiết kế" chứ không như một lỗi.
+
+Lượt quét đầu tiên tìm ra **4 lớp đã nằm sẵn trong mã nguồn mà không có định nghĩa nào** — 4 chỗ
+trên app đang mất kiểu:
+
+| Lớp | Ở đâu | Xử lý |
+|---|---|---|
+| `o`, `o-chon` | hộp thoại *Mã định danh* | đổi sang `o-nhap` / `o-nhap-ngang` — đúng quy ước 9 chỗ khác đang dùng |
+| `hang-nhan` | khối *Xem trước* của màn nhập dữ liệu | thêm định nghĩa: các nhãn dính sát nhau |
+| `dieu-huong-khoi` | nhóm mục trong thanh bên | thêm định nghĩa: khoảng cách giữa các nhóm |
+
+**Danh sách vai trò bắt buộc có hồ sơ phải khớp giữa máy chủ và giao diện.** Giao diện lặp lại
+`VAI_TRO_CAN_HO_SO` để đánh dấu ô *Nhân viên* là bắt buộc. Lệch nhau thì hoặc người dùng bấm Tạo
+rồi ăn 400 không hiểu vì sao, hoặc bị bắt khai nhân viên cho một vai trò không cần.
+
+Cả hai đã chứng minh bắt lỗi thật: gõ lại tên lớp sai thì bài đầu đỏ kèm đúng tên lớp và tệp; bỏ
+một vai trò khỏi danh sách của giao diện thì bài thứ hai đỏ.
+
+## [1.44.0] — 2026-08-20
+
+**Chu kỳ vòng lịch: 5 phút, và khai được trong `.env`.**
+
+`LICH_CHU_KY_PHUT`, mặc định **5** (trước là 15 cứng trong mã), chặn trong `[1, 60]` — gõ 0 hay
+số âm thì `setInterval` bắn liên tục, còn số quá lớn thì việc cuối ngày trượt hạn cả ngày.
+
+15 phút không phải một quyết định, nó là con số thừa hưởng. Mọi việc trong vòng lịch (chốt bảng
+công, nhắc hạn hợp đồng, sắp xếp kho tệp) đều khóa *một lần một ngày*, nên chu kỳ chỉ quyết định
+**độ trễ** chứ không quyết định khối lượng. Riêng việc đồng bộ SharePoint chạy mỗi vòng — và khi
+không còn tệp nào chờ thì nó kết thúc sau **một** câu SQL có chỉ mục, không gọi Graph lần nào.
+
+**Đồng bộ không còn bị chặn trước 01:00.** Cửa chặn `gio_may < GIO_CHAY` tồn tại cho các việc
+*cuối ngày*: phải chờ máy chấm công đẩy hết log của ngày hôm trước rồi mới chốt bảng công. Việc
+copy tệp lên SharePoint không liên quan gì đến điều đó, nhưng nó nằm sau cửa chặn nên mỗi đêm có
+một **cửa sổ một tiếng** không đồng bộ gì: tệp nạp lúc 00:10 phải chờ đến 01:00.
+
+Thứ tự với việc sắp xếp kho tệp **không còn là ràng buộc**, và điều đó cần nói rõ vì trước đây có
+một comment khẳng định ngược lại. Đọc lại `SQL_MONG_MUON`: đường dẫn SharePoint tính từ `ma_nv` /
+`ho_ten` và siêu dữ liệu văn bản, còn `ten_luu` chỉ dùng để lấy **đuôi tệp** — mà sắp xếp không
+đổi đuôi tệp.
+
+Khối đồng bộ tách thành hàm riêng `dong_bo_sharepoint()` để đọc ra ngay là nó **không** nằm sau
+cửa chặn giờ.
+
+## [1.44.0] — 2026-08-20
+
+**Đường xóa SharePoint đã chạy thật**, và giữ lại dấu vết đã xóa gì.
+
+Xác nhận trên máy thật: gỡ một tệp trong ứng dụng, vòng quét kế tiếp xóa bản trên SharePoint. Nên
+`xoa()` không còn là "chỉ đúng theo tài liệu Graph" nữa — cả hai nửa của đồng bộ đã chạy thật.
+
+Nhưng đọc lại `xoa_ban_cu()` thấy một lỗ: xóa xong thì **cả hai** cột đường dẫn về `null` và
+`ly_do` bị xóa trắng, nên dòng đó không còn nói được nó từng ở đâu. Đây là hành vi **phá hủy** trên
+một thư viện **dùng chung** — nếu chị HCNS hỏi *"sao tệp này biến mất"* thì hệ thống không trả lời
+được. Nhật ký thao tác có ghi việc gỡ tệp **trong ứng dụng**, nhưng không ghi việc xóa **trên
+SharePoint**.
+
+Giờ `ly_do` giữ lại `Đã xóa bản trên SharePoint: <đường dẫn>`. Dùng lại cột có sẵn — không chỗ nào
+dựa vào `ly_do IS NULL` để quyết định gì, nó chỉ được hiện ra màn hình; và `ghi_nhan` chỉ ghi đè
+`ly_do` khi đường dẫn mong muốn đổi, mà dòng đã gỡ thì nó đứng yên ở `null`.
+
+Đã dựng lại đúng tình huống trên máy chủ Graph giả và xác nhận hai phía: Graph nhận `DELETE`, và
+dòng CSDL ra `xong` / `duong_dan_da_day = null` / `sp_item_id = null` kèm đúng đường dẫn đã xóa.
+
+## [1.43.0] — 2026-08-20
+
+**Đồng bộ SharePoint chạy mỗi 15 phút, không phải mỗi ngày một lần.**
+
+Vòng lịch vốn đã tick mỗi 15 phút, nhưng việc đồng bộ khóa theo `dong_bo_sharepoint:<ngày>` —
+một lần một ngày. Hậu quả: nạp một tệp lúc 13:00 chỉ **ghi nhận** là có việc cần đẩy, còn vòng
+quét của hôm nay đã chạy xong từ 01:00. Tệp phải chờ đến **01:00 sáng mai**. Cả một ngày, và
+người nạp tệp không có cách nào biết.
+
+Đã gặp đúng tình huống này trên máy thật: thêm tệp cho một nhân sự, không thấy đồng bộ, không có
+gì sai cả — chỉ là chưa tới lượt.
+
+Khóa "một lần một ngày" là **đúng** cho việc chốt bảng công (chạy hai lần là sai số liệu) nhưng
+**sai** cho việc này. Đồng bộ vốn đã idempotent: `ghi_nhan` là upsert, `quet` chỉ chạm dòng có
+`duong_dan_muon` khác `duong_dan_da_day`, và không còn việc thì `quet` kết thúc sau **một** câu
+SQL có chỉ mục — không một lượt gọi Graph nào.
+
+Thứ tự trong một vòng vẫn giữ: việc này chạy sau việc sắp xếp kho tệp. Đường dẫn SharePoint tính
+từ `ma_nv`/`ho_ten` chứ không từ tên tệp trên đĩa, nên một vòng chạy trước lượt sắp xếp cũng không
+tính sai gì.
+
+Kèm theo: khóa theo ô 15 phút sinh ~92 dòng mỗi ngày trong `cong_viec_da_chay`, mà bảng đó không
+có chỗ nào dọn. Thêm dọn dòng `dong_bo_sharepoint:*` cũ hơn 7 ngày — giữ đủ để đọc lại `ket_qua`
+của những vòng gần đây khi gỡ lỗi.
+
+## [1.42.1] — 2026-08-20
+
+**`ghi_nhan_am_tham` không còn nuốt lỗi không dấu vết.** Nó là chỗ ghi nhận "tệp này cần đẩy lên
+SharePoint", gọi ngay sau khi nạp tệp và sau khi gán tệp vào một ô checklist. Nuốt lỗi ở đây là
+**đúng** — nạp tệp là việc chính, đồng bộ là việc phụ, và vòng quét hằng ngày sẽ dọn nốt. Nhưng
+`catch {}` trơn nghĩa là khi ai đó hỏi *"tôi vừa thêm tệp mà sao không thấy đồng bộ"* thì không
+có chỗ nào trả lời được: không dòng trong bảng, không dòng trong log, không gì cả. Giờ nó ghi một
+dòng vào log máy chủ.
+
+## [1.42.0] — 2026-08-20
+
+**`kiem_sharepoint` hỏi ngược Graph về từng tệp đã đẩy, và in URL bấm được.**
+
+`sharepoint_tep.duong_dan_da_day` là **ghi chép của ta**: nó nói *"ta đã ghi tệp này lên"*. Nó
+**không** nói tệp còn ở đó bây giờ. Tệp có thể bị ai đó di chuyển hoặc xóa tay sau khi đẩy, và
+bảng của ta vẫn báo `xong` mãi mãi.
+
+Lệnh giờ có thêm một phần: với mỗi dòng đã đẩy, `GET /drives/{id}/root:/{đường dẫn}` và in
+
+- `CÒN` kèm số byte và **`webUrl`** — trả lời được câu hỏi hay gặp nhất sau lần đẩy đầu tiên,
+  *"tệp nằm ở đâu"*, thay vì phải mở tay từng cấp thư mục;
+- `KHÔNG CÒN` khi Graph trả 404 — hệ thống tưởng đã đẩy nhưng SharePoint không có. Thoát mã 1.
+
+`webUrl` cũng là cách nhanh nhất phát hiện *đúng site nhưng sai thư viện*: URL in ra chứa tên
+thư viện thật.
+
+## [1.41.0] — 2026-08-20
+
+**Nút "Lấy log cũ" — xin log theo khoảng ngày, không phụ thuộc con trỏ đồng bộ của máy.**
+
+Nút *Gửi lại log* gửi lệnh `CHECK`, tức là hỏi máy *"còn gì CHƯA GỬI không"*. Nhưng con trỏ
+*đã gửi tới đâu* nằm **trong máy**, không nằm ở hệ thống này — nên một máy từng nối vào máy chủ
+ADMS khác có thể đã đánh dấu toàn bộ log là đã gửi, và `CHECK` trả về 0 bản ghi. Không phải hỏng:
+máy tin rằng nó không còn gì. Đổi địa chỉ máy chủ thường làm máy quên con trỏ đó, nhưng tùy
+firmware.
+
+`POST /api/thiet-bi/:serial/lay-log` gửi `DATA QUERY ATTLOG StartTime=… EndTime=…` — hỏi thẳng
+*"đưa tôi log từ ngày A đến ngày B"*. Bản ghi trùng tự bị bỏ qua nên chọn khoảng rộng vẫn an toàn.
+Hỗ trợ tùy firmware; máy không hiểu thì *Lịch sử lệnh* hiện mã lỗi, và đường chắc chắn còn lại là
+xuất USB rồi *Nhập lịch sử từ file*.
+
+**Không có đường API nào gửi lệnh tự do xuống máy**, và đó là cố ý: hai mốc ngày đi qua bộ kiểm
+`YYYY-MM-DD` (ngày không tồn tại bị chặn) rồi mới được ghép vào chuỗi lệnh. Một route "gửi lệnh
+bất kỳ" sẽ tiện hơn nhiều, và cũng là một đường cho phép đặt `CLEAR DATA` xuống máy chấm công —
+xóa sạch dữ liệu chấm công của cả công ty bằng một lời gọi API.
+
+Ba bài kiểm e2e, đã chứng minh bắt lỗi thật (đổi `xep_lenh` sang nhận chuỗi từ thân yêu cầu thì
+hai bài đỏ, trong đó có bài soi mã nguồn):
+
+- lệnh xếp xuống máy đúng định dạng `DATA QUERY ATTLOG`,
+- chặn ngày sai dạng, ngày không tồn tại, khoảng ngược, và chuỗi lệnh nhét vào ô ngày,
+- soi mã nguồn: `xep_lenh` không nhận chuỗi lấy từ thân yêu cầu ở bất kỳ route nào.
+
+## [1.40.0] — 2026-08-20
+
+**Sửa lỗi công chạy sang người khác khi có máy chấm công thứ hai.**
+
+`POST /api/lan-quet/gan-lai` không lọc theo máy: gán PIN 5 là kéo theo **mọi** lần quẹt PIN 5 chưa
+gán của **mọi** máy. Mà bảng *"PIN chưa gán cho nhân viên nào"* trên giao diện lại liệt kê theo
+từng **(PIN, máy)**, và nút *Gán lại* chỉ gửi PIN — người bấm tin rằng mình đang gán đúng một
+dòng.
+
+PIN là danh tính ở phạm vi **toàn công ty** (di trú 026), nhưng **số** PIN thì do từng máy cấp:
+hai máy có thể cùng có PIN 5 của **hai người khác nhau**. Với một máy thì lỗi này vô hại. Nó thành
+tiền ngay khi đấu máy thứ hai — thường là lúc nạp lại dữ liệu cũ từ một máy đã dùng ở nơi khác.
+
+- `thiet_bi_serial` giới hạn phạm vi `UPDATE`; giao diện truyền serial của đúng dòng đã bấm.
+- Không khai serial mà PIN đó đang có bản ghi chưa gán ở **nhiều máy** thì **từ chối**, kèm danh
+  sách từng máy và số lần — không đoán. Cùng lối với `DATA UPDATE USERINFO` khi một người nhiều PIN.
+- Hộp thoại nói rõ nó chỉ chuyển lần quẹt của máy nào, và cùng số PIN ở máy khác không bị ảnh hưởng.
+- Một máy thì đường cũ giữ nguyên: không cần khai serial.
+
+Hai bài kiểm e2e, đã chứng minh bắt lỗi thật: bỏ điều kiện lọc theo máy thì bài "hai máy cùng số
+PIN" đỏ.
+
+Kèm tài liệu: mục **Nạp lại dữ liệu từ một máy cũ** trong `KET-NOI-MAY-ZKTECO.md` — thứ tự
+*đối chiếu PIN trước khi cắm*, vì sau khi gán sai thì bản ghi không còn trong danh sách "chưa gán"
+để sửa bằng một cú bấm.
+
+## [1.39.1] — 2026-08-20
+
+**Đường đẩy SharePoint đã chạy thật.** 4 tệp lên thư viện HCNS thật: 16/16 nhánh khớp tên,
+`sp_item_id` do Graph cấp cho cả 4, `duong_dan_da_day` bằng `duong_dan_muon`. Nên `tai_len` và
+`bao_dam_thu_muc` không còn là "chỉ đúng theo tài liệu Graph" nữa.
+
+Tài liệu sửa theo — dòng *"Chưa chạy thật lần nào"* giờ đã sai, và một giới hạn đã hết hiệu lực
+còn nằm trong tài liệu thì lần sau không ai biết cái nào còn thật.
+
+`xoa()` **vẫn chưa chạy thật lần nào**, và nó hỏng **im lặng**: hồ sơ đã gỡ ở hệ thống vẫn sống
+trên SharePoint và không có gì báo. Tài liệu giờ nói rõ phải thử đường xóa trong cùng lượt test,
+bằng chính những tệp vừa đẩy.
+
+## [1.39.0] — 2026-08-20
+
+**`npm run dong_bo_sharepoint` — kích một vòng đồng bộ từ dòng lệnh.**
+
+Trước bản này, cách duy nhất chạy một vòng quét ngay là bấm **Đồng bộ ngay** trên giao diện — nút
+đó đòi đăng nhập. Còn lại là chờ vòng quét hằng ngày sau 01:00. Nhưng người đang cấu hình
+SharePoint thì làm việc trong terminal của VPS, và **`SHAREPOINT_BAT_DAY=1` chỉ CHO PHÉP đẩy, nó
+không tự đẩy**: bật xong, `/health` báo `bat — 4 tep cho` và bảng vẫn `chua_lam` với
+`so_lan_thu = 0`. Đúng như thiết kế, và rất dễ đoán sai thành "hỏng".
+
+- `--chi_tinh` chỉ tính lại đường dẫn mong muốn, **không chạm vào SharePoint**. An toàn chạy bất
+  cứ lúc nào, kể cả khi chưa bật `SHAREPOINT_BAT_DAY`.
+- Chưa bật `SHAREPOINT_BAT_DAY` mà chạy không cờ thì lệnh vẫn đếm việc rồi nói rõ vì sao không
+  đẩy, kèm đúng hai bước cần làm — thay vì im lặng báo "0 đã đẩy".
+- Một vòng làm tối đa `MOI_VONG` việc. Còn việc chưa tới lượt thì lệnh **nói ra**, vì im lặng ở
+  đây đọc thành "đã xong hết".
+- Thoát mã 1 khi có dòng lỗi, để dùng được trong kịch bản.
+
+## [1.38.1] — 2026-08-20
+
+**Sửa: `kiem_sharepoint` in `Thư viện : root`.** Lượt chạy thật đầu tiên trên VPS bắt được lỗi
+này. `thu_ket_noi()` đọc trường `name` của `GET /drives/{id}/root`, và Graph thật trả về `"root"`
+ở đó — tên của **mục gốc**, không phải tên thư viện.
+
+Dòng đó vô dụng đúng vào việc nó tồn tại để làm: trả lời *"drive id đang trỏ vào HCNS hay vào
+thư viện mặc định của site"*. Trỏ nhầm sang *Tài liệu* thì nó cũng in `root` và không cảnh báo gì.
+
+Tên thư viện giờ lấy từ `GET /drives/{id}`; `GET /drives/{id}/root` vẫn được gọi nhưng để chứng
+minh **đọc được** mục gốc — đọc được metadata của drive không đồng nghĩa đọc được nội dung trong
+đó. Thêm dòng `Đường dẫn` in `webUrl`, vì nó kết thúc bằng đường dẫn thư viện nên đối chiếu bằng
+mắt là xong.
+
+**Vì sao bộ kiểm không bắt được:** máy chủ Graph giả trả `name: "HCNS"` cho mục gốc — một cái bẫy
+tự đặt. Bài kiểm xanh trong khi thực tế sai. Máy giả giờ trả `"root"` đúng như Graph thật, và có
+một bài kiểm riêng đòi `ten_thu_vien === 'HCNS'` (đã chứng minh đỏ khi hoàn lại mã cũ).
+
+Kèm theo: khai thẳng `SHAREPOINT_DRIVE_ID` thì tên thư viện **không được kiểm ở đâu cả** — id đó
+đi trực tiếp vào mọi lượt gọi Graph. Lệnh giờ in một dòng `CHÚ Ý` khi tên thật khác
+`SHAREPOINT_THU_VIEN`. Thư viện bị đổi tên thì không sao; trỏ sai thư viện thì hồ sơ vào chỗ khác.
+
+## [1.38.0] — 2026-08-20
+
+**`npm run kiem_sharepoint` — đối chiếu bảng `NHANH` với cây thư mục thật.** Chỉ đọc: không tạo,
+không ghi, không xóa. Quyền cần là `Sites.Selected` mức *read*.
+
+Bảng `NHANH` là một bản **sao chép tay** từ thư viện HCNS, và tên thư mục ở đó có `–` (U+2013),
+`&`, `(...)`, số thứ tự `02.1`. Sai một ký tự thì Graph **không báo lỗi** — nó tạo một thư mục
+mới bên cạnh thư mục thật, và hồ sơ của 53 người nằm trong một cây không ai mở. Triệu chứng duy
+nhất là *"chị HCNS không thấy tệp"*. Và nó không phải việc làm một lần: HCNS đổi tên thư mục là
+bảng này lệch.
+
+Với mỗi nhánh thiếu, lệnh in tên **thật** lấy từ SharePoint kèm chỗ khác nhau tính theo **mã
+Unicode**:
+
+```
+khác ở: ký tự thứ 27: cần "–" (U+2013), trên SharePoint là "-" (U+002D)
+```
+
+Mã ký tự là điểm chính: `–` với `-` in ra màn hình gần như không phân biệt được. Không có tên nào
+gần giống thì lệnh liệt kê tên thật của các thư mục đang có ở đó, để sao lại từng ký tự.
+
+Ba dòng đầu in **thư viện đang nối tới**. Đó là câu hỏi khác và cũng đã từng cần:
+`GET /sites/{id}/drive` (số ít) trả về thư viện **mặc định** của site — *Tài liệu* / *Shared
+Documents* — không phải HCNS. Ai lấy drive id bằng đường đó sẽ đúng site nhưng sai thư viện, và
+mọi nhánh báo `THIẾU` mà không rõ vì sao.
+
+`LỖI` tách khỏi `THIẾU`: `LỖI` là Graph từ chối (403 = `Sites.Selected` chưa cấp trên site), còn
+`THIẾU` là kết nối được nhưng tên không khớp. Gom hai thứ vào một là đẩy người đọc đi đổi tên
+thư mục trong khi vấn đề là quyền. Thoát mã 1 khi còn nhánh thiếu hoặc lỗi.
+
+Kèm theo, trong client Graph:
+
+- `liet_ke()` — liệt kê mục con của một thư mục, `null` khi thư mục không có (404 không thành
+  lỗi). Đi theo `@odata.nextLink` để không bỏ mất trang sau, nhưng **chỉ khi** nextLink còn nằm
+  trong đúng gốc Graph đang dùng: nextLink đến từ *phản hồi*, và đi theo nó một cách mù là gửi
+  Bearer token của ứng dụng đến bất kỳ máy nào URL đó trỏ tới.
+- Không hàng rào `duong_dan_an_toan_*` ở đây, và đó là cố ý: hàng rào đó tồn tại để bảo vệ tệp
+  của người khác khỏi bị ghi đè và xóa. Việc cần đối chiếu chính là những thư mục **ngoài** bảng
+  `NHANH` — một hàng rào ở đây sẽ chặn đúng việc đó.
+
+## [1.37.1] — 2026-08-20
+
+Tài liệu SharePoint: bổ sung hai điều đã làm lần cấp quyền đầu tiên thất bại.
+
+- **Ai chạy được.** Cấp application permission của Microsoft Graph cần **Global Administrator**
+  (hoặc Privileged Role Administrator). *Application Administrator* có thể không đủ cho riêng
+  nhóm quyền này — gặp `Insufficient privileges` thì đó là lý do, không phải lệnh sai.
+- **Đăng nhập bằng gì.** Phải là tài khoản người thật, không phải managed identity của Cloud
+  Shell (`az account show --query user` phải ra `user`, không phải `servicePrincipal`). MSI
+  không lấy được token cho các audience cần thiết — đó là nguồn của cả lỗi
+  `not a supported MSI token audience` lẫn `403 accessDenied`.
+- **Rủi ro của cách vòng, nói thẳng.** Giữa hai bước bootstrap, app có toàn quyền trên **mọi**
+  site của tenant — kể cả site tài chính, site ban giám đốc. Phải chạy liền một mạch và bước gỡ
+  là bắt buộc.
+
+## [1.37.0] — 2026-08-20
+
+**`/health` nói trạng thái đồng bộ SharePoint.** Tính năng này có **hai công tắc** và cả hai tắt
+mặc định, nên trạng thái *bình thường* của nó là "không đẩy gì cả" — đúng như thiết kế, nhưng từ
+ngoài nhìn thì giống hỏng. Trước bản này, cách duy nhất biết là mở đúng một trang trong ứng dụng;
+ai không biết có trang đó thì chỉ thấy SharePoint trống trơn và không có gì giải thích.
+
+Kịch bản triển khai in nguyên thân `/health` sau mỗi lần cập nhật, nên đó là chỗ dễ thấy nhất:
+
+| Dòng `sharepoint` | Nghĩa |
+|---|---|
+| `tat — chua khai SHAREPOINT_SITE_ID / …` | Công tắc 1 tắt: chưa có credential trong `.env` |
+| `chi dem — chua dat SHAREPOINT_BAT_DAY=1 …` | Công tắc 2 tắt: kết nối được nhưng **cố ý** chưa đẩy |
+| `bat — N tep cho, M loi` | Đang chạy thật |
+
+Hai điều dòng này **không** làm:
+
+- **Không gọi Graph.** `/health` bị trình giám sát và kịch bản triển khai gọi liên tục; một lượt
+  gọi mạng mỗi lần là thêm độ trễ và thêm một đường chạm trần giới hạn của Microsoft. Chỉ đọc
+  trạng thái cục bộ. Muốn thử credential thật thì mở *Cài đặt → Kho tệp hồ sơ* — trang đó gọi
+  Graph một lần và in lỗi ra màn hình.
+- **Không in giá trị của biến nào** (`/health` không đòi đăng nhập). Tên biến thì in — đó chính là
+  phần hữu ích. Có bài kiểm e2e đối chiếu theo **giá trị thật trong cấu hình**, nên bài đó còn
+  đúng cả khi máy thật đã khai đầy đủ; đã chứng minh nó bắt được rò rỉ bằng cách cố tình in
+  client secret ra rồi chạy lại.
+
+### Tài liệu
+
+`tai_lieu/SHAREPOINT.md` thêm mục **"Chưa thấy tệp nào trên SharePoint — soi ở đâu"**: bảng tra
+theo dòng `/health`, và ba câu lệnh kiểm nhanh trên VPS (câu đầu chỉ in **tên** biến, không in
+giá trị).
+
+Kèm một điểm dễ đọc sai: `sharepoint_tep.ket_qua = 'xong'` **không** có nghĩa là tệp đã lên
+SharePoint. Một dòng thành `xong` khi tệp bị gỡ khỏi hồ sơ mà trên SharePoint chưa từng có bản
+nào để xóa — tức *không có việc gì phải làm*. Bằng chứng duy nhất rằng một tệp đã thật sự lên là
+`duong_dan_da_day is not null`.
+
+## [1.36.0] — 2026-08-20
+
+Rà soát toàn bộ giao diện web và dựng lại phần điều hướng. Không viết lại — kiến trúc, design
+token, RBAC lấy máy chủ làm nguồn sự thật, múi giờ neo theo máy chấm công, router tự viết né CVE
+đều giữ nguyên.
+
+### 11 mục cấu hình gom thành một mục "Cài đặt"
+
+Nhóm *Hệ thống* có 11 mục nằm thẳng trên thanh bên: Thiết bị, Ca làm việc, Địa điểm, Ngày lễ,
+Tài khoản, Tham số lương, Đồng bộ ERP, Khóa API, Kho tệp, Mã định danh, Nhật ký. Thanh bên dài
+gấp đôi phần việc hằng ngày, và người dùng phải quét qua "Khóa API" mỗi lần tìm "Bảng công".
+
+Cấu hình là thứ sửa vài lần một năm; việc hằng ngày là thứ mở vài lần một ngày. Hai loại đó không
+nên cùng một cấp. Giờ là **một** mục `Cài đặt` mở ra sub-nav bốn nhóm:
+
+| Nhóm | Mục |
+|---|---|
+| Chấm công | Thiết bị · Ca làm việc · Địa điểm · Ngày lễ |
+| Nhân sự & lương | Tham số lương |
+| Tài khoản & bảo mật | Tài khoản · Khóa API · Nhật ký thao tác |
+| Tích hợp & dữ liệu | Đồng bộ ERP · Kho tệp hồ sơ · Mã định danh |
+
+Mỗi mục con giữ **đường dẫn riêng** (`/cai-dat/thiet-bi`) chứ không phải tab trong một trang —
+bookmark, Ctrl-click và nút Lui đều phải chạy, và tab thì cả ba đều không.
+
+**Đường dẫn cũ vẫn sống.** 11 đường cũ tự chuyển sang đường mới (`replaceState`, nên nút Lui không
+kẹt giữa hai đường). Bookmark cũ không hỏng, và có bài kiểm giữ cho mọi đường trong bảng chuyển
+hướng trỏ tới một đường **có thật**.
+
+Phân quyền từng mục con giờ đọc **một chỗ** — cột `quyen` của bảng `MENU_CAI_DAT` — thay vì mỗi
+`case` tự gọi `la_admin()` / `la_nhan_su()`. Thêm một mục con mới chỉ phải khai quyền một lần.
+
+`/cai-dat` không tự nhảy sang mục đầu tiên: "mục đầu tiên" khác nhau theo vai trò, nên cùng một
+đường dẫn sẽ dẫn hai người tới hai chỗ. Nó liệt kê các nhóm ra, để trả lời được câu "ở đây sửa
+được những gì".
+
+### Trang hồ sơ nhân viên không còn mất tiêu đề
+
+`/nhan-vien/<uuid>` không khớp mục menu nào, nên thanh bên **không mục nào sáng** và tiêu đề
+header rơi về "Chấm công". Người dùng đang xem hồ sơ của một người cụ thể mà thanh tiêu đề không
+nói họ đang ở đâu, cũng không có đường lui.
+
+Giờ khớp active theo **tiền tố**, và có một ngữ cảnh tiêu đề nhỏ để trang tự đặt tên người + đường
+mòn `Nhân viên › Hồ sơ` lên header. Trang không dùng hook đó thì header giữ nhãn của MENU — không
+cần mọi trang phải biết đến cơ chế này.
+
+### Không còn hộp thoại gốc của trình duyệt
+
+16 chỗ dùng `window.confirm` / `alert` / `prompt`. Chúng không theo chế độ tối, không theo font và
+màu của app, không tô đỏ được nút xóa khác nút hủy — và ở nhiều trình duyệt có ô *"chặn trang này
+hiện hộp thoại"*: người dùng tick vào thì từ đó mỗi lần bấm Xóa sẽ **không hỏi gì mà cũng không
+xóa**. Một thao tác mất dữ liệu không được phép phụ thuộc vào thứ đó.
+
+Thay bằng `dung_xac_nhan()` và `dung_nhap_chu()` — dựng trên `HopThoai` đã có, trả
+`Promise<boolean>` / `Promise<string | null>`. Đi kèm hai thứ:
+
+- **Nội dung nói rõ sẽ mất gì**, không phải "Bạn có chắc?". Xóa tệp hồ sơ nói thẳng "đây là bản gốc
+  giấy tờ pháp lý và nó không còn ở đâu khác"; vô hiệu hóa tài khoản nói rõ hồ sơ và lịch sử chấm
+  công **không** bị ảnh hưởng.
+- **Bấm ra ngoài hoặc Esc = KHÔNG đồng ý.** Một hộp thoại xác nhận đóng lại mà coi là đồng ý thì
+  một cú bấm lạc cũng xóa được dữ liệu.
+
+`window.alert` khi trình duyệt không cho định vị giờ báo **ngay trong form** — người dùng đang gõ
+vào form đó, nên câu trả lời phải ở cạnh ô nhập, và ở đó còn nói được cách làm thay thế (mở Google
+Maps, bấm giữ, dán cặp số vào hai ô dưới).
+
+### Sửa
+
+- **Icon trùng trong thanh bên**: `fingerprint` dùng cho cả *Chấm công* và *Mã định danh*, `key`
+  cho cả *Tài khoản* và *Khóa API*, `receipt-2` cho cả *Bảng lương* và *Phụ cấp*. Hai mục cùng
+  icon thì thanh bên mất tác dụng quét nhanh. Đổi sang `search` / `lock` / `user-check` / `plus`
+  — đều đã có trong font subset, không phải cắt lại font.
+- **`key={i}`** ở 4 chỗ. Chỉ số mảng làm `key` thì ngay khi danh sách bị lọc / xóa / sắp xếp,
+  React gán lại trạng thái của dòng này cho dòng khác. Nhật ký khóa API giờ khóa theo bốn trường
+  xác định duy nhất một lần gọi; các danh sách chỉ đọc dùng `khoa_tinh(nội_dung, i)` — vẫn có vị
+  trí nhưng nói rõ ý đồ bằng một cái tên.
+- **Hàng bảng bấm được không dùng được bằng bàn phím**: `<tr onClick>` ở bảng công thiếu
+  `tabIndex` / `role` / `onKeyDown`. Với người không dùng chuột, hàng đó không tồn tại.
+
+### Tinh chỉnh Metronic
+
+- **Vòng focus** `:focus-visible` cho mọi phần tử tương tác — điều kiện để dùng được bằng bàn phím.
+- **Đường mòn** trên header cho trang con (hồ sơ, các mục Cài đặt).
+- **Khung xương lúc tải** thay dòng chữ "Đang tải…" ở các trang danh sách: chữ đó không nói gì về
+  hình dạng thứ đang tới, nên mỗi lần tải xong là một lần bố cục nhảy. Tôn trọng
+  `prefers-reduced-motion`.
+- **Cột đầu dính** khi cuộn ngang bảng công / bảng lương — cuộn mà cột tên trôi mất thì các con số
+  bên phải không còn thuộc về ai.
+- **Lớp thay style nội tuyến**: `.chu-nho` / `.chu-mo` / `.chu-xau` (36 bản sao), `.hang-bam`,
+  `.manh`, `.so-canh-bao`, `.so-xau`, `.so-tot`, và `.nut-light` cho nút thứ cấp. Bản viết bằng mã
+  màu cứng thì không theo được chế độ tối.
+
+### Bảy hàng rào mới (`thiet_ke/giao_dien.test.mjs`)
+
+Bảy thứ trên đều "chạy được" nên typecheck và build không bắt được — và lần nào cũng quay lại nếu
+không có bài kiểm giữ:
+
+| Hàng rào | Bắt được gì |
+|---|---|
+| Không dùng hộp thoại gốc | `window.confirm` / `alert` / `prompt` quay lại |
+| Icon riêng biệt trong từng danh sách | hai mục cùng icon |
+| Hàng bảng bấm được có `tabIndex` + `onKeyDown` | hàng chỉ dùng được bằng chuột |
+| Không dùng chỉ số mảng làm `key` | `key={i}` quay lại |
+| Mục con Cài đặt ↔ `case` định tuyến, hai chiều | mục menu ra trang trắng, hoặc `case` không ai vào được |
+| Mọi mục menu cấp một có `case` | bấm vào ra "Không có trang này" |
+| Đường dẫn cũ trỏ tới đường mới **có thật** | bookmark cũ thành 404, hoặc vòng lặp chuyển hướng |
+
+Cả bảy đã được **chứng minh là bắt được lỗi thật** bằng cách cố tình phá mã nguồn rồi chạy lại.
+
+## [1.35.0] — 2026-08-20
+
+**Phụ cấp khai một lần, không phải gõ lại mỗi tháng.** Bản 1.34.0 cho ghi phụ cấp của từng người
+lên phiếu lương, nhưng mỗi kỳ nhân sự phải gõ lại từ đầu cho cả 53 người. Đó là sai chỗ: *"Chị A
+được hỗ trợ gửi xe 200.000/tháng từ 01/8"* là một **thỏa thuận**, không phải một ô trên bảng
+lương tháng 8.
+
+Nên nó thành một bảng riêng — `chinh_sach_phu_cap` — có **hiệu lực từ – đến**, và kỳ lương tự
+sinh dòng khoản từ đó.
+
+### Số lượng lấy từ đâu
+
+| Nguồn | Nghĩa | Dùng cho |
+|---|---|---|
+| `co_dinh` | số lượng ghi trong chính sách | hỗ trợ gửi xe 1 lần/tháng |
+| `theo_cong` | = **số ngày công thực tế** của kỳ | hỗ trợ ăn trưa |
+
+`theo_cong` bám theo chấm công: đi làm ít ngày thì hưởng ít, không ai phải sửa tay. Không đi làm
+ngày nào thì không sinh dòng nào — bảng lương không có dòng 0 đồng để người đọc phải tự hiểu.
+
+**Đơn giá riêng của từng người**: để trống thì lấy đơn giá danh mục; điền thì đó là mức riêng —
+chỗ để một người hưởng khác cả công ty mà không phải tạo một khoản mới chỉ cho một người.
+
+### Đổi mức: đóng dòng cũ, mở dòng mới
+
+Không sửa tại chỗ, giống `quyet_dinh_luong` và `ma_dinh_danh`. Gán lại với ngày hiệu lực mới thì
+dòng cũ **tự đóng vào ngày trước đó** và ở lại làm lịch sử:
+
+```
+pc_trang_diem  300.000 đ/tháng   01/08 → 14/08   (tự đóng)
+pc_trang_diem  500.000 đ/tháng   15/08 → nay     "Tăng mức"
+```
+
+Nhờ vậy tính lại lương tháng cũ vẫn ra đúng số cũ. Ngày hiệu lực mới không sau dòng đang mở thì
+hệ thống **từ chối** chứ không lặng lẽ đè. Chính sách đã sinh ra khoản trên phiếu thì **không
+xóa được**, chỉ đóng — số tiền đã trả phải giữ được căn cứ.
+
+Kỳ lương nào **giao** với khoảng hiệu lực thì được hưởng, không phải kỳ nào nằm gọn trong đó:
+người vào làm hoặc nghỉ giữa tháng đều tính đúng.
+
+### Ghi đè cho riêng một kỳ
+
+Dòng do chính sách sinh ra mang nhãn *theo chính sách* và tự tính lại mỗi kỳ. Bấm **Ghi đè** thì
+nó thành dòng gõ tay và chính sách thôi điều khiển nó. Ghi đè là ghi đè — chính sách **không**
+sinh thêm dòng thứ hai, và tính lại kỳ không đè lên con số đã gõ.
+
+Rào này nằm ở **hai lớp** cố ý trùng nhau: bộ giải chính sách bỏ qua khoản đã gõ tay, và câu
+`INSERT ... ON CONFLICT` mang thêm `where tu_chinh_sach = true`. Bỏ một lớp thì test vẫn xanh;
+bỏ cả hai thì đỏ. Ghi rõ điều đó ngay tại chỗ để người sau không dọn nhầm.
+
+**Chính sách không tự sửa bảng lương đang mở** — phải bấm *Tính lương* ở kỳ đó. Số liệu không
+được đổi dưới chân người đang làm việc trên nó.
+
+### Thêm
+
+- Trang **Quản trị nhân sự → Phụ cấp**: xem theo người, xem cả lịch sử, gán và đóng.
+- **Gán hàng loạt** — lọc theo tên / mã / phòng ban rồi chọn cả nhóm. Mỗi người vẫn ra một dòng
+  riêng có hiệu lực riêng; đây là cách nhập nhanh, không phải một tầng "chính sách chung" thứ
+  hai để sau này không biết số của ai đến từ đâu.
+
+### Sửa
+
+- Một comment SQL trong `ky_luong.ts` chứa dấu backtick nằm trong template literal, làm hỏng cả
+  tệp. Bắt được vì bộ kiểm thử không chạy nổi — đã đổi sang dấu nháy thường.
+
+## [1.34.0] — 2026-08-20
+
+**Bảng lương mẫu của công ty đã lên phần mềm.** Bảng tính tháng 7/2026 (53 người, 7 sheet) có
+9 khoản thu nhập và 5 khoản trừ. Chúng KHÔNG thành 14 cột mới trong `phieu_luong` — danh sách đó
+đổi gần như hàng tháng, và mỗi lần đổi mà phải thêm cột là một lần di trú, một lần sửa giao diện,
+một lần sửa bộ tính. Thay vào đó là **một bảng danh mục + một bảng dòng**:
+
+- `khoan_luong` — danh mục 15 khoản, gieo sẵn đúng theo bảng tháng 7 của công ty.
+- `phieu_luong_khoan` — từng khoản của từng phiếu, có đơn giá **chụp lại** tại thời điểm tính.
+
+Thêm một khoản mới giờ là **thêm một dòng dữ liệu**, làm được ngay trên giao diện.
+
+### Ba cách ra tiền
+
+| Cách tính | Nhập gì | Ví dụ |
+|---|---|---|
+| `nhap_tay` | số tiền | Thưởng KPI, doanh số |
+| `so_luong_x_don_gia` | số lượng | Phụ cấp ăn trưa 23 ngày × 30.000 |
+| `nua_ngay_luong` | số lần | Nửa lương một ngày **của chính người đó** |
+
+Cách thứ ba là điểm bảng tính cũ làm sai được: hai người đi muộn cùng số lần mà lương khác nhau
+thì số tiền phải khác nhau. Ở đây nó suy từ `luong_ngay` của từng phiếu.
+
+### Thu nhập miễn thuế không còn bị đánh thuế
+
+Trước bản này hệ thống tính thuế TNCN trên **toàn bộ** thu nhập. Nghĩa là tiền hoàn lại khoản nhân
+viên đã ứng ra chi hộ công ty cũng bị tính thuế — thu thuế trên một khoản không phải thu nhập.
+Giờ mỗi khoản mang cờ `chiu_thue`, và phần miễn thuế bị trừ khỏi cơ sở tính thuế **trước** giảm
+trừ gia cảnh. Ba khoản được gieo sẵn là miễn thuế: ăn trưa, trang phục quý (Thông tư 111/2013),
+tiền ứng cho công ty, và không khoản nào khác.
+
+### Điều 127 nói ngay tại chỗ nhập
+
+Bảng của công ty trừ 50.000/lần đi muộn và trừ nửa ngày lương cho người **đã đi làm**. BLLĐ 2019
+Điều 127 khoản 3 cấm phạt tiền và cấm cắt lương thay cho xử lý kỷ luật lao động. Hệ thống **vẫn
+cho ghi nhận** — nhưng hai khoản đó mang cảnh báo hiện ngay cạnh ô nhập, không giấu trong tài
+liệu. Cách hợp pháp cho thời gian không làm việc là ghi giảm **công** trên bảng chấm công, để nó
+tự vào lương theo ngày công.
+
+### Ba lỗi tiền tìm thấy trong bảng tính gốc
+
+Đọc 7 sheet bằng bộ đọc XLSX tự viết (có giải công thức `shared`), ba thứ ảnh hưởng tiền thật:
+
+1. **1.040.000 đ không được trừ.** Cột `AG` (tổng trừ) bỏ sót cột `AF` (trừ nửa ngày do đi muộn)
+   ở 46 trên 51 dòng. Hai người có `AF` khác 0 mà không bao giờ bị trừ: Khuất Thị Kim Thư 880.000
+   và Trần Thị Minh Khánh 160.000.
+2. **Cột `J` dùng 9 mẫu chia khác nhau** — `$D$3`, `D3` (tương đối, trượt theo dòng), `26` cứng,
+   `30` cứng, và chia cho chính số công thực tế; trên ba cột gốc `G`/`H`/`I`. Bốn người cùng chức
+   danh nghỉ cùng số ngày có thể ra bốn số tiền khác nhau.
+3. **Cột `Y` (BHXH công ty) dùng 32% ở dòng 19 và 28**, còn 21,5% ở mọi dòng khác.
+
+Ngoài ra: `AI47 = K47` bỏ qua toàn bộ khoản trừ; `AI41 = W41+W42-...` cộng một **dòng ma** không
+có mã nhân viên, không có họ tên, mang khoản thu nhập thứ hai "Lương HCM" 4.500.000. Dòng ma đó ở
+đây là một khoản bình thường (`luong_dia_diem`), không phải một dòng vô danh phải nhớ mà cộng.
+
+### Thêm
+
+- **Công chuẩn tháng cố định** (`tham_so_luong.cong_chuan_thang`) cho công ty muốn chia theo một
+  số cố định như bảng cũ. Mặc định **0 = đếm theo lịch thật** — hành vi cũ, không đổi lặng lẽ.
+- **Làm tròn thực lĩnh** (`lam_tron_den`, bảng cũ làm tròn 100 đ). Số gốc vẫn giữ trên phiếu.
+- **Loại hợp đồng** chụp vào phiếu — thay ba cột lương gốc tách rời của bảng cũ.
+- `GET /api/ky-luong/:id/xuat-xlsx` — xuất Excel, **cột riêng cho từng khoản** có dùng trong kỳ.
+- Nhân viên xem phiếu của mình thấy **từng khoản**, không phải một con số "phụ cấp" gộp.
+
+### Sửa
+
+- **Bản chốt và tệp tải về từ giao diện giờ dựng từ một chỗ duy nhất** (`bang_xuat.ts`). Trước đó
+  là hai danh sách cột chéo nhau, nên bản được duyệt và bản kế toán đối chiếu là hai tệp khác nhau
+  mang cùng tên tháng.
+- Bộ xem nhanh XLSX cắt ở **30 cột** và không báo gì — một bảng 40 cột hiện ra 30 cột như thể đủ.
+  Nâng lên 64 cột, và cắt cột giờ cũng bật cờ `cat_bot` như cắt dòng.
+
 ## [1.33.2] — 2026-08-20
 
 **Không có đường xóa hồ sơ nhân viên.** Đúng với người thật — nhưng để dọn 8 hồ sơ demo

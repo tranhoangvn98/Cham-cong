@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { goi, la_admin, la_nhan_su } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, HopThoaiNhap, TEN_VAI_TRO, Trong,
-  dung_hanh_dong, dung_nap, ngay_viet,
+  dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet,
 } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
 
@@ -146,7 +146,7 @@ export function TrangNhanVien(): ReactNode {
                     <td className="canh-giua">
                       {n.duoc_cham_cong_dien_thoai
                         ? <span className="nhan nhan-lanh">bật</span>
-                        : <span style={{ color: 'var(--chu-mo)' }}>—</span>}
+                        : <span className="chu-mo">—</span>}
                     </td>
                     <td className="canh-giua">
                       {n.co_tai_khoan
@@ -155,7 +155,7 @@ export function TrangNhanVien(): ReactNode {
                           ? <button className="nut-nho nut-phang" onClick={() => dat_tao_tk_cho(n)}>
                               Tạo
                             </button>
-                          : <span style={{ color: 'var(--chu-mo)' }}>—</span>}
+                          : <span className="chu-mo">—</span>}
                     </td>
                     <td className="khong-ngat">
                       <LienKet den={`/nhan-vien/${n.id}`} lop="nut nut-nho nut-phang">
@@ -272,6 +272,7 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
     duoc_cham_cong_dien_thoai: nhan_vien?.duoc_cham_cong_dien_thoai ?? false,
   });
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   const doi = (khoa: keyof typeof f, gt: string | boolean): void =>
     dat_f((cu) => ({ ...cu, [khoa]: gt }));
@@ -300,9 +301,15 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
 
   const cho_nghi = async (): Promise<void> => {
     if (nhan_vien === null) return;
-    if (!window.confirm(
-      `Cho ${nhan_vien.ho_ten} nghỉ việc? Lịch sử chấm công được giữ lại, tài khoản đăng nhập bị vô hiệu hóa.`,
-    )) return;
+    const dong_y = await xn.hoi({
+      tieu_de: `Cho ${nhan_vien.ho_ten} nghỉ việc?`,
+      mo_ta: <>
+        Lịch sử chấm công và toàn bộ hồ sơ <strong>được giữ lại</strong>; tài khoản đăng nhập bị
+        vô hiệu hóa. Đây KHÔNG phải xóa hồ sơ.
+      </>,
+      chu_dong_y: 'Cho nghỉ việc',
+    });
+    if (!dong_y) return;
     const ok = await hd.chay(() =>
       goi(`/api/nhan-vien/${nhan_vien.id}/nghi-viec`, { method: 'POST', body: {} }),
     );
@@ -403,6 +410,7 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
           )}
         </div>
       </form>
+      {xn.hop_thoai}
     </HopThoai>
   );
 }

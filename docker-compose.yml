@@ -58,6 +58,17 @@ services:
       MS_GOC_WEBAPP: ${MS_GOC_WEBAPP:-}
       MS_TEN_MIEN_CHO_PHEP: ${MS_TEN_MIEN_CHO_PHEP:-}
       MS_TU_DONG_TAO: ${MS_TU_DONG_TAO:-0}
+      # Cong SSO noi bo. De trong CONG_SSO_GOC = tat han, dang nhap bang duong rieng nhu truoc.
+      # Phan he chi nhan khoa CONG KHAI qua JWKS — khong bao gio nhan khoa rieng cua cong.
+      CONG_SSO_GOC: ${CONG_SSO_GOC:-}
+      CONG_SSO_JWKS: ${CONG_SSO_JWKS:-}
+      CONG_SSO_AUD: ${CONG_SSO_AUD:-}
+      CONG_SSO_MA_MODULE: ${CONG_SSO_MA_MODULE:-}
+      CONG_SSO_TIEN_TO: ${CONG_SSO_TIEN_TO:-}
+      CONG_SSO_GOC_DANG_NHAP: ${CONG_SSO_GOC_DANG_NHAP:-}
+      # 1 = bo han duong dang nhap rieng. MAC DINH 0: bat khi chua dang nhap thu duoc
+      # qua cong la dong cua duy nhat dang dung duoc.
+      CONG_SSO_BO_DANG_NHAP_RIENG: ${CONG_SSO_BO_DANG_NHAP_RIENG:-0}
       # Dong bo kho tep ho so sang thu vien HCNS tren SharePoint. MOT CHIEU, xoa lan theo.
       # Dung APP RIENG (cham-cong-sharepoint-sync) voi quyen Sites.Selected, khong dung lai
       # app dang nhap o tren. SHAREPOINT_BAT_DAY=0 thi chi ghi nhan viec can day vao bang,
@@ -98,6 +109,7 @@ services:
       # Bat o day (khac mac dinh production) vi anh Docker luon mang dung ban di tru hop
       # voi ma nguon trong no — deploy la len phien ban moi ngay, khong co buoc thu cong.
       TU_DONG_DI_TRU: ${TU_DONG_DI_TRU:-1}
+      LICH_CHU_KY_PHUT: ${LICH_CHU_KY_PHUT:-5}
       # Chi lenh seed doc hai bien nay (docker compose exec may_chu node dist/csdl/seed.js).
       # Thieu chung thi seed KHONG tao duoc tai khoan admin dau tien.
       ADMIN_TEN_DANG_NHAP: ${ADMIN_TEN_DANG_NHAP:-admin}

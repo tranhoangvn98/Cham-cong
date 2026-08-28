@@ -75,7 +75,7 @@ export function TheMaDinhDanh(
       <HopTotHoacLoi hd={hd} />
 
       <div className="hang-nut">
-        <label className="o-chon">
+        <label className="o-nhap-ngang">
           <input
             type="checkbox"
             checked={ca_lich_su}
@@ -233,18 +233,18 @@ function HopThoaiGanMa(
   return (
     <HopThoai tieu_de={`Gán ${ten_he_thong}`} khi_dong={khi_dong}>
       <HopLoi loi={loi} />
-      <label className="o">
+      <label className="o-nhap">
         <span>{ten_he_thong}</span>
         <input value={ma} onChange={(e) => dat_ma(e.target.value)} autoFocus />
       </label>
-      <label className="o">
+      <label className="o-nhap">
         <span>Ghi chú</span>
         <input value={ghi_chu} onChange={(e) => dat_ghi_chu(e.target.value)} />
       </label>
 
       {cho_thu_hoi && (
         <div className="goi-y">
-          <label className="o-chon">
+          <label className="o-nhap-ngang">
             <input
               type="checkbox"
               checked={thu_hoi}
@@ -313,7 +313,7 @@ function HopThoaiCapPin(
             Hệ thống chọn một PIN <strong>còn trống</strong> trong dải của máy bạn chọn. Sau đó
             bạn cài đúng số đó lên máy — không tự nghĩ số.
           </p>
-          <label className="o">
+          <label className="o-nhap">
             <span>Máy chấm công *</span>
             <select value={serial} onChange={(e) => dat_serial(e.target.value)}>
               <option value="">— Chọn máy —</option>

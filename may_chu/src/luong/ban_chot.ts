@@ -13,6 +13,7 @@
 // cong voi `ban_chot.duyet_boi` va `ban_chot.duyet_luc`. Tep chi la ban ket xuat, sinh lai
 // duoc — do la ly do no duoc phep ghi de.
 import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
+import { bang_luong_xuat } from './bang_xuat.ts';
 import { LoiDauVao } from '../tien_ich/kiem_tra.ts';
 import { ghi_xlsx } from '../tien_ich/ghi_xlsx.ts';
 import { luu_ban_chot, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
@@ -98,67 +99,12 @@ async function bang_cham_cong(ky: string): Promise<{ tieu_de: string[]; hang: (s
 
 // ---------------------------------------------------------------- bang luong
 
-interface DongLuong {
-  ma_nv: string;
-  ho_ten: string;
-  phong_ban: string | null;
-  [cot: string]: string | null;
-}
-
-/** Cac cot tien trong bang luong, theo dung thu tu nguoi doc mong doi. */
-const COT_LUONG: readonly (readonly [string, string])[] = [
-  ['luong_co_ban', 'Lương cơ bản'],
-  ['phu_cap', 'Phụ cấp'],
-  ['so_ngay_cong_chuan', 'Công chuẩn'],
-  ['so_ngay_cong_thuc', 'Công thực'],
-  ['phut_ot', 'OT (phút)'],
-  ['luong_theo_cong', 'Lương theo công'],
-  ['tien_ot', 'Tiền OT'],
-  ['thuong', 'Thưởng'],
-  ['phu_cap_khac', 'Phụ cấp khác'],
-  ['tong_thu_nhap', 'Tổng thu nhập'],
-  ['muc_dong_bh', 'Mức đóng BH'],
-  ['bhxh_nld', 'BHXH (NLĐ)'],
-  ['bhyt_nld', 'BHYT (NLĐ)'],
-  ['bhtn_nld', 'BHTN (NLĐ)'],
-  ['bhxh_nsdld', 'BHXH (NSDLĐ)'],
-  ['bhyt_nsdld', 'BHYT (NSDLĐ)'],
-  ['bhtn_nsdld', 'BHTN (NSDLĐ)'],
-  ['so_nguoi_phu_thuoc', 'Số NPT'],
-  ['giam_tru_tong', 'Giảm trừ'],
-  ['thu_nhap_tinh_thue', 'TN tính thuế'],
-  ['thue_tncn', 'Thuế TNCN'],
-  ['tru_khac', 'Trừ khác'],
-  ['tong_tru', 'Tổng trừ'],
-  ['thuc_linh', 'Thực lĩnh'],
-];
-
+// Bang luong dung o MOT CHO duy nhat — `bang_xuat.ts`. Ban chot va tep nhan su tai ve tu
+// giao dien phai la cung mot bang: neu khong, ban duoc duyet va ban ke toan doi chieu la hai
+// tep khac nhau mang cung mot ten thang.
 async function bang_luong(ky: string): Promise<{ tieu_de: string[]; hang: (string | number)[][] }> {
-  const cot_sql = COT_LUONG.map(([c]) => `p.${c}::text as ${c}`).join(', ');
-  const dong = await truy_van<DongLuong>(
-    `select nv.ma_nv, nv.ho_ten, pb.ten as phong_ban, ${cot_sql}
-       from phieu_luong p
-       join ky_luong k on k.id = p.ky_luong_id
-       join nhan_vien nv on nv.id = p.nhan_vien_id
-       left join phong_ban pb on pb.id = nv.phong_ban_id
-      where k.thang = $1
-      order by nv.ma_nv`,
-    [ky],
-  );
-
-  const tieu_de = ['Mã NV', 'Họ tên', 'Phòng ban', ...COT_LUONG.map(([, t]) => t)];
-  const hang = dong.map((d) => [
-    d.ma_nv, d.ho_ten, d.phong_ban ?? '',
-    ...COT_LUONG.map(([c]) => {
-      const v = d[c];
-      if (v === null || v === undefined || v === '') return '';
-      const so = Number(v);
-      // Giu la SO chu khong phai chu: nhan su phai cong duoc cot trong Excel. Mot cot tien
-      // luu thanh chu thi ham SUM tra ve 0 va khong bao gi.
-      return Number.isFinite(so) ? so : v;
-    }),
-  ]);
-  return { tieu_de, hang };
+  const b = await bang_luong_xuat({ thang: ky });
+  return { tieu_de: b.tieu_de, hang: b.hang };
 }
 
 // ---------------------------------------------------------------- chot

@@ -6,7 +6,8 @@
 import { useState, type ReactNode } from 'react';
 import { goc_api_tuyet_doi, goi } from '../api.ts';
 import {
-  DangTai, HopLoi, HopThoai, HopTot, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  DangTai, HopLoi, HopThoai, HopTot, Trong,
+  dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio,
 } from '../thanh_phan.tsx';
 
 interface KhoaApi {
@@ -49,6 +50,7 @@ export function TrangKhoaApi(): ReactNode {
   const [khoa_moi, dat_khoa_moi] = useState<{ ten: string; khoa: string } | null>(null);
   const [xem_nhat_ky, dat_xem_nhat_ky] = useState<KhoaApi | null>(null);
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   const bat_tat = async (k: KhoaApi): Promise<void> => {
     await hd.chay(
@@ -61,11 +63,16 @@ export function TrangKhoaApi(): ReactNode {
   };
 
   const xoa = async (k: KhoaApi): Promise<void> => {
-    if (!window.confirm(
-      `Xóa vĩnh viễn khóa "${k.ten}"?\n\n`
-      + 'Hệ thống đang dùng khóa này sẽ ngừng lấy được dữ liệu ngay lập tức. '
-      + 'Nếu chỉ muốn tạm dừng thì bấm "Tắt" thay vì xóa.',
-    )) return;
+    const dong_y = await xn.hoi({
+      tieu_de: `Xóa vĩnh viễn khóa "${k.ten}"?`,
+      mo_ta: <>
+        Hệ thống đang dùng khóa này sẽ <strong>ngừng lấy được dữ liệu ngay lập tức</strong>.
+        Nếu chỉ muốn tạm dừng thì bấm <em>Tắt</em> thay vì xóa.
+      </>,
+      chu_dong_y: 'Xóa vĩnh viễn',
+      nguy_hiem: true,
+    });
+    if (!dong_y) return;
     await hd.chay(() => goi(`/api/khoa-api/${k.id}`, { method: 'DELETE' }), 'Đã xóa khóa.');
     nap_lai();
   };
@@ -138,8 +145,8 @@ export function TrangKhoaApi(): ReactNode {
                         <div className="o-so-phu">chỉ từ IP: {k.ip_cho_phep}</div>
                       )}
                     </td>
-                    <td className="so" style={{ fontSize: 12 }}>{k.tien_to}…</td>
-                    <td style={{ fontSize: 12 }}>
+                    <td className="so chu-nho">{k.tien_to}…</td>
+                    <td className="chu-nho">
                       {k.pham_vi.map((p) => (
                         <span key={p} className="nhan nhan-mo" style={{ marginRight: 4 }}>{p}</span>
                       ))}
@@ -188,6 +195,7 @@ export function TrangKhoaApi(): ReactNode {
       {xem_nhat_ky !== null && (
         <HopThoaiNhatKy khoa={xem_nhat_ky} khi_dong={() => dat_xem_nhat_ky(null)} />
       )}
+      {xn.hop_thoai}
     </>
   );
 }
@@ -351,8 +359,9 @@ function HopThoaiNhatKy(
               </tr>
             </thead>
             <tbody>
-              {(du_lieu ?? []).map((d, i) => (
-                <tr key={i}>
+              {(du_lieu ?? []).map((d) => (
+                // Nhat ky khong co id rieng, nhung bon truong nay xac dinh duy nhat mot lan goi.
+                <tr key={`${d.tao_luc} ${d.phuong_thuc} ${d.duong_dan} ${String(d.ma_tra_ve)}`}>
                   <td className="khong-ngat">{ngay_gio(d.tao_luc)}</td>
                   <td>{d.phuong_thuc}</td>
                   <td style={{ fontSize: 12, wordBreak: 'break-all' }}>{d.duong_dan}</td>
@@ -361,7 +370,7 @@ function HopThoaiNhatKy(
                       {d.ma_tra_ve}
                     </span>
                   </td>
-                  <td className="so" style={{ fontSize: 12 }}>{d.dia_chi_ip ?? '—'}</td>
+                  <td className="so chu-nho">{d.dia_chi_ip ?? '—'}</td>
                   <td className="canh-phai so">{d.mili_giay ?? '—'}</td>
                 </tr>
               ))}

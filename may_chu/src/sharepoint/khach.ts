@@ -329,6 +329,95 @@ export async function lay_drive_id(): Promise<string> {
   return drive_id;
 }
 
+// ---------------------------------------------------------------- doc thu muc
+
+export interface MucCon {
+  ten: string;
+  la_thu_muc: boolean;
+}
+
+/** Chan mot vong lap phan trang khong bao gio ket thuc. 50 trang x 200 = 10.000 muc. */
+const TRANG_TOI_DA = 50;
+
+export interface MucSharePoint {
+  id: string;
+  ten: string;
+  /** URL mo duoc tren trinh duyet. Day la thu tra loi cau hoi "tep nam o dau". */
+  web_url: string;
+  so_byte: number;
+  la_thu_muc: boolean;
+}
+
+/**
+ * Doc mot muc theo duong dan. Tra `null` khi khong co (404).
+ *
+ * CHI DOC. Dung de tra loi "tep da day len BAY GIO co con o do khong, va o dau" — mot cau hoi
+ * KHAC voi "he thong co ghi la da day chua". Bang `sharepoint_tep` chi noi duoc dieu thu hai:
+ * no la ghi chep cua ta, khong phai cua Microsoft. Tep co the da bi ai do di chuyen hoac xoa
+ * tay sau khi day len, va luc do bang cua ta van bao 'xong'.
+ */
+export async function doc_muc(duong_dan: string): Promise<MucSharePoint | null> {
+  const d = await lay_drive_id();
+  const kq = await goi_graph(
+    `/drives/${d}/root:/${ma_hoa_duong_dan(duong_dan)}?$select=id,name,webUrl,size,folder`,
+    { cho_phep: [404] },
+  );
+  if (kq.ma === 404) return null;
+  return {
+    id: String(kq.than['id'] ?? ''),
+    ten: String(kq.than['name'] ?? ''),
+    web_url: String(kq.than['webUrl'] ?? ''),
+    so_byte: Number(kq.than['size'] ?? 0),
+    la_thu_muc: kq.than['folder'] !== undefined,
+  };
+}
+
+/**
+ * Liet ke muc con cua mot thu muc. Tra `null` khi thu muc do khong ton tai (404).
+ *
+ * CHI DOC — khong tao, khong ghi, khong xoa. Nen o day KHONG co hang rao `duong_dan_an_toan_*`:
+ * hang rao do ton tai de bao ve tep cua nguoi khac khoi bi ghi de va xoa, con doc thi khong
+ * lam gi duoc ai. Doi lai, ham nay duoc dung dung vao viec doi chieu ten thu muc, ma cai can
+ * doi chieu chinh la nhung thu muc NGOAI bang `NHANH` — mot hang rao o day se chan dung viec
+ * do.
+ *
+ * Quyen can thiet chi la `Sites.Selected` muc read tren site — khong can FullControl.
+ */
+export async function liet_ke(duong_dan: string): Promise<MucCon[] | null> {
+  const d = await lay_drive_id();
+  const goc = cau_hinh.sharepoint.goc_graph;
+
+  let api = duong_dan === ''
+    ? `/drives/${d}/root/children?$select=name,folder&$top=200`
+    : `/drives/${d}/root:/${ma_hoa_duong_dan(duong_dan)}:/children?$select=name,folder&$top=200`;
+
+  const ra: MucCon[] = [];
+  for (let trang = 0; trang < TRANG_TOI_DA; trang++) {
+    const kq = await goi_graph(api, { cho_phep: [404] });
+    if (kq.ma === 404) return null;
+
+    for (const m of (kq.than['value'] ?? []) as { name?: string; folder?: unknown }[]) {
+      ra.push({ ten: String(m.name ?? ''), la_thu_muc: m.folder !== undefined });
+    }
+
+    const tiep = kq.than['@odata.nextLink'];
+    if (typeof tiep !== 'string' || tiep === '') return ra;
+
+    // `nextLink` DEN TU PHAN HOI, tuc la mot URL do phia ben kia viet ra. Di theo no ma khong
+    // kiem la gui Bearer token cua ung dung den bat ky may nao URL do tro tOi. Chi di theo khi
+    // no van nam trong dung goc Graph dang dung.
+    if (!tiep.startsWith(`${goc}/`)) {
+      throw new LoiSharePoint(
+        'Graph tra ve nextLink tro ra ngoai goc đang dùng — không đi theo.', 502,
+      );
+    }
+    api = tiep.slice(goc.length);
+  }
+  throw new LoiSharePoint(
+    `Thư mục "${duong_dan}" có quá nhiều mục con (hơn ${String(TRANG_TOI_DA * 200)}).`, 502,
+  );
+}
+
 // ---------------------------------------------------------------- tao thu muc
 
 /** Cac cap thu muc da biet la co — khoi goi lai Graph cho moi tep cua cung mot nguoi. */
@@ -542,14 +631,28 @@ export interface KetQuaThu {
   ok: boolean;
   thong_diep: string;
   drive_id?: string;
+  /** Ten THU VIEN, vi du "HCNS" — khong phai ten muc goc. */
   ten_thu_vien?: string;
+  /** URL cua thu vien tren SharePoint. Ket thuc bang duong dan thu vien, nen doc la biet ngay. */
+  web_url?: string;
 }
 
 /**
- * Thu ket noi mot lan, khong ghi gi. Dung cho trang quan tri va cho `/health`.
+ * Thu ket noi mot lan, khong ghi gi. Dung cho trang quan tri va cho lenh kiem nhanh.
  *
  * KHONG nem loi: cho quan tri xem duoc "sai o dau" ngay tren man hinh la muc dich cua ham
  * nay, con nem loi thi thong tin do nam trong log ma khong ai mo.
+ *
+ * HAI LUOT GOI, va can ca hai:
+ *
+ *   1. `GET /drives/{id}` — lay TEN THU VIEN. Truoc day ham nay doc `name` cua
+ *      `GET /drives/{id}/root`, va Graph that tra ve `"root"` o do: ten cua MUC GOC, khong phai
+ *      ten thu vien. Tren may that dong bao ra `Thư viện : root` — vo dung dung vao viec no ton
+ *      tai de lam, la tra loi cau hoi "co dang tro vao thu vien HCNS hay vao thu vien mac dinh
+ *      cua site". May chu Graph gia tra `"HCNS"` o cho do nen bai kiem xanh trong khi thuc te
+ *      sai; bo kiem gio giu dung hanh vi that.
+ *   2. `GET /drives/{id}/root` — chung minh DOC DUOC muc goc. Doc duoc metadata cua drive khong
+ *      dong nghia doc duoc noi dung ben trong.
  */
 export async function thu_ket_noi(): Promise<KetQuaThu> {
   if (!bat_sharepoint()) {
@@ -557,12 +660,14 @@ export async function thu_ket_noi(): Promise<KetQuaThu> {
   }
   try {
     const d = await lay_drive_id();
-    const kq = await goi_graph(`/drives/${d}/root?$select=id,name,webUrl`);
+    const kq = await goi_graph(`/drives/${d}?$select=id,name,webUrl`);
+    await goi_graph(`/drives/${d}/root?$select=id`);
     return {
       ok: true,
       thong_diep: 'Kết nối được và đọc được gốc thư viện.',
       drive_id: d,
       ten_thu_vien: String(kq.than['name'] ?? ''),
+      web_url: String(kq.than['webUrl'] ?? ''),
     };
   } catch (loi) {
     const l = loi as { thong_diep_cong_khai?: string; message?: string };

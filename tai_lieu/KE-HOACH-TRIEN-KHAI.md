@@ -52,17 +52,22 @@ Lệnh cụ thể ở [SHAREPOINT.md mục 5](SHAREPOINT.md).
 **Xong khi:** `az rest GET .../appRoleAssignments` chỉ in ra `883ea226-...` (Sites.Selected, và
 KHÔNG còn FullControl), và `POST /sites/{id}/permissions` đã trả về `roles: ["write"]`.
 
-### 2.3 Chạy thật đồng bộ SharePoint lần đầu
+### 2.3 Chạy thật đồng bộ SharePoint lần đầu — ĐƯỜNG ĐẨY: XONG (20-08-2026)
 
-**Đây là lần chạy thật đầu tiên.** Toàn bộ 29 bài kiểm của client chạy trên một máy chủ Graph
-giả tại chỗ, vì phiên làm việc viết mã không kết nối được SharePoint thật. Bộ kiểm chứng minh
-client gọi đúng những gì tài liệu Graph nói — **không** chứng minh SharePoint thật sẽ nhận.
+Đã chạy thật với 4 tệp thử: `npm run kiem_sharepoint` báo **16/16 nhánh khớp tên**, `npm run
+dong_bo_sharepoint` báo **đã đẩy 4, lỗi 0**, và bảng trạng thái có `sp_item_id` (do Graph cấp)
+cùng `duong_dan_da_day = duong_dan_muon` cho cả 4 dòng.
 
-Thứ tự: khai `SHAREPOINT_*` với `BAT_DAY=0` → **Tính lại đường dẫn** → đọc bảng → `BAT_DAY=1`
-→ đẩy thử vài tệp → mở cho cả kho.
+Thứ tự đã dùng, giữ lại vì sẽ cần lại khi đổi site hay đổi thư viện: khai `SHAREPOINT_*` với
+`BAT_DAY=0` → `npm run kiem_sharepoint` (chỉ đọc) → xem `duong_dan_muon` trong bảng → `BAT_DAY=1`
+→ `npm run dong_bo_sharepoint`. Lượt gọi Graph thật đầu tiên nên luôn là `kiem_sharepoint`: nó
+chỉ đọc, nên cấu hình sai cũng không để lại gì trong thư viện của HCNS.
 
-**Xong khi:** mở thư viện HCNS trên trình duyệt và thấy hồ sơ nằm đúng nhánh, đúng thư mục
-`[Mã NV]-[Họ tên]`, tên tệp đọc được.
+**Còn lại — đường XÓA chưa chạy thật lần nào**, và nó hỏng im lặng: hồ sơ đã gỡ ở hệ thống vẫn
+sống trên SharePoint và không có gì báo. Thử bằng chính 4 tệp vừa đẩy: gỡ tệp trong ứng dụng →
+`npm run dong_bo_sharepoint` → chờ cột `đã xóa` bằng 4 → mở lại thư viện xem PDF đã biến mất.
+
+**Xong khi:** cột `đã xóa` khác 0 và thư viện HCNS không còn 4 tệp thử đó.
 
 ### 2.4 Đăng ký vContract (hợp đồng điện tử)
 

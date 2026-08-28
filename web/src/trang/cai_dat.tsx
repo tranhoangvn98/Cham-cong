@@ -2,7 +2,8 @@
 import { useState, type ReactNode } from 'react';
 import { goi, la_nhan_su } from '../api.ts';
 import {
-  DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_viet, thu_cua_ngay,
+  DangTai, HopLoi, HopTot, HopThoai, Trong,
+  dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet, thu_cua_ngay,
 } from '../thanh_phan.tsx';
 
 const TEN_THU_DAY = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
@@ -43,9 +44,18 @@ export function TrangCaLam(): ReactNode {
   const [dang_them, dat_dang_them] = useState(false);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<CaLam[]>('/api/ca-lam');
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   const vo_hieu = async (c: CaLam): Promise<void> => {
-    if (!window.confirm(`Vô hiệu hóa ca "${c.ten}"? Bảng công cũ vẫn giữ nguyên.`)) return;
+    const dong_y = await xn.hoi({
+      tieu_de: `Vô hiệu hóa ca "${c.ten}"?`,
+      mo_ta: <>
+        Ca này không gán cho ai được nữa. <strong>Bảng công cũ vẫn giữ nguyên</strong> — các
+        tháng đã tính không đổi theo.
+      </>,
+      chu_dong_y: 'Vô hiệu hóa',
+    });
+    if (!dong_y) return;
     await hd.chay(() => goi(`/api/ca-lam/${c.id}`, { method: 'DELETE' }), 'Đã vô hiệu hóa ca.');
     nap_lai();
   };
@@ -81,7 +91,6 @@ export function TrangCaLam(): ReactNode {
                   <th>Nghỉ giữa ca</th>
                   <th>Ngày làm</th>
                   <th className="canh-phai">Dung sai muộn</th>
-                  <th className="canh-phai">Ngưỡng OT</th>
                   <th className="canh-phai">Đủ công</th>
                   {la_nhan_su() && <th></th>}
                 </tr>
@@ -99,7 +108,7 @@ export function TrangCaLam(): ReactNode {
                       {gio5(c.gio_vao)} → {gio5(c.gio_ra)}
                       {c.qua_dem && <span className="nhan nhan-lanh" style={{ marginLeft: 4 }}>qua đêm</span>}
                       {(c.theo_thu ?? []).map((t) => (
-                        <div key={t.thu} style={{ fontSize: 12, color: 'var(--chu-mo)' }}>
+                        <div key={t.thu} className="chu-nho chu-mo">
                           {TEN_THU_NGAN[t.thu]}: {gio5(t.gio_vao)} → {gio5(t.gio_ra)}
                         </div>
                       ))}
@@ -107,11 +116,10 @@ export function TrangCaLam(): ReactNode {
                     <td className="khong-ngat so">
                       {c.nghi_tu === null ? '—' : `${c.nghi_tu.slice(0, 5)} → ${c.nghi_den?.slice(0, 5)}`}
                     </td>
-                    <td style={{ fontSize: 12 }}>
+                    <td className="chu-nho">
                       {c.cac_ngay_lam.map((t) => TEN_THU_NGAN[t]).join(', ')}
                     </td>
                     <td className="canh-phai so">{c.dung_sai_muon_phut}p</td>
-                    <td className="canh-phai so">{c.nguong_ot_phut}p</td>
                     <td className="canh-phai so">
                       {Math.floor(c.phut_du_cong / 60)}h{c.phut_du_cong % 60 === 0 ? '' : ` ${c.phut_du_cong % 60}p`}
                     </td>
@@ -140,6 +148,7 @@ export function TrangCaLam(): ReactNode {
           khi_xong={() => { dat_dang_them(false); dat_dang_sua(null); nap_lai(); }}
         />
       )}
+      {xn.hop_thoai}
     </>
   );
 }
@@ -193,6 +202,8 @@ function FormCaLam(
       nghi_den: f.co_nghi ? f.nghi_den : null,
       dung_sai_muon_phut: Number(f.dung_sai_muon_phut),
       dung_sai_som_phut: Number(f.dung_sai_som_phut),
+      // Khong con o nhap cho truong nay: OT tinh theo don da duyet chu khong theo nguong.
+      // Van gui lai gia tri dang co de lan sua ca khong lang le ghi de no ve 30.
       nguong_ot_phut: Number(f.nguong_ot_phut),
       phut_du_cong: Number(f.phut_du_cong),
       qua_dem: f.qua_dem,
@@ -353,9 +364,12 @@ function FormCaLam(
 
         <div className="luoi luoi-2">
           <div className="o-nhap">
-            <label htmlFor="not">Ngưỡng tính OT (phút sau giờ tan ca)</label>
-            <input id="not" type="number" min="0" max="480" value={f.nguong_ot_phut}
-              onChange={(e) => doi('nguong_ot_phut', e.target.value)} />
+            <label>Làm thêm giờ</label>
+            <div className="goi-y">
+              OT chỉ tính khi có <strong>đơn làm thêm đã duyệt</strong>, và chỉ tính phần giờ
+              vừa có mặt vừa nằm trong đơn. Không còn ngưỡng &#34;ở lại quá N phút thì thành OT&#34;
+              — quẹt thẻ muộn vì lý do khác không sinh OT nữa.
+            </div>
           </div>
           <div className="o-nhap">
             <label htmlFor="pdc">Số phút để tính đủ 1 công</label>
@@ -439,7 +453,7 @@ export function TrangDiaDiem(): ReactNode {
                 {(du_lieu ?? []).map((d) => (
                   <tr key={d.id} style={d.dang_hoat_dong ? undefined : { opacity: 0.5 }}>
                     <td><strong>{d.ten}</strong></td>
-                    <td className="so" style={{ fontSize: 12 }}>
+                    <td className="so chu-nho">
                       {Number(d.vi_do).toFixed(6)}, {Number(d.kinh_do).toFixed(6)}
                       <div>
                         <a href={`https://www.google.com/maps?q=${d.vi_do},${d.kinh_do}`}
@@ -482,11 +496,15 @@ function FormDiaDiem({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
   const [vi_do, dat_vi_do] = useState('');
   const [kinh_do, dat_kinh_do] = useState('');
   const [ban_kinh, dat_ban_kinh] = useState('200');
+  const [loi_dinh_vi, dat_loi_dinh_vi] = useState<string | null>(null);
   const hd = dung_hanh_dong();
 
+  // Bao loi ngay TRONG form chu khong bang `window.alert`: nguoi dung dang go do vao form nay,
+  // nen cau tra loi phai o canh o nhap — va o day con noi duoc cach lam thay the.
   const lay_vi_tri_hien_tai = (): void => {
+    dat_loi_dinh_vi(null);
     if (!('geolocation' in navigator)) {
-      window.alert('Trình duyệt này không hỗ trợ định vị.');
+      dat_loi_dinh_vi('Trình duyệt này không hỗ trợ định vị. Hãy nhập vĩ độ / kinh độ bằng tay.');
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -494,7 +512,9 @@ function FormDiaDiem({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
         dat_vi_do(v.coords.latitude.toFixed(6));
         dat_kinh_do(v.coords.longitude.toFixed(6));
       },
-      () => window.alert('Không lấy được vị trí. Hãy cho phép quyền định vị hoặc nhập tay.'),
+      () => dat_loi_dinh_vi(
+        'Không lấy được vị trí. Hãy cho phép quyền định vị cho trang này, hoặc mở Google Maps, '
+        + 'bấm giữ vào điểm cần lấy rồi dán cặp số vào hai ô dưới.'),
       { enableHighAccuracy: true, timeout: 10000 },
     );
   };
@@ -537,9 +557,10 @@ function FormDiaDiem({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
           </div>
         </div>
 
-        <button type="button" onClick={lay_vi_tri_hien_tai} style={{ marginBottom: 12 }}>
+        <button type="button" className="nut-light" onClick={lay_vi_tri_hien_tai}>
           Lấy vị trí hiện tại của máy này
         </button>
+        {loi_dinh_vi !== null && <div className="hop-luu-y">{loi_dinh_vi}</div>}
 
         <div className="o-nhap">
           <label htmlFor="bk">Bán kính cho phép (mét) *</label>
@@ -571,9 +592,20 @@ export function TrangNgayLe(): ReactNode {
   const [dang_them, dat_dang_them] = useState(false);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<NgayLe[]>(`/api/ngay-le?nam=${nam}`);
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   const xoa = async (ng: NgayLe): Promise<void> => {
-    if (!window.confirm(`Xóa ngày lễ "${ng.ten}" (${ngay_viet(ng.ngay)})?`)) return;
+    const dong_y = await xn.hoi({
+      tieu_de: `Xóa ngày lễ "${ng.ten}"?`,
+      mo_ta: <>
+        Ngày {ngay_viet(ng.ngay)} sẽ thành ngày làm việc bình thường, và{' '}
+        <strong>bảng công của ngày đó được tính lại ngay</strong> — ai không đi làm hôm đó sẽ
+        chuyển từ Ngày lễ sang Vắng.
+      </>,
+      chu_dong_y: 'Xóa ngày lễ',
+      nguy_hiem: true,
+    });
+    if (!dong_y) return;
     await hd.chay(
       () => goi(`/api/ngay-le/${ng.ngay}`, { method: 'DELETE' }),
       'Đã xóa và tính lại bảng công của ngày đó.',
@@ -658,6 +690,7 @@ export function TrangNgayLe(): ReactNode {
           khi_xong={() => { dat_dang_them(false); nap_lai(); }}
         />
       )}
+      {xn.hop_thoai}
     </>
   );
 }

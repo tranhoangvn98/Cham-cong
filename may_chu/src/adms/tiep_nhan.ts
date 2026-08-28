@@ -1,9 +1,11 @@
 // Nghiep vu tiep nhan ATTLOG tu may: chong trung -> map PIN sang nhan vien -> luu
 // -> ghi su kien -> tinh lai bang cong ngay bi anh huong.
-import { trong_giao_dich, truy_van } from '../csdl/ket_noi.ts';
+import { trong_giao_dich } from '../csdl/ket_noi.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { tinh_lai_nhieu } from '../cong/tinh_cong.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
+import { cac_pin_lech, tra_pin, type NguoiMap } from '../dinh_danh/tra_pin.ts';
+import { nap_lich_pin } from '../dinh_danh/lich_pin_csdl.ts';
 import { doc_attlog, doc_rtlog, nhan_cach_xac_thuc, type BanGhiAttlog } from './giao_thuc.ts';
 
 export interface KetQuaTiepNhan {
@@ -57,15 +59,23 @@ async function tiep_nhan_ban_ghi(
   };
   if (ban_ghi.length === 0) return kq;
 
-  // Nap mot lan toan bo PIN -> nhan vien de khong truy van tung dong.
+  // Nap mot lan toan bo LICH SU cua cac PIN trong lo — ke ca cac dong da dong lai. Tung ban ghi
+  // duoc tra theo MOC THOI GIAN cua chinh no, khong phai theo "hom nay ai giu PIN".
   const cac_pin = [...new Set(ban_ghi.map((b) => b.pin))];
-  const theo_pin = await map_pin_nhan_vien(cac_pin);
+  const lich = await nap_lich_pin(cac_pin);
+
+  for (const l of cac_pin_lech(lich)) {
+    console.warn(
+      `[adms] PIN ${l.pin}: bang dinh danh noi ${l.ma_nv_bang}, cot pin_may noi ${l.ma_nv_cot}. `
+      + 'Dung bang. Chay doi soat ma dinh danh de biet vi sao lech.',
+    );
+  }
 
   const ngay_can_tinh = new Set<string>();
   const chua_map = new Set<string>();
 
   for (const b of ban_ghi) {
-    const nguoi = theo_pin.get(b.pin) ?? null;
+    const nguoi = tra_pin(lich, b.pin, b.thoi_diem);
     if (nguoi === null) chua_map.add(b.pin);
 
     const da_them = await luu_mot_lan_quet(serial, b, nguoi);
@@ -90,68 +100,6 @@ async function tiep_nhan_ban_ghi(
   );
 
   return kq;
-}
-
-interface NguoiMap {
-  id: string;
-  ma_nv: string;
-  ma_erp: string | null;
-}
-
-/**
- * PIN may -> nhan vien. BANG MA DINH DANH TRUOC, cot `nhan_vien.pin_may` sau.
- *
- * VI SAO HAI NGUON: bang `ma_dinh_danh` la nguon su that ve ma, nhung cot `pin_may` van la thu
- * ma nhan su go tay tren form ho so va la thu di tru 025 backfill tu. Doc CA HAI roi uu tien
- * bang thi:
- *
- *   - Mot nguoi co PIN o HAI MAY chay dung — cot chi chua duoc mot ma, bang thi chua ca hai.
- *   - Chuyen PIN sang nguoi moi qua trang ma dinh danh co hieu luc NGAY, khong cho ai nho di
- *     sua cot.
- *   - Va khong the MAT khop so voi truoc: cot van duoc doc, chi la doc sau.
- *
- * Hai ben noi khac nhau la trieu chung, khong phai chuyen binh thuong — ghi log canh bao de no
- * len duoc bao cao doi soat thay vi im lang.
- */
-export async function map_pin_nhan_vien(cac_pin: string[]): Promise<Map<string, NguoiMap>> {
-  if (cac_pin.length === 0) return new Map();
-  const ds = await truy_van<{
-    pin: string; id: string; ma_nv: string; ma_erp: string | null; nguon: string;
-  }>(
-    `with pin as (select unnest($1::text[]) as pin)
-     select p.pin, nv.id, nv.ma_nv, nv.ma_erp, 'bang' as nguon
-       from pin p
-       join ma_dinh_danh md on md.he_thong = 'may_cham_cong'
-                           and md.ma_chuan = p.pin and md.hieu_luc_den is null
-       join nhan_vien nv on nv.id = md.nhan_vien_id and nv.dang_hoat_dong = true
-     union all
-     select p.pin, nv.id, nv.ma_nv, nv.ma_erp, 'cot' as nguon
-       from pin p
-       join nhan_vien nv on nv.pin_may = p.pin and nv.dang_hoat_dong = true`,
-    [cac_pin],
-  );
-
-  const tu_bang = new Map<string, NguoiMap>();
-  const tu_cot = new Map<string, NguoiMap>();
-  for (const d of ds) {
-    (d.nguon === 'bang' ? tu_bang : tu_cot).set(
-      d.pin, { id: d.id, ma_nv: d.ma_nv, ma_erp: d.ma_erp });
-  }
-
-  const ra = new Map<string, NguoiMap>();
-  for (const pin of new Set([...tu_bang.keys(), ...tu_cot.keys()])) {
-    const b = tu_bang.get(pin);
-    const c = tu_cot.get(pin);
-    if (b !== undefined && c !== undefined && b.id !== c.id) {
-      console.warn(
-        `[adms] PIN ${pin}: bang dinh danh noi ${b.ma_nv}, cot pin_may noi ${c.ma_nv}. `
-        + 'Dung bang. Chay doi soat ma dinh danh de biet vi sao lech.',
-      );
-    }
-    const nguoi = b ?? c;
-    if (nguoi !== undefined) ra.set(pin, nguoi);
-  }
-  return ra;
 }
 
 /** Tra ve true neu ban ghi duoc them moi, false neu da ton tai (trung). */

@@ -162,6 +162,54 @@ export const cau_hinh = {
   },
 
   /**
+   * Cong SSO noi bo (`teams.tranhoangvietnam.com/cong`).
+   *
+   * De TRONG `CONG_SSO_GOC` = tat han: he thong dung duong dang nhap rieng nhu truoc. Khai vao
+   * = chap nhan them token do cong phat hanh. Xem tai_lieu/CONG-SSO.md.
+   *
+   * `iss` phai khop DUNG TUNG KY TU voi truong `iss` trong token — day la ranh gioi giua "token
+   * cua cong nay" va "token cua mot cong khac". Vi vay no lay thang tu `CONG_SSO_GOC`, khong
+   * chuan hoa gi ngoai viec bo dau `/` cuoi.
+   *
+   * `ma_module` la khoa doc trong `token.quyen`. Doc khoa cua phan he khac la vuot ranh gioi,
+   * nen o day chi co MOT gia tri va no khong phai danh sach.
+   */
+  cong_sso: (() => {
+    const goc = chu('CONG_SSO_GOC', '').replace(/\/+$/, '');
+    let goc_dang_nhap = chu('CONG_SSO_GOC_DANG_NHAP', '');
+    if (goc_dang_nhap === '' && goc !== '') {
+      try {
+        goc_dang_nhap = new URL(goc).origin + '/';
+      } catch {
+        throw new Error(`CONG_SSO_GOC khong phai URL hop le: ${goc}`);
+      }
+    }
+    return {
+      iss: goc,
+      jwks_url: chu('CONG_SSO_JWKS', goc === '' ? '' : `${goc}/.well-known/jwks.json`),
+      /** `aud` la CHUOI, khong phai mang — so sanh `===`. */
+      aud: chu('CONG_SSO_AUD', 'cong-noi-bo'),
+      ma_module: chu('CONG_SSO_MA_MODULE', 'chamcong'),
+      /** Tien to duong dan cua phan he tren cong — dung de dung `?quay_lai=`. */
+      tien_to: `/${chu('CONG_SSO_TIEN_TO', 'chamcong').replace(/^\/+|\/+$/g, '')}`,
+      /** Man dang nhap cua cong. Mac dinh la goc ten mien cua cong. */
+      goc_dang_nhap,
+      /**
+       * 1 = BO duong dang nhap rieng cua cham cong: khong con cho nao nhan mat khau, chua co
+       * token thi chuyen huong sang cong.
+       *
+       * MAC DINH TAT, va do la co y. Bat cai nay la dong cua dang nhap duy nhat dang dung
+       * duoc; neu cong chua phat duoc token dung duoc thi CA CONG TY khong vao duoc he thong.
+       * Bat sau khi da dang nhap thu thanh cong qua cong mot lan.
+       *
+       * Chi co hieu luc khi da khai `CONG_SSO_GOC` — xem `bo_dang_nhap_rieng()`. Bo cua cu ma
+       * khong co cua moi la khong con cua nao.
+       */
+      bo_dang_nhap_rieng: chu('CONG_SSO_BO_DANG_NHAP_RIENG', '0') === '1',
+    };
+  })(),
+
+  /**
    * He thong ERP cu (Tran Hoang Viet Nam).
    *
    * `webhook_*` la chieu DI: outbox cua ta POST su kien sang ERP.
@@ -274,6 +322,19 @@ export const cau_hinh = {
      */
     bat_day: chu('SHAREPOINT_BAT_DAY', '0') === '1',
   },
+
+  /**
+   * Chu ky cua vong lich, phut. Cang nho thi tep moi nap len cang som co tren SharePoint.
+   *
+   * Mac dinh 5. Truoc day la 15 va do la mot con so thua huong, khong phai mot quyet dinh: moi
+   * viec trong vong lich deu khoa "mot lan mot ngay" nen chu ky chi quyet dinh do TRE, khong
+   * quyet dinh khoi luong. Rieng viec dong bo SharePoint chay MOI VONG, va khi khong con viec
+   * thi no ket thuc sau mot cau SQL co chi muc — khong mot luot goi Graph nao.
+   *
+   * Chan trong [1, 60]: go 0 hay so am thi `setInterval` ban lien tuc, con so qua lon thi viec
+   * cuoi ngay co the truot han ca ngay.
+   */
+  lich_chu_ky_phut: Math.min(60, Math.max(1, Math.round(so('LICH_CHU_KY_PHUT', 5)))),
 
   /** Noi luu tep dinh kem ho so nhan su (hop dong scan, bien ban...). */
   thu_muc_ho_so: resolve(process.cwd(), chu('THU_MUC_HO_SO', './du_lieu/ho_so')),

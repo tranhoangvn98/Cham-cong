@@ -128,8 +128,18 @@ if [[ -n "$TEN_MIEN" ]]; then
   ma_iclock=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://$TEN_MIEN/iclock/cdata?SN=KIEM-TRA" || echo loi)
   ma_bot=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://$TEN_MIEN/" || echo loi)
 
+  # 403 la KET QUA DUNG khi da khai `ICLOCK_IP_CHO_PHEP`: cau curl tren di tu chinh VPS ra Internet
+  # roi quay lai, nen no mang IP cua VPS chu khong phai IP van phong. Truoc ban nay dong duoi luon
+  # in "mong doi 401", nen moi lan trien khai deu hien mot dong lech — va mot canh bao luon sai la
+  # mot canh bao khong ai con doc.
+  if grep -Eq '^ICLOCK_IP_CHO_PHEP=.+' .env 2>/dev/null; then
+    mong_doi_iclock='403 — dang khoa theo IP, curl tu VPS bi chan la dung'
+  else
+    mong_doi_iclock='401 — may chua khai serial'
+  fi
+
   echo "  /chamcong/health : HTTP $ma_web        (mong doi 200)"
-  echo "  /iclock/cdata    : HTTP $ma_iclock        (mong doi 401 — may chua khai serial)"
+  echo "  /iclock/cdata    : HTTP $ma_iclock        (mong doi $mong_doi_iclock)"
   echo "  bot Teams (/)    : HTTP $ma_bot        (truoc khi cap nhat la $MA_BOT_TRUOC)"
 
   if [[ -n "$MA_BOT_TRUOC" && "$ma_bot" != "$MA_BOT_TRUOC" ]]; then

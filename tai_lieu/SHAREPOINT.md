@@ -252,6 +252,23 @@ az ad sp create --id $APP
 az ad app permission add --id $APP --api $GRAPH --api-permissions $SEL=Role
 ```
 
+### Ai chạy được, và đăng nhập bằng gì
+
+Cấp **application permission của Microsoft Graph** cần vai trò **Global Administrator** (hoặc
+Privileged Role Administrator). *Application Administrator* / *Cloud Application Administrator*
+có thể **không đủ** cho riêng nhóm quyền này — nếu admin của anh chỉ có vai trò đó và lệnh trả
+`Insufficient privileges`, đó là lý do, không phải lệnh sai.
+
+Và phải đăng nhập bằng **tài khoản người thật**, không phải managed identity của Cloud Shell:
+
+```bash
+az login --allow-no-subscriptions       # đăng nhập bằng tài khoản admin
+az account show --query user -o json    # phải ra "user", KHÔNG phải "servicePrincipal"
+```
+
+Managed identity của Cloud Shell không lấy được token cho các audience cần thiết — đó là nguồn
+của cả hai lỗi dưới đây.
+
 **`az ad app permission admin-consent` có thể không chạy trong Azure Cloud Shell** — nó gọi
 qua endpoint Azure AD Graph cũ mà managed identity của Cloud Shell không lấy được token cho
 audience đó (`Audience 74658136-... is not a supported MSI token audience`). Admin consent cho
@@ -275,6 +292,13 @@ không có scope đó, nên `az rest` trả `403 accessDenied`.
 
 Cách vòng: cấp **tạm** FullControl cho chính app này, dùng token của nó để tự cấp quyền site,
 rồi **gỡ FullControl ngay**.
+
+> **Rủi ro của cách vòng, nói thẳng:** trong khoảng vài phút giữa hai bước, app có toàn quyền
+> đọc/ghi/xóa trên **mọi** site SharePoint của tenant — kể cả site tài chính, site ban giám đốc.
+> Nên chạy liền một mạch, đừng để qua đêm, và bước gỡ ở dưới là **bắt buộc**. Nếu tenant có
+> chính sách không cho phép cửa sổ đó, dùng PnP PowerShell
+> (`Grant-PnPAzureADAppSitePermission`) — nhưng cách đó cần app *PnP Management Shell* được
+> consent trong tenant, bản thân nó cũng là một app có quyền rộng, nên không hẳn ít rủi ro hơn.
 
 ```bash
 FULL=$(az ad sp show --id $GRAPH --query "appRoles[?value=='Sites.FullControl.All'].id | [0]" -o tsv)
@@ -354,23 +378,173 @@ dựng một máy chủ Graph giả tại chỗ. Đặt giá trị là nộp cli
      [`GOP-HO-SO-TRUNG.md`](GOP-HO-SO-TRUNG.md). Một người có hai hồ sơ sẽ thành **hai thư mục
      nhân viên** trên SharePoint với tệp chia đôi giữa hai thư mục đó.
 1. Khai `SHAREPOINT_*` (trừ `BAT_DAY`), `docker compose up -d`.
-2. Vào **Hệ thống → Kho tệp hồ sơ → Đồng bộ SharePoint**, bấm **Tính lại đường dẫn**.
-3. Đọc cột *Đường dẫn trên SharePoint*. Nhánh đúng chưa, thư mục nhân viên đúng chưa, tên tệp
+2. **Đối chiếu cây thư mục** — `npm run kiem_sharepoint`, xem ngay dưới. Chỉ đọc, không ghi gì.
+3. Vào **Cài đặt → Kho tệp hồ sơ → Đồng bộ SharePoint**, bấm **Tính lại đường dẫn**.
+4. Đọc cột *Đường dẫn trên SharePoint*. Nhánh đúng chưa, thư mục nhân viên đúng chưa, tên tệp
    đọc được chưa.
-4. Thấy đúng rồi thì đặt `SHAREPOINT_BAT_DAY=1` và `docker compose up -d`.
-5. Bấm **Đồng bộ ngay**, hoặc chờ vòng quét hằng ngày (sau 01:00 giờ máy chấm công).
+5. Thấy đúng rồi thì đặt `SHAREPOINT_BAT_DAY=1` và `docker compose up -d`.
+6. Chạy `npm run dong_bo_sharepoint`, hoặc bấm **Đồng bộ ngay**, hoặc chờ vòng quét hằng ngày
+   (sau 01:00 giờ máy chấm công).
+
+**`SHAREPOINT_BAT_DAY=1` chỉ CHO PHÉP đẩy, nó không tự đẩy.** Bật xong mà không kích vòng quét
+thì `/health` báo `bat — N tep cho` và bảng vẫn `chua_lam` với `so_lan_thu = 0` — rất dễ đoán sai
+thành "hỏng".
+
+```bash
+cd /root/Cham-cong
+
+# Tính lại đường dẫn VÀ đẩy lên
+docker compose exec may_chu npm run dong_bo_sharepoint
+
+# CHỈ tính lại đường dẫn, không chạm vào SharePoint — an toàn chạy bất cứ lúc nào
+docker compose exec may_chu npm run dong_bo_sharepoint -- --chi_tinh
+```
+
+Một vòng làm tối đa `MOI_VONG` việc; còn việc thì lệnh nói ra và chạy lại là làm tiếp.
 
 Vòng quét hằng ngày chạy **sau** việc sắp xếp kho tệp, và thứ tự đó là cố ý: việc sắp xếp đổi
 tên thư mục **trên đĩa**, còn việc này tính đường dẫn **trên SharePoint** từ `ma_nv`/`ho_ten`.
 Làm ngược lại thì đường dẫn vừa tính sẽ lệch ngay trong cùng một vòng.
 
-## 8. Giới hạn đã biết
+### Đối chiếu bảng `NHANH` với cây thư mục thật
 
-- **Chưa chạy thật lần nào.** Toàn bộ 29 bài kiểm chạy trên một máy chủ Graph giả tại chỗ:
-  phiên làm việc viết mã này không kết nối được SharePoint thật. Bộ kiểm chứng minh client gọi
-  đúng những gì tài liệu Graph nói — **không** chứng minh SharePoint thật sẽ nhận. Lần chạy
-  thật đầu tiên là bước 5 ở trên, và nó nên được làm với `SHAREPOINT_BAT_DAY=1` trên một vài
-  tệp trước khi mở cho cả kho.
+```bash
+cd /root/Cham-cong
+docker compose exec may_chu npm run kiem_sharepoint
+```
+
+**Chỉ đọc** — không tạo, không ghi, không xóa. Quyền cần là `Sites.Selected` mức *read*; không
+cần `Sites.FullControl.All`.
+
+Bảng `NHANH` trong `may_chu/src/sharepoint/anh_xa.ts` là một bản **sao chép tay** từ thư viện
+HCNS. Tên thư mục ở đó có dấu gạch ngang dài `–` (U+2013), có `&`, có `(...)`, có số thứ tự
+`02.1`. Sai một ký tự thì Graph **không báo lỗi**: nó tạo một thư mục **mới** bên cạnh thư mục
+thật, và hồ sơ của 53 người sẽ nằm trong một cây không ai mở. Triệu chứng duy nhất là *"chị HCNS
+không thấy tệp"*.
+
+Và đây không phải việc làm một lần: chị HCNS đổi tên hoặc thêm số thứ tự là bảng này lệch.
+
+Lệnh in ba dòng đầu là **thư viện đang nối tới**, rồi từng nhánh một:
+
+```
+Thư viện : HCNS
+Đường dẫn: https://thvn23.sharepoint.com/sites/hcns/HCNS
+Drive id : b!HrLZ...
+Khai sẵn : có — SHAREPOINT_DRIVE_ID
+
+  OK      01 HỒ SƠ NHÂN SỰ (201)
+  THIẾU   02 HỢP ĐỒNG & THỎA THUẬN/02.1 [A] Quan hệ lao động – HĐLĐ
+          không thấy đoạn: "02.1 [A] Quan hệ lao động – HĐLĐ"
+          trong thư mục  : 02 HỢP ĐỒNG & THỎA THUẬN
+          tên thật rất giống: "02.1 [A] Quan hệ lao động - HĐLĐ"
+          khác ở: ký tự thứ 27: cần "–" (U+2013), trên SharePoint là "-" (U+002D)
+          → sửa bảng NHANH trong may_chu/src/sharepoint/anh_xa.ts cho khớp tên thật
+```
+
+Dòng `khác ở` in **mã Unicode** của cả hai ký tự, và đó là lý do nó tồn tại: `–` với `-` in ra
+màn hình gần như không phân biệt được, còn `U+2013` với `U+002D` thì không thể nhầm. Không tìm
+được tên nào gần giống thì lệnh liệt kê **tên thật** của các thư mục đang có ở đó, để sao lại
+từng ký tự thay vì gõ lại.
+
+Bốn dòng đầu trả lời một câu hỏi khác, và cũng đã từng cần: **đúng thư viện chưa.**
+`GET /sites/{id}/drive` (số ít) trả về thư viện **mặc định** của site — *Tài liệu* / *Shared
+Documents* — chứ không phải HCNS. Ai lấy drive id bằng đường đó sẽ cấu hình đúng site nhưng sai
+thư viện, và mọi nhánh sẽ báo `THIẾU`. Dòng `Thư viện : Tài liệu` nói ra điều đó ngay.
+
+Tên thư viện lấy từ `GET /drives/{id}`, **không** từ `GET /drives/{id}/root`: Graph trả `"root"`
+cho trường `name` của mục gốc. Bản đầu của lệnh này đọc sai chỗ đó và in ra `Thư viện : root` —
+vô dụng đúng vào việc dòng đó tồn tại để làm. Có bài kiểm riêng cho nó.
+
+Khi khai thẳng `SHAREPOINT_DRIVE_ID`, tên thư viện **không được kiểm ở đâu cả** — id đó đi trực
+tiếp vào mọi lượt gọi Graph. Nên nếu tên thật khác `SHAREPOINT_THU_VIEN`, lệnh in thêm một dòng
+`CHÚ Ý`. Thư viện bị đổi tên thì không sao; trỏ sai thư viện thì hồ sơ vào chỗ khác.
+
+Sau phần nhánh, lệnh liệt kê **từng tệp hệ thống đã đẩy** và hỏi ngược Graph xem còn không:
+
+```
+Các tệp hệ thống ĐÃ ĐẨY (4) — hỏi lại Graph xem còn không:
+  CÒN     01 HỒ SƠ NHÂN SỰ (201)/ERP124-BUI TIEN SON/CCCD - Bùi Tiến Sơn - 19-08-2026.pdf
+          1113312 byte
+          https://thvn23.sharepoint.com/sites/hcns/HCNS/01%20H%E1%BB%92%20S%C6%A0.../CCCD...pdf
+```
+
+`duong_dan_da_day` trong bảng là **ghi chép của ta** — nó nói *"ta đã ghi tệp này lên"*, không nói
+tệp còn ở đó bây giờ. Tệp bị ai đó di chuyển hay xóa tay sau khi đẩy thì bảng của ta vẫn báo
+`xong` mãi mãi. Dòng `KHÔNG CÒN` là lúc hai bên lệch nhau.
+
+**`webUrl` là câu trả lời cho "tệp nằm ở đâu".** Sau lần đẩy đầu tiên, câu hỏi hay gặp nhất không
+phải "có đẩy được không" mà là "sao tôi không thấy" — thường vì đang mở **thư viện mặc định** của
+site (*Tài liệu* / *Documents*) chứ không phải HCNS. Dán `webUrl` vào trình duyệt là xong, và tên
+thư viện thật nằm ngay trong URL đó.
+
+Còn một nhánh `THIẾU` hoặc một dòng `LỖI` thì **chưa nên** đặt `SHAREPOINT_BAT_DAY=1` — lệnh
+thoát với mã 1 để dùng được trong kịch bản. `LỖI` khác `THIẾU`: `LỖI` là Graph từ chối (403 =
+`Sites.Selected` chưa cấp trên site), còn `THIẾU` là kết nối được nhưng tên không khớp.
+
+## 8. "Chưa thấy tệp nào trên SharePoint" — soi ở đâu
+
+Trạng thái **bình thường** của tính năng này là *không đẩy gì cả*: có **hai công tắc** và cả hai
+tắt mặc định. Nhìn từ ngoài thì giống hỏng, nên chỗ đầu tiên phải xem là dòng `sharepoint` của
+`/health` — kịch bản triển khai in nguyên thân `/health` sau mỗi lần cập nhật:
+
+```bash
+curl -s http://127.0.0.1:8080/health | python3 -m json.tool
+```
+
+| Dòng `sharepoint` | Nghĩa | Làm gì |
+|---|---|---|
+| `tat — chua khai SHAREPOINT_SITE_ID / …` | **Công tắc 1 đang tắt.** Chưa có credential nào trong `.env` | Khai `SHAREPOINT_*` rồi `docker compose up -d` |
+| `chi dem — chua dat SHAREPOINT_BAT_DAY=1 …` | **Công tắc 2 đang tắt.** Đã kết nối được nhưng cố ý chưa đẩy | Xem bảng đường dẫn, đúng rồi thì đặt `SHAREPOINT_BAT_DAY=1` |
+| `bat — N tep cho, 0 loi` | Đang chạy thật | Bấm **Đồng bộ ngay**, hoặc chờ vòng quét sau 01:00 |
+| `bat — N tep cho, M loi` | Có dòng lỗi | Mở **Cài đặt → Kho tệp hồ sơ**, đọc cột *Lý do* |
+
+Dòng này chỉ đọc trạng thái **cục bộ** — nó **không** gọi Graph. `/health` bị trình giám sát và
+kịch bản triển khai gọi liên tục; một lượt gọi mạng mỗi lần là thêm độ trễ và thêm một đường
+chạm trần giới hạn của Microsoft. Muốn biết credential có dùng được thật hay không thì mở
+**Cài đặt → Kho tệp hồ sơ → Đồng bộ SharePoint** — trang đó gọi Graph một lần và in lỗi ra màn
+hình.
+
+`/health` **không** in giá trị của biến nào (nó không đòi đăng nhập). Có bài kiểm e2e đối chiếu
+theo giá trị thật trong cấu hình, nên bài đó còn đúng cả khi máy thật đã khai đầy đủ.
+
+### Kiểm nhanh trên VPS
+
+```bash
+cd /root/Cham-cong
+
+# 1) Có dòng SHAREPOINT_ nào chưa? (chỉ in TÊN biến, không in giá trị)
+grep -o '^SHAREPOINT_[A-Z_]*' .env || echo 'KHONG CO DONG SHAREPOINT_ NAO'
+
+# 2) Máy chủ đang thấy gì
+curl -s http://127.0.0.1:8080/health | python3 -m json.tool
+
+# 3) Bảng trạng thái: mỗi tệp đang ở đâu
+docker compose exec -T postgres psql -U chamcong -d chamcong -c \
+  "select ket_qua, count(*), count(*) filter (where duong_dan_da_day is not null) as da_len
+     from sharepoint_tep group by ket_qua order by ket_qua;"
+```
+
+Ở bước 3, `duong_dan_da_day is not null` là **bằng chứng duy nhất** rằng một tệp thật sự đã lên
+SharePoint. Cột `ket_qua = 'xong'` mà `da_len = 0` nghĩa là dòng đó "xong" theo nghĩa *không có
+việc gì phải làm* — ví dụ tệp đã bị gỡ ở cả hai bên — chứ không phải đã đẩy lên.
+
+---
+
+## 9. Giới hạn đã biết
+
+- **Cả hai nửa đã chạy thật (20-08-2026).** Đẩy: 4 tệp lên thư viện HCNS thật, 16/16 nhánh khớp
+  tên, `sp_item_id` do Graph cấp, `duong_dan_da_day` bằng `duong_dan_muon`. Xóa: gỡ một tệp trong
+  ứng dụng, vòng quét kế tiếp xóa bản trên SharePoint và `kiem_sharepoint` xác nhận từ phía Graph.
+
+  Phần còn lại của bộ kiểm vẫn chạy trên máy chủ Graph giả tại chỗ — nó chứng minh client gọi
+  đúng những gì tài liệu Graph nói, **không** chứng minh SharePoint thật sẽ nhận. Và máy giả đã
+  từng nói dối một lần: xem mục *Thư viện : root* ở trên.
+
+  `npm run kiem_sharepoint` là lượt gọi Graph thật **an toàn nhất** để làm trước: nó chỉ đọc.
+
+- **Xóa xong thì `ly_do` ghi lại đã xóa gì**: `Đã xóa bản trên SharePoint: <đường dẫn>`. Sau khi
+  xóa, cả hai cột đường dẫn về `null` nên dòng đó không còn nói được nó từng ở đâu — mà đây là
+  hành vi phá hủy trên thư viện dùng chung, phải trả lời được câu *"sao tệp này biến mất"*.
 - Tệp lớn hơn 4 MB đi qua `createUploadSession`, chia khúc 3,2 MB. Mỗi khúc (trừ khúc cuối)
   phải là bội số của 320 KiB — Graph từ chối kích thước khác bằng một thông báo không hề nhắc
   đến ràng buộc này.

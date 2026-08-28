@@ -15,6 +15,10 @@ import { chuoi_bat_buoc, LoiDauVao, than } from '../tien_ich/kiem_tra.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { gan_ma_am_tham } from '../dinh_danh/nghiep_vu.ts';
 import {
+  chan_cua_cu, chan_cua_cu_web, bo_dang_nhap_rieng, lam_sach_duong_dan_noi_bo,
+} from '../bao_mat/cong_sso.ts';
+import { cau_hinh as ch_sso } from '../cau_hinh.ts';
+import {
   bat_dang_nhap_microsoft,
   doi_ma_lay_token,
   kiem_id_token,
@@ -92,6 +96,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     // Chong do mat khau: gioi han theo IP.
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
   }, async (req, res) => {
+    chan_cua_cu_web(req);
     const b = than(req.body);
     const ten_dang_nhap = chuoi_bat_buoc(b, 'ten_dang_nhap', { toi_da: 100 });
     const mat_khau = chuoi_bat_buoc(b, 'mat_khau', { toi_da: 200 });
@@ -147,6 +152,9 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
   app.post('/lam-moi', {
     config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
   }, async (req, res) => {
+    // Token lam moi cua he thong nay chi sinh ra tu duong mat khau / Microsoft rieng. Bo hai
+    // duong do thi khong con token lam moi nao hop le, va cong tu lo viec xoay token cua no.
+    chan_cua_cu_web(req);
     const b = than(req.body);
     const token = chuoi_bat_buoc(b, 'token_lam_moi', { toi_da: 4000 });
 
@@ -251,6 +259,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     preHandler: can_dang_nhap_ke_ca_cho_duyet,
     config: { rateLimit: { max: 5, timeWindow: '5 minutes' } },
   }, async (req, res) => {
+    chan_cua_cu_web(req);
     const nd = nguoi_dung_hien_tai(req);
     const b = than(req.body);
     const cu = chuoi_bat_buoc(b, 'mat_khau_cu', { toi_da: 200 });
@@ -302,18 +311,45 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
 
   /** Cho webapp biet co hien nut "Đăng nhập bằng Microsoft" hay khong. */
   app.get('/cau-hinh', async () => ({
-    dang_nhap_microsoft: bat_dang_nhap_microsoft(),
+    // `dang_nhap_rieng: false` la tin hieu duy nhat webapp can de KHONG hien form nao ca ma
+    // chuyen huong sang cong. Dat o day chu khong doan tu phia client: mot bien moi truong doi
+    // ben may chu phai lam webapp doi theo ngay, khong cho build lai.
+    dang_nhap_rieng: !bo_dang_nhap_rieng(),
+    dang_nhap_microsoft: !bo_dang_nhap_rieng() && bat_dang_nhap_microsoft(),
+    cong_sso: bo_dang_nhap_rieng()
+      ? {
+        goc_dang_nhap: ch_sso.cong_sso.goc_dang_nhap,
+        tien_to: ch_sso.cong_sso.tien_to,
+        // Webapp dung `iss` de NHAN RA token cua cong trong `localStorage['cong_phien']` —
+        // cong luu token o do va webapp cung origin nen doc duoc. Doc theo `iss` chu khong theo
+        // ten truong, vi ten truong trong do la hop dong cua cong, doi luc nao ta cung gay.
+        // Day KHONG phai mot phep kiem bao mat: chu ky van do may chu xac minh.
+        iss: ch_sso.cong_sso.iss,
+      }
+      : null,
   }));
 
   app.get('/microsoft/bat-dau', async (req, res) => {
+    // Cong da lam Entra ID. Giu them mot luong OIDC rieng o day la thua mot client secret,
+    // thua mot redirect URI, va thua mot cua danh tinh thu hai phai canh.
+    chan_cua_cu();
     if (!bat_dang_nhap_microsoft()) {
       throw new LoiDauVao('Đăng nhập Microsoft chưa được cấu hình trên máy chủ này.');
     }
     const q = req.query as Record<string, unknown>;
     // Chi nhan duong dan noi bo — nhan URL tuyet doi la mo duong chuyen huong mo (open
     // redirect): ke tan cong gui link "dang nhap" roi day nan nhan sang trang gia.
-    const quay_lai_tho = typeof q['quay_lai'] === 'string' ? q['quay_lai'] : '';
-    const quay_lai = /^\/[^/\\]/.test(quay_lai_tho) ? quay_lai_tho : null;
+    //
+    // TRUOC DAY phep kiem o day la `/^\/[^/\\]/` — doi ky tu thu hai khong phai `/` hay `\`.
+    // NO CO LO: `/<tab>/evil.com` di qua duoc, vi luc kiem thi tab con nam giua hai dau gach.
+    // Bo phan tich URL cua trinh duyet XOA tab/LF/CR, nen no thanh `//evil.com` — mot URL
+    // tuong doi giao thuc tro RA NGOAI ten mien.
+    //
+    // O DAY HAU QUA NANG HON MOT TRANG PHISHING THONG THUONG: duong nay ket thuc bang mot
+    // chuyen huong CHO SAN TOKEN TRONG PHAN NEO. Lot ra ngoai ten mien la nop ca token truy cap
+    // VA token lam moi cho ten mien cua ke tan cong — nan nhan khong phai go gi ca.
+    const quay_lai = lam_sach_duong_dan_noi_bo(
+      typeof q['quay_lai'] === 'string' ? q['quay_lai'] : '');
 
     const state = sinh_chuoi_ngau_nhien();
     const nonce = sinh_chuoi_ngau_nhien();
@@ -331,6 +367,7 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
   });
 
   app.get('/microsoft/goi-ve', async (req, res) => {
+    chan_cua_cu();
     if (!bat_dang_nhap_microsoft()) throw new LoiDauVao('Đăng nhập Microsoft chưa được cấu hình.');
     const q = req.query as Record<string, unknown>;
 

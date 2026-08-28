@@ -174,19 +174,66 @@ tràn ngang, font và icon đều được áp dụng thật (đo bề rộng ch
 
 ---
 
-## 7. Còn thiếu so với demo 11 màn
+## 7. Điều hướng
 
-Demo liệt kê 11 màn; **4 màn chưa có backend** nên chưa đưa vào menu (một mục menu dẫn tới
-trang trống thì tệ hơn là không có mục đó):
+Thanh bên chia hai loại theo **tần suất**, không theo chủ đề:
 
-| Màn của demo | Trạng thái |
-|---|---|
-| Bảng lương | ❌ Module C chưa triển khai |
-| Hợp đồng | ❌ Module D |
-| Vi phạm | ❌ Module G |
-| Cấu hình pháp lý | ❌ Module C (bảng cấu hình có hiệu lực theo thời gian) |
-| Báo cáo | ⚠️ có xuất CSV, chưa có màn báo cáo riêng |
+```
+(không nhãn)          Tổng quan · Chấm công · Bảng công
+Quản trị nhân sự      Nhân viên · Nghỉ phép · Vi phạm · KPI · Bảng lương · Phụ cấp · Hợp đồng
+Hệ thống              Cài đặt
+```
 
-Ngược lại, app này có **5 màn demo không liệt kê**: Ca làm việc, Địa điểm, Ngày lễ, Tài khoản,
-Nhật ký thao tác. Giữ nguyên — bỏ màn **Ngày lễ** là Tết Nguyên đán không khai được và những
-ngày đó bị tính là *Vắng*.
+**Cấu hình là thứ sửa vài lần một năm; việc hằng ngày là thứ mở vài lần một ngày.** Hai loại đó
+không cùng một cấp. Nên 11 mục cấu hình nằm sau *một* mục `Cài đặt`, mở ra sub-nav bốn nhóm:
+Chấm công · Nhân sự & lương · Tài khoản & bảo mật · Tích hợp & dữ liệu.
+
+Ba ràng buộc của khu Cài đặt, mỗi cái có một bài kiểm giữ trong `thiet_ke/giao_dien.test.mjs`:
+
+1. **Mỗi mục con có đường dẫn riêng** (`/cai-dat/thiet-bi`), không phải tab trong một trang.
+   Bookmark, Ctrl-click và nút Lui đều phải chạy; tab thì cả ba đều không.
+2. **Đường dẫn cũ vẫn sống.** 11 đường trước đây nằm ở cấp một tự chuyển sang đường mới. Người
+   dùng đã bookmark `/tham-so-luong` và đã dán `/thiet-bi` vào ghi chú nội bộ — trả 404 cho họ là
+   một lỗi tự gây ra.
+3. **Phân quyền đọc một chỗ**: cột `quyen` của bảng `MENU_CAI_DAT`. Trước đây mỗi `case` tự gọi
+   `la_admin()` / `la_nhan_su()`, và một `case` quên gọi thì không có gì báo.
+
+### Icon phải riêng biệt trong từng danh sách
+
+Hai mục cùng icon thì thanh bên mất tác dụng quét nhanh: mắt thấy hai dòng giống nhau và phải đọc
+chữ mới phân biệt được. Đã từng có `fingerprint` cho cả *Chấm công* và *Mã định danh*.
+
+Ràng buộc là trong **từng** bảng: `MENU` và `MENU_CAI_DAT` hiện ở hai chỗ khác nhau, nên một icon
+dùng ở cả hai không gây nhầm lẫn. Có bài kiểm giữ.
+
+### Tiêu đề header
+
+Header lấy nhãn từ bảng `MENU` bằng cách khớp đường dẫn. Trang có tham số — `/nhan-vien/<uuid>` —
+không khớp mục nào, nên:
+
+- **Active khớp theo tiền tố**: `/nhan-vien/<uuid>` làm sáng *Nhân viên*, `/cai-dat/khoa-api` làm
+  sáng *Cài đặt*.
+- **Ngữ cảnh tiêu đề** (`web/src/tieu_de_trang.tsx`) để trang tự đặt tiêu đề + đường mòn. Dọn dẹp
+  khi trang rời đi, nên trang **không** dùng hook đó thì header quay về nhãn của MENU — không cần
+  mọi trang phải biết đến cơ chế này.
+
+Dọn dẹp nằm ở hook chứ không ở `BoCuc`: hiệu ứng của con chạy **trước** hiệu ứng của cha, nên một
+lệnh xóa ở cha sẽ đè lên tiêu đề mà trang mới vừa đặt.
+
+---
+
+## 8. Không dùng hộp thoại gốc của trình duyệt
+
+`window.confirm` / `alert` / `prompt` không theo chế độ tối, không theo font và màu của app, không
+tô đỏ được nút xóa khác nút hủy. Và ở nhiều trình duyệt có ô *"chặn trang này hiện hộp thoại"*:
+người dùng tick vào thì từ đó mỗi lần bấm Xóa sẽ **không hỏi gì mà cũng không xóa**. Một thao tác
+mất dữ liệu không được phép phụ thuộc vào thứ đó.
+
+Dùng `dung_xac_nhan()` / `dung_nhap_chu()` trong `thanh_phan.tsx`. Hai quy tắc:
+
+- **Nội dung nói rõ sẽ mất gì**, không phải "Bạn có chắc?".
+- **Bấm ra ngoài hoặc Esc = KHÔNG đồng ý.** Một hộp thoại xác nhận đóng lại mà coi là đồng ý thì
+  một cú bấm lạc cũng xóa được dữ liệu.
+
+Có bài kiểm chặn `window.confirm|alert|prompt` quay lại (bỏ qua phần ghi chú, để chính đoạn giải
+thích này không tự làm đỏ bài kiểm).

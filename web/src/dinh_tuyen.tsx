@@ -17,12 +17,32 @@ interface NgamTuyen {
  */
 const GOC = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
 
-/** Duong dan sach doc tu URL that: bo tien to trien khai. */
+/**
+ * Duong dan sach doc tu URL that: bo tien to trien khai.
+ *
+ * BO LAP, khong bo mot lan. Mot lien ket ghep tien to len mot duong dan DA co tien to tao ra
+ * `/chamcong/chamcong/` — hay gap nhat la mot `href` TUONG DOI o trang khac cung ten mien (the
+ * module ben cong), hoac mot URL dan tay. Bo mot lan thi con `/chamcong/`, khong khop tuyen
+ * nao, va nguoi dung dung o mot trang "Khong co trang nay" NGAY CUA VAO cua ung dung — trong
+ * nhu he thong hong, du chi la mot lien ket sai.
+ *
+ * An toan vi khong tuyen nao trung voi tien to trien khai: moi tuyen dung ten co gach ngang
+ * (`/bang-cong`, `/nhan-vien`). Co hang rao o `thiet_ke/giao_dien.test.mjs` giu dieu do — them
+ * mot tuyen ten dung bang tien to thi bai kiem do, vi luc ay hai thu that su xung dot.
+ *
+ * Gioi han 5 lan de mot URL bia dai vo han khong thanh vong lap.
+ */
 function duong_dan_sach(): string {
-  const p = window.location.pathname;
-  if (GOC !== '' && (p === GOC || p.startsWith(`${GOC}/`))) {
-    const con_lai = p.slice(GOC.length);
-    return con_lai === '' ? '/' : con_lai;
+  let p = window.location.pathname;
+  let so_lan_bo = 0;
+  while (GOC !== '' && (p === GOC || p.startsWith(`${GOC}/`)) && so_lan_bo < 5) {
+    p = p.slice(GOC.length) || '/';
+    so_lan_bo += 1;
+  }
+  // Sua luon thanh dia chi khi da bo tien to lap: neu khong thi F5, dau trang va nut Lui deu
+  // dua nguoi dung ve dung cai URL sai vua chua.
+  if (so_lan_bo > 1) {
+    window.history.replaceState(null, '', `${GOC}${p}${window.location.search}${window.location.hash}`);
   }
   return p;
 }

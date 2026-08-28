@@ -384,14 +384,30 @@ export async function quet(gioi_han = MOI_VONG): Promise<KetQuaQuet> {
   return kq;
 }
 
+/**
+ * Ly do ghi lai sau khi da xoa mot ban tren SharePoint.
+ *
+ * VI SAO GHI LAI THAY VI XOA TRANG: xoa xong thi CA HAI cot duong dan deu ve null, nen dong do
+ * khong con noi duoc no tung o dau. Day la mot hanh vi PHA HUY tren mot thu vien DUNG CHUNG —
+ * neu chi HCNS hoi "sao tep nay bien mat" thi phai tra loi duoc. Nhat ky thao tac co ghi viec
+ * go tep TRONG UNG DUNG, nhung khong ghi viec xoa tren SharePoint.
+ *
+ * Dung lai cot `ly_do` san co: khong cho nao dua vao `ly_do IS NULL` de quyet dinh gi, no chi
+ * duoc hien ra man hinh. Va `ghi_nhan` chi ghi de `ly_do` khi duong dan mong muon DOI — voi dong
+ * da go thi no dung yen o null, nen dong nay song lau.
+ */
+export function ly_do_da_xoa(duong_dan: string): string {
+  return `Đã xóa bản trên SharePoint: ${duong_dan}`;
+}
+
 async function xoa_ban_cu(d: DongTrangThai): Promise<void> {
   if (d.duong_dan_da_day !== null) await xoa(d.duong_dan_da_day);
   await thuc_thi(
     `update sharepoint_tep
-        set duong_dan_da_day = null, sp_item_id = null, ket_qua = 'xong', ly_do = null,
+        set duong_dan_da_day = null, sp_item_id = null, ket_qua = 'xong', ly_do = $2,
             so_lan_thu = 0, lam_luc = now(), cap_nhat_luc = now()
       where tep_id = $1`,
-    [d.tep_id],
+    [d.tep_id, d.duong_dan_da_day === null ? null : ly_do_da_xoa(d.duong_dan_da_day)],
   );
 }
 
@@ -485,8 +501,30 @@ export async function thu_lai_cac_dong_loi(): Promise<number> {
 }
 
 /** Ma viec cho lich chay hang ngay. */
-export function ma_viec_dong_bo(ngay: string): string {
-  return `dong_bo_sharepoint:${ngay}`;
+export function ma_viec_dong_bo(moc: string): string {
+  return `dong_bo_sharepoint:${moc}`;
+}
+
+/**
+ * Moc thoi gian cho `ma_viec_dong_bo` — mot o moi `CHU_KY_PHUT` phut, KHONG phai moi ngay.
+ *
+ * VI SAO DOI TU MOI-NGAY SANG MOI-15-PHUT: khoa "mot lan mot ngay" la dung cho viec chot bang
+ * cong (chay hai lan la sai so lieu), nhung SAI cho viec nay. Nap mot tep luc 13:00 chi GHI NHAN
+ * la co viec can day; viec day nam o vong quet. Voi khoa theo ngay, vong quet cua hom nay da
+ * chay xong tu 01:00 — nen tep phai cho den 01:00 SANG MAI. Ca mot ngay, va nguoi nap tep khong
+ * co cach nao biet.
+ *
+ * Chay nhieu lan o day KHONG SAO, va do la dieu cho phep doi: `ghi_nhan` la upsert, `quet` chi
+ * cham nhung dong co `duong_dan_muon` khac `duong_dan_da_day`, va khong con viec thi `quet` ket
+ * thuc sau MOT cau SQL co chi muc — khong mot luot goi Graph nao.
+ *
+ * Va thu tu trong mot vong VAN giu: viec nay chay sau viec sap xep kho tep. Duong dan SharePoint
+ * tinh tu `ma_nv`/`ho_ten` chu khong tu ten tep tren dia, nen mot vong chay truoc luot sap xep
+ * cung khong tinh sai gi.
+ */
+export function moc_dong_bo(bay_gio: Date, chu_ky_phut: number): string {
+  const o = Math.floor(bay_gio.getTime() / (chu_ky_phut * 60 * 1000));
+  return `o${String(o)}`;
 }
 
 /**
@@ -526,7 +564,19 @@ export async function ghi_nhan_am_tham(tep_id: string | null, da_go = false): Pr
   try {
     if (da_go && tep_id !== null) await danh_dau_da_go(tep_id);
     else await ghi_nhan(tep_id);
-  } catch {
-    // Lan quet hang ngay se don not.
+  } catch (loi) {
+    // Lan quet hang ngay se don not — NHUNG VAN PHAI DE LAI DAU VET.
+    //
+    // Truoc day day la `catch {}` tron. Nuot loi o day la dung (nap tep la viec chinh, dong bo
+    // la viec phu), nhung nuot ma khong ghi gi thi khi ai do hoi "toi vua them tep ma sao khong
+    // thay dong bo" thi khong co cho nao tra loi duoc: khong co dong trong bang, khong co dong
+    // trong log, khong co gi. Ta chi biet noi "cho vong quet hang ngay". Mot dong log bien no
+    // thanh mot cau tra loi.
+    //
+    // Dung `console.error` chu khong phai logger cua Fastify: ham nay duoc goi ca tu vong quet
+    // hang ngay va tu lenh CLI, la nhung cho khong co request nao.
+    console.error(
+      `[sharepoint] khong ghi nhan duoc tep ${tep_id ?? '(tat ca)'}: ${(loi as Error).message}`,
+    );
   }
 }

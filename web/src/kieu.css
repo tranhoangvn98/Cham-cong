@@ -783,3 +783,185 @@ input[type="checkbox"] {
   text-align: left;
   white-space: pre-wrap;
 }
+
+/* ---------------------------------------------------------------- vòng focus bàn phím
+   Một vòng focus THẤY ĐƯỢC là điều kiện để dùng được bằng bàn phím. Dùng `:focus-visible`
+   chứ không `:focus`: chuột bấm cũng đặt focus, và vẽ vòng lúc đó trông như lỗi.
+   Đặt sau mọi khai báo nút để không bị đè. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--chinh-dam);
+  outline-offset: 2px;
+  /* Vòng phải nằm TRÊN các ô cạnh nó, nhất là trong bảng có nền riêng. */
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------------------------------------------------------------- đường mòn (breadcrumb) */
+.duong-mon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--chu-nhat);
+  margin-bottom: 2px;
+  min-width: 0;
+}
+.duong-mon a { color: var(--chinh-dam); }
+.duong-mon-tach { margin: 0 4px; color: var(--vien-dam); }
+
+/* ---------------------------------------------------------------- khu Cài đặt
+   Sub-nav trái + nội dung phải. Trên màn nhỏ sub-nav xếp lên trên và cuộn ngang — 11 mục
+   dựng dọc trên điện thoại thì đẩy nội dung xuống hết màn hình. */
+.khu-cai-dat {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: var(--khoang-rat-lon);
+  align-items: start;
+}
+.cai-dat-ben {
+  position: sticky;
+  top: var(--khoang-lon);
+  background: var(--nen-the);
+  border: 1px solid var(--vien);
+  border-radius: var(--tron-lon);
+  padding: var(--khoang-nho);
+}
+.cai-dat-khoi + .cai-dat-khoi { margin-top: var(--khoang-vua); }
+.cai-dat-nhom {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--chu-nhat);
+  padding: 4px 8px 6px;
+}
+.cai-dat-ben a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: var(--tron-nho);
+  color: var(--chu);
+  font-weight: 500;
+  font-size: 13.5px;
+}
+.cai-dat-ben a:hover { background: var(--nen-mo); text-decoration: none; }
+.cai-dat-ben a.dang-chon {
+  background: var(--chinh-dam);
+  color: var(--tren-chinh);
+  font-weight: 600;
+}
+.cai-dat-than { min-width: 0; }
+
+/* Trang /cai-dat: liệt kê các mục theo nhóm. */
+.luoi-cai-dat {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--khoang-vua);
+}
+.o-cai-dat {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  color: var(--chu);
+}
+.o-cai-dat:hover {
+  background: var(--nen-mo);
+  border-color: var(--vien-dam);
+  text-decoration: none;
+}
+.o-cai-dat i { color: var(--chinh-dam); font-size: 18px; line-height: 1.2; }
+.o-cai-dat > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.o-cai-dat .mo-ta { margin: 0; font-size: 12px; }
+
+@media (max-width: 900px) {
+  .khu-cai-dat { grid-template-columns: minmax(0, 1fr); }
+  .cai-dat-ben {
+    position: static;
+    display: flex;
+    gap: var(--khoang-lon);
+    overflow-x: auto;
+  }
+  .cai-dat-khoi + .cai-dat-khoi { margin-top: 0; }
+  .cai-dat-ben a { white-space: nowrap; }
+}
+
+/* ---------------------------------------------------------------- lớp thay style nội tuyến
+   Cùng một `style={{…}}` lặp ở hàng chục chỗ thì mỗi chỗ là một cơ hội lệch nhau, và không
+   chỗ nào theo được chế độ tối. */
+.hang-bam { cursor: pointer; }
+.hang-bam:hover { background: var(--nen-mo); }
+.manh { font-weight: var(--trong-dam); }
+.so-canh-bao { color: var(--canh-bao); font-weight: var(--trong-dam); }
+.so-xau { color: var(--xau); font-weight: var(--trong-dam); }
+.so-tot { color: var(--tot); font-weight: var(--trong-dam); }
+
+/* Nút thứ cấp: rõ là bấm được nhưng không tranh chỗ với nút chính. */
+.nut-light {
+  background: var(--chinh-nhat);
+  border-color: var(--chinh-nhat);
+  color: var(--chinh-dam);
+}
+.nut-light:hover:not(:disabled) { border-color: var(--chinh); }
+
+/* ---------------------------------------------------------------- khung xương lúc tải
+   "Đang tải…" không nói gì về hình dạng thứ đang tới, nên mỗi lần tải xong là một lần bố
+   cục nhảy. Khung xương giữ đúng chỗ. */
+.khung-xuong { display: flex; flex-direction: column; gap: 8px; }
+.xuong-dong {
+  height: 14px;
+  border-radius: var(--tron-nho);
+  background: linear-gradient(90deg, var(--nen-mo) 25%, var(--vien) 37%, var(--nen-mo) 63%);
+  background-size: 400% 100%;
+  animation: xuong-troi 1.4s ease-in-out infinite;
+}
+@keyframes xuong-troi {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+/* Người bật "giảm chuyển động" thì bỏ hiệu ứng trôi, giữ khối tĩnh. */
+@media (prefers-reduced-motion: reduce) {
+  .xuong-dong { animation: none; }
+}
+
+/* ---------------------------------------------------------------- bảng rộng: giữ cột đầu
+   Bảng công và bảng lương rộng hơn màn hình. Cuộn ngang mà cột tên trôi mất thì các con số
+   bên phải không còn thuộc về ai. */
+.bang-neo-cot-dau thead th:first-child,
+.bang-neo-cot-dau tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--nen-the);
+}
+.bang-neo-cot-dau thead th:first-child { z-index: 3; }
+.bang-neo-cot-dau tbody tr:hover td:first-child { background: var(--nen-mo); }
+
+/* ---------------------------------------------------------------- lớp tiện dụng chữ
+   Ba khai báo này lặp 36 lần dưới dạng `style={{…}}` trong các trang. Mỗi bản sao là một cơ
+   hội lệch nhau, và bản viết bằng mã màu cứng thì không theo được chế độ tối. */
+.chu-nho { font-size: 12px; }
+.chu-mo { color: var(--chu-mo); }
+.chu-xau { color: var(--xau); }
+
+/* Mot hang cac nhan (badge) — vi du khoi "Xem truoc" cua man nhap du lieu.
+   Truoc day markup dung `.hang-nhan` ma khong co dinh nghia nao, nen cac nhan dinh sat nhau. */
+.hang-nhan {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Mot nhom muc trong thanh ben. Chi de tach cac nhom ra khoi nhau; nhan cua nhom da co
+   `.dieu-huong-nhom` lo phan chu. Truoc day lop nay khong co dinh nghia nao. */
+.dieu-huong-khoi + .dieu-huong-khoi { margin-top: 2px; }

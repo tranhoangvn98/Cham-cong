@@ -136,12 +136,33 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     buoc: [
       { chu: 'Kiểm bảng công tháng đó đã đúng TRƯỚC khi dựng lương.', vai_tro: NHAN_SU },
       { chu: 'Chọn kỳ → Dựng bảng lương. Hệ thống tính từ công, BHXH và thuế TNCN theo tham số.', vai_tro: NHAN_SU },
+      { chu: 'Nút "Khoản" trên từng dòng: nhập phụ cấp và các khoản trừ của người đó.', vai_tro: NHAN_SU },
       { chu: 'Soi các dòng bất thường, sửa gốc rồi dựng lại.', vai_tro: NHAN_SU },
       { chu: 'Gửi duyệt → duyệt. Duyệt xong bảng chốt được lưu lại.', vai_tro: ['admin', 'nhan_su', 'truong_phong_nhan_su'] },
     ],
     luu_y: [
       'Duyệt kỳ lương KHÓA tháng đó: bảng công không tính lại được nữa. Đó là chủ ý — số đã trả lương thì không được đổi sau lưng.',
       'Sửa sau khi duyệt phải mở khóa kỳ, sửa, rồi dựng và duyệt lại. Mọi bước đều vào nhật ký.',
+      'Khoản tính theo công thức (phụ cấp ăn trưa, nửa ngày lương) chỉ nhập SỐ LƯỢNG — tiền do hệ thống nhân ra và tính lại mỗi lần dựng bảng. Gõ tiền tay vào đó thì lần dựng sau bị ghi đè.',
+      'BLLĐ 2019 Điều 127 khoản 3 CẤM phạt tiền và cấm cắt lương thay cho xử lý kỷ luật. Hai khoản "trừ đi muộn" và "trừ nửa ngày lương" mang cảnh báo này ngay tại chỗ nhập. Cách hợp pháp cho thời gian không làm việc là ghi giảm CÔNG trên bảng chấm công, để nó tự vào lương theo ngày công.',
+    ],
+  },
+  {
+    duong_dan: '/phu-cap',
+    tom_tat: 'Phụ cấp định kỳ của từng người — khai một lần, kỳ lương tự sinh khoản.',
+    buoc: [
+      { chu: 'Bấm "Gán phụ cấp", chọn khoản, chọn người (lọc theo phòng ban để chọn cả nhóm).', vai_tro: NHAN_SU },
+      { chu: 'Điền ngày hiệu lực và lý do — đây là căn cứ của số tiền sẽ trả.', vai_tro: NHAN_SU },
+      { chu: 'Sang Bảng lương, bấm "Tính lương" ở kỳ liên quan thì khoản mới xuất hiện.', vai_tro: NHAN_SU },
+      { chu: 'Người thôi hưởng: bấm "Đóng" và điền ngày hưởng đến hết — không xóa.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Đổi mức thì gán lại với ngày hiệu lực mới. Dòng cũ TỰ ĐÓNG vào ngày trước đó và ở lại làm lịch sử — nhờ vậy tính lại lương tháng cũ vẫn ra đúng số cũ.',
+      'Chính sách KHÔNG tự sửa bảng lương đang mở. Phải bấm "Tính lương" ở kỳ đó. Đó là chủ ý: số liệu không được đổi dưới chân người đang làm việc trên nó.',
+      'Gõ tay một khoản trên phiếu là GHI ĐÈ chính sách cho riêng tháng đó — chính sách không cộng thêm dòng thứ hai. Bỏ khoản đó khỏi danh sách gõ tay thì dòng chính sách quay lại.',
+      'Nguồn "số ngày công thực tế" bám theo chấm công: đi làm ít ngày thì hưởng ít, không ai phải sửa tay. Dùng cho hỗ trợ ăn trưa.',
+      'Đơn giá riêng là chỗ để một người hưởng mức khác cả công ty — không phải tạo một khoản mới chỉ cho một người.',
+      'Chính sách đã sinh ra khoản trên phiếu thì KHÔNG xóa được, chỉ đóng. Số tiền đã trả phải giữ được căn cứ.',
     ],
   },
   {
@@ -158,7 +179,22 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/thiet-bi',
+    duong_dan: '/cai-dat',
+    tom_tat: 'Toàn bộ mục cấu hình, gom thành bốn nhóm.',
+    buoc: [
+      { chu: 'Chấm công: máy, ca làm việc, địa điểm, ngày lễ — khai trước khi chạy thật.', vai_tro: NHAN_SU },
+      { chu: 'Nhân sự & lương: tham số BHXH/thuế và danh mục khoản lương.', vai_tro: NHAN_SU },
+      { chu: 'Tài khoản & bảo mật: người dùng, khóa API, nhật ký thao tác.', vai_tro: ['admin'] },
+      { chu: 'Tích hợp & dữ liệu: đồng bộ ERP, kho tệp, mã định danh.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Chỉ hiện những mục vai trò của bạn được sửa. Thiếu một mục nghĩa là tài khoản không có quyền ở đó, không phải hệ thống thiếu tính năng.',
+      'Các mục này trước đây nằm thẳng trên thanh bên (/thiet-bi, /tham-so-luong…). Đường dẫn cũ vẫn chạy — nó tự chuyển sang đường mới, nên bookmark cũ không hỏng.',
+      'Đây là nơi sửa QUY TẮC, không phải sửa số. Đổi quy tắc ca hay tham số lương KHÔNG tự tính lại dữ liệu cũ — phải bấm tính lại ở trang tương ứng.',
+    ],
+  },
+  {
+    duong_dan: '/cai-dat/thiet-bi',
     tom_tat: 'Máy chấm công: khai serial, dải PIN, và các lệnh gửi xuống máy.',
     buoc: [
       { chu: 'Khai serial lấy ở Menu › Hệ thống › Thông tin thiết bị TRÊN CHÍNH MÁY.', vai_tro: NHAN_SU },
@@ -177,7 +213,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/ca-lam',
+    duong_dan: '/cai-dat/ca-lam',
     tom_tat: 'Khung giờ, dung sai, ngưỡng tăng ca và các ngày phải đi làm.',
     buoc: [
       { chu: 'Sửa ca Hành chính cho khớp giờ thật của công ty.', vai_tro: NHAN_SU },
@@ -191,7 +227,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/dia-diem',
+    duong_dan: '/cai-dat/dia-diem',
     tom_tat: 'Điểm và bán kính để đối chiếu GPS khi chấm công bằng điện thoại.',
     buoc: [
       { chu: 'Thêm địa điểm: tọa độ + bán kính cho phép.', vai_tro: NHAN_SU },
@@ -203,7 +239,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/ngay-le',
+    duong_dan: '/cai-dat/ngay-le',
     tom_tat: 'Ngày nghỉ hưởng lương — ảnh hưởng trực tiếp đến số công.',
     buoc: [
       { chu: 'Đầu mỗi năm: thêm Tết Nguyên đán và các ngày nghỉ bù theo lịch âm.', vai_tro: NHAN_SU },
@@ -215,7 +251,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/tai-khoan',
+    duong_dan: '/cai-dat/tai-khoan',
     tom_tat: 'Tài khoản đăng nhập và vai trò.',
     buoc: [
       { chu: 'Tạo tài khoản, gán đúng vai trò và nối với hồ sơ nhân viên.', vai_tro: ['admin'] },
@@ -228,19 +264,23 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/tham-so-luong',
-    tom_tat: 'Tỷ lệ BHXH, thuế TNCN, giảm trừ gia cảnh, lương tối thiểu vùng.',
+    duong_dan: '/cai-dat/tham-so-luong',
+    tom_tat: 'Tỷ lệ BHXH, thuế TNCN, giảm trừ gia cảnh, lương tối thiểu vùng, danh mục khoản.',
     buoc: [
       { chu: 'Kiểm tham số đang áp dụng trước mỗi kỳ lương đầu năm.', vai_tro: NHAN_SU },
       { chu: 'Sửa khi nhà nước thay đổi mức, ghi rõ ngày áp dụng.', vai_tro: NHAN_SU },
+      { chu: 'Danh mục khoản: thêm phụ cấp / khoản trừ mới của công ty ở cuối trang.', vai_tro: ['admin'] },
     ],
     luu_y: [
       'Đổi tham số KHÔNG tự dựng lại bảng lương đã tính. Phải dựng lại kỳ đó.',
       'Mức lương tối thiểu vùng khác nhau theo địa bàn — công ty nhiều văn phòng thì kiểm từng nơi.',
+      'Ô "miễn thuế" của một khoản quyết định thuế TNCN của cả công ty. Chỉ đánh dấu khi có căn cứ — ăn giữa ca và trang phục trong hạn mức (Thông tư 111/2013), hay tiền hoàn lại khoản nhân viên chi hộ.',
+      'Ngừng dùng một khoản chỉ chặn THÊM MỚI. Các phiếu đã tính vẫn giữ khoản đó — tắt không phải là xóa lịch sử.',
+      'Công chuẩn tháng để 0 thì hệ thống đếm ngày làm việc thật của từng tháng. Điền một số cố định là ấn định chung cho mọi tháng: tiện, nhưng tháng 28 ngày và tháng 31 ngày sẽ trả như nhau.',
     ],
   },
   {
-    duong_dan: '/dong-bo-erp',
+    duong_dan: '/cai-dat/dong-bo-erp',
     tom_tat: 'Kéo danh sách người dùng từ ERP cũ và nối với Microsoft 365.',
     buoc: [
       { chu: 'Bấm Chạy thử — đọc ERP, cho biết sẽ tạo/sửa ai, KHÔNG ghi gì.', vai_tro: ['admin'] },
@@ -255,7 +295,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/khoa-api',
+    duong_dan: '/cai-dat/khoa-api',
     tom_tat: 'Khóa cho hệ thống ngoài gọi vào API tích hợp.',
     buoc: [
       { chu: 'Tạo khóa, chọn ĐÚNG phạm vi tối thiểu cần dùng.', vai_tro: ['admin'] },
@@ -268,7 +308,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/kho-tep',
+    duong_dan: '/cai-dat/kho-tep',
     tom_tat: 'Toàn bộ tệp đã nạp vào hồ sơ, và cây thư mục trên đĩa.',
     buoc: [
       { chu: 'Tra cứu một tệp theo người, theo nhóm, hoặc theo tên.', vai_tro: NHAN_SU },
@@ -282,7 +322,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/ma-dinh-danh',
+    duong_dan: '/cai-dat/ma-dinh-danh',
     tom_tat: 'Mã của một người ở các hệ thống khác: PIN máy, ERP cũ, Microsoft.',
     buoc: [
       { chu: 'Tra cứu: gõ một mã bất kỳ để biết nó là của ai — kể cả mã đã đóng.', vai_tro: NHAN_SU },
@@ -295,7 +335,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/nhat-ky',
+    duong_dan: '/cai-dat/nhat-ky',
     tom_tat: 'Ai sửa gì, khi nào, từ IP nào.',
     buoc: [
       { chu: 'Lọc theo người dùng, hành động, hoặc khoảng thời gian.', vai_tro: ['admin'] },
