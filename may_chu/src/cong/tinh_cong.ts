@@ -8,6 +8,7 @@ import {
   type CaLam,
   type CaTheoThu,
   type KetQuaTinhCong,
+  type KhoangLamThem,
 } from './quy_tac_tinh_cong.ts';
 
 interface DongNhanVien {
@@ -100,6 +101,22 @@ export async function tinh_lai_ngay(
     [nhan_vien_id, ngay],
   );
 
+  // Don LAM THEM DA DUYET trum ngay nay. Khong co don thi OT = 0 du o lai bao lau.
+  //
+  // `to_char(...,'HH24:MI')` chu khong de kieu `time` tra ve nguyen: `quy_tac_tinh_cong` la
+  // ham thuan va nhan chuoi 'HH:MM' o moi cho khac (gio ca, gio nghi, gio giai trinh). Tra ve
+  // mot kieu khac chi cho rieng cho nay la mot cho de lech.
+  const lam_them = await truy_van<KhoangLamThem>(
+    `select to_char(gio_bat_dau, 'HH24:MI')  as gio_bat_dau,
+            to_char(gio_ket_thuc, 'HH24:MI') as gio_ket_thuc
+       from don_tu
+      where nhan_vien_id = $1 and loai = 'lam_them' and trang_thai = 'da_duyet'
+        and tu_ngay <= $2 and coalesce(den_ngay, tu_ngay) >= $2
+        and gio_bat_dau is not null and gio_ket_thuc is not null
+      order by gio_bat_dau`,
+    [nhan_vien_id, ngay],
+  );
+
   const giai_trinh = await truy_van_mot<{
     gio_vao_de_xuat: string | null;
     gio_ra_de_xuat: string | null;
@@ -119,6 +136,7 @@ export async function tinh_lai_ngay(
     ngay_le,
     giai_trinh,
     cong_tac,
+    lam_them,
   });
 
   await trong_giao_dich(async (khach) => {
