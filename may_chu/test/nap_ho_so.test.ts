@@ -9,7 +9,9 @@ import {
   chuan_trang_thai,
   ngay_tu_serial, type DongNhanSu,
 } from '../src/nhan_su/doc_ho_so_xlsx.ts';
-import { bo_dau, doi_chieu, type HoSoHienCo } from '../src/nhan_su/nap_ho_so.ts';
+import {
+  bo_dau, doi_chieu, gop_nguoi_trung, type HoSoHienCo,
+} from '../src/nhan_su/nap_ho_so.ts';
 
 // ---------------------------------------------------------------- ngay
 
@@ -270,4 +272,48 @@ test('khop gan dung KHONG duoc voi tay sang nguoi khac ten', () => {
 test('bo dau: giu nguyen so tu, chi bo dau va d gach ngang', () => {
   assert.equal(bo_dau('Trần Đức Hoàng'), 'tran duc hoang');
   assert.equal(bo_dau('Nguyễn Thuý Hằng'), bo_dau('Nguyễn Thúy Hằng'));
+});
+
+// ---------------------------------------------------------------- gop nguoi o nhieu sheet
+
+function dong_o(sheet: string, ho_ten: string, tuy: Partial<DongNhanSu> = {}): DongNhanSu {
+  return { ...dong(ho_ten), sheet, ...tuy };
+}
+
+test('gop: mot nguoi o hai sheet ra MOT dong, ghi lai ca hai sheet', () => {
+  // Xuat hai dong cho mot nguoi la nhan su lap hai ho so — dung benh dang phai go o PIN 4/57.
+  const g = gop_nguoi_trung([
+    dong_o('VPHN', 'Nguyễn Thị Thảo Vân', { chuc_danh: 'TTS' }),
+    dong_o('VPSG', 'Nguyễn Thị Thảo Vân', { chuc_danh: 'Nhân viên' }),
+  ]);
+  assert.equal(g.length, 1);
+  assert.deepEqual(g[0]?.cac_sheet, ['VPHN', 'VPSG']);
+});
+
+test('gop: hai sheet ghi khac nhau thi BAO ca hai gia tri, khong chon ho', () => {
+  const g = gop_nguoi_trung([
+    dong_o('VPHN', 'Nguyễn Thị Thảo Vân', { chuc_danh: 'TTS' }),
+    dong_o('VPSG', 'Nguyễn Thị Thảo Vân', { chuc_danh: 'Nhân viên' }),
+  ]);
+  assert.equal(g[0]?.khac_nhau.length, 1);
+  assert.match(String(g[0]?.khac_nhau[0]), /chức danh: TTS \/ Nhân viên/);
+});
+
+test('gop: giu dong dien nhieu o nhat lam dai dien', () => {
+  const g = gop_nguoi_trung([
+    dong_o('A', 'Ai Đó'),
+    dong_o('B', 'Ai Đó', { cccd: '001191020508', ngay_vao: '2026-01-01', email: 'x@y.z' }),
+  ]);
+  assert.equal(g[0]?.dong.sheet, 'B');
+  assert.equal(g[0]?.dong.cccd, '001191020508');
+});
+
+test('gop: hai nguoi khac ten KHONG bi gop', () => {
+  const g = gop_nguoi_trung([dong_o('A', 'Đào Thanh Bình'), dong_o('A', 'Đào Thái Bình')]);
+  assert.equal(g.length, 2);
+});
+
+test('gop: khac dau nhung cung ten thi VAN gop', () => {
+  const g = gop_nguoi_trung([dong_o('A', 'Nguyễn Thuý Hằng'), dong_o('B', 'Nguyễn Thúy Hằng')]);
+  assert.equal(g.length, 1);
 });

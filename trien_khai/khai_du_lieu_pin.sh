@@ -4,6 +4,11 @@
 # Chay tu THU MUC GOC cua ma nguon (noi co docker-compose.yml):
 #
 #   bash trien_khai/khai_du_lieu_pin.sh
+#   bash trien_khai/khai_du_lieu_pin.sh /duong/dan/DANH_SACH_NHAN_SU.xlsx
+#
+# Khai them duong dan tep nhan su thi lam luon buoc 6: nap ho so (`npm run nap_ho_so`) va xuat
+# danh sach nguoi chua co ma. Thu tu co chu dich — khai PIN truoc de bo nap ho so nhin thay
+# ngay quet cuoi cung cua tung nguoi, vi do la can cu duy nhat de dat ngay nghi viec.
 #
 # Vi sao la script chu khong phai dan tung lenh: hai script SQL nay mac dinh `rollback;`, va
 # cach doi sang `commit;` truoc gio la `sed -i` thang vao tep trong repo. Lam vay lam ban thu
@@ -24,6 +29,12 @@ if [[ ! -f docker-compose.yml ]]; then
 fi
 if [[ ! -f .env ]]; then
   do_ 'Khong thay tep .env. Day khong phai ban trien khai da cau hinh.'
+  exit 1
+fi
+
+TEP_NS="${1:-}"
+if [[ -n "$TEP_NS" && ! -f "$TEP_NS" ]]; then
+  do_ "Khong thay tep nhan su: $TEP_NS"
   exit 1
 fi
 
@@ -125,6 +136,30 @@ for f in "$DONG" "$KHAI"; do
     exit 1
   fi
 done
+
+if [[ -n "$TEP_NS" ]]; then
+  echo
+  xanh '=== 6/6. Nap ho so nhan su tu tep XLSX ==='
+  TRONG_MAY=/tmp/nhan_su_$(date +%s).xlsx
+  docker compose cp "$TEP_NS" "may_chu:$TRONG_MAY"
+
+  echo
+  xanh '--- chay thu ---'
+  docker compose exec -T may_chu npm run nap_ho_so -- "$TRONG_MAY" </dev/null
+
+  echo
+  read -r -p '  Go dung chu  GHI  de nap that (bat cu gi khac = bo qua buoc nay): ' TL2
+  if [[ "$TL2" == "GHI" ]]; then
+    docker compose exec -T may_chu npm run nap_ho_so -- "$TRONG_MAY" --that \
+      --xuat /tmp/can_ma_nhan_vien.xlsx </dev/null
+    docker compose cp may_chu:/tmp/can_ma_nhan_vien.xlsx ./can_ma_nhan_vien.xlsx || true
+    [[ -f ./can_ma_nhan_vien.xlsx ]] && xanh '  Da lay ve: ./can_ma_nhan_vien.xlsx'
+  else
+    vang '  Bo qua buoc nap ho so. Cac buoc PIN o tren van da ghi.'
+  fi
+  # Tep chua CCCD/dia chi cua nguoi that — khong de lai trong container.
+  docker compose exec -T may_chu rm -f "$TRONG_MAY" </dev/null || true
+fi
 
 echo
 xanh '=== Xong. Doi chieu sau khi ghi ==='

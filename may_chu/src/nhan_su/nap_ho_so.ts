@@ -133,3 +133,43 @@ export function doi_chieu(dong: DongNhanSu[], ho_so: HoSoHienCo[]): KetQuaDoiChi
   };
 }
 
+
+/**
+ * Gop cac dong CHUA CO HO SO cua cung mot nguoi thanh mot.
+ *
+ * Mot nguoi co the nam o hai sheet — vi du nguoi lam ca VP Ha Noi lan VP Sai Gon. Xuat ra hai
+ * dong la nhan su lap HAI ho so cho MOT nguoi, dung cai benh dang phai go o PIN 4 va PIN 57.
+ * Gop theo ten da bo dau, giu dong dien nhieu o nhat, va ghi lai moi sheet da thay ho.
+ *
+ * Neu hai sheet ghi khac nhau ve phong ban / chuc danh / ngay vao thi KHONG chon ho ben nao —
+ * ghi ca hai gia tri vao cot "Can kiem lai" de nhan su quyet.
+ */
+export function gop_nguoi_trung(dong: readonly DongNhanSu[]): {
+  dong: DongNhanSu; cac_sheet: string[]; khac_nhau: string[];
+}[] {
+  const nhom = new Map<string, DongNhanSu[]>();
+  for (const d of dong) {
+    const k = bo_dau(chuan_ten(d.ho_ten));
+    nhom.set(k, [...(nhom.get(k) ?? []), d]);
+  }
+  return [...nhom.values()].map((ds) => {
+    const chinh = [...ds].sort((a, b) => so_o_da_dien(b) - so_o_da_dien(a))[0] as DongNhanSu;
+    const khac_nhau: string[] = [];
+    const truong: readonly [string, (d: DongNhanSu) => string | null][] = [
+      ['phòng ban', (d) => d.phong_ban],
+      ['chức danh', (d) => d.chuc_danh],
+      ['ngày vào', (d) => d.ngay_vao],
+    ];
+    for (const [ten, lay] of truong) {
+      const gt = [...new Set(ds.map(lay).filter((v): v is string => v !== null && v !== ''))];
+      if (gt.length > 1) khac_nhau.push(`${ten}: ${gt.join(' / ')}`);
+    }
+    return { dong: chinh, cac_sheet: ds.map((d) => d.sheet), khac_nhau };
+  });
+}
+
+/** So o da dien cua mot dong — de chon dong day du nhat lam dai dien khi gop. */
+function so_o_da_dien(d: DongNhanSu): number {
+  return [d.cccd, d.ngay_sinh, d.so_dien_thoai, d.email, d.dia_chi_thuong_tru,
+    d.que_quan, d.phong_ban, d.chuc_danh, d.ngay_vao].filter((v) => v !== null && v !== '').length;
+}

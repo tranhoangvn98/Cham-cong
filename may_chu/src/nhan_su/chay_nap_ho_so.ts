@@ -1,20 +1,31 @@
 // Lenh CLI nap ho so nhan su tu tep XLSX cua HCNS.
 //
-//   npm run nap_ho_so -- /duong/dan/DANH_SACH_NHAN_SU.xlsx           chay thu, khong ghi gi
-//   npm run nap_ho_so -- /duong/dan/DANH_SACH_NHAN_SU.xlsx --that    ghi that
+//   npm run nap_ho_so -- <tep.xlsx>                     chay thu, khong ghi gi
+//   npm run nap_ho_so -- <tep.xlsx> --that              ghi that
+//   npm run nap_ho_so -- <tep.xlsx> --xuat can_ma.xlsx  xuat danh sach nguoi CHUA CO HO SO
+//
+// `--xuat` ghi ra mot tep Excel co cot "Ma nhan vien" de trong cho nhan su dien. Dien xong thi
+// chay lai lenh nay voi tep goc — day la duong nap nguoi moi.
 //
 // MAC DINH CHAY THU. Tep chua CCCD, ngay sinh, dia chi cua nguoi that — no nam tren may chu,
 // KHONG nam trong repo, va lenh nay khong in day du CCCD ra man hinh.
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dong_pool, trong_giao_dich } from '../csdl/ket_noi.ts';
+import { ghi_xlsx } from '../tien_ich/ghi_xlsx.ts';
 import { doc_ho_so_xlsx } from './doc_ho_so_xlsx.ts';
-import { doi_chieu } from './nap_ho_so.ts';
+import { doi_chieu, gop_nguoi_trung } from './nap_ho_so.ts';
 import {
   ghi_mot_nguoi, nap_ho_so_hien_co, o_se_doi, tat_hoat_dong,
 } from './nap_ho_so_csdl.ts';
 
-const doi_so = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+// Loc bo ca co `--xuat` LAN gia tri di ngay sau no, neu khong duong dan xuat se bi coi la
+// tep dau vao va lenh doc nham tep.
+const tho = process.argv.slice(2);
+const doi_so = tho.filter((a, i) =>
+  !a.startsWith('--') && tho[i - 1] !== '--xuat');
 const that = process.argv.includes('--that');
+const i_xuat = process.argv.indexOf('--xuat');
+const duong_xuat = i_xuat >= 0 ? process.argv[i_xuat + 1] : undefined;
 const duong_dan = doi_so[0];
 
 /** Chi hien 4 so cuoi cua CCCD. Man hinh terminal luu vao lich su shell va log phien lam viec. */
@@ -116,6 +127,26 @@ try {
     console.log('    Nạp thẳng là sinh ra một bộ phòng ban thứ hai song song.');
     console.log('  · Hợp đồng lao động — cột "Thời hạn HĐ" và "Ngày hết hạn" trống toàn bộ,');
     console.log('    nhiều dòng ghi chú "Chưa ký HĐ". Sinh bản ghi hợp đồng từ đó là bịa giấy tờ.');
+
+    if (duong_xuat !== undefined) {
+      // Gộp người nằm ở nhiều sheet lại: xuất hai dòng cho một người là nhân sự lập hai hồ sơ.
+      const gop = gop_nguoi_trung(kq.chua_co_ho_so);
+      const buf = ghi_xlsx({
+        ten_sheet: 'Cần mã nhân viên',
+        tieu_de: ['Mã nhân viên (điền vào đây)', 'Họ và tên', 'Phòng ban', 'Chức danh',
+          'Ngày vào công ty', 'Trạng thái', 'Nguồn (sheet)', 'Cần kiểm lại'],
+        hang: gop.map((g) => [
+          '', g.dong.ho_ten, g.dong.phong_ban ?? '', g.dong.chuc_danh ?? '', g.dong.ngay_vao ?? '',
+          g.dong.con_lam_viec === false ? 'Đã nghỉ việc'
+            : g.dong.con_lam_viec === true ? 'Đang làm việc' : '',
+          [...new Set(g.cac_sheet)].join(' + '),
+          g.khac_nhau.length > 0 ? `hai sheet ghi khác nhau — ${g.khac_nhau.join('; ')}` : '',
+        ]),
+      });
+      writeFileSync(duong_xuat, buf);
+      console.log(`\n  Đã ghi danh sách cần mã: ${duong_xuat} (${String(gop.length)} người`
+        + `${gop.length === kq.chua_co_ho_so.length ? '' : `, gộp từ ${String(kq.chua_co_ho_so.length)} dòng`})`);
+    }
 
     if (!that) {
       console.log('\n────────────────────────────────────────────────────────────');
