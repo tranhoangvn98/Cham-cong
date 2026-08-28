@@ -157,11 +157,59 @@ export function cot_sang_so(chu: string): number {
   return n - 1;
 }
 
+/**
+ * Ten cac sheet trong tep, theo DUNG thu tu Excel hien o thanh tab.
+ *
+ * `trich_xlsx` co y chi doc sheet dau va cat o 200 dong / 64 cot vi no la BO XEM NHANH. Bo nap
+ * du lieu thi khac han: bo sot mot sheet la bo sot nguoi that. Ham nay de goi truoc, biet co
+ * nhung sheet nao roi moi chon.
+ */
+export function ten_cac_sheet(du_lieu: Buffer): string[] {
+  const muc = doc_zip(du_lieu, (t) => t === 'xl/workbook.xml');
+  const wb = muc.get('xl/workbook.xml')?.toString('utf8');
+  if (wb === undefined) return [];
+  return (wb.match(/<sheet\b[^>]*\/?>/g) ?? [])
+    .map((s) => bo_thuc_the(/\bname="([^"]*)"/.exec(s)?.[1] ?? ''))
+    .filter((s) => s !== '');
+}
+
+export interface TuyChonXlsx {
+  /** Ten sheet can doc. Khong khai = sheet dau tien. */
+  ten_sheet?: string;
+  /** Tran so dong. Khong khai = tran cua bo xem nhanh (200). */
+  hang_toi_da?: number;
+  /** Tran so cot. Khong khai = tran cua bo xem nhanh (64). */
+  cot_toi_da?: number;
+}
+
 /** Trich sheet dau tien cua XLSX thanh mang hai chieu. */
-export function trich_xlsx(du_lieu: Buffer): TrichBang | null {
+export function trich_xlsx(du_lieu: Buffer, tc: TuyChonXlsx = {}): TrichBang | null {
+  const hang_toi_da = tc.hang_toi_da ?? HANG_TOI_DA;
+  const cot_toi_da = tc.cot_toi_da ?? COT_TOI_DA;
+
+  // Sheet thu n cua workbook KHONG chac la `sheetN.xml` — thu tu tab va ten tep la hai thu
+  // khac nhau, va xoa mot sheet o giua la chung lech han. Phai di qua workbook.xml.rels.
+  let duong_sheet = 'xl/worksheets/sheet1.xml';
+  if (tc.ten_sheet !== undefined) {
+    const dm = doc_zip(du_lieu, (t) =>
+      t === 'xl/workbook.xml' || t === 'xl/_rels/workbook.xml.rels');
+    const wb = dm.get('xl/workbook.xml')?.toString('utf8') ?? '';
+    const rels = dm.get('xl/_rels/workbook.xml.rels')?.toString('utf8') ?? '';
+    const the = (wb.match(/<sheet\b[^>]*\/?>/g) ?? []).find(
+      (s) => bo_thuc_the(/\bname="([^"]*)"/.exec(s)?.[1] ?? '') === tc.ten_sheet);
+    if (the === undefined) return null;
+    const rid = /\br:id="([^"]*)"/.exec(the)?.[1] ?? '';
+    const rel = (rels.match(/<Relationship\b[^>]*\/?>/g) ?? []).find(
+      (r) => /\bId="([^"]*)"/.exec(r)?.[1] === rid);
+    const dich = bo_thuc_the(/\bTarget="([^"]*)"/.exec(rel ?? '')?.[1] ?? '');
+    if (dich === '') return null;
+    duong_sheet = dich.startsWith('/') ? dich.slice(1)
+      : dich.startsWith('xl/') ? dich : `xl/${dich}`;
+  }
+
   const muc = doc_zip(du_lieu, (t) =>
-    t === 'xl/sharedStrings.xml' || t === 'xl/worksheets/sheet1.xml');
-  const sheet = muc.get('xl/worksheets/sheet1.xml')?.toString('utf8');
+    t === 'xl/sharedStrings.xml' || t === duong_sheet);
+  const sheet = muc.get(duong_sheet)?.toString('utf8');
   if (sheet === undefined) return null;
 
   // Chuoi dung chung: Excel khong luu chu trong o ma luu chi so tro toi bang nay.
@@ -198,22 +246,22 @@ export function trich_xlsx(du_lieu: Buffer): TrichBang | null {
         }
       }
 
-      if (cot >= 0 && cot < COT_TOI_DA) {
+      if (cot >= 0 && cot < cot_toi_da) {
         while (dong.length < cot) dong.push('');
         dong[cot] = gia_tri;
-      } else if (cot >= COT_TOI_DA && gia_tri !== '') {
+      } else if (cot >= cot_toi_da && gia_tri !== '') {
         cat_cot = true;
       }
     }
     if (dong.some((x) => x !== '')) hang.push(dong);
-    if (hang.length >= HANG_TOI_DA) break;
+    if (hang.length >= hang_toi_da) break;
   }
 
   // Cho moi hang cung so cot de ben giao dien khong phai xu ly hang lech.
   const rong = hang.reduce((m, h) => Math.max(m, h.length), 0);
   for (const h of hang) while (h.length < rong) h.push('');
 
-  return { loai: 'bang', hang, cat_bot: hang.length >= HANG_TOI_DA || cat_cot };
+  return { loai: 'bang', hang, cat_bot: hang.length >= hang_toi_da || cat_cot };
 }
 
 /** Chon bo trich theo duoi tep da luu. */
