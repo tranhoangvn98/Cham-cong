@@ -14,10 +14,9 @@
 //     nguoi lao dong duoc huong — no thang.
 //   - Sau `ngay_le`: cong tac trum mot ngay le thi nguoi do van duoc huong ngay le.
 //   - Sau `nghi_tuan`: cong tac vao ngay nghi tuan khong bien ngay do thanh ngay cong. Neu ho
-//     that su lam viec hom do thi co lan quet, va nhanh `nghi_tuan` tinh toan bo vao OT.
+//     that su lam viec hom do thi co lan quet, va OT duoc tinh theo don lam them (xem duoi).
 //
-// Lam viec vao ngay le / nghi tuan / dang nghi phep: toan bo thoi gian tinh vao OT,
-// KHONG tinh di muon/ve som (khong co gio chuan de doi chieu).
+// OT KHONG TU SINH TU GIO QUET. Xem `phut_lam_them_da_duyet`.
 import { moc_thoi_gian, phut_giao_nhau, so_phut, thu_trong_tuan } from '../tien_ich/thoi_gian.ts';
 
 /**
@@ -35,6 +34,18 @@ export interface CaTheoThu {
   phut_du_cong: number;
 }
 
+/**
+ * Mot khoang lam them DA DUYET trong ngay, lay tu `don_tu` loai `lam_them`.
+ *
+ * HAN CHE DA BIET: hai cot nay la kieu `time` va CSDL rang buoc `gio_ket_thuc > gio_bat_dau`,
+ * nen mot khoang OT VAT QUA NUA DEM khong khai duoc bang mot don. Ca qua dem muon khai OT sau
+ * nua dem thi phai lap hai don, moi don mot ngay.
+ */
+export interface KhoangLamThem {
+  gio_bat_dau: string;
+  gio_ket_thuc: string;
+}
+
 export interface CaLam {
   gio_vao: string;
   gio_ra: string;
@@ -42,6 +53,14 @@ export interface CaLam {
   nghi_den: string | null;
   dung_sai_muon_phut: number;
   dung_sai_som_phut: number;
+  /**
+   * KHONG CON THAM GIA TINH OT ke tu ban "OT phai dang ky".
+   *
+   * Nguong nay sinh ra de loc nhieu cho mot phep SUY DOAN tu dong ("o lai qua 30 phut thi coi
+   * nhu lam them"). Khi can cu la mot don da duyet thi loc nua la sai: mot don 20 phut duoc
+   * duyet ma ra 0 phut OT thi khong ai giai thich duoc. Cot van giu vi con hien tren giao dien
+   * ca lam va con y nghia lich su.
+   */
   nguong_ot_phut: number;
   qua_dem: boolean;
   phut_du_cong: number;
@@ -92,6 +111,11 @@ export interface DauVaoTinhCong {
    * nhanh nay ho hien la vang — va ke toan nhin bang cong do thi tru cong that.
    */
   cong_tac: { noi_den: string | null } | null;
+  /**
+   * Cac khoang lam them DA DUYET trum ngay nay. Rong = khong dang ky gi, va khi do OT = 0
+   * du nguoi do o lai bao lau.
+   */
+  lam_them: KhoangLamThem[];
 }
 
 export interface KetQuaTinhCong {
@@ -132,6 +156,55 @@ export function khoang_lay_quet(ngay: string, ca_goc: CaLam | null): { tu: Date;
     };
   }
   return { tu: moc_thoi_gian(ngay, '00:00'), den: moc_thoi_gian(ngay, '00:00', 1) };
+}
+
+/**
+ * So phut LAM THEM DUOC TINH: phan GIAO giua thoi gian co mat that va cac khoang da dang ky
+ * trong don `lam_them` DA DUYET.
+ *
+ * GIAO chu khong phai mot trong hai, va ca hai chieu deu co ly do:
+ *   - Dang ky ma khong lam thi khong duoc tra. Don la KE HOACH, khong phai ket qua.
+ *   - Lam ma khong dang ky thi khong duoc tra. Day la yeu cau nghiep vu, va no cung dung
+ *     BLLD 2019 Dieu 107: lam them gio phai co su dong y cua nguoi lao dong — mot he thong tu
+ *     ket luan "o lai muon = lam them" la tu tao ra nghia vu tra tien tu mot lan quet the.
+ *
+ * Cac khoang duoc HOP NHAT truoc khi cong: hai don chong nhau trong cung mot ngay khong duoc
+ * tinh hai lan.
+ */
+function phut_lam_them_da_duyet(
+  vao: Date | null,
+  ra: Date | null,
+  ngay: string,
+  ca: CaLam | null,
+  lam_them: readonly KhoangLamThem[],
+): number {
+  if (vao === null || ra === null || lam_them.length === 0) return 0;
+
+  const khoang: { tu: number; den: number }[] = [];
+  for (const d of lam_them) {
+    // Ca qua dem: khoang dang ky nam truoc gio vao ca thi thuoc ngay hom sau — cung quy uoc
+    // voi `phut_nghi_giao`.
+    const cong_ngay = ca !== null && ca.qua_dem && d.gio_bat_dau < ca.gio_vao ? 1 : 0;
+    const tu = moc_thoi_gian(ngay, d.gio_bat_dau, cong_ngay).getTime();
+    const den = moc_thoi_gian(ngay, d.gio_ket_thuc, cong_ngay).getTime();
+    if (den > tu) khoang.push({ tu, den });
+  }
+  if (khoang.length === 0) return 0;
+
+  khoang.sort((a, b) => a.tu - b.tu);
+  let tong = 0;
+  let hien = khoang[0] as { tu: number; den: number };
+  for (let i = 1; i < khoang.length; i++) {
+    const k = khoang[i] as { tu: number; den: number };
+    if (k.tu <= hien.den) {
+      hien = { tu: hien.tu, den: Math.max(hien.den, k.den) };
+    } else {
+      tong += phut_giao_nhau(vao, ra, new Date(hien.tu), new Date(hien.den));
+      hien = k;
+    }
+  }
+  tong += phut_giao_nhau(vao, ra, new Date(hien.tu), new Date(hien.den));
+  return tong;
 }
 
 const RONG: Omit<KetQuaTinhCong, 'trang_thai' | 'so_cong' | 'ghi_chu'> = {
@@ -177,17 +250,23 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
   // --- So phut co mat thuc te (chua doi chieu ca) ---
   const phut_co_mat = gio_vao !== null && gio_ra !== null ? so_phut(gio_vao, gio_ra) : 0;
 
+  // OT cua ngay nay, dung chung cho moi nhanh: chi phan da dang ky VA that su co mat.
+  const ot_da_duyet = phut_lam_them_da_duyet(gio_vao, gio_ra, dv.ngay, ca, dv.lam_them);
+
   // --- Nhanh 1: dang nghi phep da duyet ---
   if (dv.nghi_phep !== null) {
     const np = dv.nghi_phep;
     const cong = np.nua_ngay ? 0.5 : np.loai === 'khong_luong' ? 0 : 1;
     if (phut_co_mat > 0) chu_thich.push('Co quet the trong ngay nghi phep');
+    if (phut_co_mat > 0 && ot_da_duyet === 0) {
+      chu_thich.push(`O lai ${phut_co_mat} phut nhung khong co don lam them da duyet`);
+    }
     return {
       ...RONG,
       trang_thai: 'nghi_phep',
       gio_vao,
       gio_ra,
-      phut_ot: phut_co_mat,
+      phut_ot: ot_da_duyet,
       co_dieu_chinh,
       so_cong: cong,
       ghi_chu: gop_chu_thich(chu_thich),
@@ -197,14 +276,18 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
   // --- Nhanh 2: ngay le ---
   if (dv.ngay_le !== null) {
     const phut_lam = tru_gio_nghi(gio_vao, gio_ra, dv.ngay, ca);
-    if (phut_lam > 0) chu_thich.push('Lam viec ngay le, tinh toan bo vao OT');
+    if (phut_lam > 0) {
+      chu_thich.push(ot_da_duyet > 0
+        ? 'Lam viec ngay le, tinh phan da dang ky vao OT'
+        : `Lam viec ngay le ${phut_lam} phut nhung khong co don lam them da duyet`);
+    }
     return {
       ...RONG,
       trang_thai: 'ngay_le',
       gio_vao,
       gio_ra,
       phut_lam,
-      phut_ot: phut_lam,
+      phut_ot: ot_da_duyet,
       co_dieu_chinh,
       so_cong: dv.ngay_le.huong_luong ? 1 : 0,
       ghi_chu: gop_chu_thich(chu_thich),
@@ -214,14 +297,18 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
   // --- Nhanh 3: khong phai ngay lam viec ---
   if (!ngay_lam.includes(thu_trong_tuan(dv.ngay))) {
     const phut_lam = tru_gio_nghi(gio_vao, gio_ra, dv.ngay, ca);
-    if (phut_lam > 0) chu_thich.push('Lam viec ngay nghi tuan, tinh toan bo vao OT');
+    if (phut_lam > 0) {
+      chu_thich.push(ot_da_duyet > 0
+        ? 'Lam viec ngay nghi tuan, tinh phan da dang ky vao OT'
+        : `Lam viec ngay nghi tuan ${phut_lam} phut nhung khong co don lam them da duyet`);
+    }
     return {
       ...RONG,
       trang_thai: 'nghi_tuan',
       gio_vao,
       gio_ra,
       phut_lam,
-      phut_ot: phut_lam,
+      phut_ot: ot_da_duyet,
       co_dieu_chinh,
       so_cong: 0,
       ghi_chu: gop_chu_thich(chu_thich),
@@ -242,6 +329,7 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
       trang_thai: 'cong_tac',
       gio_vao,
       gio_ra,
+      phut_ot: ot_da_duyet,
       co_dieu_chinh,
       so_cong: 1,
       ghi_chu: gop_chu_thich(chu_thich),
@@ -268,6 +356,7 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
       gio_vao,
       gio_ra,
       phut_lam: phut_co_mat,
+      phut_ot: ot_da_duyet,
       co_dieu_chinh,
       so_cong: quy_ra_cong(phut_co_mat, nguong_du_cong),
       ghi_chu: gop_chu_thich(chu_thich),
@@ -289,11 +378,15 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
   const muon = Math.max(0, so_phut(ca_bat_dau, gio_vao) - ca.dung_sai_muon_phut);
   const ve_som = Math.max(0, so_phut(gio_ra, ca_ket_thuc) - ca.dung_sai_som_phut);
 
-  const sau_ca = so_phut(ca_ket_thuc, gio_ra);
-  const ot = sau_ca > ca.nguong_ot_phut ? sau_ca : 0;
-
   if (muon > 0) chu_thich.push(`Di muon ${muon} phut`);
   if (ve_som > 0) chu_thich.push(`Ve som ${ve_som} phut`);
+
+  // O lai ngoai gio ma khong co don thi KHONG tinh OT — nhung cung khong im lang. Nhan su can
+  // thay con so nay de di doi chieu, chu khong phai de no bien mat.
+  const sau_ca = so_phut(ca_ket_thuc, gio_ra);
+  if (sau_ca > 0 && ot_da_duyet === 0) {
+    chu_thich.push(`O lai ${sau_ca} phut sau gio tan ca nhung khong co don lam them da duyet`);
+  }
 
   return {
     trang_thai: 'co_mat',
@@ -302,7 +395,7 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
     phut_lam,
     phut_muon: muon,
     phut_ve_som: ve_som,
-    phut_ot: ot,
+    phut_ot: ot_da_duyet,
     so_cong: quy_ra_cong(phut_lam, ca.phut_du_cong),
     co_dieu_chinh,
     ghi_chu: gop_chu_thich(chu_thich),
