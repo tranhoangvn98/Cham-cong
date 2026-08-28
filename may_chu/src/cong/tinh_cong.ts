@@ -3,6 +3,7 @@ import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { cong_ngay, danh_sach_ngay, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import {
+  ca_cua_ngay,
   khoang_lay_quet,
   tinh_cong_ngay,
   type CaLam,
@@ -10,6 +11,13 @@ import {
   type KetQuaTinhCong,
   type KhoangLamThem,
 } from './quy_tac_tinh_cong.ts';
+import { chieu_quet, type ChieuMay } from './chieu_quet.ts';
+import {
+  loc_bam_dup,
+  suy_luan_ra_vao,
+  type KetQuaRaVao,
+  type LanQuetCoChieu,
+} from './ra_vao.ts';
 
 interface DongNhanVien {
   id: string;
@@ -67,13 +75,20 @@ export async function tinh_lai_ngay(
 
   // Chi tinh cac lan quet DUOC TIN: may quet (tu_dong) hoac nhan su da duyet.
   // Lan quet bang dien thoai dang 'cho_duyet' khong duoc tinh cong.
-  const quet = await truy_van<{ thoi_diem: Date }>(
-    `select thoi_diem
-       from lan_quet
-      where nhan_vien_id = $1
-        and thoi_diem >= $2 and thoi_diem < $3
-        and trang_thai_duyet in ('tu_dong','da_duyet')
-      order by thoi_diem`,
+  // Lay them serial + trang_thai (Status) + chieu cua may de suy luan ra/vao van phong.
+  const quet = await truy_van<{
+    thoi_diem: Date;
+    thiet_bi_serial: string | null;
+    trang_thai: number | null;
+    chieu_may: ChieuMay | null;
+  }>(
+    `select lq.thoi_diem, lq.thiet_bi_serial, lq.trang_thai, tb.chieu as chieu_may
+       from lan_quet lq
+       left join thiet_bi tb on tb.serial = lq.thiet_bi_serial
+      where lq.nhan_vien_id = $1
+        and lq.thoi_diem >= $2 and lq.thoi_diem < $3
+        and lq.trang_thai_duyet in ('tu_dong','da_duyet')
+      order by lq.thoi_diem`,
     [nhan_vien_id, khoang.tu, khoang.den],
   );
 
@@ -180,7 +195,68 @@ export async function tinh_lai_ngay(
     }, khach);
   });
 
+  // Suy luan ra/vao van phong (Phuong an A: chi DO, KHONG tru cong). Tach khoi giao dich tinh
+  // cong o tren — mot loi o day khong duoc lam hong bang_cong_ngay da ghi.
+  try {
+    const ca_ngay = ca_cua_ngay(ca, ngay);
+    const lan_quet: LanQuetCoChieu[] = quet.map((q) => ({
+      thoi_diem: q.thoi_diem,
+      // May chua khai chieu (hoac lan quet khong gan may) -> 'hai_chieu', doc theo Status.
+      // chi_co_status_0 = false: hai cua that da khai 'vao'/'ra' nen Status bi bo qua o do; may
+      // 'hai_chieu' con lai (Cua chinh) chi vai lan quet, khong dang ke.
+      chieu: chieu_quet(q.chieu_may ?? 'hai_chieu', q.trang_thai ?? 0, false),
+      thiet_bi: q.thiet_bi_serial,
+    }));
+    const rv = suy_luan_ra_vao(loc_bam_dup(lan_quet), ngay, ca_ngay);
+    await ghi_ra_vao(nhan_vien_id, ngay, rv);
+  } catch (loi) {
+    console.error(
+      `[ra_vao] loi nhan vien ${nhan_vien_id} ngay ${ngay}:`, (loi as Error).message,
+    );
+  }
+
   return kq;
+}
+
+/**
+ * Ghi ket qua suy luan ra/vao cua mot ngay-nguoi: upsert `ra_vao_ngay` va thay toan bo canh bao
+ * cua ngay do trong `canh_bao_ra_vao`. Xoa truoc khi chen nen chay lai khong tich luy rac.
+ */
+async function ghi_ra_vao(
+  nhan_vien_id: string, ngay: string, rv: KetQuaRaVao,
+): Promise<void> {
+  await trong_giao_dich(async (khach) => {
+    await khach.query(
+      `insert into ra_vao_ngay
+         (nhan_vien_id, ngay, gio_den, gio_ra_ve, phut_ra_ngoai, so_phien_ra_ngoai,
+          con_trong_van_phong, suy_doan, tinh_luc)
+       values ($1,$2,$3,$4,$5,$6,$7,$8, now())
+       on conflict (nhan_vien_id, ngay) do update set
+         gio_den             = excluded.gio_den,
+         gio_ra_ve           = excluded.gio_ra_ve,
+         phut_ra_ngoai       = excluded.phut_ra_ngoai,
+         so_phien_ra_ngoai   = excluded.so_phien_ra_ngoai,
+         con_trong_van_phong = excluded.con_trong_van_phong,
+         suy_doan            = excluded.suy_doan,
+         tinh_luc            = now()`,
+      [
+        nhan_vien_id, ngay, rv.gio_den, rv.gio_ra_ve, rv.phut_ra_ngoai,
+        rv.phien_ra_ngoai.length, rv.con_trong_van_phong, rv.suy_doan,
+      ],
+    );
+
+    await khach.query(
+      'delete from canh_bao_ra_vao where nhan_vien_id = $1 and ngay = $2',
+      [nhan_vien_id, ngay],
+    );
+    for (const l of rv.loi) {
+      await khach.query(
+        `insert into canh_bao_ra_vao (nhan_vien_id, ngay, ma_loi, thoi_diem, mo_ta)
+         values ($1,$2,$3,$4,$5)`,
+        [nhan_vien_id, ngay, l.ma, l.thoi_diem, l.mo_ta],
+      );
+    }
+  });
 }
 
 /** Tinh lai nhieu (nhan vien, ngay). Chay tuan tu de khong lam nghen pool ket noi. */

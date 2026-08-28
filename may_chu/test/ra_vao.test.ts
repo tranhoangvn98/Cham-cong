@@ -14,7 +14,7 @@ import type { LanQuetCoChieu } from '../src/cong/ra_vao.ts';
 import type { CaLam } from '../src/cong/quy_tac_tinh_cong.ts';
 
 const { chieu_quet } = await import('../src/cong/chieu_quet.ts');
-const { suy_luan_ra_vao } = await import('../src/cong/ra_vao.ts');
+const { suy_luan_ra_vao, loc_bam_dup } = await import('../src/cong/ra_vao.ts');
 
 const NGAY = '2026-08-03';   // thu Hai
 
@@ -47,6 +47,45 @@ test('chieu_quet: may hai_chieu doc theo Status', () => {
 test('chieu_quet: may hai_chieu chi co Status 0 -> khong_ro (bay ZKTeco)', () => {
   // May day Status 0 cho moi lan quet: Status vo nghia, khong duoc coi la vao.
   assert.equal(chieu_quet('hai_chieu', 0, true), 'khong_ro');
+});
+
+// ---------------------------------------------------------------- loc bam-dup
+
+function qm(gio_str: string, may: string): LanQuetCoChieu {
+  return { thoi_diem: new Date(`${NGAY}T${gio_str}+07:00`), chieu: 'vao', thiet_bi: may };
+}
+
+test('loc_bam_dup: hai lan cung may cach 2 giay -> giu 1', () => {
+  const r = loc_bam_dup([qm('08:00:00', 'A'), qm('08:00:02', 'A')]);
+  assert.equal(r.length, 1);
+  assert.equal(gio(r[0]!.thoi_diem), '08:00:00');
+});
+
+test('loc_bam_dup: chuoi 3 nhip cung may sat nhau -> gop het con 1', () => {
+  const r = loc_bam_dup([qm('08:00:00', 'A'), qm('08:00:01', 'A'), qm('08:00:02', 'A')]);
+  assert.equal(r.length, 1);
+});
+
+test('loc_bam_dup: cung may nhung cach xa hon cua so -> giu ca hai', () => {
+  const r = loc_bam_dup([qm('08:00:00', 'A'), qm('08:03:00', 'A')]);   // 180s > 120s
+  assert.equal(r.length, 2);
+});
+
+test('loc_bam_dup: ra roi vao lai (khac may) trong vai giay -> giu ca hai', () => {
+  // A=vao, B=ra: quet B roi A cach 1s la ra-vao that, khong phai bam-dup.
+  const r = loc_bam_dup([qm('10:00:00', 'A'), qm('10:00:01', 'B')]);
+  assert.equal(r.length, 2);
+});
+
+test('loc_bam_dup: A,B,A sat nhau -> khong gop hai A (lan lien truoc cua A thu hai la B)', () => {
+  const r = loc_bam_dup([qm('10:00:00', 'A'), qm('10:00:01', 'B'), qm('10:00:02', 'A')]);
+  assert.equal(r.length, 3);
+});
+
+test('loc_bam_dup: tu sap xep theo thoi diem truoc khi loc', () => {
+  const r = loc_bam_dup([qm('08:00:02', 'A'), qm('08:00:00', 'A')]);
+  assert.equal(r.length, 1);
+  assert.equal(gio(r[0]!.thoi_diem), '08:00:00');   // giu lan som nhat
 });
 
 // ---------------------------------------------------------------- ngay sach

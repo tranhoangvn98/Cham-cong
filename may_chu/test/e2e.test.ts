@@ -523,6 +523,26 @@ test('may day ATTLOG -> luu lan quet va TINH LUON bang cong', async () => {
   assert.equal(bc!.phut_ot, 0, 'khong co don lam them -> khong tu sinh OT');
   assert.match(String(bc!.ghi_chu), /khong co don lam them da duyet/);
   assert.equal(bc!.so_cong, 1);
+
+  // Suy luan ra/vao van phong duoc GHI song song (Phuong an A: chi do, khong tru cong).
+  // May SERIAL chua khai chieu -> doc theo Status: vao(08:12) ra(12:01) vao(13:28) ra(18:05).
+  // Phien 12:01-13:28 nam TRON trong gio nghi trua 12:00-13:30 -> 0 phut ra ngoai. Ngay sach.
+  const rv = await truy_van_mot<{
+    phut_ra_ngoai: number; so_phien_ra_ngoai: number; con_trong_van_phong: boolean;
+  }>(
+    `select phut_ra_ngoai, so_phien_ra_ngoai, con_trong_van_phong
+       from ra_vao_ngay where nhan_vien_id = $1 and ngay = $2`,
+    [nhan_vien_id, NGAY],
+  );
+  assert.notEqual(rv, null, 'phai co dong ra_vao_ngay sau khi tinh cong');
+  assert.equal(rv!.phut_ra_ngoai, 0, 'phien nam tron trong gio nghi -> 0 phut ra ngoai');
+  assert.equal(rv!.so_phien_ra_ngoai, 1);
+  assert.equal(rv!.con_trong_van_phong, false);
+  const cb = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from canh_bao_ra_vao where nhan_vien_id = $1 and ngay = $2`,
+    [nhan_vien_id, NGAY],
+  );
+  assert.equal(cb!.so, 0, 'ngay sach -> khong canh bao mau thuan ra/vao');
 });
 
 // Firmware PUSH kiem soat ra vao day cham cong bang table=rtlog. Truoc khi ho tro, nhanh

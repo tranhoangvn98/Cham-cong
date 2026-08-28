@@ -2,6 +2,42 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.54.0] — 2026-08-28
+
+**Giai đoạn 2: sửa chiều hai cổng (tên đặt ngược), lọc bấm-đúp, và nối suy luận ra/vào vào
+`tinh_lai_ngay` — GHI đo lường + cảnh báo, KHÔNG trừ công (Phương án A).**
+
+### Chẩn đoán thực địa: tên máy bị đảo
+
+Chạy `trien_khai/kiem_chieu_ra_vao{,_2}.sql` trên dữ liệu thật:
+
+- Hai đầu đọc **có tính chiều thật** — khoảng cách giữa hai lần quẹt khác máy trải đều (43,6%
+  trên 30 phút), không dồn ở "dưới 1 phút" ⇒ không phải đi qua cả hai trong một bước chân.
+- **Tên máy bị ĐẢO:** 83,5% ngày-người có lần quẹt đầu ngày ở máy tên "Cổng ra" — người ta đi
+  làm buổi sáng bằng cách quẹt "Cổng ra". Chủ công ty xác nhận trực tiếp.
+- **Bấm-đúp nhiều:** 7.743 cặp cùng máy cách nhau ≤ 3 giây. Sau khi lọc (cửa sổ 120 giây), tỉ lệ
+  cùng-máy-liên-tiếp tụt từ 47% còn **21,4%** (< ngưỡng 30% của kế hoạch), và 83,5% ngày đọc
+  thành "vào…ra" lành mạnh.
+
+### Khai chiều theo serial, không theo tên — di trú `030_chieu_ra_vao.sql`
+
+Thêm cột `thiet_bi.chieu` (`vao`/`ra`/`hai_chieu`, mặc định `hai_chieu`). **Không** suy chiều từ
+tên máy (tên có thể đặt ngược); gán thẳng theo serial: `8116254600440` → `vao`,
+`8116254600435` → `ra`. Thêm hai bảng `ra_vao_ngay` (đo lường một ngày-người) và
+`canh_bao_ra_vao` (cảnh báo mâu thuẫn cho dashboard HR).
+
+### Lọc bấm-đúp — `ra_vao.ts` thêm `loc_bam_dup`
+
+Bỏ lần quẹt nếu lần liền trước **cùng máy** và trong 120 giây — chỉ gộp cùng máy, ra rồi vào lại
+(khác máy) trong vài giây là thật, giữ nguyên. Nhân bản đúng phép `lag()` đã kiểm chứng trong SQL.
+
+### Nối vào `tinh_lai_ngay` — chỉ ĐO, không trừ công
+
+Sau khi ghi `bang_cong_ngay`, tính song song ra/vào và ghi `ra_vao_ngay` + `canh_bao_ra_vao`.
+Tách khỏi giao dịch tính công và bọc `try/catch` — một lỗi ở đây **không được** làm hỏng bảng
+công đã ghi. `phut_ra_ngoai` chỉ để đo, **không** trừ vào `phut_lam`/`so_cong`. Kèm 6 kiểm thử
+`loc_bam_dup` và một khẳng định e2e (ngày sạch → có `ra_vao_ngay`, 0 cảnh báo).
+
 ## [1.53.0] — 2026-08-28
 
 **Giai đoạn 1 của kế hoạch bổ sung: hai hàm thuần suy ra CHIỀU (vào/ra) và chạy máy trạng
