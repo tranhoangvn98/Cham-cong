@@ -317,3 +317,45 @@ test('gop: khac dau nhung cung ten thi VAN gop', () => {
   const g = gop_nguoi_trung([dong_o('A', 'Nguyễn Thuý Hằng'), dong_o('B', 'Nguyễn Thúy Hằng')]);
   assert.equal(g.length, 1);
 });
+
+// ---------------------------------------------------------------- hai dong tranh mot ho so
+//
+// Loi that, phat hien khi chay tren CSDL that: tep co HAI chi "Tran Minh Anh" (mot KS dang lam,
+// mot XNK da nghi) nhung he thong moi co MOT ho so ERP150. Ca hai dong cung tro ve ERP150, va
+// dong thu hai mang co "da nghi" da danh dau nghi viec cho nguoi DANG DI LAM.
+
+test('hai dong cua tep cung nhan mot ho so thi KHONG ghi dong nao', () => {
+  const kq = doi_chieu(
+    [dong('Trần Minh Anh', true), dong('Trần Minh Anh', false)],
+    [ho_so('1', 'ERP150', 'Trần Minh Anh', { quet_cuoi: '2026-08-28' })]);
+  assert.equal(kq.cap_nhat.length, 0);
+  assert.equal(kq.hai_dong_mot_ho_so.length, 1);
+  assert.equal(kq.hai_dong_mot_ho_so[0]?.ho_so.ma_nv, 'ERP150');
+  assert.equal(kq.hai_dong_mot_ho_so[0]?.cac_dong.length, 2);
+});
+
+test('hai dong tranh mot ho so: KHONG duoc tat hoat dong nguoi do', () => {
+  // Day chinh la thiet hai that: nguoi dang di lam bi danh dau nghi viec.
+  const kq = doi_chieu(
+    [dong('Trần Minh Anh', true), dong('Trần Minh Anh', false)],
+    [ho_so('1', 'ERP150', 'Trần Minh Anh', { quet_cuoi: '2026-08-28' })]);
+  assert.equal(kq.se_tat.length, 0);
+});
+
+test('hai dong tranh mot ho so cung bi loai khoi nhom khop gan dung', () => {
+  const kq = doi_chieu(
+    [dong('Đào Thanh Bình', true), dong('Đào Thanh Bình', false)],
+    [ho_so('1', 'ERP112', 'Thanh Bình Đào')]);
+  assert.equal(kq.khop_gan_dung.length, 0);
+  assert.equal(kq.cap_nhat.length, 0);
+  assert.equal(kq.hai_dong_mot_ho_so.length, 1);
+});
+
+test('MOT dong cho MOT ho so thi khong bi coi la tranh nhau', () => {
+  const kq = doi_chieu(
+    [dong('Trần Minh Anh', false)],
+    [ho_so('1', 'ERP150', 'Trần Minh Anh', { quet_cuoi: '2026-08-28' })]);
+  assert.equal(kq.hai_dong_mot_ho_so.length, 0);
+  assert.equal(kq.cap_nhat.length, 1);
+  assert.equal(kq.se_tat.length, 1);
+});

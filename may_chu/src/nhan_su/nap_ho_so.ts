@@ -41,6 +41,8 @@ export interface KetQuaDoiChieu {
   nghi_cung_nguoi: CapDoiChieu[];
   /** Da cap nhat, nhung khop nho bo dau / dao thu tu tu — in ra de nguoi soat lai. */
   khop_gan_dung: { dong: DongNhanSu; ho_so: HoSoHienCo }[];
+  /** HAI dong khac nhau cua tep cung tro ve MOT ho so — khong dong nao duoc ghi. */
+  hai_dong_mot_ho_so: { ho_so: HoSoHienCo; cac_dong: DongNhanSu[] }[];
   /** Tep noi da nghi nhung KHONG co ngay nghi; ngay lay tu lan quet cuoi. */
   se_tat: { dong: DongNhanSu; ho_so: HoSoHienCo; ngay_nghi: string | null }[];
   /** Nguoi trong he thong ma tep khong nhac den. */
@@ -127,8 +129,40 @@ export function doi_chieu(dong: DongNhanSu[], ho_so: HoSoHienCo[]): KetQuaDoiChi
     }
   }
 
+  // ---- Chieu nguoc lai: mot HO SO bi NHIEU DONG cua tep cung nhan.
+  //
+  // Vong tren chi chan duoc chieu "mot dong khop nhieu ho so". Chieu nguoc lai van lot, va no
+  // da gay ra loi that: tep co HAI chi "Tran Minh Anh" (KS dang lam, XNK da nghi) nhung CSDL
+  // moi co MOT ho so, nen ca hai dong cung tro ve ERP150 — dong thu hai mang co "da nghi" va
+  // danh dau nghi viec cho nguoi DANG DI LAM.
+  //
+  // Khi hai dong tranh mot ho so thi KHONG ghi dong nao. Dong nao dung la cau hoi khong tra loi
+  // duoc tu tep — dong nao cung co ve hop le — nen doan la cam chac 50% sai.
+  const dem = new Map<string, CapDoiChieu[]>();
+  for (const c of cap_nhat) {
+    if (c.ho_so === null) continue;
+    dem.set(c.ho_so.id, [...(dem.get(c.ho_so.id) ?? []), c]);
+  }
+  const hai_dong_mot_ho_so: KetQuaDoiChieu['hai_dong_mot_ho_so'] = [];
+  const id_tranh_nhau = new Set<string>();
+  for (const [id, ds] of dem) {
+    if (ds.length < 2) continue;
+    id_tranh_nhau.add(id);
+    hai_dong_mot_ho_so.push({
+      ho_so: ds[0]?.ho_so as HoSoHienCo, cac_dong: ds.map((c) => c.dong),
+    });
+  }
+
+  const bi_tranh = (h: HoSoHienCo | null): boolean => h !== null && id_tranh_nhau.has(h.id);
+
   return {
-    cap_nhat, chua_co_ho_so, trung_ten, nghi_cung_nguoi, khop_gan_dung, se_tat,
+    cap_nhat: cap_nhat.filter((c) => !bi_tranh(c.ho_so)),
+    chua_co_ho_so,
+    trung_ten,
+    nghi_cung_nguoi,
+    khop_gan_dung: khop_gan_dung.filter((k) => !bi_tranh(k.ho_so)),
+    se_tat: se_tat.filter((t) => !bi_tranh(t.ho_so)),
+    hai_dong_mot_ho_so,
     khong_co_trong_tep: ho_so.filter((h) => !da_cham.has(h.id)),
   };
 }

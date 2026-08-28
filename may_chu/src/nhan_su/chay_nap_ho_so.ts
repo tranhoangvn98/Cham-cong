@@ -91,6 +91,19 @@ try {
       }
     }
 
+    if (kq.hai_dong_mot_ho_so.length > 0) {
+      console.log(`\n=== 1d. HAI DÒNG CÙNG NHẬN MỘT HỒ SƠ — ${String(kq.hai_dong_mot_ho_so.length)} hồ sơ, KHÔNG cập nhật ===`);
+      console.log('    Tệp có nhiều người trùng tên nhưng hệ thống mới có một hồ sơ. Dòng nào');
+      console.log('    đúng thì tệp không trả lời được, nên không ghi dòng nào. Lập hồ sơ cho');
+      console.log('    (những) người còn thiếu rồi chạy lại.');
+      for (const v of kq.hai_dong_mot_ho_so) {
+        console.log(`  ${v.ho_so.ma_nv} "${v.ho_so.ho_ten}" bị ${String(v.cac_dong.length)} dòng cùng nhận:`);
+        for (const d of v.cac_dong) {
+          console.log(`      ${(d.phong_ban ?? '—').padEnd(6)} ${(d.chuc_danh ?? '—').padEnd(12)} vào ${d.ngay_vao ?? '—'}  ${d.con_lam_viec === false ? 'ĐÃ NGHỈ' : 'đang làm'}  [${d.sheet} dòng ${String(d.dong_so)}]`);
+        }
+      }
+    }
+
     console.log(`\n=== 2. TẮT HOẠT ĐỘNG — ${String(kq.se_tat.length)} người ===`);
     console.log('    Tệp ghi "Đã nghỉ việc" nhưng KHÔNG có cột ngày nghỉ. Ngày dưới đây lấy từ');
     console.log('    lần quẹt thẻ cuối cùng — nếu ai nghỉ mà không quẹt ngày cuối thì sẽ lệch.');
