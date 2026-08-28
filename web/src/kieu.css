@@ -208,6 +208,14 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
 .luoi-3 { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 .luoi-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 
+/* Bang dieu khien (dashboard nhan su). Noi rong vung noi dung de dung het chieu ngang man
+   hinh lon (2K/4K); cac trang khac van gioi han 1280px cho de doc. Cac khoi xep doc, khoang
+   cach do `gap` lo — nen bo margin duoi cua tung `.the` de khong cong doi khoang. */
+.noi-dung:has(> .bang-dieu-khien) { max-width: 2040px; }
+.bang-dieu-khien { display: flex; flex-direction: column; gap: 16px; align-items: stretch; }
+.bang-dieu-khien .the { margin-bottom: 0; }
+.bang-dieu-khien .luoi-2 { align-items: start; }
+
 .o-so {
   background: var(--nen-the);
   border: 1px solid var(--vien);

@@ -355,6 +355,103 @@ export async function viec_cua_nhan_su(): Promise<ViecNhanSu> {
   };
 }
 
+// ---------------------------------------------------------------- lop 3c: ra/vao van phong (HR)
+
+export interface CanhBaoRaVaoDong {
+  id: string;
+  nhan_vien_id: string;
+  ma_nv: string;
+  ho_ten: string;
+  phong_ban: string | null;
+  ma_loi: string;
+  /** Moc ISO (timestamptz) — giao dien tu doi ve gio may cham cong. */
+  thoi_diem: string;
+  mo_ta: string;
+}
+
+export interface RaNgoaiDong {
+  nhan_vien_id: string;
+  ma_nv: string;
+  ho_ten: string;
+  phong_ban: string | null;
+  phut_ra_ngoai: number;
+  so_phien: number;
+}
+
+export interface RaVaoHR {
+  /** Dang trong van phong ngay LUC NAY (chua quet ra tinh toi thoi diem tinh gan nhat). */
+  dang_trong: number;
+  /** Ve som hom nay (co phut_ve_som > 0). */
+  ve_som: number;
+  /** Tong phut ra ngoai trong gio lam hom nay (da tru phan trum gio nghi trua). */
+  tong_phut_ra_ngoai: number;
+  so_nguoi_ra_ngoai: number;
+  /** Dem canh bao mau thuan theo tung ma loi, cho cac o tong quan. */
+  canh_bao_theo_loai: { ma_loi: string; so: number }[];
+  /** Danh sach dich danh canh bao hom nay (gioi han de trang khong dai vo ke). */
+  canh_bao: CanhBaoRaVaoDong[];
+  /** Ra ngoai nhieu nhat hom nay. */
+  ra_ngoai_nhieu: RaNgoaiDong[];
+}
+
+/**
+ * Tinh hinh ra/vao van phong hom nay cho nhan su. Doc tu `ra_vao_ngay` + `canh_bao_ra_vao`
+ * (do `tinh_lai_ngay` ghi song song moi lan tinh cong) va `bang_cong_ngay` (ve som).
+ *
+ * Chi tra khi nguoi xem la nhan su — gan o `dashboard_cho`, giong cac lop cong ty / nhan su.
+ */
+export async function ra_vao_hr(hom_nay: string): Promise<RaVaoHR> {
+  const [tong, ve_som, theo_loai, canh_bao, ra_ngoai] = await Promise.all([
+    truy_van_mot<{ dang_trong: number; tong_phut_ra_ngoai: number; so_nguoi_ra_ngoai: number }>(
+      `select count(*) filter (where con_trong_van_phong)::int as dang_trong,
+              coalesce(sum(phut_ra_ngoai), 0)::int             as tong_phut_ra_ngoai,
+              count(*) filter (where phut_ra_ngoai > 0)::int   as so_nguoi_ra_ngoai
+         from ra_vao_ngay where ngay = $1`,
+      [hom_nay],
+    ),
+    truy_van_mot<{ so: number }>(
+      `select count(*) filter (where phut_ve_som > 0)::int as so
+         from bang_cong_ngay where ngay = $1`,
+      [hom_nay],
+    ),
+    truy_van<{ ma_loi: string; so: number }>(
+      `select ma_loi, count(*)::int as so
+         from canh_bao_ra_vao where ngay = $1 group by ma_loi`,
+      [hom_nay],
+    ),
+    truy_van<CanhBaoRaVaoDong>(
+      `select cb.id, cb.nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+              cb.ma_loi, cb.thoi_diem, cb.mo_ta
+         from canh_bao_ra_vao cb
+         join nhan_vien nv on nv.id = cb.nhan_vien_id
+         left join phong_ban pb on pb.id = nv.phong_ban_id
+        where cb.ngay = $1
+        order by cb.thoi_diem limit 50`,
+      [hom_nay],
+    ),
+    truy_van<RaNgoaiDong>(
+      `select rv.nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+              rv.phut_ra_ngoai, rv.so_phien_ra_ngoai as so_phien
+         from ra_vao_ngay rv
+         join nhan_vien nv on nv.id = rv.nhan_vien_id
+         left join phong_ban pb on pb.id = nv.phong_ban_id
+        where rv.ngay = $1 and rv.phut_ra_ngoai > 0
+        order by rv.phut_ra_ngoai desc limit 10`,
+      [hom_nay],
+    ),
+  ]);
+
+  return {
+    dang_trong: tong?.dang_trong ?? 0,
+    ve_som: ve_som?.so ?? 0,
+    tong_phut_ra_ngoai: tong?.tong_phut_ra_ngoai ?? 0,
+    so_nguoi_ra_ngoai: tong?.so_nguoi_ra_ngoai ?? 0,
+    canh_bao_theo_loai: theo_loai,
+    canh_bao,
+    ra_ngoai_nhieu: ra_ngoai,
+  };
+}
+
 // ---------------------------------------------------------------- lop 4: he thong
 
 export interface HeThong {
@@ -392,6 +489,7 @@ export interface Dashboard {
   toi: CongCuaToi | null;
   phong: PhongCuaToi | null;
   cong_ty: CongTy | null;
+  ra_vao: RaVaoHR | null;
   nhan_su: ViecNhanSu | null;
   he_thong: HeThong | null;
 }
@@ -419,8 +517,9 @@ export async function dashboard_cho(
     : null;
 
   const cong_ty = la_nhan_su ? await toan_cong_ty(hom_nay) : null;
+  const ra_vao = la_nhan_su ? await ra_vao_hr(hom_nay) : null;
   const nhan_su = la_nhan_su ? await viec_cua_nhan_su() : null;
   const he_thong = la_admin ? await tinh_trang_he_thong() : null;
 
-  return { ngay: hom_nay, vai_tro: nd.vai_tro, toi, phong, cong_ty, nhan_su, he_thong };
+  return { ngay: hom_nay, vai_tro: nd.vai_tro, toi, phong, cong_ty, ra_vao, nhan_su, he_thong };
 }

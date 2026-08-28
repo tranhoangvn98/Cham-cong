@@ -2,6 +2,28 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.55.0] — 2026-08-28
+
+**Làm lại Dashboard nhân sự: lấy tình hình ra/vào văn phòng làm trọng tâm, bố cục nhiều cột
+dùng hết chiều ngang màn hình lớn (2K).**
+
+### Lớp `ra_vao` cho `/api/dashboard` (chỉ nhân sự)
+
+Mở rộng payload `dashboard_cho` thêm lớp `ra_vao` — gated `la_vai_tro_nhan_su` như các lớp
+`cong_ty`/`nhan_su`, dữ liệu **không lấy** cho vai trò không được phép (chặn rò rỉ ở tầng máy
+chủ, không phải ẩn ở giao diện). Đọc từ `ra_vao_ngay` + `canh_bao_ra_vao` (v1.54.0 đã ghi) +
+`bang_cong_ngay`: đang trong văn phòng, về sớm, tổng phút ra ngoài, số người ra ngoài, đếm cảnh
+báo theo loại, danh sách cảnh báo dịch danh (join phòng ban) và top ra ngoài nhiều nhất.
+
+### Bố cục bảng điều khiển cho màn 2K — `dashboard.tsx`
+
+Với người xem là nhân sự, trang chuyển sang bố cục `bang-dieu-khien`: hàng tổng quan (gộp chấm
+công + ra/vào), **khối cảnh báo ra/vào** làm trọng tâm (bảng dịch danh, nhãn mức độ, liên kết
+tới hồ sơ), rồi hai cột "ra ngoài nhiều nhất | đi muộn" và "biểu đồ 7 ngày | chờ duyệt", cuối
+cùng là việc nhân sự / hệ thống / của tôi. Vùng nội dung nới rộng tới 2040px **chỉ cho trang
+này** (`.noi-dung:has(> .bang-dieu-khien)`) — các trang khác vẫn giới hạn 1280px cho dễ đọc.
+Vai trò nhân viên / trưởng phòng giữ bố cục xếp dọc như cũ.
+
 ## [1.54.0] — 2026-08-28
 
 **Giai đoạn 2: sửa chiều hai cổng (tên đặt ngược), lọc bấm-đúp, và nối suy luận ra/vào vào
