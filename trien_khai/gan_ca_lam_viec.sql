@@ -154,9 +154,7 @@ with ngay_nguoi as (
 select case when phut_lam >= 480 then '1,0 cong' when phut_lam >= 240 then '0,5 cong'
             else '0 cong' end as nguong_cu_480,
        count(*) as so_ngay_nguoi,
-       round(100.0 * count(*) / sum(count(*)) over (), 1) as phan_tram,
-       (select case when max(phut_lam) >= ts.phut_du_cong_moi then '1,0 cong' end
-          from tham_so ts limit 1) as _
+       round(100.0 * count(*) / sum(count(*)) over (), 1) as phan_tram
   from lam group by 1 order by 1 desc;
 
 \echo ''
@@ -256,9 +254,11 @@ select trang_thai, count(*) as so_dong from bang_cong_ngay group by 1 order by c
 
 \echo ''
 \echo '################################################################'
-\echo '#  DANG LA ROLLBACK — CHUA GHI GI CA.'
-\echo '#  Doc hai dong NOTICE ve gio trung vi, va hai bang MO PHONG so cong.'
-\echo '#  Dung roi thi doi dong cuoi thanh  commit;  va chay lai.'
+\echo '#  GHI HAY KHONG LA DO DONG CUOI CUNG CUA FILE NAY:'
+\echo '#     rollback;   -> chay thu, khong ghi gi ca'
+\echo '#     commit;     -> ghi that'
+\echo '#  Truoc khi doi sang commit: doc hai dong NOTICE ve gio trung vi, va hai bang'
+\echo '#  MO PHONG so cong o tren.'
 \echo '#'
 \echo '#  SAU KHI COMMIT moi bam "Tinh lai bang cong" — chia hai lan vi moi lan toi da'
 \echo '#  92 ngay: 03/04-30/06 va 01/07-27/08.'
