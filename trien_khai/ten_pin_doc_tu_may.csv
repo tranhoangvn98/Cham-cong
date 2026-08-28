@@ -21,4 +21,6 @@ pin,ten_tren_may,tu_ngay,den_ngay,so_ngay_quet,so_lan_quet,trang_thai
 53,giang it,2026-06-01,2026-06-29,21,201,đã nghỉ trước khi lập sổ
 34,Sếp (chính chủ xác nhận: Trần Đức Hoàng),2026-04-13,,72,,đang làm — khai ở khai_pin_con_lai.sql
 43,Thân Thị Vân Anh,2026-05-12,,13,,đang làm — đóng ở kho Trung Quốc, thỉnh thoảng qua VP Hà Nội; một người một dòng mở; chưa có hồ sơ
-1,(HR không xác định được; không phải vân tay admin),2026-04-03,2026-08-27,2,13,chưa giải được
+1,(không phải người đi làm — vân tay thử lúc đăng ký),2026-04-03,2026-08-27,2,13,ĐÃ GIẢI: 12 lần quẹt dồn trong 40 phút chiều 03/04 rồi im 146 ngày. Chủ công ty duyệt xoá khỏi máy.
+23,Trần Thị Minh Khánh,2026-04-03,,115,,đang làm — hồ sơ ERP84 ghi "Trần Minh Khánh" (thiếu chữ đệm); chủ công ty xác nhận MỘT người
+63,Nguyễn Thị Hoàng Anh,2026-08-06,,19,,đang làm — hồ sơ ERP156 ghi "Nguyễn Hoàng Anh" (thiếu chữ đệm); chủ công ty xác nhận MỘT người
