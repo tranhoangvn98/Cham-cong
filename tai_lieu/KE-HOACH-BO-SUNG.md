@@ -100,6 +100,26 @@ export function chieu_quet(chieu_may: string, status: number): Chieu {
 Chiều là **suy ra lúc tính**, không ghi đè vào `lan_quet` (bảng đó append-only theo
 `CLAUDE.md`). Đổi `thiet_bi.chieu` rồi bấm "Tính lại tháng" là ra kết quả mới.
 
+### 1.2b Quy tắc trạng thái — chủ công ty chốt 28.08
+
+Máy trạng thái chỉ đổi trạng thái **khi có log**. Không log thì trạng thái **giữ nguyên**. Ba
+hệ quả, cả ba đều là ý chủ công ty muốn:
+
+- **Trưa ở lại trong văn phòng, không quẹt** → không có log → vẫn TRONG. **Không cảnh báo.**
+  Đây là ca phổ biến nhất, và nó *không* sinh báo giả vì đơn giản không có sự kiện nào.
+- **Đang TRONG mà lại có log VÀO** (hoặc đang NGOÀI mà lại có log RA) → mâu thuẫn → cảnh báo
+  `VAO_KHI_DANG_TRONG` / `RA_KHI_DANG_NGOAI`. Đây là bằng chứng có một lần ra/vào **không quẹt**.
+- Không đoán giờ còn thiếu (mục 2.3): biết có lần không quẹt, nhưng không biết lúc mấy giờ, nên
+  chỉ ghi cảnh báo, không cộng/trừ phút — bịa số là bịa vào bảng lương.
+
+**Nỗi lo "báo giả hàng loạt" chỉ áp cho máy `khong_ro`** (máy đẩy Status=0 cho mọi lần, phải suy
+đoán chiều). Với máy đó, một lượt về sau giờ trưa *trông giống* log-vào-khi-đang-trong dù người ta
+không làm gì sai — nên máy đó **đảo trạng thái** thay vì cảnh báo. Với hai máy "cổng vào / cổng ra"
+thật (chiều lấy từ **máy nào**, không từ Status), vấn đề này không tồn tại: log ở "Cổng vào" luôn
+là vào, và cảnh báo mâu thuẫn là cảnh báo thật.
+
+`kiem_chieu_ra_vao.sql` (mục 8, giai đoạn 0) là thứ quyết định hai máy của công ty thuộc loại nào.
+
 ---
 
 ## 2. Yêu cầu 1 + 2 + 4: máy trạng thái ra/vào trong ngày
