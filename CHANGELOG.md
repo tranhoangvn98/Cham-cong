@@ -93,9 +93,25 @@ OT); 11 bài mới, trong đó:
 
 `thiet_ke/*.test.mjs`: **30 bài, xanh hết** sau khi bỏ ô nhập ngưỡng OT.
 
-**Nói thẳng một giới hạn:** toàn bộ 572+417 bài đơn vị và e2e **chưa chạy lại sạch** cho bản này —
-`node_modules` trên máy triển khai đang thiếu `pg` và `@fastify/swagger`, và bộ kiểm SharePoint gọi
-thẳng Microsoft Graph bằng khoá thật. Hai việc đó cần sửa riêng, không gộp vào đây.
+Toàn bộ: **584 + 5** đơn vị, **418** e2e, **30** thiết kế — tất cả xanh. `tsc` sạch ở cả `may_chu`
+và `web`.
+
+**Hai bài e2e đỏ vì đúng lý do**, và cả hai đều mã hoá luật cũ:
+
+- *"máy đẩy ATTLOG → tính luôn bảng công"* khẳng định ra 18:05 thì sinh 65 phút OT.
+- *"thêm ngày lễ"* khẳng định đi làm ngày lễ thì **toàn bộ 517 phút** có mặt thành OT.
+
+Cả hai nay khẳng định `phut_ot = 0` **kèm ghi chú**, đúng như luật mới.
+
+**Một bài e2e mới** đi hết đường sinh OT qua CSDL thật: chèn một đơn `lam_them` đã duyệt
+17:00–18:00, tính lại, và OT ra đúng 60 phút — phần giao với giờ có mặt — trong khi `phut_lam`
+không đổi. Bài này phủ câu `select don_tu` ở `tinh_cong.ts`, thứ mà bài kiểm đơn vị (chạy trên dữ
+liệu dựng sẵn) không chạm tới. **Đã chứng minh nó bắt được lỗi thật**: đổi `da_duyet` thành
+`cho_duyet` trong câu truy vấn đó làm bài này đỏ.
+
+Ghi lại một chỗ tôi đã kết luận sai giữa chừng: 12 bài báo đỏ lúc đầu, tôi ghi nguyên nhân là
+thiếu gói `pg` / `@fastify/swagger`. Nguyên nhân thật là **chưa đặt biến môi trường**
+(`JWT_SECRET`, `DATABASE_URL`…) — `cau_hinh.ts` dừng ngay lúc nạp module. Không có gói nào thiếu.
 
 ## [1.51.0] — 2026-08-22
 

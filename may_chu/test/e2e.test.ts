@@ -505,8 +505,9 @@ test('may day ATTLOG -> luu lan quet va TINH LUON bang cong', async () => {
   // Bang cong phai duoc tinh ngay, khong cho lich chay dem.
   const bc = await truy_van_mot<{
     trang_thai: string; phut_lam: number; phut_muon: number; phut_ot: number; so_cong: number;
+    ghi_chu: string | null;
   }>(
-    `select trang_thai, phut_lam, phut_muon, phut_ot, so_cong
+    `select trang_thai, phut_lam, phut_muon, phut_ot, so_cong, ghi_chu
        from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2`,
     [nhan_vien_id, NGAY],
   );
@@ -516,8 +517,11 @@ test('may day ATTLOG -> luu lan quet va TINH LUON bang cong', async () => {
   assert.equal(bc!.phut_muon, 7);
   // Cong kep trong khung ca 08:12:03 -> 17:00 = 527p (lam tron xuong), tru 90p nghi = 437p.
   assert.equal(bc!.phut_lam, 437);
-  // Ra 18:05, sau ca 65 phut > nguong 30 -> OT 65p.
-  assert.equal(bc!.phut_ot, 65);
+  // Ra 18:05 la 65 phut sau gio tan ca, nhung KHONG co don lam them da duyet -> 0 OT.
+  // Truoc ban "OT phai dang ky" cho ra 65p: may dat o cong toa nha nen lan quet cuoi la luc
+  // ROI TOA NHA, khong phai luc ngung lam viec.
+  assert.equal(bc!.phut_ot, 0, 'khong co don lam them -> khong tu sinh OT');
+  assert.match(String(bc!.ghi_chu), /khong co don lam them da duyet/);
   assert.equal(bc!.so_cong, 1);
 });
 
@@ -675,15 +679,20 @@ test('them ngay le -> tinh lai ngay do thanh nghi le', async () => {
   });
   assert.equal(r.ma, 201);
 
-  const bc = await truy_van_mot<{ trang_thai: string; so_cong: number; phut_ot: number }>(
-    'select trang_thai, so_cong, phut_ot from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+  const bc = await truy_van_mot<{
+    trang_thai: string; so_cong: number; phut_ot: number; ghi_chu: string | null;
+  }>(
+    `select trang_thai, so_cong, phut_ot, ghi_chu
+       from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2`,
     [nhan_vien_id, NGAY],
   );
   assert.equal(bc?.trang_thai, 'ngay_le');
   assert.equal(bc?.so_cong, 1);
-  // Ngay le khong co gio chuan de kep: tinh TOAN BO thoi gian co mat, ke ca truoc dau ca.
-  // 07:58:11 -> 18:05:20 = 607 phut, tru 90 phut nghi trua = 517.
-  assert.equal(bc?.phut_ot, 517, 'lam viec ngay le -> toan bo thoi gian co mat tinh OT');
+  // Truoc ban "OT phai dang ky", ngay le tinh TOAN BO thoi gian co mat vao OT (o day la 517
+  // phut). Nay khong: di lam ngay le ma khong co don lam them da duyet thi 0 OT — nhung co
+  // ghi chu de nhan su nhin thay va hoi lai, chu khong im lang.
+  assert.equal(bc?.phut_ot, 0, 'ngay le khong co don lam them -> 0 OT');
+  assert.match(String(bc?.ghi_chu), /khong co don lam them da duyet/);
 });
 
 test('xoa ngay le -> ngay do tro lai co_mat', async () => {
@@ -694,6 +703,54 @@ test('xoa ngay le -> ngay do tro lai co_mat', async () => {
     [nhan_vien_id, NGAY],
   );
   assert.equal(bc?.trang_thai, 'co_mat');
+});
+
+// Duong duy nhat sinh ra OT sau ban "OT phai dang ky": mot don `lam_them` da duyet. Bai nay
+// di het duong do qua CSDL that — `tinh_cong.ts` doc bang `don_tu`, thu ma bai kiem don vi
+// (chay tren du lieu dung san) khong cham toi.
+test('OT: co don lam them DA DUYET thi bang cong tinh dung phan da dang ky', async () => {
+  // Chup gio cong TRUOC khi co don, de kiem dieu can kiem: don lam them chi doi `phut_ot`.
+  // Khong dong cung con so o day — cac bai truoc trong tep nay co sua gio vao/ra cua ngay nay.
+  const truoc = await truy_van_mot<{ phut_lam: number; phut_ot: number }>(
+    'select phut_lam, phut_ot from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+    [nhan_vien_id, NGAY],
+  );
+  assert.equal(truoc?.phut_ot, 0, 'chua co don thi phai dang 0 OT');
+
+  // 17:00 la gio tan ca, lan quet cuoi la 18:05 -> giao cua hai khoang la dung 60 phut.
+  const don = await truy_van_mot<{ id: string }>(
+    `insert into don_tu (nhan_vien_id, loai, tu_ngay, gio_bat_dau, gio_ket_thuc, ly_do,
+                         trang_thai, quyet_luc)
+     values ($1, 'lam_them', $2, '17:00', '18:00', 'Chot so lieu', 'da_duyet', now())
+     returning id`,
+    [nhan_vien_id, NGAY],
+  );
+  assert.notEqual(don, null);
+
+  await goi('POST', '/api/bang-cong/tinh-lai', {
+    token: token_admin, body: { tu: NGAY, den: NGAY, nhan_vien_id },
+  });
+
+  const bc = await truy_van_mot<{ phut_ot: number; phut_lam: number; ghi_chu: string | null }>(
+    `select phut_ot, phut_lam, ghi_chu
+       from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2`,
+    [nhan_vien_id, NGAY],
+  );
+  assert.equal(bc?.phut_ot, 60, 'OT = giao cua gio co mat va gio trong don');
+  // Gio cong khong bi don lam them dong vao: chi `phut_ot` doi.
+  assert.equal(bc?.phut_lam, truoc?.phut_lam, 'don lam them khong duoc lam doi gio cong');
+  assert.doesNotMatch(String(bc?.ghi_chu ?? ''), /khong co don lam them da duyet/);
+
+  // Tra ngay nay ve trang thai cu de cac bai sau khong bi anh huong.
+  await thuc_thi('delete from don_tu where id = $1', [don!.id]);
+  await goi('POST', '/api/bang-cong/tinh-lai', {
+    token: token_admin, body: { tu: NGAY, den: NGAY, nhan_vien_id },
+  });
+  const sau = await truy_van_mot<{ phut_ot: number }>(
+    'select phut_ot from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+    [nhan_vien_id, NGAY],
+  );
+  assert.equal(sau?.phut_ot, 0);
 });
 
 // ============================================================ APP DIEN THOAI
