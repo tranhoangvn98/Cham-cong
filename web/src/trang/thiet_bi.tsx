@@ -34,6 +34,7 @@ export function TrangThietBi(): ReactNode {
   const [xem_lenh, dat_xem_lenh] = useState<ThietBi | null>(null);
   const [lay_log_cho, dat_lay_log_cho] = useState<ThietBi | null>(null);
   const [nap_nv_cho, dat_nap_nv_cho] = useState<ThietBi | null>(null);
+  const [xoa_nv_cho, dat_xoa_nv_cho] = useState<ThietBi | null>(null);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
 
@@ -151,6 +152,10 @@ export function TrangThietBi(): ReactNode {
                             title="Nạp một nhân viên xuống máy">
                             Nạp NV
                           </button>
+                          <button className="nut-nho" onClick={() => dat_xoa_nv_cho(tb)}
+                            title="Xoá một PIN khỏi máy — kèm cả vân tay / khuôn mặt đã đăng ký">
+                            Xoá NV
+                          </button>
                           <button className="nut-nho"
                             onClick={() => lenh_may(tb.serial, 'dong-bo-gio',
                               'Đã xếp lệnh đồng bộ giờ. Máy sẽ nhận ở lần kết nối kế tiếp.')}
@@ -212,6 +217,14 @@ export function TrangThietBi(): ReactNode {
           khi_xong={() => { dat_nap_nv_cho(null); nap_lai(); }}
         />
       )}
+      {xoa_nv_cho !== null && (
+        <XoaNhanVienKhoiMay
+          thiet_bi={xoa_nv_cho}
+          khi_dong={() => dat_xoa_nv_cho(null)}
+          khi_xong={() => { dat_xoa_nv_cho(null); nap_lai(); }}
+        />
+      )}
+
       {xn.hop_thoai}
     </>
   );
@@ -418,6 +431,70 @@ function NapNhanVien(
               || (pin_dang_co.length > 1 && pin === '')}
           >
             {hd.dang_chay ? 'Đang xếp lệnh…' : 'Nạp xuống máy'}
+          </button>
+          <button type="button" onClick={khi_dong}>Hủy</button>
+        </div>
+      </form>
+    </HopThoai>
+  );
+}
+
+/**
+ * Xoa mot PIN khoi may cham cong.
+ *
+ * ADMS xoa duoc tu xa, KHAC voi dang ky: `DATA DELETE USERINFO PIN=...` go ca user lan van tay
+ * / khuon mat da luu tren may. Chieu nguoc lai thi khong — sinh trac hoc phai dang ky truc tiep
+ * tai may.
+ *
+ * KHONG dung danh sach nhan vien de chon nhu form "Nap NV": cai can xoa thuong la PIN KHONG
+ * thuoc ai — van tay thu luc dang ky, hay nguoi da nghi tu truoc khi lap so. Nen o day nhap
+ * thang so PIN.
+ */
+function XoaNhanVienKhoiMay(
+  { thiet_bi, khi_dong, khi_xong }:
+  { thiet_bi: ThietBi; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [pin, dat_pin] = useState('');
+  const hd = dung_hanh_dong();
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    const ok = await hd.chay(() => goi(
+      `/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/nhan-vien/${encodeURIComponent(pin.trim())}`,
+      { method: 'DELETE' },
+    ));
+    if (ok) khi_xong();
+  };
+
+  return (
+    <HopThoai tieu_de={`Xoá PIN khỏi ${thiet_bi.ten}`} khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+
+        <div className="hop-thong-bao hop-luu-y">
+          Lệnh này xoá user khỏi <strong>chính máy này</strong>, kèm vân tay và khuôn mặt đã đăng
+          ký trên đó. Không lấy lại được — người đó phải ra máy đăng ký lại từ đầu.
+        </div>
+
+        <div className="hop-thong-bao hop-tin">
+          Số PIN do <strong>từng máy</strong> cấp. Nếu công ty có nhiều máy dùng chung một hệ
+          đánh số thì phải xoá trên <strong>từng máy một</strong>; xoá ở đây không đụng tới máy khác.
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="pinxoa">Số PIN cần xoá *</label>
+          <input id="pinxoa" value={pin} onChange={(e) => dat_pin(e.target.value)}
+            required maxLength={32} autoComplete="off" />
+          <div className="goi-y">
+            Lần quẹt cũ của PIN này <strong>vẫn nằm nguyên</strong> trong hệ thống — xoá trên máy
+            chỉ chặn quẹt mới, không xoá lịch sử chấm công.
+          </div>
+        </div>
+
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh nut-nguy"
+            disabled={hd.dang_chay || pin.trim() === ''}>
+            {hd.dang_chay ? 'Đang xếp lệnh…' : 'Xoá khỏi máy'}
           </button>
           <button type="button" onClick={khi_dong}>Hủy</button>
         </div>
