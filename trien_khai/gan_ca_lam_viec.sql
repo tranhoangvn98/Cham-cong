@@ -1,12 +1,14 @@
 -- ============================================================================
--- GAN CA LAM VIEC CHO TOAN BO NHAN VIEN + KHAI KHUNG GIO RIENG CHO THU BAY
+-- GAN CA LAM VIEC CHO TOAN BO NHAN VIEN
+--   + khung gio rieng cho thu Bay
+--   + ha `phut_du_cong` cua ca tu 480 xuong 420
 --
 -- MAC DINH ROLLBACK. Doc phan KIEM TRA, dung roi thi doi dong cuoi thanh `commit;`.
 --
 -- Truoc script nay: 0 nguoi co ca (tru 3 nguoi dang gan nham ca seed 'Hanh chinh').
 -- Nhanh 6 cua `quy_tac_tinh_cong.ts` xu ly nguoi chua co ca bang cach lay min->max
 -- KHONG TRU GIO NGHI TRUA, va dung NGAY_LAM_MAC_DINH [T2..T6] — nen moi thu Bay bi xep
--- 'nghi_tuan': 0 cong, toan bo gio lam chuyen thanh OT.
+-- 'nghi_tuan': 0 cong va toan bo gio lam chuyen thanh OT.
 -- ============================================================================
 \set ON_ERROR_STOP on
 \pset pager off
@@ -16,15 +18,27 @@ begin;
 
 -- ============================================================ THAM SO — SUA O DAY
 --
--- Ba gia tri duoi day la QUYET DINH CHINH SACH, khong suy ra duoc tu log. Script co hang rao
+-- Bon gia tri duoi day la QUYET DINH CHINH SACH, khong suy ra duoc tu log. Script co hang rao
 -- doi chieu voi gio quet THUC TE va se DUNG neu lech qua 60 phut, kem theo so that de sua.
 create temp table tham_so as select
   'Hành chính (theo HĐLĐ)'::text as ten_ca,   -- ca se gan cho moi nguoi
+  420::int       as phut_du_cong_moi,         -- nguong du 1 cong cho T2-T6 (xem ghi chu duoi)
   '08:00'::time  as t7_gio_vao,               -- thu Bay: gio vao
   '12:00'::time  as t7_gio_ra,                -- thu Bay: gio ra
-  480::int       as t7_phut_du_cong,          -- 480 => lam 240 phut ra 0,5 cong
-                                              --    240 => lam 240 phut ra 1,0 cong
+  420::int       as t7_phut_du_cong,          -- thu Bay: nguong nua cong = 210 phut
   60::int        as lech_cho_phep_phut;       -- nguong hang rao
+--
+-- VI SAO 420 CHU KHONG PHAI 480:
+--   Ca 08:00-17:30 nghi 12:00-13:30 => khung 570 phut, tru 90 nghi = TOI DA DUNG 480 phut.
+--   `quy_ra_cong` tra 1 cong khi phut_lam >= nguong. De nguong = 480 nghia la chi ai vao dung
+--   08:00:00 va ra dung 17:30 moi du cong; vao luc 08:06 thi phut_lam = 474 -> 0,5 cong.
+--   Dung sai di muon KHONG cuu duoc: no chi tru vao cot `phut_muon`, con `phut_lam` van kep
+--   theo gio quet that. Gio vao trung vi cua cong ty la 08:05:50.
+--
+-- VI SAO THU BAY CUNG 420:
+--   Khung T7 08:00-12:00 cho toi da 240 phut = dung nua nguong 480, nen di muon 5 phut la 235
+--   phut va ra 0 cong cho ca buoi sang. Voi 420 thi nguong nua cong la 210, con tran van la 0,5
+--   vi 240 khong bao gio cham 420.
 
 -- ============================================================ HANG RAO
 
@@ -115,7 +129,72 @@ begin
   end if;
 end $$;
 
--- ============================================================ VIEC 1: khung gio thu Bay
+-- ============================================================ MO PHONG TRUOC KHI DOI
+-- In phan bo so cong tren DU LIEU QUET THAT, voi nguong cu va nguong moi. Doc hai bang nay
+-- roi hay commit — dung tin loi ghi chu, tin con so.
+\echo ''
+\echo '--- MO PHONG so cong T2-T6: nguong CU (480) vs nguong MOI (tham so) ---'
+with ngay_nguoi as (
+  select nv.id, (lq.thoi_diem + interval '7 hours')::date as ngay,
+         min((lq.thoi_diem + interval '7 hours')::time) as dau,
+         max((lq.thoi_diem + interval '7 hours')::time) as cuoi
+    from lan_quet lq join nhan_vien nv on nv.id = lq.nhan_vien_id
+   where lq.nguon = 'may'
+     and extract(dow from (lq.thoi_diem + interval '7 hours')) between 1 and 5
+   group by 1, 2
+), lam as (
+  select greatest(0, extract(epoch from (
+             least(cuoi, time '17:30') - greatest(dau, time '08:00')))/60
+           - greatest(0, extract(epoch from (
+               least(least(cuoi, time '17:30'), time '13:30')
+             - greatest(greatest(dau, time '08:00'), time '12:00')))/60))::int as phut_lam
+    from ngay_nguoi
+   where least(cuoi, time '17:30') > greatest(dau, time '08:00')
+)
+select case when phut_lam >= 480 then '1,0 cong' when phut_lam >= 240 then '0,5 cong'
+            else '0 cong' end as nguong_cu_480,
+       count(*) as so_ngay_nguoi,
+       round(100.0 * count(*) / sum(count(*)) over (), 1) as phan_tram,
+       (select case when max(phut_lam) >= ts.phut_du_cong_moi then '1,0 cong' end
+          from tham_so ts limit 1) as _
+  from lam group by 1 order by 1 desc;
+
+\echo ''
+with ngay_nguoi as (
+  select nv.id, (lq.thoi_diem + interval '7 hours')::date as ngay,
+         min((lq.thoi_diem + interval '7 hours')::time) as dau,
+         max((lq.thoi_diem + interval '7 hours')::time) as cuoi
+    from lan_quet lq join nhan_vien nv on nv.id = lq.nhan_vien_id
+   where lq.nguon = 'may'
+     and extract(dow from (lq.thoi_diem + interval '7 hours')) between 1 and 5
+   group by 1, 2
+), lam as (
+  select greatest(0, extract(epoch from (
+             least(cuoi, time '17:30') - greatest(dau, time '08:00')))/60
+           - greatest(0, extract(epoch from (
+               least(least(cuoi, time '17:30'), time '13:30')
+             - greatest(greatest(dau, time '08:00'), time '12:00')))/60))::int as phut_lam
+    from ngay_nguoi
+   where least(cuoi, time '17:30') > greatest(dau, time '08:00')
+)
+select case when l.phut_lam >= ts.phut_du_cong_moi then '1,0 cong'
+            when l.phut_lam >= ts.phut_du_cong_moi / 2 then '0,5 cong'
+            else '0 cong' end as nguong_moi,
+       count(*) as so_ngay_nguoi,
+       round(100.0 * count(*) / sum(count(*)) over (), 1) as phan_tram
+  from lam l, tham_so ts group by 1 order by 1 desc;
+
+-- ============================================================ VIEC 1: nguong du cong cua ca
+update ca_lam c set phut_du_cong = ts.phut_du_cong_moi
+  from tham_so ts where c.ten = ts.ten_ca and c.phut_du_cong <> ts.phut_du_cong_moi;
+
+\echo ''
+\echo '--- VIEC 1: ca sau khi sua ---'
+select ten, gio_vao, gio_ra, nghi_tu, nghi_den, cac_ngay_lam,
+       phut_du_cong, dung_sai_muon_phut, nguong_ot_phut
+  from ca_lam order by ten;
+
+-- ============================================================ VIEC 2: khung gio thu Bay
 -- Khong khai `nghi_tu`/`nghi_den`: buoi sang thu Bay khong co nghi trua.
 insert into ca_lam_theo_thu (ca_lam_id, thu, gio_vao, gio_ra, nghi_tu, nghi_den, phut_du_cong)
 select c.id, 6, ts.t7_gio_vao, ts.t7_gio_ra, null, null, ts.t7_phut_du_cong
@@ -126,11 +205,11 @@ on conflict (ca_lam_id, thu) do update set
   phut_du_cong = excluded.phut_du_cong;
 
 \echo ''
-\echo '--- VIEC 1: khung gio rieng theo thu ---'
+\echo '--- VIEC 2: khung gio rieng theo thu ---'
 select c.ten, ct.thu, ct.gio_vao, ct.gio_ra, ct.phut_du_cong
   from ca_lam_theo_thu ct join ca_lam c on c.id = ct.ca_lam_id order by c.ten, ct.thu;
 
--- ============================================================ VIEC 2: gan ca cho moi nguoi
+-- ============================================================ VIEC 3: gan ca cho moi nguoi
 -- Loai ERP134 'He thong' — day la tai khoan he thong, khong phai nguoi di lam. Gan ca cho no
 -- se sinh dong bang cong vang moi ngay cho mot thu khong ton tai.
 create temp table da_gan_ca as
@@ -146,11 +225,11 @@ with u as (
 select * from u;
 
 \echo ''
-\echo '--- VIEC 2: so nguoi vua duoc gan / doi ca ---'
+\echo '--- VIEC 3: so nguoi vua duoc gan / doi ca ---'
 select count(*) as so_nguoi from da_gan_ca;
 
 \echo ''
-\echo '--- VIEC 2: ho so KHONG duoc gan (de biet con ai ngoai) ---'
+\echo '--- VIEC 3: ho so KHONG duoc gan (de biet con ai ngoai) ---'
 select nv.ma_nv, nv.ho_ten, nv.dang_hoat_dong,
        coalesce(cl.ten, '(khong co ca)') as ca_hien_tai
   from nhan_vien nv left join ca_lam cl on cl.id = nv.ca_lam_id
@@ -161,10 +240,10 @@ select nv.ma_nv, nv.ho_ten, nv.dang_hoat_dong,
 \echo ''
 \echo '=== KIEM TRA 1: ai dang dung ca nao ==='
 select coalesce(cl.ten, '>>> CHUA CO CA <<<') as ca_lam,
-       cl.gio_vao, cl.gio_ra, cl.cac_ngay_lam, count(*) as so_nguoi
+       cl.gio_vao, cl.gio_ra, cl.cac_ngay_lam, cl.phut_du_cong, count(*) as so_nguoi
   from nhan_vien nv left join ca_lam cl on cl.id = nv.ca_lam_id
  where nv.dang_hoat_dong = true
- group by 1, cl.gio_vao, cl.gio_ra, cl.cac_ngay_lam order by count(*) desc;
+ group by 1, cl.gio_vao, cl.gio_ra, cl.cac_ngay_lam, cl.phut_du_cong order by count(*) desc;
 
 \echo ''
 \echo '=== KIEM TRA 2: ca seed "Hanh chinh" con ai dung khong (nen la 0) ==='
@@ -178,11 +257,13 @@ select trang_thai, count(*) as so_dong from bang_cong_ngay group by 1 order by c
 \echo ''
 \echo '################################################################'
 \echo '#  DANG LA ROLLBACK — CHUA GHI GI CA.'
-\echo '#  Doc hai dong NOTICE ve gio trung vi o tren: neu ca khop thuc te thi doi'
-\echo '#  dong cuoi thanh  commit;  roi chay lai.'
+\echo '#  Doc hai dong NOTICE ve gio trung vi, va hai bang MO PHONG so cong.'
+\echo '#  Dung roi thi doi dong cuoi thanh  commit;  va chay lai.'
 \echo '#'
 \echo '#  SAU KHI COMMIT moi bam "Tinh lai bang cong" — chia hai lan vi moi lan toi da'
 \echo '#  92 ngay: 03/04-30/06 va 01/07-27/08.'
+\echo '#  OT chi tinh khi co don `lam_them` da duyet, nen tinh lai se KHONG sinh OT tu'
+\echo '#  cac lan quet luc roi toa nha.'
 \echo '################################################################'
 
 rollback;
