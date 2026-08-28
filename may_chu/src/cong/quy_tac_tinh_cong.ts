@@ -58,8 +58,10 @@ export interface CaLam {
    *
    * Nguong nay sinh ra de loc nhieu cho mot phep SUY DOAN tu dong ("o lai qua 30 phut thi coi
    * nhu lam them"). Khi can cu la mot don da duyet thi loc nua la sai: mot don 20 phut duoc
-   * duyet ma ra 0 phut OT thi khong ai giai thich duoc. Cot van giu vi con hien tren giao dien
-   * ca lam va con y nghia lich su.
+   * duyet ma ra 0 phut OT thi khong ai giai thich duoc.
+   *
+   * Cot trong CSDL van giu de khong mat gia tri da khai, nhung o nhap tren trang Ca lam da bo:
+   * mot o nhap khong dieu khien gi la o nhap noi doi voi nguoi quan tri.
    */
   nguong_ot_phut: number;
   qua_dem: boolean;

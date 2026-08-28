@@ -91,7 +91,6 @@ export function TrangCaLam(): ReactNode {
                   <th>Nghỉ giữa ca</th>
                   <th>Ngày làm</th>
                   <th className="canh-phai">Dung sai muộn</th>
-                  <th className="canh-phai">Ngưỡng OT</th>
                   <th className="canh-phai">Đủ công</th>
                   {la_nhan_su() && <th></th>}
                 </tr>
@@ -121,7 +120,6 @@ export function TrangCaLam(): ReactNode {
                       {c.cac_ngay_lam.map((t) => TEN_THU_NGAN[t]).join(', ')}
                     </td>
                     <td className="canh-phai so">{c.dung_sai_muon_phut}p</td>
-                    <td className="canh-phai so">{c.nguong_ot_phut}p</td>
                     <td className="canh-phai so">
                       {Math.floor(c.phut_du_cong / 60)}h{c.phut_du_cong % 60 === 0 ? '' : ` ${c.phut_du_cong % 60}p`}
                     </td>
@@ -204,6 +202,8 @@ function FormCaLam(
       nghi_den: f.co_nghi ? f.nghi_den : null,
       dung_sai_muon_phut: Number(f.dung_sai_muon_phut),
       dung_sai_som_phut: Number(f.dung_sai_som_phut),
+      // Khong con o nhap cho truong nay: OT tinh theo don da duyet chu khong theo nguong.
+      // Van gui lai gia tri dang co de lan sua ca khong lang le ghi de no ve 30.
       nguong_ot_phut: Number(f.nguong_ot_phut),
       phut_du_cong: Number(f.phut_du_cong),
       qua_dem: f.qua_dem,
@@ -364,9 +364,12 @@ function FormCaLam(
 
         <div className="luoi luoi-2">
           <div className="o-nhap">
-            <label htmlFor="not">Ngưỡng tính OT (phút sau giờ tan ca)</label>
-            <input id="not" type="number" min="0" max="480" value={f.nguong_ot_phut}
-              onChange={(e) => doi('nguong_ot_phut', e.target.value)} />
+            <label>Làm thêm giờ</label>
+            <div className="goi-y">
+              OT chỉ tính khi có <strong>đơn làm thêm đã duyệt</strong>, và chỉ tính phần giờ
+              vừa có mặt vừa nằm trong đơn. Không còn ngưỡng &#34;ở lại quá N phút thì thành OT&#34;
+              — quẹt thẻ muộn vì lý do khác không sinh OT nữa.
+            </div>
           </div>
           <div className="o-nhap">
             <label htmlFor="pdc">Số phút để tính đủ 1 công</label>

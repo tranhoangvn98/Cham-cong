@@ -2,6 +2,101 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.52.0] — 2026-08-28
+
+**OT chỉ tính khi có đơn làm thêm đã duyệt. Và hai script đưa dữ liệu thật lên hệ thống:
+khai PIN máy chấm công từ sổ HSNS, gán ca làm việc cho toàn công ty.**
+
+### Sửa: hệ thống tự sinh nghĩa vụ trả tiền làm thêm
+
+`quy_tac_tinh_cong.ts` suy ra OT từ **giờ quẹt**: ở lại quá `nguong_ot_phut` (mặc định 30) sau
+giờ tan ca thì toàn bộ phần dôi ra thành OT, và cả ngày lễ / ngày nghỉ tuần / ngày đang nghỉ
+phép thì **mọi phút có mặt** thành OT.
+
+Máy chấm công đặt ở cổng toà nhà, nên lần quẹt cuối cùng trong ngày là **lúc rời toà nhà**, chứ
+không phải lúc ngừng làm việc. Trên dữ liệu thật: giờ ra trung vị của công ty là 17:45 với ca tan
+17:30 — nghĩa là gần như **mỗi người, mỗi ngày** đều vượt ngưỡng 30 phút ở một số ngày; cá biệt có
+ngày quẹt lúc 19:23, tức 113 phút OT sinh ra từ một người đi ăn tối rồi mới về.
+
+Không ai đăng ký, không ai duyệt, nhưng bảng công đã ghi thành số giờ phải trả.
+
+Nay OT là **giao của hai thứ**: khoảng thời gian thực sự có mặt, và khoảng ghi trong đơn
+`lam_them` đã ở trạng thái `da_duyet` của đúng người đúng ngày. Nhiều đơn trong một ngày thì
+**gộp khoảng trước khi cộng**, nên hai đơn chồng nhau không tính tiền hai lần. Giờ nghỉ trưa bị
+trừ khỏi phần OT nằm vắt qua nó — một đơn 11:00–14:00 ra 90 phút chứ không phải 180.
+
+Bốn nhánh sinh OT (ngày lễ, ngày nghỉ tuần, ngày nghỉ phép, sau giờ tan ca) đều đi qua cùng một
+phép tính này. Nhánh "chưa gán ca làm việc" cũng vậy.
+
+**Làm mà không có đơn thì không mất dấu.** Bảng công ghi chú thích ngay trên dòng đó —
+*"Ở lại 113 phút sau giờ tan ca nhưng không có đơn làm thêm đã duyệt"* — để nhân sự thấy và hỏi
+lại, thay vì hệ thống tự quyết hộ. Giờ công (`phut_lam`) không đổi, chỉ `phut_ot` đổi.
+
+### Bỏ ô nhập "Ngưỡng tính OT" khỏi trang Ca làm
+
+Nhãn cũ là *"Ngưỡng tính OT (phút sau giờ tan ca)"* — mô tả đúng cái luật vừa bị gỡ. Sau bản này
+nó không điều khiển gì nữa, mà vẫn nhận số và vẫn lưu: một ô nhập nói dối với người quản trị.
+
+Chỗ đó giờ là một dòng giải thích OT tính theo đơn. **Cột `nguong_ot_phut` trong CSDL vẫn giữ** —
+không có di trú, không mất giá trị đã khai — và mỗi lần sửa ca vẫn gửi lại giá trị đang có, để
+lần sửa ca không lặng lẽ ghi đè nó về 30.
+
+Cân nhắc rồi bỏ: dùng ngưỡng ấy làm sàn cho OT đã duyệt. Một đơn 20 phút được nhân sự duyệt mà ra
+0 phút OT thì không giải thích được với người lao động — ngưỡng sinh ra để lọc nhiễu cho một phép
+**suy đoán**, mà đăng ký thì đã hết nhiễu. Có bài kiểm khoá hành vi này.
+
+### Thêm: `trien_khai/khai_pin_tu_so_hsns.sql`
+
+Khai PIN máy chấm công cho 29 người theo `ma_nv`, ghi vào `ma_dinh_danh` (có chiều thời gian) và
+cột `nhan_vien.pin_may`, rồi gán lại các lần quẹt cũ đang mồ côi. Mặc định `rollback`.
+
+Bốn hàng rào, hàng rào thứ tư đáng nói: chỉ gán lại lần quẹt **của những máy đã biết là dùng chung
+một hệ đánh số PIN**. Đánh số PIN là theo từng máy, nên cùng một số trên hai máy có thể là hai
+người; script khai thẳng danh sách máy dùng chung thay vì suy đoán. Lần quẹt trên máy khác được
+**bỏ qua chứ không làm hỏng cả lần chạy**, để chỗ chưa biết ở lại trạng thái chưa biết.
+
+### Thêm: `trien_khai/gan_ca_lam_viec.sql`
+
+Gán ca cho toàn bộ nhân viên đang hoạt động, khai khung giờ riêng cho **sáng thứ Bảy**
+(08:00–12:00), và hạ `phut_du_cong` từ 480 xuống 420.
+
+**Vì sao 480 là sai:** ca 08:00–17:30 nghỉ 12:00–13:30 cho tối đa **đúng 480 phút** làm việc. Đặt
+ngưỡng đủ công bằng 480 nghĩa là chỉ ai vào đúng 08:00:00 và ra đúng 17:30 mới đủ một công; vào
+lúc 08:06 là 474 phút và ra **nửa công**. Dung sai đi muộn không cứu được: nó chỉ trừ vào cột
+`phut_muon`, còn `phut_lam` vẫn kẹp theo giờ quẹt thật. Giờ vào trung vị của công ty là 08:05:50.
+
+Mô phỏng trên 2.025 ngày-người quẹt thật:
+
+| Ngưỡng | Đủ 1 công | Nửa công | 0 công |
+|---|---|---|---|
+| 480 (cũ) | 22,4% | 72,1% | 5,5% |
+| 420 (mới) | 86,4% | 10,4% | 3,2% |
+
+Script **in cả hai bảng này trước khi ghi**, và có hai hàng rào dữ liệu tự dừng nếu giờ ra trung vị
+thực tế lệch quá 60 phút so với giờ khai của ca — để không ai gán một ca sai cho cả công ty rồi mới
+biết.
+
+### Kiểm thử
+
+`test/tinh_cong.test.ts`: **51 bài, xanh hết**, chạy trên bản sao sạch bằng Node 22. Sáu bài cũ
+phải sửa vì chúng mã hoá đúng cái giả định vừa bị gỡ (chúng khẳng định ở lại quá ngưỡng thì thành
+OT); 11 bài mới, trong đó:
+
+| Bài | Khoá điều gì |
+|---|---|
+| Ở lại 90 phút, không có đơn | `phut_ot = 0` **và** có chú thích |
+| Đơn 20 phút được duyệt | vẫn tính đủ 20 — ngưỡng không còn chặn |
+| Đơn 11:00–14:00 | ra 90 phút, không phải 180 (trừ nghỉ trưa) |
+| Hai đơn chồng nhau | gộp khoảng, không cộng hai lần |
+| Đơn dài hơn giờ có mặt | chỉ tính phần thực sự có mặt |
+| Ngày lễ / nghỉ tuần / nghỉ phép, không đơn | `phut_ot = 0` |
+
+`thiet_ke/*.test.mjs`: **30 bài, xanh hết** sau khi bỏ ô nhập ngưỡng OT.
+
+**Nói thẳng một giới hạn:** toàn bộ 572+417 bài đơn vị và e2e **chưa chạy lại sạch** cho bản này —
+`node_modules` trên máy triển khai đang thiếu `pg` và `@fastify/swagger`, và bộ kiểm SharePoint gọi
+thẳng Microsoft Graph bằng khoá thật. Hai việc đó cần sửa riêng, không gộp vào đây.
+
 ## [1.51.0] — 2026-08-22
 
 **PIN máy chấm công có chiều thời gian ở cả hai đường tra. Hai lỗi lương tiềm ẩn, tìm ra khi đọc
