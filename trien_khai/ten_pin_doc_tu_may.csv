@@ -3,7 +3,7 @@ pin,ten_tren_may,tu_ngay,den_ngay,so_ngay_quet,so_lan_quet,trang_thai
 9,Nhi,2026-04-03,2026-04-07,4,21,đã nghỉ trước khi lập sổ
 10,Linh,2026-04-04,2026-04-21,13,99,đã nghỉ trước khi lập sổ
 11,Thảo KT,2026-04-04,2026-06-30,60,455,đã nghỉ trước khi lập sổ
-13,Trịnh Thị Vân Anh,2026-04-03,2026-04-29,20,128,đã nghỉ trước khi lập sổ
+13,Trịnh Thị Vân Anh,2026-04-03,2026-04-29,20,128,đã nghỉ trước khi lập sổ — KHÔNG phải chị Thân Thị Vân Anh ở PIN 43 (đã hỏi lại, hai người khác nhau)
 15,Pah,2026-04-03,2026-04-25,19,180,đã nghỉ trước khi lập sổ
 17,MyANH,2026-04-03,2026-06-05,38,204,đã nghỉ trước khi lập sổ
 18,Quanh,2026-04-03,2026-06-20,59,615,đã nghỉ trước khi lập sổ
@@ -20,5 +20,5 @@ pin,ten_tren_may,tu_ngay,den_ngay,so_ngay_quet,so_lan_quet,trang_thai
 48,hang,2026-05-18,2026-05-19,2,23,đã nghỉ trước khi lập sổ
 53,giang it,2026-06-01,2026-06-29,21,201,đã nghỉ trước khi lập sổ
 34,Sếp (chính chủ xác nhận: Trần Đức Hoàng),2026-04-13,,72,,đang làm — khai ở khai_pin_con_lai.sql
-43,Thân Thị Vân Anh,2026-05-12,,13,,đang làm tại kho Trung Quốc — chưa có hồ sơ
+43,Thân Thị Vân Anh,2026-05-12,,13,,đang làm — đóng ở kho Trung Quốc, thỉnh thoảng qua VP Hà Nội; một người một dòng mở; chưa có hồ sơ
 1,(HR không xác định được; không phải vân tay admin),2026-04-03,2026-08-27,2,13,chưa giải được
