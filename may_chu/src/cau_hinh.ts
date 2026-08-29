@@ -345,6 +345,18 @@ export const cau_hinh = {
     nguong_ky_luat: Math.max(1, Math.round(so('RA_VAO_NGUONG_KY_LUAT', 3))),
   },
 
+  /** Xu ly ky luat tu dong. */
+  ky_luat: {
+    /**
+     * Khoan GIAM THUONG cua mot ho so >= nguong (dong) thi phai co nguoi duyet moi ap; duoi
+     * nguong he thong tu ap. Chu cong ty chot 2.000.000d. Dat 0 = MOI khoan giam thuong deu
+     * phai duyet (khong con duong tu ap).
+     */
+    nguong_duyet: Math.max(0, Math.round(so('KY_LUAT_NGUONG_DUYET', 2_000_000))),
+    /** Ngay trong thang chay gom ky luat cua thang truoc (1-28). */
+    ngay_chay: Math.min(28, Math.max(1, Math.round(so('KY_LUAT_NGAY_CHAY', 1)))),
+  },
+
   /**
    * Chu ky cua vong lich, phut. Cang nho thi tep moi nap len cang som co tren SharePoint.
    *

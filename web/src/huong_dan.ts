@@ -132,6 +132,20 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/ky-luat',
+    tom_tat: 'Gom vi phạm theo tháng & mức độ thành hồ sơ kỷ luật; hệ thống tự nhắc nhở hoặc giảm thưởng.',
+    buoc: [
+      { chu: 'Khai mức giảm thưởng cho từng loại vi phạm trong danh mục (tab Vi phạm), và bật quy tắc phát hiện.', vai_tro: NHAN_SU },
+      { chu: 'Bấm "Quét & xử lý" cho tháng — hệ thống gom vi phạm, nhắc nhở, và tự áp giảm thưởng dưới ngưỡng.', vai_tro: NHAN_SU },
+      { chu: 'Hồ sơ giảm thưởng ≥ ngưỡng chuyển "Chờ duyệt": người có thẩm quyền vào xem chi tiết rồi duyệt hoặc bãi bỏ.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Chế tài tài chính ở đây là GIẢM THƯỞNG P3 (Điều 104 BLLĐ, Điều 14 Nội quy) — KHÔNG phải phạt tiền, KHÔNG trừ lương cơ bản (Điều 127 CẤM). Khoản này chỉ vào phần thưởng/phụ cấp khi tính lương.',
+      'Kỷ luật lao động chính thức (khiển trách, kéo dài nâng lương, cách chức, sa thải) vẫn phải qua họp + giải trình + biên bản (BLLĐ Điều 122/124), làm ở tab Vi phạm — hệ thống không tự áp.',
+      'Hệ thống chỉ tự giảm tiền khi nhân sự đã khai mức giảm thưởng trong danh mục. Chưa khai thì chỉ nhắc nhở.',
+    ],
+  },
+  {
     duong_dan: '/kpi',
     tom_tat: 'Chấm điểm KPI, lấy số từ dữ liệu thật thay vì gõ tay.',
     buoc: [

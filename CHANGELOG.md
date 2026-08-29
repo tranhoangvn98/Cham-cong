@@ -2,6 +2,32 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.57.0] — 2026-08-29
+
+**Xử lý kỷ luật tự động: gom vi phạm theo tháng & mức độ → hồ sơ kỷ luật → nhắc nhở / giảm thưởng.**
+
+Thêm quy trình tự động gom tất cả vi phạm của một người trong một kỳ theo **từng mức độ** thành
+**một hồ sơ kỷ luật** (`ho_so_ky_luat`), rồi tự xử lý:
+
+- **Tổng tiền = 0** → **nhắc nhở** (gửi email Microsoft 365 + thông báo app), lưu hồ sơ.
+- **0 < tổng tiền < ngưỡng** (mặc định 2.000.000đ) → **tự áp giảm thưởng P3**, báo người lao động.
+- **tổng tiền ≥ ngưỡng** → **chờ duyệt**: báo người có thẩm quyền, phải duyệt mới áp.
+
+Chế tài tài chính là **giảm thưởng P3** (Điều 104 BLLĐ, Điều 14 Nội quy) — **không phải phạt tiền,
+không trừ lương cơ bản** (Điều 127 CẤM). Số tiền áp qua khoản lương `tru_giam_thuong_kl` bằng cơ chế
+`chinh_sach_phu_cap` (tính lương đọc được, sống qua mỗi lần tính lại). Kỷ luật lao động chính thức
+(khiển trách trở lên) **vẫn không tự động** — phải qua họp + giải trình + biên bản (Điều 122/124),
+làm ở tab Vi phạm.
+
+- Di trú `032_ho_so_ky_luat.sql`: cột `muc_tru_tien` (mức giảm thưởng HR khai theo Quy chế thưởng)
+  trên `loai_vi_pham`; bảng `ho_so_ky_luat` (khoá `nhan_vien_id + ky + muc_do`); khoản
+  `tru_giam_thuong_kl`; thêm quy tắc phát hiện (đi muộn, về sớm, vắng, quên quẹt — tất tắt sẵn,
+  đối chiếu Nội quy rồi mới bật).
+- Engine `src/ky_luat/xu_ly.ts` (gom + tự xử lý, hàm thuần kiểm được), route `src/tuyen/ky_luat.ts`
+  (danh sách, tổng quan, quét, duyệt, bãi bỏ), việc chạy định kỳ hằng tháng trong `lich_chay.ts`.
+- Tab **Kỷ luật** trên web: tổng quan, danh sách hồ sơ, nút quét & xử lý, hộp thoại duyệt/bãi bỏ.
+- Biến môi trường mới: `KY_LUAT_NGUONG_DUYET`, `KY_LUAT_NGAY_CHAY`.
+
 ## [1.56.4] — 2026-08-29
 
 **cap_nhat_phong_ban: tên phòng đầy đủ (không viết tắt) + mở sẵn phòng kho/lái xe.** Ánh xạ mã trong file sang tên đầy đủ: KD→Phòng Kinh doanh, KS→Phòng Kiểm soát, CSKH→Phòng Chăm sóc khách hàng, MKT→Phòng Marketing, XNK→Phòng Xuất nhập khẩu, IT→Phòng Công nghệ thông tin, KT→Phòng Kế toán, HCNS→Phòng Hành chính nhân sự. Sheet kho Trung Quốc gộp về Phòng Kho Trung Quốc; Quản lý kho/Bốc xếp→Phòng Kho Hà Nội; Lái xe→Phòng Lái xe. Luôn tạo sẵn ba phòng Kho Trung Quốc/Kho Hà Nội/Lái xe.

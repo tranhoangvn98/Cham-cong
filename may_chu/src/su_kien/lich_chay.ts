@@ -10,6 +10,8 @@ import { don_su_kien_cu } from './hop_thu_di.ts';
 import { ma_viec_nhac_han, quet_nhac_han } from '../hop_dong/nhac_han.ts';
 import { ma_viec_sap_xep, sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
 import { quet_va_xu_ly_ngay } from '../ra_vao/xu_ly.ts';
+import { quet_vi_pham } from '../vi_pham/phat_hien.ts';
+import { gom_va_xu_ly_thang } from '../ky_luat/xu_ly.ts';
 import { ghi_nhan, ma_viec_dong_bo, moc_dong_bo, quet } from '../sharepoint/dong_bo.ts';
 import { cong_ngay, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
@@ -210,6 +212,37 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     } catch (loi) {
       await nha_viec(ma_sap_xep);
       ghi_log(`[lich] LOI khi sap xep kho tep: ${(loi as Error).message}`);
+    }
+  }
+
+  // Xu ly ky luat tu dong, MOI THANG MOT LAN (vao ngay KY_LUAT_NGAY_CHAY cua thang).
+  //
+  // Khac cac viec tren o cho no la viec THEO THANG, khong theo ngay: gom vi pham cua THANG TRUOC
+  // roi tu xu ly (nhac nho / giam thuong duoi nguong tu ap, tu nguong chuyen cho_duyet). Khoa
+  // `ky_luat_thang:<thang truoc>` dam bao mot thang chi chay mot lan du may chu khoi dong lai.
+  //
+  // Chay lai idempotent: `quet_vi_pham` dung `on conflict do nothing`, `gom_va_xu_ly_thang` upsert
+  // theo (nguoi, ky, muc do) va giu nguyen ho so DA CHOT. Chi chay khi da co quy tac dang bat —
+  // khong co quy tac nao bat thi quet ra 0, dung nhu mac dinh an toan.
+  if (Number(hom_nay.slice(8)) === cau_hinh.ky_luat.ngay_chay) {
+    const thang_truoc = cong_ngay(`${hom_nay.slice(0, 7)}-01`, -1).slice(0, 7);
+    const ma_kl = `ky_luat_thang:${thang_truoc}`;
+    if (await nhan_viec(ma_kl)) {
+      try {
+        const ph = await quet_vi_pham(thang_truoc, null);
+        const gom = await gom_va_xu_ly_thang(thang_truoc, { tu_dong: true });
+        await ghi_ket_qua(ma_kl,
+          `phat hien ${String(ph.so_moi)} vi pham, gom ${String(gom.so_ho_so)} ho so `
+          + `(nhac ${String(gom.so_nhac_nho)}, giam thuong ${String(gom.so_giam_thuong)}, `
+          + `cho duyet ${String(gom.so_cho_duyet)})`);
+        if (gom.so_ho_so > 0) {
+          ghi_log(`[lich] ky luat ${thang_truoc}: ${String(gom.so_ho_so)} ho so `
+            + `(cho duyet ${String(gom.so_cho_duyet)})`);
+        }
+      } catch (loi) {
+        await nha_viec(ma_kl);
+        ghi_log(`[lich] LOI khi xu ly ky luat ${thang_truoc}: ${(loi as Error).message}`);
+      }
     }
   }
 

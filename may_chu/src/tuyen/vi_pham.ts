@@ -49,8 +49,9 @@ export async function tuyen_vi_pham(app: FastifyInstance): Promise<void> {
     const nd = nguoi_dung_hien_tai(req);
     const b = than(req.body);
     const dong = await truy_van_mot<{ id: string }>(
-      `insert into loai_vi_pham (ma, ten, mo_ta, nhom, muc_do, ky_luat_de_xuat, diem_tru_kpi, dang_bat)
-       values ($1,$2,$3,$4,$5,$6,$7,$8) returning id`,
+      `insert into loai_vi_pham
+         (ma, ten, mo_ta, nhom, muc_do, ky_luat_de_xuat, diem_tru_kpi, muc_tru_tien, dang_bat)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id`,
       [
         chuoi_bat_buoc(b, 'ma', { toi_da: 40 }).toUpperCase(),
         chuoi_bat_buoc(b, 'ten', { toi_da: 200 }),
@@ -59,6 +60,8 @@ export async function tuyen_vi_pham(app: FastifyInstance): Promise<void> {
         trong_tap(b, 'muc_do', MUC_DO, { mac_dinh: 'nhe' }),
         trong_tap(b, 'ky_luat_de_xuat', KY_LUAT),
         so_nguyen(b, 'diem_tru_kpi', { min: 0, max: 100 }) ?? 0,
+        // Muc GIAM THUONG P3 (Dieu 104), khong phai phat tien. HR khai theo Quy che thuong.
+        so_nguyen(b, 'muc_tru_tien', { min: 0, max: 100_000_000 }) ?? 0,
         luan_ly(b, 'dang_bat', true),
       ],
     );
@@ -76,13 +79,15 @@ export async function tuyen_vi_pham(app: FastifyInstance): Promise<void> {
          nhom = coalesce($4, nhom), muc_do = coalesce($5, muc_do),
          ky_luat_de_xuat = coalesce($6, ky_luat_de_xuat),
          diem_tru_kpi = coalesce($7, diem_tru_kpi),
-         dang_bat = coalesce($8, dang_bat), cap_nhat_luc = now()
+         muc_tru_tien = coalesce($8, muc_tru_tien),
+         dang_bat = coalesce($9, dang_bat), cap_nhat_luc = now()
        where id = $1`,
       [
         id, chuoi(b, 'ten', { toi_da: 200 }), chuoi(b, 'mo_ta', { toi_da: 1000 }),
         chuoi(b, 'nhom', { toi_da: 100 }), trong_tap(b, 'muc_do', MUC_DO),
         trong_tap(b, 'ky_luat_de_xuat', KY_LUAT),
         so_nguyen(b, 'diem_tru_kpi', { min: 0, max: 100 }),
+        so_nguyen(b, 'muc_tru_tien', { min: 0, max: 100_000_000 }),
         Object.hasOwn(b, 'dang_bat') ? luan_ly(b, 'dang_bat', true) : null,
       ],
     );
@@ -171,7 +176,7 @@ export async function tuyen_vi_pham(app: FastifyInstance): Promise<void> {
 
     return truy_van(
       `select v.*, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
-              l.ma as ma_loai, l.ten as ten_loai, l.muc_do, l.diem_tru_kpi,
+              l.ma as ma_loai, l.ten as ten_loai, l.muc_do, l.diem_tru_kpi, l.muc_tru_tien,
               l.giam_thuong_p3_phan_tram, l.chi_tiet_che_tai, l.can_cu
          from vi_pham v
          join nhan_vien nv on nv.id = v.nhan_vien_id
