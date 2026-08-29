@@ -700,11 +700,18 @@ input[type="checkbox"] {
 .ho-so-chi-so {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: stretch;
   margin: 0 -20px;
   border-top: 1px solid var(--vien);
+  border-bottom: 1px solid var(--vien);
 }
+/* O con la `.o-so` (co vien + bo goc rieng). Trong dai chi so phai TRIET vien/bo goc/bong cua
+   no, neu khong cac o cao thap khac nhau se thanh cac hop bo goc day rang cua. Chi giu vach
+   ngan bang box-shadow. */
 .ho-so-chi-so > div {
   padding: 11px 20px 13px;
+  border: 0;
+  border-radius: 0;
   box-shadow: -1px 0 0 var(--vien), 0 -1px 0 var(--vien);
 }
 /* Man hep: xep mot cot de khong con o trong lung lo (auto-fit de lai o rong khi le so o). */

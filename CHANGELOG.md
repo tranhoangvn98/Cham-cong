@@ -2,6 +2,14 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.56.2] — 2026-08-29
+
+**Sửa dải chỉ số trong hộp thoại bị răng cưa.** Các ô `.ho-so-chi-so` là `.o-so` (có viền + bo
+góc riêng), lọt vào dải nên khi nội dung một ô dài (vd tên loại vi phạm 3 dòng) các ô cao thấp
+khác nhau thành những hộp bo góc đáy răng cưa. Reset viền/bo góc của ô con, cho các ô bằng chiều
+cao (`align-items: stretch`), đóng viền trên–dưới của dải → dải liền mạch kiểu Metronic. Ảnh
+hưởng mọi hộp thoại dùng dải chỉ số (Vi phạm, Ra/vào, hồ sơ).
+
 ## [1.56.1] — 2026-08-29
 
 **Sửa trình bày + đối chiếu Metronic 9, kiểm bằng render thật (desktop + điện thoại 390px).**
