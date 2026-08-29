@@ -9,6 +9,7 @@ import { chot_ngay_hom_qua } from '../cong/tinh_cong.ts';
 import { don_su_kien_cu } from './hop_thu_di.ts';
 import { ma_viec_nhac_han, quet_nhac_han } from '../hop_dong/nhac_han.ts';
 import { ma_viec_sap_xep, sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
+import { quet_va_xu_ly_ngay } from '../ra_vao/xu_ly.ts';
 import { ghi_nhan, ma_viec_dong_bo, moc_dong_bo, quet } from '../sharepoint/dong_bo.ts';
 import { cong_ngay, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
@@ -143,6 +144,21 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
       // Nha viec de vong sau thu lai — khong duoc bo qua im lang.
       await nha_viec(ma_viec);
       ghi_log(`[lich] LOI khi chot ngay ${hom_qua}: ${(loi as Error).message}`);
+    }
+  }
+
+  // Tu xu ly canh bao ra/vao cua ngay hom qua: duoi nguong -> nhac nho (email + thong bao app),
+  // tu nguong -> tao ho so vi_pham de nhan su doi chieu. Chay SAU chot_ngay vi chot_ngay moi la
+  // buoc ghi canh_bao_ra_vao cua hom qua.
+  const ma_ra_vao = `ra_vao_xu_ly:${hom_qua}`;
+  if (await nhan_viec(ma_ra_vao)) {
+    try {
+      const so = await quet_va_xu_ly_ngay(hom_qua);
+      await ghi_ket_qua(ma_ra_vao, `da xu ly ${so} canh bao`);
+      if (so > 0) ghi_log(`[lich] da tu xu ly ${so} canh bao ra/vao ngay ${hom_qua}`);
+    } catch (loi) {
+      await nha_viec(ma_ra_vao);
+      ghi_log(`[lich] LOI khi xu ly canh bao ra/vao ${hom_qua}: ${(loi as Error).message}`);
     }
   }
 

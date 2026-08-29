@@ -545,6 +545,42 @@ test('may day ATTLOG -> luu lan quet va TINH LUON bang cong', async () => {
   assert.equal(cb!.so, 0, 'ngay sach -> khong canh bao mau thuan ra/vao');
 });
 
+test('ra/vao: nhan su xem canh bao va bam xu ly -> ghi xu_ly_ra_vao', async () => {
+  // Chen mot canh bao co dinh de kiem duong xu ly (khong phu thuoc canh bao ngau nhien).
+  const NGAY_CB = '2026-08-10';
+  await thuc_thi(
+    `insert into canh_bao_ra_vao (nhan_vien_id, ngay, ma_loi, thoi_diem, mo_ta)
+     values ($1, $2, 'QUEN_QUET_RA', $3, 'Cuối ngày vẫn đang trong văn phòng — quên quẹt ra')
+     on conflict do nothing`,
+    [nhan_vien_id, NGAY_CB, `${NGAY_CB}T10:00:00+07:00`],
+  );
+
+  // HR (admin) thay canh bao trong danh sach.
+  const ds = await goi('GET', `/api/ra-vao?tu=${NGAY_CB}&den=${NGAY_CB}`, { token: token_admin });
+  assert.equal(ds.ma, 200);
+  const dong = (ds.body as unknown as Array<Record<string, unknown>>)
+    .find((d) => d['nhan_vien_id'] === nhan_vien_id && d['ma_loi'] === 'QUEN_QUET_RA');
+  assert.notEqual(dong, undefined, 'phai thay canh bao vua chen');
+  assert.equal(dong!['trang_thai'], null, 'chua xu ly');
+
+  // Bam "hop le" (khong gui email/tao vi pham) — duong xu ly gon nhat.
+  const xl = await goi('POST', '/api/ra-vao/xu-ly', {
+    token: token_admin,
+    body: { nhan_vien_id, ngay: NGAY_CB, ma_loi: 'QUEN_QUET_RA', hanh_dong: 'hop_le',
+      ghi_chu: 'co bao truoc' },
+  });
+  assert.equal(xl.ma, 200);
+  assert.equal(xl.body['trang_thai'], 'hop_le');
+
+  const luu = await truy_van_mot<{ trang_thai: string; nguoi_xu_ly: string | null }>(
+    `select trang_thai, nguoi_xu_ly from xu_ly_ra_vao
+      where nhan_vien_id = $1 and ngay = $2 and ma_loi = 'QUEN_QUET_RA'`,
+    [nhan_vien_id, NGAY_CB],
+  );
+  assert.equal(luu?.trang_thai, 'hop_le');
+  assert.notEqual(luu?.nguoi_xu_ly, null, 'phai ghi nguoi bam (khong phai tu dong)');
+});
+
 // Firmware PUSH kiem soat ra vao day cham cong bang table=rtlog. Truoc khi ho tro, nhanh
 // nay roi vao "bang khac, bo qua" nen moi lan quet bi vut im lang — may bao thanh cong,
 // webapp khong co gi.

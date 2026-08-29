@@ -2,6 +2,38 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.56.0] — 2026-08-29
+
+**Tab "Ra/vào" riêng + quy trình xử lý cảnh báo: tự nhắc nhở (email) / tự chuyển kỷ luật theo
+tần suất, nhân sự xem lại và xử lý. Dashboard chuyển sang góc nhìn điểm nóng.**
+
+### Di trú 031 — bảng `xu_ly_ra_vao`
+
+Lưu lịch sử xử lý mỗi cảnh báo, snapshot `(nhan_vien_id, ngay, ma_loi)` (vì `canh_bao_ra_vao`
+bị ghi đè mỗi lần tính lại): `trang_thai` (da_nhac / chuyen_ky_luat / hop_le / bo_qua),
+`tu_dong`, `da_gui_email`, `vi_pham_id`, `nguoi_xu_ly`, `so_lan_thang`. Bật lại loại vi phạm
+`QUEN_QUET` làm loại kỷ luật cho ra/vào (căn cứ điều nội quy + chế tài).
+
+### Gửi email qua Microsoft 365 Graph — `su_kien/gui_email.ts`
+
+Hệ thống chưa có SMTP; thêm bộ gửi mail qua Graph `sendMail` (app-only, cần quyền `Mail.Send` +
+`MS_MAIL_NGUOI_GUI`). Fail-soft: chưa cấu hình / Graph từ chối thì trả false, nhắc nhở vẫn còn
+đường thông báo đẩy trong app. Env mới: `MS_MAIL_*`, `RA_VAO_NGUONG_KY_LUAT`.
+
+### Quy trình xử lý tự động — `ra_vao/xu_ly.ts` + job trong `lich_chay.ts`
+
+Cùng một lỗi trong tháng: **dưới ngưỡng → nhắc nhở** (email + thông báo app); **từ ngưỡng
+(mặc định 3) → chuyển kỷ luật** (tạo hồ sơ `vi_pham` trạng thái 'moi' để nhân sự đối chiếu điều
+nội quy + mức xử phạt + lập biên bản theo BLLĐ Điều 122/124 — không phạt tiền). Job đêm tự quét
+cảnh báo hôm qua và xử lý cái chưa xử lý; nhân sự ép tay được (hợp lệ / bỏ qua / nhắc / kỷ luật).
+
+### Tab Ra/vào + Dashboard điểm nóng — `web`
+
+Trang `/ra-vao` (chỉ nhân sự): lọc theo ngày + trạng thái, bảng cảnh báo dịch danh, hộp thoại
+**xử lý** (nhắc nhở / kỷ luật / hợp lệ / bỏ qua + ghi chú). Dashboard bỏ bảng chi tiết ra/vào,
+thay bằng khối **"Điểm nóng ra/vào"**: cảnh báo trong tháng, chưa xử lý, top người bị cảnh báo
+nhiều nhất, link sang tab. Bố cục nhiều cột responsive (điện thoại → 2K).
+
 ## [1.55.0] — 2026-08-28
 
 **Làm lại Dashboard nhân sự: lấy tình hình ra/vào văn phòng làm trọng tâm, bố cục nhiều cột

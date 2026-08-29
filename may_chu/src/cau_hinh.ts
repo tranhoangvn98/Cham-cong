@@ -324,6 +324,28 @@ export const cau_hinh = {
   },
 
   /**
+   * Gui email qua Microsoft Graph (sendMail, app-only). He thong khong co SMTP; day la duong
+   * gui mail duy nhat. Tan dung app SharePoint neu khong khai rieng — NHUNG app do phai duoc
+   * cap them quyen ung dung `Mail.Send` va phai khai `MS_MAIL_NGUOI_GUI` (hop thu gui). Thieu
+   * mot trong ba khoa hoac nguoi_gui thi coi nhu TAT: nhac nho roi ve thong bao day trong app.
+   */
+  mail: {
+    tenant_id: chu('MS_MAIL_TENANT_ID', chu('SHAREPOINT_TENANT_ID', chu('MS_TENANT_ID', ''))),
+    client_id: chu('MS_MAIL_CLIENT_ID', chu('SHAREPOINT_CLIENT_ID', '')),
+    client_secret: chu('MS_MAIL_CLIENT_SECRET', chu('SHAREPOINT_CLIENT_SECRET', '')),
+    /** Hop thu gui (userPrincipalName / email), vd hr@tranhoangvietnam.com. Trong = tat email. */
+    nguoi_gui: chu('MS_MAIL_NGUOI_GUI', ''),
+    goc_graph: chu('SHAREPOINT_GOC_GRAPH', 'https://graph.microsoft.com/v1.0').replace(/\/+$/, ''),
+    goc_token: chu('SHAREPOINT_GOC_TOKEN', 'https://login.microsoftonline.com').replace(/\/+$/, ''),
+  },
+
+  /** Quy tac xu ly canh bao ra/vao van phong. */
+  ra_vao: {
+    /** Cung mot loi >= nguong lan trong thang thi CHUYEN KY LUAT thay vi chi nhac nho. */
+    nguong_ky_luat: Math.max(1, Math.round(so('RA_VAO_NGUONG_KY_LUAT', 3))),
+  },
+
+  /**
    * Chu ky cua vong lich, phut. Cang nho thi tep moi nap len cang som co tren SharePoint.
    *
    * Mac dinh 5. Truoc day la 15 va do la mot con so thua huong, khong phai mot quyet dinh: moi

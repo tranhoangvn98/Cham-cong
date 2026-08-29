@@ -119,6 +119,19 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/ra-vao',
+    tom_tat: 'Cảnh báo ra/vào không quẹt thẻ: hệ thống tự nhắc nhở / chuyển kỷ luật, nhân sự xem lại và xử lý.',
+    buoc: [
+      { chu: 'Lọc theo ngày và trạng thái; xem người bị cảnh báo nhiều nhất ở Tổng quan.', vai_tro: NHAN_SU },
+      { chu: 'Bấm "Xử lý": nhắc nhở (gửi email), chuyển kỷ luật, hoặc đánh dấu hợp lệ kèm lý do.', vai_tro: NHAN_SU },
+      { chu: 'Khi chuyển kỷ luật, sang tab Vi phạm đối chiếu điều nội quy + mức xử phạt và lập biên bản.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Phút ra ngoài chỉ đo, KHÔNG tự trừ công. Cảnh báo là bằng chứng có lần ra/vào không quẹt thẻ.',
+      'Hệ thống tự xử lý theo tần suất: dưới ngưỡng nhắc nhở, từ ngưỡng chuyển kỷ luật. Kỷ luật vẫn phải qua biên bản theo BLLĐ Điều 122.',
+    ],
+  },
+  {
     duong_dan: '/kpi',
     tom_tat: 'Chấm điểm KPI, lấy số từ dữ liệu thật thay vì gõ tay.',
     buoc: [

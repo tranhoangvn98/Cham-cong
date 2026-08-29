@@ -216,6 +216,13 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
 .bang-dieu-khien .the { margin-bottom: 0; }
 .bang-dieu-khien .luoi-2 { align-items: start; }
 
+/* Dau mot khoi: tieu de trai, nut/hanh dong phai. Xuong dong gon o man hep. */
+.dau-khoi {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.dau-khoi h2 { margin: 0; }
+
 .o-so {
   background: var(--nen-the);
   border: 1px solid var(--vien);

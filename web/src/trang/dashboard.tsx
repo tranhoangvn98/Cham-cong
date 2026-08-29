@@ -100,24 +100,13 @@ interface HeThong {
   erp_da_cau_hinh: boolean;
 }
 
-interface CanhBaoRaVao {
-  id: string;
+interface DiemNongNguoi {
   nhan_vien_id: string;
   ma_nv: string;
   ho_ten: string;
   phong_ban: string | null;
-  ma_loi: string;
-  thoi_diem: string;
-  mo_ta: string;
-}
-
-interface RaNgoai {
-  nhan_vien_id: string;
-  ma_nv: string;
-  ho_ten: string;
-  phong_ban: string | null;
-  phut_ra_ngoai: number;
-  so_phien: number;
+  so_canh_bao: number;
+  chua_xu_ly: number;
 }
 
 interface RaVaoHR {
@@ -125,9 +114,12 @@ interface RaVaoHR {
   ve_som: number;
   tong_phut_ra_ngoai: number;
   so_nguoi_ra_ngoai: number;
+  canh_bao_hom_nay: number;
+  thang: string;
+  canh_bao_thang: number;
+  chua_xu_ly_thang: number;
   canh_bao_theo_loai: { ma_loi: string; so: number }[];
-  canh_bao: CanhBaoRaVao[];
-  ra_ngoai_nhieu: RaNgoai[];
+  top_nguoi: DiemNongNguoi[];
 }
 
 interface Dashboard {
@@ -199,21 +191,18 @@ export function TrangDashboard(): ReactNode {
         <div className="bang-dieu-khien">
           <TongQuanNgay ct={du_lieu.cong_ty} rv={du_lieu.ra_vao} />
 
-          {du_lieu.ra_vao !== null && <KhoiCanhBaoRaVao rv={du_lieu.ra_vao} />}
+          {du_lieu.ra_vao !== null && <DiemNongRaVao rv={du_lieu.ra_vao} />}
 
           <div className="luoi luoi-2">
-            {du_lieu.ra_vao !== null && <BangRaNgoai ds={du_lieu.ra_vao.ra_ngoai_nhieu} />}
             <BangDiMuon
               ds={du_lieu.cong_ty.di_muon_hom_nay}
               tieu_de="Đi muộn hôm nay"
               khi_trong="Cả công ty đúng giờ hôm nay."
             />
+            <BieuDoBayNgay ct={du_lieu.cong_ty} />
           </div>
 
-          <div className="luoi luoi-2">
-            <BieuDoBayNgay ct={du_lieu.cong_ty} />
-            <ChoDuyet ct={du_lieu.cong_ty} />
-          </div>
+          <ChoDuyet ct={du_lieu.cong_ty} />
 
           {du_lieu.nhan_su !== null && <KhoiNhanSu ns={du_lieu.nhan_su} />}
           {du_lieu.he_thong !== null && <KhoiHeThong ht={du_lieu.he_thong} />}
@@ -418,104 +407,63 @@ function ChoDuyet({ ct }: { ct: CongTy }): ReactNode {
   );
 }
 
-// ==================================================================== cảnh báo ra/vào
+// ==================================================================== điểm nóng ra/vào
 
-function KhoiCanhBaoRaVao({ rv }: { rv: RaVaoHR }): ReactNode {
-  const tong = rv.canh_bao.length;
-  const co_nang = rv.canh_bao.some((c) => MA_LOI[c.ma_loi]?.nang === true);
-
+// TONG QUAN thoi: dashboard chi de biet "co diem nong nao can xu ly". Danh sach chi tiet + o
+// giai trinh/xu ly nam o tab rieng /ra-vao.
+function DiemNongRaVao({ rv }: { rv: RaVaoHR }): ReactNode {
   return (
-    <div className="the the-mong">
-      <div style={{ padding: '16px 16px 0' }}>
-        <h2>Cảnh báo ra/vào hôm nay</h2>
-
-        {tong === 0 ? (
-          <div className="hop-thong-bao hop-tot">
-            Không có cảnh báo mâu thuẫn ra/vào nào hôm nay.
-          </div>
-        ) : (
-          <>
-            <div className={`hop-thong-bao ${co_nang ? 'hop-loi' : 'hop-luu-y'}`}>
-              <strong>{tong} cảnh báo</strong> mâu thuẫn ra/vào hôm nay.{' '}
-              {rv.canh_bao_theo_loai.map((l) => `${l.so} ${ten_loi(l.ma_loi).toLowerCase()}`)
-                .join(' · ')}.
-            </div>
-            <p className="mo-ta">
-              Cảnh báo nghĩa là có lần ra hoặc vào không quẹt thẻ — không tự trừ công. Nhân sự
-              xem và nhắc, hoặc để nhân viên nộp đơn giải trình.
-            </p>
-          </>
-        )}
+    <div className="the">
+      <div className="dau-khoi">
+        <h2>Điểm nóng ra/vào — tháng {rv.thang.slice(5)}</h2>
+        <LienKet den="/ra-vao" lop="nut nut-nho">Mở tab xử lý →</LienKet>
       </div>
 
-      {tong > 0 && (
-        <div className="vo-bang">
-          <table className="bang-neo-cot-dau">
-            <thead>
-              <tr>
-                <th>Mã NV</th><th>Họ tên</th><th>Phòng ban</th>
-                <th>Loại</th><th>Giờ</th><th>Mô tả</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rv.canh_bao.map((c) => (
-                <tr key={c.id}>
-                  <td className="so">{c.ma_nv}</td>
-                  <td>
-                    <LienKet den={`/nhan-vien/${c.nhan_vien_id}`}>{c.ho_ten}</LienKet>
-                  </td>
-                  <td>{c.phong_ban ?? '—'}</td>
-                  <td className="khong-ngat">
-                    <span className={MA_LOI[c.ma_loi]?.nang === true ? 'nhan-xau' : 'nhan-canh-bao'}>
-                      {ten_loi(c.ma_loi)}
-                    </span>
-                  </td>
-                  <td className="so">{gio_ngan(c.thoi_diem)}</td>
-                  <td className="o-so-phu">{c.mo_ta}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BangRaNgoai({ ds }: { ds: RaNgoai[] }): ReactNode {
-  return (
-    <div className="the the-mong">
-      <div style={{ padding: '16px 16px 0' }}>
-        <h2>Ra ngoài nhiều nhất hôm nay</h2>
+      <div className="luoi luoi-4">
+        <OSo nhan="Cảnh báo trong tháng" gia_tri={rv.canh_bao_thang}
+          mau={rv.canh_bao_thang > 0 ? 'canh_bao' : undefined} />
+        <OSo nhan="Chưa xử lý" gia_tri={rv.chua_xu_ly_thang}
+          phu="cần HR nhắc nhở / kỷ luật"
+          mau={rv.chua_xu_ly_thang > 0 ? 'xau' : 'tot'} />
+        <OSo nhan="Cảnh báo hôm nay" gia_tri={rv.canh_bao_hom_nay}
+          mau={rv.canh_bao_hom_nay > 0 ? 'canh_bao' : undefined} />
+        <OSo nhan="Theo loại"
+          gia_tri={rv.canh_bao_theo_loai.length === 0 ? '—' : rv.canh_bao_theo_loai[0]!.so}
+          phu={rv.canh_bao_theo_loai.length === 0 ? 'không có'
+            : `${ten_loi(rv.canh_bao_theo_loai[0]!.ma_loi)} nhiều nhất`} />
       </div>
-      {ds.length === 0 ? (
-        <Trong tieu_de="Không ai ra ngoài trong giờ làm" mo_ta="Hôm nay không có phiên ra ngoài nào." />
+
+      {rv.top_nguoi.length === 0 ? (
+        <Trong tieu_de="Không có điểm nóng" mo_ta="Tháng này chưa ai bị cảnh báo ra/vào." />
       ) : (
-        <div className="vo-bang">
-          <table>
-            <thead>
-              <tr>
-                <th>Mã NV</th><th>Họ tên</th><th>Phòng ban</th>
-                <th className="canh-phai">Số lần</th><th className="canh-phai">Ra ngoài</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ds.map((n) => (
-                <tr key={n.nhan_vien_id}>
-                  <td className="so">{n.ma_nv}</td>
-                  <td>
-                    <LienKet den={`/nhan-vien/${n.nhan_vien_id}`}>{n.ho_ten}</LienKet>
-                  </td>
-                  <td>{n.phong_ban ?? '—'}</td>
-                  <td className="canh-phai so">{n.so_phien}</td>
-                  <td className="canh-phai so" style={{ color: 'var(--canh-bao)', fontWeight: 600 }}>
-                    {phut_thanh_chu(n.phut_ra_ngoai)}
-                  </td>
+        <>
+          <h3>Người bị cảnh báo nhiều nhất tháng</h3>
+          <div className="vo-bang">
+            <table className="bang-gon">
+              <thead>
+                <tr>
+                  <th>Mã NV</th><th>Họ tên</th><th>Phòng ban</th>
+                  <th className="canh-phai">Cảnh báo</th><th className="canh-phai">Chưa xử lý</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rv.top_nguoi.map((n) => (
+                  <tr key={n.nhan_vien_id}>
+                    <td className="so">{n.ma_nv}</td>
+                    <td><LienKet den={`/nhan-vien/${n.nhan_vien_id}`}>{n.ho_ten}</LienKet></td>
+                    <td>{n.phong_ban ?? '—'}</td>
+                    <td className="canh-phai so">{n.so_canh_bao}</td>
+                    <td className="canh-phai so">
+                      {n.chua_xu_ly > 0
+                        ? <span className="nhan-xau">{n.chua_xu_ly}</span>
+                        : <span className="nhan-tot">0</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
