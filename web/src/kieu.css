@@ -143,7 +143,7 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
   z-index: 5;
 }
 .dau-app-tieu-de { font-weight: 600; font-size: 17px; }
-.dau-app-phu { font-size: 12.5px; color: var(--chu-nhat); }
+.dau-app-phu { font-size: 12.5px; color: var(--chu-mo); }
 .dau-app-nut { display: flex; align-items: center; gap: 10px; }
 
 .nut-tron {
@@ -185,7 +185,9 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
   flex-wrap: wrap;
   margin-bottom: 16px;
 }
-.mo-ta { color: var(--chu-nhat); font-size: 13px; margin: 0; }
+/* Chu chu thich / mo ta: nho hon va MO hon chu chinh, de nguoi doc luot qua biet la ghi chu
+   chu khong phai noi dung chinh. Van dat WCAG AA (--chu-mo #71717A tren nen sang ~4,6:1). */
+.mo-ta { color: var(--chu-mo); font-size: 12.5px; margin: 0; }
 
 /* Trich dan (vd noi dung noi quy, giai trinh nguoi lao dong). Truoc day dung mac dinh trinh
    duyet: thut le 40px hai ben, khong theo he thong. Dat vien trai + nen mo cho gon. */
