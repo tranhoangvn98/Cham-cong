@@ -2,6 +2,18 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.56.1] — 2026-08-29
+
+**Sửa trình bày + đối chiếu Metronic 9, kiểm bằng render thật (desktop + điện thoại 390px).**
+
+- **Header hộp thoại (`.hop-thoai > .dau-trang`)**: nút đóng ✕ bị rớt xuống dòng dưới trên màn
+  hẹp (do `.dau-trang` có `flex-wrap` vốn cho header trang). Ghim ✕ ở góc trên-phải, tiêu đề
+  dài thì tự xuống dòng.
+- **`.ho-so-chi-so` trên màn hẹp (≤520px)**: xếp 1 cột thay vì lưới auto-fit để lẻ ô (trước đây
+  để một ô trống lửng lơ khi có 3 chỉ số).
+- **Bo góc thẻ (`.the`, `.o-so`) → 12px** (radius-xl) khớp Metronic 9 (ReUI: thẻ dùng
+  `--radius + 4px`); ô nhập/nút giữ 6–8px. Token màu (blue-500, zinc, đỏ) vốn đã khớp Metronic.
+
 ## [1.56.0] — 2026-08-29
 
 **Tab "Ra/vào" riêng + quy trình xử lý cảnh báo: tự nhắc nhở (email) / tự chuyển kỷ luật theo

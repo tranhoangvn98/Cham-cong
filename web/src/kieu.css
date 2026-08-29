@@ -196,7 +196,8 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
 .the {
   background: var(--nen-the);
   border: 1px solid var(--vien);
-  border-radius: var(--tron);
+  /* Metronic 9: the dung radius-xl (12px). O nhap/nut van 6-8px. */
+  border-radius: var(--tron-lon);
   box-shadow: var(--bong);
   padding: 16px;
   margin-bottom: 16px;
@@ -226,7 +227,7 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
 .o-so {
   background: var(--nen-the);
   border: 1px solid var(--vien);
-  border-radius: var(--tron);
+  border-radius: var(--tron-lon);
   box-shadow: var(--bong);
   padding: 14px 16px;
 }
@@ -475,6 +476,11 @@ input[type="checkbox"] {
   padding: 20px;
 }
 .hop-thoai-rong { max-width: 760px; }
+/* Header hop thoai: giu nut dong o goc tren-phai, KHONG cho xuong dong (dau-trang goc co
+   flex-wrap cho header trang; trong hop thoai tieu de dai lam nut ✕ rot xuong duoi). */
+.hop-thoai > .dau-trang { flex-wrap: nowrap; }
+.hop-thoai > .dau-trang > h2 { min-width: 0; overflow-wrap: anywhere; }
+.hop-thoai > .dau-trang > .nut-phang { flex: 0 0 auto; }
 
 /* ---------------------------------------------------------------- bieu do cot */
 .bieu-do {
@@ -701,6 +707,8 @@ input[type="checkbox"] {
   padding: 11px 20px 13px;
   box-shadow: -1px 0 0 var(--vien), 0 -1px 0 var(--vien);
 }
+/* Man hep: xep mot cot de khong con o trong lung lo (auto-fit de lai o rong khi le so o). */
+@media (max-width: 520px) { .ho-so-chi-so { grid-template-columns: 1fr; } }
 .ho-so-chi-so .o-so-gia-tri { font-size: 19px; margin-top: 1px; }
 
 /* ---------------------------------------------------------------- thanh tab ho so */
