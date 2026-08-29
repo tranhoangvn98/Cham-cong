@@ -186,6 +186,18 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
   margin-bottom: 16px;
 }
 .mo-ta { color: var(--chu-nhat); font-size: 13px; margin: 0; }
+
+/* Trich dan (vd noi dung noi quy, giai trinh nguoi lao dong). Truoc day dung mac dinh trinh
+   duyet: thut le 40px hai ben, khong theo he thong. Dat vien trai + nen mo cho gon. */
+blockquote {
+  margin: 8px 0;
+  padding: 8px 14px;
+  border-left: 3px solid var(--vien-dam);
+  background: var(--nen-mo);
+  border-radius: 0 var(--tron-nho) var(--tron-nho) 0;
+  color: var(--chu-nhat);
+  font-size: 13px;
+}
 /* Trang chi con hang nut (tieu de da len header) — day nut sang phai. */
 .dau-trang > .hang-nut:only-child { margin-left: auto; }
 
@@ -481,6 +493,27 @@ input[type="checkbox"] {
 .hop-thoai > .dau-trang { flex-wrap: nowrap; }
 .hop-thoai > .dau-trang > h2 { min-width: 0; overflow-wrap: anywhere; }
 .hop-thoai > .dau-trang > .nut-phang { flex: 0 0 auto; }
+
+/* ---------------------------------------------------------------- NHIP DOC (vertical rhythm)
+ *
+ * Noi dung hop thoai la mot dong chay: tieu de phu, doan mo ta, nhan + o nhap, hop luu y, hang
+ * nut. Truoc day moi phan tu tu lo margin cua no (cho co, cho khong) nen tieu de dinh sat hop
+ * phia tren, nhan dinh sat doan mo ta, cho lai ho ra qua rong. Dat mot nhip chung.
+ *
+ * `.hop-thoai` va `.the` la khoi THUONG nen margin doc giua cac con GAP NHAU (lay cai lon hon),
+ * KHONG cong doi — vi vay them margin-top o day khong sinh khoang cach doi. */
+.hop-thoai > h3, .hop-thoai > h4 { margin-top: var(--khoang-lon); }
+.hop-thoai > label { margin-top: var(--khoang-vua); }
+.hop-thoai > label + input,
+.hop-thoai > label + select,
+.hop-thoai > label + textarea { margin-top: 0; }
+.hop-thoai > .mo-ta { margin-bottom: var(--khoang-nho); }
+.hop-thoai > .hang-nut { margin-top: var(--khoang-lon); }
+.hop-thoai > :first-child { margin-top: 0; }
+
+/* Tieu de phu trong mot the tach khoi noi dung phia tren — tru khi la phan tu dau cua the. */
+.the > h3, .the > h4 { margin-top: var(--khoang-lon); }
+.the > h3:first-child, .the > h4:first-child, .the > :first-child { margin-top: 0; }
 
 /* ---------------------------------------------------------------- bieu do cot */
 .bieu-do {
