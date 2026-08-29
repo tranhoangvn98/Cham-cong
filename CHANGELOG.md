@@ -2,6 +2,20 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.57.1] — 2026-08-29
+
+**Tinh chỉnh giao diện: font, khoảng cách, chữ chú thích.**
+
+- **Đổi font web sang Be Vietnam Pro** (thay Inter). Font sans thiết kế riêng cho tiếng Việt —
+  dấu cân, mềm hơn Inter, bớt cứng/đơn điệu; vẫn chuyên nghiệp. Dùng chung font với app điện
+  thoại nên thương hiệu nhất quán. Tự chứa trong repo (subset từ bản chính thức SIL OFL 1.1 sang
+  woff2, ~150 KB cho 4 độ đậm), không gọi Google Fonts. Web và mobile vẫn là hai theme riêng
+  (khác màu chính + bo góc).
+- **Nhịp khoảng cách chuẩn** trong hộp thoại + thẻ: tiêu đề phụ, nhãn, ô nhập, đoạn mô tả, hàng
+  nút không còn dính vào nhau hay cách xa bất hợp lý. Style lại `blockquote`.
+- **Chữ chú thích in nhỏ hơn và mờ hơn** chữ chính (mô tả, phụ đề, ghi chú) — dễ phân biệt nội
+  dung chính với ghi chú. Vẫn đạt WCAG AA.
+
 ## [1.57.0] — 2026-08-29
 
 **Xử lý kỷ luật tự động: gom vi phạm theo tháng & mức độ → hồ sơ kỷ luật → nhắc nhở / giảm thưởng.**
