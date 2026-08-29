@@ -233,13 +233,6 @@ function HopThoaiHoSo(
         </div>
       ) : <p className="mo-ta">Không có chi tiết.</p>}
 
-      <div className="hop-luu-y">
-        Đây là <strong>giảm thưởng P3</strong> (Điều 104 BLLĐ, Điều 14 Nội quy) — không phải phạt tiền,
-        không trừ lương cơ bản. Khoản này sẽ vào phiếu lương kỳ {d.ky} khi tính lương.
-        {' '}Kỷ luật lao động chính thức (khiển trách trở lên) làm ở tab{' '}
-        <LienKet den="/vi-pham">Vi phạm</LienKet> qua biên bản (BLLĐ Điều 122/124).
-      </div>
-
       {d.trang_thai === 'da_ap_dung' && (
         <div className="hop-thong-bao hop-tin">
           Đã áp dụng giảm thưởng {tien(d.tong_tien)} đ{d.da_gui_email ? ' — đã gửi email báo nhân viên.' : '.'}
