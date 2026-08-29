@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.56.3] — 2026-08-29
+
+**Lệnh cập nhật phòng ban + chức danh từ file danh sách nhân sự.**
+
+`npm run cap_nhat_phong_ban -- <file.xlsx> [--that]` — đọc file lúc chạy (KHÔNG nhét dữ liệu cá
+nhân vào mã nguồn, NĐ 13/2023), khớp theo họ tên (chuẩn hoá bỏ dấu + so tập từ để chịu lệch chữ
+đệm / đảo thứ tự), rồi cập nhật `nhan_vien.phong_ban_id` (tạo `phong_ban` nếu chưa có) và
+`nhan_vien.chuc_danh`. Mặc định chạy thử: in ai sẽ đổi gì, phòng ban nào sẽ tạo, tên nào không
+khớp / nhập nhằng; thêm `--that` để ghi. Chỉ động tới phòng ban + chức danh — không đụng công,
+lương, PIN. Cảnh báo đọc file che số CCCD/SĐT (chỉ hiện 4 số cuối).
+
 ## [1.56.2] — 2026-08-29
 
 **Sửa dải chỉ số trong hộp thoại bị răng cưa.** Các ô `.ho-so-chi-so` là `.o-so` (có viền + bo

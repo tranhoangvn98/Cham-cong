@@ -1,6 +1,6 @@
 {
   "name": "@cham-cong/may-chu",
-  "version": "1.56.2",
+  "version": "1.56.3",
   "private": true,
   "type": "module",
   "description": "Backend: cong ADMS cho may ZKTeco + REST API cho webapp va app dien thoai",
@@ -17,6 +17,7 @@
     "sap_xep_tep_ma_nguon": "node --experimental-strip-types src/ho_so/chay_sap_xep.ts",
     "gop_trung": "node dist/nhan_vien/chay_gop.js",
     "nap_ho_so": "node dist/nhan_su/chay_nap_ho_so.js",
+    "cap_nhat_phong_ban": "node dist/nhan_su/chay_cap_nhat_phong_ban.js",
     "gop_trung_ma_nguon": "node --experimental-strip-types src/nhan_vien/chay_gop.ts",
     "kiem_sharepoint": "node dist/sharepoint/chay_kiem.js",
     "dong_bo_sharepoint": "node dist/sharepoint/chay_dong_bo.js",
@@ -26,7 +27,8 @@
     "kiem_tra_kieu": "tsc -p tsconfig.kiem_tra.json",
     "test_e2e": "node --experimental-strip-types --test test/e2e.test.ts",
     "test_tat_ca": "npm test && npm run test_e2e",
-    "nap_ho_so_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_nap_ho_so.ts"
+    "nap_ho_so_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_nap_ho_so.ts",
+    "cap_nhat_phong_ban_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_cap_nhat_phong_ban.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
