@@ -31,6 +31,7 @@ interface Lenh {
 
 export function TrangThietBi(): ReactNode {
   const [dang_them, dat_dang_them] = useState(false);
+  const [sua_cho, dat_sua_cho] = useState<ThietBi | null>(null);
   const [xem_lenh, dat_xem_lenh] = useState<ThietBi | null>(null);
   const [lay_log_cho, dat_lay_log_cho] = useState<ThietBi | null>(null);
   const [nap_nv_cho, dat_nap_nv_cho] = useState<ThietBi | null>(null);
@@ -172,6 +173,10 @@ export function TrangThietBi(): ReactNode {
                             title="Xin log theo khoảng ngày — dùng khi máy tưởng đã gửi hết">
                             Lấy log cũ
                           </button>
+                          <button className="nut-nho nut-phang" onClick={() => dat_sua_cho(tb)}
+                            title="Đổi tên gợi nhớ / vị trí của máy">
+                            Sửa
+                          </button>
                           <button className="nut-nho nut-phang" onClick={() => dat_xem_lenh(tb)}>
                             Lịch sử lệnh
                           </button>
@@ -199,6 +204,14 @@ export function TrangThietBi(): ReactNode {
         <FormThietBi
           khi_dong={() => dat_dang_them(false)}
           khi_xong={() => { dat_dang_them(false); nap_lai(); }}
+        />
+      )}
+
+      {sua_cho !== null && (
+        <FormSuaThietBi
+          thiet_bi={sua_cho}
+          khi_dong={() => dat_sua_cho(null)}
+          khi_xong={() => { dat_sua_cho(null); nap_lai(); }}
         />
       )}
 
@@ -296,6 +309,59 @@ function FormThietBi({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
         <div className="hang-nut">
           <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>
             {hd.dang_chay ? 'Đang lưu…' : 'Khai báo'}
+          </button>
+          <button type="button" onClick={khi_dong}>Hủy</button>
+        </div>
+      </form>
+    </HopThoai>
+  );
+}
+
+/** Sua ten goi nho / vi tri cua may. Serial KHONG doi (la khoa may nhan dien) — chi hien de doi chieu. */
+function FormSuaThietBi(
+  { thiet_bi, khi_dong, khi_xong }:
+  { thiet_bi: ThietBi; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [ten, dat_ten] = useState(thiet_bi.ten);
+  const [vi_tri, dat_vi_tri] = useState(thiet_bi.vi_tri);
+  const hd = dung_hanh_dong();
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    const ok = await hd.chay(
+      () => goi(`/api/thiet-bi/${thiet_bi.id}`, {
+        method: 'PATCH',
+        body: { ten: ten.trim(), vi_tri: vi_tri.trim() === '' ? null : vi_tri.trim() },
+      }),
+      'Đã đổi thông tin máy.',
+    );
+    if (ok) khi_xong();
+  };
+
+  return (
+    <HopThoai tieu_de={`Sửa máy — ${thiet_bi.ten}`} khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+        <div className="o-nhap">
+          <label htmlFor="s-sn">Serial</label>
+          <input id="s-sn" value={thiet_bi.serial} readOnly />
+          <div className="goi-y">
+            Serial là khóa máy tự nhận diện — không đổi được. Muốn dùng serial khác thì khai máy mới.
+          </div>
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="s-tn">Tên gợi nhớ *</label>
+          <input id="s-tn" value={ten} onChange={(e) => dat_ten(e.target.value)}
+            placeholder="Kho hàng - Cửa chính" required autoFocus />
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="s-vt">Vị trí</label>
+          <input id="s-vt" value={vi_tri} onChange={(e) => dat_vi_tri(e.target.value)}
+            placeholder="Kho hàng" />
+        </div>
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh" disabled={hd.dang_chay || ten.trim() === ''}>
+            {hd.dang_chay ? 'Đang lưu…' : 'Lưu'}
           </button>
           <button type="button" onClick={khi_dong}>Hủy</button>
         </div>

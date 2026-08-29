@@ -2,6 +2,13 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.57.2] — 2026-08-29
+
+**Thêm nút Sửa thiết bị (đổi tên gợi nhớ / vị trí).** Trang Cài đặt → Thiết bị đã có API sửa
+(`PATCH /thiet-bi/:id`) nhưng thiếu nút trên giao diện — không đổi được tên/vị trí sau khi khai
+báo (vd máy chuyển từ văn phòng ra kho vẫn mang tên cũ). Thêm nút **Sửa** + hộp thoại đổi tên +
+vị trí; serial hiện chỉ đọc (là khóa máy tự nhận diện, không đổi).
+
 ## [1.57.1] — 2026-08-29
 
 **Tinh chỉnh giao diện: font, khoảng cách, chữ chú thích.**
