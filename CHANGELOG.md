@@ -2,6 +2,10 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.56.4] — 2026-08-29
+
+**cap_nhat_phong_ban: tên phòng đầy đủ (không viết tắt) + mở sẵn phòng kho/lái xe.** Ánh xạ mã trong file sang tên đầy đủ: KD→Phòng Kinh doanh, KS→Phòng Kiểm soát, CSKH→Phòng Chăm sóc khách hàng, MKT→Phòng Marketing, XNK→Phòng Xuất nhập khẩu, IT→Phòng Công nghệ thông tin, KT→Phòng Kế toán, HCNS→Phòng Hành chính nhân sự. Sheet kho Trung Quốc gộp về Phòng Kho Trung Quốc; Quản lý kho/Bốc xếp→Phòng Kho Hà Nội; Lái xe→Phòng Lái xe. Luôn tạo sẵn ba phòng Kho Trung Quốc/Kho Hà Nội/Lái xe.
+
 ## [1.56.3] — 2026-08-29
 
 **Lệnh cập nhật phòng ban + chức danh từ file danh sách nhân sự.**

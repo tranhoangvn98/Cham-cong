@@ -23,6 +23,31 @@ function tap_tu(s: string): string {
 
 interface Nguoi { ho_ten: string; phong_ban: string | null; chuc_danh: string | null; }
 
+// Ten phong ban DAY DU (chu cong ty chot 29.08): khong viet tat. Ma trong file -> ten day du.
+const ANH_XA_PHONG: Record<string, string> = {
+  kd: 'Phòng Kinh doanh',
+  ks: 'Phòng Kiểm soát',
+  cskh: 'Phòng Chăm sóc khách hàng',
+  mkt: 'Phòng Marketing',
+  xnk: 'Phòng Xuất nhập khẩu',
+  it: 'Phòng Công nghệ thông tin',
+  kt: 'Phòng Kế toán',
+  hcns: 'Phòng Hành chính nhân sự',
+  'quản lý kho': 'Phòng Kho Hà Nội',
+  'bốc xếp': 'Phòng Kho Hà Nội',
+  'lái xe': 'Phòng Lái xe',
+};
+// Luon tao (du chua ai duoc gan) — chu cong ty yeu cau mo san ba phong nay.
+const PHONG_LUON_TAO = ['Phòng Kho Trung Quốc', 'Phòng Kho Hà Nội', 'Phòng Lái xe'];
+
+/** Ten phong ban day du tu (sheet, o "Phong ban"). Sheet kho Trung -> gom het ve Kho Trung Quoc. */
+function phong_cua(sheet: string, pb: string | null): string | null {
+  if (sheet.toLowerCase().includes('kho trung')) return 'Phòng Kho Trung Quốc';
+  const raw = (pb ?? '').replace(/\s+/g, ' ').trim();
+  if (raw === '') return null;
+  return ANH_XA_PHONG[raw.toLowerCase()] ?? raw;   // khong biet -> giu nguyen, hien ra de kiem
+}
+
 async function main(): Promise<void> {
   const file = process.argv[2];
   const that = process.argv.includes('--that');
@@ -40,7 +65,7 @@ async function main(): Promise<void> {
   const theo_ten = new Map<string, Nguoi>();
   for (const d of kq.dong) {
     if (d.ho_ten.trim() === '') continue;
-    const pb = d.phong_ban?.trim() || null;
+    const pb = phong_cua(d.sheet, d.phong_ban);
     const cd = d.chuc_danh?.trim() || null;
     if (pb === null && cd === null) continue;
     const khoa = tap_tu(d.ho_ten);
@@ -78,13 +103,15 @@ async function main(): Promise<void> {
   }
 
   const cac_pb = [...new Set(khop.map((k) => k.nguoi.phong_ban).filter((x): x is string => x !== null))].sort();
+  // Gom them cac phong luon tao (kho TQ / kho HN / lai xe) du chua ai duoc gan.
+  const cac_pb_tao = [...new Set([...cac_pb, ...PHONG_LUON_TAO])].sort();
 
   console.log(`\n=== SẼ CẬP NHẬT (${String(khop.length)} người) ===`);
   for (const k of khop) {
     console.log(`  ${k.nv.ma_nv.padEnd(8)} ${k.nguoi.ho_ten.padEnd(24)} `
       + `phòng: ${(k.nguoi.phong_ban ?? '—').padEnd(16)} chức danh: ${k.nguoi.chuc_danh ?? '—'}`);
   }
-  console.log(`\n=== PHÒNG BAN (tạo nếu chưa có): ${cac_pb.join(' | ')}`);
+  console.log(`\n=== PHÒNG BAN (tạo nếu chưa có): ${cac_pb_tao.join(' | ')}`);
   if (nhap_nhang.length > 0) {
     console.log(`\n=== NHẬP NHẰNG (nhiều hồ sơ cùng tên — bỏ qua) ===`);
     for (const x of nhap_nhang) console.log(`  ${x.nguoi.ho_ten} — ${String(x.so)} hồ sơ`);
@@ -101,7 +128,7 @@ async function main(): Promise<void> {
   }
 
   const so = await trong_giao_dich(async (khach) => {
-    for (const ten of cac_pb) {
+    for (const ten of cac_pb_tao) {
       await khach.query(`insert into phong_ban (ten) values ($1) on conflict (ten) do nothing`, [ten]);
     }
     const pb_id = new Map<string, string>();
@@ -123,7 +150,7 @@ async function main(): Promise<void> {
     }
     return n;
   });
-  console.log(`\n✔ ĐÃ CẬP NHẬT ${String(so)} người, ${String(cac_pb.length)} phòng ban.`);
+  console.log(`\n✔ ĐÃ CẬP NHẬT ${String(so)} người, ${String(cac_pb_tao.length)} phòng ban.`);
   await dong_pool();
 }
 
