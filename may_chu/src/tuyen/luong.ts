@@ -18,7 +18,7 @@ import { ghi_nhan_am_tham } from '../sharepoint/dong_bo.ts';
 import { khoang_thang } from '../tien_ich/thoi_gian.ts';
 import { ghi_xlsx } from '../tien_ich/ghi_xlsx.ts';
 import {
-  chuoi, chuoi_bat_buoc, luan_ly, ngay_bat_buoc, so_nguyen, so_thuc, than, trong_tap,
+  chuoi, chuoi_bat_buoc, gio, luan_ly, ngay_bat_buoc, so_nguyen, so_thuc, than, trong_tap,
   uuid, uuid_bat_buoc,
   LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
@@ -156,8 +156,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
          ty_le_bhxh_nld, ty_le_bhyt_nld, ty_le_bhtn_nld,
          ty_le_bhxh_nsdld, ty_le_bhyt_nsdld, ty_le_bhtn_nsdld,
          giam_tru_ban_than, giam_tru_phu_thuoc, can_cu, ghi_chu,
-         cong_chuan_thang, lam_tron_den
-       ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id`,
+         cong_chuan_thang, lam_tron_den,
+         phat_di_muon_bat, di_muon_gio_vao, di_muon_moc_50k, di_muon_muc_50k,
+         di_muon_moc_nua_ngay, di_muon_mien_moi_thang, di_muon_han_don, ty_le_thu_viec
+       ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
+                 $18,$19,$20,$21,$22,$23,$24,$25) returning id`,
       [
         hieu_luc_tu,
         chuoi_bat_buoc(b, 'ten', { toi_da: 200 }),
@@ -175,6 +178,16 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         // nhu nhau, nen phai la lua chon co y thuc chu khong phai mac dinh.
         so_thuc(b, 'cong_chuan_thang', { min: 0, max: 31 }) ?? 0,
         so_thuc(b, 'lam_tron_den', { min: 0, max: 1_000_000 }) ?? 0,
+        // Phat di muon: bat/tat + 4 moc gio + muc phat + so lan mien. Mac dinh = tat, dung
+        // mau mac dinh (08:00/08:10/08:30, 50k, 3 lan/thang, don truoc 07:30).
+        luan_ly(b, 'phat_di_muon_bat', false),
+        gio(b, 'di_muon_gio_vao') ?? '08:00:00',
+        gio(b, 'di_muon_moc_50k') ?? '08:10:00',
+        so_tien(b, 'di_muon_muc_50k', 50000),
+        gio(b, 'di_muon_moc_nua_ngay') ?? '08:30:00',
+        so_nguyen(b, 'di_muon_mien_moi_thang', { min: 0, max: 31 }) ?? 3,
+        gio(b, 'di_muon_han_don') ?? '07:30:00',
+        so_thuc(b, 'ty_le_thu_viec', { min: 0.5, max: 1 }) ?? 0.85,
       ],
     );
 
