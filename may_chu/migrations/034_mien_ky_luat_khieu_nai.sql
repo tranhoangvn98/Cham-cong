@@ -53,12 +53,15 @@ comment on column ho_so_ky_luat.ly_do_mien is
   'Ly do admin mien ky luat cho nguoi lao dong. Mien = go giam thuong nhung khong xoa ho so '
   '(van luu de theo doi lich su).';
 
--- ---------------------------------------------------------------- 3. khieu nai & giai trinh
-create sequence if not exists seq_ma_khieu_nai;
+-- ---------------------------------------------------------------- 3. khieu nai ky luat & giai trinh
+-- TEN BANG: `khieu_nai_ky_luat` — KHONG dung `khieu_nai` vi ten do DA thuoc nhom ho so nhan su
+-- (khieu nai trong ho so ca nhan: tieu_de/muc_do/giai_quyet_luc...). Trung ten se lam
+-- `create table if not exists` bo qua roi index tren cot khong co -> hong di tru.
+create sequence if not exists seq_ma_khieu_nai_kl;
 
 -- Mot khieu nai gan voi MOT ho so ky luat (khieu nai quyet dinh giam thuong) HOAC mot vi pham
 -- (giai trinh / khieu nai ban ghi vi pham). It nhat mot trong hai phai co.
-create table if not exists khieu_nai (
+create table if not exists khieu_nai_ky_luat (
   id                uuid primary key default gen_random_uuid(),
   ma                text,
   ho_so_ky_luat_id  uuid references ho_so_ky_luat(id) on delete cascade,
@@ -80,23 +83,25 @@ create table if not exists khieu_nai (
   tao_luc           timestamptz not null default now(),
   cap_nhat_luc      timestamptz not null default now(),
 
-  constraint khieu_nai_co_doi_tuong
+  -- Phong khi bang cu (mot ban trien khai truoc) da ton tai thieu cot: bao dam cot ma co mat.
+  constraint khieu_nai_ky_luat_co_doi_tuong
     check (ho_so_ky_luat_id is not null or vi_pham_id is not null)
 );
-create unique index if not exists khieu_nai_ma_idx on khieu_nai(ma);
-create index if not exists khieu_nai_ho_so_idx on khieu_nai(ho_so_ky_luat_id)
+alter table khieu_nai_ky_luat add column if not exists ma text;
+create unique index if not exists khieu_nai_ky_luat_ma_idx on khieu_nai_ky_luat(ma);
+create index if not exists khieu_nai_ky_luat_ho_so_idx on khieu_nai_ky_luat(ho_so_ky_luat_id)
   where trang_thai in ('moi','dang_xem');
-create index if not exists khieu_nai_nhan_vien_idx on khieu_nai(nhan_vien_id, tao_luc desc);
+create index if not exists khieu_nai_ky_luat_nv_idx on khieu_nai_ky_luat(nhan_vien_id, tao_luc desc);
 
-create or replace function gan_ma_khieu_nai() returns trigger as $$
+create or replace function gan_ma_khieu_nai_kl() returns trigger as $$
 begin
   if new.ma is null then
-    new.ma := 'KN-' || lpad(nextval('seq_ma_khieu_nai')::text, 6, '0');
+    new.ma := 'KN-' || lpad(nextval('seq_ma_khieu_nai_kl')::text, 6, '0');
   end if;
   return new;
 end;
 $$ language plpgsql;
 
-drop trigger if exists trg_ma_khieu_nai on khieu_nai;
-create trigger trg_ma_khieu_nai before insert on khieu_nai
-  for each row execute function gan_ma_khieu_nai();
+drop trigger if exists trg_ma_khieu_nai_kl on khieu_nai_ky_luat;
+create trigger trg_ma_khieu_nai_kl before insert on khieu_nai_ky_luat
+  for each row execute function gan_ma_khieu_nai_kl();

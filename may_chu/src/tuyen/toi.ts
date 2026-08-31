@@ -733,7 +733,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     return truy_van(
       `select h.id, h.ma, h.ky, h.muc_do, h.so_vi_pham, h.tong_tien, h.hinh_thuc,
               h.trang_thai, h.chi_tiet, h.ly_do_mien, h.cap_nhat_luc,
-              (select count(*) from khieu_nai kn
+              (select count(*) from khieu_nai_ky_luat kn
                 where kn.ho_so_ky_luat_id = h.id and kn.nhan_vien_id = h.nhan_vien_id)::int as so_khieu_nai
          from ho_so_ky_luat h
         where h.nhan_vien_id = $1 and h.trang_thai <> 'bac_bo'
@@ -751,7 +751,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
               kn.tao_luc, kn.xu_ly_luc,
               h.ma as ma_ky_luat, h.ky as ky_ky_luat, h.tong_tien,
               v.ngay as ngay_vi_pham, lvp.ten as ten_vi_pham
-         from khieu_nai kn
+         from khieu_nai_ky_luat kn
          left join ho_so_ky_luat h on h.id = kn.ho_so_ky_luat_id
          left join vi_pham v on v.id = kn.vi_pham_id
          left join loai_vi_pham lvp on lvp.id = v.loai_vi_pham_id
@@ -795,7 +795,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
 
     // Chan khieu nai trung (con dang mo) tren cung mot doi tuong.
     const trung = await truy_van_mot<{ id: string }>(
-      `select id from khieu_nai
+      `select id from khieu_nai_ky_luat
         where nhan_vien_id = $1 and trang_thai in ('moi','dang_xem')
           and coalesce(ho_so_ky_luat_id::text,'') = coalesce($2::uuid::text,'')
           and coalesce(vi_pham_id::text,'') = coalesce($3::uuid::text,'') limit 1`,
@@ -804,7 +804,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     if (trung !== null) throw new LoiXungDot('Bạn đã có một khiếu nại đang mở cho mục này.');
 
     const dong = await truy_van_mot<{ id: string; ma: string }>(
-      `insert into khieu_nai (ho_so_ky_luat_id, vi_pham_id, nhan_vien_id, loai, noi_dung)
+      `insert into khieu_nai_ky_luat (ho_so_ky_luat_id, vi_pham_id, nhan_vien_id, loai, noi_dung)
        values ($1,$2,$3,$4,$5) returning id, ma`,
       [ho_so_ky_luat_id, vi_pham_id, nv_id, loai, noi_dung],
     );

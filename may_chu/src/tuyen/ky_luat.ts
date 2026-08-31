@@ -47,7 +47,7 @@ export async function tuyen_ky_luat(app: FastifyInstance): Promise<void> {
 
     return truy_van(
       `select h.*, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
-              (select count(*) from khieu_nai kn
+              (select count(*) from khieu_nai_ky_luat kn
                 where kn.ho_so_ky_luat_id = h.id
                   and kn.trang_thai in ('moi','dang_xem'))::int as so_khieu_nai
          from ho_so_ky_luat h
@@ -181,7 +181,7 @@ export async function tuyen_ky_luat(app: FastifyInstance): Promise<void> {
       `select kn.*, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
               h.ma as ma_ky_luat, h.ky as ky_ky_luat, h.muc_do, h.tong_tien, h.trang_thai as tt_ky_luat,
               v.ngay as ngay_vi_pham, lvp.ten as ten_vi_pham
-         from khieu_nai kn
+         from khieu_nai_ky_luat kn
          join nhan_vien nv on nv.id = kn.nhan_vien_id
          left join phong_ban pb on pb.id = nv.phong_ban_id
          left join ho_so_ky_luat h on h.id = kn.ho_so_ky_luat_id
@@ -213,7 +213,7 @@ export async function tuyen_ky_luat(app: FastifyInstance): Promise<void> {
 
     const kn = await truy_van_mot<{ nhan_vien_id: string; ho_so_ky_luat_id: string | null;
                                     trang_thai: string }>(
-      'select nhan_vien_id, ho_so_ky_luat_id, trang_thai from khieu_nai where id = $1', [id],
+      'select nhan_vien_id, ho_so_ky_luat_id, trang_thai from khieu_nai_ky_luat where id = $1', [id],
     );
     if (kn === null) throw new LoiKhongTim('Không tìm thấy khiếu nại.');
     if (kn.trang_thai === 'chap_nhan' || kn.trang_thai === 'tu_choi') {
@@ -221,7 +221,7 @@ export async function tuyen_ky_luat(app: FastifyInstance): Promise<void> {
     }
 
     await thuc_thi(
-      `update khieu_nai set trang_thai = $2, phan_hoi = coalesce($3, phan_hoi),
+      `update khieu_nai_ky_luat set trang_thai = $2, phan_hoi = coalesce($3, phan_hoi),
               nguoi_xu_ly = $4, xu_ly_luc = case when $2 in ('chap_nhan','tu_choi') then now() else xu_ly_luc end,
               cap_nhat_luc = now()
         where id = $1`,
