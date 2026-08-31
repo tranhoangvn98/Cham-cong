@@ -113,6 +113,7 @@ async function main(): Promise<void> {
   interface Ke { nv: NhanVienDb; luong: number; pc: { khoan_ma: string; ten: string; so_tien: number }[]; an_trua_ngay: number; }
   const ke_hoach: Ke[] = [];
   const khong_khop: string[] = [];
+  const canh_bao_so: string[] = [];
 
   for (let r = dong_tieu_de + 1; r < bang.hang.length; r++) {
     const hang = bang.hang[r]!;
@@ -121,10 +122,16 @@ async function main(): Promise<void> {
     const match = theo_ten.get(tap_tu(ten));
     if (match === undefined) { khong_khop.push(ten); continue; }
 
-    const luong = i_luong === undefined ? 0 : so(hang[i_luong]);
+    // Chặn an toàn: số tiền vô lý (> 5 tỷ/tháng) gần như luôn là lỗi đọc ô — bỏ + cảnh báo,
+    // KHÔNG để nó tràn cột hay ghi lương bậy.
+    const hop_le = (v: number, nhan: string): number => {
+      if (v > 5_000_000_000) { canh_bao_so.push(`${ten}: ${nhan}=${v} — bỏ qua (vô lý).`); return 0; }
+      return v;
+    };
+    const luong = hop_le(i_luong === undefined ? 0 : so(hang[i_luong]), 'lương cơ bản');
     const pc = KHOAN_TIEN.map((k) => {
       const idx = chi_so(cot, k.cot);
-      return { khoan_ma: k.khoan_ma, ten: k.ten, so_tien: idx === undefined ? 0 : so(hang[idx]) };
+      return { khoan_ma: k.khoan_ma, ten: k.ten, so_tien: idx === undefined ? 0 : hop_le(so(hang[idx]), k.ten) };
     }).filter((x) => x.so_tien > 0);
     const an_trua_ngay = i_an_trua_ngay === undefined ? 0 : so(hang[i_an_trua_ngay]);
     ke_hoach.push({ nv: match, luong, pc, an_trua_ngay });
@@ -140,6 +147,10 @@ async function main(): Promise<void> {
     ];
     console.log(`  ${k.nv.ho_ten.padEnd(24)} lương cơ bản=${dinh.format(k.luong).padStart(12)}`
       + (cac_pc.length > 0 ? `  | ${cac_pc.join(', ')}` : ''));
+  }
+  if (canh_bao_so.length > 0) {
+    console.log(`\n⚠ ${canh_bao_so.length} ô số vô lý đã bỏ (không ghi):`);
+    for (const c of canh_bao_so) console.log(`  - ${c}`);
   }
   if (khong_khop.length > 0) {
     console.log(`\n⚠ ${khong_khop.length} tên trong Excel KHÔNG khớp nhân viên nào (bỏ qua):`);
