@@ -887,6 +887,14 @@ function KhoaCuaTheoGio(
         luôn tự do</b> bằng phần cứng (nút thoát / thanh đẩy / khóa fail-safe) — không được khóa
         lối thoát hiểm. Kiểm tra đấu nối cửa trước khi bật.
       </div>
+      <div className="hop-luu-y">
+        <b>Cách chắc chắn nhất (khuyến nghị):</b> đặt <b>Khung giờ / Time Zone</b> ngay trên máy —{' '}
+        <i>Menu → Kiểm soát cửa (Access Control) → Time Zone/Time Rule</i>: cho phép mở cửa chỉ
+        trong khung {gio_mo}–{gio_dong}, ngoài giờ máy tự từ chối. Cách này máy <b>tự thực thi
+        cục bộ</b>, không phụ thuộc mạng/máy chủ. Lệnh gửi từ máy chủ dưới đây chỉ là lớp
+        <b> bổ trợ, best-effort</b> — nhiều firmware acc không có lệnh "chặn bền vững" (chỉ có
+        mở/đóng relay tức thời), nên phải Test để biết máy có nhận không.
+      </div>
       {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} /> : (
         <>
           <HopLoi loi={hd.loi} />
@@ -913,7 +921,7 @@ function KhoaCuaTheoGio(
 
           <label htmlFor="kc-lmo">Lệnh MỞ (cho vào) gửi xuống máy</label>
           <input id="kc-lmo" value={lenh_mo} onChange={(e) => dat_lenh_mo(e.target.value)}
-            placeholder="vd (ZKTeco acc): CONTROL DEVICE 0101010005 — kiểm chứng trước" />
+            placeholder="vd: CONTROL DEVICE 1 1  (mở/nhả relay cửa 1 — lệnh phổ biến nhất)" />
           <div className="hang-nut" style={{ marginBottom: 12 }}>
             <button className="nut-nho nut-phang" disabled={hd.dang_chay || lenh_mo.trim() === ''}
               onClick={() => test(lenh_mo, 'MỞ')}>Test gửi lệnh MỞ ngay</button>
@@ -921,13 +929,15 @@ function KhoaCuaTheoGio(
 
           <label htmlFor="kc-lchan">Lệnh CHẶN (chặn vào) gửi xuống máy</label>
           <input id="kc-lchan" value={lenh_chan} onChange={(e) => dat_lenh_chan(e.target.value)}
-            placeholder="vd (ZKTeco acc): CONTROL DEVICE 0101000000 — kiểm chứng trước" />
+            placeholder="thử: CONTROL DEVICE 1 0 hoặc CONTROL DEVICE 4 1 — nhiều firmware KHÔNG chặn bền vững" />
           <div className="hang-nut" style={{ marginBottom: 12 }}>
             <button className="nut-nho nut-phang" disabled={hd.dang_chay || lenh_chan.trim() === ''}
               onClick={() => test(lenh_chan, 'CHẶN')}>Test gửi lệnh CHẶN ngay</button>
           </div>
-          <p className="mo-ta">Lệnh điều khiển cửa khác nhau theo firmware — để trống thì lịch
-            không gửi gì (an toàn). Dùng nút Test để kiểm chứng lệnh đúng trên máy thật trước khi bật.</p>
+          <p className="mo-ta">Lệnh cửa khác nhau theo firmware, và phần lớn máy acc chỉ có
+            mở/đóng relay <b>tức thời</b> — không có lệnh chặn bền vững. Để trống thì lịch không
+            gửi gì (an toàn). Muốn chặn chắc chắn, hãy đặt Time Zone trên máy như hướng dẫn ở trên.
+            Dùng nút Test để xem máy trả mã gì (0 = nhận, số âm = từ chối).</p>
 
           <div className="hang-nut">
             <button className="nut-chinh" disabled={hd.dang_chay} onClick={luu}>

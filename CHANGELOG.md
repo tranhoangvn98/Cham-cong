@@ -2,6 +2,13 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.75.0] — 2026-08-31
+
+**Khóa cửa theo giờ: rà soát kỹ SDK ZKTeco + cập nhật hướng dẫn cho đúng.** Sau khi rà bộ lệnh ADMS/PUSH (probe thư viện s0x90, nhiều dự án thật, guide SenseFace 3A):
+
+- Kết luận: `CONTROL DEVICE 1 1`/`1 0`/`4 1` chỉ **mở/đóng relay tức thời**, không có lệnh chặn vào **bền vững**; vài firmware trả `Return 0` nhưng relay không nhả thật từ xa. Chặn theo giờ đúng cách = **Access Time Zone ngay trên máy** (máy tự thực thi cục bộ), phần ghi khung giờ không nằm trong ADMS mở.
+- Dialog "Khóa cửa theo giờ" thêm hộp hướng dẫn: đặt Time Zone trên máy là cách chắc chắn; lệnh gửi từ máy chủ chỉ là lớp bổ trợ best-effort. Gợi ý lệnh chính xác trong placeholder (`CONTROL DEVICE 1 1` mở; `1 0`/`4 1` để thử chặn).
+
 ## [1.74.0] — 2026-08-31
 
 **Khóa cửa theo giờ — chặn VÀO ngoài giờ làm việc (Cài đặt → Thiết bị).**
