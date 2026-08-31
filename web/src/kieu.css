@@ -492,6 +492,31 @@ input[type="checkbox"] {
 .hop-thoai-rong { max-width: 760px; }
 /* Gan het man hinh — cho bang nhieu cot (bang luong chi tiet) co cho tho. */
 .hop-thoai-toan-man { max-width: 96vw; width: 96vw; max-height: 94vh; }
+
+/* Trang TOAN MAN HINH (khong phai popup): phu kin viewport, nen sang, dung het chieu rong cho
+   bang nhieu cot. Khac hop thoai: khong co nen mo phia sau, khong gioi han max-width 1280px. */
+.khung-toan-man {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--nen);
+  overflow: auto;
+  padding: 12px 22px 40px;
+}
+.dau-toan-man {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--nen);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--vien);
+}
+@media (max-width: 680px) { .khung-toan-man { padding: 8px 12px 32px; } }
 /* Header hop thoai: giu nut dong o goc tren-phai, KHONG cho xuong dong (dau-trang goc co
    flex-wrap cho header trang; trong hop thoai tieu de dai lam nut ✕ rot xuong duoi). */
 .hop-thoai > .dau-trang { flex-wrap: nowrap; }

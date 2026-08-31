@@ -5,7 +5,7 @@
 //      He thong gieo san mot bo mac dinh — ke toan PHAI doi chieu truoc khi tra luong.
 //   2. Trang thai ky quyet dinh sua duoc hay khong. Da gui duyet la khoa, de nguoi duyet
 //      khong bi doi so lieu duoi chan.
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { goi, tai_tep } from '../api.ts';
 import { la_admin } from '../api.ts';
 import {
@@ -262,9 +262,9 @@ function HopThoaiChiTiet(
   const [khoan, dat_khoan] = useState<Phieu | null>(null);
   const hd = dung_hanh_dong();
 
-  if (dang_tai) return <HopThoai tieu_de="Kỳ lương" khi_dong={khi_dong}><DangTai /></HopThoai>;
+  if (dang_tai) return <KhungToanMan tieu_de="Kỳ lương" khi_dong={khi_dong}><DangTai /></KhungToanMan>;
   if (loi !== null || du_lieu === null) {
-    return <HopThoai tieu_de="Kỳ lương" khi_dong={khi_dong}><HopLoi loi={loi} /></HopThoai>;
+    return <KhungToanMan tieu_de="Kỳ lương" khi_dong={khi_dong}><HopLoi loi={loi} /></KhungToanMan>;
   }
 
   const k = du_lieu;
@@ -276,7 +276,7 @@ function HopThoaiChiTiet(
   };
 
   return (
-    <HopThoai tieu_de={`Bảng lương tháng ${k.thang}`} khi_dong={khi_dong} toan_man>
+    <KhungToanMan tieu_de={`Bảng lương tháng ${k.thang}`} khi_dong={khi_dong}>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
 
       <div className="hang-nut">
@@ -442,7 +442,31 @@ function HopThoaiChiTiet(
           khi_xong={() => { dat_khoan(null); nap_lai(); khi_doi(); }}
         />
       )}
-    </HopThoai>
+    </KhungToanMan>
+  );
+}
+
+/**
+ * Khung TOAN MAN HINH (khong phai popup): bang luong chi tiet nhieu cot can ca man de doc. Phu kin
+ * viewport, nen sang, co thanh dau dinh (tieu de + Quay lai). Esc = quay lai. Khac hop thoai o cho
+ * KHONG co nen mo phia sau va dung het chieu rong — bang 15 cot khong bi bo hep.
+ */
+function KhungToanMan(
+  { tieu_de, khi_dong, children }: { tieu_de: string; khi_dong: () => void; children: ReactNode },
+): ReactNode {
+  useEffect(() => {
+    const f = (e: KeyboardEvent): void => { if (e.key === 'Escape') khi_dong(); };
+    window.addEventListener('keydown', f);
+    return () => window.removeEventListener('keydown', f);
+  }, [khi_dong]);
+  return (
+    <div className="khung-toan-man" role="region" aria-label={tieu_de}>
+      <div className="dau-toan-man">
+        <h2 style={{ margin: 0 }}>{tieu_de}</h2>
+        <button className="nut-phang" onClick={khi_dong}>← Quay lại</button>
+      </div>
+      {children}
+    </div>
   );
 }
 

@@ -2,6 +2,10 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.58.2] — 2026-08-31
+
+**Bảng lương chi tiết mở TOÀN MÀN HÌNH (không còn popup).** Trước là hộp thoại nên bảng nhiều cột bị bó/cắt; giờ mở thành trang phủ kín màn hình, dùng hết chiều rộng — thấy đủ mọi cột (kể cả BHXH+YT+TN, thuế TNCN, khoản trừ, thực lĩnh) một lần, có nút "← Quay lại". (BHXH vốn đã được tính trong bảng, trước bị popup che.)
+
 ## [1.58.1] — 2026-08-31
 
 **Gộp tab: Kỷ luật & Vi phạm chung 1 tab; Lương & Phụ cấp chung 1 tab.** Mỗi menu giờ có hai tab con — bớt mục ngoài thanh bên, gom việc liên quan lại một chỗ. Vi phạm (danh mục nội quy, từng bản ghi, biên bản) nằm cạnh Kỷ luật (tổng hợp + tự động); Phụ cấp (chính sách từng người) nằm cạnh Bảng lương.
