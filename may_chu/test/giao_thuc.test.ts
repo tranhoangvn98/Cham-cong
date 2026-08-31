@@ -23,6 +23,18 @@ test('doc_userinfo: doc PIN + Name + Card + Pri, bo qua PIN=0', () => {
   assert.equal(so_dong_loi, 0);
 });
 
+test('doc_userinfo: doc dinh dang may acc (CardNo/Privilege thay Card/Pri)', () => {
+  // May kiem soat ra vao tra ket qua `DATA QUERY tablename=user,...` vao /iclock/querydata
+  // voi ten truong CardNo/Privilege, khac dong cham cong (Card/Pri).
+  const body = 'Pin=6\tCardNo=456\tPassword=\tGroup=1\tStartTime=0\tEndTime=0\tName=ANH KHO\tPrivilege=0\n'
+    + 'Pin=9001\tCardNo=0\tName=\tPrivilege=14\n';
+  const { nguoi_dung, so_dong_loi } = doc_userinfo(body);
+  assert.equal(so_dong_loi, 0);
+  assert.equal(nguoi_dung.length, 2);
+  assert.deepEqual(nguoi_dung[0], { pin: '6', ten: 'ANH KHO', the: '456', quyen: 0 });
+  assert.deepEqual(nguoi_dung[1], { pin: '9001', ten: null, the: null, quyen: 14 });
+});
+
 test('doc_userinfo: than rong tra ve mang rong, khong nem loi', () => {
   assert.deepEqual(doc_userinfo(''), { nguoi_dung: [], so_dong_loi: 0 });
   assert.deepEqual(doc_userinfo('   \n  '), { nguoi_dung: [], so_dong_loi: 0 });

@@ -180,7 +180,7 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
     // qua OPERLOG voi dong "USER PIN=...". Nen KHONG chi tin ten bang: bat ca khi THAN co dong
     // dinh danh nguoi dung (PIN=... kem Name=/Card=/Pri=). Chi lam o day, SAU khi ATTLOG/rtlog da
     // duoc xu ly rieng — nen khong nham voi ban ghi cham cong.
-    const co_dong_user = /(^|\n)\s*(USER\s+|USERINFO\s+)?PIN=[^\t\n]*\t[^\n]*\b(Name|Card|Pri)=/i
+    const co_dong_user = /(^|\n)\s*(USER\s+|USERINFO\s+)?PIN=[^\t\n]*\t[^\n]*\b(Name|Card(No)?|Pri(vilege)?)=/i
       .test(body);
     if (bang === 'USERINFO' || bang === 'USER' || bang === 'USERDATA'
         || (co_dong_user && bang !== 'ATTLOG' && bang !== 'RTLOG')) {
@@ -200,6 +200,38 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
     }
     return tra_text(res, 'OK\n');
   });
+
+  // -------------------------------------------------- ket qua DATA QUERY (dong may acc)
+  //
+  // May kiem soat ra vao (DeviceType=acc, PUSH 3.x) KHONG day ket qua `DATA QUERY
+  // tablename=user,...` vao /cdata nhu dong cham cong (att), ma vao ENDPOINT RIENG
+  // POST /iclock/querydata?tablename=user. Than la cac dong `Pin=..⇥CardNo=..⇥Name=..⇥
+  // Privilege=..`. Thieu route nay thi ket qua roi vao setNotFoundHandler (404) va
+  // danh sach user khong bao gio ve — dung nhu vi sao may kho tra count=0 du lenh chay.
+  //
+  // Bat ca GET lan POST: mot so firmware hoi endpoint bang GET truoc khi day.
+  async function nhan_querydata(req: FastifyRequest, res: FastifyReply): Promise<FastifyReply> {
+    const sn = lay_serial(req);
+    const may = await may_hop_le(sn);
+    if (may === null) {
+      req.log.warn({ sn }, 'may chua khai bao goi querydata');
+      return tra_text(res, 'Unauthorized\n', 401);
+    }
+    await cham_thiet_bi(sn, null, req.ip);
+    const bang = String((req.query as Record<string, unknown>)['tablename'] ?? '').toLowerCase();
+    const body = typeof req.body === 'string' ? req.body : '';
+    // Chi bang user moi chua dinh danh nguoi dung. Cac bang khac (transaction, userauthorize,
+    // templatev10...) xac nhan da nhan de may khong day lai mai, nhung khong xu ly.
+    if ((bang === 'user' || bang === '') && body.trim().length > 0) {
+      const kq = await tiep_nhan_userinfo(sn, body);
+      req.log.info({ sn, bang, ...kq }, 'nhan querydata user');
+    } else if (body.trim().length > 0) {
+      req.log.info({ sn, bang, dai: body.length }, 'nhan querydata bang khac, bo qua');
+    }
+    return tra_text(res, 'OK\n');
+  }
+  app.post('/querydata', nhan_querydata);
+  app.get('/querydata', nhan_querydata);
 
   // -------------------------------------------------- may hoi lenh can thuc thi
   /**

@@ -594,9 +594,13 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   app.post('/thiet-bi/:serial/lay-nguoi-dung', { preHandler: can_nhan_su }, async (req) => {
     const serial = lay_serial_param(req);
     await bat_buoc_co_may(serial);
-    const id = await xep_lenh(serial, 'DATA QUERY USERINFO');
+    // Bang khong luu loai may (acc/att) nen gui CA HAI cu phap: may tu choi lenh khong hieu
+    // (Return=-629) va thuc thi lenh dung. att: `DATA QUERY USERINFO` -> ket qua vao /cdata.
+    // acc (kiem soat ra vao): `DATA QUERY tablename=user,...` -> ket qua vao /querydata.
+    const id_acc = await xep_lenh(serial, 'DATA QUERY tablename=user,fielddesc=*,filter=*');
+    const id_att = await xep_lenh(serial, 'DATA QUERY USERINFO');
     return {
-      ok: true, lenh_id: id,
+      ok: true, lenh_id: id_acc, lenh_id_att: id_att,
       luu_y: 'Máy sẽ đẩy danh sách user ở lần kết nối kế tiếp (thường dưới 10 giây). '
         + 'Chờ ~15 giây rồi mở lại danh sách để đối chiếu.',
     };

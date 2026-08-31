@@ -2,6 +2,16 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.65.0] — 2026-08-31
+
+**Sửa: máy kho (dòng kiểm soát ra vào `acc`) không kéo được danh sách user.** Máy `NYU7261300256` từ chối `DATA QUERY USERINFO` với mã `-629`: dòng `acc` (SenseFace 2A, PUSH 3.x) dùng **bộ lệnh khác** dòng chấm công `att`. Rà soát lại đúng SDK PUSH và sửa 3 điểm:
+
+- **Lệnh đúng cho máy acc.** `POST /thiet-bi/:serial/lay-nguoi-dung` giờ gửi **cả hai** cú pháp: `DATA QUERY tablename=user,fielddesc=*,filter=*` (acc) và `DATA QUERY USERINFO` (att). Bảng không lưu loại máy nên gửi cả hai; máy tự từ chối lệnh không hiểu (`-629`) và thực thi lệnh đúng.
+- **Route `/iclock/querydata` (mới).** Máy acc đẩy kết quả query **KHÔNG** vào `/iclock/cdata` như dòng att, mà vào endpoint riêng `POST /iclock/querydata?tablename=user`. Trước đây server chưa có route này → kết quả rơi vào `setNotFoundHandler` (404) và danh sách user không bao giờ về, dù lệnh chạy đúng. Đây là nguyên nhân thật khiến máy kho trả `count=0`.
+- **Parser đọc thêm tên trường acc.** Dòng acc dùng `CardNo`/`Privilege` thay cho `Card`/`Pri` của dòng att; `doc_userinfo` đọc cả hai. Heuristic bắt user ở `/cdata` cũng nới để khớp `CardNo=`/`Privilege=`.
+
+Kèm test parser cho định dạng acc. Không có migration.
+
 ## [1.64.0] — 2026-08-31
 
 **Kéo danh sách user từ máy về + cảnh báo trùng/lệch PIN.** Giải quyết ca máy kho enroll người dưới PIN đã thuộc nhân viên khác (PIN map toàn cục) → lượt quẹt bị gán nhầm người.

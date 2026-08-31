@@ -227,13 +227,15 @@ export function doc_userinfo(body: string): { nguoi_dung: NguoiDungMay[]; so_don
       if (Object.keys(o).length === 0) so_dong_loi++;
       continue;
     }
+    // Ten truong khac nhau theo dong may: att dung Card/Pri, acc (kiem soat ra vao)
+    // dung CardNo/Privilege. Doc ca hai de mot parser phuc vu duoc ca hai dong.
     const ten = (o['name'] ?? '').trim();
-    const the = (o['card'] ?? '').trim();
+    const the = (o['card'] ?? o['cardno'] ?? '').trim();
     nguoi_dung.push({
       pin,
       ten: ten === '' ? null : ten.slice(0, 100),
       the: the === '' || the === '0' ? null : the.slice(0, 40),
-      quyen: so_nguyen(o['pri'], 0, 0, 255),
+      quyen: so_nguyen(o['pri'] ?? o['privilege'], 0, 0, 255),
     });
   }
   return { nguoi_dung, so_dong_loi };
