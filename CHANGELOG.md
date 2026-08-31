@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.80.0] — 2026-08-31
+
+**Bảng lương: nhập lương cứng ngay trên bảng + cột Lương cơ bản + dòng Tổng cộng.** Theo phản hồi: các dòng đang 0 vì chưa nhập lương cứng, và cần thấy tổng lương cần chi trả.
+
+- **Nhập lương cứng (P1 + P2) ngay trên bảng lương** (nút Sửa): lưu vào `quyết định lương` hiệu lực từ đầu tháng của kỳ → tính lại ngay, các tháng sau vẫn giữ. Đúng thao tác gõ thẳng vào bảng như Excel. (Endpoint `PUT /api/phieu-luong/:id/luong-cung`, upsert `quyet_dinh_luong`.)
+- **Cột "Lương cơ bản"** thêm vào bảng lương (trước cột Công).
+- **Dòng "Tổng cộng"** cuối bảng: tổng Lương cơ bản, Lương theo công, thưởng, phụ cấp, thu nhập, BH, thuế, khoản trừ, và **Thực lĩnh = tổng lương cần chi trả**.
+- **Xuất Excel/CSV** thêm dòng Tổng cộng tương ứng.
+
 ## [1.79.0] — 2026-08-31
 
 **Hoàn tất khối lương: đơn đi muộn, bảng lương xuất theo mẫu, cảnh báo hợp đồng.**

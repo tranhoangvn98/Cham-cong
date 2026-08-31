@@ -69,11 +69,13 @@ interface KhoanPhieu {
 
 interface Phieu {
   id: string;
+  nhan_vien_id: string;
   ma_nv: string;
   ho_ten: string;
   phong_ban: string | null;
   loai_hop_dong: string | null;
   luong_co_ban: string;
+  phu_cap: string;
   luong_ngay: string;
   so_ngay_cong_chuan: string;
   so_ngay_cong_thuc: string;
@@ -365,6 +367,7 @@ function HopThoaiChiTiet(
             <thead>
               <tr>
                 <th>Mã NV</th><th>Họ tên</th><th>Loại HĐ</th>
+                <th className="canh-phai">Lương cơ bản</th>
                 <th className="canh-phai">Công</th>
                 <th className="canh-phai">Lương theo công</th>
                 <th className="canh-phai">OT</th>
@@ -395,6 +398,7 @@ function HopThoaiChiTiet(
                         ? <span className="mo-ta">—</span>
                         : NHAN_HOP_DONG[p.loai_hop_dong] ?? p.loai_hop_dong}
                     </td>
+                    <td className="canh-phai">{tien(p.luong_co_ban)}</td>
                     <td className="canh-phai">
                       {Number(p.so_ngay_cong_thuc)}/{Number(p.so_ngay_cong_chuan)}
                     </td>
@@ -424,6 +428,23 @@ function HopThoaiChiTiet(
                 );
               })}
             </tbody>
+            <tfoot>
+              <tr className="hang-tong">
+                <td colSpan={3}><strong>Tổng cộng ({k.phieu.length} người)</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.luong_co_ban), 0))}</strong></td>
+                <td className="canh-phai mo-ta">—</td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.luong_theo_cong), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.tien_ot), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.thuong), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.tong_thu_nhap), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.bhxh_nld) + Number(p.bhyt_nld) + Number(p.bhtn_nld), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.thue_tncn), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.khoan_tru) + Number(p.tru_khac), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.thuc_linh_lam_tron), 0))}</strong></td>
+                {sua_duoc && <td />}
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
@@ -676,6 +697,8 @@ function HopThoaiSuaPhieu(
   { phieu, khi_dong, khi_xong }:
   { phieu: Phieu; khi_dong: () => void; khi_xong: () => void },
 ): ReactNode {
+  const [luong_co_ban, dat_luong_co_ban] = useState(String(Number(phieu.luong_co_ban)));
+  const [phu_cap, dat_phu_cap] = useState(String(Number(phieu.phu_cap)));
   const [thuong, dat_thuong] = useState(String(Number(phieu.thuong)));
   const [phu_cap_khac, dat_phu_cap_khac] = useState(String(Number(phieu.phu_cap_khac)));
   const [tru_khac, dat_tru_khac] = useState(String(Number(phieu.tru_khac)));
@@ -683,13 +706,29 @@ function HopThoaiSuaPhieu(
   const [ghi_chu, dat_ghi_chu] = useState(phieu.ghi_chu ?? '');
   const hd = dung_hanh_dong();
 
+  const luong_doi = Number(luong_co_ban) !== Number(phieu.luong_co_ban)
+    || Number(phu_cap) !== Number(phieu.phu_cap);
+
   return (
     <HopThoai tieu_de={`Sửa phiếu — ${phieu.ho_ten}`} khi_dong={khi_dong}>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
+
+      <h3 style={{ margin: '0 0 0.5rem' }}>Lương cứng (áp từ tháng này trở đi)</h3>
+      <label htmlFor="lcb">Lương cơ bản — P1 (đ)</label>
+      <input id="lcb" type="number" min="0" value={luong_co_ban}
+        onChange={(e) => dat_luong_co_ban(e.target.value)} />
+      <label htmlFor="p2">Phụ cấp cố định — P2 (đ)</label>
+      <input id="p2" type="number" min="0" value={phu_cap}
+        onChange={(e) => dat_phu_cap(e.target.value)} />
       <p className="mo-ta">
-        Chỉ sửa được thưởng, phụ cấp khác và trừ khác. Lương theo công, bảo hiểm và thuế đều
-        suy ra từ chấm công và tham số pháp lý — sửa tay thì số liệu không còn đối chiếu được
-        với gì nữa.
+        Lương cứng = P1 + P2 (theo mẫu bảng lương công ty). Lưu vào <strong>quyết định lương</strong>
+        {' '}hiệu lực từ đầu tháng của kỳ — các tháng sau vẫn giữ mức này cho tới khi có quyết định mới.
+        Thử việc tự tính 85% theo tỷ lệ trong Tham số lương.
+      </p>
+
+      <h3 style={{ margin: '1rem 0 0.5rem' }}>Điều chỉnh riêng kỳ này</h3>
+      <p className="mo-ta">
+        Lương theo công, bảo hiểm và thuế đều suy ra từ chấm công và tham số pháp lý.
       </p>
 
       <label htmlFor="thuong">Thưởng (đ)</label>
@@ -718,16 +757,26 @@ function HopThoaiSuaPhieu(
         <button
           disabled={hd.dang_chay}
           onClick={() => void hd.chay(
-            () => goi(`/api/phieu-luong/${phieu.id}`, {
-              method: 'PATCH',
-              body: {
-                thuong: Number(thuong) || 0,
-                phu_cap_khac: Number(phu_cap_khac) || 0,
-                tru_khac: Number(tru_khac) || 0,
-                ly_do_tru_khac: ly_do,
-                ghi_chu,
-              },
-            }),
+            async () => {
+              // Luu luong cung TRUOC (tao quyet dinh luong + tinh lai), roi luu dieu chinh rieng
+              // ky (tinh_ky_luong giu lai thuong/tru_khac nen thu tu nay dung).
+              if (luong_doi) {
+                await goi(`/api/phieu-luong/${phieu.id}/luong-cung`, {
+                  method: 'PUT',
+                  body: { luong_co_ban: Number(luong_co_ban) || 0, phu_cap: Number(phu_cap) || 0 },
+                });
+              }
+              return goi(`/api/phieu-luong/${phieu.id}`, {
+                method: 'PATCH',
+                body: {
+                  thuong: Number(thuong) || 0,
+                  phu_cap_khac: Number(phu_cap_khac) || 0,
+                  tru_khac: Number(tru_khac) || 0,
+                  ly_do_tru_khac: ly_do,
+                  ghi_chu,
+                },
+              });
+            },
             'Đã lưu và tính lại kỳ lương.',
           ).then((ok) => { if (ok !== null) khi_xong(); })}
         >

@@ -666,6 +666,43 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
+  /**
+   * Nhap LUONG CUNG (luong co ban P1 + phu cap co dinh P2) ngay tren bang luong — dung workflow
+   * Excel: go thang vao bang. Tao/cap nhat mot `quyet_dinh_luong` co hieu luc tu dau thang cua ky
+   * (nen bo tinh luong doc lai duoc va cac ky sau van giu), roi tinh lai ca ky.
+   */
+  app.put('/phieu-luong/:id/luong-cung', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const b = than(req.body);
+
+    const p = await truy_van_mot<{ nhan_vien_id: string; ky_luong_id: string; trang_thai: string }>(
+      `select p.nhan_vien_id, p.ky_luong_id, k.trang_thai from phieu_luong p
+         join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
+      [id],
+    );
+    if (p === null) throw new LoiKhongTim('Không tìm thấy phiếu lương.');
+    if (!SUA_DUOC.has(p.trang_thai)) {
+      throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${p.trang_thai}" nên phiếu đã khóa sửa.`);
+    }
+    const k = await lay_ky(p.ky_luong_id);
+    const hieu_luc_tu = `${k.thang}-01`;
+
+    await thuc_thi(
+      `insert into quyet_dinh_luong
+         (nhan_vien_id, hieu_luc_tu, luong_co_ban, phu_cap, hinh_thuc, ly_do, tao_boi)
+       values ($1, $2, $3, $4, 'thang', 'Nhập từ bảng lương', $5)
+       on conflict (nhan_vien_id, hieu_luc_tu) do update set
+         luong_co_ban = excluded.luong_co_ban, phu_cap = excluded.phu_cap`,
+      [p.nhan_vien_id, hieu_luc_tu, so_tien(b, 'luong_co_ban'), so_tien(b, 'phu_cap'), nd.sub],
+    );
+
+    await tinh_ky_luong(k.id, k.thang);
+    await ghi_nhat_ky(nd.sub, 'nhap_luong_cung', 'phieu_luong', id,
+      { luong_co_ban: b['luong_co_ban'], phu_cap: b['phu_cap'] }, req.ip);
+    return { ok: true };
+  });
+
   // ============================================================ cac khoan cua mot phieu
   //
   // Thay CA danh sach cung mot luc chu khong sua tung dong: ke toan nhin bang luong theo
