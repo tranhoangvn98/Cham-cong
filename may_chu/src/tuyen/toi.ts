@@ -1132,6 +1132,68 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     );
     return { ok: true };
   });
+
+  // ---------------------------------------------------------------- de xuat & kien nghi
+  /** Danh muc loai de xuat dang dung (de giao dien do danh sach, khong go tay). */
+  app.get('/de-xuat/loai', async () => truy_van(
+    `select id, ma_loai, ten, mo_ta, can_so_luong from loai_de_xuat
+      where dang_dung = true order by thu_tu, ten`));
+
+  /** De xuat cua CHINH minh. */
+  app.get('/de-xuat', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select d.id, d.ma, d.tieu_de, d.noi_dung, d.so_luong, d.trang_thai,
+              d.ghi_chu_duyet, d.duyet_luc, d.tao_luc, l.ten as ten_loai, l.can_so_luong
+         from de_xuat d join loai_de_xuat l on l.id = d.loai_de_xuat_id
+        where d.nhan_vien_id = $1 order by d.tao_luc desc limit 200`,
+      [nv_id],
+    );
+  });
+
+  /** Tu gui de xuat. */
+  app.post('/de-xuat', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const b = than(req.body);
+    const loai_id = uuid(b, 'loai_de_xuat_id', { bat_buoc: true }) as string;
+    const tieu_de = chuoi_bat_buoc(b, 'tieu_de', { toi_da: 250, toi_thieu: 3 });
+    const noi_dung = chuoi(b, 'noi_dung', { toi_da: 4000 });
+    const sl_tho = b['so_luong'];
+    const so_luong = typeof sl_tho === 'number' && Number.isInteger(sl_tho) && sl_tho > 0
+      ? Math.min(sl_tho, 100000) : null;
+
+    const loai = await truy_van_mot<{ id: string; ten: string }>(
+      'select id, ten from loai_de_xuat where id = $1 and dang_dung = true', [loai_id],
+    );
+    if (loai === null) throw new LoiKhongTim('Loại đề xuất không hợp lệ.');
+
+    const dong = await truy_van_mot<{ id: string; ma: string }>(
+      `insert into de_xuat(nhan_vien_id, loai_de_xuat_id, tieu_de, noi_dung, so_luong)
+       values ($1,$2,$3,$4,$5) returning id, ma`,
+      [nv_id, loai_id, tieu_de, noi_dung ?? '', so_luong],
+    );
+    await ghi_nhat_ky(nd.sub, 'gui_de_xuat', 'de_xuat', dong?.id ?? null, { loai: loai.ten }, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: `Đề xuất mới chờ duyệt: ${loai.ten}`,
+      noi_dung: `${await ten_nhan_vien(nv_id)}: ${tieu_de}`,
+      du_lieu: { man: 'duyet-don', loai: 'de_xuat', de_xuat_id: dong?.id ?? null },
+    });
+    return res.code(201).send({ ...dong, trang_thai: 'cho_duyet' });
+  });
+
+  /** Tu huy de xuat CUA MINH khi con cho duyet. */
+  app.post('/de-xuat/:id/huy', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const kq = await thuc_thi(
+      `update de_xuat set trang_thai = 'da_huy'
+        where id = $1 and nhan_vien_id = $2 and trang_thai = 'cho_duyet'`,
+      [lay_id(req), nv_id],
+    );
+    if (kq === 0) throw new LoiXungDot('Đề xuất không còn ở trạng thái chờ duyệt.');
+    return { ok: true };
+  });
 }
 
 function lay_id(req: { params: unknown }): string {

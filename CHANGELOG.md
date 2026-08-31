@@ -2,6 +2,27 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.73.0] — 2026-08-31
+
+**Đề xuất & Kiến nghị (danh mục mở) + quản lý đơn.**
+
+- **Migration 039**: `loai_de_xuat` (danh mục loại HR tự quản lý, seed sẵn: cấp phát thiết bị, mua sắm, sửa chữa, tạm ứng, kiến nghị, khác) + `de_xuat` (mã `DX-`, tiêu đề, nội dung, số lượng; vòng đời chờ duyệt → duyệt/từ chối/hủy).
+- **Nhân viên**: tab **"Đề xuất & kiến nghị"** trong Đơn của tôi — chọn loại, nhập tiêu đề/nội dung (ô số lượng hiện khi loại cần, vd thiết bị), theo dõi trạng thái + hủy khi chờ duyệt.
+- **Quản lý đơn**: Duyệt đơn thêm tab **"Đề xuất & kiến nghị"** — quản lý duyệt phòng mình, nhân sự thấy tất cả (theo phân quyền sẵn có); duyệt/từ chối kèm lý do. Nhân sự có nút **"Quản lý loại đề xuất"** để thêm loại mới / bật-tắt — không cần sửa code.
+- Gửi/duyệt đề xuất tự sinh chuông báo (qua `gui_ngam`) cho người duyệt và người gửi.
+
+## [1.72.0] — 2026-08-31
+
+**Notification: chuông báo trong web + đẩy điện thoại (mọi sự kiện).** Xem mục kỹ thuật ở commit — migration 038 `thong_bao_rieng`, `gui_ngam` lưu chuông cho mọi điểm sự kiện sẵn có, chuông ở header (số chưa đọc + danh sách).
+
+## [1.71.0] — 2026-08-31
+
+**Đơn của tôi: tab "Tăng ca / công tác".** Bề mặt hóa các đơn `don_tu` đã có backend (làm thêm = tăng ca, công tác, thôi việc) qua form thích ứng theo loại.
+
+## [1.70.0] — 2026-08-31
+
+**Hướng dẫn mặc định thu gọn 1 dòng + favicon nội tuyến.** Khung "Quy trình ở trang này" mặc định thu gọn (bấm mới mở, nhớ per-trang); thêm `<link rel="icon">` SVG để hết lỗi `/favicon.ico 401` trên console.
+
 ## [1.69.0] — 2026-08-31
 
 **Góc nhìn Cá nhân: gọt giao diện.**

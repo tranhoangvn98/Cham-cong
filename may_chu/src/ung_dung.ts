@@ -21,6 +21,7 @@ import { tuyen_kpi } from './tuyen/kpi.ts';
 import { tuyen_dong_bo_erp } from './tuyen/dong_bo_erp.ts';
 import { tuyen_toi } from './tuyen/toi.ts';
 import { tuyen_thong_bao } from './tuyen/thong_bao.ts';
+import { tuyen_de_xuat } from './tuyen/de_xuat.ts';
 import { tuyen_tich_hop } from './tuyen/tich_hop.ts';
 import { truy_van_mot } from './csdl/ket_noi.ts';
 import { kiem_tra_luu_tru } from './tien_ich/luu_tep.ts';
@@ -173,6 +174,7 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   await app.register(tuyen_ra_vao, { prefix: '/api' });
   await app.register(tuyen_ky_luat, { prefix: '/api' });
   await app.register(tuyen_thong_bao, { prefix: '/api' });
+  await app.register(tuyen_de_xuat, { prefix: '/api' });
   await app.register(tuyen_kpi, { prefix: '/api' });
   await app.register(tuyen_dong_bo_erp, { prefix: '/api' });
   await app.register(tuyen_don_tu, { prefix: '/api/duyet' });

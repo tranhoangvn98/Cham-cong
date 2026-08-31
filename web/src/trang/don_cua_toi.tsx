@@ -37,7 +37,7 @@ function ngay_v(v: string): string {
   return m === null ? v : `${m[3]}/${m[2]}/${m[1]}`;
 }
 
-type Tab = 'nghi' | 'khac' | 'cham_cong' | 'vi_pham' | 'ky_luat';
+type Tab = 'nghi' | 'khac' | 'de_xuat' | 'cham_cong' | 'vi_pham' | 'ky_luat';
 
 /** Loai don tu tu phuc vu (tang ca, cong tac, thoi viec) — dung /api/toi/don. Bo qua doi ca
  *  (can chon ca lam viec, chua co danh muc ca cho nhan vien). */
@@ -63,11 +63,13 @@ export function TrangDonCuaToi(): ReactNode {
       <div className="hang-tab">
         <button className={tab === 'nghi' ? 'dang-chon' : undefined} onClick={() => dat_tab('nghi')}>Nghỉ phép</button>
         <button className={tab === 'khac' ? 'dang-chon' : undefined} onClick={() => dat_tab('khac')}>Tăng ca / công tác</button>
+        <button className={tab === 'de_xuat' ? 'dang-chon' : undefined} onClick={() => dat_tab('de_xuat')}>Đề xuất &amp; kiến nghị</button>
         <button className={tab === 'cham_cong' ? 'dang-chon' : undefined} onClick={() => dat_tab('cham_cong')}>Giải trình chấm công</button>
         <button className={tab === 'vi_pham' ? 'dang-chon' : undefined} onClick={() => dat_tab('vi_pham')}>Vi phạm của tôi</button>
         <button className={tab === 'ky_luat' ? 'dang-chon' : undefined} onClick={() => dat_tab('ky_luat')}>Kỷ luật &amp; khiếu nại</button>
       </div>
       {tab === 'nghi' ? <TabNghiPhep /> : tab === 'khac' ? <TabDonKhac />
+        : tab === 'de_xuat' ? <TabDeXuat />
         : tab === 'cham_cong' ? <TabGiaiTrinh />
         : tab === 'vi_pham' ? <TabViPham /> : <TabKyLuatToi />}
     </>
@@ -275,6 +277,99 @@ function FormDonKhac({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
             },
           }), 'Đã gửi đơn.').then((ok) => { if (ok) khi_xong(); })}>
           {hd.dang_chay ? 'Đang gửi…' : 'Gửi đơn'}
+        </button>
+        <button className="nut-phang" onClick={khi_dong}>Hủy</button>
+      </div>
+    </HopThoai>
+  );
+}
+
+// ============================================================ đề xuất & kiến nghị
+interface LoaiDeXuat { id: string; ten: string; mo_ta: string | null; can_so_luong: boolean }
+interface DeXuat {
+  id: string; ma: string | null; tieu_de: string; noi_dung: string; so_luong: number | null;
+  trang_thai: string; ghi_chu_duyet: string | null; tao_luc: string; ten_loai: string;
+}
+
+function TabDeXuat(): ReactNode {
+  const [mo, dat_mo] = useState(false);
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<DeXuat[]>('/api/toi/de-xuat');
+  const hd = dung_hanh_dong();
+  const ds = du_lieu ?? [];
+  const huy = (id: string): void => {
+    void hd.chay(() => goi(`/api/toi/de-xuat/${id}/huy`, { method: 'POST', body: {} }),
+      'Đã hủy đề xuất.').then((ok) => { if (ok) nap_lai(); });
+  };
+  return (
+    <>
+      <div className="dau-trang">
+        <div className="hang-nut"><button className="nut-chinh" onClick={() => dat_mo(true)}>+ Tạo đề xuất</button></div>
+      </div>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} />
+        : ds.length === 0 ? <Trong tieu_de="Chưa có đề xuất" mo_ta="Bấm “Tạo đề xuất” để xin cấp thiết bị, kiến nghị, mua sắm…" />
+        : (
+          <div className="the the-mong"><div className="vo-bang"><table>
+            <thead><tr><th>Mã</th><th>Loại</th><th>Tiêu đề</th><th>Trạng thái</th><th>Phản hồi</th><th /></tr></thead>
+            <tbody>
+              {ds.map((d) => (
+                <tr key={d.id}>
+                  <td className="khong-ngat">{d.ma ?? '—'}</td>
+                  <td className="khong-ngat">{d.ten_loai}</td>
+                  <td>{d.tieu_de}{d.so_luong !== null ? ` (SL: ${d.so_luong})` : ''}</td>
+                  <td><Nhan tt={d.trang_thai} /></td>
+                  <td>{d.ghi_chu_duyet ?? '—'}</td>
+                  <td>{d.trang_thai === 'cho_duyet'
+                    ? <button className="nut-nho nut-phang" onClick={() => huy(d.id)}>Hủy</button> : null}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div></div>
+        )}
+      {mo && <FormDeXuat khi_dong={() => dat_mo(false)} khi_xong={() => { dat_mo(false); nap_lai(); }} />}
+    </>
+  );
+}
+
+function FormDeXuat({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: () => void }): ReactNode {
+  const { du_lieu: loai } = dung_nap<LoaiDeXuat[]>('/api/toi/de-xuat/loai');
+  const ds_loai = loai ?? [];
+  const [loai_id, dat_loai_id] = useState('');
+  const [tieu_de, dat_tieu_de] = useState('');
+  const [noi_dung, dat_noi_dung] = useState('');
+  const [so_luong, dat_so_luong] = useState('1');
+  const hd = dung_hanh_dong();
+  const chon = ds_loai.find((l) => l.id === loai_id) ?? ds_loai[0];
+  const id_thuc = loai_id !== '' ? loai_id : chon?.id ?? '';
+
+  return (
+    <HopThoai tieu_de="Tạo đề xuất" khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <label htmlFor="dx-loai">Loại đề xuất</label>
+      <select id="dx-loai" value={id_thuc} onChange={(e) => dat_loai_id(e.target.value)}>
+        {ds_loai.map((l) => <option key={l.id} value={l.id}>{l.ten}</option>)}
+      </select>
+      <label htmlFor="dx-td">Tiêu đề</label>
+      <input id="dx-td" value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)}
+        placeholder="vd: Xin cấp laptop cho nhân viên mới" />
+      {chon?.can_so_luong === true && (
+        <div className="o-nhap"><label htmlFor="dx-sl">Số lượng</label>
+          <input id="dx-sl" type="number" min={1} value={so_luong}
+            onChange={(e) => dat_so_luong(e.target.value)} /></div>
+      )}
+      <label htmlFor="dx-nd">Nội dung chi tiết</label>
+      <textarea id="dx-nd" rows={4} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)}
+        placeholder="Mô tả rõ nhu cầu, lý do…" />
+      <div className="hang-nut">
+        <button className="nut-chinh" disabled={hd.dang_chay || tieu_de.trim().length < 3 || id_thuc === ''}
+          onClick={() => void hd.chay(() => goi('/api/toi/de-xuat', {
+            method: 'POST',
+            body: {
+              loai_de_xuat_id: id_thuc, tieu_de, noi_dung,
+              so_luong: chon?.can_so_luong === true ? Number(so_luong) || 1 : null,
+            },
+          }), 'Đã gửi đề xuất.').then((ok) => { if (ok) khi_xong(); })}>
+          {hd.dang_chay ? 'Đang gửi…' : 'Gửi đề xuất'}
         </button>
         <button className="nut-phang" onClick={khi_dong}>Hủy</button>
       </div>
