@@ -36,6 +36,7 @@ export function TrangThietBi(): ReactNode {
   const [lay_log_cho, dat_lay_log_cho] = useState<ThietBi | null>(null);
   const [nap_nv_cho, dat_nap_nv_cho] = useState<ThietBi | null>(null);
   const [xoa_nv_cho, dat_xoa_nv_cho] = useState<ThietBi | null>(null);
+  const [doi_chieu_cho, dat_doi_chieu_cho] = useState<ThietBi | null>(null);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
 
@@ -173,6 +174,10 @@ export function TrangThietBi(): ReactNode {
                             title="Xin log theo khoảng ngày — dùng khi máy tưởng đã gửi hết">
                             Lấy log cũ
                           </button>
+                          <button className="nut-nho" onClick={() => dat_doi_chieu_cho(tb)}
+                            title="Kéo danh sách user trong máy về + đối chiếu PIN với hệ thống">
+                            Đối chiếu user
+                          </button>
                           <button className="nut-nho nut-phang" onClick={() => dat_sua_cho(tb)}
                             title="Đổi tên gợi nhớ / vị trí của máy">
                             Sửa
@@ -217,6 +222,10 @@ export function TrangThietBi(): ReactNode {
 
       {lay_log_cho !== null && (
         <FormLayLog thiet_bi={lay_log_cho} khi_dong={() => dat_lay_log_cho(null)} />
+      )}
+
+      {doi_chieu_cho !== null && (
+        <DoiChieuNguoiDung thiet_bi={doi_chieu_cho} khi_dong={() => dat_doi_chieu_cho(null)} />
       )}
 
       {xem_lenh !== null && (
@@ -706,6 +715,100 @@ function FormLayLog(
           <button type="button" onClick={khi_dong}>Đóng</button>
         </div>
       </form>
+    </HopThoai>
+  );
+}
+
+// ==================================================================== đối chiếu user máy ↔ hệ thống
+interface UserMay {
+  pin: string;
+  ten_may: string | null;
+  the: string | null;
+  quyen: number;
+  thay_luc: string;
+  ma_nv: string | null;
+  ho_ten: string | null;
+  khop: 'khop' | 'lech' | 'chua_gan' | 'khong_ten';
+}
+const NHAN_KHOP: Record<UserMay['khop'], { ten: string; lop: string }> = {
+  khop: { ten: 'Khớp', lop: 'nhan-tot' },
+  lech: { ten: 'LỆCH — người khác', lop: 'nhan-xau' },
+  chua_gan: { ten: 'Hệ thống chưa gán', lop: 'nhan-canh-bao' },
+  khong_ten: { ten: 'Máy không gửi tên', lop: 'nhan-mo' },
+};
+
+function DoiChieuNguoiDung(
+  { thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () => void },
+): ReactNode {
+  const { du_lieu, dang_tai, loi, nap_lai } =
+    dung_nap<{ serial: string; so_lech: number; danh_sach: UserMay[] }>(
+      `/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/nguoi-dung`, [thiet_bi.serial]);
+  const hd = dung_hanh_dong();
+  const ds = du_lieu?.danh_sach ?? [];
+
+  return (
+    <HopThoai tieu_de={`Đối chiếu user — ${thiet_bi.ten}`} khi_dong={khi_dong} rong>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <p className="mo-ta" style={{ marginBottom: 10 }}>
+        So sánh user <strong>đang enroll trong máy</strong> với người giữ PIN đó <strong>trong hệ
+        thống</strong>. Dòng <span className="nhan-xau">LỆCH</span> = PIN này trong hệ thống thuộc
+        người khác → lượt quẹt bị gán nhầm, cần cấp PIN riêng &amp; enroll lại.
+      </p>
+
+      <div className="hang-nut" style={{ marginBottom: 12 }}>
+        <button className="nut" disabled={hd.dang_chay}
+          onClick={() => void hd.chay(
+            () => goi(`/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/lay-nguoi-dung`,
+              { method: 'POST', body: {} }),
+            'Đã yêu cầu máy gửi danh sách user. Chờ ~15 giây rồi bấm “Tải lại”.',
+          )}>
+          Lấy từ máy
+        </button>
+        <button className="nut-phang" onClick={() => nap_lai()}>Tải lại</button>
+      </div>
+
+      {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} />
+        : ds.length === 0 ? (
+          <Trong tieu_de="Chưa có dữ liệu user từ máy này"
+            mo_ta="Bấm “Lấy từ máy” rồi chờ ~15 giây và bấm “Tải lại”." />
+        ) : (
+          <>
+            {du_lieu !== null && du_lieu.so_lech > 0 && (
+              <div className="hop-thong-bao hop-loi">
+                <strong>{du_lieu.so_lech}</strong> user bị lệch / chưa gán — xem các dòng đỏ/vàng bên dưới.
+              </div>
+            )}
+            <div className="vo-bang">
+              <table className="bang-gon">
+                <thead>
+                  <tr>
+                    <th>PIN</th><th>Tên trên máy</th><th>Người trong hệ thống (PIN này)</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ds.map((u) => (
+                    <tr key={u.pin} className={u.khop === 'lech' ? 'dong-canh-bao' : undefined}>
+                      <td className="so">{u.pin}</td>
+                      <td>{u.ten_may ?? <span className="chu-mo">—</span>}</td>
+                      <td>
+                        {u.ma_nv === null ? <span className="chu-mo">— chưa gán —</span>
+                          : <>{u.ma_nv} — {u.ho_ten}</>}
+                      </td>
+                      <td className="khong-ngat">
+                        <span className={NHAN_KHOP[u.khop].lop}>{NHAN_KHOP[u.khop].ten}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+      <div className="hang-nut" style={{ marginTop: 12 }}>
+        <button className="nut-phang" onClick={khi_dong}>Đóng</button>
+      </div>
     </HopThoai>
   );
 }

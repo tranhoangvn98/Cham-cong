@@ -2,6 +2,16 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.64.0] — 2026-08-31
+
+**Kéo danh sách user từ máy về + cảnh báo trùng/lệch PIN.** Giải quyết ca máy kho enroll người dưới PIN đã thuộc nhân viên khác (PIN map toàn cục) → lượt quẹt bị gán nhầm người.
+
+- **Đối chiếu user máy ↔ hệ thống.** Trang **Cài đặt → Thiết bị** thêm nút **"Đối chiếu user"** mỗi máy: bấm **"Lấy từ máy"** để ra lệnh máy đẩy danh sách user (`DATA QUERY USERINFO`), hệ thống bắt bảng `USERINFO` (trước đây bỏ qua) lưu vào `may_nguoi_dung`, rồi so từng PIN với người giữ PIN đó trong hệ thống. Mỗi dòng gắn nhãn: **Khớp** (xanh) / **LỆCH — người khác** (đỏ, PIN thuộc người khác) / **Hệ thống chưa gán** (vàng) / **Máy không gửi tên** (xám).
+- **Cảnh báo đỏ trên Trang tổng quan** khi có PIN lệch/chưa gán: "⚠ N PIN trong máy bị lệch / trùng người" — dẫn thẳng tới trang Thiết bị để xử lý.
+- Chống trùng khi gán PIN vốn đã được đảm bảo (chỉ mục duy nhất trên `ma_dinh_danh`); phần mới lo phát hiện ca **máy tự enroll trùng** mà việc gán trong hệ thống không kiểm được.
+
+Migration 036 (`may_nguoi_dung`). Backend: parser `doc_userinfo`, thu nhận USERINFO/OPERLOG-user trong bộ tiếp nhận ADMS, `POST /thiet-bi/:serial/lay-nguoi-dung`, `GET /thiet-bi/:serial/nguoi-dung` (đối chiếu), đếm `pin_lech` cho dashboard. Lưu ý: lệnh kéo user cần kiểm chứng cú pháp trên máy thật (SenseFace 2A) — bộ nhận đã bắt sẵn nên máy đẩy kiểu nào cũng lưu được.
+
 ## [1.63.0] — 2026-08-31
 
 **Trang tổng quan: bấm ô số ra danh sách + biểu đồ hiện số khi rê chuột.**

@@ -1,12 +1,14 @@
 // Nghiep vu tiep nhan ATTLOG tu may: chong trung -> map PIN sang nhan vien -> luu
 // -> ghi su kien -> tinh lai bang cong ngay bi anh huong.
-import { trong_giao_dich } from '../csdl/ket_noi.ts';
+import { trong_giao_dich, thuc_thi } from '../csdl/ket_noi.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { tinh_lai_nhieu } from '../cong/tinh_cong.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { cac_pin_lech, tra_pin, type NguoiMap } from '../dinh_danh/tra_pin.ts';
 import { nap_lich_pin } from '../dinh_danh/lich_pin_csdl.ts';
-import { doc_attlog, doc_rtlog, nhan_cach_xac_thuc, type BanGhiAttlog } from './giao_thuc.ts';
+import {
+  doc_attlog, doc_rtlog, doc_userinfo, nhan_cach_xac_thuc, type BanGhiAttlog,
+} from './giao_thuc.ts';
 
 export interface KetQuaTiepNhan {
   tong: number;
@@ -43,6 +45,29 @@ export async function tiep_nhan_rtlog(
 ): Promise<KetQuaTiepNhan> {
   const { ban_ghi, so_dong_loi } = doc_rtlog(body);
   return tiep_nhan_ban_ghi(serial, ban_ghi, so_dong_loi);
+}
+
+/**
+ * Tiep nhan bang USERINFO may day len (sau lenh `DATA QUERY USERINFO`, hoac khi enroll/xoa user).
+ * Upsert vao `may_nguoi_dung` — anh chup user THUC trong may, de doi chieu voi mapping he thong.
+ * KHONG cham vao cham cong.
+ */
+export async function tiep_nhan_userinfo(
+  serial: string,
+  body: string,
+): Promise<{ so_user: number; dong_loi: number }> {
+  const { nguoi_dung, so_dong_loi } = doc_userinfo(body);
+  for (const u of nguoi_dung) {
+    await thuc_thi(
+      `insert into may_nguoi_dung (thiet_bi_serial, pin, ten_may, the, quyen, thay_luc)
+       values ($1,$2,$3,$4,$5, now())
+       on conflict (thiet_bi_serial, pin) do update
+         set ten_may = excluded.ten_may, the = excluded.the,
+             quyen = excluded.quyen, thay_luc = now()`,
+      [serial, u.pin, u.ten, u.the, u.quyen],
+    );
+  }
+  return { so_user: nguoi_dung.length, dong_loi: so_dong_loi };
 }
 
 async function tiep_nhan_ban_ghi(

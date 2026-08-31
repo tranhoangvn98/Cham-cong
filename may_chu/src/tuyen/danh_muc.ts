@@ -22,6 +22,7 @@ import {
 } from '../dinh_danh/nghiep_vu.ts';
 import { CAC_HE_THONG, MA_CAC_HE_THONG } from '../dinh_danh/he_thong.ts';
 import { cap_pin, doc_dai_pin, goi_y_pin } from '../dinh_danh/cap_pin.ts';
+import { doi_chieu_may } from '../dinh_danh/doi_chieu_may.ts';
 
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
 // KHONG duoc dung khi tao tai khoan moi bang tay (xem POST /nguoi-dung).
@@ -587,6 +588,34 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     await bat_buoc_co_may(serial);
     const id = await xep_lenh(serial, 'CHECK');
     return { ok: true, lenh_id: id, luu_y: 'Bản ghi trùng sẽ tự bị bỏ qua nhờ khóa chống trùng.' };
+  });
+
+  /** Yeu cau may day len DANH SACH USER dang enroll (de doi chieu PIN <-> nguoi he thong). */
+  app.post('/thiet-bi/:serial/lay-nguoi-dung', { preHandler: can_nhan_su }, async (req) => {
+    const serial = lay_serial_param(req);
+    await bat_buoc_co_may(serial);
+    const id = await xep_lenh(serial, 'DATA QUERY USERINFO');
+    return {
+      ok: true, lenh_id: id,
+      luu_y: 'Máy sẽ đẩy danh sách user ở lần kết nối kế tiếp (thường dưới 10 giây). '
+        + 'Chờ ~15 giây rồi mở lại danh sách để đối chiếu.',
+    };
+  });
+
+  /**
+   * Danh sach user THUC trong may, DOI CHIEU voi mapping he thong (theo PIN toan cuc).
+   * `khop`: 'khop' (ten khop) | 'lech' (PIN thuoc nguoi KHAC trong he thong — DO) |
+   *         'chua_gan' (may co user nhung he thong chua gan PIN nay) | 'khong_ten' (may khong
+   *         gui ten nen khong so duoc). Danh sach nay giup phat hien may enroll trung PIN.
+   */
+  app.get('/thiet-bi/:serial/nguoi-dung', { preHandler: can_nhan_su }, async (req) => {
+    const serial = lay_serial_param(req);
+    const danh_sach = await doi_chieu_may(serial);
+    return {
+      serial,
+      so_lech: danh_sach.filter((u) => u.khop === 'lech' || u.khop === 'chua_gan').length,
+      danh_sach,
+    };
   });
 
   /**

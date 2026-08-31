@@ -23,6 +23,7 @@ import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
 import { la_quan_tri, la_vai_tro_nhan_su } from '../bao_mat/quyen_ho_so.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { hop_dong_sap_het_han, muc_gap } from '../hop_dong/nhac_han.ts';
+import { dem_pin_lech } from '../dinh_danh/doi_chieu_may.ts';
 
 export interface NguoiXemDashboard {
   vai_tro: string;
@@ -465,10 +466,12 @@ export interface HeThong {
   /** Ban ghi ERP da noi duoc voi nhan vien. */
   erp_da_noi: number;
   erp_da_cau_hinh: boolean;
+  /** So user trong may bi LECH mapping (PIN thuoc nguoi khac) hoac chua gan — canh bao do. */
+  pin_lech: number;
 }
 
 export async function tinh_trang_he_thong(): Promise<HeThong> {
-  const [may, erp] = await Promise.all([
+  const [may, erp, pin_lech] = await Promise.all([
     truy_van<HeThong['thiet_bi'][number]>(
       `select ten, serial, thay_lan_cuoi,
               (thay_lan_cuoi is not null
@@ -479,11 +482,13 @@ export async function tinh_trang_he_thong(): Promise<HeThong> {
     truy_van_mot<{ so: number }>(
       'select count(*)::int as so from nhan_vien where erp_user_id is not null',
     ),
+    dem_pin_lech(),
   ]);
   return {
     thiet_bi: may,
     erp_da_noi: erp?.so ?? 0,
     erp_da_cau_hinh: cau_hinh.erp.url !== '' && cau_hinh.erp.api_key !== '',
+    pin_lech,
   };
 }
 

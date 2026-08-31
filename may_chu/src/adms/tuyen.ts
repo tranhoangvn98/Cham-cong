@@ -17,7 +17,7 @@ import {
   doc_thong_tin_may,
   dung_phan_hoi_handshake,
 } from './giao_thuc.ts';
-import { tiep_nhan_attlog, tiep_nhan_rtlog } from './tiep_nhan.ts';
+import { tiep_nhan_attlog, tiep_nhan_rtlog, tiep_nhan_userinfo } from './tiep_nhan.ts';
 import { ip_duoc_phep } from '../tien_ich/dia_chi_ip.ts';
 
 interface DongThietBi {
@@ -173,8 +173,18 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       return tra_text(res, 'OK\n');
     }
 
-    // Bang khac (OPERLOG, ATTPHOTO, tabledata...): xac nhan da nhan de may khong gui lai
-    // mai. Ghi muc info chu khong phai debug: production chay o muc info, de debug thi
+    // USERINFO: danh sach user enroll tren may (sau lenh DATA QUERY USERINFO, hoac khi
+    // enroll/xoa user). Luu de DOI CHIEU voi mapping he thong -> phat hien trung/lech PIN.
+    // Mot so firmware day user qua OPERLOG voi dong "USER PIN=..." -> quet ca OPERLOG.
+    if (bang === 'USERINFO' || (bang === 'OPERLOG' && /(^|\n)\s*USER\s+PIN=/i.test(body))) {
+      await cham_thiet_bi(sn, null, req.ip);
+      const kq = await tiep_nhan_userinfo(sn, body);
+      if (kq.so_user > 0) req.log.info({ sn, ...kq }, 'nhan USERINFO');
+      return tra_text(res, 'OK\n');
+    }
+
+    // Bang khac (OPERLOG khong co user, ATTPHOTO, tabledata...): xac nhan da nhan de may khong
+    // gui lai mai. Ghi muc info chu khong phai debug: production chay o muc info, de debug thi
     // mot bang mang du lieu that bi bo qua se khong de lai dau vet nao — dung loi da lam
     // moi lan quet bi vut im lang truoc khi ho tro rtlog.
     await cham_thiet_bi(sn, null, req.ip);
