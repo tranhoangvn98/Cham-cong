@@ -106,19 +106,6 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/vi-pham',
-    tom_tat: 'Vi phạm nội quy lao động: do người ghi nhận, hoặc hệ thống tự phát hiện.',
-    buoc: [
-      { chu: 'Xem danh sách hệ thống tự phát hiện theo điều kiện đã khai (đi muộn nhiều lần…).', vai_tro: NHAN_SU },
-      { chu: 'Ghi nhận vi phạm thủ công khi cần, chọn đúng mục trong danh mục nội quy.', vai_tro: NHAN_SU },
-      { chu: 'Gắn biên bản/tài liệu kèm theo vào hồ sơ người đó.', vai_tro: NHAN_SU },
-    ],
-    luu_y: [
-      'Danh mục vi phạm và mức xử lý lấy từ Nội quy lao động đã đăng ký. Xử lý ngoài danh mục là rủi ro pháp lý, không phải chuyện tiện tay.',
-      'Kỷ luật lao động phải theo trình tự BLLĐ (họp, biên bản, thời hiệu). Hệ thống ghi nhận, không thay thế trình tự đó.',
-    ],
-  },
-  {
     duong_dan: '/ra-vao',
     tom_tat: 'Cảnh báo ra/vào không quẹt thẻ: hệ thống tự nhắc nhở / chuyển kỷ luật, nhân sự xem lại và xử lý.',
     buoc: [
@@ -166,30 +153,14 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       { chu: 'Nút "Khoản" trên từng dòng: nhập phụ cấp và các khoản trừ của người đó.', vai_tro: NHAN_SU },
       { chu: 'Soi các dòng bất thường, sửa gốc rồi dựng lại.', vai_tro: NHAN_SU },
       { chu: 'Gửi duyệt → duyệt. Duyệt xong bảng chốt được lưu lại.', vai_tro: ['admin', 'nhan_su', 'truong_phong_nhan_su'] },
+      { chu: 'Tab "Phụ cấp": khai phụ cấp định kỳ của từng người MỘT LẦN (có hiệu lực từ–đến); kỳ lương tự sinh khoản, không phải gõ lại mỗi tháng.', vai_tro: NHAN_SU },
     ],
     luu_y: [
       'Duyệt kỳ lương KHÓA tháng đó: bảng công không tính lại được nữa. Đó là chủ ý — số đã trả lương thì không được đổi sau lưng.',
+      'Phụ cấp: đổi mức thì gán lại với ngày hiệu lực mới, dòng cũ TỰ ĐÓNG và ở lại làm lịch sử (tính lại lương tháng cũ vẫn ra số cũ). Người thôi hưởng thì bấm "Đóng", KHÔNG xóa.',
       'Sửa sau khi duyệt phải mở khóa kỳ, sửa, rồi dựng và duyệt lại. Mọi bước đều vào nhật ký.',
       'Khoản tính theo công thức (phụ cấp ăn trưa, nửa ngày lương) chỉ nhập SỐ LƯỢNG — tiền do hệ thống nhân ra và tính lại mỗi lần dựng bảng. Gõ tiền tay vào đó thì lần dựng sau bị ghi đè.',
       'BLLĐ 2019 Điều 127 khoản 3 CẤM phạt tiền và cấm cắt lương thay cho xử lý kỷ luật. Hai khoản "trừ đi muộn" và "trừ nửa ngày lương" mang cảnh báo này ngay tại chỗ nhập. Cách hợp pháp cho thời gian không làm việc là ghi giảm CÔNG trên bảng chấm công, để nó tự vào lương theo ngày công.',
-    ],
-  },
-  {
-    duong_dan: '/phu-cap',
-    tom_tat: 'Phụ cấp định kỳ của từng người — khai một lần, kỳ lương tự sinh khoản.',
-    buoc: [
-      { chu: 'Bấm "Gán phụ cấp", chọn khoản, chọn người (lọc theo phòng ban để chọn cả nhóm).', vai_tro: NHAN_SU },
-      { chu: 'Điền ngày hiệu lực và lý do — đây là căn cứ của số tiền sẽ trả.', vai_tro: NHAN_SU },
-      { chu: 'Sang Bảng lương, bấm "Tính lương" ở kỳ liên quan thì khoản mới xuất hiện.', vai_tro: NHAN_SU },
-      { chu: 'Người thôi hưởng: bấm "Đóng" và điền ngày hưởng đến hết — không xóa.', vai_tro: NHAN_SU },
-    ],
-    luu_y: [
-      'Đổi mức thì gán lại với ngày hiệu lực mới. Dòng cũ TỰ ĐÓNG vào ngày trước đó và ở lại làm lịch sử — nhờ vậy tính lại lương tháng cũ vẫn ra đúng số cũ.',
-      'Chính sách KHÔNG tự sửa bảng lương đang mở. Phải bấm "Tính lương" ở kỳ đó. Đó là chủ ý: số liệu không được đổi dưới chân người đang làm việc trên nó.',
-      'Gõ tay một khoản trên phiếu là GHI ĐÈ chính sách cho riêng tháng đó — chính sách không cộng thêm dòng thứ hai. Bỏ khoản đó khỏi danh sách gõ tay thì dòng chính sách quay lại.',
-      'Nguồn "số ngày công thực tế" bám theo chấm công: đi làm ít ngày thì hưởng ít, không ai phải sửa tay. Dùng cho hỗ trợ ăn trưa.',
-      'Đơn giá riêng là chỗ để một người hưởng mức khác cả công ty — không phải tạo một khoản mới chỉ cho một người.',
-      'Chính sách đã sinh ra khoản trên phiếu thì KHÔNG xóa được, chỉ đóng. Số tiền đã trả phải giữ được căn cứ.',
     ],
   },
   {

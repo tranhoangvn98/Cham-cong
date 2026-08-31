@@ -199,7 +199,7 @@ function HopThoaiXuLy(
           {d.tu_dong === true && ' (hệ thống tự động)'}.
           {d.da_gui_email === true && ' Đã gửi email nhắc nhở.'}
           {d.vi_pham_id !== null && (
-            <> Đã tạo hồ sơ kỷ luật — <LienKet den="/vi-pham">mở tab Vi phạm</LienKet> để
+            <> Đã tạo hồ sơ kỷ luật — <LienKet den="/ky-luat">mở tab Kỷ luật &amp; vi phạm</LienKet> để
               đối chiếu điều nội quy + mức xử phạt và lập biên bản.</>
           )}
           {d.ghi_chu !== null && d.ghi_chu !== '' && <> Ghi chú: {d.ghi_chu}</>}

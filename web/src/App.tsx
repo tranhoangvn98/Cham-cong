@@ -17,12 +17,10 @@ import { TrangCaLam, TrangDiaDiem, TrangNgayLe } from './trang/cai_dat.tsx';
 import { TrangLanQuet } from './trang/lan_quet.tsx';
 import { TrangNguoiDung, TrangNhatKy } from './trang/nguoi_dung.tsx';
 import { TrangKhoaApi } from './trang/khoa_api.tsx';
-import { TrangBangLuong } from './trang/bang_luong.tsx';
-import { TrangPhuCap } from './trang/phu_cap.tsx';
 import { TrangThamSoLuong } from './trang/tham_so_luong.tsx';
-import { TrangViPham } from './trang/vi_pham.tsx';
 import { TrangRaVao } from './trang/ra_vao.tsx';
-import { TrangKyLuat } from './trang/ky_luat.tsx';
+import { TrangKyLuatViPham } from './trang/ky_luat_vi_pham.tsx';
+import { TrangLuongPhuCap } from './trang/luong_phu_cap.tsx';
 import { TrangKpi } from './trang/kpi.tsx';
 import { TrangDongBoErp } from './trang/dong_bo_erp.tsx';
 import { TrangHoSo } from './trang/ho_so.tsx';
@@ -63,12 +61,10 @@ const MENU: MucMenu[] = [
   { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Quản trị nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản' },
   { duong_dan: '/duyet-don', ten: 'Nghỉ phép', icon: 'plane-departure', nhom: 'Quản trị nhân sự', phu: 'Đơn từ & duyệt' },
 
-  { duong_dan: '/vi-pham', ten: 'Vi phạm', icon: 'alert-triangle', nhom: 'Quản trị nhân sự', phu: 'Nội quy lao động, kỷ luật' },
+  { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Quản trị nhân sự', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'nhan_su' },
   { duong_dan: '/ra-vao', ten: 'Ra/vào', icon: 'clock-exclamation', nhom: 'Quản trị nhân sự', phu: 'Cảnh báo ra/vào & xử lý', quyen: 'nhan_su' },
-  { duong_dan: '/ky-luat', ten: 'Kỷ luật', icon: 'list-details', nhom: 'Quản trị nhân sự', phu: 'Gom vi phạm, nhắc nhở & giảm thưởng', quyen: 'nhan_su' },
   { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Quản trị nhân sự', phu: 'Chấm điểm từ dữ liệu thật' },
-  { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Tính từ chấm công, gửi duyệt', quyen: 'nhan_su' },
-  { duong_dan: '/phu-cap', ten: 'Phụ cấp', icon: 'plus', nhom: 'Quản trị nhân sự', phu: 'Chính sách phụ cấp từng người', quyen: 'nhan_su' },
+  { duong_dan: '/bang-luong', ten: 'Lương & phụ cấp', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Bảng lương, chính sách phụ cấp', quyen: 'nhan_su' },
   { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Quản trị nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
 
   { duong_dan: '/cai-dat', ten: 'Cài đặt', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp' },
@@ -162,11 +158,9 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/lan-quet': return <TrangLanQuet />;
     case '/duyet-don': return <TrangDuyetDon />;
     case '/nhan-vien': return <TrangNhanVien />;
-    case '/bang-luong': return la_nhan_su() ? <TrangBangLuong /> : <KhongCoQuyen />;
-    case '/phu-cap': return la_nhan_su() ? <TrangPhuCap /> : <KhongCoQuyen />;
-    case '/vi-pham': return <TrangViPham />;
+    case '/bang-luong': return la_nhan_su() ? <TrangLuongPhuCap /> : <KhongCoQuyen />;
     case '/ra-vao': return la_nhan_su() ? <TrangRaVao /> : <KhongCoQuyen />;
-    case '/ky-luat': return la_nhan_su() ? <TrangKyLuat /> : <KhongCoQuyen />;
+    case '/ky-luat': return la_nhan_su() ? <TrangKyLuatViPham /> : <KhongCoQuyen />;
     case '/kpi': return <TrangKpi />;
     case '/hop-dong': return la_nhan_su() ? <TrangHopDong /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;
