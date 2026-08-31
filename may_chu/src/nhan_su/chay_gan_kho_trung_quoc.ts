@@ -14,7 +14,7 @@ import { truy_van, truy_van_mot, thuc_thi, dong_pool } from '../csdl/ket_noi.ts'
 
 const TEN_NOI = 'Kho Trung quốc';
 const PHONG_TQ = 'Phòng Kho Trung Quốc';
-const TEN_CHI_DINH_MAC_DINH = ['Thân Thị Vân Anh'];
+const TEN_CHI_DINH_MAC_DINH = ['Thân Thị Vân Anh', 'Huang Shu Ping', 'Huang Li Hua'];
 
 /** Bỏ dấu + thường hoá để khớp tên dù lệch dấu/hoa-thường. */
 function chuan(s: string): string {
