@@ -31,9 +31,13 @@ function khoa_cot(s: string): string {
 /** Đọc số từ ô Excel (bỏ dấu phẩy, chấm ngăn cách, khoảng trắng). */
 function so(o: string | undefined): number {
   if (o === undefined) return 0;
-  const s = o.replace(/[.,\s]/g, '').replace(/[^\d-]/g, '');
+  // Excel lưu GIÁ TRỊ SỐ THÔ (vd 24120512.8076965, 500000): dấu chấm là DẤU THẬP PHÂN, không
+  // phải ngăn nghìn. Giữ dấu chấm -> Number() -> làm tròn về đồng. Chỉ khi có NHIỀU dấu chấm
+  // (ô định dạng ngăn nghìn kiểu 24.120.512) mới coi là ngăn nghìn.
+  let s = o.replace(/[^\d.-]/g, '');
+  if ((s.match(/\./g) ?? []).length > 1) s = s.replace(/\./g, '');
   const n = Number(s);
-  return Number.isFinite(n) ? n : 0;
+  return Number.isFinite(n) ? Math.round(n) : 0;
 }
 
 /** Khoản phụ cấp cố định (số tiền): tên cột chuẩn hoá -> khoan_ma. */
