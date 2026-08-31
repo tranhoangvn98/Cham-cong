@@ -86,6 +86,17 @@ export function khoang_thang(thang: string): { tu: string; den: string } {
   return { tu: `${m[1]}-${m[2]}-01`, den: `${m[1]}-${m[2]}-${String(cuoi).padStart(2, '0')}` };
 }
 
+/**
+ * Doi '2026-08-15' thanh '15/08/2026' — dang nguoi Viet doc.
+ *
+ * Chuoi khong dung dang ngay thi tra nguyen thay vi nem loi: ham nay dung trong noi dung
+ * thong bao day, ma mot thong bao sai dinh dang van hon la mot don duyet xong bi 500.
+ */
+export function ngay_viet(ngay: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ngay);
+  return m === null ? ngay : `${m[3]}/${m[2]}/${m[1]}`;
+}
+
 /** Doi phut thanh dang '8h 30p' de hien thi. */
 export function phut_thanh_chu(phut: number): string {
   if (phut <= 0) return '0p';

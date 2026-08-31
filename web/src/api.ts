@@ -11,12 +11,25 @@
  */
 const GOC = ((import.meta.env['VITE_API_URL'] as string | undefined) ?? '').replace(/\/+$/, '')
   || (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+
+/**
+ * Goc API dang tuyet doi, de hien link cho NGUOI DUNG chep di noi khac.
+ *
+ * KHONG dung window.location.origin cho viec nay: webapp chay duoi tien to (vd /chamcong/)
+ * nen origin khong thoi se ra link thieu tien to, chep sang he thong khac la 404.
+ */
+export function goc_api_tuyet_doi(): string {
+  return `${window.location.origin}${GOC}`;
+}
 const KHOA_LUU = 'cham_cong_phien';
+
+export type VaiTroNguoiDung =
+  | 'admin' | 'nhan_su' | 'truong_phong_nhan_su' | 'truong_phong' | 'nhan_vien' | 'cho_duyet';
 
 export interface NguoiDung {
   id: string;
   ten_dang_nhap: string;
-  vai_tro: 'admin' | 'nhan_su' | 'truong_phong' | 'nhan_vien' | 'cho_duyet';
+  vai_tro: VaiTroNguoiDung;
   nhan_vien_id: string | null;
   ho_ten: string | null;
   phai_doi_mat_khau: boolean;
@@ -91,15 +104,212 @@ export async function nhan_phien_tu_neo(): Promise<string | null> {
   return null;
 }
 
-/** Cau hinh cong khai cua may chu — de biet co hien nut Microsoft hay khong. */
-export async function cau_hinh_dang_nhap(): Promise<{ dang_nhap_microsoft: boolean }> {
+// ==================================================================== cong SSO noi bo
+//
+// Khi may chu bao `dang_nhap_rieng: false`, webapp KHONG hien form nao ca. Token do CONG phat
+// va cong luu no o `localStorage['cong_phien']`; webapp chay cung origin
+// (`teams.tranhoangvietnam.com/chamcong`) nen doc duoc thang tu do.
+//
+// KHONG luu lai token do vao khoa rieng cua minh. Cong la chu so huu: no xoay token, no thu
+// hoi token. Ta chep ra mot ban la ta giu mot phien dai hon phien cua cong — dung cai ma hop
+// dong bao mat cam. Nen moi lan goi API deu DOC LAI tu `cong_phien`.
+
+interface CauHinhCong {
+  goc_dang_nhap: string;
+  tien_to: string;
+  iss: string;
+}
+
+export interface CauHinhDangNhap {
+  /** false = da bo duong dang nhap rieng, phai chuyen huong sang cong. */
+  dang_nhap_rieng: boolean;
+  dang_nhap_microsoft: boolean;
+  cong_sso: CauHinhCong | null;
+}
+
+let cau_hinh_cong: CauHinhCong | null = null;
+
+/** true khi dang chay o che do dung chung cong. */
+export function dung_cong_sso(): boolean {
+  return cau_hinh_cong !== null;
+}
+
+/**
+ * Lay token cua cong tu `localStorage['cong_phien']`.
+ *
+ * NHAN RA token theo `iss` trong payload, KHONG theo ten truong. Ten truong ben trong
+ * `cong_phien` la hop dong cua cong: no doi ten `token_truy_cap` thanh `access_token` la ta
+ * gay, va gay im lang. Quet moi chuoi trong do va lay cai nao la JWT co `iss` dung va
+ * `loai: 'tc'` thi mien nhiem voi viec doi ten.
+ *
+ * Doc payload o day KHONG phai mot phep kiem bao mat — chu ky do MAY CHU xac minh. Day chi la
+ * viec chon dung chuoi de gui di.
+ */
+export function doc_token_cong(): string | null {
+  const c = cau_hinh_cong;
+  if (c === null) return null;
+  let tho: string | null;
+  try {
+    tho = localStorage.getItem('cong_phien');
+  } catch {
+    return null; // localStorage bi chan (che do rieng tu)
+  }
+  if (tho === null || tho === '') return null;
+
+  const ung_vien: string[] = [];
+  try {
+    const v = JSON.parse(tho) as unknown;
+    if (typeof v === 'string') ung_vien.push(v);
+    else if (typeof v === 'object' && v !== null) {
+      for (const x of Object.values(v as Record<string, unknown>)) {
+        if (typeof x === 'string') ung_vien.push(x);
+      }
+    }
+  } catch {
+    ung_vien.push(tho); // khong phai JSON: co the la chinh token
+  }
+
+  for (const t of ung_vien) {
+    const phan = t.split('.');
+    if (phan.length !== 3) continue;
+    try {
+      const than = JSON.parse(atob(phan[1]!.replace(/-/g, '+').replace(/_/g, '/'))) as
+        { iss?: unknown; loai?: unknown };
+      if (than.iss === c.iss && than.loai === 'tc') return t;
+    } catch {
+      /* khong phai JWT doc duoc — thu chuoi ke tiep */
+    }
+  }
+  return null;
+}
+
+/**
+ * Duong dan noi bo hop le de dat vao `?quay_lai=`.
+ *
+ * Dung phep kiem cua cong: dung MOT `/` dau, khong `//`, khong `\\`, khong ky tu dieu khien.
+ * Khong kiem la mo duong chuyen huong mo — ke tan cong gui link dang nhap THAT roi day nan
+ * nhan sang trang gia sau khi dang nhap xong, va nan nhan vua go mat khau o mot trang that.
+ */
+/**
+ * Ky tu bi tu choi trong mot duong dan: MOI ky tu dieu khien, ke ca tab, LF, CR.
+ *
+ * Tab/LF/CR la ba ky tu ma bo phan tich URL theo WHATWG XOA khi doc mot URL. Nen
+ * `/<tab>/evil.com` KHONG phai duong dan noi bo — sau khi phan tich no la `//evil.com`, mot URL
+ * tuong doi giao thuc tro RA NGOAI. Mot phep kiem `startsWith('//')` chay tren chuoi CHUA xoa
+ * khong bat duoc gi, vi luc do ky tu dieu khien con nam giua hai dau gach.
+ *
+ * Da xac minh tren Chromium that, khong suy tu dac ta:
+ *   ?quay_lai=/%09/evil.com  ->  https://evil.com/
+ *   ?quay_lai=/%0a/evil.com  ->  https://evil.com/
+ *   ?quay_lai=/%0d/evil.com  ->  https://evil.com/
+ *
+ * Vi sao dang so: ke tan cong gui link dang nhap THAT cua cong ty. Nan nhan doc thanh dia chi,
+ * thay dung ten mien, dung chung chi, go mat khau, roi bi day sang trang gia — moi thu ho duoc
+ * day phai kiem deu dung.
+ */
+const KY_TU_TU_CHOI = /[\u0000-\u001f\u007f]/;
+
+export function la_duong_dan_noi_bo(duong: string): boolean {
+  return lam_sach_duong_dan_noi_bo(duong) !== null;
+}
+
+/**
+ * BAN SAO CO Y cua `lam_sach_duong_dan_noi_bo` o may_chu/src/bao_mat/cong_sso.ts.
+ *
+ * Hai ban vi webapp va may chu la hai bundle khac nhau, khong nhap chung module duoc. Co hang
+ * rao o `thiet_ke/giao_dien.test.mjs` doi chieu than hai ham nay tung dong — lech nhau thi bai
+ * kiem do, vi mot lop kiem chuyen huong mo co hai ban khac nhau la mot lop kiem chi manh bang
+ * ban yeu hon.
+ *
+ * PHEP KIEM CHAY TREN CHUOI MA BO PHAN TICH URL SE THAY: tab/LF/CR bi xoa TRUOC, roi moi kiem
+ * `//`. Dao thu tu la `/<tab>/evil.com` di qua duoc va thanh `//evil.com` — ra ngoai ten mien.
+ */
+export function lam_sach_duong_dan_noi_bo(duong: string): string | null {
+  if (typeof duong !== 'string' || duong.length === 0 || duong.length > 512) return null;
+  // TU CHOI, khong phai "xoa roi kiem lai". Xem chu thich tren ve WHATWG: neu ta xoa roi kiem
+  // thi `/chamcong<CR><LF>Set-Cookie: x=1` tro thanh mot duong dan "hop le", va lop chan chen
+  // header bien mat. Tu choi han thi chuoi da kiem LUON bang chuoi goc — khong con cho de tang
+  // goi vo tinh dung chuoi chua kiem.
+  if (KY_TU_TU_CHOI.test(duong)) return null;
+  if (!duong.startsWith('/') || duong.startsWith('//')) return null;
+  // `\\` bi mot so trinh duyet coi nhu `/`, nen `/\\evil.com` cung thanh URL tuong doi giao thuc.
+  if (duong.includes('\\')) return null;
+  return duong;
+}
+
+/**
+ * Ma hoa duong dan cho `?quay_lai=` — ma hoa moi thu TRU dau `/`.
+ *
+ * `encodeURIComponent` bien `/chamcong/` thanh `%2Fchamcong%2F`: dung ve ky thuat nhung nguoi
+ * dung doc thanh dia chi thay mot chuoi rac. Dau `/` la ky tu hop le trong gia tri cua chuoi
+ * truy van, nen giu nguyen no vua dung vua doc duoc: `?quay_lai=/chamcong/`.
+ *
+ * VAN ma hoa moi ky tu khac, va do khong phai lam dep: mot duong dan chua `&` hay `#` ma khong
+ * ma hoa se lam cong doc nham tham so — hoac cat mat phan sau cua duong dan.
+ */
+function ma_hoa_quay_lai(duong: string): string {
+  return encodeURIComponent(duong).replace(/%2F/g, '/');
+}
+
+/** Chuyen sang man dang nhap cua cong, nho duong dang mo de quay lai dung cho. */
+export function di_cong_dang_nhap(): void {
+  const c = cau_hinh_cong;
+  if (c === null) return;
+  const dang_o = window.location.pathname + window.location.search;
+  const q = la_duong_dan_noi_bo(dang_o) ? dang_o : `${c.tien_to}/`;
+  window.location.href = `${c.goc_dang_nhap}?quay_lai=${ma_hoa_quay_lai(q)}`;
+}
+
+/** Cau hinh cong khai cua may chu. Goi MOT lan luc khoi dong. */
+export async function cau_hinh_dang_nhap(): Promise<CauHinhDangNhap> {
+  const mac_dinh: CauHinhDangNhap = {
+    dang_nhap_rieng: true, dang_nhap_microsoft: false, cong_sso: null,
+  };
   try {
     const res = await fetch(`${GOC}/api/xac-thuc/cau-hinh`);
-    if (!res.ok) return { dang_nhap_microsoft: false };
-    return (await res.json()) as { dang_nhap_microsoft: boolean };
+    if (!res.ok) return mac_dinh;
+    const kq = (await res.json()) as Partial<CauHinhDangNhap>;
+    // Ban may chu cu khong co truong `dang_nhap_rieng` -> coi nhu con duong rieng.
+    const c: CauHinhDangNhap = {
+      dang_nhap_rieng: kq.dang_nhap_rieng !== false,
+      dang_nhap_microsoft: kq.dang_nhap_microsoft === true,
+      cong_sso: kq.cong_sso ?? null,
+    };
+    cau_hinh_cong = c.dang_nhap_rieng ? null : c.cong_sso;
+    return c;
   } catch {
-    return { dang_nhap_microsoft: false };
+    return mac_dinh;
   }
+}
+
+/**
+ * Nap thong tin nguoi dung bang token cua cong. Tra ve thong diep loi, hoac null neu xong.
+ *
+ * Vai tro KHONG doc tu token o phia client — doc tu `/api/xac-thuc/toi`, tuc la tu may chu sau
+ * khi may chu da xac minh chu ky. Tin `quyen` do client tu doc ra la tin mot thu ai cung sua
+ * duoc trong DevTools.
+ */
+export async function nap_phien_cong(): Promise<string | null> {
+  const t = doc_token_cong();
+  if (t === null) return null;
+  let res: Response;
+  try {
+    res = await fetch(`${GOC}/api/xac-thuc/toi`, { headers: { authorization: `Bearer ${t}` } });
+  } catch {
+    return 'Không kết nối được máy chủ chấm công.';
+  }
+  if (res.status === 403) {
+    const j = (await res.json().catch(() => ({}))) as { loi?: string };
+    return j.loi ?? 'Tài khoản của bạn chưa được cấp quyền ở phân hệ Chấm công.';
+  }
+  if (!res.ok) return null; // 401: token het han -> tang goi se chuyen huong
+  const nd = (await res.json()) as NguoiDung & { mui_gio_offset_gio?: number };
+  // Giu trong BO NHO thoi, khong ghi localStorage: cong la chu so huu token.
+  phien = {
+    token_truy_cap: t, token_lam_moi: '',
+    mui_gio_offset_gio: nd.mui_gio_offset_gio, nguoi_dung: nd,
+  };
+  return null;
 }
 
 /** Chuyen sang trang dang nhap cua Microsoft, nho duong dan hien tai de quay lai. */
@@ -139,7 +349,16 @@ export function da_dang_nhap(): boolean {
 /** Cac vai tro co quyen quan tri cham cong. */
 export function la_nhan_su(): boolean {
   const v = phien?.nguoi_dung.vai_tro;
-  return v === 'admin' || v === 'nhan_su';
+  // `truong_phong_nhan_su` PHAI co mat o day: may chu coi vai tro nay ngang `nhan_su`
+  // (`can_nhan_su` cua `bao_mat/xac_thuc.ts`), nen thieu no o day thi giao dien AN het nhom
+  // "He thong" va cac trang nhan su cua ho — trong khi may chu van cho vao. Nguoi dung thay mot
+  // ung dung cut, khong co gi bao vi sao.
+  return v === 'admin' || v === 'nhan_su' || v === 'truong_phong_nhan_su';
+}
+
+/** Vai tro cua nguoi dang dang nhap, hoac null khi chua dang nhap. */
+export function vai_tro_hien_tai(): VaiTroNguoiDung | null {
+  return phien?.nguoi_dung.vai_tro ?? null;
 }
 
 export function la_admin(): boolean {
@@ -185,10 +404,15 @@ interface TuyChonGoi {
 }
 
 export async function goi<T = unknown>(duong_dan: string, tc: TuyChonGoi = {}): Promise<T> {
+  let token_da_gui: string | null = null;
   const gui = async (): Promise<Response> => {
     const header: Record<string, string> = {};
     if (tc.body !== undefined) header['content-type'] = 'application/json';
-    if (phien !== null) header['authorization'] = `Bearer ${phien.token_truy_cap}`;
+    // O che do cong: DOC LAI token moi lan goi. Cong xoay token trong tab khac hay o khung
+    // ngoai thi ta nhan duoc ban moi ngay, khong phai tai lai trang.
+    const t = dung_cong_sso() ? doc_token_cong() : phien?.token_truy_cap ?? null;
+    token_da_gui = t;
+    if (t !== null) header['authorization'] = `Bearer ${t}`;
     return fetch(`${GOC}${duong_dan}`, {
       method: tc.method ?? 'GET',
       headers: header,
@@ -204,7 +428,17 @@ export async function goi<T = unknown>(duong_dan: string, tc: TuyChonGoi = {}): 
   }
 
   if (res.status === 401 && tc.khong_lam_moi !== true) {
-    if (await lam_moi_token()) {
+    if (dung_cong_sso()) {
+      // Ta KHONG lam moi token cua cong — no khong phai cua ta. Nhung cong co the vua xoay
+      // token o mot tab khac, nen doc lai va thu DUNG MOT lan neu da doi. Con khong thi ve
+      // cong dang nhap lai, mang theo duong dang mo de quay dung cho.
+      const t_moi = doc_token_cong();
+      if (t_moi !== null && t_moi !== token_da_gui) res = await gui();
+      if (res.status === 401) {
+        di_cong_dang_nhap();
+        throw new LoiApi(401, 'Phiên đã hết hạn. Đang chuyển về cổng đăng nhập.');
+      }
+    } else if (await lam_moi_token()) {
       res = await gui();
     } else {
       luu_phien(null);

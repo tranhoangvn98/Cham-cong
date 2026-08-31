@@ -213,12 +213,31 @@ Không cần `--build`: các biến này đọc lúc chạy, không nhúng vào 
 
 ## 5. Nối tài khoản với nhân viên
 
-Hệ thống đối chiếu **email** của tài khoản Microsoft với dữ liệu đang có, theo thứ tự:
+Hệ thống đối chiếu danh tính Microsoft với dữ liệu đang có, theo thứ tự:
 
-1. Trường `email_microsoft` của tài khoản đăng nhập, nếu đã nối trước đó
-2. Email trong hồ sơ **Nhân viên** (webapp → Nhân viên → cột Email)
+1. **Object ID (`oid`)** đã ghi nhớ trong bảng mã định danh
+2. Trường `email_microsoft` của tài khoản đăng nhập, nếu đã nối trước đó
+3. Email trong hồ sơ **Nhân viên** (webapp → Nhân viên → cột Email)
 
-Khớp ở bước 2 thì hệ thống tự ghi nhớ để lần sau khỏi dò lại.
+Khớp ở bước 3 thì hệ thống tự ghi nhớ để lần sau khỏi dò lại.
+
+### Vì sao `oid` đứng trước email
+
+`oid` là mã định danh của Entra và **không bao giờ đổi**, còn email (UPN) đổi được — đổi tên
+người, đổi tên miền, đổi phòng. Trước bản `1.32.0` hệ thống chỉ khớp bằng `lower(email)`: đổi
+email trong Entra là mất khớp, và nếu tên miền nằm trong danh sách cho phép thì lần đăng nhập kế
+tiếp **tạo một tài khoản thứ hai** cho cùng một người.
+
+`oid` đi ra từ `id_token` đã qua kiểm chữ ký, issuer, audience và nonce, nên nó đáng tin ngang
+email — thật ra hơn, vì không ai đổi được nó.
+
+`oid` **chỉ lấy được lúc đăng nhập**, nên mỗi lần đăng nhập thành công hệ thống ghi nhớ nó vào
+bảng `ma_dinh_danh` (xem [`MA-DINH-DANH.md`](MA-DINH-DANH.md)). Người chưa đăng nhập Microsoft lần
+nào thì ô đó trống — bình thường, không phải lỗi.
+
+Bước ghi nhớ này **không bao giờ làm hỏng việc đăng nhập**: người ta đã xác thực xong với
+Microsoft, nên một mã trùng hay một lỗi cơ sở dữ liệu ở đó chỉ được ghi log, không được biến
+thành "không đăng nhập được".
 
 Nên làm: nhân sự điền đúng email công ty vào hồ sơ từng nhân viên, và tạo tài khoản đăng
 nhập cho họ. Người chưa có tài khoản trong hệ thống sẽ bị từ chối kèm thông báo rõ ràng —

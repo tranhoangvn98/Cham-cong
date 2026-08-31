@@ -143,7 +143,7 @@ export function TrangDoiMatKhau({ bat_buoc, khi_xong }: { bat_buoc: boolean; khi
           <label htmlFor="lai">Nhập lại mật khẩu mới</label>
           <input id="lai" type="password" value={lai} onChange={(e) => dat_lai(e.target.value)}
             autoComplete="new-password" required />
-          {lai !== '' && !khop && <div className="goi-y" style={{ color: 'var(--xau)' }}>
+          {lai !== '' && !khop && <div className="goi-y chu-xau">
             Hai lần nhập chưa khớp.
           </div>}
         </div>

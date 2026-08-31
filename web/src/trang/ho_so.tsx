@@ -3,13 +3,16 @@
 // May chu la nguon su that ve quyen: no tra ve `nhom_xem_duoc` / `nhom_sua_duoc`, o day chi
 // ve theo. Trang nay KHONG tu suy ra quyen tu vai tro — neu suy o hai noi thi som muon hai
 // noi lech nhau, va cai lech nguy hiem la ben giao dien "de" hon ben may chu.
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { goi, gui_tep, tai_tep } from '../api.ts';
 import {
-  DangTai, HopLoi, HopThoai, HopThoaiXemTep, HopTot, Trong,
-  dung_hanh_dong, dung_nap, ngay_viet, ngay_gio,
+  DangTai, HopLoi, HopThoai, HopThoaiXemTep, HopTot, OSo, Trong,
+  dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet, ngay_gio,
 } from '../thanh_phan.tsx';
 import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
+import { dung_dat_tieu_de } from '../tieu_de_trang.tsx';
+import { NhanCachTrich } from './hop_dong.tsx';
+import { TheMaDinhDanh } from './ma_dinh_danh.tsx';
 
 // ==================================================================== kieu du lieu
 
@@ -56,6 +59,17 @@ const TEN_NHOM: Record<Nhom, string> = {
   bao_cao: 'Báo cáo',
   khieu_nai: 'Khiếu nại',
   thiet_bi: 'Thiết bị cấp phát',
+};
+
+/**
+ * Ten ngan chi dung cho thanh tab. TEN_NHOM van giu ten day du vi no con dung cho tieu de
+ * hop thoai va cau "+ Thêm ..." — o do can day du. Rieng thanh tab thi 11 nhan day du cong
+ * lai vuot be rong khung, phai xuong hai dong; cat ba nhan dai nhat la vua mot dong.
+ */
+const TEN_TAB: Partial<Record<Nhom, string>> = {
+  hop_dong: 'Hợp đồng',
+  bien_ban: 'Biên bản',
+  thiet_bi: 'Thiết bị',
 };
 
 const DUONG_NHOM: Record<Nhom, string> = {
@@ -174,6 +188,15 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
   const [nhom, dat_nhom] = useState<Nhom | null>(null);
   const tq = dung_nap<TongQuan>(`/api/nhan-vien/${nhan_vien_id}/ho-so`, [nhan_vien_id]);
 
+  // Tieu de header + duong mon. Goi TRUOC cac nhanh tra ve som — hook phai chay moi lan ve.
+  // `null` khi chua co du lieu: luc do header giu nhan "Nhân viên" cua muc menu.
+  const nguoi = tq.du_lieu?.nhan_vien ?? null;
+  dung_dat_tieu_de(nguoi === null ? null : {
+    tieu_de: nguoi.ho_ten,
+    phu: nguoi.ma_nv,
+    duong_mon: [{ ten: 'Nhân viên', den: '/nhan-vien' }, { ten: 'Hồ sơ' }],
+  });
+
   if (tq.dang_tai) return <DangTai />;
   if (tq.loi !== null) {
     return (
@@ -193,50 +216,59 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
 
   return (
     <>
-      <div className="dau-trang">
-        <div>
-          <h1 style={{ marginBottom: 2 }}>{nv.ho_ten}</h1>
-          <p className="mo-ta">
-            {nv.ma_nv}
-            {co(nv['phong_ban']) !== '—' && <> · {String(nv['phong_ban'])}</>}
-            {co(nv['ca_lam']) !== '—' && <> · ca {String(nv['ca_lam'])}</>}
-            {nv['dang_hoat_dong'] === false && <> · <span className="nhan nhan-xau">đã nghỉ việc</span></>}
-          </p>
+      <div className="the-ho-so">
+        <div className="ho-so-danh-tinh">
+          <AnhDaiDien ho_ten={nv.ho_ten} khoa={nv.ma_nv} />
+          <div className="ten">
+            <h1>{nv.ho_ten}</h1>
+            <p className="mo-ta">
+              {nv.ma_nv}
+              {co(nv['chuc_danh']) !== '—' && <> · {String(nv['chuc_danh'])}</>}
+              {co(nv['phong_ban']) !== '—' && <> · {String(nv['phong_ban'])}</>}
+              {co(nv['ca_lam']) !== '—' && <> · ca {String(nv['ca_lam'])}</>}
+              {nv['dang_hoat_dong'] === false && <> · <span className="nhan nhan-xau">đã nghỉ việc</span></>}
+            </p>
+          </div>
+          <LienKet den="/nhan-vien" lop="nut">← Danh sách nhân viên</LienKet>
         </div>
-        <LienKet den="/nhan-vien" lop="nut">← Danh sách nhân viên</LienKet>
-      </div>
 
-      <div className="luoi luoi-4" style={{ marginBottom: 16 }}>
-        <ODoc nhan="PIN máy" gia_tri={co(nv['pin_may'])} />
-        <ODoc nhan="Ngày vào" gia_tri={nv['ngay_vao'] === null ? '—' : ngay_viet(String(nv['ngay_vao']))} />
-        <ODoc
-          nhan="Hợp đồng hiện tại"
-          gia_tri={d.hop_dong_hien_tai === null
-            ? '—'
-            : TEN['loai_hop_dong']?.[String(d.hop_dong_hien_tai['loai'])] ?? '—'}
-          phu={d.hop_dong_hien_tai === null
-            ? (d.nhom_xem_duoc.includes('hop_dong') ? 'chưa có hợp đồng hiệu lực' : 'không có quyền xem')
-            : `đến ${d.hop_dong_hien_tai['hieu_luc_den'] === null
-              ? 'vô thời hạn' : ngay_viet(String(d.hop_dong_hien_tai['hieu_luc_den']))}`}
-        />
-        <ODoc
-          nhan="Hồ sơ tài liệu"
-          gia_tri={d.tien_do_tai_lieu === null || d.tien_do_tai_lieu === undefined
-            ? '—'
-            : `${d.tien_do_tai_lieu.da_du}/${d.tien_do_tai_lieu.can_co}`}
-          phu={d.tien_do_tai_lieu === null || d.tien_do_tai_lieu === undefined
-            ? 'không có quyền xem'
-            : d.tien_do_tai_lieu.da_du >= d.tien_do_tai_lieu.can_co
-              ? 'đã đủ hồ sơ bắt buộc'
-              : `còn thiếu ${d.tien_do_tai_lieu.can_co - d.tien_do_tai_lieu.da_du} tài liệu bắt buộc`}
-        />
-        <ODoc
-          nhan="Lương hiện tại"
-          gia_tri={d.luong_hien_tai === null ? '—' : tien(d.luong_hien_tai['luong_co_ban'])}
-          phu={d.luong_hien_tai === null
-            ? (d.nhom_xem_duoc.includes('luong') ? 'chưa có quyết định lương' : 'không có quyền xem')
-            : `phụ cấp ${tien(d.luong_hien_tai['phu_cap'])}`}
-        />
+        <div className="ho-so-chi-so">
+          <ODoc nhan="PIN máy" gia_tri={co(nv['pin_may'])}
+            phu={co(nv['pin_may']) === '—' ? 'chưa gán PIN' : 'trùng số ID trên máy'} />
+          <ODoc nhan="Ngày vào" gia_tri={nv['ngay_vao'] === null ? '—' : ngay_viet(String(nv['ngay_vao']))}
+            phu={nv['ngay_chinh_thuc'] === null || nv['ngay_chinh_thuc'] === undefined
+              ? undefined
+              : `chính thức ${ngay_viet(String(nv['ngay_chinh_thuc']))}`} />
+          <ODoc
+            nhan="Hợp đồng hiện tại"
+            gia_tri={d.hop_dong_hien_tai === null
+              ? '—'
+              : TEN['loai_hop_dong']?.[String(d.hop_dong_hien_tai['loai'])] ?? '—'}
+            phu={d.hop_dong_hien_tai === null
+              ? (d.nhom_xem_duoc.includes('hop_dong') ? 'chưa có hợp đồng hiệu lực' : 'không có quyền xem')
+              : `đến ${d.hop_dong_hien_tai['hieu_luc_den'] === null
+                ? 'vô thời hạn' : ngay_viet(String(d.hop_dong_hien_tai['hieu_luc_den']))}`}
+          />
+          <ODoc
+            nhan="Hồ sơ tài liệu"
+            gia_tri={d.tien_do_tai_lieu === null || d.tien_do_tai_lieu === undefined
+              ? '—'
+              : `${d.tien_do_tai_lieu.da_du}/${d.tien_do_tai_lieu.can_co}`}
+            phu={d.tien_do_tai_lieu === null || d.tien_do_tai_lieu === undefined
+              ? 'không có quyền xem'
+              : d.tien_do_tai_lieu.da_du >= d.tien_do_tai_lieu.can_co
+                ? 'đã đủ hồ sơ bắt buộc'
+                : `còn thiếu ${d.tien_do_tai_lieu.can_co - d.tien_do_tai_lieu.da_du} tài liệu bắt buộc`}
+            tien_do={d.tien_do_tai_lieu ?? undefined}
+          />
+          <ODoc
+            nhan="Lương hiện tại"
+            gia_tri={d.luong_hien_tai === null ? '—' : tien(d.luong_hien_tai['luong_co_ban'])}
+            phu={d.luong_hien_tai === null
+              ? (d.nhom_xem_duoc.includes('luong') ? 'chưa có quyết định lương' : 'không có quyền xem')
+              : `phụ cấp ${tien(d.luong_hien_tai['phu_cap'])}`}
+          />
+        </div>
       </div>
 
       {xem_duoc.length < THU_TU.length && (
@@ -254,7 +286,7 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
             className={n === dang_mo ? 'tab tab-dang-mo' : 'tab'}
             onClick={() => dat_nhom(n)}
           >
-            {TEN_NHOM[n]}
+            {TEN_TAB[n] ?? TEN_NHOM[n]}
             {(d.dem[n] ?? 0) > 0 && <span className="tab-so">{d.dem[n]}</span>}
           </button>
         ))}
@@ -276,12 +308,54 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
   );
 }
 
-function ODoc({ nhan, gia_tri, phu }: { nhan: string; gia_tri: string; phu?: string }): ReactNode {
+function ODoc(
+  { nhan, gia_tri, phu, tien_do }: {
+    nhan: string;
+    gia_tri: string;
+    phu?: string;
+    tien_do?: { can_co: number; da_du: number };
+  },
+): ReactNode {
+  const du = tien_do !== undefined && tien_do.da_du >= tien_do.can_co;
   return (
-    <div className="o-so">
+    <div>
       <div className="o-so-nhan">{nhan}</div>
-      <div className="o-so-gia-tri" style={{ fontSize: 20 }}>{gia_tri}</div>
+      <div className="o-so-gia-tri">{gia_tri}</div>
+      {tien_do !== undefined && tien_do.can_co > 0 && (
+        <div className="thanh-tien-do" style={{ height: 5, margin: '5px 0 4px' }}>
+          <div
+            className={du ? 'thanh-tien-do-day du' : 'thanh-tien-do-day'}
+            style={{ width: `${Math.min(100, (tien_do.da_du / tien_do.can_co) * 100)}%` }}
+          />
+        </div>
+      )}
       {phu !== undefined && <div className="o-so-phu">{phu}</div>}
+    </div>
+  );
+}
+
+/**
+ * Anh dai dien tu chu cai dau. Chua co truong anh nhan vien trong CSDL nen khong ve anh that
+ * — nhung de tron mot mau xam giong het nhau thi mo ho so nhieu nguoi khong phan biet duoc
+ * ai. Mau suy tu ma nhan vien: cung mot nguoi luon ra dung mot mau, va do lech mau giup nhan
+ * ra minh dang mo dung ho so hay khong.
+ *
+ * Chi dat HUE o day. Do dam / do sang / mau chu do CSS quyet dinh theo giao dien sang hay
+ * toi — dat cung mot mau cho ca hai thi mot ben chac chan truot nguong tuong phan.
+ */
+function AnhDaiDien({ ho_ten, khoa }: { ho_ten: string; khoa: string }): ReactNode {
+  const chu_dau = ho_ten
+    .split(' ').filter((t) => t.length > 0).slice(-2).map((t) => t[0]).join('').toUpperCase();
+  let bam = 0;
+  for (const k of khoa) bam = (bam * 31 + k.charCodeAt(0)) % 360;
+  return (
+    <div
+      className="anh-dai-dien anh-dai-dien-lon anh-dai-dien-mau"
+      style={{ '--av-hue': String(bam) } as CSSProperties}
+      title={ho_ten}
+      aria-hidden="true"
+    >
+      {chu_dau === '' ? '?' : chu_dau}
     </div>
   );
 }
@@ -296,12 +370,20 @@ function BangNhom(
   const [dang_sua, dat_dang_sua] = useState<Record<string, unknown> | null>(null);
   const [dang_them, dat_dang_them] = useState(false);
   const [dang_gan_tep, dat_dang_gan_tep] = useState(false);
+  const [xem_noi_dung, dat_xem_noi_dung] = useState<string | null>(null);
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   const lam_moi = (): void => { nap_lai(); khi_doi(); };
 
   const xoa = async (id: string): Promise<void> => {
-    if (!window.confirm('Xóa bản ghi này? Thao tác không hoàn tác được.')) return;
+    const dong_y = await xn.hoi({
+      tieu_de: `Xóa bản ghi trong mục ${TEN_NHOM[nhom]}?`,
+      mo_ta: 'Thao tác này không hoàn tác được. Tệp đính kèm của bản ghi cũng bị xóa theo.',
+      chu_dong_y: 'Xóa bản ghi',
+      nguy_hiem: true,
+    });
+    if (!dong_y) return;
     const ok = await hd.chay(
       () => goi(`/api/${DUONG_NHOM[nhom]}/${id}`, { method: 'DELETE' }),
       'Đã xóa.',
@@ -345,6 +427,16 @@ function BangNhom(
                     {COT[nhom].map((c) => <td key={c.nhan}>{c.ve(r)}</td>)}
                     {sua_duoc && (
                       <td className="khong-ngat">
+                        {nhom === 'hop_dong' && (
+                          <>
+                            <button
+                              className="nut-nho nut-phang"
+                              onClick={() => dat_xem_noi_dung(String(r['id']))}
+                            >
+                              Nội dung
+                            </button>{' '}
+                          </>
+                        )}
                         <button className="nut-nho" onClick={() => dat_dang_sua(r)}>Sửa</button>{' '}
                         <button className="nut-nho nut-nguy" onClick={() => void xoa(String(r['id']))}>
                           Xóa
@@ -379,6 +471,15 @@ function BangNhom(
           khi_xong={() => { dat_dang_gan_tep(false); lam_moi(); }}
         />
       )}
+
+      {xem_noi_dung !== null && (
+        <HopThoaiNoiDungHopDong
+          hop_dong_id={xem_noi_dung}
+          tep={du_lieu?.tep ?? []}
+          khi_dong={() => dat_xem_noi_dung(null)}
+        />
+      )}
+      {xn.hop_thoai}
     </>
   );
 }
@@ -451,7 +552,7 @@ const COT: Record<Nhom, Cot[]> = {
     { nhan: 'Phản hồi', ve: (r) => <div style={{ maxWidth: 240 }}>{co(r['phan_hoi'])}</div> },
   ],
   khieu_nai: [
-    { nhan: 'Gửi lúc', ve: (r) => <span className="khong-ngat so" style={{ fontSize: 12 }}>{ngay_gio(String(r['tao_luc']))}</span> },
+    { nhan: 'Gửi lúc', ve: (r) => <span className="khong-ngat so chu-nho">{ngay_gio(String(r['tao_luc']))}</span> },
     { nhan: 'Loại', ve: (r) => <Nhan ma={r['loai']} bang="loai_khieu_nai" /> },
     { nhan: 'Mức độ', ve: (r) => <Nhan ma={r['muc_do']} bang="uu_tien" /> },
     { nhan: 'Nội dung', ve: (r) => (
@@ -505,9 +606,9 @@ const COT: Record<Nhom, Cot[]> = {
         )}
       </>
     ) },
-    { nhan: 'Số sê-ri', ve: (r) => <span className="so" style={{ fontSize: 12 }}>{co(r['so_seri'])}</span> },
+    { nhan: 'Số sê-ri', ve: (r) => <span className="so chu-nho">{co(r['so_seri'])}</span> },
     { nhan: 'Địa chỉ IP', ve: (r) => <span className="so">{co(r['dia_chi_ip'])}</span> },
-    { nhan: 'MAC', ve: (r) => <span className="so" style={{ fontSize: 12 }}>{co(r['dia_chi_mac'])}</span> },
+    { nhan: 'MAC', ve: (r) => <span className="so chu-nho">{co(r['dia_chi_mac'])}</span> },
     { nhan: 'Ngày cấp', ve: (r) => <span className="khong-ngat">{r['ngay_cap'] === null ? '—' : ngay_viet(String(r['ngay_cap']))}</span> },
     { nhan: 'Tình trạng', ve: (r) => <Nhan ma={r['tinh_trang']} bang="tinh_trang_tb" /> },
   ],
@@ -519,6 +620,7 @@ function DanhSachTep(
   { tep, sua_duoc, khi_doi }: { tep: TepDinhKem[]; sua_duoc: boolean; khi_doi: () => void },
 ): ReactNode {
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
   const [dang_xem, dat_dang_xem] = useState<TepDinhKem | null>(null);
   if (tep.length === 0) return null;
 
@@ -526,7 +628,13 @@ function DanhSachTep(
     await hd.chay(() => tai_tep(`/api/ho-so/tep/${t.id}`, t.ten_goc), 'Đã tải tệp.');
   };
   const xoa = async (t: TepDinhKem): Promise<void> => {
-    if (!window.confirm(`Xóa tệp "${t.ten_goc}"?`)) return;
+    const dong_y = await xn.hoi({
+      tieu_de: `Xóa tệp "${t.ten_goc}"?`,
+      mo_ta: 'Tệp bị xóa hẳn khỏi máy chủ, không khôi phục được.',
+      chu_dong_y: 'Xóa tệp',
+      nguy_hiem: true,
+    });
+    if (!dong_y) return;
     const ok = await hd.chay(() => goi(`/api/ho-so/tep/${t.id}`, { method: 'DELETE' }), 'Đã xóa tệp.');
     if (ok) khi_doi();
   };
@@ -542,10 +650,10 @@ function DanhSachTep(
             {tep.map((t) => (
               <tr key={t.id}>
                 <td>{t.ten_goc}</td>
-                <td className="canh-phai so" style={{ fontSize: 12 }}>
+                <td className="canh-phai so chu-nho">
                   {Math.max(1, Math.round(t.kich_thuoc / 1024))} KB
                 </td>
-                <td className="khong-ngat" style={{ fontSize: 12 }}>{ngay_gio(t.tao_luc)}</td>
+                <td className="khong-ngat chu-nho">{ngay_gio(t.tao_luc)}</td>
                 <td className="khong-ngat">
                   <button className="nut-nho nut-phang" onClick={() => dat_dang_xem(t)}>Xem</button>{' '}
                   <button className="nut-nho" onClick={() => void tai(t)}>Tải về</button>
@@ -566,7 +674,204 @@ function DanhSachTep(
           khi_dong={() => dat_dang_xem(null)}
         />
       )}
+      {xn.hop_thoai}
     </div>
+  );
+}
+
+// ==================================================================== noi dung hop dong
+
+interface NoiDungHopDong {
+  hop_dong_id: string;
+  so_hd: string | null;
+  noi_dung_text: string | null;
+  cach_trich: string | null;
+  trich_luc: string | null;
+  trich_tu_tep_id: string | null;
+  so_ky_tu: number;
+}
+
+interface KetQuaTrich {
+  da_luu: boolean;
+  ten_tep: string;
+  noi_dung_text: string;
+  cach_trich: string;
+  so_ky_tu: number;
+  so_trang?: number;
+  canh_bao: string | null;
+  cat_bot: boolean;
+}
+
+interface CongCuTrich {
+  docx: boolean;
+  pdf: boolean;
+  ocr: boolean;
+  pdf_sang_anh: boolean;
+}
+
+/** Duoi tep nao trich duoc. Giu khop voi `duong_trich` o may chu. */
+const DUOI_TRICH_DUOC = /\.(docx|pdf|jpe?g|png)$/i;
+
+/**
+ * Trich noi dung hop dong sang van ban.
+ *
+ * Hop thoai nay noi ba thu ma nguoi dung khong the tu biet:
+ *   1. May chu co OCR khong. Neu chua cai, bam nut se that bai — noi truoc.
+ *   2. Van ban dang co den TU DAU (docx / lop chu PDF / OCR). OCR doc sai duoc.
+ *   3. Trich lai se GHI DE ban dang co.
+ */
+function HopThoaiNoiDungHopDong(
+  { hop_dong_id, tep, khi_dong }:
+  { hop_dong_id: string; tep: TepDinhKem[]; khi_dong: () => void },
+): ReactNode {
+  const duong = `/api/ho-so/hop-dong/${hop_dong_id}/noi-dung`;
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<NoiDungHopDong>(duong, [hop_dong_id]);
+  const cc = dung_nap<CongCuTrich>('/api/ho-so/cong-cu-trich');
+  const [kq, dat_kq] = useState<KetQuaTrich | null>(null);
+  const [chon_tep, dat_chon_tep] = useState('');
+  const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
+
+  // Chi liet ke tep trich duoc. Mot tep .xlsx trong danh sach chi de nguoi dung chon roi
+  // an loi la lang phi mot vong thu.
+  const tep_duoc = tep.filter((t) => DUOI_TRICH_DUOC.test(t.ten_goc));
+  const cong_cu = cc.du_lieu ?? null;
+
+  const trich = async (): Promise<void> => {
+    if (chon_tep === '') return;
+    const co = du_lieu?.so_ky_tu ?? 0;
+    if (co > 0) {
+      const dong_y = await xn.hoi({
+        tieu_de: 'Trích lại nội dung hợp đồng?',
+        mo_ta: <>
+          Hợp đồng này đã có nội dung ({co.toLocaleString('vi-VN')} ký tự). Trích lại{' '}
+          <strong>ghi đè</strong> bản đang có. Tệp gốc không bị ảnh hưởng.
+        </>,
+        chu_dong_y: 'Trích lại',
+      });
+      if (!dong_y) return;
+    }
+
+    // `chay_lay` vi ta CAN ket qua: canh bao ("day la ban scan, OCR khong doc duoc chu
+    // nao") nam trong do, va do la thu duy nhat giai thich vi sao khong co gi duoc luu.
+    const r = await hd.chay_lay<KetQuaTrich>(
+      () => goi<KetQuaTrich>(duong.replace('/noi-dung', '/trich-noi-dung'),
+        { method: 'POST', body: { tep_id: chon_tep } }),
+      undefined,
+    );
+    if (r !== null) {
+      dat_kq(r);
+      nap_lai();
+    }
+  };
+
+  return (
+    <HopThoai tieu_de="Nội dung hợp đồng" khi_dong={khi_dong} rong>
+      <p className="mo-ta">
+        Văn bản trích ra dùng để <strong>tìm kiếm và đối chiếu</strong>. Bản có giá trị pháp
+        lý luôn là <strong>tệp gốc</strong> trong hồ sơ, không phải văn bản này.
+      </p>
+
+      {cong_cu !== null && !cong_cu.pdf && (
+        <div className="hop-luu-y">
+          Máy chủ <strong>chưa cài <code>pdftotext</code></strong> nên chưa đọc được PDF.
+          Tệp <code>.docx</code> vẫn trích được bình thường.
+        </div>
+      )}
+      {cong_cu !== null && cong_cu.pdf && !cong_cu.ocr && (
+        <div className="hop-luu-y">
+          Máy chủ <strong>chưa cài <code>tesseract</code></strong> nên chưa OCR được bản
+          scan. PDF <em>có lớp chữ</em> và <code>.docx</code> vẫn trích được.
+        </div>
+      )}
+
+      {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} /> : (
+        <>
+          <HopLoi loi={hd.loi} />
+          <HopTot chu={hd.tot} />
+
+          {tep_duoc.length === 0 ? (
+            <Trong
+              tieu_de="Chưa có tệp nào trích được"
+              mo_ta="Đính kèm tệp .docx, .pdf, .jpg hoặc .png vào mục Hợp đồng rồi quay lại đây."
+            />
+          ) : (
+            <div className="hang-nut">
+              <select value={chon_tep} onChange={(e) => dat_chon_tep(e.target.value)}>
+                <option value="">— chọn tệp để trích —</option>
+                {tep_duoc.map((t) => (
+                  <option key={t.id} value={t.id}>{t.ten_goc}</option>
+                ))}
+              </select>
+              <button
+                className="nut-chinh"
+                disabled={hd.dang_chay || chon_tep === ''}
+                onClick={() => void trich()}
+              >
+                {hd.dang_chay ? 'Đang trích…' : 'Trích nội dung'}
+              </button>
+            </div>
+          )}
+          <p className="mo-ta">
+            Bản scan phải qua OCR nên có thể mất đến một phút. Đừng đóng hộp thoại giữa lúc
+            đang chạy.
+          </p>
+
+          {kq !== null && kq.canh_bao !== null && (
+            <div className="hop-luu-y">
+              <strong>{kq.da_luu ? 'Đã lưu, nhưng lưu ý:' : 'Chưa lưu gì:'}</strong>{' '}
+              {kq.canh_bao}
+            </div>
+          )}
+
+          {(du_lieu?.so_ky_tu ?? 0) === 0 ? (
+            <Trong tieu_de="Hợp đồng này chưa có nội dung đã trích" />
+          ) : (
+            <>
+              <div className="ho-so-chi-so">
+                <OSo
+                  nhan="Cách trích"
+                  gia_tri={<NhanCachTrich cach={du_lieu?.cach_trich ?? null} />}
+                  phu={du_lieu?.cach_trich === 'ocr'
+                    ? 'máy đoán từ ảnh — phải đối chiếu'
+                    : 'chữ gốc trong tệp'}
+                />
+                <OSo
+                  nhan="Số ký tự"
+                  gia_tri={(du_lieu?.so_ky_tu ?? 0).toLocaleString('vi-VN')}
+                />
+                <OSo
+                  nhan="Trích lúc"
+                  gia_tri={ngay_gio(du_lieu?.trich_luc)}
+                />
+              </div>
+
+              <pre className="khoi-van-ban">{du_lieu?.noi_dung_text}</pre>
+
+              <div className="hang-nut">
+                <button
+                  className="nut-nho nut-nguy"
+                  disabled={hd.dang_chay}
+                  onClick={() => void xn.hoi({
+                    tieu_de: 'Xóa nội dung đã trích?',
+                    mo_ta: 'Tệp gốc vẫn còn — chỉ bản text dùng để tìm kiếm bị xóa. Trích lại được.',
+                    chu_dong_y: 'Xóa nội dung',
+                    nguy_hiem: true,
+                  }).then((dong_y) => {
+                    if (!dong_y) return;
+                    return hd.chay(() => goi(duong, { method: 'DELETE' }), 'Đã xóa nội dung.')
+                      .then(() => { dat_kq(null); nap_lai(); });
+                  })}
+                >
+                  Xóa nội dung đã trích
+                </button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+      {xn.hop_thoai}
+    </HopThoai>
   );
 }
 
@@ -897,10 +1202,10 @@ function PanelThongTin({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {
         </div>
       )}
 
-      {du_lieu?.sua_duoc === true && (
+      {du_lieu?.sua_duoc === true && h !== null && (
         <div className="hang-nut">
           <button type="button" className="nut-chinh" onClick={() => dat_dang_sua(true)}>
-            {h === null ? '+ Khai thông tin cá nhân' : 'Sửa thông tin'}
+            Sửa thông tin
           </button>
         </div>
       )}
@@ -910,6 +1215,11 @@ function PanelThongTin({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {
           <Trong
             tieu_de="Chưa khai thông tin cá nhân"
             mo_ta="Cần CCCD, ngày sinh, mã số thuế và số BHXH để làm thủ tục bảo hiểm và thuế."
+            hanh_dong={du_lieu?.sua_duoc === true ? (
+              <button type="button" className="nut-chinh" onClick={() => dat_dang_sua(true)}>
+                + Khai thông tin cá nhân
+              </button>
+            ) : undefined}
           />
         </div>
       ) : (
@@ -939,6 +1249,14 @@ function PanelThongTin({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {
           ))}
         </div>
       )}
+
+      {/*
+        Ma dinh danh dat o Thong tin chung chu khong lam mot tab rieng: chung LA thong tin nhan
+        dang cua nguoi do, va thanh tab da co 11 nhan — them cai thu 12 thi xuong hai dong.
+      */}
+      <div style={{ marginTop: 12 }}>
+        <TheMaDinhDanh nhan_vien_id={nhan_vien_id} sua_duoc={du_lieu?.sua_duoc === true} />
+      </div>
 
       {dang_sua && (
         <FormThongTin
@@ -1056,6 +1374,8 @@ interface KetQuaTaiLieu {
   dang_nghi_viec: boolean;
   tien_do: { can_co: number; da_du: number };
   sua_duoc: boolean;
+  /** Thay / go tep DA NAP — chi Truong phong nhan su va quan tri. */
+  thay_xoa_tep_duoc: boolean;
 }
 
 function PanelTaiLieu(
@@ -1065,11 +1385,13 @@ function PanelTaiLieu(
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<KetQuaTaiLieu>(duong, [nhan_vien_id]);
   const [dang_sua, dat_dang_sua] = useState<DongTaiLieu | null>(null);
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
 
   if (dang_tai) return <DangTai />;
   const ds = du_lieu?.danh_sach ?? [];
   const td = du_lieu?.tien_do ?? { can_co: 0, da_du: 0 };
   const sua_duoc = du_lieu?.sua_duoc ?? false;
+  const thay_xoa_duoc = du_lieu?.thay_xoa_tep_duoc ?? false;
   const phan_tram = td.can_co === 0 ? 100 : Math.round((td.da_du / td.can_co) * 100);
 
   /**
@@ -1078,6 +1400,40 @@ function PanelTaiLieu(
    * Làm hai bước trong một thao tác vì tách ra thì người dùng phải nhớ "tải lên xong rồi
    * gắn vào mục nào" — và cái nhớ đó là chỗ hồ sơ bị gắn nhầm mục.
    */
+  /**
+   * Go tep khoi mot dong checklist: xoa han tep, va dua dong ve trang thai Thieu.
+   *
+   * Hoi lai bang chinh TEN TEP chu khong phai "co / khong": day la ban goc giay to phap ly
+   * cua mot con nguoi, va no khong con o dau khac.
+   */
+  const go_tep = async (d: DongTaiLieu): Promise<void> => {
+    const dong_y = await xn.hoi({
+      tieu_de: `Gỡ tệp "${d.tep_ten ?? 'này'}" khỏi mục ${d.ten}?`,
+      mo_ta: <>
+        Tệp sẽ bị <strong>xóa hẳn</strong> khỏi máy chủ, không khôi phục được. Đây là bản gốc
+        giấy tờ pháp lý và nó không còn ở đâu khác. Dòng checklist quay về trạng thái{' '}
+        <em>Thiếu</em>.
+      </>,
+      chu_dong_y: 'Gỡ và xóa tệp',
+      nguy_hiem: true,
+    });
+    if (!dong_y) return;
+
+    const ok = await hd.chay(async () => {
+      await goi(`/api/nhan-vien/${nhan_vien_id}/tai-lieu/${d.ma}`, {
+        method: 'PUT',
+        body: {
+          trang_thai: 'thieu',
+          tep_id: null,
+          nguoi_phu_trach: d.nguoi_phu_trach,
+          han_hoan_thanh: d.han_hoan_thanh,
+          ghi_chu: d.ghi_chu,
+        },
+      });
+    }, `Đã gỡ tệp khỏi mục ${d.ten}.`);
+    if (ok) { nap_lai(); khi_doi(); }
+  };
+
   const nhan_tep = async (d: DongTaiLieu, tep: File): Promise<void> => {
     const fd = new FormData();
     fd.append('nhom', 'tai_lieu');
@@ -1137,7 +1493,7 @@ function PanelTaiLieu(
                 <tr key={d.ma} style={d.tam_mien ? { opacity: 0.6 } : undefined}>
                   <td>
                     <strong>{d.ten}</strong>
-                    {d.bat_buoc && !d.tam_mien && <span style={{ color: 'var(--xau)' }}> *</span>}
+                    {d.bat_buoc && !d.tam_mien && <span className="chu-xau"> *</span>}
                     {d.tam_mien && <span className="nhan nhan-mo" style={{ marginLeft: 6 }}>khi nghỉ việc</span>}
                     {d.mo_ta !== null && <div className="o-so-phu" style={{ maxWidth: 300 }}>{d.mo_ta}</div>}
                   </td>
@@ -1154,7 +1510,29 @@ function PanelTaiLieu(
                   </td>
                   <td>
                     {d.tep_id !== null ? (
-                      <TepDaNop nhan_vien_id={nhan_vien_id} tep_id={d.tep_id} ten={d.tep_ten ?? 'tệp'} />
+                      <>
+                        <TepDaNop
+                          nhan_vien_id={nhan_vien_id}
+                          tep_id={d.tep_id}
+                          ten={d.tep_ten ?? 'tệp'}
+                        />
+                        {thay_xoa_duoc && (
+                          <div className="hang-nut" style={{ marginTop: 6, gap: 6 }}>
+                            <OKeoTha
+                              khi_nhan={(tep) => void nhan_tep(d, tep)}
+                              ma={`${d.ma}-thay`}
+                              nhan="Thay tệp khác"
+                              gon
+                            />
+                            <button
+                              className="nut-nho nut-nguy"
+                              onClick={() => void go_tep(d)}
+                            >
+                              Gỡ tệp
+                            </button>
+                          </div>
+                        )}
+                      </>
                     ) : sua_duoc ? (
                       <OKeoTha khi_nhan={(tep) => void nhan_tep(d, tep)} ma={d.ma} />
                     ) : '—'}
@@ -1179,6 +1557,7 @@ function PanelTaiLieu(
           khi_xong={() => { dat_dang_sua(null); nap_lai(); khi_doi(); }}
         />
       )}
+      {xn.hop_thoai}
     </>
   );
 }
@@ -1210,14 +1589,23 @@ function TepDaNop(
 
 /** Ô kéo-thả cho từng dòng tài liệu, đúng như bản demo. */
 function OKeoTha(
-  { khi_nhan, ma }: { khi_nhan: (tep: File) => void; ma: string },
+  { khi_nhan, ma, nhan, gon }: {
+    khi_nhan: (tep: File) => void;
+    ma: string;
+    /** Chu trong o. Mac dinh la loi moi tai len lan dau. */
+    nhan?: string;
+    /** Ban gon, dung khi o nam canh mot tep da co chu khong phai thay cho no. */
+    gon?: boolean;
+  },
 ): ReactNode {
   const [dang_ke, dat_dang_ke] = useState(false);
 
   return (
     <label
       htmlFor={`tep_${ma}`}
-      className={dang_ke ? 'o-keo-tha dang-ke' : 'o-keo-tha'}
+      className={
+        `${dang_ke ? 'o-keo-tha dang-ke' : 'o-keo-tha'}${gon === true ? ' o-keo-tha-gon' : ''}`
+      }
       onDragOver={(e) => { e.preventDefault(); dat_dang_ke(true); }}
       onDragLeave={() => dat_dang_ke(false)}
       onDrop={(e) => {
@@ -1227,7 +1615,7 @@ function OKeoTha(
         if (tep !== undefined) khi_nhan(tep);
       }}
     >
-      Kéo thả hoặc bấm để tải lên
+      {nhan ?? 'Kéo thả hoặc bấm để tải lên'}
       <input
         id={`tep_${ma}`}
         type="file"

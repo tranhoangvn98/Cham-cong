@@ -57,7 +57,7 @@ interface DongOutbox {
 
 /** Co dich nao duoc cau hinh chua. Chua thi khong can nhan viec ra khoi bang. */
 function co_dich(): boolean {
-  return cau_hinh.erp.webhook_url !== '' || cau_hinh.cong_sso.goc !== '';
+  return cau_hinh.erp.webhook_url !== '' || cau_hinh.cong_su_kien.goc !== '';
 }
 
 /**
@@ -139,12 +139,12 @@ async function gui_mot(d: DongOutbox): Promise<void> {
  *    hai su kien khac nhau.
  */
 async function gui_sang_cong(d: DongOutbox): Promise<void> {
-  if (cau_hinh.cong_sso.goc === '') {
+  if (cau_hinh.cong_su_kien.goc === '') {
     // NEM chu khong bo qua: dong nay phai o lai hop thu va thu lai, khong duoc danh dau da
-    // gui. Bo qua o day la mat su kien nhan su khi ai do quen khai CONG_URL.
-    throw new Error('Chua khai CONG_URL — su kien nhan su nam lai cho');
+    // gui. Bo qua o day la mat su kien nhan su khi ai do quen khai goc cua cong.
+    throw new Error('Chua khai CONG_SSO_GOC (hoac CONG_SU_KIEN_URL) — su kien nhan su nam lai cho');
   }
-  if (cau_hinh.cong_sso.token_dich_vu === '') {
+  if (cau_hinh.cong_su_kien.token_dich_vu === '') {
     throw new Error('Chua khai CONG_TOKEN_DICH_VU — su kien nhan su nam lai cho');
   }
 
@@ -158,11 +158,11 @@ async function gui_sang_cong(d: DongOutbox): Promise<void> {
   const than_cong: Record<string, unknown> = {};
   if (typeof du['ho_ten'] === 'string' && du['ho_ten'] !== '') than_cong['ho_ten'] = du['ho_ten'];
 
-  const res = await fetch(`${cau_hinh.cong_sso.goc}/api/su-kien-nhan-su`, {
+  const res = await fetch(`${cau_hinh.cong_su_kien.goc}/api/su-kien-nhan-su`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      authorization: `Bearer ${cau_hinh.cong_sso.token_dich_vu}`,
+      authorization: `Bearer ${cau_hinh.cong_su_kien.token_dich_vu}`,
     },
     body: JSON.stringify({
       su_kien_id: `chamcong-${d.id}`,

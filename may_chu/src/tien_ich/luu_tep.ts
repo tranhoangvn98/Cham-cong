@@ -2,11 +2,48 @@
 //
 // Khac anh selfie cham cong o hai diem: cho phep PDF va tep Office, va dung lai chinh sach
 // TRA VE cung ran hon — xem `doc_tep_ho_so`.
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { join, resolve, sep } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { cau_hinh } from '../cau_hinh.ts';
 import { LoiDauVao } from './kiem_tra.ts';
+import {
+  duong_dan_ban_chot, duong_dan_hop_le, ten_tep_chuan, ten_thu_muc_nhan_vien,
+  type LoaiBanChot,
+} from './ten_tep.ts';
+
+/**
+ * Khong ghi duoc xuong thu muc luu tru. KHONG phai loi cua nguoi dung.
+ *
+ * Co lop loi rieng vi day la loi VAN HANH, va no can noi thanh cau nguoi doc hieu duoc.
+ * Truoc do no bubble len thanh HTTP 500 "Loi he thong. Vui long thu lai" — mot cau khong
+ * dan ai den dau, cho mot loi khong bao gio tu khoi.
+ */
+export class LoiThuMucLuu extends Error {
+  readonly thu_muc: string;
+  /** 503, khong phai 500: kho luu tru khong dung duoc, con may chu thi van song. */
+  readonly ma_http = 503;
+  /**
+   * Thong diep duoc phep tra ra ngoai.
+   *
+   * KHONG chua duong dan tuyet doi tren may chu — cai do chi vao log. Nhung PHAI noi ro
+   * "loi cau hinh may chu, khong phai loi cua tep", vi khong noi thi nhan su se ngoi thu
+   * lai voi tep khac hang chuc lan.
+   */
+  readonly thong_diep_cong_khai: string;
+
+  constructor(thu_muc: string, gay_boi: string) {
+    super(`Không ghi được vào thư mục lưu hồ sơ ${thu_muc}: ${gay_boi}`);
+    this.name = 'LoiThuMucLuu';
+    this.thu_muc = thu_muc;
+    this.thong_diep_cong_khai = gay_boi === 'ENOSPC'
+      ? 'Máy chủ đã hết dung lượng đĩa nên chưa lưu được tệp. Đây là lỗi máy chủ, '
+        + 'không phải lỗi của tệp — báo quản trị, đừng thử lại.'
+      : `Máy chủ không ghi được vào thư mục lưu hồ sơ (mã lỗi ${gay_boi}). Đây là lỗi cấu `
+        + 'hình máy chủ, không phải lỗi của tệp — thử lại sẽ vẫn thất bại. Báo quản trị, '
+        + 'xem tai_lieu/TRIEN-KHAI.md mục "Thư mục lưu hồ sơ không ghi được".';
+  }
+}
 
 interface DinhDang {
   duoi: string;
@@ -70,16 +107,36 @@ export interface TepDaLuu {
   ten_luu: string;
   mime: string;
   kich_thuoc: number;
+  /** Ma tep da sinh. Nguoi goi PHAI dung chinh ma nay lam `ho_so_tep.id`. */
+  ma_tep: string;
+}
+
+export interface DichLuu {
+  /** Ma nhan vien, de dat ten thu muc. */
+  ma_nv: string;
+  /** Ho ten nhan vien, de nguoi mo thu muc doc duoc day la ho so cua ai. */
+  ho_ten: string;
+  /** Nhom ho so, vd 'hop_dong'. Thanh mot cap thu muc. */
+  nhom: string;
+  /** Ngay tai len, YYYY-MM-DD. Vao dau ten tep. */
+  ngay: string;
 }
 
 /**
- * Ghi tep xuong dia, tra ve ten tuong doi dang 'YYYY-MM/uuid.pdf'.
- * Ten tep do may chu sinh HOAN TOAN — khong lay bat ky phan nao tu client.
+ * Ghi tep xuong dia theo cay `<MA_NV>_<Ho-ten>/<nhom>/<ngay>_<nhom>_<ten-goc>_<hex>.<duoi>`.
+ *
+ * MA TEP SINH O DAY, khong sinh o CSDL. Ten tep chua tam ky tu dau cua ma, nen ma phai co
+ * TRUOC khi ghi — roi nguoi goi dung dung ma do lam khoa chinh cua dong `ho_so_tep`. Neu de
+ * CSDL sinh ma rieng thi ten tep va khoa chinh khong lien quan gi den nhau, va cai loi ich
+ * chinh cua quy chuan (mo thu muc la tra nguoc duoc ve dong CSDL) mat sach.
+ *
+ * `duoi` lay tu MAGIC BYTE, khong lay tu ten client gui — mot tep .exe doi ten thanh .pdf
+ * van la .exe, va ten tep tren dia khong duoc phep noi doi ve noi dung.
  */
 export async function luu_tep_ho_so(
   du_lieu: Buffer,
   ten_goc: string,
-  thang: string,
+  dich: DichLuu,
 ): Promise<TepDaLuu> {
   if (du_lieu.length === 0) throw new LoiDauVao('Tệp rỗng.');
   if (du_lieu.length > cau_hinh.tep_toi_da_byte) {
@@ -92,19 +149,182 @@ export async function luu_tep_ho_so(
     throw new LoiDauVao('Chỉ nhận tệp PDF, JPG, PNG, DOCX hoặc XLSX.');
   }
 
-  // Gom theo thang de mot thu muc khong phinh len hang tram nghin tep.
-  await mkdir(join(cau_hinh.thu_muc_ho_so, thang), { recursive: true });
+  const ma_tep = randomUUID();
+  const thu_muc_nv = ten_thu_muc_nhan_vien(dich.ma_nv, dich.ho_ten);
+  const thu_muc = `${thu_muc_nv}/${dich.nhom}`;
 
-  const ten_luu = `${thang}/${randomUUID()}.${dd.duoi}`;
-  await writeFile(join(cau_hinh.thu_muc_ho_so, ten_luu), du_lieu, { mode: 0o600 });
-  return { ten_luu, mime: dd.mime, kich_thuoc: du_lieu.length };
+  // Tam ky tu hex la du de khong trung trong PHAM VI mot thu muc, nhung "gan nhu chac chan"
+  // khong du voi ban goc hop dong: trung mot lan la de len mot ban va mat han. Neu ten ngan
+  // da bi chiem thi dung ca ma — dai hon, van doc duoc, va khong the trung.
+  let ten_tep = ten_tep_chuan({ ...dich, ten_goc, ma_tep, duoi: dd.duoi });
+  if (await da_ton_tai(`${thu_muc}/${ten_tep}`)) {
+    ten_tep = ten_tep_chuan({ ...dich, ten_goc, ma_tep, duoi: dd.duoi, day_du: true });
+  }
+
+  const ten_luu = `${thu_muc}/${ten_tep}`;
+  try {
+    await mkdir(join(cau_hinh.thu_muc_ho_so, thu_muc), { recursive: true });
+    await writeFile(join(cau_hinh.thu_muc_ho_so, ten_luu), du_lieu, {
+      mode: 0o600,
+      // 'wx' = tao moi, HONG NEU DA CO. Khong bao gio ghi de mot tep dang ton tai: cho nay
+      // giu ban goc giay to phap ly, va ghi de la mat vinh vien.
+      flag: 'wx',
+    });
+  } catch (loi) {
+    // EACCES / EPERM: thu muc thuoc nguoi khac. ENOSPC: het dia. Ba tinh huong nay deu la
+    // van hanh, va deu KHONG tu khoi — phai noi ro ra thay vi tra 500 chung.
+    const ma = (loi as NodeJS.ErrnoException).code ?? '';
+    if (ma === 'EACCES' || ma === 'EPERM' || ma === 'ENOSPC' || ma === 'EROFS') {
+      throw new LoiThuMucLuu(cau_hinh.thu_muc_ho_so, ma);
+    }
+    throw loi;
+  }
+  return { ten_luu, mime: dd.mime, kich_thuoc: du_lieu.length, ma_tep };
 }
 
-const RE_TEN_LUU = /^\d{4}-\d{2}\/[0-9a-f-]{36}\.(pdf|jpg|png|docx|xlsx)$/;
+/**
+ * Ghi mot BAN CHOT cap cong ty (bang cong thang, bang luong thang) xuong dia.
+ *
+ * Khac `luu_tep_ho_so` o ba diem, va ca ba deu co ly do:
+ *
+ *   1. KHONG thuoc nhan vien nao. Duong dan la `_ban_chot/<loai>/...`, khong co cap nhan vien.
+ *   2. GHI DE DUOC (`flag: 'w'`, khong phai `'wx'`). Ban chot bi tra lai roi duyet lai thi ban
+ *      moi thay ban cu — do la dung. Ban goc phap ly cua no la du lieu trong CSDL cong voi
+ *      dong `ban_chot` ghi ai duyet luc nao; tep chi la ban ket xuat, sinh lai duoc.
+ *      (`luu_tep_ho_so` thi tuyet doi khong ghi de: cho do giu ban scan CCCD, hop dong — mat
+ *      la mat vinh vien.)
+ *   3. KHONG kiem magic byte. Du lieu do CHINH may chu sinh bang `ghi_xlsx`, khong den tu
+ *      client, nen khong co gi phai xac minh.
+ */
+export async function luu_ban_chot(
+  du_lieu: Buffer,
+  loai: LoaiBanChot,
+  ky: string,
+): Promise<{ ten_luu: string; kich_thuoc: number }> {
+  if (du_lieu.length === 0) throw new LoiDauVao('Bản chốt rỗng.');
+  if (!/^\d{4}-\d{2}$/.test(ky)) throw new LoiDauVao(`Kỳ không đúng dạng YYYY-MM: ${ky}`);
 
-/** Duong dan tuyet doi da kiem, hoac null neu ten khong hop le / thoat ra ngoai thu muc. */
+  const ten_luu = duong_dan_ban_chot(loai, ky, randomUUID().replace(/-/g, ''));
+  // Tu kiem lai ket qua cua chinh bo sinh: neu ai sua `duong_dan_ban_chot` lech khoi
+  // `duong_dan_hop_le` thi tep ghi duoc nhung KHONG DOC LAI DUOC — im lang tuyet doi.
+  if (!duong_dan_hop_le(ten_luu)) {
+    throw new Error(`Bộ sinh đường dẫn bản chốt tạo ra đường dẫn bộ đọc từ chối: ${ten_luu}`);
+  }
+
+  const thu_muc = ten_luu.slice(0, ten_luu.lastIndexOf('/'));
+  try {
+    await mkdir(join(cau_hinh.thu_muc_ho_so, thu_muc), { recursive: true });
+    await writeFile(join(cau_hinh.thu_muc_ho_so, ten_luu), du_lieu, { mode: 0o600, flag: 'w' });
+  } catch (loi) {
+    const ma = (loi as NodeJS.ErrnoException).code ?? '';
+    if (ma === 'EACCES' || ma === 'EPERM' || ma === 'ENOSPC' || ma === 'EROFS') {
+      throw new LoiThuMucLuu(cau_hinh.thu_muc_ho_so, ma);
+    }
+    throw loi;
+  }
+  return { ten_luu, kich_thuoc: du_lieu.length };
+}
+
+/** Tep nay da co tren dia chua? Duong dan phai da qua `duong_dan_hop_le`. */
+async function da_ton_tai(ten_luu: string): Promise<boolean> {
+  if (!duong_dan_hop_le(ten_luu)) return false;
+  try {
+    await stat(join(cau_hinh.thu_muc_ho_so, ten_luu));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Doi cho mot tep sang duong dan khac TRONG kho ho so.
+ *
+ * Dung khi doi ma nhan vien hay ho ten — xem `ho_so/sap_xep_tep.ts`. Ca hai duong dan deu
+ * phai qua `duong_dan_an_toan`, nen mot dong CSDL hong khong bien duoc ham nay thanh lenh
+ * di chuyen tep tuy y tren may chu.
+ *
+ * Tra false khi nguon khong con (da chuyen tu truoc, hoac tep da mat) — de goi lai duoc
+ * nhieu lan ma khong hong.
+ */
+export async function doi_cho_tep_ho_so(tu: string, den: string): Promise<boolean> {
+  const nguon = duong_dan_an_toan(tu);
+  const dich = duong_dan_an_toan(den);
+  if (nguon === null || dich === null) return false;
+  if (nguon === dich) return false;
+
+  try {
+    await mkdir(dirname(dich), { recursive: true });
+    // `rename` la nguyen tu trong cung mot he tep, nen khong co luc nao tep vua o hai cho
+    // vua khong o dau. Ca hai duong deu nam trong `thu_muc_ho_so` nen luon cung he tep.
+    await rename(nguon, dich);
+    return true;
+  } catch (loi) {
+    const ma = (loi as NodeJS.ErrnoException).code ?? '';
+    if (ma === 'ENOENT') return false;
+    if (ma === 'EACCES' || ma === 'EPERM' || ma === 'ENOSPC' || ma === 'EROFS') {
+      throw new LoiThuMucLuu(cau_hinh.thu_muc_ho_so, ma);
+    }
+    throw loi;
+  }
+}
+
+/**
+ * Thu muc luu tru co ghi duoc that khong? Goi luc khoi dong.
+ *
+ * KHONG dung `access(W_OK)`: no chi hoi he dieu hanh ve bit quyen, va tra ve "duoc" trong
+ * nhung truong hop van khong ghi duoc (dia chi doc, het inode, quota). Cach duy nhat biet
+ * chac la GHI THAT mot tep roi xoa.
+ */
+export async function thu_ghi_thu_muc(thu_muc: string): Promise<string | null> {
+  const thu = join(thu_muc, `.thu-ghi-${randomUUID()}`);
+  try {
+    await mkdir(thu_muc, { recursive: true });
+    await writeFile(thu, 'x');
+    return null;
+  } catch (loi) {
+    return (loi as NodeJS.ErrnoException).code ?? (loi as Error).message;
+  } finally {
+    await rm(thu, { force: true }).catch(() => { /* khong ghi duoc thi cung khong co gi de xoa */ });
+  }
+}
+
+export interface TinhTrangLuuTru {
+  thu_muc_ho_so: string;
+  thu_muc_anh: string;
+  /** null = ghi duoc. Chuoi = ma loi cua he dieu hanh. */
+  loi_ho_so: string | null;
+  loi_anh: string | null;
+}
+
+/**
+ * Kiem ca hai thu muc luu tru.
+ *
+ * Bao ca hai trong mot lan goi vi hai thu muc nay hong DOC LAP nhau — da xay ra dung the:
+ * `anh_cham_cong` ghi duoc con `ho_so` thi khong, nen anh selfie van chay va khong co dau
+ * hieu nao cho thay mot nua kho luu tru dang chet.
+ */
+export async function kiem_tra_luu_tru(): Promise<TinhTrangLuuTru> {
+  const [loi_ho_so, loi_anh] = await Promise.all([
+    thu_ghi_thu_muc(cau_hinh.thu_muc_ho_so),
+    thu_ghi_thu_muc(cau_hinh.thu_muc_anh),
+  ]);
+  return {
+    thu_muc_ho_so: cau_hinh.thu_muc_ho_so,
+    thu_muc_anh: cau_hinh.thu_muc_anh,
+    loi_ho_so,
+    loi_anh,
+  };
+}
+
+/**
+ * Duong dan tuyet doi da kiem, hoac null neu ten khong hop le / thoat ra ngoai thu muc.
+ *
+ * HAI LOP, va can ca hai: `duong_dan_hop_le` chan hinh dang (khong `..`, dung duoi cho
+ * phep, dung so cap thu muc), roi `resolve` doi chieu voi thu muc goc de chan moi thu con
+ * lai — symlink, duong dan tuyet doi, ky tu la cua he dieu hanh.
+ */
 function duong_dan_an_toan(ten_luu: string): string | null {
-  if (!RE_TEN_LUU.test(ten_luu)) return null;
+  if (!duong_dan_hop_le(ten_luu)) return null;
   const goc = resolve(cau_hinh.thu_muc_ho_so);
   const day_du = resolve(goc, ten_luu);
   if (day_du !== goc && !day_du.startsWith(goc + sep)) return null;

@@ -16,11 +16,12 @@ export type NhomHoSo =
   | 'thong_tin'      // thong tin ca nhan: CCCD, MST, so BHXH, lien he khan cap
   | 'tai_lieu'       // checklist ho so bat buoc theo HCNS
   | 'nguoi_phu_thuoc'
-  | 'bhxh';
+  | 'bhxh'
+  | 'don_tu';         // ban don DA DUYET, do he thong sinh ra — xem don_tu/ban_don.ts
 
 export const CAC_NHOM: readonly NhomHoSo[] = [
   'thong_tin', 'tai_lieu', 'hop_dong', 'bien_ban', 'luong',
-  'nguoi_phu_thuoc', 'bhxh', 'cong_viec', 'bao_cao', 'khieu_nai', 'thiet_bi',
+  'nguoi_phu_thuoc', 'bhxh', 'cong_viec', 'bao_cao', 'khieu_nai', 'thiet_bi', 'don_tu',
 ] as const;
 
 export interface NguoiXem {
@@ -37,9 +38,67 @@ export interface BoiCanh {
   la_cap_tren: boolean;
 }
 
-function la_nhan_su(nd: NguoiXem): boolean {
-  return nd.vai_tro === 'admin' || nd.vai_tro === 'nhan_su';
+/**
+ * MOT CHO DUY NHAT tra loi cau "vai tro nay co phai la nhan su khong".
+ *
+ * VI SAO PHAI GOM VAO DAY: cau `vai_tro === 'admin' || vai_tro === 'nhan_su'` truoc day nam
+ * rai o SAU cho khac nhau — pham vi bang cong, lop che du lieu ca nhan, dem don cho duyet,
+ * hook `can_nhan_su`, bang phan quyen ho so. Them mot vai tro nhan su moi
+ * (`truong_phong_nhan_su`) ma quen mot cho la nguoi do dang nhap vao thay MOT NUA he thong,
+ * khong bao loi gi, va cai nua khong thay se im lang nhu the no khong ton tai.
+ *
+ * Dat o day chu khong o `xac_thuc.ts` vi module nay THUAN — khong Fastify, khong CSDL — nen
+ * moi lop khac deu nhap duoc ma khong keo theo gi.
+ *
+ * Co bai kiem chan: khong tep nao khac duoc phep so sanh `vai_tro === 'nhan_su'`.
+ */
+export function la_vai_tro_nhan_su(vai_tro: string): boolean {
+  return vai_tro === 'admin' || vai_tro === 'nhan_su' || vai_tro === 'truong_phong_nhan_su';
 }
+
+/** Duyet duoc don tu: nhan su cac cap, va truong phong (voi phong cua minh). */
+export function la_nguoi_duyet(vai_tro: string): boolean {
+  return la_vai_tro_nhan_su(vai_tro) || vai_tro === 'truong_phong';
+}
+
+/**
+ * Quan tri he thong: may cham cong, khoa API, tai khoan, dong bo.
+ *
+ * Rieng ra khoi `la_vai_tro_nhan_su` vi day la mot truc KHAC — quan tri ky thuat, khong
+ * phai quan tri nhan su. Van dat o day de moi cau hoi "vai tro nay la gi" deu tra loi tu
+ * mot cho, va de bai kiem chan so sanh chuoi khong phai chua ngoai le nao.
+ */
+export function la_quan_tri(vai_tro: string): boolean {
+  return vai_tro === 'admin';
+}
+
+function la_nhan_su(nd: NguoiXem): boolean {
+  return la_vai_tro_nhan_su(nd.vai_tro);
+}
+
+/**
+ * Duoc THAY hay GO mot tep DA NAP vao ho so khong.
+ *
+ * Chat hon `sua_duoc` mot bac, va co chu dich:
+ *
+ *   NAP THEM mot ban scan la THEM chung cu — nhan su lam hang ngay, cang de cang tot.
+ *   THAY hay GO mot ban da nap la LAM MAT chung cu — phai co nguoi chiu trach nhiem.
+ *
+ * Ho so nhan su la ho so phap ly: hop dong, CCCD, giay kham suc khoe, bang cap. Khi co
+ * tranh chap lao dong hay khi co quan BHXH hoi, cai tra loi duoc la ban goc trong kho tep.
+ * Mot tai khoan nhan su bi muon, hay mot cai bam nham, khong duoc phep lam mat no.
+ *
+ * `truong_phong` cua cac phong ban khac KHONG nam o day: ho von khong doc duoc ho so nhan
+ * su cua cap duoi thi cang khong sua duoc.
+ */
+export function thay_xoa_tep_duoc(nd: NguoiXem): boolean {
+  return nd.vai_tro === 'admin' || nd.vai_tro === 'truong_phong_nhan_su';
+}
+
+/** Cau giai thich khi bi tu choi. Viet ra day de moi cho tu choi noi giong nhau. */
+export const LY_DO_KHONG_THAY_XOA_DUOC =
+  'Chỉ Trưởng phòng nhân sự mới được thay hoặc gỡ tệp đã nạp vào hồ sơ. '
+  + 'Nạp thêm tệp vào ô còn trống thì nhân sự làm được bình thường.';
 
 /**
  * Co duoc DOC nhom nay khong.
@@ -56,6 +115,7 @@ function la_nhan_su(nd: NguoiXem): boolean {
  *   khieu_nai   | co            | KHONG                   | co         | khong
  *   thiet_bi    | co            | co                      | co         | khong
  *   thong_tin   | co            | co NHUNG DA CHE         | co         | khong
+ *   don_tu      | co            | co                      | co         | khong
  *
  * Hai o dang chu y:
  *
@@ -73,8 +133,10 @@ export function doc_duoc(nd: NguoiXem, nhom: NhomHoSo, bc: BoiCanh): boolean {
     // can lien he khan cap cua cap duoi khi co su co, con so CCCD / so tai khoan / ket
     // luan suc khoe thi khong. Neu chan han ca nhom nay thi lop che tro thanh code chet —
     // moi nguoi doc duoc deu la nguoi duoc xem ban day du.
+    // `don_tu`: truong phong DUYET don cua cap duoi, nen phai doc lai duoc ban don minh da
+    // duyet. Do la ban ghi cua chinh quyet dinh cua ho.
     return nhom === 'cong_viec' || nhom === 'bao_cao' || nhom === 'thiet_bi'
-      || nhom === 'thong_tin';
+      || nhom === 'thong_tin' || nhom === 'don_tu';
   }
   return false;
 }
@@ -93,10 +155,17 @@ export function doc_duoc(nd: NguoiXem, nhom: NhomHoSo, bc: BoiCanh): boolean {
  *   bao_cao     | co            | co                      | co (nop bao cao cua minh)
  *   khieu_nai   | co            | khong                   | co (gui khieu nai cua minh)
  *   thiet_bi    | co            | khong                   | khong (chi doc)
+ *   don_tu      | co            | khong                   | khong (chi doc)
  *
  * Nhan vien KHONG duoc tu sua hop dong, luong hay danh sach thiet bi cua chinh minh — do
  * la ho so do cong ty lap. Nhung ho PHAI tu gui duoc khieu nai va bao cao, neu khong thi
  * hai muc do khong con y nghia gi.
+ *
+ * `don_tu` KHONG ai sua duoc tru nhan su, ke ca chinh nguoi da lam don va ca nguoi da duyet.
+ * Ban don la BAN GHI CUA MOT QUYET DINH da xay ra: nguoi lam don sua duoc thi to don khong
+ * con la bang chung ve dieu ho da xin, va nguoi duyet sua duoc thi khong con la bang chung ve
+ * dieu ho da dong y. Muon doi thi lam don moi. (Go tep thi chi Truong phong nhan su — xem
+ * `thay_xoa_tep_duoc`.)
  */
 export function sua_duoc(nd: NguoiXem, nhom: NhomHoSo, bc: BoiCanh): boolean {
   if (la_nhan_su(nd)) return true;

@@ -1,10 +1,12 @@
 // Nghiep vu tiep nhan ATTLOG tu may: chong trung -> map PIN sang nhan vien -> luu
 // -> ghi su kien -> tinh lai bang cong ngay bi anh huong.
-import { trong_giao_dich, truy_van } from '../csdl/ket_noi.ts';
+import { trong_giao_dich } from '../csdl/ket_noi.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { tinh_lai_nhieu } from '../cong/tinh_cong.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
-import { doc_attlog, nhan_cach_xac_thuc, type BanGhiAttlog } from './giao_thuc.ts';
+import { cac_pin_lech, tra_pin, type NguoiMap } from '../dinh_danh/tra_pin.ts';
+import { nap_lich_pin } from '../dinh_danh/lich_pin_csdl.ts';
+import { doc_attlog, doc_rtlog, nhan_cach_xac_thuc, type BanGhiAttlog } from './giao_thuc.ts';
 
 export interface KetQuaTiepNhan {
   tong: number;
@@ -25,6 +27,29 @@ export async function tiep_nhan_attlog(
   body: string,
 ): Promise<KetQuaTiepNhan> {
   const { ban_ghi, so_dong_loi } = doc_attlog(body);
+  return tiep_nhan_ban_ghi(serial, ban_ghi, so_dong_loi);
+}
+
+/**
+ * Tiep nhan mot lo RTLOG — cung nghiep vu, chi khac cach doc than tin nhan.
+ *
+ * Firmware PUSH kiem soat ra vao day cham cong bang `table=rtlog` chu khong phai ATTLOG.
+ * Truoc day nhanh do roi vao "bang khac, bo qua" nen moi lan quet deu bi vut di lang le:
+ * may bao thanh cong, webapp khong co gi, va khong ai biet vi sao.
+ */
+export async function tiep_nhan_rtlog(
+  serial: string,
+  body: string,
+): Promise<KetQuaTiepNhan> {
+  const { ban_ghi, so_dong_loi } = doc_rtlog(body);
+  return tiep_nhan_ban_ghi(serial, ban_ghi, so_dong_loi);
+}
+
+async function tiep_nhan_ban_ghi(
+  serial: string,
+  ban_ghi: BanGhiAttlog[],
+  so_dong_loi: number,
+): Promise<KetQuaTiepNhan> {
   const kq: KetQuaTiepNhan = {
     tong: ban_ghi.length,
     da_nhan: 0,
@@ -34,21 +59,23 @@ export async function tiep_nhan_attlog(
   };
   if (ban_ghi.length === 0) return kq;
 
-  // Nap mot lan toan bo PIN -> nhan vien de khong truy van tung dong.
+  // Nap mot lan toan bo LICH SU cua cac PIN trong lo — ke ca cac dong da dong lai. Tung ban ghi
+  // duoc tra theo MOC THOI GIAN cua chinh no, khong phai theo "hom nay ai giu PIN".
   const cac_pin = [...new Set(ban_ghi.map((b) => b.pin))];
-  const nv = await truy_van<{ id: string; pin_may: string; ma_nv: string; ma_erp: string | null }>(
-    `select id, pin_may, ma_nv, ma_erp
-       from nhan_vien
-      where pin_may = any($1::text[]) and dang_hoat_dong = true`,
-    [cac_pin],
-  );
-  const theo_pin = new Map(nv.map((n) => [n.pin_may, n]));
+  const lich = await nap_lich_pin(cac_pin);
+
+  for (const l of cac_pin_lech(lich)) {
+    console.warn(
+      `[adms] PIN ${l.pin}: bang dinh danh noi ${l.ma_nv_bang}, cot pin_may noi ${l.ma_nv_cot}. `
+      + 'Dung bang. Chay doi soat ma dinh danh de biet vi sao lech.',
+    );
+  }
 
   const ngay_can_tinh = new Set<string>();
   const chua_map = new Set<string>();
 
   for (const b of ban_ghi) {
-    const nguoi = theo_pin.get(b.pin) ?? null;
+    const nguoi = tra_pin(lich, b.pin, b.thoi_diem);
     if (nguoi === null) chua_map.add(b.pin);
 
     const da_them = await luu_mot_lan_quet(serial, b, nguoi);
@@ -73,12 +100,6 @@ export async function tiep_nhan_attlog(
   );
 
   return kq;
-}
-
-interface NguoiMap {
-  id: string;
-  ma_nv: string;
-  ma_erp: string | null;
 }
 
 /** Tra ve true neu ban ghi duoc them moi, false neu da ton tai (trung). */

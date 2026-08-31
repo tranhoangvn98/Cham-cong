@@ -92,9 +92,12 @@ Thứ tự này quan trọng — làm sai thứ tự thì log về sẽ không m
 
 1. **Ca làm việc** — sửa ca "Hành chính" cho khớp giờ thật và **các ngày phải đi làm**
    (mặc định T2–T6; công ty làm cả T7 phải tự thêm).
-2. **Nhân viên** — thêm từng người, điền **PIN máy** đúng bằng số ID đã khai trên máy.
-3. **Máy chấm công** — khai serial, rồi bấm "Đồng bộ giờ" (lệch giờ máy là nguyên nhân
-   sai công phổ biến nhất).
+2. **Máy chấm công** — khai serial và **dải PIN** của từng máy (VP1 `1001–1999`,
+   VP2 `2001–2999`), rồi bấm "Đồng bộ giờ" (lệch giờ máy là nguyên nhân sai công phổ
+   biến nhất).
+3. **Nhân viên** — thêm từng người, rồi **Cấp PIN**: hệ thống chọn số còn trống trong dải
+   của máy, bạn cài đúng số đó lên máy. **Đừng tự nghĩ ra số** — hai văn phòng cùng đánh
+   số từ 1 là công của người này chạy sang người kia.
 4. **Ngày lễ** — chỉ có sẵn ngày lễ dương lịch cố định. **Tết Nguyên đán và ngày nghỉ
    bù theo lịch âm phải tự thêm mỗi năm.**
 5. **Địa điểm** — chỉ cần nếu dùng chấm công bằng điện thoại.
@@ -156,8 +159,15 @@ Nhân sự xem ảnh và khoảng cách ở webapp → **Duyệt đơn → Chấ
 |---|---|
 | `admin` | Toàn quyền, gồm quản lý tài khoản và nhật ký thao tác |
 | `nhan_su` | Toàn bộ dữ liệu chấm công, khai máy, chốt tháng, xuất CSV |
+| `truong_phong_nhan_su` | Như `nhan_su`, và là vai trò **duy nhất** được thay hoặc gỡ tệp đã nạp vào hồ sơ |
 | `truong_phong` | Xem và duyệt đơn của **nhân viên trong phòng mình** |
 | `nhan_vien` | Chỉ dữ liệu của chính mình (dùng app điện thoại) |
+| `cho_duyet` | Đăng nhập được nhưng chưa được cấp quyền gì — trạng thái của người vừa đăng nhập Microsoft lần đầu |
+
+Mỗi trang trong webapp có khung **Quy trình ở trang này**: các bước đúng theo vai trò của người
+đang đăng nhập, kèm những cái bẫy thật của trang đó. Khai một chỗ ở
+[`web/src/huong_dan.ts`](web/src/huong_dan.ts), và có bài kiểm đòi mọi trang trong thanh điều
+hướng phải có một mục.
 
 ## 8. Đồng bộ sang ERP (tùy chọn)
 
@@ -178,18 +188,31 @@ Nối nhân viên hai bên bằng trường **Mã bên ERP** ở trang Nhân vi�
 ## 9. Kiểm thử
 
 ```bash
-npm test                              # 60 test: parser ADMS, tính công, JWT, geofence
+npm test                              # 221 test: parser ADMS, tính công, JWT, geofence
 createdb chamcong_test
 DATABASE_URL=postgres://chamcong:...@localhost:5432/chamcong_test \
-  npm --workspace may_chu run test_e2e   # 41 test end-to-end, có CSDL thật
+  npm --workspace may_chu run test_e2e   # 220 test end-to-end, có CSDL thật
 npm run kiem_tra_kieu                 # kiểm tra kiểu TypeScript
 ```
 
-Test end-to-end **giả lập máy ZKTeco thật** đẩy ATTLOG qua giao thức ADMS rồi đối chiếu
-bảng công sinh ra, gồm cả chống trùng, hàng đợi lệnh, và chấm công điện thoại.
+Test end-to-end **giả lập máy ZKTeco thật** đẩy ATTLOG/RTLOG qua giao thức ADMS rồi đối
+chiếu bảng công sinh ra, gồm cả chống trùng, hàng đợi lệnh, chấm công điện thoại, khóa
+API `/api/v1`, và thông báo đẩy (dựng máy chủ Expo giả trên `127.0.0.1:39217`, không gọi
+ra Internet).
 
 > Test e2e **xóa sạch dữ liệu** trước khi chạy, nên nó từ chối chạy nếu tên cơ sở dữ
 > liệu không bắt đầu bằng `chamcong_test`.
+
+Chạy được ngay trên VPS mà không đụng dữ liệu thật — chốt chặn tên CSDL ở trên đảm bảo
+điều đó:
+
+```bash
+cd /root/Cham-cong
+docker compose exec -T postgres psql -U chamcong -d postgres -c 'CREATE DATABASE chamcong_test;'
+docker run --rm -v /root/Cham-cong:/app -w /app --network cham-cong_default \
+  -e DATABASE_URL="postgres://chamcong:$(grep -E '^POSTGRES_PASSWORD=' .env | tail -1 | cut -d= -f2-)@postgres:5432/chamcong_test" \
+  node:22-alpine sh -c 'npm ci --silent && npm run --workspace may_chu test_e2e'
+```
 
 ## 10. Bảo mật
 
@@ -210,10 +233,22 @@ bảng công sinh ra, gồm cả chống trùng, hàng đợi lệnh, và chấm
 |---|---|
 | [`tai_lieu/BAT-DAU-NHANH.md`](tai_lieu/BAT-DAU-NHANH.md) | **Dựng để hứng log máy chấm công** — đọc trước |
 | [`tai_lieu/KET-NOI-MAY-ZKTECO.md`](tai_lieu/KET-NOI-MAY-ZKTECO.md) | Cấu hình máy, giao thức ADMS, xử lý sự cố |
-| [`tai_lieu/TRIEN-KHAI.md`](tai_lieu/TRIEN-KHAI.md) | Triển khai VPS, sao lưu, giám sát |
+| [`tai_lieu/TRIEN-KHAI.md`](tai_lieu/TRIEN-KHAI.md) | Triển khai VPS, reverse proxy, giám sát |
+| [`tai_lieu/SAO-LUU-VA-PHUC-HOI.md`](tai_lieu/SAO-LUU-VA-PHUC-HOI.md) | Sao lưu, kéo về máy khác, phục hồi, diễn tập |
 | [`tai_lieu/TRIEN-KHAI-TU-POWERSHELL.md`](tai_lieu/TRIEN-KHAI-TU-POWERSHELL.md) | Cập nhật VPS từ máy Windows bằng PowerShell |
 | [`tai_lieu/BUILD-APP-DIEN-THOAI.md`](tai_lieu/BUILD-APP-DIEN-THOAI.md) | Build APK / iOS bằng EAS |
+| [`tai_lieu/TEN-MIEN.md`](tai_lieu/TEN-MIEN.md) | Trỏ tên miền, chứng chỉ HTTPS, Caddy |
+| [`tai_lieu/DANG-NHAP-MICROSOFT.md`](tai_lieu/DANG-NHAP-MICROSOFT.md) | Đăng nhập bằng tài khoản Microsoft (Entra ID) |
 | [`tai_lieu/API.md`](tai_lieu/API.md) | Toàn bộ endpoint REST |
+| [`tai_lieu/BANG-LUONG.md`](tai_lieu/BANG-LUONG.md) | Phụ cấp và khoản trừ, thu nhập miễn thuế TNCN, công chuẩn tháng, Điều 127 |
+| [`tai_lieu/HOP-DONG.md`](tai_lieu/HOP-DONG.md) | Trích nội dung hợp đồng (DOCX / PDF / OCR bản scan), nhắc hạn hợp đồng |
+| [`tai_lieu/HOP-DONG-DIEN-TU-VCONTRACT.md`](tai_lieu/HOP-DONG-DIEN-TU-VCONTRACT.md) | Ký hợp đồng điện tử qua vContract (Viettel) |
+| [`tai_lieu/DONG-BO-ERP.md`](tai_lieu/DONG-BO-ERP.md) | Đồng bộ người dùng từ ERP cũ, nối với Microsoft 365 |
+| [`tai_lieu/KE-HOACH-TRIEN-KHAI.md`](tai_lieu/KE-HOACH-TRIEN-KHAI.md) | Cái gì đang chạy, cái gì đang chờ ai, cái gì cố ý để lại sau |
+| [`tai_lieu/SHAREPOINT.md`](tai_lieu/SHAREPOINT.md) | Đồng bộ kho tệp hồ sơ sang thư viện HCNS trên SharePoint (một chiều, xóa lan theo) |
+| [`tai_lieu/GOP-HO-SO-TRUNG.md`](tai_lieu/GOP-HO-SO-TRUNG.md) | Gộp hai hồ sơ là cùng một người (đồng bộ ERP tạo trùng với hồ sơ nhân sự tự nhập) |
+| [`tai_lieu/MA-DINH-DANH.md`](tai_lieu/MA-DINH-DANH.md) | Mã của một người ở các hệ thống khác (PIN máy, ERP cũ, Microsoft) — chống trùng, lịch sử, đối soát |
+| [`tai_lieu/API-TICH-HOP.md`](tai_lieu/API-TICH-HOP.md) | API `/api/v1` cho hệ thống ngoài: khoá API, Swagger, sinh client |
 | [`tai_lieu/THIET-KE.md`](tai_lieu/THIET-KE.md) | Design token: màu, font, bo góc, breakpoint |
 | [`CLAUDE.md`](CLAUDE.md) | Quy ước code của dự án |
 

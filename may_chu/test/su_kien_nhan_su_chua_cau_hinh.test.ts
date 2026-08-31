@@ -1,4 +1,4 @@
-// CHUA khai `CONG_URL` thi su kien nhan su NAM LAI trong hop thu — khong bi danh dau da gui.
+// CHUA khai `CONG_SU_KIEN_URL` thi su kien nhan su NAM LAI trong hop thu — khong bi danh dau da gui.
 //
 // VI SAO LA MOT TEP RIENG
 //
@@ -36,7 +36,8 @@ await new Promise<void>((xong) => erp_gia.listen(0, '127.0.0.1', xong));
 process.env['JWT_SECRET'] = 'khoa_kiem_thu_du_dai_de_khong_bi_tu_choi_0001';
 process.env['NODE_ENV'] = 'test';
 process.env['ERP_WEBHOOK_URL'] = `http://127.0.0.1:${(erp_gia.address() as AddressInfo).port}/hook`;
-process.env['CONG_URL'] = '';
+process.env['CONG_SU_KIEN_URL'] = '';
+process.env['CONG_SSO_GOC'] = '';
 process.env['CONG_TOKEN_DICH_VU'] = '';
 process.env['DATABASE_URL'] ??=
   'postgres://chamcong:chamcong_dev@localhost:5432/chamcong_test';
@@ -66,7 +67,7 @@ after(async () => {
   erp_gia.close();
 });
 
-test('chua khai CONG_URL: su kien nhan su NAM LAI, khong bi danh dau da gui', async () => {
+test('chua khai CONG_SU_KIEN_URL: su kien nhan su NAM LAI, khong bi danh dau da gui', async () => {
   await ghi_su_kien('nhan_su.nghi_viec', { ma_nv: 'NV900' });
   await day_hop_thu_di();
 
@@ -76,12 +77,12 @@ test('chua khai CONG_URL: su kien nhan su NAM LAI, khong bi danh dau da gui', as
   assert.equal(ds.length, 1);
   assert.equal(ds[0]!.gui_luc, null, 'chua co dich ma da danh dau da gui = MAT su kien');
   // Ly do phai doc duoc: nguoi truc mo bang len phai biet ngay phai khai bien nao.
-  assert.match(ds[0]!.loi_cuoi ?? '', /CONG_URL/);
+  assert.match(ds[0]!.loi_cuoi ?? '', /CONG_SU_KIEN_URL/);
 });
 
 test('su kien ERP van di binh thuong trong luc do', async () => {
   // Mot duong chua cau hinh khong duoc lam ket duong con lai. Neu `day_hop_thu_di` dung han
-  // vi thieu CONG_URL thi bang cong da chot cung khong sang duoc ERP.
+  // vi thieu CONG_SU_KIEN_URL thi bang cong da chot cung khong sang duoc ERP.
   da_nhan_erp.length = 0;
   await ghi_su_kien('bang_cong.da_chot', { ky: '2026-08' });
   const so = await day_hop_thu_di();

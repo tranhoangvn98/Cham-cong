@@ -26,6 +26,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Danh sach TUONG MINH: bien chi vao duoc container khi co ten o day. Khai them bien
+    # trong .env ma quen dong tuong ung ben duoi thi ung dung van chay bang gia tri mac
+    # dinh — khong bao loi, chi lang le sai. Them bien moi vao cau_hinh.ts thi them ca o day.
     environment:
       NODE_ENV: production
       PORT: 8080
@@ -37,6 +40,8 @@ services:
       THU_MUC_ANH: /du_lieu/anh_cham_cong
       THU_MUC_HO_SO: /du_lieu/ho_so
       TEP_TOI_DA_BYTE: ${TEP_TOI_DA_BYTE:-15728640}
+      # Anh selfie moi lan quet — chat hon TEP_TOI_DA_BYTE nhieu vi gui rat thuong xuyen.
+      ANH_TOI_DA_BYTE: ${ANH_TOI_DA_BYTE:-3145728}
       GEOFENCE_BAN_KINH_M: ${GEOFENCE_BAN_KINH_M:-200}
       MAY_OFFLINE_SAU_GIAY: ${MAY_OFFLINE_SAU_GIAY:-180}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
@@ -53,9 +58,64 @@ services:
       MS_GOC_WEBAPP: ${MS_GOC_WEBAPP:-}
       MS_TEN_MIEN_CHO_PHEP: ${MS_TEN_MIEN_CHO_PHEP:-}
       MS_TU_DONG_TAO: ${MS_TU_DONG_TAO:-0}
+      # Cong SSO noi bo. De trong CONG_SSO_GOC = tat han, dang nhap bang duong rieng nhu truoc.
+      # Phan he chi nhan khoa CONG KHAI qua JWKS — khong bao gio nhan khoa rieng cua cong.
+      CONG_SSO_GOC: ${CONG_SSO_GOC:-}
+      CONG_SSO_JWKS: ${CONG_SSO_JWKS:-}
+      CONG_SSO_AUD: ${CONG_SSO_AUD:-}
+      CONG_SSO_MA_MODULE: ${CONG_SSO_MA_MODULE:-}
+      CONG_SSO_TIEN_TO: ${CONG_SSO_TIEN_TO:-}
+      CONG_SSO_GOC_DANG_NHAP: ${CONG_SSO_GOC_DANG_NHAP:-}
+      # 1 = bo han duong dang nhap rieng. MAC DINH 0: bat khi chua dang nhap thu duoc
+      # qua cong la dong cua duy nhat dang dung duoc.
+      CONG_SSO_BO_DANG_NHAP_RIENG: ${CONG_SSO_BO_DANG_NHAP_RIENG:-0}
+      # Dong bo kho tep ho so sang thu vien HCNS tren SharePoint. MOT CHIEU, xoa lan theo.
+      # Dung APP RIENG (cham-cong-sharepoint-sync) voi quyen Sites.Selected, khong dung lai
+      # app dang nhap o tren. SHAREPOINT_BAT_DAY=0 thi chi ghi nhan viec can day vao bang,
+      # chua cham vao SharePoint — xem tai_lieu/SHAREPOINT.md.
+      SHAREPOINT_SITE_ID: ${SHAREPOINT_SITE_ID:-}
+      SHAREPOINT_DRIVE_ID: ${SHAREPOINT_DRIVE_ID:-}
+      SHAREPOINT_THU_VIEN: ${SHAREPOINT_THU_VIEN:-HCNS}
+      SHAREPOINT_TENANT_ID: ${SHAREPOINT_TENANT_ID:-}
+      SHAREPOINT_CLIENT_ID: ${SHAREPOINT_CLIENT_ID:-}
+      SHAREPOINT_CLIENT_SECRET: ${SHAREPOINT_CLIENT_SECRET:-}
+      SHAREPOINT_BAT_DAY: ${SHAREPOINT_BAT_DAY:-0}
+      # HAI BIEN DUOI CHI DE BO KIEM DUNG MAY CHU GRAPH GIA. Tren may that PHAI de trong:
+      # tro sang may khac la nop client secret cho may do. Khi NODE_ENV=production, may chu
+      # tu choi moi gia tri khong phai graph.microsoft.com / login.microsoftonline.com.
+      SHAREPOINT_GOC_GRAPH: ${SHAREPOINT_GOC_GRAPH:-}
+      SHAREPOINT_GOC_TOKEN: ${SHAREPOINT_GOC_TOKEN:-}
       ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
       ERP_WEBHOOK_SECRET: ${ERP_WEBHOOK_SECRET:-}
-      TU_DONG_DI_TRU: "1"
+      # Day su kien nhan su SANG cong (chieu RA). `CONG_SSO_GOC` o tren la chieu VAO.
+      # De trong CONG_SU_KIEN_URL = lay theo CONG_SSO_GOC; chi khai khi hai duong that su
+      # phai tro di hai noi. De trong CONG_TOKEN_DICH_VU = tat chieu RA, su kien nam lai
+      # trong `hop_thu_di` cho, khong mat.
+      CONG_SU_KIEN_URL: ${CONG_SU_KIEN_URL:-}
+      CONG_TOKEN_DICH_VU: ${CONG_TOKEN_DICH_VU:-}
+      # Thong bao day toi app dien thoai. Dat 0 de tat (vd: may chu khong ra Internet).
+      THONG_BAO_DAY: ${THONG_BAO_DAY:-1}
+      EXPO_PUSH_URL: ${EXPO_PUSH_URL:-https://exp.host/--/api/v2/push/send}
+      # ERP cu — nguon nguoi dung de dong bo. De trong ERP_API_URL = tat han.
+      ERP_API_URL: ${ERP_API_URL:-}
+      ERP_API_KEY: ${ERP_API_KEY:-}
+      # Hop dong dien tu vContract (Viettel). De trong VCONTRACT_URL = tat han tinh nang.
+      VCONTRACT_URL: ${VCONTRACT_URL:-}
+      VCONTRACT_USERNAME: ${VCONTRACT_USERNAME:-}
+      VCONTRACT_PASSWORD: ${VCONTRACT_PASSWORD:-}
+      VCONTRACT_CP_CODE: ${VCONTRACT_CP_CODE:-}
+      VCONTRACT_CP_ACCOUNT_CODE: ${VCONTRACT_CP_ACCOUNT_CODE:-VCONTRACT}
+      VCONTRACT_TOKEN_CALLBACK: ${VCONTRACT_TOKEN_CALLBACK:-}
+      # Trang Swagger UI (/api/v1/tai-lieu). Dat 0 de tat han.
+      API_TAI_LIEU_CONG_KHAI: ${API_TAI_LIEU_CONG_KHAI:-1}
+      # Dia chi cong khai cua API, vi du https://ten-mien/chamcong. May chu nam sau reverse
+      # proxy nen tu no khong biet duong dan ben ngoai. De trong thi ban mo ta OpenAPI khong
+      # co muc `servers`, va cong cu sinh client se mac dinh ve http://localhost.
+      API_GOC_CONG_KHAI: ${API_GOC_CONG_KHAI:-}
+      # Bat o day (khac mac dinh production) vi anh Docker luon mang dung ban di tru hop
+      # voi ma nguon trong no — deploy la len phien ban moi ngay, khong co buoc thu cong.
+      TU_DONG_DI_TRU: ${TU_DONG_DI_TRU:-1}
+      LICH_CHU_KY_PHUT: ${LICH_CHU_KY_PHUT:-5}
       # Chi lenh seed doc hai bien nay (docker compose exec may_chu node dist/csdl/seed.js).
       # Thieu chung thi seed KHONG tao duoc tai khoan admin dau tien.
       ADMIN_TEN_DANG_NHAP: ${ADMIN_TEN_DANG_NHAP:-admin}

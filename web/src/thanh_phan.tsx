@@ -2,6 +2,18 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { goi, tai_blob, tai_tep, LoiApi, mui_gio_offset_gio } from './api.ts';
 
+/**
+ * Khoa React cho mot danh sach CHI DOC, sinh lai toan bo moi lan.
+ *
+ * `key={i}` thuan lam React gan lai trang thai cua dong nay cho dong khac ngay khi danh sach bi
+ * loc / xoa / sap xep. Cac danh sach dung ham nay thi khong — chung la ket qua trich mot tep,
+ * thay tep la thay ca danh sach. Nhung ghi ro y do ra bang mot cai ten con hon de mot chu `i`
+ * tran cho nguoi doc sau phai tu doan.
+ */
+export function khoa_tinh(noi_dung: unknown, vi_tri: number): string {
+  return `${String(vi_tri)}:${String(noi_dung).slice(0, 32)}`;
+}
+
 /** Doi phut thanh dang '7h 30p' cho de doc. */
 export function phut_thanh_chu(phut: number | null | undefined): string {
   const p = Number(phut ?? 0);
@@ -73,6 +85,25 @@ export function DangTai({ chu = 'Đang tải…' }: { chu?: string }): ReactNode
   return <div className="dang-tai">{chu}</div>;
 }
 
+/**
+ * Khung xuong cho mot danh sach dang tai.
+ *
+ * Dung o cac trang danh sach thay cho dong chu "Đang tải…": chu do khong noi gi ve hinh dang
+ * thu dang toi, nen moi lan tai xong la mot lan bo cuc nhay va nguoi dung mat cho dang nhin.
+ * Khung xuong giu dung cho.
+ *
+ * `aria-busy` + `aria-live` de trinh doc man hinh noi "đang tải" thay vi doc 6 o trong.
+ */
+export function XuongDanhSach({ so_dong = 6 }: { so_dong?: number }): ReactNode {
+  return (
+    <div className="khung-xuong" aria-busy="true" aria-live="polite" aria-label="Đang tải">
+      {Array.from({ length: so_dong }, (_, i) => (
+        <div key={`xuong-${String(i)}`} className="xuong-dong" />
+      ))}
+    </div>
+  );
+}
+
 export function HopLoi({ loi }: { loi: unknown }): ReactNode {
   if (loi === null || loi === undefined) return null;
   const chu = loi instanceof Error ? loi.message : String(loi);
@@ -84,11 +115,18 @@ export function HopTot({ chu }: { chu: string | null }): ReactNode {
   return <div className="hop-thong-bao hop-tot">{chu}</div>;
 }
 
-export function Trong({ tieu_de, mo_ta }: { tieu_de: string; mo_ta?: string }): ReactNode {
+/**
+ * Khoi "chua co gi". `hanh_dong` de dat luon nut tao ngay giua khoi — nut noi mo mot khung
+ * rong doc de hon la nut tha o tren roi khung rong o duoi khong dinh gi den nhau.
+ */
+export function Trong(
+  { tieu_de, mo_ta, hanh_dong }: { tieu_de: string; mo_ta?: string; hanh_dong?: ReactNode },
+): ReactNode {
   return (
     <div className="trong">
       <div className="trong-lon">{tieu_de}</div>
       {mo_ta !== undefined && <div>{mo_ta}</div>}
+      {hanh_dong !== undefined && <div className="trong-hanh-dong">{hanh_dong}</div>}
     </div>
   );
 }
@@ -174,6 +212,135 @@ export function HopThoai({ tieu_de, children, khi_dong, rong }: HopThoaiProps): 
   );
 }
 
+// ============================================================ hoi xac nhan
+//
+// VI SAO KHONG DUNG `window.confirm`: no la hop thoai cua TRINH DUYET — khong theo che do toi,
+// khong theo font va mau cua app, khong xuong dong duoc, khong to do nut xoa khac nut huy, va o
+// nhieu trinh duyet co o "chan trang nay hien hop thoai" ma nguoi dung tick vao thi tu do moi
+// lan bam Xoa se KHONG hoi gi ma cung KHONG xoa. Mot thao tac mat du lieu khong duoc phep phu
+// thuoc vao thu do.
+//
+// `dung_xac_nhan()` tra ve mot cap: ham `hoi(...)` cho ra `Promise<boolean>`, va mot node phai
+// dat vao cay de ve hop thoai. Quen dat node thi `hoi` khong bao gio giai quyet — de thay ngay
+// lan bam dau tien, khong phai loi am tham.
+
+export interface YeuCauXacNhan {
+  tieu_de: string;
+  /** Noi ro se mat gi. Cau "Bạn có chắc?" khong noi gi ca. */
+  mo_ta: ReactNode;
+  /** Chu tren nut dong y. Mac dinh 'Đồng ý'. */
+  chu_dong_y?: string;
+  /** `true` = thao tac khong hoan tac duoc; nut dong y to do. */
+  nguy_hiem?: boolean;
+}
+
+interface DangHoi extends YeuCauXacNhan {
+  tra_loi: (dong_y: boolean) => void;
+}
+
+export interface KetQuaXacNhan {
+  hoi: (yeu_cau: YeuCauXacNhan) => Promise<boolean>;
+  /** Dat node nay o dau ra cua thanh phan. */
+  hop_thoai: ReactNode;
+}
+
+export function dung_xac_nhan(): KetQuaXacNhan {
+  const [dang_hoi, dat_dang_hoi] = useState<DangHoi | null>(null);
+
+  const hoi = (yeu_cau: YeuCauXacNhan): Promise<boolean> =>
+    new Promise<boolean>((tra) => {
+      dat_dang_hoi({
+        ...yeu_cau,
+        tra_loi: (dong_y) => { dat_dang_hoi(null); tra(dong_y); },
+      });
+    });
+
+  const hop_thoai = dang_hoi === null ? null : (
+    <HopThoai
+      tieu_de={dang_hoi.tieu_de}
+      // Bam ra ngoai hoac go Esc = KHONG dong y. Mot hop thoai xac nhan dong lai ma coi la
+      // dong y thi mot cu bam lac cung xoa duoc du lieu.
+      khi_dong={() => dang_hoi.tra_loi(false)}
+    >
+      <div className="mo-ta">{dang_hoi.mo_ta}</div>
+      <div className="hang-nut">
+        <button
+          className={dang_hoi.nguy_hiem === true ? 'nut-nguy' : undefined}
+          onClick={() => dang_hoi.tra_loi(true)}
+          autoFocus
+        >
+          {dang_hoi.chu_dong_y ?? 'Đồng ý'}
+        </button>
+        <button className="nut-phang" onClick={() => dang_hoi.tra_loi(false)}>Hủy</button>
+      </div>
+    </HopThoai>
+  );
+
+  return { hoi, hop_thoai };
+}
+
+// ============================================================ hoi mot dong chu
+//
+// Thay `window.prompt` — cung ly do nhu tren, cong mot ly do rieng: `prompt` khong co nhan cho o
+// nhap, nen nguoi dung chi thay mot cau hoi va mot o trong.
+
+export interface YeuCauNhapChu {
+  tieu_de: string;
+  nhan: string;
+  mo_ta?: ReactNode;
+  gia_tri_dau?: string;
+  /** Cho phep de trong (vd ly do tu choi la tuy chon). Mac dinh false. */
+  cho_trong?: boolean;
+  chu_dong_y?: string;
+}
+
+interface DangNhapChu extends YeuCauNhapChu {
+  tra_loi: (chu: string | null) => void;
+}
+
+export interface KetQuaNhapChu {
+  /** Tra ve chuoi nguoi dung go, hoac `null` khi ho huy. */
+  hoi: (yeu_cau: YeuCauNhapChu) => Promise<string | null>;
+  hop_thoai: ReactNode;
+}
+
+export function dung_nhap_chu(): KetQuaNhapChu {
+  const [dang, dat_dang] = useState<DangNhapChu | null>(null);
+  const [chu, dat_chu] = useState('');
+
+  const hoi = (yeu_cau: YeuCauNhapChu): Promise<string | null> =>
+    new Promise<string | null>((tra) => {
+      dat_chu(yeu_cau.gia_tri_dau ?? '');
+      dat_dang({ ...yeu_cau, tra_loi: (v) => { dat_dang(null); tra(v); } });
+    });
+
+  const thieu = dang !== null && dang.cho_trong !== true && chu.trim() === '';
+  const xong = (): void => {
+    if (dang === null || thieu) return;
+    dang.tra_loi(chu);
+  };
+
+  const hop_thoai = dang === null ? null : (
+    <HopThoai tieu_de={dang.tieu_de} khi_dong={() => dang.tra_loi(null)}>
+      {dang.mo_ta !== undefined && <p className="mo-ta">{dang.mo_ta}</p>}
+      <label htmlFor="xn-chu">{dang.nhan}</label>
+      <input
+        id="xn-chu"
+        value={chu}
+        autoFocus
+        onChange={(e) => dat_chu(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') xong(); }}
+      />
+      <div className="hang-nut">
+        <button onClick={xong} disabled={thieu}>{dang.chu_dong_y ?? 'Xác nhận'}</button>
+        <button className="nut-phang" onClick={() => dang.tra_loi(null)}>Hủy</button>
+      </div>
+    </HopThoai>
+  );
+
+  return { hoi, hop_thoai };
+}
+
 // ============================================================ nhan trang thai
 const NHAN_NGAY: Record<string, { chu: string; lop: string }> = {
   co_mat: { chu: 'Có mặt', lop: 'nhan-tot' },
@@ -214,6 +381,7 @@ export const TEN_VAI_TRO: Record<string, string> = {
   admin: 'Quản trị',
   nhan_su: 'Nhân sự',
   truong_phong: 'Trưởng phòng',
+  truong_phong_nhan_su: 'TP nhân sự',
   nhan_vien: 'Nhân viên',
   cho_duyet: 'Chờ phân quyền',
 };
@@ -250,6 +418,14 @@ export function OSo({ nhan, gia_tri, phu, mau }: OSoProps): ReactNode {
 // ============================================================ hanh dong co xu ly loi
 export interface KetQuaHanhDong {
   chay: (ham: () => Promise<unknown>, thong_bao_tot?: string) => Promise<boolean>;
+  /**
+   * Nhu `chay` nhung TRA VE KET QUA cua lan goi, null khi loi.
+   *
+   * Can rieng mot ham vi `chay` tra ve boolean. Ai muon dung ket qua ma goi `chay` roi
+   * `as unknown as T` se nhan duoc `true` da bi ep kieu — trinh bien dich khong can, va
+   * man hinh se trang khi doc thuoc tinh dau tien. Da xay ra that o trang Dong bo ERP.
+   */
+  chay_lay: <T>(ham: () => Promise<T>, thong_bao_tot?: string) => Promise<T | null>;
   dang_chay: boolean;
   loi: unknown;
   tot: string | null;
@@ -278,8 +454,25 @@ export function dung_hanh_dong(): KetQuaHanhDong {
     }
   };
 
+  const chay_lay = async <T,>(ham: () => Promise<T>, thong_bao_tot?: string): Promise<T | null> => {
+    dat_dang_chay(true);
+    dat_loi(null);
+    dat_tot(null);
+    try {
+      const kq = await ham();
+      if (thong_bao_tot !== undefined) dat_tot(thong_bao_tot);
+      return kq;
+    } catch (e) {
+      dat_loi(e instanceof LoiApi ? e : new Error(e instanceof Error ? e.message : String(e)));
+      return null;
+    } finally {
+      dat_dang_chay(false);
+    }
+  };
+
   return {
     chay,
+    chay_lay,
     dang_chay,
     loi,
     tot,
@@ -443,7 +636,7 @@ export function HopThoaiNhap(
                     <tr key={d.dong}>
                       <td className="so">{d.dong}</td>
                       <td>{d.ma_nv || '—'}</td>
-                      <td style={{ color: 'var(--xau)' }}>{d.loi}</td>
+                      <td className="chu-xau">{d.loi}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -587,7 +780,7 @@ export function HopThoaiXemTep(
 
           {kieu === 'office' && trich !== null && trich.loai === 'van_ban' && (
             <div className="xem-van-ban">
-              {(trich.doan ?? []).map((d, i) => <p key={i}>{d}</p>)}
+              {(trich.doan ?? []).map((d, i) => <p key={khoa_tinh(d, i)}>{d}</p>)}
               {(trich.doan ?? []).length === 0 && (
                 <p className="mo-ta">Tệp không có nội dung chữ để hiển thị.</p>
               )}
@@ -599,9 +792,11 @@ export function HopThoaiXemTep(
               <table>
                 <tbody>
                   {(trich.hang ?? []).map((h, i) => (
-                    <tr key={i}>
+                    <tr key={khoa_tinh(h[0], i)}>
                       {h.map((o, j) => (
-                        i === 0 ? <th key={j}>{o}</th> : <td key={j}>{o}</td>
+                        i === 0
+                          ? <th key={khoa_tinh(o, j)}>{o}</th>
+                          : <td key={khoa_tinh(o, j)}>{o}</td>
                       ))}
                     </tr>
                   ))}

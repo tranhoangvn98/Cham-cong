@@ -25,8 +25,33 @@ FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 
+# ---------------------------------------------------------------- cong cu doc tep
+#
+# Ba chuong trinh cho viec "quet noi dung hop dong chuyen sang text":
+#
+#   poppler-utils          pdftotext (doc lop chu cua PDF) + pdftoppm (rasterise de OCR)
+#   tesseract-ocr          OCR ban scan
+#   tesseract-ocr-data-vie du lieu tieng Viet. THIEU GOI NAY thi OCR van chay nhung doc
+#                          bang tieng Anh: chu tieng Viet se mat dau.
+#
+# NEU BUOC NAY LOI vi ten goi doi trong ban Alpine moi: may chu VAN CHAY BINH THUONG khi
+# thieu ca ba — chi rieng viec trich noi dung se bao "may chu chua cai ...". Trang
+# "Hop dong" trong webapp hien san may chu dang co nhung gi, nen khong phai doan.
+RUN apk add --no-cache poppler-utils tesseract-ocr tesseract-ocr-data-vie
+
 # Chay bang nguoi dung thuong, khong phai root.
-RUN mkdir -p /du_lieu/anh_cham_cong && chown -R node:node /du_lieu
+#
+# PHAI TAO SAN CA HAI THU MUC, ke ca khi ca hai deu la volume duoc gan luc chay.
+#
+# Docker khoi tao mot named volume RONG theo noi dung cua anh tai duong dan gan — KE CA
+# QUYEN SO HUU. Thu muc co trong anh va thuoc node:node thi volume thuoc node:node. Thu
+# muc KHONG co trong anh thi Docker tu tao diem gan, va no thuoc ROOT.
+#
+# LOI DA XAY RA THAT: ban dau dong nay chi tao `anh_cham_cong`. Anh selfie cham cong ghi
+# duoc binh thuong, con `/du_lieu/ho_so` thuoc root nen tien trinh `node` bi EACCES —
+# KHONG MOT TEP HO SO NAO LUU DUOC ke tu dau, va trieu chung duy nhat la HTTP 500. Volume
+# sao luu hang thang vi the luon rong ma khong ai thay la la.
+RUN mkdir -p /du_lieu/anh_cham_cong /du_lieu/ho_so && chown -R node:node /du_lieu
 
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/may_chu/node_modules ./may_chu/node_modules

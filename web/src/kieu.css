@@ -237,6 +237,14 @@ thead th {
 tbody td { padding: 9px 12px; border-bottom: 1px solid var(--vien); vertical-align: middle; }
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: var(--nen-mo); }
+/* Bang tra cuu nho nam trong the — khong phai bang du lieu, nen bo hover va vien duoi,
+   va cot dau tu co theo noi dung thay vi chia deu. */
+.bang-gon { margin: 10px 0; }
+.bang-gon tbody td { padding: 5px 12px 5px 0; border-bottom: none; }
+.bang-gon tbody td:first-child { width: 1%; white-space: nowrap; color: var(--chu-nhat); }
+.bang-gon tbody tr:hover { background: none; }
+.bang-gon .goi-y { display: inline; margin-top: 0; }
+
 .canh-phai { text-align: right; }
 .canh-giua { text-align: center; }
 .so { font-variant-numeric: tabular-nums; }
@@ -349,6 +357,46 @@ input[type="checkbox"] {
 .hop-loi { background: var(--xau-nen); color: var(--xau); border-color: var(--xau); }
 .hop-tot { background: var(--tot-nen); color: var(--tot); border-color: var(--tot); }
 .hop-luu-y { background: var(--canh-bao-nen); color: var(--canh-bao); border-color: var(--canh-bao); }
+
+/* Ban gon cua o keo-tha: dung khi o nam CANH mot tep da co, chu khong phai thay cho no.
+   Phai nho hon han o goc, neu khong hai o nhin nhu hai cho tai len khac nhau. */
+.o-keo-tha-gon {
+  padding: 5px 10px;
+  font-size: 12px;
+  min-height: 0;
+}
+
+/* Noi dung hop dong da trich sang van ban.
+   Cao co dinh + cuon: mot hop dong bay trang se dai hon man hinh, va neu de no day het
+   hop thoai thi cac nut ben duoi (xoa noi dung) bi day ra ngoai vung nhin. */
+.khoi-van-ban {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  max-height: 46vh;
+  overflow: auto;
+  background: var(--nen-mo);
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Khoi lenh mau cho nguoi dung copy — vi du curl trong hop thoai khoa API. */
+.khoi-ma {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--nen-mo);
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+}
 .hop-tin { background: var(--lanh-nen); color: var(--lanh); border-color: var(--lanh); }
 
 .trong {
@@ -357,6 +405,7 @@ input[type="checkbox"] {
   color: var(--chu-nhat);
 }
 .trong-lon { font-size: 15px; font-weight: 500; margin-bottom: 4px; color: var(--chu); }
+.trong-hanh-dong { margin-top: 14px; display: flex; justify-content: center; gap: 8px; }
 
 .dang-tai { padding: 28px; text-align: center; color: var(--chu-nhat); }
 
@@ -588,11 +637,64 @@ input[type="checkbox"] {
 /* min-width: 0 — mac dinh flex item khong co nho hon noi dung, chu dai se lam tran khung. */
 .o-chon-vai-tro > span { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 
+/* ---------------------------------------------------------------- dau trang ho so */
+.the-ho-so {
+  background: var(--nen-the);
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  box-shadow: var(--bong);
+  padding: 18px 20px 0;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.ho-so-danh-tinh {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 18px;
+}
+/* min-width: 0 de ten dai khong day nut sang phai ra khoi the. */
+.ho-so-danh-tinh > .ten { flex: 1; min-width: 180px; }
+.ho-so-danh-tinh h1 { margin: 0 0 3px; }
+
+.anh-dai-dien-lon {
+  width: 60px;
+  height: 60px;
+  font-size: 21px;
+  letter-spacing: 0.02em;
+}
+/* JS chi dat --av-hue (suy tu ma nhan vien). Do dam / do sang / mau chu lay tu token theo
+   giao dien, vi khong co cap (S, L) nao doc duoc o ca hai: nen toi du tuong phan voi chu
+   trang thi lai lan vao the o giao dien toi. Xem token_thiet_ke.css. */
+.anh-dai-dien-mau {
+  background: hsl(var(--av-hue) var(--av-s) var(--av-l));
+  color: var(--av-chu);
+}
+
+/* Dai chi so nam sat day the.
+   Duong ke ve bang box-shadow tren tung o (mot vach trai + mot vach tren) chu KHONG bang
+   thu "gap: 1px + nen mau vien": cach do lam o luoi con trong o dong cuoi hien ra thanh mot
+   khoi xam khi so o khong chia het cho so cot. box-shadow chi ve quanh o co that. */
+.ho-so-chi-so {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin: 0 -20px;
+  border-top: 1px solid var(--vien);
+}
+.ho-so-chi-so > div {
+  padding: 11px 20px 13px;
+  box-shadow: -1px 0 0 var(--vien), 0 -1px 0 var(--vien);
+}
+.ho-so-chi-so .o-so-gia-tri { font-size: 19px; margin-top: 1px; }
+
 /* ---------------------------------------------------------------- thanh tab ho so */
+/* flex-wrap chu khong overflow-x: 11 tab thi thanh cuon ngang vua xau vua de bo sot tab
+   cuoi. Xuong dong thi luon thay het. */
 .thanh-tab {
   display: flex;
-  gap: 4px;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  gap: 2px 4px;
   border-bottom: 1px solid var(--vien);
   margin-bottom: 14px;
 }
@@ -681,3 +783,185 @@ input[type="checkbox"] {
   text-align: left;
   white-space: pre-wrap;
 }
+
+/* ---------------------------------------------------------------- vòng focus bàn phím
+   Một vòng focus THẤY ĐƯỢC là điều kiện để dùng được bằng bàn phím. Dùng `:focus-visible`
+   chứ không `:focus`: chuột bấm cũng đặt focus, và vẽ vòng lúc đó trông như lỗi.
+   Đặt sau mọi khai báo nút để không bị đè. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--chinh-dam);
+  outline-offset: 2px;
+  /* Vòng phải nằm TRÊN các ô cạnh nó, nhất là trong bảng có nền riêng. */
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------------------------------------------------------------- đường mòn (breadcrumb) */
+.duong-mon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--chu-nhat);
+  margin-bottom: 2px;
+  min-width: 0;
+}
+.duong-mon a { color: var(--chinh-dam); }
+.duong-mon-tach { margin: 0 4px; color: var(--vien-dam); }
+
+/* ---------------------------------------------------------------- khu Cài đặt
+   Sub-nav trái + nội dung phải. Trên màn nhỏ sub-nav xếp lên trên và cuộn ngang — 11 mục
+   dựng dọc trên điện thoại thì đẩy nội dung xuống hết màn hình. */
+.khu-cai-dat {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: var(--khoang-rat-lon);
+  align-items: start;
+}
+.cai-dat-ben {
+  position: sticky;
+  top: var(--khoang-lon);
+  background: var(--nen-the);
+  border: 1px solid var(--vien);
+  border-radius: var(--tron-lon);
+  padding: var(--khoang-nho);
+}
+.cai-dat-khoi + .cai-dat-khoi { margin-top: var(--khoang-vua); }
+.cai-dat-nhom {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--chu-nhat);
+  padding: 4px 8px 6px;
+}
+.cai-dat-ben a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: var(--tron-nho);
+  color: var(--chu);
+  font-weight: 500;
+  font-size: 13.5px;
+}
+.cai-dat-ben a:hover { background: var(--nen-mo); text-decoration: none; }
+.cai-dat-ben a.dang-chon {
+  background: var(--chinh-dam);
+  color: var(--tren-chinh);
+  font-weight: 600;
+}
+.cai-dat-than { min-width: 0; }
+
+/* Trang /cai-dat: liệt kê các mục theo nhóm. */
+.luoi-cai-dat {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--khoang-vua);
+}
+.o-cai-dat {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  color: var(--chu);
+}
+.o-cai-dat:hover {
+  background: var(--nen-mo);
+  border-color: var(--vien-dam);
+  text-decoration: none;
+}
+.o-cai-dat i { color: var(--chinh-dam); font-size: 18px; line-height: 1.2; }
+.o-cai-dat > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.o-cai-dat .mo-ta { margin: 0; font-size: 12px; }
+
+@media (max-width: 900px) {
+  .khu-cai-dat { grid-template-columns: minmax(0, 1fr); }
+  .cai-dat-ben {
+    position: static;
+    display: flex;
+    gap: var(--khoang-lon);
+    overflow-x: auto;
+  }
+  .cai-dat-khoi + .cai-dat-khoi { margin-top: 0; }
+  .cai-dat-ben a { white-space: nowrap; }
+}
+
+/* ---------------------------------------------------------------- lớp thay style nội tuyến
+   Cùng một `style={{…}}` lặp ở hàng chục chỗ thì mỗi chỗ là một cơ hội lệch nhau, và không
+   chỗ nào theo được chế độ tối. */
+.hang-bam { cursor: pointer; }
+.hang-bam:hover { background: var(--nen-mo); }
+.manh { font-weight: var(--trong-dam); }
+.so-canh-bao { color: var(--canh-bao); font-weight: var(--trong-dam); }
+.so-xau { color: var(--xau); font-weight: var(--trong-dam); }
+.so-tot { color: var(--tot); font-weight: var(--trong-dam); }
+
+/* Nút thứ cấp: rõ là bấm được nhưng không tranh chỗ với nút chính. */
+.nut-light {
+  background: var(--chinh-nhat);
+  border-color: var(--chinh-nhat);
+  color: var(--chinh-dam);
+}
+.nut-light:hover:not(:disabled) { border-color: var(--chinh); }
+
+/* ---------------------------------------------------------------- khung xương lúc tải
+   "Đang tải…" không nói gì về hình dạng thứ đang tới, nên mỗi lần tải xong là một lần bố
+   cục nhảy. Khung xương giữ đúng chỗ. */
+.khung-xuong { display: flex; flex-direction: column; gap: 8px; }
+.xuong-dong {
+  height: 14px;
+  border-radius: var(--tron-nho);
+  background: linear-gradient(90deg, var(--nen-mo) 25%, var(--vien) 37%, var(--nen-mo) 63%);
+  background-size: 400% 100%;
+  animation: xuong-troi 1.4s ease-in-out infinite;
+}
+@keyframes xuong-troi {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+/* Người bật "giảm chuyển động" thì bỏ hiệu ứng trôi, giữ khối tĩnh. */
+@media (prefers-reduced-motion: reduce) {
+  .xuong-dong { animation: none; }
+}
+
+/* ---------------------------------------------------------------- bảng rộng: giữ cột đầu
+   Bảng công và bảng lương rộng hơn màn hình. Cuộn ngang mà cột tên trôi mất thì các con số
+   bên phải không còn thuộc về ai. */
+.bang-neo-cot-dau thead th:first-child,
+.bang-neo-cot-dau tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--nen-the);
+}
+.bang-neo-cot-dau thead th:first-child { z-index: 3; }
+.bang-neo-cot-dau tbody tr:hover td:first-child { background: var(--nen-mo); }
+
+/* ---------------------------------------------------------------- lớp tiện dụng chữ
+   Ba khai báo này lặp 36 lần dưới dạng `style={{…}}` trong các trang. Mỗi bản sao là một cơ
+   hội lệch nhau, và bản viết bằng mã màu cứng thì không theo được chế độ tối. */
+.chu-nho { font-size: 12px; }
+.chu-mo { color: var(--chu-mo); }
+.chu-xau { color: var(--xau); }
+
+/* Mot hang cac nhan (badge) — vi du khoi "Xem truoc" cua man nhap du lieu.
+   Truoc day markup dung `.hang-nhan` ma khong co dinh nghia nao, nen cac nhan dinh sat nhau. */
+.hang-nhan {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Mot nhom muc trong thanh ben. Chi de tach cac nhom ra khoi nhau; nhan cua nhom da co
+   `.dieu-huong-nhom` lo phan chu. Truoc day lop nay khong co dinh nghia nao. */
+.dieu-huong-khoi + .dieu-huong-khoi { margin-top: 2px; }

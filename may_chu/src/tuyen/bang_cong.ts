@@ -1,11 +1,16 @@
 // API bang cong, nhat ky quet tho, dashboard va xuat CSV cho webapp HR.
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
+import { dashboard_cho } from '../dashboard/theo_vai_tro.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
+import { ky_da_chot_luong } from '../luong/ban_chot.ts';
+import { khoang_cua_nguoi } from '../dinh_danh/tra_pin.ts';
+import { nap_lich_pin } from '../dinh_danh/lich_pin_csdl.ts';
+import { LoiXungDot } from '../tien_ich/kiem_tra.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
-import { khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
+import { khoang_thang, ngay_dia_phuong, phut_thanh_chu } from '../tien_ich/thoi_gian.ts';
 import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
 import {
   chuoi, khoang_ngay, luan_ly, ngay_bat_buoc, phan_trang, so_nguyen, than, trong_tap, uuid,
@@ -43,6 +48,86 @@ function pham_vi_nhan_vien(
            or ${bang}.phong_ban_id = (select phong_ban_id from nhan_vien where id = $${chi_so_tham_so}))`,
     tham_so: [nd.nv],
   };
+}
+
+/**
+ * Moc mo cho khoang "gan lai". Dung ngay that chu khong phai null de cau UPDATE chi co MOT dang —
+ * mot nhanh `is null` trong cau SQL do la mot nhanh khong ai kiem, va day dung la cho khong duoc
+ * co nhanh nhu the.
+ */
+const MO_DAU = '2000-01-01';
+const MO_CUOI = '9999-12-31';
+
+/**
+ * Khoang ngay cho mot lan "gan lai": lay theo khai bao, hoac theo khoang hieu luc cua PIN doi voi
+ * chinh nguoi nay trong `ma_dinh_danh`.
+ *
+ * KHONG CO MAC DINH "TAT CA". Mac dinh do chinh la lo hong: nguoi bam nut thay mot dong trong bang
+ * "PIN chua gan" va tin rang minh gan mot dong, trong khi cau UPDATE quet het lich su cua PIN do.
+ */
+async function khoang_gan_lai(
+  pin: string, nhan_vien_id: string, tu_khai: string | null, den_khai: string | null,
+): Promise<{ tu: string; den: string }> {
+  if ((tu_khai === null) !== (den_khai === null)) {
+    throw new LoiDauVao('Khai khoảng ngày thì phải khai cả "tu" và "den", hoặc để trống cả hai.');
+  }
+  if (tu_khai !== null && den_khai !== null) {
+    const tu = ngay_bat_buoc({ tu: tu_khai }, 'tu') as string;
+    const den = ngay_bat_buoc({ den: den_khai }, 'den') as string;
+    if (tu > den) throw new LoiDauVao('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.');
+    return { tu, den };
+  }
+
+  const lich = await nap_lich_pin([pin]);
+  const k = khoang_cua_nguoi(lich, pin, nhan_vien_id);
+  if (k === null) {
+    throw new LoiDauVao(
+      `Nhân viên này chưa từng giữ PIN ${pin} trong bảng mã định danh, nên hệ thống không biết `
+      + 'các lần quẹt đó thuộc khoảng thời gian nào. Khai PIN cho nhân viên ở trang Mã định danh '
+      + 'trước, hoặc khai rõ khoảng ngày cần gán.',
+    );
+  }
+  return {
+    tu: k.tu === null ? MO_DAU : ngay_dia_phuong(k.tu),
+    // `hieu_luc_den` LOAI TRU: ngay cuoi con giu PIN la ngay cua moc do tru mot phan nghin giay.
+    den: k.den === null ? MO_CUOI : ngay_dia_phuong(new Date(k.den.getTime() - 1)),
+  };
+}
+
+/**
+ * Tu choi neu trong khoang co thang da co bang luong duoc duyet.
+ *
+ * `/bang-cong/mo-chot` da co luat nay tu truoc, nhung duong "gan lai" di vong qua no: no khong sua
+ * `bang_cong_ngay` truc tiep, no doi chu mot lan quet roi tinh lai — va ket qua thi giong nhau.
+ */
+async function chan_thang_da_chot(
+  pin: string, serial: string | null, tu: string, den: string,
+): Promise<void> {
+  const thang = await truy_van<{ thang: string; so_lan: number }>(
+    `select to_char(thoi_diem + make_interval(hours => $2::int), 'YYYY-MM') as thang,
+            count(*)::int as so_lan
+       from lan_quet
+      where pin_may = $1 and nhan_vien_id is null
+        and ($3::text is null or thiet_bi_serial = $3)
+        and (thoi_diem + make_interval(hours => $2::int))::date >= $4::date
+        and (thoi_diem + make_interval(hours => $2::int))::date <= $5::date
+      group by 1 order by 1`,
+    [pin, cau_hinh.device_tz_offset_hours, serial, tu, den],
+  );
+
+  const da_chot: string[] = [];
+  for (const t of thang) {
+    if (await ky_da_chot_luong(t.thang)) da_chot.push(`${t.thang} (${String(t.so_lan)} lần)`);
+  }
+  if (da_chot.length > 0) {
+    throw new LoiXungDot(
+      `Khoảng này chạm vào tháng đã có bảng lương được duyệt: ${da_chot.join(', ')}. `
+      + 'Gán lại sẽ tính lại bảng công của tháng đó, tức là số đã trả không còn khớp căn cứ. '
+      + 'Thu hẹp khoảng ngày, hoặc hủy duyệt kỳ lương trước — và đó là việc phải có người chịu '
+      + 'trách nhiệm.',
+    );
+  }
+  // Khong co lan quet nao trong khoang thi khong phai loi: cho goi tra ve so_ban_ghi = 0.
 }
 
 export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
@@ -106,10 +191,23 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
   });
 
   // ============================================================ xuat CSV cho ke toan
+  //
+  // Hai kieu, vi hai nguoi doc khac nhau:
+  //   kieu=thang  moi nhan vien MOT dong — dung de tinh luong, khop voi bang dang xem
+  //               tren man hinh Bang cong.
+  //   kieu=ngay   moi ngay mot dong — dung de doi chieu khi nhan vien thac mac ve mot
+  //               ngay cu the.
+  //
+  // Mac dinh 'ngay' de khong doi hanh vi cua nhung link da phat ra truoc do.
   app.get('/bang-cong/xuat-csv', { preHandler: can_nhan_su }, async (req, res) => {
     const q = req.query as Record<string, unknown>;
     const thang = chuoi(q, 'thang', { bat_buoc: true, toi_da: 7 }) as string;
+    const kieu = trong_tap(q, 'kieu', ['ngay', 'thang'] as const) ?? 'ngay';
     const { tu, den } = khoang_thang(thang);
+
+    if (kieu === 'thang') {
+      return xuat_tong_hop_thang(req, res, thang, tu, den);
+    }
 
     const dong = await truy_van<Record<string, unknown>>(
       `select nv.ma_nv, nv.ho_ten, pb.ten as phong_ban, bc.ngay, bc.trang_thai,
@@ -143,7 +241,7 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
 
     return res
       .header('content-type', 'text/csv; charset=utf-8')
-      .header('content-disposition', `attachment; filename="bang_cong_${thang}.csv"`)
+      .header('content-disposition', `attachment; filename="bang_cong_chi_tiet_${thang}.csv"`)
       .send(csv);
   });
 
@@ -208,6 +306,21 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
   app.post('/bang-cong/mo-chot-thang', { preHandler: can_nhan_su }, async (req) => {
     const b = than(req.body);
     const thang = chuoi(b, 'thang', { bat_buoc: true, toi_da: 7 }) as string;
+
+    // KHONG mo lai duoc thang da co bang luong DA DUYET.
+    //
+    // Bang luong duoc tinh TU bang cong. Mo lai bang cong sau khi luong da duyet nghia la
+    // co the ton tai mot bang luong da chot — da co nguoi ky, da co ban ket xuat tren
+    // SharePoint — dua tren nhung con so gio khong con nhu the. Khong ai giai thich duoc
+    // trang thai do cho thanh tra lao dong, va cai lam ta phat hien ra thi qua muon.
+    if (await ky_da_chot_luong(thang)) {
+      throw new LoiXungDot(
+        `Tháng ${thang} đã có bảng lương được duyệt, nên bảng công của tháng đó đã chốt cứng. `
+        + 'Muốn sửa thì phải hủy kỳ lương trước — và đó là việc phải có người chịu trách nhiệm, '
+        + 'không phải một lần mở chốt.',
+      );
+    }
+
     const { tu, den } = khoang_thang(thang);
     const so = await thuc_thi(
       'update bang_cong_ngay set da_chot = false where ngay >= $1 and ngay <= $2 and da_chot = true',
@@ -312,22 +425,105 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
     ),
   );
 
-  /** Gan lai cac lan quet chua map cho mot nhan vien (sau khi da khai PIN). */
+  /**
+   * Cac lan quet chua map cua mot PIN, DEM THEO THANG.
+   *
+   * Nguoi bam nut "gan lai" phai thay minh dang cham vao nhung thang nao TRUOC khi bam. Mot con
+   * so tong ("142 lan quet") khong noi duoc rang 22 trong so do thuoc thang 6 da chot luong.
+   */
+  app.get('/lan-quet/chua-map/thang', { preHandler: can_nhan_su }, async (req) => {
+    const q = req.query as Record<string, unknown>;
+    const pin = chuoi(q, 'pin_may', { bat_buoc: true, toi_da: 32 }) as string;
+    const serial = chuoi(q, 'thiet_bi_serial', { toi_da: 64 });
+    return truy_van(
+      `select to_char(thoi_diem + make_interval(hours => $2::int), 'YYYY-MM') as thang,
+              count(*)::int as so_lan,
+              min((thoi_diem + make_interval(hours => $2::int))::date)::text as ngay_dau,
+              max((thoi_diem + make_interval(hours => $2::int))::date)::text as ngay_cuoi
+         from lan_quet
+        where pin_may = $1 and nhan_vien_id is null
+          and ($3::text is null or thiet_bi_serial = $3)
+        group by 1
+        order by 1`,
+      [pin, cau_hinh.device_tz_offset_hours, serial],
+    );
+  });
+
+  /**
+   * Gan lai cac lan quet chua map cho mot nhan vien (sau khi da khai PIN).
+   *
+   * BA HANG RAO, va ca ba deu do mot lan quet bi gan sai nguoi la sai bang cong, tuc la sai luong.
+   *
+   * 1. `thiet_bi_serial` GIOI HAN theo may. PIN la danh tinh o pham vi TOAN CONG TY (xem di tru
+   *    026), nhung SO PIN thi do tung may cap — nen hai may co the cung co PIN 5 cua HAI NGUOI
+   *    KHAC NHAU. Truoc ban 1.35 cau UPDATE khong loc theo may: gan PIN 5 la keo theo moi lan
+   *    quet PIN 5 chua map cua MOI may. Khong khai serial ma PIN do dang co ban ghi chua map o
+   *    NHIEU MAY thi TU CHOI, khong doan.
+   *
+   * 2. `tu` / `den` GIOI HAN theo ngay — MOI o ban nay. Loc theo may van chua du: mot PIN o dung
+   *    mot may cung co the da qua tay hai nguoi. Gan PIN 042 cho nguoi dang giu no hom nay ma
+   *    khong loc ngay la keo luon cac lan quet thang 6 cua nguoi cu sang bang cong nguoi moi —
+   *    dung tinh huong §9.5 cua tai lieu lien thong nhan su. Nang hon loi 1 vi CO NGUOI BAM NUT
+   *    va tin rang minh gan mot dong.
+   *
+   *    Khong khai `tu`/`den` thi mac dinh la khoang hieu luc cua PIN do doi voi CHINH nguoi nay
+   *    trong `ma_dinh_danh`. Nguoi nay khong co dong nao voi PIN do thi TU CHOI — khai PIN truoc,
+   *    hoac khai ro khoang ngay. Khong co mac dinh "tat ca": mac dinh la cho loi nay quay lai.
+   *
+   * 3. THANG DA CHOT LUONG thi tu choi. `/bang-cong/mo-chot` da co luat nay tu truoc; duong nay
+   *    di vong qua no. Sua bang cong cua thang da co bang luong duoc duyet la viec phai co nguoi
+   *    chiu trach nhiem, khong phai mot lan bam nut.
+   */
   app.post('/lan-quet/gan-lai', { preHandler: can_nhan_su }, async (req) => {
     const b = than(req.body);
     const pin = chuoi(b, 'pin_may', { bat_buoc: true, toi_da: 32 }) as string;
     const nhan_vien_id = uuid(b, 'nhan_vien_id', { bat_buoc: true }) as string;
+    const serial = chuoi(b, 'thiet_bi_serial', { toi_da: 64 });
+    const tu_khai = chuoi(b, 'tu', { toi_da: 10 });
+    const den_khai = chuoi(b, 'den', { toi_da: 10 });
 
     const nv = await truy_van_mot<{ id: string }>(
       'select id from nhan_vien where id = $1', [nhan_vien_id],
     );
     if (nv === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
 
+    if (serial === null) {
+      const may = await truy_van<{ thiet_bi_serial: string | null; so_lan: number }>(
+        `select thiet_bi_serial, count(*)::int as so_lan
+           from lan_quet
+          where pin_may = $1 and nhan_vien_id is null
+          group by thiet_bi_serial
+          order by count(*) desc`,
+        [pin],
+      );
+      if (may.length > 1) {
+        const ke = may.map(
+          (m) => `${m.thiet_bi_serial ?? '(không gắn máy)'} (${String(m.so_lan)} lần)`,
+        );
+        throw new LoiDauVao(
+          `PIN ${pin} đang có bản ghi chưa gán ở ${String(may.length)} máy: ${ke.join(', ')}. `
+          + 'Mỗi máy cấp số PIN riêng nên cùng một số có thể là hai người khác nhau. '
+          + 'Chọn đúng máy cần gán.',
+        );
+      }
+    }
+
+    // Hang rao 2 dat SAU hang rao 1: "PIN nay dang o hai may" la loi ve hinh dang cua yeu cau,
+    // va bao no truoc thi nguoi doc sua duoc bang mot lan. Dat truoc la che mat no.
+    const { tu, den } = await khoang_gan_lai(pin, nhan_vien_id, tu_khai, den_khai);
+
+    // Hang rao 3: thang nao trong khoang da co bang luong duoc duyet thi tu choi CA LAN GAN, chu
+    // khong gan phan con lai — gan mot nua la de lai mot trang thai khong ai doc duoc.
+    await chan_thang_da_chot(pin, serial, tu, den);
+
     const ngay_anh_huong = await truy_van<{ ngay: string }>(
       `update lan_quet set nhan_vien_id = $2
         where pin_may = $1 and nhan_vien_id is null
+          and ($4::text is null or thiet_bi_serial = $4)
+          and (thoi_diem + make_interval(hours => $3::int))::date >= $5::date
+          and (thoi_diem + make_interval(hours => $3::int))::date <= $6::date
         returning (thoi_diem + make_interval(hours => $3::int))::date::text as ngay`,
-      [pin, nhan_vien_id, cau_hinh.device_tz_offset_hours],
+      [pin, nhan_vien_id, cau_hinh.device_tz_offset_hours, serial, tu, den],
     );
 
     // Tinh lai tung ngay bi anh huong.
@@ -335,79 +531,28 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
     for (const ng of cac_ngay) await tinh_lai_khoang(ng, ng, nhan_vien_id);
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'gan_lai_lan_quet', 'lan_quet',
-      null, { pin, nhan_vien_id, so_ban_ghi: ngay_anh_huong.length }, req.ip);
-    return { ok: true, so_ban_ghi: ngay_anh_huong.length, so_ngay_tinh_lai: cac_ngay.length };
+      null, {
+        pin, nhan_vien_id, thiet_bi_serial: serial, tu, den,
+        so_ban_ghi: ngay_anh_huong.length,
+      },
+      req.ip);
+    return {
+      ok: true, tu, den,
+      so_ban_ghi: ngay_anh_huong.length, so_ngay_tinh_lai: cac_ngay.length,
+    };
   });
 
   // ============================================================ dashboard hom nay
+  /**
+   * Trang Tong quan. Noi dung PHU THUOC VAI TRO — xem `dashboard/theo_vai_tro.ts`.
+   *
+   * Truoc day duong nay tra ve MOT payload cho moi nguoi: so lieu toan cong ty, va danh
+   * sach dich danh muoi nguoi di muon hom nay kem so phut. Mot tai khoan `nhan_vien` mo
+   * trang chu ra la doc duoc het.
+   */
   app.get('/dashboard', { preHandler: can_dang_nhap }, async (req) => {
-    const hom_nay = ngay_dia_phuong(new Date());
-
-    const tong = await truy_van_mot<{
-      tong_nhan_vien: number;
-      co_mat: number;
-      di_muon: number;
-      vang: number;
-      nghi_phep: number;
-      chua_quet_ra: number;
-    }>(
-      `select
-         (select count(*) from nhan_vien where dang_hoat_dong = true)::int as tong_nhan_vien,
-         count(*) filter (where trang_thai = 'co_mat')::int               as co_mat,
-         count(*) filter (where phut_muon > 0)::int                       as di_muon,
-         count(*) filter (where trang_thai = 'vang')::int                 as vang,
-         count(*) filter (where trang_thai = 'nghi_phep')::int            as nghi_phep,
-         -- Chi co dung mot moc quet => chua quet ra (hoac dang trong gio lam).
-         count(*) filter (where gio_vao is not null and gio_vao = gio_ra)::int as chua_quet_ra
-       from bang_cong_ngay where ngay = $1`,
-      [hom_nay],
-    );
-
-    const may = await truy_van<{ ten: string; serial: string; dang_online: boolean; thay_lan_cuoi: Date | null }>(
-      `select ten, serial, thay_lan_cuoi,
-              (thay_lan_cuoi is not null
-               and thay_lan_cuoi > now() - ($1 || ' seconds')::interval) as dang_online
-         from thiet_bi where dang_bat = true order by ten`,
-      [String(cau_hinh.may_offline_sau_giay)],
-    );
-
-    const cho_duyet = await truy_van_mot<{ nghi_phep: number; giai_trinh: number; quet_mobile: number }>(
-      `select
-         (select count(*) from don_nghi_phep  where trang_thai = 'cho_duyet')::int as nghi_phep,
-         (select count(*) from don_giai_trinh where trang_thai = 'cho_duyet')::int as giai_trinh,
-         (select count(*) from lan_quet where trang_thai_duyet = 'cho_duyet')::int as quet_mobile`,
-    );
-
-    // Bieu do 7 ngay gan nhat.
-    const bay_ngay = await truy_van(
-      `select ngay,
-              count(*) filter (where trang_thai = 'co_mat')::int as co_mat,
-              count(*) filter (where phut_muon > 0)::int          as di_muon,
-              count(*) filter (where trang_thai = 'vang')::int    as vang,
-              coalesce(sum(phut_ot), 0)::int                      as phut_ot
-         from bang_cong_ngay
-        where ngay > $1::date - 7 and ngay <= $1::date
-        group by ngay order by ngay`,
-      [hom_nay],
-    );
-
-    const muon_nhat = await truy_van(
-      `select nv.ho_ten, nv.ma_nv, bc.phut_muon, bc.gio_vao
-         from bang_cong_ngay bc join nhan_vien nv on nv.id = bc.nhan_vien_id
-        where bc.ngay = $1 and bc.phut_muon > 0
-        order by bc.phut_muon desc limit 10`,
-      [hom_nay],
-    );
-
-    return {
-      ngay: hom_nay,
-      tong_quan: tong,
-      thiet_bi: may,
-      cho_duyet,
-      bay_ngay,
-      di_muon_hom_nay: muon_nhat,
-      vai_tro: nguoi_dung_hien_tai(req).vai_tro,
-    };
+    const nd = nguoi_dung_hien_tai(req);
+    return dashboard_cho({ vai_tro: nd.vai_tro, nv: nd.nv }, ngay_dia_phuong(new Date()));
   });
 }
 
@@ -433,6 +578,76 @@ const DIEU_KIEN_LAN_QUET = (pham_vi: string): string => `
           and ($5::text is null or lq.nguon = $5)
           and ($6::text is null or lq.trang_thai_duyet = $6)
           and (lq.nhan_vien_id is null or ${pham_vi})`;
+
+/**
+ * Tong hop thang: MOI NHAN VIEN MOT DONG — dung bang ma man hinh Bang cong dang hien.
+ *
+ * Liet ke ca nhan vien KHONG co ngay cong nao trong thang (left join): ke toan can thay
+ * ho de biet ma hoi, chu khong phai ho bien mat khoi bang luong ma khong ai nhan ra.
+ *
+ * Thoi luong xuat ra bang PHUT NGUYEN, khong phai gio thap phan: bang tinh o may Viet Nam
+ * hay dat dau phay lam dau thap phan, ma dau phay cung la dau phan cach cot cua CSV — so
+ * "7,5" se bi tach lam hai o. Ke toan chia 60 trong Excel la ra gio.
+ */
+async function xuat_tong_hop_thang(
+  req: FastifyRequest,
+  res: FastifyReply,
+  thang: string,
+  tu: string,
+  den: string,
+): Promise<unknown> {
+  const dong = await truy_van<Record<string, unknown>>(
+    `select nv.ma_nv, nv.ho_ten, pb.ten as phong_ban, cl.ten as ca_lam,
+            coalesce(sum(bc.so_cong), 0)                             as tong_cong,
+            coalesce(sum(bc.phut_lam), 0)::int                       as tong_phut_lam,
+            coalesce(sum(bc.phut_ot), 0)::int                        as tong_phut_ot,
+            coalesce(sum(bc.phut_muon), 0)::int                      as tong_phut_muon,
+            coalesce(sum(bc.phut_ve_som), 0)::int                    as tong_phut_ve_som,
+            count(*) filter (where bc.trang_thai = 'co_mat')::int    as so_ngay_co_mat,
+            count(*) filter (where bc.trang_thai = 'vang')::int      as so_ngay_vang,
+            count(*) filter (where bc.trang_thai = 'nghi_phep')::int as so_ngay_nghi_phep,
+            count(*) filter (where bc.trang_thai = 'ngay_le')::int   as so_ngay_le,
+            count(*) filter (where bc.phut_muon > 0)::int            as so_lan_di_muon,
+            count(*) filter (where bc.phut_ve_som > 0)::int          as so_lan_ve_som,
+            count(*) filter (where bc.da_chot = true)::int           as so_ngay_da_chot
+       from nhan_vien nv
+       left join bang_cong_ngay bc
+              on bc.nhan_vien_id = nv.id and bc.ngay >= $1 and bc.ngay <= $2
+       left join phong_ban pb on pb.id = nv.phong_ban_id
+       left join ca_lam cl on cl.id = nv.ca_lam_id
+      where nv.dang_hoat_dong = true
+      group by nv.ma_nv, nv.ho_ten, pb.ten, cl.ten
+      order by pb.ten nulls last, nv.ma_nv`,
+    [tu, den],
+  );
+
+  const tieu_de = [
+    'Mã NV', 'Họ tên', 'Phòng ban', 'Ca làm', 'Số công',
+    'Ngày có mặt', 'Ngày vắng', 'Ngày nghỉ phép', 'Ngày lễ',
+    'Phút làm', 'Giờ làm', 'Phút OT', 'Giờ OT',
+    'Số lần đi muộn', 'Tổng phút muộn', 'Số lần về sớm', 'Tổng phút về sớm',
+    'Số ngày đã chốt',
+  ];
+  const hang = dong.map((d) => [
+    d['ma_nv'], d['ho_ten'], d['phong_ban'], d['ca_lam'], d['tong_cong'],
+    d['so_ngay_co_mat'], d['so_ngay_vang'], d['so_ngay_nghi_phep'], d['so_ngay_le'],
+    d['tong_phut_lam'], phut_thanh_chu(Number(d['tong_phut_lam'])),
+    d['tong_phut_ot'], phut_thanh_chu(Number(d['tong_phut_ot'])),
+    d['so_lan_di_muon'], d['tong_phut_muon'],
+    d['so_lan_ve_som'], d['tong_phut_ve_som'],
+    d['so_ngay_da_chot'],
+  ]);
+
+  const csv = '﻿' + [tieu_de, ...hang].map((r) => r.map(o_csv).join(',')).join('\r\n');
+
+  await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xuat_bang_cong_thang', 'bang_cong_ngay',
+    null, { thang, so_dong: hang.length }, req.ip);
+
+  return res
+    .header('content-type', 'text/csv; charset=utf-8')
+    .header('content-disposition', `attachment; filename="bang_cong_thang_${thang}.csv"`)
+    .send(csv);
+}
 
 function o_csv(v: unknown): string {
   if (v === null || v === undefined) return '';

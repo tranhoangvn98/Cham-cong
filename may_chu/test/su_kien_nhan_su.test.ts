@@ -18,7 +18,7 @@
 //     phien mot nguoi HAI lan.
 //  4. Su kien nhan su di sang CONG, khong sang ERP. Hai dich, hai hop dong khac han.
 //  5. Cong tra loi 4xx thi dong KHONG duoc danh dau da gui, va ly do that phai vao `loi_cuoi`.
-//  6. CHUA khai CONG_URL thi su kien NAM LAI, khong bi danh dau da gui. Day la cho de mat du
+//  6. CHUA khai CONG_SU_KIEN_URL thi su kien NAM LAI, khong bi danh dau da gui. Day la cho de mat du
 //     lieu nhat: mot dong `return 0` dat nham cho la nhan su nghi viec ma cong khong bao gio
 //     biet.
 import { test, before, after } from 'node:test';
@@ -74,7 +74,7 @@ const ERP_URL = `http://127.0.0.1:${(erp_gia.address() as AddressInfo).port}/hoo
 process.env['JWT_SECRET'] = 'khoa_kiem_thu_du_dai_de_khong_bi_tu_choi_0001';
 process.env['NODE_ENV'] = 'test';
 process.env['DEVICE_TZ_OFFSET_HOURS'] = '7';
-process.env['CONG_URL'] = CONG_GOC;
+process.env['CONG_SU_KIEN_URL'] = CONG_GOC;
 process.env['CONG_TOKEN_DICH_VU'] = 'token-dich-vu-gia-lap';
 process.env['ERP_WEBHOOK_URL'] = ERP_URL;
 process.env['DATABASE_URL'] ??=

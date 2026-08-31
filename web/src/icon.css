@@ -1,11 +1,20 @@
-/* Bieu tuong Tabler Icons (MIT) — CAT SUBSET con dung 33 icon dung trong app.
-   Bo day du la 840 KB cho 5.800 icon; ban cat con 7,5 KB.
+/* Bieu tuong Tabler Icons (MIT) — CAT SUBSET con dung 34 icon dung trong app.
+   Bo day du la 840 KB cho 5.800 icon; ban cat con 7,7 KB.
 
    Cach tao lai khi can them icon:
      npm pack @tabler/icons-webfont@3.11.0
      # lay ma icon tu dist/tabler-icons.min.css (dang .ti-<ten>:before{content:"\xxxx"})
      python3 -m fontTools.subset dist/fonts/tabler-icons.woff2 \
-       --unicodes=U+EA06,U+EE20,... --flavor=woff2 --output-file=tabler-cham-cong.woff2
+       --unicodes=U+EA06,U+EE20,... --flavor=woff2 --drop-tables+=GSUB,GPOS,GDEF \
+       --output-file=tabler-cham-cong.woff2
+
+   `--drop-tables+=GSUB,GPOS,GDEF` la BAT BUOC voi fontTools moi: bang ligature cua font
+   goc lam bo cat bao AssertionError ngay khi doc. Font icon khong dung layout feature nao
+   nen bo di khong mat gi.
+
+   THEM ICON LA HAI VIEC, khong phai mot: them dong .bt-<ten> o duoi VA cat lai font. Chi
+   lam viec dau thi icon ra o vuong rong tren man hinh that. `thiet_ke/icon.test.mjs` doi
+   chieu ca hai chieu nen quen buoc nao cung do test.
 
    Tu chua thay vi goi CDN jsDelivr nhu demo: chay duoc trong LAN khong ra Internet va
    khong ro ri IP nhan vien sang ben thu ba. Giay phep o web/public/font/Tabler-LICENSE.txt.
@@ -47,6 +56,7 @@
 .bt-clock-exclamation::before { content: "\f847"; }
 .bt-device-desktop::before { content: "\ea89"; }
 .bt-download::before { content: "\ea96"; }
+.bt-file-certificate::before { content: "\ed4d"; }
 .bt-file-text::before { content: "\eaa2"; }
 .bt-fingerprint::before { content: "\ebd1"; }
 .bt-key::before { content: "\eac7"; }
