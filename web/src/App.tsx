@@ -32,6 +32,7 @@ import { KhungHuongDan } from './thanh_phan_huong_dan.tsx';
 import { TrangHopDong } from './trang/hop_dong.tsx';
 import { TrangDashboardCaNhan } from './trang/dashboard_ca_nhan.tsx';
 import { TrangHoSoToi } from './trang/ho_so_toi.tsx';
+import { TrangPhieuLuongToi } from './trang/phieu_luong_toi.tsx';
 import { TrangThongBaoCaNhan } from './trang/thong_bao_ca_nhan.tsx';
 import { TrangVanBan } from './trang/van_ban.tsx';
 import { TroLyCaNhan } from './trang/tro_ly.tsx';
@@ -75,6 +76,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: '', phu: 'Thông báo từ BGĐ & nhân sự', ca_nhan: true },
   { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: '', phu: 'Nội quy, biểu mẫu, chính sách', ca_nhan: true },
   { duong_dan: '/ho-so-toi', ten: 'Hồ sơ của tôi', icon: 'user-check', nhom: '', phu: 'Thông tin & liên hệ cá nhân', ca_nhan: true },
+  { duong_dan: '/phieu-luong-toi', ten: 'Phiếu lương', icon: 'download', nhom: '', phu: 'Phiếu lương hàng tháng của bạn', ca_nhan: true },
 
   { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Quản trị nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
   { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Quản trị nhân sự', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
@@ -180,6 +182,7 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     case '/thong-bao': return <TrangThongBaoCaNhan />;
     case '/van-ban': return <TrangVanBan />;
     case '/ho-so-toi': return <TrangHoSoToi />;
+    case '/phieu-luong-toi': return <TrangPhieuLuongToi />;
     case '/don-cua-toi': return <TrangDonCuaToi />;
     case '/bang-cong': return <TrangBangCong />;
     case '/lan-quet': return <TrangLanQuet />;

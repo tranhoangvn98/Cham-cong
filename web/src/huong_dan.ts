@@ -93,6 +93,18 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/phieu-luong-toi',
+    tom_tat: 'Phiếu lương hàng tháng của bạn — từng khoản thu nhập và khấu trừ, đối chiếu được.',
+    buoc: [
+      { chu: 'Chọn kỳ lương ở ô trên để xem phiếu của tháng đó (chỉ hiện kỳ đã duyệt/trả).' },
+      { chu: 'Xem chi tiết: lương theo công, phụ cấp, OT, BHXH/BHYT/BHTN, thuế, các khoản trừ.' },
+      { chu: 'Bấm "In phiếu" để in hoặc lưu PDF.' },
+    ],
+    luu_y: [
+      'Thấy sai thì gửi giải trình ở mục Đơn của tôi hoặc liên hệ nhân sự — mỗi khoản đều ghi rõ để đối chiếu.',
+    ],
+  },
+  {
     duong_dan: '/lan-quet',
     tom_tat: 'Nhật ký thô từ máy chấm công — nguồn sự thật của mọi con số công.',
     buoc: [
