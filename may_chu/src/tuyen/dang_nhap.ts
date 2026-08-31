@@ -39,6 +39,7 @@ interface DongNguoiDung {
   so_lan_sai: number;
   khoa_den: Date | null;
   ho_ten: string | null;
+  quyen_quan_tri?: boolean;
 }
 
 const SO_LAN_SAI_TOI_DA = 8;
@@ -48,7 +49,7 @@ async function nap_nguoi_dung(ten_dang_nhap: string): Promise<DongNguoiDung | nu
   return truy_van_mot<DongNguoiDung>(
     `select nd.id, nd.ten_dang_nhap, nd.mat_khau_hash, nd.vai_tro, nd.nhan_vien_id,
             nd.dang_hoat_dong, nd.phai_doi_mat_khau, nd.so_lan_sai, nd.khoa_den,
-            nv.ho_ten
+            nd.quyen_quan_tri, nv.ho_ten
        from nguoi_dung nd
        left join nhan_vien nv on nv.id = nd.nhan_vien_id
       where lower(nd.ten_dang_nhap) = lower($1)`,
@@ -86,6 +87,7 @@ async function phat_token(nd: DongNguoiDung, mo_ta_thiet_bi: string | null) {
       nhan_vien_id: nd.nhan_vien_id,
       ho_ten: nd.ho_ten,
       phai_doi_mat_khau: nd.phai_doi_mat_khau,
+      quyen_quan_tri: nd.quyen_quan_tri ?? false,
     },
   };
 }
@@ -200,7 +202,8 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
 
     const nd = await truy_van_mot<DongNguoiDung>(
       `select nd.id, nd.ten_dang_nhap, nd.mat_khau_hash, nd.vai_tro, nd.nhan_vien_id,
-              nd.dang_hoat_dong, nd.phai_doi_mat_khau, nd.so_lan_sai, nd.khoa_den, nv.ho_ten
+              nd.dang_hoat_dong, nd.phai_doi_mat_khau, nd.so_lan_sai, nd.khoa_den,
+              nd.quyen_quan_tri, nv.ho_ten
          from nguoi_dung nd
          left join nhan_vien nv on nv.id = nd.nhan_vien_id
         where nd.id = $1`,
@@ -232,12 +235,13 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     const chi_tiet = await truy_van_mot<{
       ten_dang_nhap: string;
       phai_doi_mat_khau: boolean;
+      quyen_quan_tri: boolean;
       ho_ten: string | null;
       ma_nv: string | null;
       phong_ban: string | null;
       duoc_cham_cong_dien_thoai: boolean | null;
     }>(
-      `select nd.ten_dang_nhap, nd.phai_doi_mat_khau,
+      `select nd.ten_dang_nhap, nd.phai_doi_mat_khau, nd.quyen_quan_tri,
               nv.ho_ten, nv.ma_nv, pb.ten as phong_ban, nv.duoc_cham_cong_dien_thoai
          from nguoi_dung nd
          left join nhan_vien nv on nv.id = nd.nhan_vien_id

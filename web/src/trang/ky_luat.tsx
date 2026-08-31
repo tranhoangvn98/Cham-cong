@@ -3,7 +3,7 @@
 // Che tai tai chinh o day la GIAM THUONG P3 (Dieu 104 BLLD, Dieu 14 Noi quy), KHONG phai phat
 // tien (Dieu 127). Ky luat lao dong that (khien trach tro len) lam o tab Vi pham qua bien ban.
 import { useState, type ReactNode } from 'react';
-import { goi, la_admin } from '../api.ts';
+import { goi, la_admin, chi_xem_quan_tri } from '../api.ts';
 import { LienKet } from '../dinh_tuyen.tsx';
 import {
   DangTai, HopLoi, HopThoai, OSo, Trong, dung_hanh_dong, dung_nap, dung_nhap_chu, thang_nay,
@@ -75,6 +75,7 @@ export function TrangKyLuat(): ReactNode {
   const mien = dung_hanh_dong();
   const nhap = dung_nhap_chu();
   const admin = la_admin();
+  const chi_xem = chi_xem_quan_tri();
 
   const tq = dung_nap<TongQuan>(`/api/ky-luat/tong-quan?ky=${ky}`, [ky]);
   const url = `/api/ky-luat?ky=${ky}${muc_do === '' ? '' : `&muc_do=${muc_do}`}`
@@ -117,17 +118,26 @@ export function TrangKyLuat(): ReactNode {
           Hệ thống gom vi phạm theo tháng và mức độ, tự nhắc nhở hoặc giảm thưởng P3 (Điều 14 Nội quy,
           Điều 104 BLLĐ — <strong>không phải phạt tiền</strong>). Khoản ≥ ngưỡng phải có người duyệt.
         </p>
-        <button
-          className="nut"
-          disabled={quet.dang_chay}
-          onClick={() => void quet.chay(
-            () => goi('/api/ky-luat/quet', { method: 'POST', body: { thang: ky } }),
-            'Đã quét & xử lý kỷ luật tháng này.',
-          ).then((ok) => { if (ok) nap_lai(); })}
-        >
-          Quét &amp; xử lý tháng {ky}
-        </button>
+        {!chi_xem && (
+          <button
+            className="nut"
+            disabled={quet.dang_chay}
+            onClick={() => void quet.chay(
+              () => goi('/api/ky-luat/quet', { method: 'POST', body: { thang: ky } }),
+              'Đã quét & xử lý kỷ luật tháng này.',
+            ).then((ok) => { if (ok) nap_lai(); })}
+          >
+            Quét &amp; xử lý tháng {ky}
+          </button>
+        )}
       </div>
+
+      {chi_xem && (
+        <div className="hop-thong-bao hop-tin">
+          Bạn đang ở chế độ <strong>chỉ xem</strong> (trưởng phòng được cấp quyền xem quản trị).
+          Dữ liệu giới hạn trong phòng của bạn; các thao tác xử lý do Nhân sự / Admin thực hiện.
+        </div>
+      )}
 
       {quet.loi !== null && <HopLoi loi={quet.loi} />}
 
@@ -248,6 +258,7 @@ export function TrangKyLuat(): ReactNode {
         <HopThoaiHoSo
           d={dang}
           admin={admin}
+          chi_xem={chi_xem}
           khi_mien={mien_hang_loat}
           khi_dong={() => dat_dang(null)}
           khi_xong={() => { dat_dang(null); nap_lai(); }}
@@ -259,8 +270,8 @@ export function TrangKyLuat(): ReactNode {
 }
 
 function HopThoaiHoSo(
-  { d, admin, khi_mien, khi_dong, khi_xong }: {
-    d: Dong; admin: boolean;
+  { d, admin, chi_xem, khi_mien, khi_dong, khi_xong }: {
+    d: Dong; admin: boolean; chi_xem: boolean;
     khi_mien: (ids: readonly string[]) => void;
     khi_dong: () => void; khi_xong: () => void;
   },
@@ -345,7 +356,7 @@ function HopThoaiHoSo(
         </>
       )}
 
-      {(d.trang_thai === 'cho_duyet' || d.trang_thai === 'da_ap_dung') && (
+      {!chi_xem && (d.trang_thai === 'cho_duyet' || d.trang_thai === 'da_ap_dung') && (
         <>
           <h3>Quyết định</h3>
           {d.trang_thai === 'cho_duyet' && (

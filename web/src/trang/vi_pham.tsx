@@ -5,7 +5,7 @@
 //   - May phat hien chi la ghi nhan; nguoi lao dong duoc giai trinh (Dieu 122).
 //   - Ky luat phai co bien ban cuoc hop (Dieu 122), va chi bon hinh thuc (Dieu 124).
 import { useState, type ReactNode } from 'react';
-import { goi } from '../api.ts';
+import { goi, chi_xem_quan_tri } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
@@ -101,6 +101,9 @@ function ngay_v(v: string): string {
 
 export function TrangViPham(): ReactNode {
   const [tab, dat_tab] = useState<Tab>('ban_ghi');
+  // Truong phong duoc cap quyen: CHI XEM ban ghi (loc theo phong), khong thay danh muc/quy tac
+  // (cau hinh toan cong ty) va khong co nut thao tac.
+  const chi_xem = chi_xem_quan_tri();
   return (
     <>
       <div className="dau-trang">
@@ -112,24 +115,31 @@ export function TrangViPham(): ReactNode {
         </div>
       </div>
 
-      <div className="thanh-tab">
-        <button className={tab === 'ban_ghi' ? 'dang-chon' : ''}
-          onClick={() => dat_tab('ban_ghi')}>Bản ghi</button>
-        <button className={tab === 'danh_muc' ? 'dang-chon' : ''}
-          onClick={() => dat_tab('danh_muc')}>Danh mục lỗi</button>
-        <button className={tab === 'quy_tac' ? 'dang-chon' : ''}
-          onClick={() => dat_tab('quy_tac')}>Quy tắc tự phát hiện</button>
-      </div>
+      {chi_xem ? (
+        <div className="hop-thong-bao hop-tin">
+          Bạn đang ở chế độ <strong>chỉ xem</strong> — bản ghi vi phạm giới hạn trong phòng của bạn.
+          Danh mục lỗi và quy tắc là cấu hình chung, do Nhân sự / Admin quản lý.
+        </div>
+      ) : (
+        <div className="thanh-tab">
+          <button className={tab === 'ban_ghi' ? 'dang-chon' : ''}
+            onClick={() => dat_tab('ban_ghi')}>Bản ghi</button>
+          <button className={tab === 'danh_muc' ? 'dang-chon' : ''}
+            onClick={() => dat_tab('danh_muc')}>Danh mục lỗi</button>
+          <button className={tab === 'quy_tac' ? 'dang-chon' : ''}
+            onClick={() => dat_tab('quy_tac')}>Quy tắc tự phát hiện</button>
+        </div>
+      )}
 
-      {tab === 'ban_ghi' && <TabBanGhi />}
-      {tab === 'danh_muc' && <TabDanhMuc />}
-      {tab === 'quy_tac' && <TabQuyTac />}
+      {(chi_xem || tab === 'ban_ghi') && <TabBanGhi chi_xem={chi_xem} />}
+      {!chi_xem && tab === 'danh_muc' && <TabDanhMuc />}
+      {!chi_xem && tab === 'quy_tac' && <TabQuyTac />}
     </>
   );
 }
 
 // ================================================================ ban ghi
-function TabBanGhi(): ReactNode {
+function TabBanGhi({ chi_xem }: { chi_xem: boolean }): ReactNode {
   const [loc, dat_loc] = useState('');
   const duong = `/api/vi-pham${loc === '' ? '' : `?trang_thai=${loc}`}`;
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<BanGhi[]>(duong, [loc]);
@@ -149,7 +159,7 @@ function TabBanGhi(): ReactNode {
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
-        <button onClick={() => dat_quet(true)}>Quét tự động</button>
+        {!chi_xem && <button onClick={() => dat_quet(true)}>Quét tự động</button>}
       </div>
 
       {ds.length === 0 ? (
@@ -187,7 +197,7 @@ function TabBanGhi(): ReactNode {
 
       {quet && <HopThoaiQuet khi_dong={() => dat_quet(false)}
         khi_xong={() => { dat_quet(false); nap_lai(); }} />}
-      {xem !== null && <HopThoaiQuyet vp={xem} khi_dong={() => dat_xem(null)}
+      {xem !== null && <HopThoaiQuyet vp={xem} chi_xem={chi_xem} khi_dong={() => dat_xem(null)}
         khi_xong={() => { dat_xem(null); nap_lai(); }} />}
     </>
   );
@@ -229,13 +239,14 @@ function HopThoaiQuet(
 }
 
 function HopThoaiQuyet(
-  { vp, khi_dong, khi_xong }: { vp: BanGhi; khi_dong: () => void; khi_xong: () => void },
+  { vp, chi_xem, khi_dong, khi_xong }: {
+    vp: BanGhi; chi_xem: boolean; khi_dong: () => void; khi_xong: () => void;
+  },
 ): ReactNode {
   const [quyet, dat_quyet] = useState('da_xac_nhan');
   const [ky_luat, dat_ky_luat] = useState('');
   const [ghi_chu, dat_ghi_chu] = useState('');
   const hd = dung_hanh_dong();
-  const xong = vp.trang_thai === 'da_xu_ly';
   // Nhac nho khong phai ky luat chinh thuc nen khong doi bien ban.
   const can_bien_ban = ky_luat !== '' && ky_luat !== 'nhac_nho';
 
@@ -281,11 +292,15 @@ function HopThoaiQuyet(
         <blockquote>{vp.giai_trinh}</blockquote>
       )}
 
-      {xong ? (
+      {vp.trang_thai === 'da_xu_ly' ? (
         <p className="mo-ta">
           Đã xử lý xong{vp.ky_luat !== null && `: ${NHAN_KY_LUAT[vp.ky_luat]}`}.
           {vp.ghi_chu !== null && ` ${vp.ghi_chu}`}
         </p>
+      ) : chi_xem ? (
+        <div className="hop-thong-bao hop-tin">
+          Bạn đang ở chế độ <strong>chỉ xem</strong>. Việc quyết định xử lý do Nhân sự / Admin thực hiện.
+        </div>
       ) : (
         <>
           <h3>Quyết định</h3>

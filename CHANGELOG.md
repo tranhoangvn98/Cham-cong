@@ -2,6 +2,12 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.62.0] — 2026-08-31
+
+**Admin cấp quyền cho trưởng phòng XEM màn hình quản trị (chỉ xem).** Trong Cài đặt → Tài khoản, admin có nút **"Cấp quyền xem QT" / "Thu quyền xem QT"** cho mỗi trưởng phòng (kèm nhãn *"được xem quản trị"*). Trưởng phòng được cấp quyền có thể chuyển sang góc nhìn Quản trị và xem **Kỷ luật & vi phạm & khiếu nại, Nhân viên, Bảng công** — nhưng **chỉ xem, không thao tác**, và dữ liệu luôn **giới hạn trong phòng của họ** (không thấy toàn công ty; ẩn Lương, Ra/vào, Cài đặt). Mọi màn hình đó hiện băng *"chế độ chỉ xem"*, ẩn các nút quét/duyệt/bãi bỏ/miễn/ghi.
+
+Ranh giới bảo mật đặt ở **máy chủ**: mọi thao tác (POST/PATCH/DELETE) vẫn do guard `can_nhan_su`/`can_admin` chặn — trưởng phòng được cấp quyền bị chặn ở tầng API dù giao diện có lỡ hiện nút. Chỉ Admin và Nhân sự (gồm Trưởng phòng nhân sự) được thao tác. Migration 035 (`quyen_quan_tri` + cột truy vết ai cấp/khi nào); endpoint `PATCH /nguoi-dung/:id/quyen-quan-tri` (chỉ admin, chỉ áp cho vai trò trưởng phòng); cờ trả trong đăng nhập + `/toi` để webapp nhận sau khi làm mới phiên.
+
 ## [1.61.0] — 2026-08-31
 
 **Miễn kỷ luật + Khiếu nại + mã tracking.** Ba nghiệp vụ mới trong "Kỷ luật & vi phạm":

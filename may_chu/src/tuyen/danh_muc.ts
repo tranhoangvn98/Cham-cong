@@ -802,6 +802,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     truy_van(
       `select nd.id, nd.ten_dang_nhap, nd.vai_tro, nd.dang_hoat_dong, nd.phai_doi_mat_khau,
               nd.dang_nhap_cuoi, nd.nhan_vien_id, nd.email_microsoft, nd.duyet_luc,
+              nd.quyen_quan_tri,
               nv.ho_ten, nv.ma_nv, nd2.ten_dang_nhap as duyet_boi_ten
          from nguoi_dung nd
          left join nhan_vien nv on nv.id = nd.nhan_vien_id
@@ -956,6 +957,41 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     }
     await ghi_nhat_ky(nd.sub, 'sua_tai_khoan', 'nguoi_dung', id, { dang_hoat_dong, vai_tro }, req.ip);
     return { ok: true };
+  });
+
+  /**
+   * Cap / thu hoi quyen XEM man hinh quan tri cho mot TRUONG PHONG. Chi admin. Co nay CHI co y
+   * nghia voi vai tro 'truong_phong' (admin/nhan_su von da co quyen), va CHI mo goc nhin XEM —
+   * moi thao tac van do guard can_nhan_su/can_admin chan. Nguoi dung phai dang nhap lai (hoac tai
+   * lai trang) de webapp nhan co moi.
+   */
+  app.patch('/nguoi-dung/:id/quyen-quan-tri', { preHandler: can_admin }, async (req) => {
+    const id = lay_id(req);
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body);
+    const cho_phep = luan_ly(b, 'quyen_quan_tri', false) as boolean;
+
+    const dong = await truy_van_mot<{ vai_tro: string }>(
+      'select vai_tro from nguoi_dung where id = $1', [id],
+    );
+    if (dong === null) throw new LoiKhongTim('Không tìm thấy tài khoản.');
+    if (dong.vai_tro !== 'truong_phong') {
+      throw new LoiDauVao(
+        'Quyền xem quản trị chỉ áp dụng cho vai trò Trưởng phòng. Admin và Nhân sự vốn đã có quyền.',
+      );
+    }
+
+    await thuc_thi(
+      `update nguoi_dung
+          set quyen_quan_tri = $2,
+              quyen_quan_tri_boi = case when $2 then $3::uuid else null end,
+              quyen_quan_tri_luc = case when $2 then now() else null end
+        where id = $1`,
+      [id, cho_phep, nd.sub],
+    );
+    await ghi_nhat_ky(nd.sub, cho_phep ? 'cap_quyen_quan_tri' : 'thu_quyen_quan_tri',
+      'nguoi_dung', id, { quyen_quan_tri: cho_phep }, req.ip);
+    return { ok: true, quyen_quan_tri: cho_phep };
   });
 
   // =====================================================================  NHAT KY

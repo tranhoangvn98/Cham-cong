@@ -374,6 +374,15 @@ export function la_nguoi_duyet(): boolean {
   return la_quan_tri() || phien?.nguoi_dung.vai_tro === 'truong_phong';
 }
 
+/**
+ * Truong phong duoc admin cap quyen chi XEM man hinh quan tri — KHONG duoc thao tac. Dung de an
+ * cac nut ghi (quet, duyet, bac bo, sua...). Backend van la lop chan that: moi thao tac deu do
+ * guard can_nhan_su/can_admin chan, day chi de giao dien khong bay nut bam vao la loi 403.
+ */
+export function chi_xem_quan_tri(): boolean {
+  return la_quan_tri() && !la_nhan_su();
+}
+
 // ---------------------------------------------------------------- goc nhin: Quan tri / Ca nhan
 export type GocNhin = 'quan_tri' | 'ca_nhan';
 const KHOA_GOC_NHIN = 'goc_nhin_xem';

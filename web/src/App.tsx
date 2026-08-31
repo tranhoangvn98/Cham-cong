@@ -39,8 +39,12 @@ interface MucMenu {
   nhom: string;
   /** Dong phu tren header khi o trang nay. */
   phu?: string;
-  /** Vai tro toi thieu de thay muc nay. */
-  quyen?: 'nhan_su' | 'admin' | 'nguoi_duyet';
+  /**
+   * Vai tro toi thieu de thay muc nay.
+   * - 'quan_tri': nhan su/admin, VA truong phong duoc admin cap quyen xem (view-only, loc theo phong).
+   * - 'nhan_su' : chi nhan su/admin (an voi truong phong duoc cap quyen — vd luong, cai dat).
+   */
+  quyen?: 'nhan_su' | 'admin' | 'nguoi_duyet' | 'quan_tri';
   /** Hien o GOC NHIN CA NHAN (viec cua chinh minh). Khong danh dau = chi hien o goc nhin Quan tri. */
   ca_nhan?: boolean;
 }
@@ -59,20 +63,20 @@ interface MucMenu {
  */
 const MENU: MucMenu[] = [
   { duong_dan: '/', ten: 'Tổng quan', icon: 'layout-dashboard', nhom: '', phu: 'Tình hình chấm công hôm nay', ca_nhan: true },
-  { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: '', phu: 'Log đồng bộ từ máy ADMS' },
-  { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: '', phu: 'Tổng hợp theo tháng' },
+  { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: '', phu: 'Log đồng bộ từ máy ADMS', quyen: 'nhan_su' },
+  { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: '', phu: 'Tổng hợp theo tháng', quyen: 'quan_tri' },
   { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: '', phu: 'Xin nghỉ phép, giải trình', ca_nhan: true },
 
-  { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Quản trị nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản' },
+  { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Quản trị nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
   { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Quản trị nhân sự', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
 
-  { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Quản trị nhân sự', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'nhan_su' },
+  { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Quản trị nhân sự', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
   { duong_dan: '/ra-vao', ten: 'Ra/vào', icon: 'clock-exclamation', nhom: 'Quản trị nhân sự', phu: 'Cảnh báo ra/vào & xử lý', quyen: 'nhan_su' },
-  { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Quản trị nhân sự', phu: 'Chấm điểm từ dữ liệu thật' },
+  { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Quản trị nhân sự', phu: 'Chấm điểm từ dữ liệu thật', quyen: 'nhan_su' },
   { duong_dan: '/bang-luong', ten: 'Lương & phụ cấp', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Bảng lương, chính sách phụ cấp', quyen: 'nhan_su' },
   { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Quản trị nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
 
-  { duong_dan: '/cai-dat', ten: 'Cài đặt', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp' },
+  { duong_dan: '/cai-dat', ten: 'Cài đặt', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp', quyen: 'nhan_su' },
 ];
 
 /**
@@ -132,6 +136,7 @@ const CHUYEN_HUONG: Record<string, string> = {
 function duoc_xem(m: MucMenu): boolean {
   if (m.quyen === 'admin') return la_admin();
   if (m.quyen === 'nhan_su') return la_nhan_su();
+  if (m.quyen === 'quan_tri') return la_quan_tri();
   if (m.quyen === 'nguoi_duyet') return la_nguoi_duyet();
   return true;
 }
@@ -167,7 +172,7 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/nhan-vien': return <TrangNhanVien />;
     case '/bang-luong': return la_nhan_su() ? <TrangLuongPhuCap /> : <KhongCoQuyen />;
     case '/ra-vao': return la_nhan_su() ? <TrangRaVao /> : <KhongCoQuyen />;
-    case '/ky-luat': return la_nhan_su() ? <TrangKyLuatViPham /> : <KhongCoQuyen />;
+    case '/ky-luat': return la_quan_tri() ? <TrangKyLuatViPham /> : <KhongCoQuyen />;
     case '/kpi': return <TrangKpi />;
     case '/hop-dong': return la_nhan_su() ? <TrangHopDong /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;

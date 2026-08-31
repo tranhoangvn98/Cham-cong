@@ -4,7 +4,7 @@
 // BLLD 2019 Dieu 131 cho nguoi lao dong quyen khieu nai quyet dinh ky luat. Moi khieu nai co ma
 // (KN-NNNNNN) de theo doi.
 import { useState, type ReactNode } from 'react';
-import { goi, la_admin } from '../api.ts';
+import { goi, la_admin, chi_xem_quan_tri } from '../api.ts';
 import { LienKet } from '../dinh_tuyen.tsx';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio, ngay_viet,
@@ -142,6 +142,7 @@ function HopThoaiKhieuNai(
   const [mien_luon, dat_mien_luon] = useState(false);
   const hd = dung_hanh_dong();
   const admin = la_admin();
+  const chi_xem = chi_xem_quan_tri();
   const xong = d.trang_thai === 'chap_nhan' || d.trang_thai === 'tu_choi';
 
   const xu_ly = (trang_thai: 'dang_xem' | 'chap_nhan' | 'tu_choi', chu: string): void => {
@@ -194,6 +195,10 @@ function HopThoaiKhieuNai(
             {d.xu_ly_luc !== null && <div className="mo-ta">Xử lý lúc {ngay_gio(d.xu_ly_luc)}</div>}
           </div>
         </>
+      ) : chi_xem ? (
+        <div className="hop-thong-bao hop-tin">
+          Bạn đang ở chế độ <strong>chỉ xem</strong>. Việc xử lý khiếu nại do Nhân sự / Admin thực hiện.
+        </div>
       ) : (
         <>
           <h3>Phản hồi &amp; quyết định</h3>
