@@ -33,11 +33,15 @@ interface NhanVien {
   phong_ban: string | null;
   ca_lam_id: string | null;
   ca_lam: string | null;
+  noi_lam_viec_id: string | null;
+  noi_lam_viec: string | null;
+  lich_nghi_ma: string | null;
   co_tai_khoan: boolean;
 }
 
 interface CaLam { id: string; ten: string; dang_hoat_dong: boolean }
 interface PhongBan { id: string; ten: string }
+interface NoiLamViec { id: string; ten: string; lich_nghi_ma: string }
 
 export function TrangNhanVien(): ReactNode {
   const [tim, dat_tim] = useState('');
@@ -270,7 +274,9 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
     so_dien_thoai: nhan_vien?.so_dien_thoai ?? '',
     email: nhan_vien?.email ?? '',
     duoc_cham_cong_dien_thoai: nhan_vien?.duoc_cham_cong_dien_thoai ?? false,
+    noi_lam_viec_id: nhan_vien?.noi_lam_viec_id ?? '',
   });
+  const noi = dung_nap<NoiLamViec[]>('/api/noi-lam-viec');
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
 
@@ -290,6 +296,7 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
       so_dien_thoai: f.so_dien_thoai.trim() === '' ? null : f.so_dien_thoai.trim(),
       email: f.email.trim() === '' ? null : f.email.trim(),
       duoc_cham_cong_dien_thoai: f.duoc_cham_cong_dien_thoai,
+      noi_lam_viec_id: f.noi_lam_viec_id === '' ? null : f.noi_lam_viec_id,
     };
     const ok = await hd.chay(() =>
       nhan_vien === null
@@ -361,6 +368,21 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
               <option value="">— Chưa gán —</option>
               {cac_ca.map((c) => <option key={c.id} value={c.id}>{c.ten}</option>)}
             </select>
+          </div>
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="nlv">Nơi làm việc</label>
+          <select id="nlv" value={f.noi_lam_viec_id}
+            onChange={(e) => doi('noi_lam_viec_id', e.target.value)}>
+            <option value="">— Lịch Việt Nam (mặc định) —</option>
+            {(noi.du_lieu ?? []).map((n) => (
+              <option key={n.id} value={n.id}>{n.ten} ({n.lich_nghi_ma.toUpperCase()})</option>
+            ))}
+          </select>
+          <div className="goi-y">
+            Quyết định <strong>lịch nghỉ lễ</strong> áp dụng cho người này: làm ở Việt Nam theo lịch
+            VN, làm ở Trung Quốc theo lịch TQ. Chưa gán = lịch Việt Nam.
           </div>
         </div>
 

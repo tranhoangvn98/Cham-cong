@@ -167,10 +167,12 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
               nv.so_dien_thoai, nv.email, nv.duoc_cham_cong_dien_thoai, nv.dang_hoat_dong,
               nv.phong_ban_id, pb.ten as phong_ban,
               nv.ca_lam_id, cl.ten as ca_lam,
+              nv.noi_lam_viec_id, nlv.ten as noi_lam_viec, nlv.lich_nghi_ma,
               (nd.id is not null) as co_tai_khoan
          from nhan_vien nv
          left join phong_ban pb on pb.id = nv.phong_ban_id
          left join ca_lam    cl on cl.id = nv.ca_lam_id
+         left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
          left join nguoi_dung nd on nd.nhan_vien_id = nv.id
         where ($1::boolean is not true or nv.dang_hoat_dong = true)
           and ($2::text is null
@@ -188,8 +190,8 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       () => truy_van_mot<{ id: string }>(
         `insert into nhan_vien
            (ma_nv, ho_ten, pin_may, ma_erp, phong_ban_id, ca_lam_id, ngay_vao,
-            so_dien_thoai, email, duoc_cham_cong_dien_thoai)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id`,
+            so_dien_thoai, email, duoc_cham_cong_dien_thoai, noi_lam_viec_id)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
         doc_nhan_vien(b, true),
       ),
       'Mã nhân viên hoặc PIN máy đã được dùng cho người khác.',
@@ -209,7 +211,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       () => thuc_thi(
         `update nhan_vien set ma_nv=$2, ho_ten=$3, pin_may=$4, ma_erp=$5, phong_ban_id=$6,
                 ca_lam_id=$7, ngay_vao=$8, so_dien_thoai=$9, email=$10,
-                duoc_cham_cong_dien_thoai=$11, cap_nhat_luc=now()
+                duoc_cham_cong_dien_thoai=$11, noi_lam_viec_id=$12, cap_nhat_luc=now()
           where id=$1`,
         [id, ...ts],
       ),
@@ -1364,6 +1366,7 @@ function doc_nhan_vien(b: Record<string, unknown>, bat_buoc: boolean): unknown[]
     chuoi(b, 'so_dien_thoai', { toi_da: 20 }),
     chuoi(b, 'email', { toi_da: 200 }),
     luan_ly(b, 'duoc_cham_cong_dien_thoai', false),
+    uuid(b, 'noi_lam_viec_id'),
   ];
 }
 

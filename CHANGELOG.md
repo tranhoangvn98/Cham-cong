@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.78.0] — 2026-08-31
+
+**Lương theo mẫu công ty — API + giao diện (phần 2/2).** Nối phần hậu trường ở 1.77 ra giao diện.
+
+- **Cài đặt → Ngày lễ** thành 3 tab: Ngày lễ (thêm cột Lịch VN/TQ), **Kế hoạch nghỉ theo năm** (khai khoảng ngày → tự bung ra từng ngày), **Nơi làm việc** (CRUD + gắn lịch nghỉ).
+- **Cài đặt → Tham số lương**: thêm mục **Phạt đi muộn** (bật/tắt, 4 mốc giờ, mức phạt, số lần miễn/tháng, hạn nộp đơn) + **Tỷ lệ thử việc**, kèm lưu ý pháp lý (BLLĐ Đ.127/Đ.26).
+- **Góc cá nhân → Phiếu lương**: nhân viên tự xem phiếu lương hàng tháng đã duyệt/trả, chi tiết từng khoản thu nhập + khấu trừ (BHXH/BHYT/BHTN, thuế, phạt đi muộn…), thực nhận làm tròn, nút In phiếu.
+- **Nhân viên**: thêm ô **Nơi làm việc** trong form → quyết định lịch nghỉ lễ (VN/TQ) áp cho từng người.
+- API: CRUD nơi làm việc + kế hoạch nghỉ năm; `nhan_vien` nhận `noi_lam_viec_id`.
+- 30 guard thiết kế + tsc backend/web + 676/677 test xanh.
+
 ## [1.77.0] — 2026-08-31
 
 **Lương theo mẫu công ty — nền dữ liệu + bộ tính (phần 1/2: hậu trường).** Bám sát file "Bảng Lương" của công ty. Phần API + giao diện ở bản kế tiếp.
