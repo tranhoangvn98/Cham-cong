@@ -353,8 +353,6 @@ export const cau_hinh = {
      * phai duyet (khong con duong tu ap).
      */
     nguong_duyet: Math.max(0, Math.round(so('KY_LUAT_NGUONG_DUYET', 2_000_000))),
-    /** Ngay trong thang chay gom ky luat cua thang truoc (1-28). */
-    ngay_chay: Math.min(28, Math.max(1, Math.round(so('KY_LUAT_NGAY_CHAY', 1)))),
   },
 
   /**

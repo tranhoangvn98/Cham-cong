@@ -96,11 +96,9 @@ services:
       MS_MAIL_NGUOI_GUI: ${MS_MAIL_NGUOI_GUI:-}
       # Cung mot loi ra/vao >= nguong lan trong thang thi chuyen ky luat thay vi chi nhac nho.
       RA_VAO_NGUONG_KY_LUAT: ${RA_VAO_NGUONG_KY_LUAT:-3}
-      # Xu ly ky luat tu dong: khoan giam thuong 1 ho so >= nguong (dong) phai co nguoi duyet moi
-      # ap, duoi nguong he thong tu ap. 0 = moi khoan deu phai duyet. KY_LUAT_NGAY_CHAY: ngay trong
-      # thang chay gom ky luat cua thang truoc.
+      # Xu ly ky luat tu dong (quet hang ngay): khoan giam thuong 1 ho so >= nguong (dong) phai co
+      # nguoi duyet moi ap, duoi nguong he thong tu ap. 0 = moi khoan deu phai duyet.
       KY_LUAT_NGUONG_DUYET: ${KY_LUAT_NGUONG_DUYET:-2000000}
-      KY_LUAT_NGAY_CHAY: ${KY_LUAT_NGAY_CHAY:-1}
       # Thong bao day toi app dien thoai. Dat 0 de tat (vd: may chu khong ra Internet).
       THONG_BAO_DAY: ${THONG_BAO_DAY:-1}
       EXPO_PUSH_URL: ${EXPO_PUSH_URL:-https://exp.host/--/api/v2/push/send}

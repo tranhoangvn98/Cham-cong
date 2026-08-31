@@ -110,12 +110,19 @@ export async function quet_vi_pham(thang: string, nguoi_ghi: string | null): Pro
         if (gia_tri === null) continue;
         if (!thoa_man(gia_tri, q.toan_tu, Number(q.nguong))) continue;
 
+        // Chay lai trong THANG: cap nhat lai so lieu (gia_tri) cho ban ghi CON 'moi' — de phat
+        // theo tung lan (di muon them thi so lan tang). Ban ghi da co nguoi dong toi (khac 'moi')
+        // thi GIU NGUYEN: `where vi_pham.trang_thai = 'moi'`.
         const kq = await khach.query(
           `insert into vi_pham
              (nhan_vien_id, loai_vi_pham_id, nguon, quy_tac_id, ngay, ky, mo_ta,
               bang_chung, trang_thai, nguoi_ghi)
            values ($1,$2,'he_thong',$3,$4,$5,$6,$7,'moi',$8)
-           on conflict do nothing
+           on conflict (nhan_vien_id, quy_tac_id, ky)
+             where nguon = 'he_thong' and quy_tac_id is not null and ky is not null
+           do update set mo_ta = excluded.mo_ta, bang_chung = excluded.bang_chung,
+                         ngay = excluded.ngay, cap_nhat_luc = now()
+             where vi_pham.trang_thai = 'moi'
            returning id`,
           [
             nv.nhan_vien_id, q.loai_vi_pham_id, q.id, den, thang,

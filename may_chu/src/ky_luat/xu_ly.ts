@@ -107,34 +107,67 @@ export function quyet_hinh_thuc(tong_tien: number, nguong_duyet: number): QuyetH
 /** Trang thai vi pham duoc tinh vao ho so (chua bi bac bo / chua xu ly rieng). */
 const TRANG_THAI_TINH = ['moi', 'cho_giai_trinh', 'da_xac_nhan'];
 
-/** Trang thai ho so da CHOT — quet lai khong ghi de len. */
-const DA_CHOT = new Set(['da_ap_dung', 'bac_bo', 'huy']);
+/** Trang thai KHONG bao gio xu ly lai (nguoi da quyet bo/huy). Ho so tu dong thi quet lai duoc. */
+const KHONG_DUNG_LAI = new Set(['bac_bo', 'huy']);
 
 function tien_viet(n: number): string {
   return `${Math.round(n).toLocaleString('vi-VN')} đ`;
 }
 
+/**
+ * Form email nhac nho / thong bao giam thuong. Mot mau dung chung, tu doi tieu de va noi dung
+ * theo co giam thuong hay khong. HTML thuan (email client khong chay CSS ngoai) — style inline.
+ */
 function than_email_ky_luat(
   ho_ten: string, ky: string, muc_do: MucDo, so_vi_pham: number,
   tong_tien: number, chi_tiet: ChiTietViPham[],
 ): string {
-  const hang = chi_tiet
-    .map((c) => `<li>${c.ten}${c.tien > 0 ? ` — giảm thưởng ${tien_viet(c.tien)}` : ''}</li>`)
-    .join('');
-  const phan_tien = tong_tien > 0
-    ? `<p>Theo Điều 14 Nội quy lao động và Quy chế thưởng, kỳ ${ky} bị
-         <b>giảm thưởng/phụ cấp ${tien_viet(tong_tien)}</b> (giảm thưởng P3 theo Điều 104 Bộ luật
-         Lao động — <b>không phải phạt tiền, không trừ lương cơ bản</b>).</p>`
-    : `<p>Đây là <b>nhắc nhở</b>. Kỳ này chưa phát sinh giảm thưởng.</p>`;
-  return `<div style="font-family:Arial,sans-serif;font-size:14px;color:#111">
-    <p>Kính gửi ${ho_ten},</p>
-    <p>Hệ thống ghi nhận trong kỳ <b>${ky}</b> bạn có <b>${String(so_vi_pham)}</b> vi phạm mức
-       <b>${TEN_MUC_DO[muc_do]}</b>:</p>
-    <ul>${hang}</ul>
-    ${phan_tien}
-    <p>Nếu có lý do chính đáng, vui lòng phản hồi Phòng Nhân sự (Bộ luật Lao động 2019 Điều 122
-       cho bạn quyền giải trình).</p>
-    <p>Trân trọng,<br/>Phòng Nhân sự</p>
+  const co_tien = tong_tien > 0;
+  const hang = chi_tiet.map((c) => `
+    <tr>
+      <td style="padding:6px 10px;border-bottom:1px solid #eee">${c.ten}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap">${c.tien > 0 ? tien_viet(c.tien) : '—'}</td>
+    </tr>`).join('');
+
+  const khoi_tien = co_tien
+    ? `<div style="background:#FEF9C3;border:1px solid #FDE68A;border-radius:8px;padding:12px 14px;margin:14px 0">
+         <div style="font-size:13px;color:#92400E">Tổng giảm thưởng kỳ ${ky}</div>
+         <div style="font-size:20px;font-weight:700;color:#92400E">${tien_viet(tong_tien)}</div>
+         <div style="font-size:12px;color:#92400E;margin-top:4px">
+           Giảm thưởng P3 theo Điều 14 Nội quy lao động và Điều 104 Bộ luật Lao động —
+           <b>không phải phạt tiền, không trừ lương cơ bản</b>. Khoản này thể hiện trên phiếu lương kỳ ${ky}.
+         </div>
+       </div>`
+    : `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 14px;margin:14px 0;font-size:13px;color:#1E40AF">
+         Đây là <b>nhắc nhở</b>. Kỳ này chưa phát sinh giảm thưởng.
+       </div>`;
+
+  const tieu_de_khoi = co_tien ? 'Thông báo giảm thưởng theo kỷ luật' : 'Nhắc nhở vi phạm nội quy';
+
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111;line-height:1.55;max-width:560px">
+    <div style="background:#2563EB;color:#fff;padding:14px 18px;border-radius:8px 8px 0 0;font-size:16px;font-weight:700">
+      ${tieu_de_khoi}
+    </div>
+    <div style="border:1px solid #E5E7EB;border-top:0;border-radius:0 0 8px 8px;padding:18px">
+      <p style="margin:0 0 10px">Kính gửi <b>${ho_ten}</b>,</p>
+      <p style="margin:0 0 10px">Hệ thống chấm công ghi nhận trong kỳ <b>${ky}</b> bạn có
+         <b>${String(so_vi_pham)}</b> vi phạm mức <b>${TEN_MUC_DO[muc_do]}</b>:</p>
+      <table style="border-collapse:collapse;width:100%;font-size:13px;margin:6px 0">
+        <thead><tr>
+          <th style="text-align:left;padding:6px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Nội dung vi phạm</th>
+          <th style="text-align:right;padding:6px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Giảm thưởng</th>
+        </tr></thead>
+        <tbody>${hang}</tbody>
+      </table>
+      ${khoi_tien}
+      <p style="margin:0 0 10px">Nếu có lý do chính đáng, bạn có quyền <b>giải trình</b> (Bộ luật Lao động 2019,
+         Điều 122): đăng nhập ứng dụng chấm công vào mục <b>Vi phạm của tôi</b> để gửi giải trình, hoặc phản hồi
+         trực tiếp Phòng Nhân sự.</p>
+      <p style="margin:14px 0 0;color:#6B7280;font-size:12px">
+        Email tự động từ hệ thống chấm công — vui lòng không trả lời trực tiếp email này.<br/>
+        Trân trọng,<br/><b>Phòng Nhân sự</b>
+      </p>
+    </div>
   </div>`;
 }
 
@@ -212,18 +245,26 @@ async function xu_ly_mot_ho_so(
   const { hinh_thuc, can_duyet } = quyet_hinh_thuc(nhom.tong_tien, cau_hinh.ky_luat.nguong_duyet);
 
   return trong_giao_dich(async (khach) => {
-    // Da co ho so chua? Chot roi thi khong dung toi.
-    const cu = await khach.query<{ id: string; trang_thai: string }>(
-      'select id, trang_thai from ho_so_ky_luat where nhan_vien_id = $1 and ky = $2 and muc_do = $3',
+    // Da co ho so chua? Bo/huy hoac CO NGUOI quyet dinh -> giu nguyen (ton trong quyet dinh cua
+    // nguoi). Ho so tu dong (nhac / tu ap) thi quet lai duoc: chay hang ngay se cap nhat tong
+    // tien + dong giam thuong theo so lieu moi, va KHONG gui lai email/push da gui.
+    const cu = await khach.query<{ id: string; trang_thai: string; da_gui_email: boolean;
+                                   da_gui_push: boolean; nguoi_duyet: string | null }>(
+      `select id, trang_thai, da_gui_email, da_gui_push, nguoi_duyet
+         from ho_so_ky_luat where nhan_vien_id = $1 and ky = $2 and muc_do = $3`,
       [nhom.nhan_vien_id, ky, nhom.muc_do],
     );
-    if (cu.rows[0] !== undefined && DA_CHOT.has(cu.rows[0].trang_thai)) {
-      const r = cu.rows[0];
+    const truoc = cu.rows[0];
+    if (truoc !== undefined
+        && (KHONG_DUNG_LAI.has(truoc.trang_thai) || truoc.nguoi_duyet !== null)) {
       return {
-        ho_so_id: r.id, trang_thai: r.trang_thai, hinh_thuc, tong_tien: nhom.tong_tien,
+        ho_so_id: truoc.id, trang_thai: truoc.trang_thai, hinh_thuc, tong_tien: nhom.tong_tien,
         can_duyet, da_gui_email: false, da_gui_push: false,
       };
     }
+    const email_truoc = truoc?.da_gui_email ?? false;   // da gui email lan truoc -> khong gui lai
+    const push_truoc = truoc?.da_gui_push ?? false;
+    const la_cho_duyet_truoc = truoc?.trang_thai === 'cho_duyet';
 
     // Upsert phan gom (so lieu). Trang thai tam thoi 'moi' — quyet ngay ben duoi.
     const up = await khach.query<{ id: string }>(
@@ -248,7 +289,7 @@ async function xu_ly_mot_ho_so(
     if (hinh_thuc === 'nhac_nho') {
       trang_thai = 'da_nhac';
       const ng = await lay_nguoi(khach, nhom.nhan_vien_id);
-      if (email_bat() && ng.email !== null && ng.email.includes('@')) {
+      if (!email_truoc && email_bat() && ng.email !== null && ng.email.includes('@')) {
         da_gui_email = await gui_email({
           den: [ng.email],
           tieu_de: `Nhắc nhở vi phạm nội quy — kỳ ${ky}`,
@@ -257,7 +298,7 @@ async function xu_ly_mot_ho_so(
         });
       }
       const tk = await tai_khoan_cua_nhan_vien(nhom.nhan_vien_id);
-      if (tk.length > 0) {
+      if (!push_truoc && tk.length > 0) {
         gui_ngam({
           nguoi_dung_ids: tk,
           tieu_de: 'Nhắc nhở vi phạm nội quy',
@@ -273,9 +314,8 @@ async function xu_ly_mot_ho_so(
         `update ho_so_ky_luat set trang_thai = 'da_ap_dung', cap_nhat_luc = now() where id = $1`,
         [ho_so_id],
       );
-      await dong_bo_giam_thuong(khach, nhom.nhan_vien_id, ky);
       const ng = await lay_nguoi(khach, nhom.nhan_vien_id);
-      if (email_bat() && ng.email !== null && ng.email.includes('@')) {
+      if (!email_truoc && email_bat() && ng.email !== null && ng.email.includes('@')) {
         da_gui_email = await gui_email({
           den: [ng.email],
           tieu_de: `Thông báo giảm thưởng theo kỷ luật — kỳ ${ky}`,
@@ -284,7 +324,7 @@ async function xu_ly_mot_ho_so(
         });
       }
       const tk = await tai_khoan_cua_nhan_vien(nhom.nhan_vien_id);
-      if (tk.length > 0) {
+      if (!push_truoc && tk.length > 0) {
         gui_ngam({
           nguoi_dung_ids: tk,
           tieu_de: 'Giảm thưởng theo kỷ luật',
@@ -302,7 +342,7 @@ async function xu_ly_mot_ho_so(
         [ho_so_id],
       );
       const duyet = await tai_khoan_nguoi_duyet(nhom.nhan_vien_id);
-      if (duyet.length > 0) {
+      if (!la_cho_duyet_truoc && duyet.length > 0) {
         gui_ngam({
           nguoi_dung_ids: duyet,
           tieu_de: 'Hồ sơ kỷ luật cần duyệt',
@@ -312,6 +352,10 @@ async function xu_ly_mot_ho_so(
         da_gui_push = true;
       }
     }
+
+    // Dong bo dong giam thuong theo trang thai HIEN TAI (chi ho so 'da_ap_dung' moi thanh tien):
+    // ho so tut xuong nhac_nho hoac len cho_duyet thi khoan giam thuong tu dong bien mat.
+    await dong_bo_giam_thuong(khach, nhom.nhan_vien_id, ky);
 
     await khach.query(
       `update ho_so_ky_luat set da_gui_email = da_gui_email or $2,
@@ -343,9 +387,13 @@ export async function gom_va_xu_ly_thang(
 ): Promise<KetQuaGom> {
   const tu_dong = tuy.tu_dong ?? true;
 
+  // `muc_tru_tien_txt`: so tien HIEU LUC cua tung vi pham. Neu loai vi pham `tinh_moi_lan` thi
+  // nhan voi SO LAN (chi so trong bang_chung, vd so_lan_di_muon) — di muon 50k * so lan.
   const ds = await truy_van<DongViPham & { muc_tru_tien_txt: string }>(
     `select v.id as vi_pham_id, v.nhan_vien_id, l.muc_do, l.ma as loai_ma, l.ten as loai_ten,
-            l.muc_tru_tien::text as muc_tru_tien_txt
+            (case when l.tinh_moi_lan
+                  then l.muc_tru_tien * coalesce((v.bang_chung->>'gia_tri')::numeric, 1)
+                  else l.muc_tru_tien end)::text as muc_tru_tien_txt
        from vi_pham v
        join loai_vi_pham l on l.id = v.loai_vi_pham_id
        join nhan_vien nv on nv.id = v.nhan_vien_id and nv.dang_hoat_dong = true

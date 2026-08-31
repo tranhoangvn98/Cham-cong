@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.58.0] — 2026-08-31
+
+**Phạt đi muộn tự động + quét kỷ luật hằng ngày + form email.**
+
+- **Phạt theo từng lần** (cột `tinh_moi_lan` trên loại vi phạm): đi muộn (NQ-A01) giảm thưởng
+  **50.000đ mỗi lần** (Điều 14 Nội quy, Điều 104 BLLĐ — giảm thưởng P3, không phải phạt tiền).
+  Số tiền = 50.000 × số lần đi muộn trong tháng. Quy tắc phát hiện đi muộn đã bật; khoản dưới
+  2 triệu nên hệ thống tự áp (không cần duyệt).
+- **Quét kỷ luật chạy HẰNG NGÀY** (trước là hằng tháng): mỗi ngày gom lại vi phạm của tháng,
+  cập nhật hồ sơ tự động (đi muộn thêm thì tiền phạt tăng), gửi email/thông báo **một lần**
+  (không gửi lại), giữ nguyên hồ sơ người đã quyết. Hồ sơ vượt ngưỡng tự chuyển chờ duyệt.
+- **Form email** nhắc nhở / thông báo giảm thưởng: mẫu HTML gọn (tiêu đề, bảng vi phạm, khối
+  giảm thưởng, quyền giải trình theo Điều 122). Cần bật email Microsoft 365 (`MS_MAIL_NGUOI_GUI`).
+- Bỏ biến `KY_LUAT_NGAY_CHAY` (không còn dùng khi quét hằng ngày).
+
 ## [1.57.3] — 2026-08-31
 
 **Bảng lương chi tiết hiện gần toàn màn hình.** Bảng nhiều cột (công, lương theo công, OT, thưởng, phụ cấp, tổng thu nhập, BHXH, thuế, thực lĩnh…) trước bó trong hộp thoại 760px nên tràn/cắt cột, phải cuộn ngang. Thêm biến thể hộp thoại `toàn màn hình` (96% rộng, 94% cao) và áp cho bảng lương — xem đủ cột một lần.

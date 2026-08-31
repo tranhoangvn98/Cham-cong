@@ -215,34 +215,31 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     }
   }
 
-  // Xu ly ky luat tu dong, MOI THANG MOT LAN (vao ngay KY_LUAT_NGAY_CHAY cua thang).
+  // Xu ly ky luat tu dong, MOI NGAY MOT LAN (chu cong ty chon: quet hang ngay, loi nhac nho gui
+  // email luon). Gom vi pham cua thang HOM QUA (cong_ngay(-1)) — de tren ranh gioi thang van
+  // chot dung thang truoc. Chay hang ngay cho tha ca thang hien tai: bat l01 nguoi vi pham la
+  // ho so cap nhat, nguoi lao dong nhan email som (khong doi het thang).
   //
-  // Khac cac viec tren o cho no la viec THEO THANG, khong theo ngay: gom vi pham cua THANG TRUOC
-  // roi tu xu ly (nhac nho / giam thuong duoi nguong tu ap, tu nguong chuyen cho_duyet). Khoa
-  // `ky_luat_thang:<thang truoc>` dam bao mot thang chi chay mot lan du may chu khoi dong lai.
-  //
-  // Chay lai idempotent: `quet_vi_pham` dung `on conflict do nothing`, `gom_va_xu_ly_thang` upsert
-  // theo (nguoi, ky, muc do) va giu nguyen ho so DA CHOT. Chi chay khi da co quy tac dang bat —
-  // khong co quy tac nao bat thi quet ra 0, dung nhu mac dinh an toan.
-  if (Number(hom_nay.slice(8)) === cau_hinh.ky_luat.ngay_chay) {
-    const thang_truoc = cong_ngay(`${hom_nay.slice(0, 7)}-01`, -1).slice(0, 7);
-    const ma_kl = `ky_luat_thang:${thang_truoc}`;
-    if (await nhan_viec(ma_kl)) {
-      try {
-        const ph = await quet_vi_pham(thang_truoc, null);
-        const gom = await gom_va_xu_ly_thang(thang_truoc, { tu_dong: true });
-        await ghi_ket_qua(ma_kl,
-          `phat hien ${String(ph.so_moi)} vi pham, gom ${String(gom.so_ho_so)} ho so `
-          + `(nhac ${String(gom.so_nhac_nho)}, giam thuong ${String(gom.so_giam_thuong)}, `
-          + `cho duyet ${String(gom.so_cho_duyet)})`);
-        if (gom.so_ho_so > 0) {
-          ghi_log(`[lich] ky luat ${thang_truoc}: ${String(gom.so_ho_so)} ho so `
-            + `(cho duyet ${String(gom.so_cho_duyet)})`);
-        }
-      } catch (loi) {
-        await nha_viec(ma_kl);
-        ghi_log(`[lich] LOI khi xu ly ky luat ${thang_truoc}: ${(loi as Error).message}`);
+  // An toan khi chay lai moi ngay: `quet_vi_pham` dung `on conflict do nothing`;
+  // `gom_va_xu_ly_thang` upsert theo (nguoi, ky, muc do), CAP NHAT LAI ho so tu dong theo so
+  // lieu moi (di muon them thi tien phat tang), giu nguyen ho so nguoi da quyet, va KHONG gui
+  // lai email/push da gui. Khoa `ky_luat_ngay:<hom qua>` dam bao mot ngay chi chay mot lan.
+  const thang_kl = cong_ngay(hom_nay, -1).slice(0, 7);
+  const ma_kl = `ky_luat_ngay:${cong_ngay(hom_nay, -1)}`;
+  if (await nhan_viec(ma_kl)) {
+    try {
+      const ph = await quet_vi_pham(thang_kl, null);
+      const gom = await gom_va_xu_ly_thang(thang_kl, { tu_dong: true });
+      await ghi_ket_qua(ma_kl,
+        `ky ${thang_kl}: phat hien ${String(ph.so_moi)} vi pham, gom ${String(gom.so_ho_so)} ho so `
+        + `(nhac ${String(gom.so_nhac_nho)}, giam thuong ${String(gom.so_giam_thuong)}, `
+        + `cho duyet ${String(gom.so_cho_duyet)})`);
+      if (gom.so_cho_duyet > 0) {
+        ghi_log(`[lich] ky luat ${thang_kl}: ${String(gom.so_cho_duyet)} ho so cho duyet`);
       }
+    } catch (loi) {
+      await nha_viec(ma_kl);
+      ghi_log(`[lich] LOI khi xu ly ky luat ${thang_kl}: ${(loi as Error).message}`);
     }
   }
 
