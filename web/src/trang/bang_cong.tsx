@@ -19,6 +19,8 @@ interface DongTongHop {
   so_ngay_vang: number;
   so_ngay_nghi_phep: number;
   so_lan_di_muon: number;
+  so_lan_muon_duoi_30: number;
+  so_lan_muon_tu_30: number;
 }
 
 interface DongNgay {
@@ -140,16 +142,21 @@ export function TrangBangCong(): ReactNode {
             <table className="bang-neo-cot-dau">
               <thead>
                 <tr>
-                  <th>Mã NV</th>
-                  <th>Họ tên</th>
-                  <th>Phòng ban</th>
-                  <th className="canh-phai">Tổng công</th>
-                  <th className="canh-phai">Giờ làm</th>
-                  <th className="canh-phai">OT</th>
-                  <th className="canh-phai">Lần muộn</th>
+                  <th rowSpan={2}>Mã NV</th>
+                  <th rowSpan={2}>Họ tên</th>
+                  <th rowSpan={2}>Phòng ban</th>
+                  <th rowSpan={2} className="canh-phai">Tổng công</th>
+                  <th rowSpan={2} className="canh-phai">Giờ làm</th>
+                  <th rowSpan={2} className="canh-phai">OT</th>
+                  <th colSpan={4} style={{ textAlign: 'center' }}>Đi muộn</th>
+                  <th rowSpan={2} className="canh-phai">Vắng</th>
+                  <th rowSpan={2} className="canh-phai">Nghỉ phép</th>
+                </tr>
+                <tr>
+                  <th className="canh-phai">Tổng lần</th>
+                  <th className="canh-phai">&lt; 30 phút</th>
+                  <th className="canh-phai">≥ 30 phút</th>
                   <th className="canh-phai">Phút muộn</th>
-                  <th className="canh-phai">Vắng</th>
-                  <th className="canh-phai">Nghỉ phép</th>
                 </tr>
               </thead>
               <tbody>
@@ -181,6 +188,11 @@ export function TrangBangCong(): ReactNode {
                     <td className="canh-phai so">{phut_thanh_chu(Number(d.tong_phut_lam))}</td>
                     <td className="canh-phai so">{phut_thanh_chu(Number(d.tong_phut_ot))}</td>
                     <td className="canh-phai so">{Number(d.so_lan_di_muon) || '—'}</td>
+                    <td className="canh-phai so">{Number(d.so_lan_muon_duoi_30) || '—'}</td>
+                    <td className={Number(d.so_lan_muon_tu_30) > 0
+                      ? 'canh-phai so so-canh-bao' : 'canh-phai so'}>
+                      {Number(d.so_lan_muon_tu_30) || '—'}
+                    </td>
                     <td className={Number(d.tong_phut_muon) > 0
                       ? 'canh-phai so so-canh-bao' : 'canh-phai so'}>
                       {phut_thanh_chu(Number(d.tong_phut_muon))}

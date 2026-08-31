@@ -176,7 +176,9 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
               count(*) filter (where bc.trang_thai = 'co_mat')::int         as so_ngay_co_mat,
               count(*) filter (where bc.trang_thai = 'vang')::int           as so_ngay_vang,
               count(*) filter (where bc.trang_thai = 'nghi_phep')::int      as so_ngay_nghi_phep,
-              count(*) filter (where bc.phut_muon > 0)::int                 as so_lan_di_muon
+              count(*) filter (where bc.phut_muon > 0)::int                 as so_lan_di_muon,
+              count(*) filter (where bc.phut_muon > 0 and bc.phut_muon < 30)::int as so_lan_muon_duoi_30,
+              count(*) filter (where bc.phut_muon >= 30)::int               as so_lan_muon_tu_30
          from nhan_vien nv
          left join bang_cong_ngay bc
                 on bc.nhan_vien_id = nv.id and bc.ngay >= $1 and bc.ngay <= $2
