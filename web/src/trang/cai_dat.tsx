@@ -583,10 +583,42 @@ function FormDiaDiem({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
   );
 }
 
-// ============================================================ NGAY LE
-interface NgayLe { ngay: string; ten: string; huong_luong: boolean }
+// ============================================================ NGAY LE + NOI LAM VIEC + KE HOACH NGHI
+interface NgayLe { ngay: string; ten: string; huong_luong: boolean; lich_ma: string; ke_hoach_id: string | null }
+interface Lich { ma: string; ten: string; quoc_gia: string | null; dang_dung: boolean }
+interface KeHoach {
+  id: string; nam: number; ten: string; tu_ngay: string; den_ngay: string;
+  lich_ma: string; huong_luong: boolean; ghi_chu: string | null; lich_ten: string | null; so_ngay: number;
+}
+interface NoiLamViec {
+  id: string; ten: string; lich_nghi_ma: string; dia_chi: string | null;
+  dang_dung: boolean; lich_ten: string | null; so_nguoi: number;
+}
 
 export function TrangNgayLe(): ReactNode {
+  const [tab, dat_tab] = useState<'ngay_le' | 'ke_hoach' | 'noi_lam_viec'>('ngay_le');
+  return (
+    <>
+      <div className="hang-tab">
+        <button className={tab === 'ngay_le' ? 'dang-chon' : undefined}
+          onClick={() => dat_tab('ngay_le')}>Ngày lễ</button>
+        <button className={tab === 'ke_hoach' ? 'dang-chon' : undefined}
+          onClick={() => dat_tab('ke_hoach')}>Kế hoạch nghỉ theo năm</button>
+        <button className={tab === 'noi_lam_viec' ? 'dang-chon' : undefined}
+          onClick={() => dat_tab('noi_lam_viec')}>Nơi làm việc</button>
+      </div>
+      {tab === 'ngay_le' ? <TabNgayLe /> : tab === 'ke_hoach' ? <TabKeHoach /> : <TabNoiLamViec />}
+    </>
+  );
+}
+
+/** Nhan hien thi ten lich (VN/TQ) canh mot dong. */
+function NhanLich({ ma, ten }: { ma: string; ten?: string | null }): ReactNode {
+  return <span className={`nhan ${ma === 'vn' ? 'nhan-lanh' : 'nhan-canh-bao'}`}>{ten ?? ma}</span>;
+}
+
+// ------------------------------------------------------------ Tab 1: Ngay le
+function TabNgayLe(): ReactNode {
   const nam_nay = new Date().getFullYear();
   const [nam, dat_nam] = useState(String(nam_nay));
   const [dang_them, dat_dang_them] = useState(false);
@@ -607,7 +639,7 @@ export function TrangNgayLe(): ReactNode {
     });
     if (!dong_y) return;
     await hd.chay(
-      () => goi(`/api/ngay-le/${ng.ngay}`, { method: 'DELETE' }),
+      () => goi(`/api/ngay-le/${ng.ngay}?lich_ma=${ng.lich_ma}`, { method: 'DELETE' }),
       'Đã xóa và tính lại bảng công của ngày đó.',
     );
     nap_lai();
@@ -618,7 +650,8 @@ export function TrangNgayLe(): ReactNode {
       <div className="dau-trang">
         <div>
           <p className="mo-ta">
-            Thêm/xóa ngày lễ sẽ tính lại bảng công của đúng ngày đó ngay lập tức.
+            Thêm/xóa ngày lễ sẽ tính lại bảng công của đúng ngày đó ngay lập tức. Ngày lễ áp theo
+            <strong> lịch của nơi làm việc</strong> (VN/TQ).
           </p>
         </div>
         {la_nhan_su() && (
@@ -627,8 +660,9 @@ export function TrangNgayLe(): ReactNode {
       </div>
 
       <div className="hop-thong-bao hop-luu-y">
-        Chỉ các ngày lễ <strong>dương lịch cố định</strong> được tạo sẵn. Tết Nguyên đán và ngày nghỉ
-        bù theo lịch âm phải tự thêm mỗi năm.
+        Chỉ các ngày lễ <strong>dương lịch cố định</strong> (lịch VN) được tạo sẵn. Tết Nguyên đán,
+        ngày nghỉ bù theo lịch âm, và ngày lễ Trung Quốc phải tự thêm mỗi năm — hoặc dùng tab
+        <strong> Kế hoạch nghỉ theo năm</strong> để khai cả đợt.
       </div>
 
       <HopLoi loi={hd.loi} />
@@ -657,15 +691,17 @@ export function TrangNgayLe(): ReactNode {
                 <tr>
                   <th>Ngày</th>
                   <th>Tên</th>
+                  <th>Lịch</th>
                   <th>Hưởng lương</th>
                   {la_nhan_su() && <th></th>}
                 </tr>
               </thead>
               <tbody>
                 {(du_lieu ?? []).map((n) => (
-                  <tr key={n.ngay}>
+                  <tr key={`${n.ngay}-${n.lich_ma}`}>
                     <td className="khong-ngat">{thu_cua_ngay(n.ngay)} {ngay_viet(n.ngay)}</td>
-                    <td>{n.ten}</td>
+                    <td>{n.ten}{n.ke_hoach_id !== null && <span className="nhan nhan-mo"> đợt</span>}</td>
+                    <td><NhanLich ma={n.lich_ma} /></td>
                     <td>
                       {n.huong_luong
                         ? <span className="nhan nhan-tot">có</span>
@@ -698,14 +734,16 @@ export function TrangNgayLe(): ReactNode {
 function FormNgayLe({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: () => void }): ReactNode {
   const [ngay, dat_ngay] = useState('');
   const [ten, dat_ten] = useState('');
+  const [lich_ma, dat_lich] = useState('vn');
   const [huong_luong, dat_huong_luong] = useState(true);
+  const { du_lieu: lichs } = dung_nap<Lich[]>('/api/lich-nghi');
   const hd = dung_hanh_dong();
 
   const gui = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     const ok = await hd.chay(() => goi('/api/ngay-le', {
       method: 'POST',
-      body: { ngay, ten: ten.trim(), huong_luong },
+      body: { ngay, ten: ten.trim(), lich_ma, huong_luong },
     }));
     if (ok) khi_xong();
   };
@@ -723,10 +761,288 @@ function FormNgayLe({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: ()
           <input id="tnl" value={ten} onChange={(e) => dat_ten(e.target.value)}
             placeholder="Tết Nguyên đán" required />
         </div>
+        <div className="o-nhap">
+          <label htmlFor="lnl">Lịch áp dụng</label>
+          <select id="lnl" value={lich_ma} onChange={(e) => dat_lich(e.target.value)}>
+            {(lichs ?? [{ ma: 'vn', ten: 'Việt Nam' } as Lich]).map((l) => (
+              <option key={l.ma} value={l.ma}>{l.ten}</option>
+            ))}
+          </select>
+        </div>
         <div className="o-nhap-ngang">
           <input id="hl" type="checkbox" checked={huong_luong}
             onChange={(e) => dat_huong_luong(e.target.checked)} />
           <label htmlFor="hl">Hưởng lương (tính 1 công dù không đi làm)</label>
+        </div>
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>
+            {hd.dang_chay ? 'Đang lưu…' : 'Lưu'}
+          </button>
+          <button type="button" onClick={khi_dong}>Hủy</button>
+        </div>
+      </form>
+    </HopThoai>
+  );
+}
+
+// ------------------------------------------------------------ Tab 2: Ke hoach nghi theo nam
+function TabKeHoach(): ReactNode {
+  const nam_nay = new Date().getFullYear();
+  const [nam, dat_nam] = useState(String(nam_nay));
+  const [dang_them, dat_dang_them] = useState(false);
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<KeHoach[]>(`/api/ke-hoach-nghi-le?nam=${nam}`);
+  const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
+
+  const xoa = async (k: KeHoach): Promise<void> => {
+    const dong_y = await xn.hoi({
+      tieu_de: `Xóa đợt nghỉ "${k.ten}"?`,
+      mo_ta: <>Toàn bộ {k.so_ngay} ngày ({ngay_viet(k.tu_ngay)} – {ngay_viet(k.den_ngay)}) sẽ bị gỡ
+        khỏi ngày lễ và <strong>bảng công khoảng đó được tính lại</strong>.</>,
+      chu_dong_y: 'Xóa đợt nghỉ',
+      nguy_hiem: true,
+    });
+    if (!dong_y) return;
+    await hd.chay(() => goi(`/api/ke-hoach-nghi-le/${k.id}`, { method: 'DELETE' }),
+      'Đã xóa đợt nghỉ và tính lại bảng công.');
+    nap_lai();
+  };
+
+  return (
+    <>
+      <div className="dau-trang">
+        <p className="mo-ta">
+          Khai cả <strong>đợt nghỉ dài</strong> theo khoảng ngày (vd nghỉ 2/9 từ 29/8 đến 2/9) — hệ
+          thống tự bung ra từng ngày để không bị tính trừ công.
+        </p>
+        {la_nhan_su() && (
+          <button className="nut-chinh" onClick={() => dat_dang_them(true)}>+ Thêm đợt nghỉ</button>
+        )}
+      </div>
+
+      <HopLoi loi={hd.loi} />
+      <HopTot chu={hd.tot} />
+
+      <div className="bo-loc">
+        <div className="o-nhap">
+          <label htmlFor="namkh">Năm</label>
+          <select id="namkh" value={nam} onChange={(e) => dat_nam(e.target.value)}>
+            {[nam_nay - 1, nam_nay, nam_nay + 1].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <HopLoi loi={loi} />
+
+      <div className="the the-mong">
+        {dang_tai ? <DangTai /> : (du_lieu ?? []).length === 0 ? (
+          <Trong tieu_de={`Chưa khai đợt nghỉ nào cho năm ${nam}`} />
+        ) : (
+          <div className="vo-bang">
+            <table>
+              <thead>
+                <tr>
+                  <th>Đợt nghỉ</th><th>Từ ngày</th><th>Đến ngày</th><th>Số ngày</th>
+                  <th>Lịch</th><th>Hưởng lương</th>{la_nhan_su() && <th></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {(du_lieu ?? []).map((k) => (
+                  <tr key={k.id}>
+                    <td>{k.ten}</td>
+                    <td className="khong-ngat">{ngay_viet(k.tu_ngay)}</td>
+                    <td className="khong-ngat">{ngay_viet(k.den_ngay)}</td>
+                    <td>{k.so_ngay}</td>
+                    <td><NhanLich ma={k.lich_ma} ten={k.lich_ten} /></td>
+                    <td>{k.huong_luong
+                      ? <span className="nhan nhan-tot">có</span>
+                      : <span className="nhan nhan-mo">không</span>}</td>
+                    {la_nhan_su() && (
+                      <td><button className="nut-nho nut-phang" onClick={() => xoa(k)}>Xóa</button></td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {dang_them && (
+        <FormKeHoach khi_dong={() => dat_dang_them(false)}
+          khi_xong={() => { dat_dang_them(false); nap_lai(); }} />
+      )}
+      {xn.hop_thoai}
+    </>
+  );
+}
+
+function FormKeHoach({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: () => void }): ReactNode {
+  const [ten, dat_ten] = useState('');
+  const [tu_ngay, dat_tu] = useState('');
+  const [den_ngay, dat_den] = useState('');
+  const [lich_ma, dat_lich] = useState('vn');
+  const [huong_luong, dat_huong_luong] = useState(true);
+  const { du_lieu: lichs } = dung_nap<Lich[]>('/api/lich-nghi');
+  const hd = dung_hanh_dong();
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    const ok = await hd.chay(() => goi('/api/ke-hoach-nghi-le', {
+      method: 'POST',
+      body: { ten: ten.trim(), tu_ngay, den_ngay, lich_ma, huong_luong },
+    }));
+    if (ok) khi_xong();
+  };
+
+  return (
+    <HopThoai tieu_de="Thêm đợt nghỉ theo năm" khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+        <div className="o-nhap">
+          <label htmlFor="tenkh">Tên đợt nghỉ *</label>
+          <input id="tenkh" value={ten} onChange={(e) => dat_ten(e.target.value)}
+            placeholder="Nghỉ Quốc khánh 2/9" required autoFocus />
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="tukh">Từ ngày *</label>
+          <input id="tukh" type="date" value={tu_ngay} onChange={(e) => dat_tu(e.target.value)} required />
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="denkh">Đến ngày *</label>
+          <input id="denkh" type="date" value={den_ngay} onChange={(e) => dat_den(e.target.value)} required />
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="lichkh">Lịch áp dụng</label>
+          <select id="lichkh" value={lich_ma} onChange={(e) => dat_lich(e.target.value)}>
+            {(lichs ?? [{ ma: 'vn', ten: 'Việt Nam' } as Lich]).map((l) => (
+              <option key={l.ma} value={l.ma}>{l.ten}</option>
+            ))}
+          </select>
+        </div>
+        <div className="o-nhap-ngang">
+          <input id="hlkh" type="checkbox" checked={huong_luong}
+            onChange={(e) => dat_huong_luong(e.target.checked)} />
+          <label htmlFor="hlkh">Hưởng lương (tính công cho cả đợt)</label>
+        </div>
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>
+            {hd.dang_chay ? 'Đang lưu…' : 'Lưu đợt nghỉ'}
+          </button>
+          <button type="button" onClick={khi_dong}>Hủy</button>
+        </div>
+      </form>
+    </HopThoai>
+  );
+}
+
+// ------------------------------------------------------------ Tab 3: Noi lam viec
+function TabNoiLamViec(): ReactNode {
+  const [sua, dat_sua] = useState<NoiLamViec | null>(null);
+  const [dang_them, dat_dang_them] = useState(false);
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<NoiLamViec[]>('/api/noi-lam-viec');
+
+  return (
+    <>
+      <div className="dau-trang">
+        <p className="mo-ta">
+          Mỗi <strong>nơi làm việc</strong> gắn một lịch nghỉ lễ. Gán nhân viên vào nơi làm việc ở
+          trang Nhân viên → nghỉ lễ tự áp đúng lịch (VN/TQ).
+        </p>
+        {la_nhan_su() && (
+          <button className="nut-chinh" onClick={() => dat_dang_them(true)}>+ Thêm nơi làm việc</button>
+        )}
+      </div>
+
+      <HopLoi loi={loi} />
+
+      <div className="the the-mong">
+        {dang_tai ? <DangTai /> : (du_lieu ?? []).length === 0 ? (
+          <Trong tieu_de="Chưa khai nơi làm việc nào" />
+        ) : (
+          <div className="vo-bang">
+            <table>
+              <thead>
+                <tr><th>Tên</th><th>Lịch nghỉ</th><th>Địa chỉ</th><th>Số người</th>
+                  <th>Trạng thái</th>{la_nhan_su() && <th></th>}</tr>
+              </thead>
+              <tbody>
+                {(du_lieu ?? []).map((n) => (
+                  <tr key={n.id}>
+                    <td>{n.ten}</td>
+                    <td><NhanLich ma={n.lich_nghi_ma} ten={n.lich_ten} /></td>
+                    <td>{n.dia_chi ?? '—'}</td>
+                    <td>{n.so_nguoi}</td>
+                    <td>{n.dang_dung
+                      ? <span className="nhan nhan-tot">đang dùng</span>
+                      : <span className="nhan nhan-mo">tắt</span>}</td>
+                    {la_nhan_su() && (
+                      <td><button className="nut-nho nut-phang" onClick={() => dat_sua(n)}>Sửa</button></td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {(dang_them || sua !== null) && (
+        <FormNoiLamViec noi={sua}
+          khi_dong={() => { dat_dang_them(false); dat_sua(null); }}
+          khi_xong={() => { dat_dang_them(false); dat_sua(null); nap_lai(); }} />
+      )}
+    </>
+  );
+}
+
+function FormNoiLamViec(
+  { noi, khi_dong, khi_xong }: { noi: NoiLamViec | null; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [ten, dat_ten] = useState(noi?.ten ?? '');
+  const [lich_nghi_ma, dat_lich] = useState(noi?.lich_nghi_ma ?? 'vn');
+  const [dia_chi, dat_dia_chi] = useState(noi?.dia_chi ?? '');
+  const [dang_dung, dat_dang_dung] = useState(noi?.dang_dung ?? true);
+  const { du_lieu: lichs } = dung_nap<Lich[]>('/api/lich-nghi');
+  const hd = dung_hanh_dong();
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    const body = { ten: ten.trim(), lich_nghi_ma, dia_chi: dia_chi.trim(), dang_dung };
+    const ok = await hd.chay(() => noi === null
+      ? goi('/api/noi-lam-viec', { method: 'POST', body })
+      : goi(`/api/noi-lam-viec/${noi.id}`, { method: 'PUT', body }));
+    if (ok) khi_xong();
+  };
+
+  return (
+    <HopThoai tieu_de={noi === null ? 'Thêm nơi làm việc' : 'Sửa nơi làm việc'} khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+        <div className="o-nhap">
+          <label htmlFor="tennlv">Tên nơi làm việc *</label>
+          <input id="tennlv" value={ten} onChange={(e) => dat_ten(e.target.value)}
+            placeholder="Văn phòng Hà Nội" required autoFocus />
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="lichnlv">Lịch nghỉ lễ *</label>
+          <select id="lichnlv" value={lich_nghi_ma} onChange={(e) => dat_lich(e.target.value)}>
+            {(lichs ?? [{ ma: 'vn', ten: 'Việt Nam' } as Lich]).map((l) => (
+              <option key={l.ma} value={l.ma}>{l.ten}</option>
+            ))}
+          </select>
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="dcnlv">Địa chỉ</label>
+          <input id="dcnlv" value={dia_chi} onChange={(e) => dat_dia_chi(e.target.value)}
+            placeholder="Tầng 4, 39 Galaxy 5, Hà Đông" />
+        </div>
+        <div className="o-nhap-ngang">
+          <input id="ddnlv" type="checkbox" checked={dang_dung}
+            onChange={(e) => dat_dang_dung(e.target.checked)} />
+          <label htmlFor="ddnlv">Đang dùng</label>
         </div>
         <div className="hang-nut">
           <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>

@@ -42,6 +42,16 @@ interface ThamSo {
   cong_chuan_thang: string;
   /** 0 = khong lam tron thuc linh. */
   lam_tron_den: string;
+  /** Phat di muon: bat/tat + moc gio + muc + so lan mien. */
+  phat_di_muon_bat: boolean;
+  di_muon_gio_vao: string;
+  di_muon_moc_50k: string;
+  di_muon_muc_50k: string;
+  di_muon_moc_nua_ngay: string;
+  di_muon_mien_moi_thang: number;
+  di_muon_han_don: string;
+  /** Ty le luong thu viec tren luong cung (0.85). */
+  ty_le_thu_viec: string;
   can_cu: string | null;
   ghi_chu: string | null;
   tao_luc: string;
@@ -304,6 +314,14 @@ function HopThoaiThem(
     giam_tru_phu_thuoc: mau?.giam_tru_phu_thuoc ?? '4400000',
     cong_chuan_thang: mau?.cong_chuan_thang ?? '0',
     lam_tron_den: mau?.lam_tron_den ?? '0',
+    phat_di_muon_bat: mau?.phat_di_muon_bat ? '1' : '',
+    di_muon_gio_vao: (mau?.di_muon_gio_vao ?? '08:00').slice(0, 5),
+    di_muon_moc_50k: (mau?.di_muon_moc_50k ?? '08:10').slice(0, 5),
+    di_muon_muc_50k: mau?.di_muon_muc_50k ?? '50000',
+    di_muon_moc_nua_ngay: (mau?.di_muon_moc_nua_ngay ?? '08:30').slice(0, 5),
+    di_muon_mien_moi_thang: String(mau?.di_muon_mien_moi_thang ?? 3),
+    di_muon_han_don: (mau?.di_muon_han_don ?? '07:30').slice(0, 5),
+    ty_le_thu_viec: mau?.ty_le_thu_viec ?? '0.85',
     can_cu: '',
   });
   const hd = dung_hanh_dong();
@@ -376,6 +394,40 @@ function HopThoaiThem(
         Số gốc vẫn được giữ nguyên trên phiếu để đối chiếu; chỉ số <em>trả</em> là số làm tròn.
       </p>
 
+      <h3>Phạt đi muộn</h3>
+      <div className="o-nhap-ngang">
+        <input id="pdm" type="checkbox" checked={f.phat_di_muon_bat === '1'}
+          onChange={(e) => dat_f({ ...f, phat_di_muon_bat: e.target.checked ? '1' : '' })} />
+        <label htmlFor="pdm">Bật phạt đi muộn (tự trừ trên phiếu lương)</label>
+      </div>
+      <p className="mo-ta">
+        Giờ vào chuẩn {f.di_muon_gio_vao}. Vào từ mốc 50k đến trước mốc nửa ngày:
+        phạt tiền/lần. Vào từ mốc nửa ngày trở đi: trừ nửa ngày lương cứng/lần. Mỗi người được
+        miễn một số lần/tháng nếu có <strong>đơn xin đi muộn duyệt trước hạn</strong> và vào trước
+        mốc nửa ngày. <em>Lưu ý: phạt TIỀN đi muộn có rủi ro theo BLLĐ 2019 Đ.127; trừ theo thời
+        gian làm thực tế (nửa ngày) thì hợp luật.</em>
+      </p>
+      <label>Giờ vào chuẩn</label>
+      <input type="time" value={f.di_muon_gio_vao} onChange={dat('di_muon_gio_vao')} />
+      <label>Mốc bắt đầu phạt tiền (vd 08:10)</label>
+      <input type="time" value={f.di_muon_moc_50k} onChange={dat('di_muon_moc_50k')} />
+      <label>Mức phạt mỗi lần (đ)</label>
+      {so('di_muon_muc_50k')}
+      <label>Mốc bắt đầu trừ nửa ngày (vd 08:30)</label>
+      <input type="time" value={f.di_muon_moc_nua_ngay} onChange={dat('di_muon_moc_nua_ngay')} />
+      <label>Số lần miễn phạt mỗi tháng</label>
+      {so('di_muon_mien_moi_thang')}
+      <label>Hạn nộp đơn xin đi muộn (vd 07:30)</label>
+      <input type="time" value={f.di_muon_han_don} onChange={dat('di_muon_han_don')} />
+
+      <h3>Thử việc</h3>
+      <label>Tỷ lệ lương thử việc trên lương cứng (0.85 = 85%)</label>
+      {so('ty_le_thu_viec')}
+      <p className="mo-ta">
+        Hợp đồng loại <strong>thử việc</strong> tự áp tỷ lệ này lên lương cứng (P1 + P2). BLLĐ 2019
+        Đ.26: tối thiểu 85%. Ghi mức lương thẳng trên hợp đồng thử việc là ghi đè.
+      </p>
+
       <label htmlFor="cc">Căn cứ pháp lý</label>
       <input id="cc" value={f.can_cu} onChange={dat('can_cu')}
         placeholder="VD: Nghị định 73/2024/NĐ-CP, Nghị quyết 954/2020/UBTVQH14" />
@@ -394,7 +446,7 @@ function HopThoaiThem(
           onClick={() => void hd.chay(
             () => goi('/api/tham-so-luong', {
               method: 'POST',
-              body: { ...f, vung: Number(f.vung) },
+              body: { ...f, vung: Number(f.vung), phat_di_muon_bat: f.phat_di_muon_bat === '1' },
             }),
             'Đã thêm mốc hiệu lực. Tính lại kỳ lương để áp dụng.',
           ).then((ok) => { if (ok !== null) khi_xong(); })}
