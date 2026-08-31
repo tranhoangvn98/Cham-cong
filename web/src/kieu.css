@@ -1170,10 +1170,12 @@ textarea:focus-visible,
 .canhan-hero-chao { font-size: 22px; font-weight: 700; line-height: 1.25; }
 .canhan-hero-phu { margin-top: 4px; opacity: 0.9; font-size: 14px; }
 
+.canhan { max-width: 100%; }
 .canhan-luoi-o {
   display: grid; gap: var(--khoang-vua);
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
 }
+.tb-noi-dung, .troly-tn { overflow-wrap: anywhere; }
 .canhan-hang { display: grid; gap: var(--khoang-vua); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 .canhan-muc { margin-bottom: 0; }
 .canhan-muc-dau { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
@@ -1278,4 +1280,10 @@ textarea:focus-visible,
 
 @media (max-width: 600px) {
   .canhan-tat { grid-template-columns: 1fr; }
+  .canhan-hero { padding: 18px 16px; }
+  .canhan-hero-chao { font-size: 20px; }
+  .hoso-nhan { min-width: 120px; }
+  /* Nut tro ly + panel sat mep hon tren dien thoai de khong che noi dung. */
+  .troly-nut { right: 16px; bottom: 16px; }
+  .troly-panel { right: 8px; bottom: 8px; }
 }

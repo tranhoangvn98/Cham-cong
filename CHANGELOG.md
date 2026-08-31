@@ -2,6 +2,14 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.68.0] — 2026-08-31
+
+**Góc nhìn Cá nhân: tối ưu điện thoại.** Đa số nhân viên dùng điện thoại nên các trang cá nhân được chỉnh cho khổ nhỏ:
+
+- Thẻ số (công, phép, thông báo, đơn) xếp **2 cột gọn** trên điện thoại thay vì 1 cột dài; lưới thẻ và lối tắt tự về 1 cột khi quá hẹp.
+- Hero thu nhỏ, chống tràn chữ dài (`overflow-wrap`), khóa `max-width` chống tràn ngang.
+- **Nút trợ lý (💬) tròn ở góc dưới bên phải** — sát mép hơn trên điện thoại để không che nội dung; bấm mở khung chat.
+
 ## [1.67.0] — 2026-08-31
 
 **Góc nhìn Cá nhân — giao diện (phần 2/2).** Trải nghiệm riêng cho nhân viên, tách hẳn khỏi màn hình quản trị.
