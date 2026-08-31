@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.67.0] — 2026-08-31
+
+**Góc nhìn Cá nhân — giao diện (phần 2/2).** Trải nghiệm riêng cho nhân viên, tách hẳn khỏi màn hình quản trị.
+
+- **Dashboard cá nhân thay cho dashboard công ty.** Ở góc nhìn Cá nhân, trang Tổng quan (`/`) giờ là của **chính mình**: công tháng, phép còn lại, nghỉ lễ sắp tới, thông báo mới, đơn chờ — không còn thấy số liệu toàn công ty. Nhân viên thường (không quyền quản trị) luôn ở góc cá nhân nên **không bao giờ** thấy dashboard toàn công ty (NĐ 13/2023).
+- **Tab Thông báo** 📢: đọc thông báo từ BGĐ/HR, bấm "Đã đọc & hiểu". Thông báo gắn cờ **cần giải trình** nổi đỏ, bắt nhập giải trình mới xong (mã `GT-`, gộp vào mục Khiếu nại & giải trình). Nhân sự đăng thông báo mới (mức độ, bắt buộc giải trình) và xem ai đã đọc ngay tại đây.
+- **Tab Văn bản công ty** 📚: kho nội quy, biểu mẫu, chính sách — tải về; nhân sự tải lên (kiểm định dạng thật).
+- **Tab Hồ sơ của tôi** 🪪: xem thông tin công việc (chỉ xem) + tự cập nhật số điện thoại/email.
+- **Trợ lý dữ liệu** 💬: nút nổi góc phải, hỏi tiếng Việt về phép/công/đi muộn/nghỉ lễ/ca làm — trả lời từ dữ liệu của chính mình, không gửi ra ngoài.
+- **Giao diện sống động + sáng/tối.** Các trang cá nhân dùng token màu nên tự đổi theo nút sáng/tối sẵn có; thêm hero gradient và bố cục thẻ sinh động. Menu cá nhân thêm Thông báo, Văn bản, Hồ sơ.
+
 ## [1.66.0] — 2026-08-31
 
 **Góc nhìn Cá nhân — nền backend (phần 1/2).** Chuẩn bị cho trải nghiệm nhân viên: dashboard cá nhân, thông báo BGĐ, văn bản công ty, trợ lý dữ liệu. Phần giao diện ở bản kế tiếp.

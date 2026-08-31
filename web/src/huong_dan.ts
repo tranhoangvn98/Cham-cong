@@ -58,6 +58,41 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/thong-bao',
+    tom_tat: 'Thông báo từ Ban giám đốc và nhân sự — đọc, xác nhận, và giải trình khi được yêu cầu.',
+    buoc: [
+      { chu: 'Đọc thông báo, bấm "Đã đọc & hiểu" để xác nhận.' },
+      { chu: 'Thông báo gắn nhãn "Cần giải trình" (nổi đỏ) thì phải nhập giải trình mới xong.' },
+      { chu: 'Đăng thông báo mới, chọn mức độ và bật "bắt buộc giải trình" khi cần.', vai_tro: NHAN_SU },
+      { chu: 'Bấm "Xem ai đã đọc" để biết ai đã xác nhận và nội dung giải trình.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Giải trình cho thông báo có mã GT- riêng và gộp chung với mục Khiếu nại & giải trình để nhân sự theo dõi.',
+    ],
+  },
+  {
+    duong_dan: '/van-ban',
+    tom_tat: 'Kho văn bản công ty: nội quy, biểu mẫu, chính sách — tải về khi cần.',
+    buoc: [
+      { chu: 'Chọn danh mục, bấm Tải để lấy văn bản về máy.' },
+      { chu: 'Tải văn bản mới lên, gắn danh mục và mô tả cho dễ tìm.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Tệp nhận PDF, DOCX, XLSX và ảnh — máy chủ kiểm định dạng thật, không tin đuôi tên.',
+    ],
+  },
+  {
+    duong_dan: '/ho-so-toi',
+    tom_tat: 'Hồ sơ cá nhân của bạn: thông tin công việc (chỉ xem) và liên hệ (tự cập nhật).',
+    buoc: [
+      { chu: 'Xem phòng ban, chức danh, ca làm, PIN máy, quỹ phép của mình.' },
+      { chu: 'Bấm Sửa ở ô Liên hệ để tự cập nhật số điện thoại và email.' },
+    ],
+    luu_y: [
+      'Thông tin công việc (chức danh, phòng, ca) do nhân sự quản lý — cần đổi thì liên hệ nhân sự.',
+    ],
+  },
+  {
     duong_dan: '/lan-quet',
     tom_tat: 'Nhật ký thô từ máy chấm công — nguồn sự thật của mọi con số công.',
     buoc: [

@@ -30,6 +30,11 @@ import { TrangKhoTep } from './trang/kho_tep.tsx';
 import { TrangMaDinhDanh } from './trang/ma_dinh_danh.tsx';
 import { KhungHuongDan } from './thanh_phan_huong_dan.tsx';
 import { TrangHopDong } from './trang/hop_dong.tsx';
+import { TrangDashboardCaNhan } from './trang/dashboard_ca_nhan.tsx';
+import { TrangHoSoToi } from './trang/ho_so_toi.tsx';
+import { TrangThongBaoCaNhan } from './trang/thong_bao_ca_nhan.tsx';
+import { TrangVanBan } from './trang/van_ban.tsx';
+import { TroLyCaNhan } from './trang/tro_ly.tsx';
 
 interface MucMenu {
   duong_dan: string;
@@ -66,6 +71,9 @@ const MENU: MucMenu[] = [
   { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: '', phu: 'Log đồng bộ từ máy ADMS', quyen: 'nhan_su' },
   { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: '', phu: 'Tổng hợp theo tháng', quyen: 'quan_tri' },
   { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: '', phu: 'Xin nghỉ phép, giải trình', ca_nhan: true },
+  { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: '', phu: 'Thông báo từ BGĐ & nhân sự', ca_nhan: true },
+  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: '', phu: 'Nội quy, biểu mẫu, chính sách', ca_nhan: true },
+  { duong_dan: '/ho-so-toi', ten: 'Hồ sơ của tôi', icon: 'user-check', nhom: '', phu: 'Thông tin & liên hệ cá nhân', ca_nhan: true },
 
   { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Quản trị nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
   { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Quản trị nhân sự', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
@@ -150,7 +158,7 @@ function muc_dang_mo(duong_dan: string, cac_muc: MucMenu[]): MucMenu | null {
 
 const RE_HO_SO = /^\/nhan-vien\/([0-9a-f-]{36})$/i;
 
-function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
+function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }): ReactNode {
   // Tuyen co tham so duy nhat cua app. Bat truoc switch vi switch chi so khop chinh xac.
   const ho_so = RE_HO_SO.exec(duong_dan);
   if (ho_so !== null) return <TrangHoSo nhan_vien_id={ho_so[1] as string} />;
@@ -164,7 +172,13 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
   }
 
   switch (duong_dan) {
-    case '/': return <TrangDashboard />;
+    // Goc nhin Ca nhan: Tong quan la dashboard CUA CHINH MINH, khong phai toan cong ty. Nguoi
+    // khong co quyen quan tri luon o goc Ca nhan (api.ts goc_nhin), nen ho khong bao gio thay
+    // dashboard toan cong ty — vua la yeu cau nghiep vu vua la NĐ 13/2023.
+    case '/': return ca_nhan ? <TrangDashboardCaNhan /> : <TrangDashboard />;
+    case '/thong-bao': return <TrangThongBaoCaNhan />;
+    case '/van-ban': return <TrangVanBan />;
+    case '/ho-so-toi': return <TrangHoSoToi />;
     case '/don-cua-toi': return <TrangDonCuaToi />;
     case '/bang-cong': return <TrangBangCong />;
     case '/lan-quet': return <TrangLanQuet />;
@@ -435,9 +449,10 @@ function BoCuc(): ReactNode {
           */}
           <KhungHuongDan key={duong_dan} duong_dan={duong_dan} />
           <CungCapTieuDe dat={dat_tieu_de_trang}>
-            <NoiDung duong_dan={duong_dan} />
+            <NoiDung duong_dan={duong_dan} ca_nhan={gn === 'ca_nhan'} />
           </CungCapTieuDe>
         </div>
+        {gn === 'ca_nhan' && <TroLyCaNhan />}
       </main>
     </div>
   );
