@@ -15,6 +15,7 @@
 // doc `process.env` DUNG MOT LAN luc nap module, con cong cua may chu gia thi chi biet duoc
 // sau khi da `listen`. Import tinh bi hoisted len truoc moi cau lenh, nen no nap `cau_hinh`
 // truoc khi co gi de khai — va trieu chung la "chua cau hinh SharePoint" o moi bai co ra mang.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';

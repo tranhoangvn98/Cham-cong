@@ -1,6 +1,7 @@
 // Kiem phan thuan tuy cua khoa API: sinh khoa, bam, kiem pham vi.
 //
 // Phan chan quyen chay tren HTTP nam o e2e.test.ts — o day chi lo phan khong can CSDL.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

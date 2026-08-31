@@ -1,5 +1,6 @@
 // Tra PIN may cham cong ra nhan vien theo MOC THOI GIAN. Module thuan, nen bai kiem "PIN doi chu
 // giua thang" chay duoc bang du lieu mau — khong can CSDL, khong can may cham cong.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {

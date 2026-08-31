@@ -3,6 +3,7 @@
 // Phan quan trong nhat o day khong phai "co nhac khong" ma la "nhac BAO NHIEU LAN". Mot
 // he thong nhac han sai cach se gui bon thong bao cho mot hop dong, roi gui lai moi 15
 // phut — va nguoi nhan se tat thong bao, va tu do khong con nhac han nao den duoc ai.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

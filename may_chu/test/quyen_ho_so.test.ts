@@ -1,5 +1,6 @@
 // Bang phan quyen ho so nhan su. Day la noi de ro ri du lieu nhat he thong, nen tung o
 // cua bang deu co test rieng — nhat la hai o "truong phong KHONG duoc xem".
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

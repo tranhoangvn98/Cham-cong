@@ -1,4 +1,5 @@
 // Doc CSV do nhan su tai len: dinh dang tu Excel bien doi nhieu hon nguoi ta tuong.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

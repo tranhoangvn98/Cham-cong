@@ -1,5 +1,6 @@
 // Che du lieu ca nhan (Nghi dinh 13/2023/ND-CP). Che sai o day thi hoac lo du lieu, hoac
 // che den muc nhan su khong lam viec duoc — nen tung truong deu co test rieng.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

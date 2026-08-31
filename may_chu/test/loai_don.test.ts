@@ -3,6 +3,7 @@
 // Module `loai_don.ts` thuan (khong CSDL, khong Fastify) nen kiem duoc tung loai bang du lieu
 // mau. Hai canh bao la cho dang chu y nhat: chung dan chieu dieu luat that, va mot con so sai
 // o day di vao mot to don co nguoi ky.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

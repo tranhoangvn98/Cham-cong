@@ -2,6 +2,49 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.55.0] — 2026-08-31
+
+**Bộ kiểm chạy được từ một bản sao sạch. Trước đây 13 bài đỏ trên `main`.**
+
+### Sửa
+
+- **10 tệp kiểm chỉ chạy được trên máy có tệp `.env`.** `cau_hinh.ts` fail-fast khi thiếu
+  `JWT_SECRET` / `DATABASE_URL` — đúng, vì một máy chủ production thiếu khoá ký thì phải chết
+  ngay. Nhưng gần như mọi tệp trong `src/` đều kéo theo `cau_hinh.ts` qua một chuỗi import nào
+  đó, kể cả những tệp chỉ chứa hàm **thuần**: `dinh_danh/cap_pin.ts` không dùng khoá ký, nhưng
+  import nó là nạp cả `cau_hinh.ts`.
+
+  Hệ quả: bộ kiểm xanh trên máy người viết, đỏ trên mọi máy khác — CI, máy đồng nghiệp,
+  container. Và thông báo lỗi ("Thiếu biến môi trường bắt buộc") **không hề gợi ý** rằng vấn đề
+  nằm ở bộ kiểm chứ không phải ở máy. Chín tệp tích lại từng cái một vì không có gì bắt.
+
+  Nay có `test/moi_truong_kiem_thu.ts` — một chỗ đặt biến dùng chung, nhập làm import **đầu
+  tiên** của tệp. Là một `import` chứ không phải mấy dòng gán: import tĩnh bị kéo lên đầu tệp
+  nên `process.env[...] = ...` viết ở thân tệp chạy **sau** khi import đã chạy xong; các tệp cũ
+  phải lách bằng `await import()` động. Một import thì không phải lách gì cả.
+
+- **`test/ra_vao.test.ts` chưa được khai trong `npm test`** nên chưa chạy lần nào — 17 bài kiểm
+  máy trạng thái ra/vào văn phòng. Bài kiểm canh chừng việc này đã tồn tại và đã báo đúng; nó
+  chỉ chưa được ai xử lý.
+
+### Thêm mới
+
+- **Phép chặn tái diễn**: tệp kiểm nào chạm `../src/` mà không tự khai biến môi trường thì
+  `npm test` đỏ, kèm câu chỉ rõ phải thêm dòng nào. Đã đo bằng cách tạo một tệp kiểm mới thiếu
+  khai — cả hai phép chặn (chưa khai trong `package.json`, và chưa khai biến) đều bắt được.
+
+  16 tệp khác cũng được thêm dòng đó. Chúng đang xanh, nhưng chỉ vì chuỗi import của chúng
+  **chưa** chạm `cau_hinh.ts`; ngày ai đó thêm một import vào một mô-đun `src/` là chúng đỏ
+  theo, và lại đỏ theo kiểu chỉ đỏ ở máy khác.
+
+**Kết quả: 682 bài kiểm đơn vị, 0 đỏ** (trước: 530 bài, 13 đỏ). 431 e2e xanh. 0 lỗi kiểu.
+
+### Chưa làm, ghi lại để không quên
+
+Gốc rễ sâu hơn vẫn còn: một hàm thuần như `pin_trong_dau_tien` **không nên** kéo theo cả
+`cau_hinh.ts` chỉ để import. Sửa chỗ đó là cắt lại quan hệ mô-đun trong `src/`, rộng hơn hẳn
+phạm vi lần này.
+
 ## [1.54.0] — 2026-08-31
 
 **Đẩy sự kiện nhân sự sang cổng định danh chung.**

@@ -1,4 +1,5 @@
 // Bang dac ta cac he thong dinh danh. Module thuan, nen kiem duoc bang du lieu mau.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
