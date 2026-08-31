@@ -173,13 +173,20 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       return tra_text(res, 'OK\n');
     }
 
-    // USERINFO: danh sach user enroll tren may (sau lenh DATA QUERY USERINFO, hoac khi
-    // enroll/xoa user). Luu de DOI CHIEU voi mapping he thong -> phat hien trung/lech PIN.
-    // Mot so firmware day user qua OPERLOG voi dong "USER PIN=..." -> quet ca OPERLOG.
-    if (bang === 'USERINFO' || (bang === 'OPERLOG' && /(^|\n)\s*USER\s+PIN=/i.test(body))) {
+    // USERINFO: danh sach user enroll tren may (sau lenh query user, hoac khi enroll/xoa user).
+    // Luu de DOI CHIEU voi mapping he thong -> phat hien trung/lech PIN.
+    //
+    // Ten bang khac nhau theo firmware (USERINFO / USER / USERDATA...), va co firmware day user
+    // qua OPERLOG voi dong "USER PIN=...". Nen KHONG chi tin ten bang: bat ca khi THAN co dong
+    // dinh danh nguoi dung (PIN=... kem Name=/Card=/Pri=). Chi lam o day, SAU khi ATTLOG/rtlog da
+    // duoc xu ly rieng — nen khong nham voi ban ghi cham cong.
+    const co_dong_user = /(^|\n)\s*(USER\s+|USERINFO\s+)?PIN=[^\t\n]*\t[^\n]*\b(Name|Card|Pri)=/i
+      .test(body);
+    if (bang === 'USERINFO' || bang === 'USER' || bang === 'USERDATA'
+        || (co_dong_user && bang !== 'ATTLOG' && bang !== 'RTLOG')) {
       await cham_thiet_bi(sn, null, req.ip);
       const kq = await tiep_nhan_userinfo(sn, body);
-      if (kq.so_user > 0) req.log.info({ sn, ...kq }, 'nhan USERINFO');
+      req.log.info({ sn, bang, ...kq }, 'nhan USERINFO');
       return tra_text(res, 'OK\n');
     }
 
