@@ -33,6 +33,8 @@ export interface NguoiDung {
   nhan_vien_id: string | null;
   ho_ten: string | null;
   phai_doi_mat_khau: boolean;
+  /** Truong phong duoc admin cap quyen xem man hinh quan tri. Vai tro nhan su luon co. */
+  quyen_quan_tri?: boolean;
 }
 
 interface Phien {
@@ -346,14 +348,45 @@ export function da_dang_nhap(): boolean {
   return phien !== null;
 }
 
-/** Cac vai tro co quyen quan tri cham cong. */
+/**
+ * Vai tro NHAN SU co quyen quan tri cham cong. PHAI khop `can_nhan_su` cua may chu
+ * (bao_mat/xac_thuc.ts) — bai kiem `huong_dan.test.mjs` doi chieu tung ky tu, nen giu dung dang
+ * `v === '...'`.
+ */
 export function la_nhan_su(): boolean {
   const v = phien?.nguoi_dung.vai_tro;
-  // `truong_phong_nhan_su` PHAI co mat o day: may chu coi vai tro nay ngang `nhan_su`
-  // (`can_nhan_su` cua `bao_mat/xac_thuc.ts`), nen thieu no o day thi giao dien AN het nhom
-  // "He thong" va cac trang nhan su cua ho — trong khi may chu van cho vao. Nguoi dung thay mot
-  // ung dung cut, khong co gi bao vi sao.
+  // `truong_phong_nhan_su` PHAI co mat o day: may chu coi vai tro nay ngang `nhan_su`.
   return v === 'admin' || v === 'nhan_su' || v === 'truong_phong_nhan_su';
+}
+
+/**
+ * Co vao PHAN QUAN TRI khong. Vai tro nhan su luon co; truong phong thi CHI khi duoc admin cap
+ * quyen (`quyen_quan_tri`). Dung cho hien menu quan tri + nut chuyen goc nhin.
+ */
+export function la_quan_tri(): boolean {
+  if (la_nhan_su()) return true;
+  const nd = phien?.nguoi_dung;
+  return nd?.vai_tro === 'truong_phong' && nd.quyen_quan_tri === true;
+}
+
+/** Nguoi duyet don: nguoi quan tri, hoac truong phong (duyet don cua phong minh). */
+export function la_nguoi_duyet(): boolean {
+  return la_quan_tri() || phien?.nguoi_dung.vai_tro === 'truong_phong';
+}
+
+// ---------------------------------------------------------------- goc nhin: Quan tri / Ca nhan
+export type GocNhin = 'quan_tri' | 'ca_nhan';
+const KHOA_GOC_NHIN = 'goc_nhin_xem';
+
+/** Goc nhin hien tai. Nguoi KHONG co quyen quan tri luon o 'ca_nhan'. */
+export function goc_nhin(): GocNhin {
+  if (!la_quan_tri()) return 'ca_nhan';
+  try { return localStorage.getItem(KHOA_GOC_NHIN) === 'ca_nhan' ? 'ca_nhan' : 'quan_tri'; }
+  catch { return 'quan_tri'; }
+}
+
+export function dat_goc_nhin(g: GocNhin): void {
+  try { localStorage.setItem(KHOA_GOC_NHIN, g); } catch { /* rieng tu / chan cookie — bo qua */ }
 }
 
 /** Vai tro cua nguoi dang dang nhap, hoac null khi chua dang nhap. */

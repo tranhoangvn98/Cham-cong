@@ -2,6 +2,10 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.60.0] — 2026-08-31
+
+**Nút chuyển góc nhìn Quản trị ⇄ Cá nhân (web).** Người có quyền quản trị (nhân sự, và trưởng phòng được admin cấp quyền) giờ có nút ở chân thanh bên để chuyển giữa **Quản trị** (thấy đủ menu theo quyền) và **Cá nhân** (chỉ Tổng quan, Đơn của tôi, Duyệt đơn — bản chất admin/nhân sự cũng là người lao động, cũng xin nghỉ như nhân viên thường). Người không có quyền quản trị luôn ở góc nhìn Cá nhân. Mục "Nghỉ phép" đổi tên **"Duyệt đơn"** và mở cho người duyệt (gồm trưởng phòng duyệt đơn của phòng mình). Chuẩn bị sẵn `quyen_quan_tri` để bước sau admin cấp quyền xem màn hình quản trị cho trưởng phòng.
+
 ## [1.59.0] — 2026-08-31
 
 **Trang "Đơn của tôi" cho nhân viên tự nộp đơn (web).** Trước chỉ có trên app điện thoại; giờ nhân viên đăng nhập web cũng tự phục vụ được. Ba tab: **Nghỉ phép** (các loại: phép năm, không lương, ốm, thai sản, kết hôn, hiếu; nửa ngày; hủy khi còn chờ duyệt), **Giải trình chấm công** (quên quẹt — đề xuất giờ vào/ra), **Vi phạm của tôi** (xem vi phạm ghi nhận với mình và gửi giải trình — quyền tự bào chữa BLLĐ Điều 122). Dùng lại API /api/toi/* sẵn có, theo dõi trạng thái duyệt ngay tại trang.

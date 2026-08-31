@@ -127,6 +127,28 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
 .chan-thanh-ben .nut-phang { color: var(--lien-ket-ben); }
 .chan-thanh-ben .nut-phang:hover { background: var(--vien-ben); }
 
+/* Nut chuyen goc nhin Quan tri / Ca nhan — segmented control trong chan thanh ben (nen toi). */
+.chuyen-goc-nhin {
+  display: flex;
+  gap: 4px;
+  background: var(--vien-ben);
+  border-radius: var(--tron);
+  padding: 3px;
+  margin-bottom: 10px;
+}
+.chuyen-goc-nhin button {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--chu-ben);
+  border-radius: var(--tron-nho);
+  font-weight: 500;
+}
+.chuyen-goc-nhin button:hover:not(.dang-chon) { color: var(--chu-ben-sang); background: transparent; }
+.chuyen-goc-nhin button.dang-chon { background: var(--nen-the); color: var(--chu); }
+
 /* ---------------------------------------------------------------- than + header */
 .than { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 

@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   cau_hinh_dang_nhap, da_dang_nhap, dang_xuat, di_cong_dang_nhap, doc_token_cong, dung_cong_sso,
-  la_admin, la_nhan_su, nap_phien_cong, nguoi_dung_hien_tai, nhan_phien_tu_neo,
+  la_admin, la_nhan_su, la_quan_tri, la_nguoi_duyet, goc_nhin, dat_goc_nhin, type GocNhin,
+  nap_phien_cong, nguoi_dung_hien_tai, nhan_phien_tu_neo,
 } from './api.ts';
 import { CungCapTuyen, LienKet, dung_tuyen } from './dinh_tuyen.tsx';
 import { CungCapTieuDe, DuongMon, type TieuDeTrang } from './tieu_de_trang.tsx';
@@ -39,7 +40,9 @@ interface MucMenu {
   /** Dong phu tren header khi o trang nay. */
   phu?: string;
   /** Vai tro toi thieu de thay muc nay. */
-  quyen?: 'nhan_su' | 'admin';
+  quyen?: 'nhan_su' | 'admin' | 'nguoi_duyet';
+  /** Hien o GOC NHIN CA NHAN (viec cua chinh minh). Khong danh dau = chi hien o goc nhin Quan tri. */
+  ca_nhan?: boolean;
 }
 
 /*
@@ -55,13 +58,13 @@ interface MucMenu {
  * duoc va nhung ngay do bi tinh la Vang.
  */
 const MENU: MucMenu[] = [
-  { duong_dan: '/', ten: 'Tổng quan', icon: 'layout-dashboard', nhom: '', phu: 'Tình hình chấm công hôm nay' },
+  { duong_dan: '/', ten: 'Tổng quan', icon: 'layout-dashboard', nhom: '', phu: 'Tình hình chấm công hôm nay', ca_nhan: true },
   { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: '', phu: 'Log đồng bộ từ máy ADMS' },
   { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: '', phu: 'Tổng hợp theo tháng' },
-  { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: '', phu: 'Xin nghỉ phép, giải trình' },
+  { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: '', phu: 'Xin nghỉ phép, giải trình', ca_nhan: true },
 
   { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Quản trị nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản' },
-  { duong_dan: '/duyet-don', ten: 'Nghỉ phép', icon: 'plane-departure', nhom: 'Quản trị nhân sự', phu: 'Đơn từ & duyệt' },
+  { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Quản trị nhân sự', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
 
   { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Quản trị nhân sự', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'nhan_su' },
   { duong_dan: '/ra-vao', ten: 'Ra/vào', icon: 'clock-exclamation', nhom: 'Quản trị nhân sự', phu: 'Cảnh báo ra/vào & xử lý', quyen: 'nhan_su' },
@@ -129,6 +132,7 @@ const CHUYEN_HUONG: Record<string, string> = {
 function duoc_xem(m: MucMenu): boolean {
   if (m.quyen === 'admin') return la_admin();
   if (m.quyen === 'nhan_su') return la_nhan_su();
+  if (m.quyen === 'nguoi_duyet') return la_nguoi_duyet();
   return true;
 }
 
@@ -265,8 +269,15 @@ function BoCuc(): ReactNode {
   const [dang_doi_mk, dat_dang_doi_mk] = useState(false);
   const [ben_mo, dat_ben_mo] = useState(false);
   const [che_do, dat_che_do] = useState<CheDo>(doc_che_do);
+  const [gn, dat_gn] = useState<GocNhin>(goc_nhin);
   // Tieu de do TRANG dat (vd ten nhan vien tren trang ho so). `null` = dung nhan cua MENU.
   const [tieu_de_trang, dat_tieu_de_trang] = useState<TieuDeTrang | null>(null);
+
+  const doi_goc_nhin = (moi: GocNhin): void => {
+    dat_goc_nhin(moi);
+    dat_gn(moi);
+    di_toi(moi === 'ca_nhan' ? '/don-cua-toi' : '/');
+  };
 
   useEffect(() => {
     ap_che_do(che_do);
@@ -293,7 +304,9 @@ function BoCuc(): ReactNode {
     );
   }
 
-  const duoc_thay = MENU.filter(duoc_xem);
+  // Goc nhin Ca nhan chi hien viec cua chinh minh (Tong quan, Don cua toi, Duyet don). Goc nhin
+  // Quan tri hien het (theo quyen). Nguoi khong co quyen quan tri luon o Ca nhan.
+  const duoc_thay = MENU.filter(duoc_xem).filter((m) => gn === 'quan_tri' || m.ca_nhan === true);
   const nhom_menu = [...new Set(duoc_thay.map((m) => m.nhom))];
   // Khop theo TIEN TO: `/nhan-vien/<uuid>` va `/cai-dat/khoa-api` deu phai lam sang muc cha
   // cua no. Truoc day chi so khop chinh xac, nen trang ho so khong muc nao sang va tieu de
@@ -331,6 +344,14 @@ function BoCuc(): ReactNode {
         </nav>
 
         <div className="chan-thanh-ben">
+          {la_quan_tri() && (
+            <div className="chuyen-goc-nhin" role="group" aria-label="Chuyển góc nhìn">
+              <button className={gn === 'quan_tri' ? 'dang-chon' : undefined}
+                onClick={() => doi_goc_nhin('quan_tri')}>Quản trị</button>
+              <button className={gn === 'ca_nhan' ? 'dang-chon' : undefined}
+                onClick={() => doi_goc_nhin('ca_nhan')}>Cá nhân</button>
+            </div>
+          )}
           <div className="ten-nguoi">{nd?.ho_ten ?? nd?.ten_dang_nhap}</div>
           <div style={{ marginBottom: 8 }}>
             {nd === null ? '' : (TEN_VAI_TRO[nd.vai_tro] ?? nd.vai_tro)}
