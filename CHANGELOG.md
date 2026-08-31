@@ -2,6 +2,14 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.79.0] — 2026-08-31
+
+**Hoàn tất khối lương: đơn đi muộn, bảng lương xuất theo mẫu, cảnh báo hợp đồng.**
+
+- **Đơn xin đi muộn** (loại đơn mới `di_muon`): nhân viên nộp trên app (ngày + giờ dự kiến có mặt), quản lý duyệt như các đơn khác. Đơn duyệt + gửi trước 07:30 và vào trước 08:30 → miễn phạt đi muộn (tối đa 3 lần/tháng). Khóa trọn cơ chế phạt đi muộn.
+- **Bảng lương xuất (XLSX/CSV) bám mẫu công ty**: thêm cột STT, Chức danh, Email, và **Số lần đi muộn / Số lần đi muộn >30ph**; các phụ cấp và khoản phạt vẫn là cột động theo danh mục.
+- **Cảnh báo hợp đồng — Điều 20.2c BLLĐ**: nhắc hạn hợp đồng phát hiện HĐ xác định thời hạn **lần thứ 2 trở lên** → cảnh báo lần ký tiếp bắt buộc là HĐ không xác định thời hạn (bổ sung cho các mốc Đ.45/Đ.20.2/Đ.27 đã có).
+
 ## [1.78.0] — 2026-08-31
 
 **Lương theo mẫu công ty — API + giao diện (phần 2/2).** Nối phần hậu trường ở 1.77 ra giao diện.

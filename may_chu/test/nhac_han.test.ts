@@ -15,7 +15,7 @@ function hd(sua: Partial<HopDongSapHan> = {}): HopDongSapHan {
   return {
     id: 'x', nhan_vien_id: 'y', ma_nv: 'NV01', ho_ten: 'Nguyễn Văn A',
     so_hd: '07/2026/HĐLĐ-TPVN', loai: 'xac_dinh', chuc_danh: 'Chuyên viên',
-    hieu_luc_den: '2026-09-30', so_ngay_con: 30, da_nhac_han: [],
+    hieu_luc_den: '2026-09-30', so_ngay_con: 30, da_nhac_han: [], so_hd_xac_dinh: 1,
     ...sua,
   };
 }
@@ -123,6 +123,16 @@ test('loi nhac luon co ma nhan vien va ho ten — de doc tren man hinh khoa', ()
 });
 
 test('hop dong khong co so thi loi nhac van doc duoc, khong co ngoac rong', () => {
+  const l0 = loi_nhac(hd({ so_hd: null, so_ngay_con: 15 }));
+  assert.ok(l0 !== null);
+
+  // Dieu 20.2c: HD xac dinh lan 2 tro len -> canh bao buoc chuyen khong xac dinh thoi han.
+  const lan2 = loi_nhac(hd({ loai: 'xac_dinh', so_hd_xac_dinh: 2, so_ngay_con: 15 }));
+  assert.match(lan2.noi_dung, /20\.2c/);
+  assert.match(lan2.noi_dung, /không xác định thời hạn/);
+  // Lan 1 thi khong canh bao 20.2c.
+  const lan1 = loi_nhac(hd({ loai: 'xac_dinh', so_hd_xac_dinh: 1, so_ngay_con: 15 }));
+  assert.equal(lan1.noi_dung.includes('20.2c'), false);
   const l = loi_nhac(hd({ so_hd: null, so_ngay_con: 15 }));
   assert.equal(l.noi_dung.includes('()'), false);
   assert.match(l.noi_dung, /Hợp đồng hết hạn/);

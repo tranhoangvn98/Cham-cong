@@ -79,6 +79,8 @@ export interface HopDongSapHan {
   hieu_luc_den: string;
   so_ngay_con: number;
   da_nhac_han: number[];
+  /** So HD xac dinh thoi han cua nguoi nay (ke ca HD dang xet). Dung cho canh bao Dieu 20.2c. */
+  so_hd_xac_dinh: number;
 }
 
 /**
@@ -88,6 +90,18 @@ export interface HopDongSapHan {
  * phai "da den moc 7 ngay".
  */
 export function loi_nhac(hd: HopDongSapHan): { tieu_de: string; noi_dung: string } {
+  const kq = loi_nhac_co_ban(hd);
+  // Dieu 20.2c BLLĐ: HD xac dinh thoi han chi duoc ky them TOI DA MOT LAN; lan ky tiep BAT BUOC
+  // la HD khong xac dinh thoi han. Neu day la HD xac dinh thu 2 tro len -> canh bao manh, vi
+  // ky tiep mot HD xac dinh nua la sai luat.
+  if (hd.loai === 'xac_dinh' && hd.so_hd_xac_dinh >= 2) {
+    kq.noi_dung += ` Đây là HĐ xác định thời hạn lần thứ ${String(hd.so_hd_xac_dinh)} của người này`
+      + ' — theo Điều 20.2c BLLĐ, lần ký tiếp BẮT BUỘC là HĐ không xác định thời hạn.';
+  }
+  return kq;
+}
+
+function loi_nhac_co_ban(hd: HopDongSapHan): { tieu_de: string; noi_dung: string } {
   const ten = `${hd.ma_nv} — ${hd.ho_ten}`;
   const so = hd.so_hd === null ? '' : ` (${hd.so_hd})`;
   const den = ngay_viet(hd.hieu_luc_den);
@@ -136,7 +150,10 @@ export async function hop_dong_sap_het_han(
     `select hd.id, hd.nhan_vien_id, nv.ma_nv, nv.ho_ten, hd.so_hd, hd.loai, hd.chuc_danh,
             to_char(hd.hieu_luc_den, 'YYYY-MM-DD') as hieu_luc_den,
             (hd.hieu_luc_den - coalesce($2::date, current_date))::int as so_ngay_con,
-            hd.da_nhac_han
+            hd.da_nhac_han,
+            (select count(*) from hop_dong_lao_dong h2
+              where h2.nhan_vien_id = hd.nhan_vien_id and h2.loai = 'xac_dinh'
+                and h2.trang_thai in ('hieu_luc','het_han','da_thanh_ly'))::int as so_hd_xac_dinh
        from hop_dong_lao_dong hd
        join nhan_vien nv on nv.id = hd.nhan_vien_id
       where hd.trang_thai = 'hieu_luc'
