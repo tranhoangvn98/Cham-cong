@@ -490,6 +490,8 @@ input[type="checkbox"] {
   padding: 20px;
 }
 .hop-thoai-rong { max-width: 760px; }
+/* Gan het man hinh — cho bang nhieu cot (bang luong chi tiet) co cho tho. */
+.hop-thoai-toan-man { max-width: 96vw; width: 96vw; max-height: 94vh; }
 /* Header hop thoai: giu nut dong o goc tren-phai, KHONG cho xuong dong (dau-trang goc co
    flex-wrap cho header trang; trong hop thoai tieu de dai lam nut ✕ rot xuong duoi). */
 .hop-thoai > .dau-trang { flex-wrap: nowrap; }

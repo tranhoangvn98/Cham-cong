@@ -2,6 +2,10 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.57.3] — 2026-08-31
+
+**Bảng lương chi tiết hiện gần toàn màn hình.** Bảng nhiều cột (công, lương theo công, OT, thưởng, phụ cấp, tổng thu nhập, BHXH, thuế, thực lĩnh…) trước bó trong hộp thoại 760px nên tràn/cắt cột, phải cuộn ngang. Thêm biến thể hộp thoại `toàn màn hình` (96% rộng, 94% cao) và áp cho bảng lương — xem đủ cột một lần.
+
 ## [1.57.2] — 2026-08-29
 
 **Thêm nút Sửa thiết bị (đổi tên gợi nhớ / vị trí).** Trang Cài đặt → Thiết bị đã có API sửa

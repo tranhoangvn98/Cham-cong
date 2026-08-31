@@ -182,9 +182,11 @@ interface HopThoaiProps {
   children: ReactNode;
   khi_dong: () => void;
   rong?: boolean;
+  /** Gan het man hinh — cho noi dung rong nhu bang luong chi tiet nhieu cot. */
+  toan_man?: boolean;
 }
 
-export function HopThoai({ tieu_de, children, khi_dong, rong }: HopThoaiProps): ReactNode {
+export function HopThoai({ tieu_de, children, khi_dong, rong, toan_man }: HopThoaiProps): ReactNode {
   useEffect(() => {
     const khi_bam = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') khi_dong();
@@ -196,7 +198,8 @@ export function HopThoai({ tieu_de, children, khi_dong, rong }: HopThoaiProps): 
   return (
     <div className="man-mo" onClick={khi_dong} role="presentation">
       <div
-        className={rong === true ? 'hop-thoai hop-thoai-rong' : 'hop-thoai'}
+        className={toan_man === true ? 'hop-thoai hop-thoai-toan-man'
+          : rong === true ? 'hop-thoai hop-thoai-rong' : 'hop-thoai'}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

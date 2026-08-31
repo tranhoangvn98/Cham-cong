@@ -276,7 +276,7 @@ function HopThoaiChiTiet(
   };
 
   return (
-    <HopThoai tieu_de={`Bảng lương tháng ${k.thang}`} khi_dong={khi_dong} rong>
+    <HopThoai tieu_de={`Bảng lương tháng ${k.thang}`} khi_dong={khi_dong} toan_man>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
 
       <div className="hang-nut">
