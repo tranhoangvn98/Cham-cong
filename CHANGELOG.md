@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.81.0] — 2026-08-31
+
+**Lệnh gán nhân sự Trung Quốc về "Kho Trung quốc" (lịch nghỉ TQ).**
+
+- Lệnh mới `gan_kho_tq_ma_nguon`: tạo nơi làm việc **"Kho Trung quốc"** (lịch nghỉ Trung Quốc) và gán nhân sự vào đó → nghỉ lễ tính theo lịch TQ.
+- Tiêu chí gán: **phòng ban = "Phòng Kho Trung Quốc"** (đã có), cộng các tên chỉ định (mặc định **Thân Thị Vân Anh**; thêm bằng `--ten "Tên 1,Tên 2"`).
+- Chạy thử mặc định (chỉ in), thêm `--that` để ghi thật; idempotent (chạy lại không đổi gì).
+  - `npm --workspace may_chu run gan_kho_tq_ma_nguon` (xem trước) → thêm `-- --that` để áp dụng.
+
 ## [1.80.0] — 2026-08-31
 
 **Bảng lương: nhập lương cứng ngay trên bảng + cột Lương cơ bản + dòng Tổng cộng.** Theo phản hồi: các dòng đang 0 vì chưa nhập lương cứng, và cần thấy tổng lương cần chi trả.

@@ -1,6 +1,6 @@
 {
   "name": "@cham-cong/may-chu",
-  "version": "1.63.0",
+  "version": "1.64.0",
   "private": true,
   "type": "module",
   "description": "Backend: cong ADMS cho may ZKTeco + REST API cho webapp va app dien thoai",
@@ -28,7 +28,8 @@
     "test_e2e": "node --experimental-strip-types --test test/e2e.test.ts",
     "test_tat_ca": "npm test && npm run test_e2e",
     "nap_ho_so_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_nap_ho_so.ts",
-    "cap_nhat_phong_ban_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_cap_nhat_phong_ban.ts"
+    "cap_nhat_phong_ban_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_cap_nhat_phong_ban.ts",
+    "gan_kho_tq_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_gan_kho_trung_quoc.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
