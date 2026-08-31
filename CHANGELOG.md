@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.76.0] — 2026-08-31
+
+**Cấu hình cửa qua ADMS: công cụ đọc cấu trúc bảng access-control từ máy.** Để tiến tới đặt khung giờ (time zone) qua ADMS thay vì làm tay trên máy — cần biết cấu trúc bảng `timezone`/`door`/`userauthorize` (không có tài liệu công khai), giống cách đã crack `tablename=user`.
+
+- **Migration 041**: `may_du_lieu_tho` (lưu nguyên văn nội dung mỗi bảng máy đẩy về qua `/iclock/querydata`, mỗi (máy, bảng) một bản mới nhất).
+- Bộ nhận `/querydata` giờ lưu nguyên văn mọi kết quả query (mọi bảng), không chỉ `user`.
+- API (`can_admin`): `POST /thiet-bi/:serial/truy-van-bang` (gửi `DATA QUERY tablename=<bang>`), `GET /thiet-bi/:serial/du-lieu-tho` (đọc nội dung thô).
+- UI Khóa cửa: mục "Cấu hình qua ADMS" — nút Đọc timezone/door/userauthorize + Xem kết quả (chỉ ĐỌC, an toàn). Gửi kết quả cho kỹ thuật soạn lệnh `DATA UPDATE` đặt khung giờ.
+
 ## [1.75.0] — 2026-08-31
 
 **Khóa cửa theo giờ: rà soát kỹ SDK ZKTeco + cập nhật hướng dẫn cho đúng.** Sau khi rà bộ lệnh ADMS/PUSH (probe thư viện s0x90, nhiều dự án thật, guide SenseFace 3A):

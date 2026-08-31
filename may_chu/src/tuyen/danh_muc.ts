@@ -670,6 +670,35 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     return { ok: true, lenh_id: id };
   });
 
+  // --- Kham pha cau truc bang access-control (timezone/door/userauthorize...) qua ADMS ---
+  /** Ra lenh may day noi dung mot bang len (de xem cau truc, soan DATA UPDATE khung gio). */
+  app.post('/thiet-bi/:serial/truy-van-bang', { preHandler: can_admin }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const serial = lay_serial_param(req);
+    await bat_buoc_co_may(serial);
+    const b = than(req.body);
+    const bang_tho = chuoi_bat_buoc(b, 'bang', { toi_da: 40, toi_thieu: 1 });
+    // Chi cho ten bang an toan (chu, so, gach duoi) — tranh chen vao lenh.
+    const bang = bang_tho.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (bang === '') throw new LoiDauVao('Tên bảng không hợp lệ.');
+    const id = await xep_lenh(serial, `DATA QUERY tablename=${bang},fielddesc=*,filter=*`);
+    await ghi_nhat_ky(nd.sub, 'truy_van_bang_may', 'thiet_bi', serial, { bang }, req.ip);
+    return {
+      ok: true, lenh_id: id, bang,
+      luu_y: 'Máy sẽ đẩy nội dung bảng ở lần kết nối kế tiếp (~10-15s). Chờ rồi bấm "Xem kết quả".',
+    };
+  });
+
+  /** Doc noi dung THO cac bang may da day len (moi bang mot ban moi nhat). */
+  app.get('/thiet-bi/:serial/du-lieu-tho', { preHandler: can_admin }, async (req) => {
+    const serial = lay_serial_param(req);
+    return truy_van(
+      `select bang, noi_dung, so_dong, luc from may_du_lieu_tho
+        where thiet_bi_serial = $1 order by luc desc`,
+      [serial],
+    );
+  });
+
   /**
    * Xin log theo KHOANG NGAY, khong phu thuoc con tro dong bo cua may.
    *

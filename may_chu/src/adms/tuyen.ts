@@ -220,13 +220,30 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
     await cham_thiet_bi(sn, null, req.ip);
     const bang = String((req.query as Record<string, unknown>)['tablename'] ?? '').toLowerCase();
     const body = typeof req.body === 'string' ? req.body : '';
-    // Chi bang user moi chua dinh danh nguoi dung. Cac bang khac (transaction, userauthorize,
-    // templatev10...) xac nhan da nhan de may khong day lai mai, nhung khong xu ly.
+
+    // Luu NGUYEN VAN moi ket qua query (moi bang) de kham pha cau truc cac bang access-control
+    // (timezone, door, userauthorize...) — chua co tai lieu, phai xem that de soan DATA UPDATE.
+    if (body.trim().length > 0) {
+      const so_dong = body.split('\n').filter((d) => d.trim().length > 0).length;
+      try {
+        await thuc_thi(
+          `insert into may_du_lieu_tho(thiet_bi_serial, bang, noi_dung, so_dong, luc)
+           values ($1,$2,$3,$4, now())
+           on conflict (thiet_bi_serial, bang) do update
+             set noi_dung = excluded.noi_dung, so_dong = excluded.so_dong, luc = now()`,
+          [sn, bang === '' ? '(khong_ten)' : bang, body.slice(0, 100000), so_dong],
+        );
+      } catch (loi) {
+        req.log.warn({ sn, bang, loi: (loi as Error).message }, 'khong luu duoc du lieu tho');
+      }
+    }
+
+    // Bang user chua dinh danh nguoi dung -> parse vao may_nguoi_dung. Cac bang khac chi luu tho.
     if ((bang === 'user' || bang === '') && body.trim().length > 0) {
       const kq = await tiep_nhan_userinfo(sn, body);
       req.log.info({ sn, bang, ...kq }, 'nhan querydata user');
     } else if (body.trim().length > 0) {
-      req.log.info({ sn, bang, dai: body.length }, 'nhan querydata bang khac, bo qua');
+      req.log.info({ sn, bang, dai: body.length }, 'nhan querydata bang khac (da luu tho)');
     }
     return tra_text(res, 'OK\n');
   }

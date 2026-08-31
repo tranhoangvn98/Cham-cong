@@ -845,6 +845,17 @@ function KhoaCuaTheoGio(
   const [ct, dat_ct] = useState(true);
   const [lenh_mo, dat_lenh_mo] = useState('');
   const [lenh_chan, dat_lenh_chan] = useState('');
+  const [tho, dat_tho] = useState<{ bang: string; noi_dung: string; so_dong: number; luc: string }[]>([]);
+
+  const truy_van_bang = (bang: string): void => {
+    void hd.chay(() => goi(`/api/thiet-bi/${thiet_bi.serial}/truy-van-bang`, {
+      method: 'POST', body: { bang },
+    }), `Đã gửi lệnh đọc bảng "${bang}". Chờ ~15s rồi bấm "Xem kết quả".`);
+  };
+  const xem_tho = (): void => {
+    void goi<{ bang: string; noi_dung: string; so_dong: number; luc: string }[]>(
+      `/api/thiet-bi/${thiet_bi.serial}/du-lieu-tho`).then(dat_tho).catch(() => {});
+  };
 
   useEffect(() => {
     if (du_lieu === null) return;
@@ -944,6 +955,32 @@ function KhoaCuaTheoGio(
               {hd.dang_chay ? 'Đang lưu…' : 'Lưu lịch'}
             </button>
             <button className="nut-phang" onClick={khi_dong}>Đóng</button>
+          </div>
+
+          <div className="the" style={{ marginTop: 16 }}>
+            <h3>Cấu hình qua ADMS — đọc bảng khung giờ từ máy (nâng cao)</h3>
+            <p className="mo-ta">Bấm để máy đẩy cấu trúc bảng lên, rồi gửi kết quả cho kỹ thuật
+              soạn lệnh <code>DATA UPDATE</code> đặt khung giờ. An toàn — chỉ ĐỌC, không đổi gì.</p>
+            <div className="hang-nut">
+              <button className="nut-nho" disabled={hd.dang_chay}
+                onClick={() => truy_van_bang('timezone')}>Đọc timezone</button>
+              <button className="nut-nho" disabled={hd.dang_chay}
+                onClick={() => truy_van_bang('door')}>Đọc door</button>
+              <button className="nut-nho" disabled={hd.dang_chay}
+                onClick={() => truy_van_bang('userauthorize')}>Đọc userauthorize</button>
+              <button className="nut-nho nut-phang" onClick={xem_tho}>Xem kết quả</button>
+            </div>
+            {tho.length > 0 && (
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tho.map((t) => (
+                  <div key={t.bang}>
+                    <div className="mo-ta"><b>{t.bang}</b> · {t.so_dong} dòng · {ngay_gio(t.luc)}</div>
+                    <pre style={{ margin: 0, padding: 8, overflow: 'auto', maxHeight: 180,
+                      background: 'var(--nen-mo)', borderRadius: 6, fontSize: 12 }}>{t.noi_dung}</pre>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
