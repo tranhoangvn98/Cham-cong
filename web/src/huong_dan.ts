@@ -45,6 +45,19 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/don-cua-toi',
+    tom_tat: 'Tự nộp đơn xin nghỉ phép và giải trình (chấm công, vi phạm) — theo dõi trạng thái tại đây.',
+    buoc: [
+      { chu: 'Tab "Nghỉ phép": chọn loại nghỉ, khoảng ngày (hoặc nửa ngày), lý do rồi gửi. Đơn còn chờ duyệt thì hủy được.' },
+      { chu: 'Tab "Giải trình chấm công": khi quên quẹt thẻ, đề xuất giờ vào/ra đúng để nhân sự đối chiếu.' },
+      { chu: 'Tab "Vi phạm của tôi": xem vi phạm ghi nhận với mình và gửi giải trình — quyền tự bào chữa theo BLLĐ Điều 122.' },
+    ],
+    luu_y: [
+      'Đơn gửi tới quản lý / nhân sự duyệt. Duyệt đơn nghỉ phép làm bảng công ngày đó tự đổi, không phải tính tay.',
+      'Khoảng ngày đã chốt bảng công thì không tự nộp đơn được nữa — liên hệ nhân sự.',
+    ],
+  },
+  {
     duong_dan: '/lan-quet',
     tom_tat: 'Nhật ký thô từ máy chấm công — nguồn sự thật của mọi con số công.',
     buoc: [

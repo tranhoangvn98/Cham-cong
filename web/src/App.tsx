@@ -21,6 +21,7 @@ import { TrangThamSoLuong } from './trang/tham_so_luong.tsx';
 import { TrangRaVao } from './trang/ra_vao.tsx';
 import { TrangKyLuatViPham } from './trang/ky_luat_vi_pham.tsx';
 import { TrangLuongPhuCap } from './trang/luong_phu_cap.tsx';
+import { TrangDonCuaToi } from './trang/don_cua_toi.tsx';
 import { TrangKpi } from './trang/kpi.tsx';
 import { TrangDongBoErp } from './trang/dong_bo_erp.tsx';
 import { TrangHoSo } from './trang/ho_so.tsx';
@@ -57,6 +58,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/', ten: 'Tổng quan', icon: 'layout-dashboard', nhom: '', phu: 'Tình hình chấm công hôm nay' },
   { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: '', phu: 'Log đồng bộ từ máy ADMS' },
   { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: '', phu: 'Tổng hợp theo tháng' },
+  { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: '', phu: 'Xin nghỉ phép, giải trình' },
 
   { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Quản trị nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản' },
   { duong_dan: '/duyet-don', ten: 'Nghỉ phép', icon: 'plane-departure', nhom: 'Quản trị nhân sự', phu: 'Đơn từ & duyệt' },
@@ -154,6 +156,7 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
 
   switch (duong_dan) {
     case '/': return <TrangDashboard />;
+    case '/don-cua-toi': return <TrangDonCuaToi />;
     case '/bang-cong': return <TrangBangCong />;
     case '/lan-quet': return <TrangLanQuet />;
     case '/duyet-don': return <TrangDuyetDon />;

@@ -1,0 +1,284 @@
+// Trang NHAN VIEN tu phuc vu: xin nghi phep cac loai, giai trinh cham cong (quen quet), va giai
+// trinh vi pham cua minh. Dung cac endpoint /api/toi/* (cung API app dien thoai dung).
+import { useState, type ReactNode } from 'react';
+import { goi } from '../api.ts';
+import {
+  DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, hom_nay,
+} from '../thanh_phan.tsx';
+
+const TEN_NGHI: Record<string, string> = {
+  phep_nam: 'Nghỉ phép năm', khong_luong: 'Nghỉ không lương', om: 'Nghỉ ốm',
+  thai_san: 'Nghỉ thai sản', ket_hon: 'Nghỉ kết hôn', hieu: 'Nghỉ việc hiếu',
+};
+const NHAN_TT: Record<string, { ten: string; lop: string }> = {
+  cho_duyet: { ten: 'Chờ duyệt', lop: 'nhan-canh-bao' },
+  da_duyet: { ten: 'Đã duyệt', lop: 'nhan-tot' },
+  tu_choi: { ten: 'Từ chối', lop: 'nhan-xau' },
+  da_huy: { ten: 'Đã hủy', lop: 'nhan-mo' },
+  // vi pham
+  moi: { ten: 'Mới', lop: 'nhan-mo' },
+  cho_giai_trinh: { ten: 'Chờ giải trình', lop: 'nhan-canh-bao' },
+  da_xac_nhan: { ten: 'Đã xác nhận', lop: 'nhan-xau' },
+  bac_bo: { ten: 'Đã bãi bỏ', lop: 'nhan-tot' },
+  da_xu_ly: { ten: 'Đã xử lý', lop: 'nhan-mo' },
+};
+function Nhan({ tt }: { tt: string }): ReactNode {
+  return <span className={NHAN_TT[tt]?.lop ?? 'nhan-mo'}>{NHAN_TT[tt]?.ten ?? tt}</span>;
+}
+function ngay_v(v: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
+  return m === null ? v : `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+export function TrangDonCuaToi(): ReactNode {
+  const [tab, dat_tab] = useState<'nghi' | 'cham_cong' | 'vi_pham'>('nghi');
+  return (
+    <>
+      <div className="dau-trang">
+        <p className="mo-ta">
+          Tự nộp đơn xin nghỉ phép, giải trình chấm công và giải trình vi phạm. Đơn gửi tới quản lý /
+          nhân sự duyệt; bạn theo dõi trạng thái ngay tại đây.
+        </p>
+      </div>
+      <div className="hang-tab">
+        <button className={tab === 'nghi' ? 'dang-chon' : undefined} onClick={() => dat_tab('nghi')}>Nghỉ phép</button>
+        <button className={tab === 'cham_cong' ? 'dang-chon' : undefined} onClick={() => dat_tab('cham_cong')}>Giải trình chấm công</button>
+        <button className={tab === 'vi_pham' ? 'dang-chon' : undefined} onClick={() => dat_tab('vi_pham')}>Vi phạm của tôi</button>
+      </div>
+      {tab === 'nghi' ? <TabNghiPhep /> : tab === 'cham_cong' ? <TabGiaiTrinh /> : <TabViPham />}
+    </>
+  );
+}
+
+// ============================================================ nghỉ phép
+interface DonNghi {
+  id: string; loai: string; tu_ngay: string; den_ngay: string; nua_ngay: boolean;
+  ly_do: string | null; trang_thai: string; ghi_chu_duyet: string | null;
+}
+function TabNghiPhep(): ReactNode {
+  const [mo, dat_mo] = useState(false);
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<DonNghi[]>('/api/toi/nghi-phep');
+  const hd = dung_hanh_dong();
+
+  const huy = (id: string): void => {
+    void hd.chay(() => goi(`/api/toi/nghi-phep/${id}/huy`, { method: 'POST', body: {} }),
+      'Đã hủy đơn.').then((ok) => { if (ok) nap_lai(); });
+  };
+
+  return (
+    <>
+      <div className="hang-nut" style={{ marginBottom: 12 }}>
+        <button className="nut-chinh" onClick={() => dat_mo(true)}>+ Tạo đơn nghỉ phép</button>
+      </div>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} />
+        : (du_lieu ?? []).length === 0 ? <Trong tieu_de="Chưa có đơn nghỉ phép" mo_ta="Bấm “Tạo đơn nghỉ phép” để gửi." />
+        : (
+          <div className="the the-mong"><div className="vo-bang"><table>
+            <thead><tr><th>Loại</th><th>Từ</th><th>Đến</th><th>Lý do</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+              {(du_lieu ?? []).map((d) => (
+                <tr key={d.id}>
+                  <td className="khong-ngat">{TEN_NGHI[d.loai] ?? d.loai}{d.nua_ngay ? ' (½ ngày)' : ''}</td>
+                  <td className="khong-ngat so">{ngay_v(d.tu_ngay)}</td>
+                  <td className="khong-ngat so">{ngay_v(d.den_ngay)}</td>
+                  <td>{d.ly_do ?? '—'}{d.ghi_chu_duyet !== null && d.ghi_chu_duyet !== '' && <div className="mo-ta">Duyệt: {d.ghi_chu_duyet}</div>}</td>
+                  <td className="khong-ngat"><Nhan tt={d.trang_thai} /></td>
+                  <td className="canh-phai">
+                    {(d.trang_thai === 'cho_duyet' || d.trang_thai === 'da_duyet') && (
+                      <button className="nut-nho nut-phang" disabled={hd.dang_chay} onClick={() => huy(d.id)}>Hủy</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div></div>
+        )}
+      {mo && <FormNghiPhep khi_dong={() => dat_mo(false)} khi_xong={() => { dat_mo(false); nap_lai(); }} />}
+    </>
+  );
+}
+
+function FormNghiPhep({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: () => void }): ReactNode {
+  const [loai, dat_loai] = useState('phep_nam');
+  const [tu, dat_tu] = useState(hom_nay());
+  const [den, dat_den] = useState(hom_nay());
+  const [nua, dat_nua] = useState(false);
+  const [ly_do, dat_ly_do] = useState('');
+  const hd = dung_hanh_dong();
+  return (
+    <HopThoai tieu_de="Tạo đơn nghỉ phép" khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <label htmlFor="np-loai">Loại nghỉ</label>
+      <select id="np-loai" value={loai} onChange={(e) => dat_loai(e.target.value)}>
+        {Object.entries(TEN_NGHI).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+      </select>
+      <div className="luoi luoi-2">
+        <div className="o-nhap"><label htmlFor="np-tu">Từ ngày</label>
+          <input id="np-tu" type="date" value={tu} onChange={(e) => { dat_tu(e.target.value); if (nua) dat_den(e.target.value); }} /></div>
+        <div className="o-nhap"><label htmlFor="np-den">Đến ngày</label>
+          <input id="np-den" type="date" value={den} disabled={nua} onChange={(e) => dat_den(e.target.value)} /></div>
+      </div>
+      <div className="o-nhap-ngang">
+        <input id="np-nua" type="checkbox" checked={nua}
+          onChange={(e) => { dat_nua(e.target.checked); if (e.target.checked) dat_den(tu); }} />
+        <label htmlFor="np-nua">Nghỉ nửa ngày (chỉ áp dụng cho một ngày)</label>
+      </div>
+      <label htmlFor="np-ld">Lý do</label>
+      <input id="np-ld" value={ly_do} onChange={(e) => dat_ly_do(e.target.value)} placeholder="vd: việc gia đình" />
+      <div className="hang-nut">
+        <button className="nut-chinh" disabled={hd.dang_chay}
+          onClick={() => void hd.chay(() => goi('/api/toi/nghi-phep', {
+            method: 'POST', body: { loai, tu_ngay: tu, den_ngay: nua ? tu : den, nua_ngay: nua, ly_do },
+          }), 'Đã gửi đơn nghỉ phép.').then((ok) => { if (ok) khi_xong(); })}>
+          {hd.dang_chay ? 'Đang gửi…' : 'Gửi đơn'}
+        </button>
+        <button className="nut-phang" onClick={khi_dong}>Hủy</button>
+      </div>
+    </HopThoai>
+  );
+}
+
+// ============================================================ giải trình chấm công
+interface DonGiaiTrinh {
+  id: string; ngay: string; gio_vao_de_xuat: string | null; gio_ra_de_xuat: string | null;
+  ly_do: string; trang_thai: string; ghi_chu_duyet: string | null;
+}
+function TabGiaiTrinh(): ReactNode {
+  const [mo, dat_mo] = useState(false);
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<DonGiaiTrinh[]>('/api/toi/giai-trinh');
+  return (
+    <>
+      <div className="hang-nut" style={{ marginBottom: 12 }}>
+        <button className="nut-chinh" onClick={() => dat_mo(true)}>+ Giải trình chấm công</button>
+      </div>
+      <p className="mo-ta" style={{ marginBottom: 12 }}>
+        Dùng khi quên quẹt thẻ vào/ra: đề xuất giờ đúng để nhân sự đối chiếu và chấp nhận.
+      </p>
+      {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} />
+        : (du_lieu ?? []).length === 0 ? <Trong tieu_de="Chưa có giải trình nào" mo_ta="Bấm “Giải trình chấm công” để gửi." />
+        : (
+          <div className="the the-mong"><div className="vo-bang"><table>
+            <thead><tr><th>Ngày</th><th>Giờ vào đề xuất</th><th>Giờ ra đề xuất</th><th>Lý do</th><th>Trạng thái</th></tr></thead>
+            <tbody>
+              {(du_lieu ?? []).map((d) => (
+                <tr key={d.id}>
+                  <td className="khong-ngat so">{ngay_v(d.ngay)}</td>
+                  <td className="so">{d.gio_vao_de_xuat ?? '—'}</td>
+                  <td className="so">{d.gio_ra_de_xuat ?? '—'}</td>
+                  <td>{d.ly_do}{d.ghi_chu_duyet !== null && d.ghi_chu_duyet !== '' && <div className="mo-ta">Duyệt: {d.ghi_chu_duyet}</div>}</td>
+                  <td className="khong-ngat"><Nhan tt={d.trang_thai} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div></div>
+        )}
+      {mo && <FormGiaiTrinh khi_dong={() => dat_mo(false)} khi_xong={() => { dat_mo(false); nap_lai(); }} />}
+    </>
+  );
+}
+
+function FormGiaiTrinh({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: () => void }): ReactNode {
+  const [ngay, dat_ngay] = useState(hom_nay());
+  const [gio_vao, dat_gio_vao] = useState('');
+  const [gio_ra, dat_gio_ra] = useState('');
+  const [ly_do, dat_ly_do] = useState('');
+  const hd = dung_hanh_dong();
+  return (
+    <HopThoai tieu_de="Giải trình chấm công" khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <div className="o-nhap"><label htmlFor="gt-ngay">Ngày</label>
+        <input id="gt-ngay" type="date" value={ngay} max={hom_nay()} onChange={(e) => dat_ngay(e.target.value)} /></div>
+      <div className="luoi luoi-2">
+        <div className="o-nhap"><label htmlFor="gt-vao">Giờ vào đề xuất</label>
+          <input id="gt-vao" type="time" value={gio_vao} onChange={(e) => dat_gio_vao(e.target.value)} /></div>
+        <div className="o-nhap"><label htmlFor="gt-ra">Giờ ra đề xuất</label>
+          <input id="gt-ra" type="time" value={gio_ra} onChange={(e) => dat_gio_ra(e.target.value)} /></div>
+      </div>
+      <p className="mo-ta">Điền ít nhất một trong hai giờ (giờ bạn thực sự vào/ra nhưng quên quẹt).</p>
+      <label htmlFor="gt-ld">Lý do</label>
+      <input id="gt-ld" value={ly_do} onChange={(e) => dat_ly_do(e.target.value)} placeholder="vd: quẹt không nhận, đi gặp khách" />
+      <div className="hang-nut">
+        <button className="nut-chinh" disabled={hd.dang_chay || ly_do.trim().length < 5 || (gio_vao === '' && gio_ra === '')}
+          onClick={() => void hd.chay(() => goi('/api/toi/giai-trinh', {
+            method: 'POST', body: { ngay, gio_vao_de_xuat: gio_vao || null, gio_ra_de_xuat: gio_ra || null, ly_do },
+          }), 'Đã gửi giải trình.').then((ok) => { if (ok) khi_xong(); })}>
+          {hd.dang_chay ? 'Đang gửi…' : 'Gửi giải trình'}
+        </button>
+        <button className="nut-phang" onClick={khi_dong}>Hủy</button>
+      </div>
+    </HopThoai>
+  );
+}
+
+// ============================================================ vi phạm của tôi
+interface ViPhamToi {
+  id: string; ngay: string; mo_ta: string | null; trang_thai: string;
+  giai_trinh: string | null; ky_luat: string | null; ten_loai: string; muc_do: string;
+}
+function TabViPham(): ReactNode {
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<ViPhamToi[]>('/api/toi/vi-pham');
+  const [dang, dat_dang] = useState<ViPhamToi | null>(null);
+  return (
+    <>
+      <p className="mo-ta" style={{ marginBottom: 12 }}>
+        Vi phạm nội quy ghi nhận với bạn. Bộ luật Lao động 2019 Điều 122 cho bạn quyền
+        <strong> tự bào chữa</strong> — hãy gửi giải trình trước khi có kết luận.
+      </p>
+      {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} />
+        : (du_lieu ?? []).length === 0 ? <Trong tieu_de="Không có vi phạm" mo_ta="Bạn chưa có vi phạm nào được ghi nhận." />
+        : (
+          <div className="the the-mong"><div className="vo-bang"><table>
+            <thead><tr><th>Ngày</th><th>Loại</th><th>Nội dung</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+              {(du_lieu ?? []).map((v) => (
+                <tr key={v.id}>
+                  <td className="khong-ngat so">{ngay_v(v.ngay)}</td>
+                  <td className="khong-ngat">{v.ten_loai}</td>
+                  <td>{v.mo_ta ?? '—'}{v.giai_trinh !== null && v.giai_trinh !== '' && <div className="mo-ta">Giải trình: {v.giai_trinh}</div>}</td>
+                  <td className="khong-ngat"><Nhan tt={v.trang_thai} /></td>
+                  <td className="canh-phai">
+                    {v.trang_thai !== 'da_xu_ly' && v.trang_thai !== 'bac_bo' && (
+                      <button className="nut-nho" onClick={() => dat_dang(v)}>
+                        {v.giai_trinh === null || v.giai_trinh === '' ? 'Giải trình' : 'Sửa giải trình'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div></div>
+        )}
+      {dang !== null && <FormGiaiTrinhViPham vp={dang} khi_dong={() => dat_dang(null)} khi_xong={() => { dat_dang(null); nap_lai(); }} />}
+    </>
+  );
+}
+
+function FormGiaiTrinhViPham(
+  { vp, khi_dong, khi_xong }: { vp: ViPhamToi; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [gt, dat_gt] = useState(vp.giai_trinh ?? '');
+  const hd = dung_hanh_dong();
+  return (
+    <HopThoai tieu_de="Giải trình vi phạm" khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <div className="ho-so-chi-so">
+        <div className="o-so"><div className="o-so-nhan">Ngày</div><div className="o-so-gia-tri">{ngay_v(vp.ngay)}</div></div>
+        <div className="o-so"><div className="o-so-nhan">Loại</div><div className="o-so-gia-tri" style={{ fontSize: 15 }}>{vp.ten_loai}</div></div>
+      </div>
+      {vp.mo_ta !== null && vp.mo_ta !== '' && <p className="mo-ta"><strong>Nội dung:</strong> {vp.mo_ta}</p>}
+      <label htmlFor="vp-gt">Giải trình của bạn</label>
+      <textarea id="vp-gt" value={gt} onChange={(e) => dat_gt(e.target.value)} rows={4}
+        placeholder="Trình bày lý do, kèm bằng chứng nếu có…" />
+      <div className="hang-nut">
+        <button className="nut-chinh" disabled={hd.dang_chay || gt.trim().length < 5}
+          onClick={() => void hd.chay(() => goi(`/api/toi/vi-pham/${vp.id}/giai-trinh`, {
+            method: 'POST', body: { giai_trinh: gt },
+          }), 'Đã gửi giải trình.').then((ok) => { if (ok) khi_xong(); })}>
+          {hd.dang_chay ? 'Đang gửi…' : 'Gửi giải trình'}
+        </button>
+        <button className="nut-phang" onClick={khi_dong}>Đóng</button>
+      </div>
+    </HopThoai>
+  );
+}

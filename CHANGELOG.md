@@ -2,6 +2,10 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.59.0] — 2026-08-31
+
+**Trang "Đơn của tôi" cho nhân viên tự nộp đơn (web).** Trước chỉ có trên app điện thoại; giờ nhân viên đăng nhập web cũng tự phục vụ được. Ba tab: **Nghỉ phép** (các loại: phép năm, không lương, ốm, thai sản, kết hôn, hiếu; nửa ngày; hủy khi còn chờ duyệt), **Giải trình chấm công** (quên quẹt — đề xuất giờ vào/ra), **Vi phạm của tôi** (xem vi phạm ghi nhận với mình và gửi giải trình — quyền tự bào chữa BLLĐ Điều 122). Dùng lại API /api/toi/* sẵn có, theo dõi trạng thái duyệt ngay tại trang.
+
 ## [1.58.2] — 2026-08-31
 
 **Bảng lương chi tiết mở TOÀN MÀN HÌNH (không còn popup).** Trước là hộp thoại nên bảng nhiều cột bị bó/cắt; giờ mở thành trang phủ kín màn hình, dùng hết chiều rộng — thấy đủ mọi cột (kể cả BHXH+YT+TN, thuế TNCN, khoản trừ, thực lĩnh) một lần, có nút "← Quay lại". (BHXH vốn đã được tính trong bảng, trước bị popup che.)
