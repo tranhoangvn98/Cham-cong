@@ -2,8 +2,19 @@
 // Hoi bang tieng Viet, tra loi tu du lieu cua chinh minh (/api/toi/tro-ly). Khong loi du lieu
 // ra dich vu ngoai.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { goi } from '../api.ts';
 import { khoa_tinh } from '../thanh_phan.tsx';
+
+/** Icon chat SVG — net sach, khong phu thuoc emoji cua he dieu hanh. */
+function IconChat(): ReactNode {
+  return (
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    </svg>
+  );
+}
 
 interface DapTroLy {
   tra_loi: string;
@@ -68,15 +79,19 @@ export function TroLyCaNhan(): ReactNode {
     }
   };
 
+  // Render qua PORTAL ra document.body: nut noi khong nam trong khung nao cua trang, nen
+  // `position:fixed` luon bam MAN HINH — khong the bi mot khung cha cat mat (dieu se xay ra
+  // neu mot to tien co transform/overflow). Bam chac cho nut noi luon tron day o goc phai.
   if (!mo) {
-    return (
+    return createPortal(
       <button className="troly-nut" onClick={() => dat_mo(true)} aria-label="Mở trợ lý">
-        💬
-      </button>
+        <IconChat />
+      </button>,
+      document.body,
     );
   }
 
-  return (
+  return createPortal(
     <div className="troly-panel" role="dialog" aria-label="Trợ lý dữ liệu">
       <div className="troly-dau">
         <b>Trợ lý dữ liệu</b>
@@ -104,6 +119,7 @@ export function TroLyCaNhan(): ReactNode {
           placeholder="Hỏi về phép, công, lương…" aria-label="Câu hỏi" />
         <button type="submit" disabled={dang_hoi || nhap.trim() === ''}>Gửi</button>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }

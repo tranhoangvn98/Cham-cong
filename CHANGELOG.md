@@ -2,6 +2,14 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.69.0] — 2026-08-31
+
+**Góc nhìn Cá nhân: gọt giao diện.**
+
+- **Nút trợ lý render qua portal ra `document.body`** — không còn nằm trong khung nào của trang, nên `position:fixed` bám thẳng màn hình, không thể bị khung cha cắt trong bất kỳ hoàn cảnh nào. Đổi emoji 💬 sang **icon SVG chat** nét sạch, đồng nhất mọi thiết bị (không phụ thuộc emoji hệ điều hành).
+- **Bỏ emoji trang trí** (👋 📝 📢 📚 🪪) ở hero, lối tắt, tiêu đề Thông báo/Văn bản và lời chào trợ lý cho gọn, chuyên nghiệp.
+- Thêm khoảng đệm đáy trên điện thoại để nút nổi không che mục cuối.
+
 ## [1.68.0] — 2026-08-31
 
 **Góc nhìn Cá nhân: tối ưu điện thoại.** Đa số nhân viên dùng điện thoại nên các trang cá nhân được chỉnh cho khổ nhỏ:

@@ -45,7 +45,7 @@ export async function tra_loi_tro_ly(nv_id: string, cau_hoi_goc: string): Promis
 
   if (cau === '') {
     return {
-      tra_loi: 'Chào bạn 👋 Mình là trợ lý dữ liệu. Bạn hỏi về phép, công, lương, đi muộn, '
+      tra_loi: 'Chào bạn! Mình là trợ lý dữ liệu. Bạn hỏi về phép, công, lương, đi muộn, '
         + 'nghỉ lễ hay ca làm việc — mình tra ngay từ dữ liệu của bạn.',
       y_dinh: 'chao',
       goi_y: GOI_Y,

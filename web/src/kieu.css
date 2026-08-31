@@ -1286,4 +1286,6 @@ textarea:focus-visible,
   /* Nut tro ly + panel sat mep hon tren dien thoai de khong che noi dung. */
   .troly-nut { right: 16px; bottom: 16px; }
   .troly-panel { right: 8px; bottom: 8px; }
+  /* Chua cho nut noi khong che muc cuoi trang. */
+  .canhan { padding-bottom: 72px; }
 }

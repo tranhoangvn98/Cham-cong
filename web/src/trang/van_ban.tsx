@@ -109,7 +109,7 @@ export function TrangVanBan(): ReactNode {
   return (
     <div className="canhan">
       <div className="canhan-hero">
-        <div className="canhan-hero-chao">Văn bản công ty 📚</div>
+        <div className="canhan-hero-chao">Văn bản công ty</div>
         <div className="canhan-hero-phu">Nội quy, biểu mẫu, chính sách — tải về khi cần.</div>
       </div>
       <HopLoi loi={hd.loi} />

@@ -201,7 +201,7 @@ export function TrangThongBaoCaNhan(): ReactNode {
   return (
     <div className="canhan">
       <div className="canhan-hero">
-        <div className="canhan-hero-chao">Thông báo công ty 📢</div>
+        <div className="canhan-hero-chao">Thông báo công ty</div>
         <div className="canhan-hero-phu">Thông báo từ Ban giám đốc và nhân sự.</div>
       </div>
       {hr && <DangThongBao khi_xong={nap_lai} />}
