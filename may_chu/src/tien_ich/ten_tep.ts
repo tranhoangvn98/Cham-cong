@@ -156,11 +156,40 @@ const RE_BAN_CHOT = new RegExp(
   + '/\\d{4}-\\d{2}_(bang_cong|bang_luong)_[0-9a-f]{8,32}\\.xlsx$',
 );
 
+/**
+ * Van ban cong ty: `_van_ban/<danh_muc>/<YYYY-MM-DD>_<ten-goc>_<hex>.<duoi>`.
+ *
+ * Cung ly le `_` dau nhu `_ban_chot`: KHONG the trung thu muc nhan vien nao. Khac ban chot o
+ * cho GIU DUOI GOC (pdf/docx/...) vi van ban tai len co nhieu dinh dang, con ban chot luon xlsx.
+ * `danh_muc` lay tu mot tap dong, hex do may chu sinh — chi doan ten goc den tu nguoi dung va da
+ * qua `lam_doan`.
+ */
+const DANH_MUC_VAN_BAN = 'noi_quy|bieu_mau|chinh_sach|huong_dan|khac';
+
+const RE_VAN_BAN = new RegExp(
+  `^_van_ban/(${DANH_MUC_VAN_BAN})`
+  + '/\\d{4}-\\d{2}-\\d{2}_[A-Za-z0-9-]{1,48}_[0-9a-f]{8,32}'
+  + `\\.(${DUOI_CHO_PHEP})$`,
+);
+
+export type DanhMucVanBan = 'noi_quy' | 'bieu_mau' | 'chinh_sach' | 'huong_dan' | 'khac';
+
+/** Duong dan tren dia cho mot van ban cong ty. `ma` la hex do may chu sinh. */
+export function duong_dan_van_ban(
+  danh_muc: DanhMucVanBan, ngay: string, ten_goc: string, ma: string, duoi: string,
+): string {
+  const hex = ma.replace(/[^0-9a-f]/g, '').slice(0, 32);
+  const khong_duoi = ten_goc.replace(/\.[A-Za-z0-9]{1,8}$/, '');
+  const goc = lam_doan(khong_duoi) || 'van-ban';
+  return `_van_ban/${danh_muc}/${ngay}_${goc}_${hex}.${duoi}`;
+}
+
 export function duong_dan_hop_le(ten_luu: string): boolean {
   // `..` khong lot qua duoc vi moi doan phai bat dau bang chu hoac so, nhung kiem thang
   // mot lan nua cho ro y dinh — day la cho khong duoc phep "chac la an toan".
   if (ten_luu.includes('..')) return false;
-  return RE_MOI.test(ten_luu) || RE_CU.test(ten_luu) || RE_BAN_CHOT.test(ten_luu);
+  return RE_MOI.test(ten_luu) || RE_CU.test(ten_luu)
+    || RE_BAN_CHOT.test(ten_luu) || RE_VAN_BAN.test(ten_luu);
 }
 
 export type LoaiBanChot = 'bang_cong' | 'bang_luong';

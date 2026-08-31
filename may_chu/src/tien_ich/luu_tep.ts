@@ -8,8 +8,9 @@ import { dirname, join, resolve, sep } from 'node:path';
 import { cau_hinh } from '../cau_hinh.ts';
 import { LoiDauVao } from './kiem_tra.ts';
 import {
-  duong_dan_ban_chot, duong_dan_hop_le, ten_tep_chuan, ten_thu_muc_nhan_vien,
-  type LoaiBanChot,
+  duong_dan_ban_chot, duong_dan_hop_le, duong_dan_van_ban, ten_tep_chuan,
+  ten_thu_muc_nhan_vien,
+  type DanhMucVanBan, type LoaiBanChot,
 } from './ten_tep.ts';
 
 /**
@@ -223,6 +224,57 @@ export async function luu_ban_chot(
     throw loi;
   }
   return { ten_luu, kich_thuoc: du_lieu.length };
+}
+
+export interface VanBanDaLuu {
+  ten_luu: string;
+  mime: string;
+  kich_thuoc: number;
+  duoi: string;
+  ma_tep: string;
+}
+
+/**
+ * Ghi mot VAN BAN CONG TY (noi quy, bieu mau, chinh sach) xuong `_van_ban/<danh_muc>/...`.
+ *
+ * Giong `luu_tep_ho_so` o cho kiem MAGIC BYTE va khong ghi de (`wx`) — van ban tai len tu
+ * client nen phai xac minh dinh dang that. Khac o cho KHONG thuoc nhan vien nao: duong dan cap
+ * cong ty, bat dau bang `_` nen khong dung cham thu muc nhan vien.
+ */
+export async function luu_van_ban_cong_ty(
+  du_lieu: Buffer,
+  ten_goc: string,
+  danh_muc: DanhMucVanBan,
+  ngay: string,
+): Promise<VanBanDaLuu> {
+  if (du_lieu.length === 0) throw new LoiDauVao('Tệp rỗng.');
+  if (du_lieu.length > cau_hinh.tep_toi_da_byte) {
+    const mb = Math.round(cau_hinh.tep_toi_da_byte / (1024 * 1024));
+    throw new LoiDauVao(`Tệp quá lớn (tối đa ${mb} MB).`);
+  }
+
+  const dd = doc_dinh_dang(du_lieu, ten_goc);
+  if (dd === null) throw new LoiDauVao('Chỉ nhận tệp PDF, JPG, PNG, DOCX hoặc XLSX.');
+
+  const ma_tep = randomUUID();
+  const ten_luu = duong_dan_van_ban(danh_muc, ngay, ten_goc, ma_tep.replace(/-/g, ''), dd.duoi);
+  // Tu kiem lai bo sinh: lech khoi `duong_dan_hop_le` thi ghi duoc nhung khong doc lai duoc.
+  if (!duong_dan_hop_le(ten_luu)) {
+    throw new Error(`Bộ sinh đường dẫn văn bản tạo ra đường dẫn bộ đọc từ chối: ${ten_luu}`);
+  }
+
+  const thu_muc = ten_luu.slice(0, ten_luu.lastIndexOf('/'));
+  try {
+    await mkdir(join(cau_hinh.thu_muc_ho_so, thu_muc), { recursive: true });
+    await writeFile(join(cau_hinh.thu_muc_ho_so, ten_luu), du_lieu, { mode: 0o600, flag: 'wx' });
+  } catch (loi) {
+    const ma = (loi as NodeJS.ErrnoException).code ?? '';
+    if (ma === 'EACCES' || ma === 'EPERM' || ma === 'ENOSPC' || ma === 'EROFS') {
+      throw new LoiThuMucLuu(cau_hinh.thu_muc_ho_so, ma);
+    }
+    throw loi;
+  }
+  return { ten_luu, mime: dd.mime, kich_thuoc: du_lieu.length, duoi: dd.duoi, ma_tep };
 }
 
 /** Tep nay da co tren dia chua? Duong dan phai da qua `duong_dan_hop_le`. */

@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.66.0] — 2026-08-31
+
+**Góc nhìn Cá nhân — nền backend (phần 1/2).** Chuẩn bị cho trải nghiệm nhân viên: dashboard cá nhân, thông báo BGĐ, văn bản công ty, trợ lý dữ liệu. Phần giao diện ở bản kế tiếp.
+
+- **Migration 037**: bảng `thong_bao` (mã `TB-`, mức độ, phạm vi toàn công ty/phòng ban, cờ `can_giai_trinh`), `thong_bao_da_doc` (xác nhận đã đọc + giải trình, mã `GT-` chỉ sinh khi có giải trình), `van_ban_cong_ty` (mã `VB-`, kho tài liệu chung). Tất cả có mã tracking như kỷ luật/khiếu nại.
+- **API tự phục vụ** (`/api/toi`): `GET /tong-quan` (công tháng, phép còn, nghỉ lễ sắp tới, thông báo mới chưa đọc, đơn chờ) — chỉ dữ liệu của chính mình; `GET /ho-so` + `POST /ho-so/lien-he` (tự cập nhật SĐT/email); `GET /thong-bao` + `POST /thong-bao/:id/xac-nhan` (đã đọc + giải trình); `GET /van-ban` + `GET /van-ban/:id/tai`; `GET /tro-ly` (trợ lý dữ liệu).
+- **Trợ lý dữ liệu** (`ca_nhan/tro_ly.ts`): trả lời từ chính dữ liệu nhân viên (phép, công, đi muộn, nghỉ lễ, ca làm, đơn chờ) — không gửi dữ liệu ra ngoài, không phí (NĐ 13/2023). Chừa sẵn chỗ cắm LLM (`hoi_llm`) để nâng cấp sau khi có khóa API.
+- **API quản trị** (`/api`, chỉ nhân sự): tạo/gỡ thông báo, xem ai đã đọc, liệt kê giải trình (nối vào muc Khiếu nại & giải trình), tải/gỡ văn bản công ty (upload có kiểm magic byte, đường lưu `_van_ban/` cấp công ty chống path traversal).
+
 ## [1.65.0] — 2026-08-31
 
 **Sửa: máy kho (dòng kiểm soát ra vào `acc`) không kéo được danh sách user.** Máy `NYU7261300256` từ chối `DATA QUERY USERINFO` với mã `-629`: dòng `acc` (SenseFace 2A, PUSH 3.x) dùng **bộ lệnh khác** dòng chấm công `att`. Rà soát lại đúng SDK PUSH và sửa 3 điểm:
