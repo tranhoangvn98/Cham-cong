@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.77.0] — 2026-08-31
+
+**Lương theo mẫu công ty — nền dữ liệu + bộ tính (phần 1/2: hậu trường).** Bám sát file "Bảng Lương" của công ty. Phần API + giao diện ở bản kế tiếp.
+
+- **Migration 042**: 
+  - `lich_nghi_le` (lịch nghỉ VN/TQ), `noi_lam_viec` (nơi làm việc → gắn một lịch), `nhan_vien.noi_lam_viec_id`.
+  - `ngay_le` thêm `lich_ma` + `ke_hoach_id`, đổi khóa chính `(ngay)` → `(ngay, lich_ma)` — một ngày có thể là lễ ở lịch này mà không phải lịch kia.
+  - `ke_hoach_nghi_le` (kế hoạch nghỉ theo NĂM, khai theo khoảng ngày).
+  - `tham_so_luong` thêm cấu hình **phạt đi muộn** (bật/tắt, mốc 08:10/08:30, 50k/lần, miễn 3 lần/tháng, hạn nộp đơn 07:30) + **tỷ lệ thử việc** (mặc định 85%).
+  - `don_tu` thêm loại `di_muon` (đơn xin đi muộn).
+- **Nghỉ lễ theo VỊ TRÍ làm việc**: làm ở VN theo lịch VN, làm ở TQ theo lịch TQ. Bộ tính công (`tinh_cong`) và bộ tính lương (`ky_luong`) đọc lịch theo nơi làm việc của từng người → nghỉ lễ không bị tính trừ công.
+- **Phạt đi muộn 2 mức tự động** (module thuần `phat_di_muon.ts`, có kiểm thử): 08:10–08:29 phạt 50k/lần; ≥08:30 trừ nửa ngày lương cứng/lần; miễn tối đa 3 lần/tháng nếu có đơn duyệt gửi trước 07:30 và vào ≤08:30 (≥08:30 không được miễn). Tự sinh khoản `tru_di_muon`/`tru_nua_ngay` trên phiếu, tôn trọng khoản gõ tay.
+- **Lương thử việc**: hợp đồng loại `thu_viec` tự áp 85% lương cứng (P1+P2), cho ghi đè bằng mức lương ghi thẳng trên hợp đồng thử việc.
+- Route `/ngay-le` nhận thêm `lich_ma` (mặc định `vn`).
+
 ## [1.76.0] — 2026-08-31
 
 **Cấu hình cửa qua ADMS: công cụ đọc cấu trúc bảng access-control từ máy.** Để tiến tới đặt khung giờ (time zone) qua ADMS thay vì làm tay trên máy — cần biết cấu trúc bảng `timezone`/`door`/`userauthorize` (không có tài liệu công khai), giống cách đã crack `tablename=user`.

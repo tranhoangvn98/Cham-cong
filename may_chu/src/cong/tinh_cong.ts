@@ -24,6 +24,8 @@ interface DongNhanVien {
   ma_nv: string;
   ma_erp: string | null;
   ca_lam_id: string | null;
+  /** Lich nghi le theo noi lam viec (mac dinh 'vn'). */
+  lich_nghi_ma: string;
 }
 
 async function nap_ca(ca_lam_id: string | null): Promise<CaLam | null> {
@@ -57,7 +59,11 @@ export async function tinh_lai_ngay(
   bo_qua_chot = false,
 ): Promise<KetQuaTinhCong | null> {
   const nv = await truy_van_mot<DongNhanVien>(
-    'select id, ma_nv, ma_erp, ca_lam_id from nhan_vien where id = $1',
+    `select nv.id, nv.ma_nv, nv.ma_erp, nv.ca_lam_id,
+            coalesce(nlv.lich_nghi_ma, 'vn') as lich_nghi_ma
+       from nhan_vien nv
+       left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
+      where nv.id = $1`,
     [nhan_vien_id],
   );
   if (nv === null) return null;
@@ -101,9 +107,10 @@ export async function tinh_lai_ngay(
     [nhan_vien_id, ngay],
   );
 
+  // Ngay le theo LICH cua noi lam viec: lam o VN dung lich VN, lam o TQ dung lich TQ.
   const ngay_le = await truy_van_mot<{ huong_luong: boolean }>(
-    'select huong_luong from ngay_le where ngay = $1',
-    [ngay],
+    'select huong_luong from ngay_le where ngay = $1 and lich_ma = $2',
+    [ngay, nv.lich_nghi_ma],
   );
 
   // Don di cong tac DA DUYET trum ngay nay. Khong co thi ngay do tinh nhu binh thuong.

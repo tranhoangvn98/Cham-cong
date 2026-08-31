@@ -877,21 +877,24 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   app.get('/ngay-le', { preHandler: can_dang_nhap }, async (req) => {
     const q = req.query as Record<string, unknown>;
     const nam = so_nguyen(q, 'nam', { min: 2000, max: 2100 });
+    const lich = typeof q['lich_ma'] === 'string' ? String(q['lich_ma']) : null;
     return truy_van(
-      `select ngay, ten, huong_luong from ngay_le
-        where $1::int is null or extract(year from ngay) = $1
-        order by ngay`,
-      [nam],
+      `select ngay, ten, huong_luong, lich_ma, ke_hoach_id from ngay_le
+        where ($1::int is null or extract(year from ngay) = $1)
+          and ($2::text is null or lich_ma = $2)
+        order by ngay, lich_ma`,
+      [nam, lich],
     );
   });
 
   app.post('/ngay-le', { preHandler: can_nhan_su }, async (req, res) => {
     const b = than(req.body);
     const ng = ngay_bat_buoc(b, 'ngay');
+    const lich = typeof b['lich_ma'] === 'string' && b['lich_ma'] !== '' ? String(b['lich_ma']) : 'vn';
     await thuc_thi(
-      `insert into ngay_le(ngay, ten, huong_luong) values ($1,$2,$3)
-       on conflict (ngay) do update set ten = excluded.ten, huong_luong = excluded.huong_luong`,
-      [ng, chuoi_bat_buoc(b, 'ten', { toi_da: 120 }), luan_ly(b, 'huong_luong', true)],
+      `insert into ngay_le(ngay, ten, huong_luong, lich_ma) values ($1,$2,$3,$4)
+       on conflict (ngay, lich_ma) do update set ten = excluded.ten, huong_luong = excluded.huong_luong`,
+      [ng, chuoi_bat_buoc(b, 'ten', { toi_da: 120 }), luan_ly(b, 'huong_luong', true), lich],
     );
     // Ngay le doi trang thai ngay do -> tinh lai ngay lap tuc.
     const so = await tinh_lai_khoang(ng, ng);
@@ -900,8 +903,10 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
 
   app.delete('/ngay-le/:ngay', { preHandler: can_nhan_su }, async (req) => {
     const p = req.params as Record<string, string>;
+    const q = req.query as Record<string, unknown>;
     const ng = ngay_bat_buoc({ ngay: p['ngay'] }, 'ngay');
-    const so = await thuc_thi('delete from ngay_le where ngay = $1', [ng]);
+    const lich = typeof q['lich_ma'] === 'string' && q['lich_ma'] !== '' ? String(q['lich_ma']) : 'vn';
+    const so = await thuc_thi('delete from ngay_le where ngay = $1 and lich_ma = $2', [ng, lich]);
     if (so === 0) throw new LoiKhongTim('Không tìm thấy ngày lễ.');
     await tinh_lai_khoang(ng, ng);
     return { ok: true };
