@@ -271,6 +271,25 @@ blockquote {
 .o-so-gia-tri { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-top: 2px; }
 .o-so-phu { font-size: 12px; color: var(--chu-mo); }
 
+/* O so BAM DUOC (mo danh sach chi tiet). La <button> nen phai go bo dang nut mac dinh
+   (inline-flex/nowrap) de noi dung xep doc nhu the. */
+.o-so-bam {
+  display: block;
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.o-so-bam:hover:not(:disabled) {
+  background: var(--nen-the);
+  border-color: var(--chinh);
+  box-shadow: 0 0 0 1px var(--chinh);
+}
+.o-so-mui { color: var(--chu-mo); font-weight: 700; }
+.o-so-bam:hover .o-so-mui { color: var(--chinh); }
+
 /* ---------------------------------------------------------------- bang */
 .vo-bang { overflow-x: auto; }
 
@@ -605,13 +624,38 @@ input[type="checkbox"] {
   height: 140px;
   padding-top: 8px;
 }
-.cot-ngay { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
-.cot-chong { flex: 1; width: 100%; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
+.cot-ngay { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.cot-ngay:focus-visible { outline: 2px solid var(--chinh); outline-offset: 2px; border-radius: 4px; }
+.cot-chong { flex: 1; width: 100%; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; cursor: default; }
 .cot { border-radius: 3px 3px 0 0; min-height: 2px; }
 .cot-co-mat { background: var(--chinh); }
 .cot-muon { background: var(--canh-bao); }
 .cot-vang { background: var(--xau); }
 .nhan-cot { font-size: 10.5px; color: var(--chu-mo); white-space: nowrap; }
+
+/* Mach chu thich khi de chuot / focus vao mot cot bieu do — hien so luong tung phan. */
+.bieu-do-mach {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  min-width: 132px;
+  padding: 8px 10px;
+  background: var(--nen-the);
+  border: 1px solid var(--vien-dam);
+  border-radius: var(--tron);
+  box-shadow: var(--bong-noi);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--chu);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.bieu-do-mach div { display: flex; align-items: center; gap: 5px; }
+.bieu-do-mach-ngay { font-weight: 600; margin-bottom: 2px; color: var(--chu); }
+.bieu-do-mach-phu { color: var(--chu-mo); margin-top: 2px; }
+.bieu-do-mach strong { margin-left: auto; }
 
 .chu-giai { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--chu-nhat); margin-top: 10px; }
 .chu-giai span { display: flex; align-items: center; gap: 5px; }

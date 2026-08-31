@@ -2,6 +2,13 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.63.0] — 2026-08-31
+
+**Trang tổng quan: bấm ô số ra danh sách + biểu đồ hiện số khi rê chuột.**
+
+- **Bấm ô số → danh sách chi tiết.** Các ô ở "Toàn công ty — hôm nay" (và ở góc nhìn Phòng) giờ **bấm được** — có dấu ›: **Tổng nhân viên, Có mặt, Đi muộn, Vắng, Nghỉ phép, Chưa quẹt ra**. Bấm mở hộp thoại liệt kê đúng nhóm người đó (mã NV, họ tên, phòng ban, trạng thái, giờ vào/ra, số phút muộn), bấm tên để mở hồ sơ. Danh sách lọc theo quyền như bảng công (nhân sự thấy hết, trưởng phòng thấy phòng mình). API mới `GET /dashboard/danh-sach?loai=&ngay=`.
+- **Biểu đồ 7 ngày: rê chuột (hoặc focus bàn phím) vào một cột → hiện mạch chú thích** với số lượng từng phần: Đúng giờ / Đi muộn / Vắng / OT. Trước đây chỉ có tooltip mặc định của trình duyệt (chậm, khó thấy).
+
 ## [1.62.0] — 2026-08-31
 
 **Admin cấp quyền cho trưởng phòng XEM màn hình quản trị (chỉ xem).** Trong Cài đặt → Tài khoản, admin có nút **"Cấp quyền xem QT" / "Thu quyền xem QT"** cho mỗi trưởng phòng (kèm nhãn *"được xem quản trị"*). Trưởng phòng được cấp quyền có thể chuyển sang góc nhìn Quản trị và xem **Kỷ luật & vi phạm & khiếu nại, Nhân viên, Bảng công** — nhưng **chỉ xem, không thao tác**, và dữ liệu luôn **giới hạn trong phòng của họ** (không thấy toàn công ty; ẩn Lương, Ra/vào, Cài đặt). Mọi màn hình đó hiện băng *"chế độ chỉ xem"*, ẩn các nút quét/duyệt/bãi bỏ/miễn/ghi.

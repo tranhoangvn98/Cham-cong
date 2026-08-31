@@ -554,6 +554,53 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
     const nd = nguoi_dung_hien_tai(req);
     return dashboard_cho({ vai_tro: nd.vai_tro, nv: nd.nv }, ngay_dia_phuong(new Date()));
   });
+
+  // ------------------------------------------------------------ drill-down o so dashboard
+  // Bam mot o so tren Trang tong quan -> danh sach nhan vien thuoc nhom do (mot ngay). Loc theo
+  // vai tro nhu bang cong: nhan su thay het, truong phong thay phong minh, nhan vien thay minh.
+  const LOAI_DS = ['tong', 'co_mat', 'di_muon', 'vang', 'nghi_phep', 'chua_quet_ra'] as const;
+  const DIEU_KIEN_DS: Record<typeof LOAI_DS[number], string> = {
+    tong: 'true',
+    co_mat: `bc.trang_thai = 'co_mat'`,
+    di_muon: 'bc.phut_muon > 0',
+    vang: `bc.trang_thai = 'vang'`,
+    nghi_phep: `bc.trang_thai = 'nghi_phep'`,
+    chua_quet_ra: 'bc.gio_vao is not null and bc.gio_vao = bc.gio_ra',
+  };
+
+  app.get('/dashboard/danh-sach', { preHandler: can_dang_nhap }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const q = than(req.query) as Record<string, unknown>;
+    const loai = trong_tap(q, 'loai', LOAI_DS, { bat_buoc: true }) as typeof LOAI_DS[number];
+    const ngay = chuoi(q, 'ngay', { toi_da: 10 }) ?? ngay_dia_phuong(new Date());
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ngay)) throw new LoiDauVao('Ngày phải có dạng YYYY-MM-DD.');
+    const pv = pham_vi_nhan_vien(nd, 'nv', 2);
+
+    // 'tong' = MOI nhan vien dang hoat dong (khop o so "Tong nhan vien", von dem tu nhan_vien),
+    // left join bang cong hom nay de con hien trang thai. Cac loai khac loc theo bang cong ngay.
+    if (loai === 'tong') {
+      return truy_van(
+        `select nv.id as nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+                bc.trang_thai, bc.gio_vao, bc.gio_ra, bc.phut_muon
+           from nhan_vien nv
+           left join phong_ban pb on pb.id = nv.phong_ban_id
+           left join bang_cong_ngay bc on bc.nhan_vien_id = nv.id and bc.ngay = $1
+          where nv.dang_hoat_dong = true and ${pv.sql}
+          order by nv.ho_ten limit 1000`,
+        [ngay, ...pv.tham_so],
+      );
+    }
+    return truy_van(
+      `select nv.id as nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+              bc.trang_thai, bc.gio_vao, bc.gio_ra, bc.phut_muon
+         from bang_cong_ngay bc
+         join nhan_vien nv on nv.id = bc.nhan_vien_id
+         left join phong_ban pb on pb.id = nv.phong_ban_id
+        where bc.ngay = $1 and (${DIEU_KIEN_DS[loai]}) and ${pv.sql}
+        order by ${loai === 'di_muon' ? 'bc.phut_muon desc,' : ''} nv.ho_ten limit 1000`,
+      [ngay, ...pv.tham_so],
+    );
+  });
 }
 
 /** Cac bo loc dung chung cho danh sach va ban xuat CSV. */

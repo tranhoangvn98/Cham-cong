@@ -7,10 +7,10 @@
 // May chu la NGUON SU THAT: nhung lop nguoi xem khong duoc phep se KHONG CO trong payload.
 // O day chi ve theo nhung gi nhan duoc — khong tu suy quyen tu vai tro, vi suy o hai noi
 // thi som muon hai noi lech nhau, va cai lech nguy hiem la ben giao dien "de" hon.
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { LienKet } from '../dinh_tuyen.tsx';
 import {
-  HopLoi, OSo, Trong, dung_nap, gio_ngan, ngay_gio, ngay_viet,
+  DangTai, HopLoi, HopThoai, NhanNgay, OSo, Trong, dung_nap, gio_ngan, ngay_gio, ngay_viet,
   phut_thanh_chu, thu_cua_ngay,
   XuongDanhSach,
 } from '../thanh_phan.tsx';
@@ -151,6 +151,90 @@ const TEN_TRANG_THAI: Record<string, string> = {
   nghi_tuan: 'Nghỉ tuần',
 };
 
+// ==================================================================== drill-down o so
+type LoaiDs = 'tong' | 'co_mat' | 'di_muon' | 'vang' | 'nghi_phep' | 'chua_quet_ra';
+const TEN_LOAI_DS: Record<LoaiDs, string> = {
+  tong: 'Toàn bộ nhân viên', co_mat: 'Có mặt', di_muon: 'Đi muộn',
+  vang: 'Vắng', nghi_phep: 'Nghỉ phép', chua_quet_ra: 'Chưa quẹt ra',
+};
+interface DongDs {
+  nhan_vien_id: string; ma_nv: string; ho_ten: string; phong_ban: string | null;
+  trang_thai: string | null; gio_vao: string | null; gio_ra: string | null; phut_muon: number;
+}
+
+/** O so bam duoc: bam ra danh sach nhan vien thuoc nhom do (mot ngay). */
+function OSoBam(
+  { nhan, gia_tri, phu, mau, loai, ngay }: {
+    nhan: string; gia_tri: ReactNode; phu?: string;
+    mau?: 'tot' | 'xau' | 'canh_bao' | 'lanh'; loai: LoaiDs; ngay: string;
+  },
+): ReactNode {
+  const [mo, dat_mo] = useState(false);
+  return (
+    <>
+      <OSo nhan={nhan} gia_tri={gia_tri} phu={phu} mau={mau} khi_bam={() => dat_mo(true)} />
+      {mo && <HopThoaiDanhSach loai={loai} ngay={ngay} khi_dong={() => dat_mo(false)} />}
+    </>
+  );
+}
+
+function HopThoaiDanhSach(
+  { loai, ngay, khi_dong }: { loai: LoaiDs; ngay: string; khi_dong: () => void },
+): ReactNode {
+  const { du_lieu, dang_tai, loi } = dung_nap<DongDs[]>(
+    `/api/dashboard/danh-sach?loai=${loai}&ngay=${ngay}`, [loai, ngay]);
+  const ds = du_lieu ?? [];
+
+  return (
+    <HopThoai tieu_de={`${TEN_LOAI_DS[loai]} — ${ngay_viet(ngay)}`} khi_dong={khi_dong} rong>
+      {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} />
+        : ds.length === 0 ? <Trong tieu_de="Không có ai trong nhóm này" />
+          : (
+            <>
+              <p className="mo-ta" style={{ marginBottom: 10 }}>
+                <strong>{ds.length}</strong> người. Bấm tên để mở hồ sơ.
+              </p>
+              <div className="vo-bang">
+                <table className="bang-gon">
+                  <thead>
+                    <tr>
+                      <th>Mã NV</th><th>Họ tên</th><th>Phòng ban</th><th>Trạng thái</th>
+                      <th>Giờ vào</th><th>Giờ ra</th><th className="canh-phai">Muộn</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ds.map((d) => (
+                      <tr key={d.nhan_vien_id}>
+                        <td className="so">{d.ma_nv}</td>
+                        <td><LienKet den={`/nhan-vien/${d.nhan_vien_id}`}>{d.ho_ten}</LienKet></td>
+                        <td>{d.phong_ban ?? '—'}</td>
+                        <td className="khong-ngat">
+                          {d.trang_thai === null
+                            ? <span className="nhan-mo">chưa có công</span>
+                            : <NhanNgay trang_thai={d.trang_thai} />}
+                        </td>
+                        <td className="so">{gio_ngan(d.gio_vao)}</td>
+                        <td className="so">
+                          {d.gio_ra === null || d.gio_ra === d.gio_vao ? '—' : gio_ngan(d.gio_ra)}
+                        </td>
+                        <td className="canh-phai so"
+                          style={d.phut_muon > 0 ? { color: 'var(--canh-bao)', fontWeight: 600 } : undefined}>
+                          {d.phut_muon > 0 ? phut_thanh_chu(d.phut_muon) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+      <div className="hang-nut" style={{ marginTop: 12 }}>
+        <button className="nut-phang" onClick={khi_dong}>Đóng</button>
+      </div>
+    </HopThoai>
+  );
+}
+
 export function TrangDashboard(): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<Dashboard>('/api/dashboard');
 
@@ -189,7 +273,7 @@ export function TrangDashboard(): ReactNode {
       <>
         {dau_trang}
         <div className="bang-dieu-khien">
-          <TongQuanNgay ct={du_lieu.cong_ty} rv={du_lieu.ra_vao} />
+          <TongQuanNgay ct={du_lieu.cong_ty} rv={du_lieu.ra_vao} ngay={du_lieu.ngay} />
 
           {du_lieu.ra_vao !== null && <DiemNongRaVao rv={du_lieu.ra_vao} />}
 
@@ -217,7 +301,7 @@ export function TrangDashboard(): ReactNode {
     <>
       {dau_trang}
       {du_lieu.toi !== null && <KhoiCuaToi toi={du_lieu.toi} />}
-      {du_lieu.phong !== null && <KhoiPhong phong={du_lieu.phong} />}
+      {du_lieu.phong !== null && <KhoiPhong phong={du_lieu.phong} ngay={du_lieu.ngay} />}
     </>
   );
 }
@@ -275,12 +359,12 @@ function KhoiCuaToi({ toi }: { toi: CongCuaToi }): ReactNode {
 
 // ==================================================================== phòng của tôi
 
-function KhoiPhong({ phong }: { phong: PhongCuaToi }): ReactNode {
+function KhoiPhong({ phong, ngay }: { phong: PhongCuaToi; ngay: string }): ReactNode {
   return (
     <>
       <div className="the">
         <h2>Phòng {phong.ten_phong} — hôm nay</h2>
-        <ONgay t={phong.tinh_hinh} />
+        <ONgay t={phong.tinh_hinh} ngay={ngay} />
         {phong.cho_toi_duyet > 0 && (
           <div className="hang-nut" style={{ marginTop: 12 }}>
             <LienKet den="/duyet-don" lop="nut nut-chinh">
@@ -303,39 +387,44 @@ function KhoiPhong({ phong }: { phong: PhongCuaToi }): ReactNode {
 
 // Tong quan mot ngay: gop tinh hinh cham cong voi so lieu ra/vao van phong. Day la hang dau
 // tien nhan su nhin thay, nen dat truoc het.
-function TongQuanNgay({ ct, rv }: { ct: CongTy; rv: RaVaoHR | null }): ReactNode {
+function TongQuanNgay(
+  { ct, rv, ngay }: { ct: CongTy; rv: RaVaoHR | null; ngay: string },
+): ReactNode {
   const t = ct.tinh_hinh;
   return (
     <div className="the">
       <h2>Toàn công ty — hôm nay</h2>
       <div className="luoi luoi-4">
-        <OSo nhan="Tổng nhân viên" gia_tri={t.tong_nhan_vien} />
+        <OSoBam nhan="Tổng nhân viên" gia_tri={t.tong_nhan_vien} loai="tong" ngay={ngay} />
         {rv !== null && (
           <OSo nhan="Đang trong văn phòng" gia_tri={rv.dang_trong} mau="lanh"
             phu="chưa quẹt ra tính tới lúc này" />
         )}
-        <OSo nhan="Có mặt" gia_tri={t.co_mat} mau="tot" />
-        <OSo nhan="Đi muộn" gia_tri={t.di_muon}
-          mau={Number(t.di_muon) > 0 ? 'canh_bao' : undefined} />
+        <OSoBam nhan="Có mặt" gia_tri={t.co_mat} mau="tot" loai="co_mat" ngay={ngay} />
+        <OSoBam nhan="Đi muộn" gia_tri={t.di_muon}
+          mau={Number(t.di_muon) > 0 ? 'canh_bao' : undefined} loai="di_muon" ngay={ngay} />
         {rv !== null && (
           <OSo nhan="Về sớm" gia_tri={rv.ve_som}
             mau={rv.ve_som > 0 ? 'canh_bao' : undefined} />
         )}
-        <OSo nhan="Vắng" gia_tri={t.vang} mau={Number(t.vang) > 0 ? 'xau' : undefined} />
-        <OSo nhan="Nghỉ phép" gia_tri={t.nghi_phep} mau="lanh" />
+        <OSoBam nhan="Vắng" gia_tri={t.vang} mau={Number(t.vang) > 0 ? 'xau' : undefined}
+          loai="vang" ngay={ngay} />
+        <OSoBam nhan="Nghỉ phép" gia_tri={t.nghi_phep} mau="lanh" loai="nghi_phep" ngay={ngay} />
         {rv !== null && (
           <OSo nhan="Ra ngoài giờ làm" gia_tri={rv.so_nguoi_ra_ngoai}
             phu={rv.tong_phut_ra_ngoai > 0
               ? `tổng ${phut_thanh_chu(rv.tong_phut_ra_ngoai)}`
               : 'không ai ra ngoài'} />
         )}
-        <OSo nhan="Chưa quẹt ra" gia_tri={t.chua_quet_ra} phu="còn trong giờ hoặc quên quẹt" />
+        <OSoBam nhan="Chưa quẹt ra" gia_tri={t.chua_quet_ra} phu="còn trong giờ hoặc quên quẹt"
+          loai="chua_quet_ra" ngay={ngay} />
       </div>
     </div>
   );
 }
 
 function BieuDoBayNgay({ ct }: { ct: CongTy }): ReactNode {
+  const [hover, dat_hover] = useState<string | null>(null);
   // Truc y cua bieu do lay theo so nhan vien lon nhat trong 7 ngay.
   const cao_nhat = Math.max(1, ...ct.bay_ngay.map((d) => Number(d.co_mat) + Number(d.vang)));
   return (
@@ -354,10 +443,25 @@ function BieuDoBayNgay({ ct }: { ct: CongTy }): ReactNode {
               const dung_gio = Math.max(0, co_mat - muon);
               const ty = (n: number): string => `${(n / cao_nhat) * 100}%`;
               return (
-                <div className="cot-ngay" key={d.ngay} title={
-                  `${ngay_viet(d.ngay)}: ${String(co_mat)} có mặt (${String(muon)} muộn), `
-                  + `${String(vang)} vắng, OT ${phut_thanh_chu(Number(d.phut_ot))}`
-                }>
+                <div className="cot-ngay" key={d.ngay}
+                  tabIndex={0}
+                  onMouseEnter={() => dat_hover(d.ngay)}
+                  onMouseLeave={() => dat_hover((cu) => (cu === d.ngay ? null : cu))}
+                  onFocus={() => dat_hover(d.ngay)}
+                  onBlur={() => dat_hover((cu) => (cu === d.ngay ? null : cu))}
+                >
+                  {hover === d.ngay && (
+                    <div className="bieu-do-mach" role="tooltip">
+                      <div className="bieu-do-mach-ngay">{ngay_viet(d.ngay)}</div>
+                      <div><i className="o-mau" style={{ background: 'var(--chinh)' }} />
+                        Đúng giờ: <strong>{dung_gio}</strong></div>
+                      <div><i className="o-mau" style={{ background: 'var(--canh-bao)' }} />
+                        Đi muộn: <strong>{muon}</strong></div>
+                      <div><i className="o-mau" style={{ background: 'var(--xau)' }} />
+                        Vắng: <strong>{vang}</strong></div>
+                      <div className="bieu-do-mach-phu">OT {phut_thanh_chu(Number(d.phut_ot))}</div>
+                    </div>
+                  )}
                   <div className="cot-chong">
                     {vang > 0 && <div className="cot cot-vang" style={{ height: ty(vang) }} />}
                     {muon > 0 && <div className="cot cot-muon" style={{ height: ty(muon) }} />}
@@ -640,15 +744,18 @@ function KhoiHeThong({ ht }: { ht: HeThong }): ReactNode {
 
 // ==================================================================== dùng chung
 
-function ONgay({ t }: { t: TinhHinhNgay }): ReactNode {
+function ONgay({ t, ngay }: { t: TinhHinhNgay; ngay: string }): ReactNode {
   return (
     <div className="luoi luoi-4">
-      <OSo nhan="Tổng nhân viên" gia_tri={t.tong_nhan_vien} />
-      <OSo nhan="Có mặt" gia_tri={t.co_mat} mau="tot" />
-      <OSo nhan="Đi muộn" gia_tri={t.di_muon} mau={Number(t.di_muon) > 0 ? 'canh_bao' : undefined} />
-      <OSo nhan="Vắng" gia_tri={t.vang} mau={Number(t.vang) > 0 ? 'xau' : undefined} />
-      <OSo nhan="Nghỉ phép" gia_tri={t.nghi_phep} mau="lanh" />
-      <OSo nhan="Chưa quẹt ra" gia_tri={t.chua_quet_ra} phu="Còn trong giờ hoặc quên quẹt" />
+      <OSoBam nhan="Tổng nhân viên" gia_tri={t.tong_nhan_vien} loai="tong" ngay={ngay} />
+      <OSoBam nhan="Có mặt" gia_tri={t.co_mat} mau="tot" loai="co_mat" ngay={ngay} />
+      <OSoBam nhan="Đi muộn" gia_tri={t.di_muon} mau={Number(t.di_muon) > 0 ? 'canh_bao' : undefined}
+        loai="di_muon" ngay={ngay} />
+      <OSoBam nhan="Vắng" gia_tri={t.vang} mau={Number(t.vang) > 0 ? 'xau' : undefined}
+        loai="vang" ngay={ngay} />
+      <OSoBam nhan="Nghỉ phép" gia_tri={t.nghi_phep} mau="lanh" loai="nghi_phep" ngay={ngay} />
+      <OSoBam nhan="Chưa quẹt ra" gia_tri={t.chua_quet_ra} phu="Còn trong giờ hoặc quên quẹt"
+        loai="chua_quet_ra" ngay={ngay} />
     </div>
   );
 }
