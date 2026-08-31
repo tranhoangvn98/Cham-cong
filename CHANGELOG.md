@@ -2,6 +2,48 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.15.0] — 2026-08-31
+
+**Đẩy sự kiện nhân sự sang cổng định danh chung.**
+
+### Thêm mới
+
+- **Ba mốc đời người sinh sự kiện gửi sang cổng** (`teams.tranhoangvietnam.com/cong`): tạo
+  nhân viên → `nhan_su.da_tao`, đổi họ tên → `nhan_su.doi_ten`, cho nghỉ việc →
+  `nhan_su.nghi_viec`. Cả đường tạo từng người lẫn đường nhập hàng loạt từ tệp.
+
+  Sự kiện `nghi_viec` là cái quan trọng nhất: cổng nhận được sẽ **vô hiệu hoá tài khoản và thu
+  hồi mọi phiên đang sống** ở tất cả phân hệ trong cụm. Trước đây cho một người nghỉ việc ở
+  Chấm công không hề chạm tới quyền của họ ở nơi khác.
+
+- **Hai biến môi trường mới**: `CONG_URL` và `CONG_TOKEN_DICH_VU`. **Để trống = tắt đường
+  dây**; sự kiện vẫn được ghi vào `hop_thu_di` và nằm đó chờ, không mất. Khai vào lúc nào thì
+  chúng đi lúc đó.
+
+### Đổi
+
+- **`hop_thu_di` giờ có hai đích.** `nhan_su.*` đi sang cổng, còn lại đi sang ERP như cũ. Phần
+  nhận việc / thử lại / backoff dùng chung. Sự kiện được ghi **cùng transaction** với dòng nhân
+  viên — tách ra thì một lần máy chết giữa hai câu để lại một người đã nghỉ việc mà vẫn đăng
+  nhập được vào mọi phân hệ khác.
+- `day_hop_thu_di` không còn dừng khi thiếu `ERP_WEBHOOK_URL`. Trước đây một dòng
+  `if (erp === '') return 0` ở đầu hàm sẽ chặn luôn cả đường sang cổng.
+
+### Sửa
+
+- Phép chặn "chỉ chạy trên CSDL tên `chamcong_test*`" của bộ kiểm e2e đọc tên CSDL bằng
+  `split('/').pop()`. Cách cắt đó sai với cả `postgres://cong@/chamcong_test?host=/var/tmp/sock`
+  (từ chối oan) lẫn `postgres://may/that?options=/chamcong_test` (**cho qua** — và bộ kiểm này
+  xoá sạch bảng). Nay bỏ chuỗi truy vấn trước rồi mới cắt đường dẫn.
+
+### Còn thiếu, có chủ ý
+
+- **Đổi `ma_nv` không sinh sự kiện.** Hợp đồng của cổng không có động từ cho việc này, và ghép
+  hai động từ có sẵn thì hoặc tạo rác, hoặc đá người đó ra khỏi hệ thống. Chấm công ghi
+  `doi_ma_nv_lech_cong` vào nhật ký thao tác để có người đối chiếu tay.
+- **`nhan_su.quay_lai` chưa bao giờ được phát** vì Chấm công chưa có đường nào bật lại
+  `dang_hoat_dong`.
+
 ## [1.14.0] — 2026-08-10
 
 **Xem nhanh tệp đính kèm và bảng truy xuất kho tệp.**

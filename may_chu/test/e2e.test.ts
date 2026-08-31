@@ -20,7 +20,27 @@ process.env['ICLOCK_IP_CHO_PHEP'] = '127.0.0.1,192.168.9.0/24';
 process.env['DATABASE_URL'] ??=
   'postgres://chamcong:chamcong_dev@localhost:5432/chamcong_test';
 
-const ten_db = process.env['DATABASE_URL'].split('/').pop() ?? '';
+/**
+ * Ten CSDL trong chuoi ket noi. BO CHUOI TRUY VAN TRUOC roi moi cat duong dan.
+ *
+ * `split('/').pop()` la sai theo ca hai huong:
+ *
+ *   postgres://cong@/chamcong_test?host=/var/tmp/pgrun  ->  'pgrun'          (tu choi oan)
+ *   postgres://may/that?options=/chamcong_test          ->  'chamcong_test'  (CHO QUA)
+ *
+ * Huong thu nhat chi kho chiu — no chan mat cach chay tren may khong mo cong TCP. Huong thu
+ * hai moi la huong chet: bo kiem nay xoa sach bang. Mot phep chan xoa du lieu khong duoc doc
+ * nham.
+ *
+ * Khong dung `new URL`: dang socket Unix cua libpq co phan host RONG, WHATWG URL tu choi thang.
+ */
+function ten_csdl(url: string): string {
+  const khong_truy_van = url.split('?')[0] ?? '';
+  const sau_giao_thuc = khong_truy_van.replace(/^[a-z+]+:\/\//i, '');
+  const vt = sau_giao_thuc.indexOf('/');
+  return vt < 0 ? '' : sau_giao_thuc.slice(vt + 1);
+}
+const ten_db = ten_csdl(process.env['DATABASE_URL']);
 if (!ten_db.startsWith('chamcong_test')) {
   throw new Error(
     `Kiem thu e2e xoa sach du lieu nen chi chay tren DB ten '*_test'. `

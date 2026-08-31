@@ -166,6 +166,28 @@ export const cau_hinh = {
     webhook_secret: chu('ERP_WEBHOOK_SECRET', ''),
   },
 
+  /**
+   * Cong dinh danh chung (kho `phanquyen`). Cham cong DAY su kien nhan su sang do.
+   *
+   * MOT CHIEU. Cham cong la nguon su that ve nhan su; cong chi la ban sao de biet ai con lam.
+   * Khong co duong nguoc lai — cong khong bao gio goi vao day.
+   *
+   * `goc` la goc cua CONG, co tien to `/cong`, khong co gach cheo cuoi:
+   *   https://teams.tranhoangvietnam.com/cong
+   *
+   * `token_dich_vu` la token dich vu do cong phat, pham vi HEP `cong.day_su_kien_nhan_su` —
+   * KHONG phai `cong.quan_tri`. Token nay nam trong `.env` cua may nay, trong ban sao luu cua
+   * no, va trong tay ai deploy no; mot token quan tri o day nghia la ai doc duoc tep do cung
+   * khoa duoc moi tai khoan trong cong ty.
+   *
+   * De TRONG ca hai = tat duong day. Su kien van duoc ghi vao `hop_thu_di` va nam do cho —
+   * khong mat. Bat len luc nao thi chung di luc do.
+   */
+  cong_sso: {
+    goc: chu('CONG_URL', '').replace(/\/+$/, ''),
+    token_dich_vu: chu('CONG_TOKEN_DICH_VU', ''),
+  },
+
   /** Bat migration tu dong khi khoi dong (tien cho Docker 1 diem). */
   tu_dong_di_tru: chu('TU_DONG_DI_TRU', la_production ? '0' : '1') === '1',
 

@@ -15,7 +15,13 @@ const THU_MUC = dirname(fileURLToPath(import.meta.url));
 const GOI = join(THU_MUC, '..', 'package.json');
 
 /** Chay rieng vi can CSDL that; xem script `test_e2e`. */
-const CHAY_RIENG = new Set(['e2e.test.ts', 'proxy_tin_cay.test.ts']);
+const CHAY_RIENG = new Set([
+  'e2e.test.ts',
+  'proxy_tin_cay.test.ts',
+  'su_kien_nhan_su.test.ts',
+  // Tep rieng vi no can `CONG_URL` RONG, ma `cau_hinh` doc bien moi truong mot lan luc import.
+  'su_kien_nhan_su_chua_cau_hinh.test.ts',
+]);
 
 test('moi tep test deu duoc khai trong npm test', () => {
   const script = (JSON.parse(readFileSync(GOI, 'utf8')) as { scripts: Record<string, string> })
