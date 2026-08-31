@@ -1289,3 +1289,14 @@ textarea:focus-visible,
   /* Chua cho nut noi khong che muc cuoi trang. */
   .canhan { padding-bottom: 72px; }
 }
+
+/* Thanh huong dan thu gon (mac dinh 1 dong) — xem thanh_phan_huong_dan.tsx */
+.huong-dan-gon {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; margin-bottom: 12px; padding: 8px 14px;
+  background: var(--nen-the); border: 1px solid var(--vien); border-radius: var(--tron);
+  color: var(--chu-mo); font: inherit; cursor: pointer; text-align: left;
+}
+.huong-dan-gon:hover { background: var(--nen-mo); }
+.huong-dan-gon-chu { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.huong-dan-gon-xem { flex: none; font-size: 13px; font-weight: 600; color: var(--chinh); }

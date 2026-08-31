@@ -11,42 +11,52 @@ import { useState, type ReactNode } from 'react';
 import { vai_tro_hien_tai } from './api.ts';
 import { buoc_cho_vai_tro, huong_dan_cua, type VaiTro } from './huong_dan.ts';
 
-const KHOA = 'cham_cong_huong_dan_dong';
+// Ghi nho cac trang nguoi dung DA MO huong dan. MAC DINH THU GON (1 dong) cho gon man hinh —
+// nguoi dung can thi bam mo, va lua chon do duoc nho lai cho tung trang.
+const KHOA = 'cham_cong_huong_dan_mo';
 
-function cac_trang_da_dong(): Set<string> {
+function cac_trang_da_mo(): Set<string> {
   try {
     const tho = window.localStorage.getItem(KHOA);
     return new Set(tho === null ? [] : (JSON.parse(tho) as string[]));
   } catch {
-    // localStorage bi chan (che do rieng tu, hoac chinh sach trinh duyet) thi coi nhu chua dong
-    // trang nao. Huong dan hien ra thua con hon ca trang trang vi mot loi luu tru.
     return new Set();
   }
 }
 
-function ghi_nho(da_dong: Set<string>): void {
+function ghi_nho(da_mo: Set<string>): void {
   try {
-    window.localStorage.setItem(KHOA, JSON.stringify([...da_dong]));
+    window.localStorage.setItem(KHOA, JSON.stringify([...da_mo]));
   } catch {
     // Khong ghi nho duoc thi thoi — khong duoc lam hong viec dang lam.
   }
 }
 
 export function KhungHuongDan({ duong_dan }: { duong_dan: string }): ReactNode {
-  const [da_dong, dat_da_dong] = useState<Set<string>>(cac_trang_da_dong);
+  const [da_mo, dat_da_mo] = useState<Set<string>>(cac_trang_da_mo);
   const h = huong_dan_cua(duong_dan);
   if (h === null) return null;
 
-  const dong = da_dong.has(duong_dan);
+  const mo = da_mo.has(duong_dan);
   const doi = (): void => {
-    const moi = new Set(da_dong);
-    if (dong) moi.delete(duong_dan);
+    const moi = new Set(da_mo);
+    if (mo) moi.delete(duong_dan);
     else moi.add(duong_dan);
-    dat_da_dong(moi);
+    dat_da_mo(moi);
     ghi_nho(moi);
   };
 
   const buoc = buoc_cho_vai_tro(h, vai_tro_hien_tai() as VaiTro | null);
+
+  // MAC DINH: mot dong toi gian — bam "Xem" moi mo ra day du.
+  if (!mo) {
+    return (
+      <button type="button" className="huong-dan-gon" onClick={doi}>
+        <span className="huong-dan-gon-chu">Hướng dẫn trang này</span>
+        <span className="huong-dan-gon-xem">Xem ›</span>
+      </button>
+    );
+  }
 
   return (
     <div className="the" style={{ marginBottom: 12 }}>
@@ -55,12 +65,10 @@ export function KhungHuongDan({ duong_dan }: { duong_dan: string }): ReactNode {
           <strong>Quy trình ở trang này</strong>
           <p className="mo-ta" style={{ margin: '2px 0 0' }}>{h.tom_tat}</p>
         </div>
-        <button type="button" className="nut-nho nut-phang" onClick={doi}>
-          {dong ? 'Xem hướng dẫn' : 'Ẩn'}
-        </button>
+        <button type="button" className="nut-nho nut-phang" onClick={doi}>Ẩn</button>
       </div>
 
-      {!dong && (
+      {(
         <>
           {buoc.length > 0 ? (
             <ol style={{ margin: '10px 0 0 18px', padding: 0 }}>
