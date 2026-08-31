@@ -1093,6 +1093,45 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     const cau_hoi = typeof q['hoi'] === 'string' ? q['hoi'] : '';
     return tra_loi_tro_ly(nv_id, cau_hoi);
   });
+
+  // ---------------------------------------------------------------- chuong bao (notification)
+  /** Thong bao rieng cua CHINH tai khoan nay + so chua doc. */
+  app.get('/bao', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const [danh_sach, dem] = await Promise.all([
+      truy_van(
+        `select id, tieu_de, noi_dung, du_lieu, da_doc, tao_luc
+           from thong_bao_rieng where nguoi_dung_id = $1
+          order by da_doc, tao_luc desc limit 50`,
+        [nd.sub],
+      ),
+      truy_van_mot<{ so: number }>(
+        'select count(*)::int as so from thong_bao_rieng where nguoi_dung_id = $1 and da_doc = false',
+        [nd.sub],
+      ),
+    ]);
+    return { danh_sach, so_chua_doc: dem?.so ?? 0 };
+  });
+
+  /** Danh dau mot thong bao da doc. */
+  app.post('/bao/:id/doc', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    await thuc_thi(
+      'update thong_bao_rieng set da_doc = true where id = $1 and nguoi_dung_id = $2',
+      [lay_id(req), nd.sub],
+    );
+    return { ok: true };
+  });
+
+  /** Danh dau TAT CA da doc. */
+  app.post('/bao/doc-het', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    await thuc_thi(
+      'update thong_bao_rieng set da_doc = true where nguoi_dung_id = $1 and da_doc = false',
+      [nd.sub],
+    );
+    return { ok: true };
+  });
 }
 
 function lay_id(req: { params: unknown }): string {

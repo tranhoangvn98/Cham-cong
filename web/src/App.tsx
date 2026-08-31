@@ -35,6 +35,7 @@ import { TrangHoSoToi } from './trang/ho_so_toi.tsx';
 import { TrangThongBaoCaNhan } from './trang/thong_bao_ca_nhan.tsx';
 import { TrangVanBan } from './trang/van_ban.tsx';
 import { TroLyCaNhan } from './trang/tro_ly.tsx';
+import { ChuongBao } from './trang/chuong_bao.tsx';
 
 interface MucMenu {
   duong_dan: string;
@@ -424,6 +425,7 @@ function BoCuc(): ReactNode {
           </div>
 
           <div className="dau-app-nut">
+            <ChuongBao />
             <button
               className="nut-tron"
               onClick={() => dat_che_do(dang_toi(che_do) ? 'sang' : 'toi')}

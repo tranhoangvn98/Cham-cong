@@ -33,6 +33,10 @@ interface KetQuaExpo {
  * hoac tinh nang dang tat) — dung de ghi log, KHONG dung de bao loi cho nguoi dung.
  */
 export async function gui_thong_bao(tb: ThongBao): Promise<number> {
+  // LUU CHUONG BAO TRONG WEB truoc — khong phu thuoc push co bat hay khong. Nho the moi diem
+  // su kien dang goi gui_ngam (nop don, duyet don, giai trinh...) tu dong co thong bao rieng.
+  await luu_thong_bao_rieng(tb);
+
   if (!cau_hinh.thong_bao_day_bat) return 0;
   if (tb.nguoi_dung_ids.length === 0) return 0;
 
@@ -59,6 +63,26 @@ export async function gui_thong_bao(tb: ThongBao): Promise<number> {
     await don_token_chet(lo.map((d) => d.token), ket_qua);
   }
   return da_gui;
+}
+
+/**
+ * Luu mot dong thong bao rieng cho tung nguoi nhan (chuong bao trong web).
+ *
+ * Tu nuot loi nhu ca module nay: thong bao la phan phu, khong duoc lam hong viec chinh (don da
+ * luu xong). Chen mot cau cho ca lo bang unnest — mot lan di CSDL du bao nhieu nguoi nhan.
+ */
+async function luu_thong_bao_rieng(tb: ThongBao): Promise<void> {
+  if (tb.nguoi_dung_ids.length === 0) return;
+  try {
+    await thuc_thi(
+      `insert into thong_bao_rieng(nguoi_dung_id, tieu_de, noi_dung, du_lieu)
+       select id, $2, $3, $4::jsonb from unnest($1::uuid[]) as id`,
+      [tb.nguoi_dung_ids, tb.tieu_de, tb.noi_dung,
+        tb.du_lieu === undefined ? null : JSON.stringify(tb.du_lieu)],
+    );
+  } catch (loi) {
+    console.warn(`[bao] khong luu duoc thong bao rieng: ${(loi as Error).message}`);
+  }
 }
 
 /** Goi Expo. Tra null khi that bai — da ghi log, ben goi khong phai xu ly gi them. */

@@ -7,6 +7,7 @@
 import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
+import { gui_ngam } from '../su_kien/thong_bao_day.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { luu_van_ban_cong_ty, lam_sach_ten, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
@@ -59,6 +60,24 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
     );
     await ghi_nhat_ky(nd.sub, 'tao_thong_bao', 'thong_bao', dong?.id ?? null,
       { pham_vi, muc_do, can_giai_trinh }, req.ip);
+
+    // Chuong bao (+ push) cho nguoi nhan trong pham vi. Nhan vien thuong doc o tab Thong bao;
+    // day chi de noi do so chua doc + day ve dien thoai.
+    const nguoi_nhan = await truy_van<{ id: string }>(
+      `select u.id from nguoi_dung u
+         join nhan_vien nv on nv.id = u.nhan_vien_id
+        where u.dang_hoat_dong = true and nv.dang_hoat_dong = true
+          and ($1 = 'toan_cong_ty' or nv.phong_ban_id = $2::uuid)`,
+      [pham_vi, phong_ban_id],
+    );
+    if (nguoi_nhan.length > 0) {
+      gui_ngam({
+        nguoi_dung_ids: nguoi_nhan.map((n) => n.id),
+        tieu_de: `Thông báo mới: ${tieu_de}`,
+        noi_dung: can_giai_trinh ? 'Thông báo này yêu cầu bạn giải trình.' : 'Bấm để xem chi tiết.',
+        du_lieu: { man: 'thong-bao', thong_bao_id: dong?.id ?? null },
+      });
+    }
     return res.code(201).send(dong);
   });
 
