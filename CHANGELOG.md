@@ -2,6 +2,16 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.61.0] — 2026-08-31
+
+**Miễn kỷ luật + Khiếu nại + mã tracking.** Ba nghiệp vụ mới trong "Kỷ luật & vi phạm":
+
+- **Miễn kỷ luật (chỉ Admin).** Admin đổi thủ công một hồ sơ hoặc **đồng loạt** (chọn nhiều dòng) từ *Đã áp dụng / Chờ duyệt / Đã nhắc / Mới* sang **Miễn kỷ luật** — khoản giảm thưởng P3 tự **gỡ khỏi lương** (qua chính sách phụ cấp), hồ sơ vẫn được lưu để theo dõi. Khác "bãi bỏ" (bãi bỏ = quyết định sai/rút lại); miễn = công ty khoan hồng, quyết định vẫn đúng. Bổ sung nút "Miễn kỷ luật hàng loạt" trên thanh chọn và nút miễn từng hồ sơ trong hộp thoại.
+- **Khiếu nại & giải trình.** Người lao động khiếu nại một quyết định kỷ luật (BLLĐ Điều 131) hoặc giải trình vi phạm ngay trong app (tab **Kỷ luật & khiếu nại** ở "Đơn của tôi"). Hồ sơ kỷ luật đang có khiếu nại chưa xử lý sẽ **đổi màu + hiện chấm đỏ "● N khiếu nại"** trên dòng đó. Thêm **tab Khiếu nại** để nhân sự/admin tiếp nhận, chấp nhận (Admin có thể "chấp nhận & miễn luôn"), hoặc từ chối kèm phản hồi.
+- **Mã tracking.** Mỗi hồ sơ kỷ luật có mã **KL-NNNNNN**, mỗi khiếu nại có mã **KN-NNNNNN** (sinh tự động, không đổi khi quét lại) để tra cứu và theo dõi.
+
+Migration 034 (trạng thái `mien`, cột `ma`/`ly_do_mien`, bảng `khieu_nai`, sequence + trigger sinh mã). API: `POST /ky-luat/mien` (bulk, admin), `GET /khieu-nai` + `POST /khieu-nai/:id/xu-ly` (quản lý), `GET /toi/ky-luat` + `GET|POST /toi/khieu-nai` (người lao động).
+
 ## [1.60.0] — 2026-08-31
 
 **Nút chuyển góc nhìn Quản trị ⇄ Cá nhân (web).** Người có quyền quản trị (nhân sự, và trưởng phòng được admin cấp quyền) giờ có nút ở chân thanh bên để chuyển giữa **Quản trị** (thấy đủ menu theo quyền) và **Cá nhân** (chỉ Tổng quan, Đơn của tôi, Duyệt đơn — bản chất admin/nhân sự cũng là người lao động, cũng xin nghỉ như nhân viên thường). Người không có quyền quản trị luôn ở góc nhìn Cá nhân. Mục "Nghỉ phép" đổi tên **"Duyệt đơn"** và mở cho người duyệt (gồm trưởng phòng duyệt đơn của phòng mình). Chuẩn bị sẵn `quyen_quan_tri` để bước sau admin cấp quyền xem màn hình quản trị cho trưởng phòng.

@@ -346,6 +346,8 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .nut-nho { padding: 4px 9px; font-size: 12px; }
 .nut-phang { border-color: transparent; background: transparent; color: var(--chinh-dam); }
 .nut-phang:hover:not(:disabled) { background: var(--chinh-nhat); }
+.nut-lanh { background: var(--lanh); border-color: var(--lanh); color: #fff; }
+.nut-lanh:hover:not(:disabled) { filter: brightness(0.94); }
 
 .hang-nut { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
@@ -450,6 +452,35 @@ input[type="checkbox"] {
   overflow-x: auto;
 }
 .hop-tin { background: var(--lanh-nen); color: var(--lanh); border-color: var(--lanh); }
+
+/* ---------------------------------------------------------------- ky luat: chon hang loat + khieu nai */
+/* Thanh hanh dong khi chon nhieu ho so (mien ky luat hang loat). */
+.thanh-chon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: var(--chinh-nhat);
+  border: 1px solid var(--chinh);
+  border-radius: var(--tron);
+  font-size: 13px;
+}
+/* Ma tracking (KL-/KN-) — in mo, deu con so, khong ngat dong. */
+.mo-ma { color: var(--chu-mo); font-size: 12.5px; white-space: nowrap; }
+/* Hang co khieu nai dang mo: vien do nhe ben trai de bao chu y. */
+.dong-canh-bao td { background: var(--xau-nen); }
+/* Nhan "khieu nai" do canh nhan trang thai. */
+.nhan-khieu-nai {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--xau);
+  white-space: nowrap;
+}
 
 .trong {
   text-align: center;

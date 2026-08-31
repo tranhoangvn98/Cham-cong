@@ -21,6 +21,13 @@ const NHAN_TT: Record<string, { ten: string; lop: string }> = {
   da_xac_nhan: { ten: 'Đã xác nhận', lop: 'nhan-xau' },
   bac_bo: { ten: 'Đã bãi bỏ', lop: 'nhan-tot' },
   da_xu_ly: { ten: 'Đã xử lý', lop: 'nhan-mo' },
+  // ky luat
+  da_nhac: { ten: 'Đã nhắc nhở', lop: 'nhan-canh-bao' },
+  da_ap_dung: { ten: 'Đã áp dụng', lop: 'nhan-xau' },
+  mien: { ten: 'Miễn kỷ luật', lop: 'nhan-lanh' },
+  // khieu nai
+  dang_xem: { ten: 'Đang xem xét', lop: 'nhan-canh-bao' },
+  chap_nhan: { ten: 'Đã chấp nhận', lop: 'nhan-tot' },
 };
 function Nhan({ tt }: { tt: string }): ReactNode {
   return <span className={NHAN_TT[tt]?.lop ?? 'nhan-mo'}>{NHAN_TT[tt]?.ten ?? tt}</span>;
@@ -30,22 +37,26 @@ function ngay_v(v: string): string {
   return m === null ? v : `${m[3]}/${m[2]}/${m[1]}`;
 }
 
+type Tab = 'nghi' | 'cham_cong' | 'vi_pham' | 'ky_luat';
+
 export function TrangDonCuaToi(): ReactNode {
-  const [tab, dat_tab] = useState<'nghi' | 'cham_cong' | 'vi_pham'>('nghi');
+  const [tab, dat_tab] = useState<Tab>('nghi');
   return (
     <>
       <div className="dau-trang">
         <p className="mo-ta">
-          Tự nộp đơn xin nghỉ phép, giải trình chấm công và giải trình vi phạm. Đơn gửi tới quản lý /
-          nhân sự duyệt; bạn theo dõi trạng thái ngay tại đây.
+          Tự nộp đơn xin nghỉ phép, giải trình chấm công, giải trình vi phạm và khiếu nại kỷ luật.
+          Đơn gửi tới quản lý / nhân sự duyệt; bạn theo dõi trạng thái ngay tại đây.
         </p>
       </div>
       <div className="hang-tab">
         <button className={tab === 'nghi' ? 'dang-chon' : undefined} onClick={() => dat_tab('nghi')}>Nghỉ phép</button>
         <button className={tab === 'cham_cong' ? 'dang-chon' : undefined} onClick={() => dat_tab('cham_cong')}>Giải trình chấm công</button>
         <button className={tab === 'vi_pham' ? 'dang-chon' : undefined} onClick={() => dat_tab('vi_pham')}>Vi phạm của tôi</button>
+        <button className={tab === 'ky_luat' ? 'dang-chon' : undefined} onClick={() => dat_tab('ky_luat')}>Kỷ luật &amp; khiếu nại</button>
       </div>
-      {tab === 'nghi' ? <TabNghiPhep /> : tab === 'cham_cong' ? <TabGiaiTrinh /> : <TabViPham />}
+      {tab === 'nghi' ? <TabNghiPhep /> : tab === 'cham_cong' ? <TabGiaiTrinh />
+        : tab === 'vi_pham' ? <TabViPham /> : <TabKyLuatToi />}
     </>
   );
 }
@@ -251,6 +262,141 @@ function TabViPham(): ReactNode {
         )}
       {dang !== null && <FormGiaiTrinhViPham vp={dang} khi_dong={() => dat_dang(null)} khi_xong={() => { dat_dang(null); nap_lai(); }} />}
     </>
+  );
+}
+
+// ============================================================ kỷ luật & khiếu nại của tôi
+const TEN_MUC_DO: Record<string, string> = {
+  nhe: 'Nhẹ', trung: 'Trung bình', nang: 'Nặng', rat_nang: 'Rất nặng',
+};
+function tien_kl(v: unknown): string {
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '0';
+}
+
+interface KyLuatToi {
+  id: string; ma: string | null; ky: string; muc_do: string; so_vi_pham: number;
+  tong_tien: string; hinh_thuc: string; trang_thai: string; ly_do_mien: string | null;
+  so_khieu_nai: number;
+}
+interface KhieuNaiToi {
+  id: string; ma: string | null; loai: string; noi_dung: string; trang_thai: string;
+  phan_hoi: string | null; tao_luc: string; ma_ky_luat: string | null; ky_ky_luat: string | null;
+}
+
+/** Trang thai ho so ma nguoi lao dong con co the khieu nai. */
+const KHIEU_NAI_DUOC = new Set(['cho_duyet', 'da_ap_dung', 'da_nhac']);
+
+function TabKyLuatToi(): ReactNode {
+  const kl = dung_nap<KyLuatToi[]>('/api/toi/ky-luat');
+  const kn = dung_nap<KhieuNaiToi[]>('/api/toi/khieu-nai');
+  const [dang, dat_dang] = useState<KyLuatToi | null>(null);
+
+  const nap_lai = (): void => { kl.nap_lai(); kn.nap_lai(); };
+
+  return (
+    <>
+      <p className="mo-ta" style={{ marginBottom: 12 }}>
+        Hồ sơ kỷ luật (giảm thưởng P3) ghi nhận với bạn. Nếu không đồng ý, bạn có quyền
+        <strong> khiếu nại</strong> (Bộ luật Lao động 2019, Điều 131). Mỗi khiếu nại có mã để theo dõi.
+      </p>
+
+      <h3>Hồ sơ kỷ luật của tôi</h3>
+      {kl.dang_tai ? <DangTai /> : kl.loi !== null ? <HopLoi loi={kl.loi} />
+        : (kl.du_lieu ?? []).length === 0
+          ? <Trong tieu_de="Không có hồ sơ kỷ luật" mo_ta="Bạn chưa có hồ sơ kỷ luật nào." />
+          : (
+            <div className="the the-mong"><div className="vo-bang"><table>
+              <thead><tr>
+                <th>Mã</th><th>Kỳ</th><th>Mức độ</th><th className="canh-phai">Giảm thưởng</th>
+                <th>Trạng thái</th><th></th>
+              </tr></thead>
+              <tbody>
+                {(kl.du_lieu ?? []).map((d) => (
+                  <tr key={d.id}>
+                    <td className="so mo-ma">{d.ma ?? '—'}</td>
+                    <td className="khong-ngat so">{d.ky}</td>
+                    <td className="khong-ngat">{TEN_MUC_DO[d.muc_do] ?? d.muc_do}</td>
+                    <td className="canh-phai so">{tien_kl(d.tong_tien)}đ</td>
+                    <td className="khong-ngat">
+                      <Nhan tt={d.trang_thai} />
+                      {d.so_khieu_nai > 0 && <span className="nhan-khieu-nai"> ● đã khiếu nại</span>}
+                    </td>
+                    <td className="canh-phai">
+                      {KHIEU_NAI_DUOC.has(d.trang_thai) && d.so_khieu_nai === 0 && (
+                        <button className="nut-nho" onClick={() => dat_dang(d)}>Khiếu nại</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table></div></div>
+          )}
+
+      <h3 style={{ marginTop: 20 }}>Khiếu nại đã gửi</h3>
+      {kn.dang_tai ? <DangTai /> : kn.loi !== null ? <HopLoi loi={kn.loi} />
+        : (kn.du_lieu ?? []).length === 0
+          ? <Trong tieu_de="Chưa có khiếu nại" mo_ta="Khiếu nại bạn gửi sẽ hiện ở đây kèm phản hồi." />
+          : (
+            <div className="the the-mong"><div className="vo-bang"><table>
+              <thead><tr>
+                <th>Mã</th><th>Về</th><th>Nội dung</th><th>Trạng thái</th>
+              </tr></thead>
+              <tbody>
+                {(kn.du_lieu ?? []).map((c) => (
+                  <tr key={c.id}>
+                    <td className="so mo-ma">{c.ma ?? '—'}</td>
+                    <td className="khong-ngat mo-ma">
+                      {c.ma_ky_luat !== null ? `${c.ma_ky_luat} · kỳ ${c.ky_ky_luat ?? ''}` : '—'}
+                    </td>
+                    <td>{c.noi_dung}
+                      {c.phan_hoi !== null && c.phan_hoi !== ''
+                        && <div className="mo-ta">Phản hồi: {c.phan_hoi}</div>}
+                    </td>
+                    <td className="khong-ngat"><Nhan tt={c.trang_thai} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table></div></div>
+          )}
+
+      {dang !== null && (
+        <FormKhieuNai d={dang} khi_dong={() => dat_dang(null)}
+          khi_xong={() => { dat_dang(null); nap_lai(); }} />
+      )}
+    </>
+  );
+}
+
+function FormKhieuNai(
+  { d, khi_dong, khi_xong }: { d: KyLuatToi; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [nd, dat_nd] = useState('');
+  const hd = dung_hanh_dong();
+  return (
+    <HopThoai tieu_de={`Khiếu nại kỷ luật ${d.ma ?? ''}`} khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <div className="ho-so-chi-so">
+        <div className="o-so"><div className="o-so-nhan">Kỳ</div><div className="o-so-gia-tri">{d.ky}</div></div>
+        <div className="o-so"><div className="o-so-nhan">Giảm thưởng</div>
+          <div className="o-so-gia-tri so">{tien_kl(d.tong_tien)}đ</div></div>
+      </div>
+      <p className="mo-ta">
+        Trình bày rõ lý do bạn không đồng ý với quyết định này. Nhân sự / Admin sẽ xem xét và phản hồi.
+      </p>
+      <label htmlFor="kn-nd">Nội dung khiếu nại</label>
+      <textarea id="kn-nd" value={nd} onChange={(e) => dat_nd(e.target.value)} rows={4}
+        placeholder="vd: tôi đã có đơn giải trình được duyệt cho ngày này…" />
+      <div className="hang-nut">
+        <button className="nut-chinh" disabled={hd.dang_chay || nd.trim().length < 5}
+          onClick={() => void hd.chay(() => goi('/api/toi/khieu-nai', {
+            method: 'POST', body: { ho_so_ky_luat_id: d.id, loai: 'khieu_nai', noi_dung: nd },
+          }), 'Đã gửi khiếu nại.').then((ok) => { if (ok) khi_xong(); })}>
+          {hd.dang_chay ? 'Đang gửi…' : 'Gửi khiếu nại'}
+        </button>
+        <button className="nut-phang" onClick={khi_dong}>Hủy</button>
+      </div>
+    </HopThoai>
   );
 }
 

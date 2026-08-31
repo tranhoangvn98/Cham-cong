@@ -3,10 +3,10 @@
 // Che tai tai chinh o day la GIAM THUONG P3 (Dieu 104 BLLD, Dieu 14 Noi quy), KHONG phai phat
 // tien (Dieu 127). Ky luat lao dong that (khien trach tro len) lam o tab Vi pham qua bien ban.
 import { useState, type ReactNode } from 'react';
-import { goi } from '../api.ts';
+import { goi, la_admin } from '../api.ts';
 import { LienKet } from '../dinh_tuyen.tsx';
 import {
-  DangTai, HopLoi, HopThoai, OSo, Trong, dung_hanh_dong, dung_nap, thang_nay,
+  DangTai, HopLoi, HopThoai, OSo, Trong, dung_hanh_dong, dung_nap, dung_nhap_chu, thang_nay,
 } from '../thanh_phan.tsx';
 
 const TEN_MUC_DO: Record<string, string> = {
@@ -23,11 +23,16 @@ const NHAN_TT: Record<string, { ten: string; lop: string }> = {
   da_ap_dung: { ten: 'Đã áp dụng', lop: 'nhan-tot' },
   bac_bo: { ten: 'Đã bãi bỏ', lop: 'nhan-mo' },
   huy: { ten: 'Đã hủy', lop: 'nhan-mo' },
+  mien: { ten: 'Miễn kỷ luật', lop: 'nhan-lanh' },
 };
+
+/** Trang thai admin duoc phep mien. */
+const MIEN_DUOC = new Set(['moi', 'da_nhac', 'cho_duyet', 'da_ap_dung']);
 
 interface ChiTiet { vi_pham_id: string; ma: string; ten: string; tien: number }
 interface Dong {
   id: string;
+  ma: string | null;
   nhan_vien_id: string;
   ma_nv: string;
   ho_ten: string;
@@ -44,6 +49,8 @@ interface Dong {
   da_gui_email: boolean;
   ghi_chu: string | null;
   ly_do_bac_bo: string | null;
+  ly_do_mien: string | null;
+  so_khieu_nai: number;
 }
 interface TongQuan {
   ky: string;
@@ -63,15 +70,45 @@ export function TrangKyLuat(): ReactNode {
   const [muc_do, dat_muc_do] = useState('');
   const [loc, dat_loc] = useState('');
   const [dang, dat_dang] = useState<Dong | null>(null);
+  const [chon, dat_chon] = useState<ReadonlySet<string>>(new Set());
   const quet = dung_hanh_dong();
+  const mien = dung_hanh_dong();
+  const nhap = dung_nhap_chu();
+  const admin = la_admin();
 
   const tq = dung_nap<TongQuan>(`/api/ky-luat/tong-quan?ky=${ky}`, [ky]);
   const url = `/api/ky-luat?ky=${ky}${muc_do === '' ? '' : `&muc_do=${muc_do}`}`
     + `${loc === '' ? '' : `&trang_thai=${loc}`}`;
   const ds = dung_nap<Dong[]>(url, [ky, muc_do, loc]);
 
-  const nap_lai = (): void => { tq.nap_lai(); ds.nap_lai(); };
+  const nap_lai = (): void => { tq.nap_lai(); ds.nap_lai(); dat_chon(new Set()); };
   const t = tq.du_lieu?.tong ?? null;
+
+  // Chi mien duoc cac ho so dang o trang thai cho phep (bo qua cai da mien / bac bo / huy).
+  const chon_mien_duoc = [...chon].filter((id) =>
+    MIEN_DUOC.has(ds.du_lieu?.find((d) => d.id === id)?.trang_thai ?? ''));
+
+  const dao_chon = (id: string): void => {
+    const s = new Set(chon);
+    if (s.has(id)) s.delete(id); else s.add(id);
+    dat_chon(s);
+  };
+
+  const mien_hang_loat = async (ids: readonly string[]): Promise<void> => {
+    if (ids.length === 0) return;
+    const ly_do = await nhap.hoi({
+      tieu_de: `Miễn kỷ luật ${ids.length} hồ sơ`,
+      nhan: 'Lý do miễn (bắt buộc)',
+      mo_ta: 'Miễn = gỡ khoản giảm thưởng khỏi lương, hồ sơ vẫn được lưu để theo dõi. '
+        + 'Chỉ Admin thực hiện được.',
+      chu_dong_y: 'Miễn kỷ luật',
+    });
+    if (ly_do === null) return;
+    await mien.chay(
+      () => goi('/api/ky-luat/mien', { method: 'POST', body: { ids, ly_do } }),
+      `Đã miễn kỷ luật ${ids.length} hồ sơ.`,
+    ).then((ok) => { if (ok) nap_lai(); });
+  };
 
   return (
     <>
@@ -125,10 +162,28 @@ export function TrangKyLuat(): ReactNode {
             <option value="cho_duyet">Chờ duyệt</option>
             <option value="da_ap_dung">Đã áp dụng</option>
             <option value="da_nhac">Đã nhắc nhở</option>
+            <option value="mien">Miễn kỷ luật</option>
             <option value="bac_bo">Đã bãi bỏ</option>
           </select>
         </div>
       </div>
+
+      {mien.loi !== null && <HopLoi loi={mien.loi} />}
+
+      {admin && chon.size > 0 && (
+        <div className="thanh-chon">
+          <span>Đã chọn <strong>{chon.size}</strong> hồ sơ
+            {chon_mien_duoc.length < chon.size
+              && ` (miễn được ${String(chon_mien_duoc.length)})`}</span>
+          <div className="hang-nut">
+            <button className="nut nut-nho" disabled={mien.dang_chay || chon_mien_duoc.length === 0}
+              onClick={() => void mien_hang_loat(chon_mien_duoc)}>
+              Miễn kỷ luật hàng loạt
+            </button>
+            <button className="nut-phang nut-nho" onClick={() => dat_chon(new Set())}>Bỏ chọn</button>
+          </div>
+        </div>
+      )}
 
       {ds.dang_tai ? <DangTai /> : ds.loi !== null ? <HopLoi loi={ds.loi} />
         : ds.du_lieu === null || ds.du_lieu.length === 0 ? (
@@ -140,14 +195,23 @@ export function TrangKyLuat(): ReactNode {
               <table className="bang-neo-cot-dau">
                 <thead>
                   <tr>
-                    <th>Mã NV</th><th>Họ tên</th><th>Phòng ban</th><th>Mức độ</th>
+                    {admin && <th></th>}
+                    <th>Mã</th><th>Mã NV</th><th>Họ tên</th><th>Phòng ban</th><th>Mức độ</th>
                     <th className="canh-phai">Vi phạm</th><th className="canh-phai">Giảm thưởng</th>
                     <th>Trạng thái</th><th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {ds.du_lieu.map((d) => (
-                    <tr key={d.id}>
+                    <tr key={d.id} className={d.so_khieu_nai > 0 ? 'dong-canh-bao' : undefined}>
+                      {admin && (
+                        <td>
+                          <input type="checkbox" aria-label={`Chọn ${d.ma ?? d.ho_ten}`}
+                            checked={chon.has(d.id)} disabled={!MIEN_DUOC.has(d.trang_thai)}
+                            onChange={() => dao_chon(d.id)} />
+                        </td>
+                      )}
+                      <td className="so mo-ma">{d.ma ?? '—'}</td>
                       <td className="so">{d.ma_nv}</td>
                       <td><LienKet den={`/nhan-vien/${d.nhan_vien_id}`}>{d.ho_ten}</LienKet></td>
                       <td>{d.phong_ban ?? '—'}</td>
@@ -163,6 +227,11 @@ export function TrangKyLuat(): ReactNode {
                           {NHAN_TT[d.trang_thai]?.ten ?? d.trang_thai}
                           {d.tu_dong ? ' (tự động)' : ''}
                         </span>
+                        {d.so_khieu_nai > 0 && (
+                          <span className="nhan-khieu-nai" title="Có khiếu nại đang mở">
+                            ● {d.so_khieu_nai} khiếu nại
+                          </span>
+                        )}
                       </td>
                       <td className="canh-phai">
                         <button className="nut nut-nho" onClick={() => dat_dang(d)}>Xem</button>
@@ -178,22 +247,29 @@ export function TrangKyLuat(): ReactNode {
       {dang !== null && (
         <HopThoaiHoSo
           d={dang}
+          admin={admin}
+          khi_mien={mien_hang_loat}
           khi_dong={() => dat_dang(null)}
           khi_xong={() => { dat_dang(null); nap_lai(); }}
         />
       )}
+      {nhap.hop_thoai}
     </>
   );
 }
 
 function HopThoaiHoSo(
-  { d, khi_dong, khi_xong }: { d: Dong; khi_dong: () => void; khi_xong: () => void },
+  { d, admin, khi_mien, khi_dong, khi_xong }: {
+    d: Dong; admin: boolean;
+    khi_mien: (ids: readonly string[]) => void;
+    khi_dong: () => void; khi_xong: () => void;
+  },
 ): ReactNode {
   const [ly_do, dat_ly_do] = useState('');
   const hd = dung_hanh_dong();
 
   return (
-    <HopThoai tieu_de={`Hồ sơ kỷ luật — ${d.ho_ten}`} khi_dong={khi_dong} rong>
+    <HopThoai tieu_de={`Hồ sơ kỷ luật ${d.ma ?? ''} — ${d.ho_ten}`} khi_dong={khi_dong} rong>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
 
       <div className="ho-so-chi-so">
@@ -240,6 +316,33 @@ function HopThoaiHoSo(
       )}
       {d.trang_thai === 'bac_bo' && d.ly_do_bac_bo !== null && (
         <div className="hop-thong-bao">Đã bãi bỏ. Lý do: {d.ly_do_bac_bo}</div>
+      )}
+      {d.trang_thai === 'mien' && (
+        <div className="hop-thong-bao hop-tin">
+          Đã miễn kỷ luật — khoản giảm thưởng đã được gỡ khỏi lương.
+          {d.ly_do_mien !== null && <> Lý do: {d.ly_do_mien}</>}
+        </div>
+      )}
+      {d.so_khieu_nai > 0 && (
+        <div className="hop-thong-bao hop-luu-y">
+          Hồ sơ này đang có <strong>{d.so_khieu_nai}</strong> khiếu nại chưa xử lý.
+          Xem &amp; xử lý tại tab <strong>Khiếu nại</strong>.
+        </div>
+      )}
+
+      {admin && MIEN_DUOC.has(d.trang_thai) && (
+        <>
+          <h3>Miễn kỷ luật (Admin)</h3>
+          <p className="mo-ta">
+            Miễn = gỡ khoản giảm thưởng khỏi lương nhưng vẫn lưu hồ sơ để theo dõi. Khác bãi bỏ
+            (bãi bỏ = quyết định sai/rút lại); miễn = công ty khoan hồng.
+          </p>
+          <div className="hang-nut">
+            <button className="nut-lanh" onClick={() => { khi_dong(); khi_mien([d.id]); }}>
+              Miễn kỷ luật hồ sơ này
+            </button>
+          </div>
+        </>
       )}
 
       {(d.trang_thai === 'cho_duyet' || d.trang_thai === 'da_ap_dung') && (

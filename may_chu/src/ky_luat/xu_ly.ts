@@ -107,8 +107,12 @@ export function quyet_hinh_thuc(tong_tien: number, nguong_duyet: number): QuyetH
 /** Trang thai vi pham duoc tinh vao ho so (chua bi bac bo / chua xu ly rieng). */
 const TRANG_THAI_TINH = ['moi', 'cho_giai_trinh', 'da_xac_nhan'];
 
-/** Trang thai KHONG bao gio xu ly lai (nguoi da quyet bo/huy). Ho so tu dong thi quet lai duoc. */
-const KHONG_DUNG_LAI = new Set(['bac_bo', 'huy']);
+/**
+ * Trang thai KHONG bao gio xu ly lai (nguoi da quyet bo/huy/mien). Ho so tu dong thi quet lai
+ * duoc. 'mien' phai o day: neu khong, quet hang ngay se HOI SINH ho so da mien ve 'da_ap_dung'
+ * roi tru thuong lai — mat y nghia mien.
+ */
+const KHONG_DUNG_LAI = new Set(['bac_bo', 'huy', 'mien']);
 
 function tien_viet(n: number): string {
   return `${Math.round(n).toLocaleString('vi-VN')} đ`;
@@ -488,4 +492,73 @@ export async function bac_bo_ho_so(
     });
     return { nhan_vien_id: ho.nhan_vien_id, ky: ho.ky };
   });
+}
+
+/** Trang thai duoc phep chuyen sang 'mien'. Da mien roi thi thoi (idempotent, tra da_mien=true). */
+const CHO_PHEP_MIEN = new Set(['moi', 'da_nhac', 'cho_duyet', 'da_ap_dung']);
+
+export interface KetQuaMien {
+  ho_so_id: string;
+  ma: string | null;
+  da_mien: boolean;         // da o trang thai 'mien' truoc do -> khong lam gi.
+  nhan_vien_id: string;
+  ky: string;
+}
+
+/**
+ * MIEN mot ho so ky luat (chi admin — kiem o tuyen). Chuyen sang 'mien', go giam thuong khoi ky
+ * luong (qua dong_bo_giam_thuong — ho so 'mien' khong tinh vao tong 'da_ap_dung'). Khac `bac_bo`
+ * o y nghia: mien = quyet dinh dung nhung cong ty khoan hong; van luu ho so de theo doi.
+ */
+export async function mien_mot_ho_so(
+  ho_so_id: string, nguoi_id: string, ly_do: string,
+): Promise<KetQuaMien> {
+  return trong_giao_dich(async (khach) => {
+    const r = await khach.query<{ nhan_vien_id: string; ky: string; trang_thai: string;
+                                  ma: string | null }>(
+      'select nhan_vien_id, ky, trang_thai, ma from ho_so_ky_luat where id = $1 for update',
+      [ho_so_id],
+    );
+    const ho = r.rows[0];
+    if (ho === undefined) throw new Error('Không tìm thấy hồ sơ kỷ luật.');
+    if (ho.trang_thai === 'mien') {
+      return { ho_so_id, ma: ho.ma, da_mien: true, nhan_vien_id: ho.nhan_vien_id, ky: ho.ky };
+    }
+    if (!CHO_PHEP_MIEN.has(ho.trang_thai)) {
+      throw new Error(`Hồ sơ đang ở trạng thái "${ho.trang_thai}", không miễn được.`);
+    }
+    await khach.query(
+      `update ho_so_ky_luat set trang_thai = 'mien', nguoi_mien = $2, mien_luc = now(),
+              ly_do_mien = $3, chinh_sach_id = null, cap_nhat_luc = now() where id = $1`,
+      [ho_so_id, nguoi_id, ly_do],
+    );
+    // Ho so 'mien' khong con tinh vao tong 'da_ap_dung' -> ap lai (go dong giam thuong cua ky).
+    await dong_bo_giam_thuong(khach, ho.nhan_vien_id, ho.ky);
+
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_cua_nhan_vien(ho.nhan_vien_id),
+      tieu_de: 'Được miễn kỷ luật',
+      noi_dung: `Kỳ ${ho.ky}: công ty miễn kỷ luật cho bạn. ${ly_do}`,
+      du_lieu: { man: 'ky-luat', ky: ho.ky, ho_so_id },
+    });
+    return { ho_so_id, ma: ho.ma, da_mien: false, nhan_vien_id: ho.nhan_vien_id, ky: ho.ky };
+  });
+}
+
+/** Mien HANG LOAT. Chay tung ho so; loi mot ho so khong keo do ho so khac. Tra ket qua tung cai. */
+export async function mien_ky_luat(
+  ids: readonly string[], nguoi_id: string, ly_do: string,
+): Promise<{ so_mien: number; so_bo_qua: number; loi: { ho_so_id: string; loi: string }[] }> {
+  let so_mien = 0;
+  let so_bo_qua = 0;
+  const loi: { ho_so_id: string; loi: string }[] = [];
+  for (const id of ids) {
+    try {
+      const r = await mien_mot_ho_so(id, nguoi_id, ly_do);
+      if (r.da_mien) so_bo_qua += 1; else so_mien += 1;
+    } catch (e) {
+      loi.push({ ho_so_id: id, loi: (e as Error).message });
+    }
+  }
+  return { so_mien, so_bo_qua, loi };
 }

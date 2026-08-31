@@ -726,6 +726,100 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     }
   });
 
+  // ================================================================ KY LUAT CUA TOI
+  /** Ho so ky luat cua CHINH MINH — de nguoi lao dong biet va con khieu nai. */
+  app.get('/ky-luat', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select h.id, h.ma, h.ky, h.muc_do, h.so_vi_pham, h.tong_tien, h.hinh_thuc,
+              h.trang_thai, h.chi_tiet, h.ly_do_mien, h.cap_nhat_luc,
+              (select count(*) from khieu_nai kn
+                where kn.ho_so_ky_luat_id = h.id and kn.nhan_vien_id = h.nhan_vien_id)::int as so_khieu_nai
+         from ho_so_ky_luat h
+        where h.nhan_vien_id = $1 and h.trang_thai <> 'bac_bo'
+        order by h.ky desc, h.cap_nhat_luc desc limit 100`,
+      [nv_id],
+    );
+  });
+
+  // ================================================================ KHIEU NAI CUA TOI
+  /** Khieu nai cua chinh minh (ve ky luat hoac vi pham). */
+  app.get('/khieu-nai', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select kn.id, kn.ma, kn.loai, kn.noi_dung, kn.trang_thai, kn.phan_hoi,
+              kn.tao_luc, kn.xu_ly_luc,
+              h.ma as ma_ky_luat, h.ky as ky_ky_luat, h.tong_tien,
+              v.ngay as ngay_vi_pham, lvp.ten as ten_vi_pham
+         from khieu_nai kn
+         left join ho_so_ky_luat h on h.id = kn.ho_so_ky_luat_id
+         left join vi_pham v on v.id = kn.vi_pham_id
+         left join loai_vi_pham lvp on lvp.id = v.loai_vi_pham_id
+        where kn.nhan_vien_id = $1
+        order by kn.tao_luc desc limit 100`,
+      [nv_id],
+    );
+  });
+
+  /**
+   * Gui khieu nai ve mot quyet dinh ky luat (BLLD Dieu 131 — quyen khieu nai) hoac mot vi pham.
+   * Phai kem ho_so_ky_luat_id HOAC vi_pham_id, va doi tuong do phai la cua chinh minh.
+   */
+  app.post('/khieu-nai', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const b = than(req.body);
+    const ho_so_ky_luat_id = uuid(b, 'ho_so_ky_luat_id');
+    const vi_pham_id = uuid(b, 'vi_pham_id');
+    const loai = trong_tap(b, 'loai', ['khieu_nai', 'giai_trinh'] as const, { mac_dinh: 'khieu_nai' });
+    const noi_dung = chuoi_bat_buoc(b, 'noi_dung', { toi_thieu: 5, toi_da: 2000 });
+
+    if (ho_so_ky_luat_id === null && vi_pham_id === null) {
+      throw new LoiDauVao('Phải chọn hồ sơ kỷ luật hoặc vi phạm để khiếu nại.');
+    }
+
+    // Doi tuong khieu nai phai la CUA CHINH MINH (khong khieu nai ho nguoi khac).
+    if (ho_so_ky_luat_id !== null) {
+      const h = await truy_van_mot<{ ok: boolean }>(
+        'select true as ok from ho_so_ky_luat where id = $1 and nhan_vien_id = $2',
+        [ho_so_ky_luat_id, nv_id],
+      );
+      if (h === null) throw new LoiKhongTim('Không tìm thấy hồ sơ kỷ luật của bạn.');
+    }
+    if (vi_pham_id !== null) {
+      const v = await truy_van_mot<{ ok: boolean }>(
+        'select true as ok from vi_pham where id = $1 and nhan_vien_id = $2', [vi_pham_id, nv_id],
+      );
+      if (v === null) throw new LoiKhongTim('Không tìm thấy vi phạm của bạn.');
+    }
+
+    // Chan khieu nai trung (con dang mo) tren cung mot doi tuong.
+    const trung = await truy_van_mot<{ id: string }>(
+      `select id from khieu_nai
+        where nhan_vien_id = $1 and trang_thai in ('moi','dang_xem')
+          and coalesce(ho_so_ky_luat_id::text,'') = coalesce($2::uuid::text,'')
+          and coalesce(vi_pham_id::text,'') = coalesce($3::uuid::text,'') limit 1`,
+      [nv_id, ho_so_ky_luat_id, vi_pham_id],
+    );
+    if (trung !== null) throw new LoiXungDot('Bạn đã có một khiếu nại đang mở cho mục này.');
+
+    const dong = await truy_van_mot<{ id: string; ma: string }>(
+      `insert into khieu_nai (ho_so_ky_luat_id, vi_pham_id, nhan_vien_id, loai, noi_dung)
+       values ($1,$2,$3,$4,$5) returning id, ma`,
+      [ho_so_ky_luat_id, vi_pham_id, nv_id, loai, noi_dung],
+    );
+    await ghi_nhat_ky(nd.sub, 'gui_khieu_nai', 'khieu_nai', dong?.id ?? null,
+      { ho_so_ky_luat_id, vi_pham_id, loai }, req.ip);
+
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: loai === 'giai_trinh' ? 'Có giải trình mới' : 'Có khiếu nại kỷ luật mới',
+      noi_dung: `${await ten_nhan_vien(nv_id)} gửi ${dong?.ma ?? 'khiếu nại'}.`,
+      du_lieu: { man: 'ky-luat', khieu_nai_id: dong?.id ?? null },
+    });
+    return res.code(201).send({ ...dong, trang_thai: 'moi' });
+  });
+
   // ================================================================ token push (Expo)
   app.post('/token-push', async (req) => {
     const nd = nguoi_dung_hien_tai(req);
