@@ -29,6 +29,7 @@
     "test_tat_ca": "npm test && npm run test_e2e",
     "nap_ho_so_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_nap_ho_so.ts",
     "cap_nhat_phong_ban_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_cap_nhat_phong_ban.ts",
+    "gan_kho_tq": "node dist/nhan_su/chay_gan_kho_trung_quoc.js",
     "gan_kho_tq_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_gan_kho_trung_quoc.ts"
   },
   "dependencies": {
