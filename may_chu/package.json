@@ -30,7 +30,9 @@
     "nap_ho_so_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_nap_ho_so.ts",
     "cap_nhat_phong_ban_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_cap_nhat_phong_ban.ts",
     "gan_kho_tq": "node dist/nhan_su/chay_gan_kho_trung_quoc.js",
-    "gan_kho_tq_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_gan_kho_trung_quoc.ts"
+    "gan_kho_tq_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_gan_kho_trung_quoc.ts",
+    "nhap_luong": "node dist/nhan_su/chay_nhap_luong.js",
+    "nhap_luong_ma_nguon": "node --experimental-strip-types src/nhan_su/chay_nhap_luong.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
