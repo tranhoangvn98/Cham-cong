@@ -43,6 +43,7 @@ type Tab = 'nghi' | 'khac' | 'de_xuat' | 'cham_cong' | 'vi_pham' | 'ky_luat';
  *  (can chon ca lam viec, chua co danh muc ca cho nhan vien). */
 const LOAI_DON_KHAC: readonly { ma: string; ten: string; khoang: boolean; gio: boolean }[] = [
   { ma: 'lam_them', ten: 'Tăng ca / làm thêm giờ', khoang: false, gio: true },
+  { ma: 'di_muon', ten: 'Xin đi muộn (miễn phạt)', khoang: false, gio: false },
   { ma: 'cong_tac', ten: 'Đi công tác', khoang: true, gio: false },
   { ma: 'thoi_viec', ten: 'Xin thôi việc', khoang: false, gio: false },
 ];
@@ -223,11 +224,13 @@ function FormDonKhac({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
   const [den, dat_den] = useState(hom_nay());
   const [gio_bd, dat_gio_bd] = useState('18:00');
   const [gio_kt, dat_gio_kt] = useState('20:00');
+  const [gio_vao, dat_gio_vao] = useState('08:20');
   const [noi_den, dat_noi_den] = useState('');
   const [ly_do, dat_ly_do] = useState('');
   const hd = dung_hanh_dong();
   const spec = LOAI_DON_KHAC.find((l) => l.ma === loai) ?? LOAI_DON_KHAC[0]!;
-  const nhan_ngay = loai === 'thoi_viec' ? 'Ngày làm việc cuối' : 'Từ ngày';
+  const nhan_ngay = loai === 'thoi_viec' ? 'Ngày làm việc cuối'
+    : loai === 'di_muon' ? 'Ngày đi muộn' : 'Từ ngày';
 
   return (
     <HopThoai tieu_de="Tạo đơn" khi_dong={khi_dong}>
@@ -252,6 +255,16 @@ function FormDonKhac({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
             <input id="dk-kt" type="time" value={gio_kt} onChange={(e) => dat_gio_kt(e.target.value)} /></div>
         </div>
       )}
+      {loai === 'di_muon' && (
+        <div className="o-nhap">
+          <label htmlFor="dk-vao">Giờ dự kiến có mặt</label>
+          <input id="dk-vao" type="time" value={gio_vao} onChange={(e) => dat_gio_vao(e.target.value)} />
+          <div className="goi-y">
+            Đơn phải được <strong>duyệt và gửi trước 07:30</strong> và vào <strong>trước 08:30</strong>
+            {' '}mới được miễn phạt — tối đa <strong>3 lần/tháng</strong>. Từ 08:30 trở đi không được miễn.
+          </div>
+        </div>
+      )}
       {loai === 'cong_tac' && (
         <>
           <label htmlFor="dk-noi">Nơi đến</label>
@@ -270,7 +283,7 @@ function FormDonKhac({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
               loai,
               tu_ngay: tu,
               den_ngay: spec.khoang ? den : null,
-              gio_bat_dau: spec.gio ? gio_bd : null,
+              gio_bat_dau: spec.gio ? gio_bd : loai === 'di_muon' ? gio_vao : null,
               gio_ket_thuc: spec.gio ? gio_kt : null,
               noi_den: loai === 'cong_tac' ? noi_den : null,
               ly_do,

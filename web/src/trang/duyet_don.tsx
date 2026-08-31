@@ -680,6 +680,11 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
         {d.doi_voi_ten !== null && <><br />đổi với {d.doi_voi_ten}</>}</>;
     }
     if (d.loai === 'cong_tac') return <>{d.noi_den ?? '—'}</>;
+    if (d.loai === 'di_muon') {
+      return d.gio_bat_dau !== null
+        ? <>dự kiến có mặt {d.gio_bat_dau.slice(0, 5)}</>
+        : <span className="mo-ta">—</span>;
+    }
     return <span className="mo-ta">—</span>;
   };
 

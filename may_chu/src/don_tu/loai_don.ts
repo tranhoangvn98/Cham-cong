@@ -12,10 +12,10 @@
 // Module NAY THUAN: khong CSDL, khong Fastify. Nho the kiem duoc tung loai bang du lieu mau.
 import { LoiDauVao } from '../tien_ich/kiem_tra.ts';
 
-export type MaLoaiDon = 'lam_them' | 'doi_ca' | 'cong_tac' | 'thoi_viec';
+export type MaLoaiDon = 'lam_them' | 'doi_ca' | 'cong_tac' | 'thoi_viec' | 'di_muon';
 
 export const MA_LOAI_DON: readonly MaLoaiDon[] =
-  ['lam_them', 'doi_ca', 'cong_tac', 'thoi_viec'] as const;
+  ['lam_them', 'doi_ca', 'cong_tac', 'thoi_viec', 'di_muon'] as const;
 
 /** Mot don sau khi da doc tu dau vao — khop tung cot cua bang `don_tu`. */
 export interface DonTu {
@@ -131,6 +131,21 @@ export const CAC_LOAI: readonly DacTaLoaiDon[] = [
     co_khoang_ngay: false,
     hang_ban_don: (d) => [
       ['Ngày làm việc cuối cùng', d.tu_ngay_viet],
+      ['Lý do', d.ly_do ?? '—'],
+    ],
+  },
+  {
+    // Don xin di muon: can cu de MIEN phat di muon (toi da 3 lan/thang), voi dieu kien don
+    // duoc duyet va gui TRUOC HAN (mac dinh 07:30) trong ngay do.
+    ma: 'di_muon',
+    ten: 'Đơn xin đi muộn',
+    tieu_de: 'ĐƠN XIN ĐI MUỘN',
+    tien_to_tep: 'Don-xin-di-muon',
+    nhan_tu_ngay: 'Ngày đi muộn',
+    co_khoang_ngay: false,
+    hang_ban_don: (d) => [
+      ['Ngày đi muộn', d.tu_ngay_viet],
+      ['Giờ dự kiến có mặt', gio(d.gio_bat_dau)],
       ['Lý do', d.ly_do ?? '—'],
     ],
   },
