@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.74.0] — 2026-08-31
+
+**Khóa cửa theo giờ — chặn VÀO ngoài giờ làm việc (Cài đặt → Thiết bị).**
+
+- **Migration 040**: `khoa_cua_lich` (mỗi máy: bật/tắt, giờ mở, giờ đóng, chặn cuối tuần, lệnh mở/chặn, trạng thái đã áp dụng).
+- **Cài đặt → Thiết bị**: mỗi máy thêm nút **"Khóa cửa theo giờ"** — bật chặn VÀO ngoài khung [giờ mở, giờ đóng] (+ tùy chọn chặn cả cuối tuần), khai lệnh điều khiển cửa + **nút Test** gửi lệnh ngay để kiểm chứng trên máy thật (firmware acc kén lệnh, như vụ DATA QUERY).
+- **Bộ lập lịch** (`lich_chay`) mỗi vòng tự tính trạng thái cửa theo giờ và chỉ gửi lệnh KHI đổi trạng thái; lệnh để trống = không gửi gì (an toàn mặc định).
+- **An toàn PCCC (QCVN 06 / NĐ 136)**: chỉ chặn chiều VÀO; lối RA phải luôn tự do bằng phần cứng — cảnh báo rõ trên giao diện. `bat=false` mặc định, không tự bật.
+
 ## [1.73.0] — 2026-08-31
 
 **Đề xuất & Kiến nghị (danh mục mở) + quản lý đơn.**

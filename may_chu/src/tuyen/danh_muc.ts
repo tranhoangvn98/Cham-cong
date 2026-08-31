@@ -23,6 +23,7 @@ import {
 import { CAC_HE_THONG, MA_CAC_HE_THONG } from '../dinh_danh/he_thong.ts';
 import { cap_pin, doc_dai_pin, goi_y_pin } from '../dinh_danh/cap_pin.ts';
 import { doi_chieu_may } from '../dinh_danh/doi_chieu_may.ts';
+import { lich_cua_may } from '../ra_vao/khoa_cua.ts';
 
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
 // KHONG duoc dung khi tao tai khoan moi bang tay (xem POST /nguoi-dung).
@@ -620,6 +621,53 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       so_lech: danh_sach.filter((u) => u.khop === 'lech' || u.khop === 'chua_gan').length,
       danh_sach,
     };
+  });
+
+  // ------------------------------------------------------------ khoa cua theo gio
+  /** Lich chan VAO ngoai gio cua mot may. */
+  app.get('/thiet-bi/:serial/khoa-cua', { preHandler: can_admin }, async (req) => {
+    const serial = lay_serial_param(req);
+    await bat_buoc_co_may(serial);
+    return lich_cua_may(serial);
+  });
+
+  /** Luu lich chan VAO. CHI chan chieu vao — loi ra phai tu do bang phan cung (PCCC). */
+  app.put('/thiet-bi/:serial/khoa-cua', { preHandler: can_admin }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const serial = lay_serial_param(req);
+    await bat_buoc_co_may(serial);
+    const b = than(req.body);
+    const bat = luan_ly(b, 'bat', false) === true;
+    const gio_mo = gio(b, 'gio_mo') ?? '07:00';
+    const gio_dong = gio(b, 'gio_dong') ?? '19:00';
+    const cuoi_tuan_chan = luan_ly(b, 'cuoi_tuan_chan', true) === true;
+    const lenh_mo = chuoi(b, 'lenh_mo', { toi_da: 300 }) ?? '';
+    const lenh_chan = chuoi(b, 'lenh_chan', { toi_da: 300 }) ?? '';
+
+    await thuc_thi(
+      `insert into khoa_cua_lich(thiet_bi_serial, bat, gio_mo, gio_dong, cuoi_tuan_chan,
+                                 lenh_mo, lenh_chan)
+       values ($1,$2,$3,$4,$5,$6,$7)
+       on conflict (thiet_bi_serial) do update set
+         bat = excluded.bat, gio_mo = excluded.gio_mo, gio_dong = excluded.gio_dong,
+         cuoi_tuan_chan = excluded.cuoi_tuan_chan, lenh_mo = excluded.lenh_mo,
+         lenh_chan = excluded.lenh_chan, cap_nhat_luc = now()`,
+      [serial, bat, gio_mo, gio_dong, cuoi_tuan_chan, lenh_mo, lenh_chan],
+    );
+    await ghi_nhat_ky(nd.sub, 'luu_khoa_cua', 'thiet_bi', serial, { bat }, req.ip);
+    return { ok: true };
+  });
+
+  /** Gui thu MOT lenh (mo/chan) xuong may ngay de kiem chung tren may that. */
+  app.post('/thiet-bi/:serial/khoa-cua/test', { preHandler: can_admin }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const serial = lay_serial_param(req);
+    await bat_buoc_co_may(serial);
+    const b = than(req.body);
+    const lenh = chuoi_bat_buoc(b, 'lenh', { toi_da: 300, toi_thieu: 1 });
+    const id = await xep_lenh(serial, lenh);
+    await ghi_nhat_ky(nd.sub, 'test_khoa_cua', 'thiet_bi', serial, { lenh }, req.ip);
+    return { ok: true, lenh_id: id };
   });
 
   /**

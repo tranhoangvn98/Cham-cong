@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { goi, la_nhan_su } from '../api.ts';
 import {
   DangTai, HopLoi, HopTot, HopThoai, Trong,
@@ -37,6 +37,7 @@ export function TrangThietBi(): ReactNode {
   const [nap_nv_cho, dat_nap_nv_cho] = useState<ThietBi | null>(null);
   const [xoa_nv_cho, dat_xoa_nv_cho] = useState<ThietBi | null>(null);
   const [doi_chieu_cho, dat_doi_chieu_cho] = useState<ThietBi | null>(null);
+  const [khoa_cua_cho, dat_khoa_cua_cho] = useState<ThietBi | null>(null);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
 
@@ -178,6 +179,10 @@ export function TrangThietBi(): ReactNode {
                             title="Kéo danh sách user trong máy về + đối chiếu PIN với hệ thống">
                             Đối chiếu user
                           </button>
+                          <button className="nut-nho" onClick={() => dat_khoa_cua_cho(tb)}
+                            title="Chặn VÀO ngoài giờ làm việc theo lịch">
+                            Khóa cửa theo giờ
+                          </button>
                           <button className="nut-nho nut-phang" onClick={() => dat_sua_cho(tb)}
                             title="Đổi tên gợi nhớ / vị trí của máy">
                             Sửa
@@ -226,6 +231,9 @@ export function TrangThietBi(): ReactNode {
 
       {doi_chieu_cho !== null && (
         <DoiChieuNguoiDung thiet_bi={doi_chieu_cho} khi_dong={() => dat_doi_chieu_cho(null)} />
+      )}
+      {khoa_cua_cho !== null && (
+        <KhoaCuaTheoGio thiet_bi={khoa_cua_cho} khi_dong={() => dat_khoa_cua_cho(null)} />
       )}
 
       {xem_lenh !== null && (
@@ -809,6 +817,126 @@ function DoiChieuNguoiDung(
       <div className="hang-nut" style={{ marginTop: 12 }}>
         <button className="nut-phang" onClick={khi_dong}>Đóng</button>
       </div>
+    </HopThoai>
+  );
+}
+
+// ============================================================ khóa cửa theo giờ (chặn VÀO ngoài giờ)
+interface LichKhoaCua {
+  bat: boolean;
+  gio_mo: string;
+  gio_dong: string;
+  cuoi_tuan_chan: boolean;
+  lenh_mo: string;
+  lenh_chan: string;
+  trang_thai: 'mo' | 'chan' | null;
+}
+
+function KhoaCuaTheoGio(
+  { thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () => void },
+): ReactNode {
+  const { du_lieu, dang_tai, loi } = dung_nap<LichKhoaCua>(
+    `/api/thiet-bi/${thiet_bi.serial}/khoa-cua`);
+  const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
+  const [bat, dat_bat] = useState(false);
+  const [gio_mo, dat_gio_mo] = useState('07:00');
+  const [gio_dong, dat_gio_dong] = useState('19:00');
+  const [ct, dat_ct] = useState(true);
+  const [lenh_mo, dat_lenh_mo] = useState('');
+  const [lenh_chan, dat_lenh_chan] = useState('');
+
+  useEffect(() => {
+    if (du_lieu === null) return;
+    dat_bat(du_lieu.bat);
+    dat_gio_mo(du_lieu.gio_mo.slice(0, 5));
+    dat_gio_dong(du_lieu.gio_dong.slice(0, 5));
+    dat_ct(du_lieu.cuoi_tuan_chan);
+    dat_lenh_mo(du_lieu.lenh_mo);
+    dat_lenh_chan(du_lieu.lenh_chan);
+  }, [du_lieu]);
+
+  const luu = (): void => {
+    void hd.chay(() => goi(`/api/thiet-bi/${thiet_bi.serial}/khoa-cua`, {
+      method: 'PUT',
+      body: { bat, gio_mo, gio_dong, cuoi_tuan_chan: ct, lenh_mo, lenh_chan },
+    }), 'Đã lưu lịch khóa cửa.');
+  };
+
+  const test = (lenh: string, nhan: string): void => {
+    if (lenh.trim() === '') return;
+    void xn.hoi({
+      tieu_de: `Gửi lệnh ${nhan} ngay?`,
+      mo_ta: `Lệnh này gửi thẳng xuống máy "${thiet_bi.ten}" và tác động lên cửa thật. `
+        + 'Chỉ dùng khi bạn đã kiểm chứng lệnh đúng với firmware. Lối RA phải luôn tự do.',
+      chu_dong_y: 'Gửi lệnh', nguy_hiem: true,
+    }).then((ok) => {
+      if (ok) {
+        void hd.chay(() => goi(`/api/thiet-bi/${thiet_bi.serial}/khoa-cua/test`, {
+          method: 'POST', body: { lenh },
+        }), `Đã gửi lệnh ${nhan} xuống máy (chờ máy nhận ở lần kết nối kế tiếp).`);
+      }
+    });
+  };
+
+  return (
+    <HopThoai tieu_de={`Khóa cửa theo giờ — ${thiet_bi.ten}`} khi_dong={khi_dong} rong>
+      {xn.hop_thoai}
+      <div className="hop-luu-y">
+        <b>An toàn PCCC:</b> tính năng này chỉ <b>chặn chiều VÀO</b> ngoài giờ. Lối <b>RA phải
+        luôn tự do</b> bằng phần cứng (nút thoát / thanh đẩy / khóa fail-safe) — không được khóa
+        lối thoát hiểm. Kiểm tra đấu nối cửa trước khi bật.
+      </div>
+      {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} /> : (
+        <>
+          <HopLoi loi={hd.loi} />
+          <HopTot chu={hd.tot} />
+
+          <div className="o-nhap-ngang">
+            <input id="kc-bat" type="checkbox" checked={bat} onChange={(e) => dat_bat(e.target.checked)} />
+            <label htmlFor="kc-bat">Bật chặn VÀO ngoài giờ cho máy này</label>
+          </div>
+
+          <div className="luoi luoi-2">
+            <div className="o-nhap"><label htmlFor="kc-mo">Giờ mở cửa (bắt đầu cho vào)</label>
+              <input id="kc-mo" type="time" value={gio_mo} onChange={(e) => dat_gio_mo(e.target.value)} /></div>
+            <div className="o-nhap"><label htmlFor="kc-dong">Giờ đóng cửa (ngừng cho vào)</label>
+              <input id="kc-dong" type="time" value={gio_dong} onChange={(e) => dat_gio_dong(e.target.value)} /></div>
+          </div>
+          <div className="o-nhap-ngang">
+            <input id="kc-ct" type="checkbox" checked={ct} onChange={(e) => dat_ct(e.target.checked)} />
+            <label htmlFor="kc-ct">Chặn cả ngày Thứ Bảy và Chủ Nhật</label>
+          </div>
+          <p className="mo-ta">Ngoài khung {gio_mo}–{gio_dong}{ct ? ' và cuối tuần' : ''}, hệ thống
+            gửi lệnh chặn vào; trong khung thì gửi lệnh mở lại. Trạng thái hiện tại:{' '}
+            <b>{du_lieu?.trang_thai === 'chan' ? 'đang chặn' : du_lieu?.trang_thai === 'mo' ? 'đang mở' : 'chưa áp dụng'}</b>.</p>
+
+          <label htmlFor="kc-lmo">Lệnh MỞ (cho vào) gửi xuống máy</label>
+          <input id="kc-lmo" value={lenh_mo} onChange={(e) => dat_lenh_mo(e.target.value)}
+            placeholder="vd (ZKTeco acc): CONTROL DEVICE 0101010005 — kiểm chứng trước" />
+          <div className="hang-nut" style={{ marginBottom: 12 }}>
+            <button className="nut-nho nut-phang" disabled={hd.dang_chay || lenh_mo.trim() === ''}
+              onClick={() => test(lenh_mo, 'MỞ')}>Test gửi lệnh MỞ ngay</button>
+          </div>
+
+          <label htmlFor="kc-lchan">Lệnh CHẶN (chặn vào) gửi xuống máy</label>
+          <input id="kc-lchan" value={lenh_chan} onChange={(e) => dat_lenh_chan(e.target.value)}
+            placeholder="vd (ZKTeco acc): CONTROL DEVICE 0101000000 — kiểm chứng trước" />
+          <div className="hang-nut" style={{ marginBottom: 12 }}>
+            <button className="nut-nho nut-phang" disabled={hd.dang_chay || lenh_chan.trim() === ''}
+              onClick={() => test(lenh_chan, 'CHẶN')}>Test gửi lệnh CHẶN ngay</button>
+          </div>
+          <p className="mo-ta">Lệnh điều khiển cửa khác nhau theo firmware — để trống thì lịch
+            không gửi gì (an toàn). Dùng nút Test để kiểm chứng lệnh đúng trên máy thật trước khi bật.</p>
+
+          <div className="hang-nut">
+            <button className="nut-chinh" disabled={hd.dang_chay} onClick={luu}>
+              {hd.dang_chay ? 'Đang lưu…' : 'Lưu lịch'}
+            </button>
+            <button className="nut-phang" onClick={khi_dong}>Đóng</button>
+          </div>
+        </>
+      )}
     </HopThoai>
   );
 }

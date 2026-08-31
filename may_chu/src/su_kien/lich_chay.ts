@@ -10,6 +10,7 @@ import { don_su_kien_cu } from './hop_thu_di.ts';
 import { ma_viec_nhac_han, quet_nhac_han } from '../hop_dong/nhac_han.ts';
 import { ma_viec_sap_xep, sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
 import { quet_va_xu_ly_ngay } from '../ra_vao/xu_ly.ts';
+import { dong_bo_khoa_cua } from '../ra_vao/khoa_cua.ts';
 import { quet_vi_pham } from '../vi_pham/phat_hien.ts';
 import { gom_va_xu_ly_thang } from '../ky_luat/xu_ly.ts';
 import { ghi_nhan, ma_viec_dong_bo, moc_dong_bo, quet } from '../sharepoint/dong_bo.ts';
@@ -128,6 +129,17 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
   // thi khong phai: duong dan SharePoint tinh tu `ma_nv` / `ho_ten` va sieu du lieu van ban,
   // con `ten_luu` chi duoc dung de lay DUOI TEP — ma sap xep khong doi duoi tep.
   await dong_bo_sharepoint(bay_gio, ghi_log);
+
+  // ------------------------------------------------------------ khoa cua theo gio
+  // CHAY MOI VONG, ca ngay (khong sau cua chan gio cuoi ngay): trang thai cua doi theo gio hanh
+  // chinh. Chi gui lenh khi trang thai DOI, nen goi moi vong khong spam. An toan: khong may nao
+  // co lich bat + lenh cau hinh thi ham ket thuc sau MOT cau SQL.
+  try {
+    const doi = await dong_bo_khoa_cua(bay_gio);
+    if (doi > 0) ghi_log(`[lich] khoa cua: doi trang thai ${doi} may`);
+  } catch (loi) {
+    ghi_log(`[lich] LOI khi dong bo khoa cua: ${(loi as Error).message}`);
+  }
 
   // ------------------------------------------------------------ cac viec cuoi ngay
   // Chi chay sau GIO_CHAY de chac chan may da day het log cua ngay hom truoc.
