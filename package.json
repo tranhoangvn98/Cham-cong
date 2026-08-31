@@ -1,6 +1,6 @@
 {
   "name": "cham-cong",
-  "version": "1.70.0",
+  "version": "1.71.0",
   "private": true,
   "description": "He thong cham cong tu may ZKTeco: backend ADMS + webapp HR + app dien thoai",
   "workspaces": [
