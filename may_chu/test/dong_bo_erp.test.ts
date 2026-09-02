@@ -4,6 +4,7 @@
 // truc tiep vao bang `nhan_vien` cua nguoi that, hang loat, tu du lieu cua mot he thong khac
 // khong ai o day kiem soat. Cai gia phai tra hien ra dung the: ERP tra HO TEN trong truong
 // `phoneNumber` va he thong ghi thang no vao cot `so_dien_thoai`.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {

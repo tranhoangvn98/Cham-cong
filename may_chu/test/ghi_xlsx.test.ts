@@ -10,6 +10,7 @@
 // Cai no KHONG chung minh: Excel that mo duoc tep. Hai bo doc do cung mot nguoi viet nen
 // chung co the sai giong nhau. Nen o day co them cac bai kiem cau truc ZIP bang byte, va cac
 // bai kiem nhung rang buoc cua dac ta OOXML ma toi biet la de mac.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { inflateRawSync, crc32 } from 'node:zlib';

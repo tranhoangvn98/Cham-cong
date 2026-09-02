@@ -1,9 +1,10 @@
 // Kiem phat di muon bang so tinh tay. Day la cho tru tien nguoi lao dong nen moi con so
 // mong doi deu dan giai duoc.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { tinh_phat_di_muon, gio_sang_phut } = await import('../src/luong/phat_di_muon.ts');
+import { tinh_phat_di_muon, gio_sang_phut } from '../src/luong/phat_di_muon.ts';
 
 // 08:00 vao chuan; 08:10 bat dau 50k; 08:30 bat dau nua ngay.
 const CH = {

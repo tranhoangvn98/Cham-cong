@@ -3,6 +3,7 @@
 // Rao chan that nam trong hook onRoute cua tuyen_tich_hop: route thieu mo ta thi may chu
 // khong khoi dong. O day kiem chinh ham quyet dinh dieu do — no phai bat dung nhung thu
 // thieu, va khong duoc bat oan route co khai `hide`.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

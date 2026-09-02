@@ -1,5 +1,6 @@
 // Trich noi dung DOCX / XLSX. Tu dung tep ZIP that trong test — khong mock, vi thu de sai
 // nhat o day chinh la doc sai cau truc ZIP.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';

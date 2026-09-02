@@ -226,6 +226,29 @@ export const cau_hinh = {
     api_key: chu('ERP_API_KEY', ''),
   },
 
+  /**
+   * DAY su kien nhan su sang cong (kho `phanquyen`). Khac han `cong_sso` o tren.
+   *
+   * `cong_sso` la chieu VAO: Cham cong nhan token do cong phat va xac minh chu ky.
+   * `cong_su_kien` la chieu RA: Cham cong bao cho cong biet ai vua vao, vua doi ten, vua nghi.
+   *
+   * Hai chieu doc lap nhau — bat mot chieu khong bat chieu kia — nhung deu tro toi CUNG mot
+   * cong, nen `goc` mac dinh lay tu `CONG_SSO_GOC`. Bat mot ten mien thu hai cho cung mot he
+   * thong la tao ra hai nguon su that se lech nhau; `CONG_SU_KIEN_URL` chi de de phong truong
+   * hop hai duong that su phai tro di hai noi.
+   *
+   * `token_dich_vu` co pham vi HEP `cong.day_su_kien_nhan_su` — KHONG phai `cong.quan_tri`.
+   * No nam trong `.env` cua may nay, trong ban sao luu cua no, va trong tay ai deploy no; mot
+   * token quan tri o day nghia la ai doc duoc tep do cung khoa duoc moi tai khoan trong cong ty.
+   *
+   * De TRONG = tat chieu RA. Su kien van duoc ghi vao `hop_thu_di` va nam do cho, KHONG mat.
+   * Bat len luc nao thi chung di luc do.
+   */
+  cong_su_kien: {
+    goc: chu('CONG_SU_KIEN_URL', chu('CONG_SSO_GOC', '')).replace(/\/+$/, ''),
+    token_dich_vu: chu('CONG_TOKEN_DICH_VU', ''),
+  },
+
   /** Bat migration tu dong khi khoi dong (tien cho Docker 1 diem). */
   /**
    * Trang tai lieu API o /api/v1/tai-lieu.

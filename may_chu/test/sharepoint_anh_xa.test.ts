@@ -20,6 +20,7 @@
 //   4. BO SINH VA BO KIEM PHAI DONG Y VOI NHAU: moi duong dan do `duong_dan_sharepoint`
 //      sinh ra deu phai qua duoc `duong_dan_an_toan_de_ghi`. Neu khong, tinh nang tu chan
 //      chinh no va khong tep nao duoc day len — im lang tuyet doi.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

@@ -2,6 +2,51 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.82.0] — 2026-09-02
+
+**Hợp nhất nhánh đẩy sự kiện nhân sự sang cổng (PR #6) vào nhánh lương.**
+
+Hai nhánh cùng tách ra từ 1.53.0 và độc lập đánh số lại 1.54.0/1.55.0; bản hợp nhất này gom
+nội dung của #6 vào một mục mới thay vì giữ hai số trùng.
+
+### Thêm mới (từ PR #6)
+
+- **Ba mốc đời người sinh sự kiện gửi sang cổng định danh chung**: tạo nhân viên →
+  `nhan_su.da_tao`, đổi họ tên → `nhan_su.doi_ten`, cho nghỉ việc → `nhan_su.nghi_viec`. Sự
+  kiện được ghi **cùng transaction** với dòng nhân viên (cả đường tạo từng người lẫn nhập
+  hàng loạt), nên không thể có người đã tạo/đổi/nghỉ mà cổng không hay.
+- **Biến môi trường mới**: `CONG_TOKEN_DICH_VU` và `CONG_SU_KIEN_URL` (tuỳ chọn). Để trống
+  `CONG_TOKEN_DICH_VU` = tắt chiều ra; sự kiện vẫn nằm trong `hop_thu_di` chờ, không mất.
+- **`test/moi_truong_kiem_thu.ts`**: một chỗ đặt biến môi trường dùng chung cho bộ kiểm, nhập
+  làm import đầu tiên của mỗi tệp — bộ kiểm chạy được từ bản sao sạch, không cần tệp `.env`.
+  Kèm phép chặn: tệp kiểm chạm `../src/` mà không khai biến thì `npm test` đỏ.
+
+### Hợp nhất
+
+- `POST /nhan-vien` và `PUT /nhan-vien/:id` giữ **cả** cột `noi_lam_viec_id` (nhánh lương) lẫn
+  việc phát sự kiện `nhan_su.*` trong cùng giao dịch (PR #6).
+- Bộ kiểm gộp: giữ `phat_di_muon.test.ts`, `ky_luat.test.ts`, `khoa_cua.test.ts` (nhánh lương)
+  cùng thứ tự chạy `ra_vao.test.ts` cuối cùng và bộ `su_kien_nhan_su*` trong `test_e2e` (#6).
+
+### Sửa (lỗi bộ kiểm e2e phát lộ khi gộp)
+
+Chạy đủ bộ e2e lộ ra ba lỗi thoái lui của nhánh lương (bộ đơn vị xanh nhưng e2e chưa chạy từ
+khi thêm di trú 042) và một lỗi test phụ thuộc ngày có sẵn trên `main`. Đều đã vá:
+
+- **Di trú 042 lỡ xoá ràng buộc `don_tu_lam_them`.** Vòng lặp gỡ ràng buộc để thêm loại
+  `di_muon` lọc theo `%lam_them% and %loai%` — trúng CẢ ràng buộc "đơn làm thêm phải có đủ giờ
+  bắt đầu/kết thúc", nên nó bị xoá trong im lặng. Hệ quả: CSDL nhận đơn `lam_them` thiếu giờ.
+  042 nay lọc theo "có mặt đủ bốn loại gốc" (chỉ ràng buộc danh sách loại thoả), và **di trú
+  043** dựng lại `don_tu_lam_them` (dạng `not valid`) cho mọi CSDL đã chạy bản 042 cũ — gồm cả
+  VPS đang chạy.
+- **`quet_vi_pham` đếm nhầm lần cập nhật thành bản ghi mới.** Đổi `on conflict do nothing` sang
+  `do update ... returning id` khiến `so_moi` cộng cả dòng cập nhật; quét lại cùng tháng báo
+  "sinh N bản ghi mới" dù không tạo gì. Nay chỉ đếm dòng thật sự INSERT (`xmax = 0`).
+- **Bảng lương chốt: cột đầu là STT.** Bảng lương xuất theo mẫu công ty có cột STT (số thứ tự)
+  đứng trước Mã NV/Họ tên; cập nhật phép kiểm bản chốt cho khớp (bảng công vẫn Mã NV trước).
+- **Test chốt lương gõ cứng `-31`.** `2026-09-31` là ngày không tồn tại → Postgres nem lỗi mỗi
+  tháng 30 ngày. Đổi sang so sánh theo `YYYY-MM`.
+
 ## [1.81.0] — 2026-08-31
 
 **Lệnh gán nhân sự Trung Quốc về "Kho Trung quốc" (lịch nghỉ TQ).**

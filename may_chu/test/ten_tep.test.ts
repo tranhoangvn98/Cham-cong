@@ -9,6 +9,7 @@
 //   2. TEN AN TOAN. Chuoi `ten_luu` den tu CSDL, nhung mot dong hong hay mot lan chen SQL
 //      o cho khac deu bien no thanh duong di tuy y tren dia may chu. `duong_dan_hop_le` la
 //      HANG RAO, khong phai mot bo kiem cho dep.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

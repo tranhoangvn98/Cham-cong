@@ -4,7 +4,8 @@
 // nhung khong ghi gi. Nhap mu vao du lieu luong la duong nhanh nhat den mot bang cong sai
 // ma khong ai biet sai tu dau.
 import type { FastifyInstance } from 'fastify';
-import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
+import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_noi.ts';
+import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { tiep_nhan_attlog } from '../adms/tiep_nhan.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
@@ -76,8 +77,13 @@ export async function tuyen_nhap_du_lieu(app: FastifyInstance): Promise<void> {
     const ca = new Map((await truy_van<{ id: string; ten: string }>(
       'select id, ten from ca_lam where dang_hoat_dong = true'))
       .map((x) => [chuan_hoa_tieu_de(x.ten), x.id]));
-    const da_co = new Map((await truy_van<{ id: string; ma_nv: string }>(
-      'select id, ma_nv from nhan_vien')).map((x) => [x.ma_nv.toLowerCase(), x.id]));
+    // Kem `ho_ten` cu: can no de biet dong nay co THAT SU doi ten khong. Mot tep nhap lai
+    // nguyen si — chuyen thuong xay ra khi nhan su sua vai o roi xuat lai ca danh sach — se
+    // sinh mot su kien `doi_ten` cho MOI dong neu khong so, va cong nhan ca nghin dong khong
+    // noi len dieu gi.
+    const da_co = new Map((await truy_van<{ id: string; ma_nv: string; ho_ten: string }>(
+      'select id, ma_nv, ho_ten from nhan_vien'))
+      .map((x) => [x.ma_nv.toLowerCase(), { id: x.id, ho_ten: x.ho_ten }]));
     const pin_da_dung = new Map((await truy_van<{ id: string; pin_may: string }>(
       'select id, pin_may from nhan_vien where pin_may is not null'))
       .map((x) => [x.pin_may, x.id]));
@@ -105,7 +111,8 @@ export async function tuyen_nhap_du_lieu(app: FastifyInstance): Promise<void> {
       if (pin !== '' && !/^[0-9]{1,20}$/.test(pin)) {
         bao_loi('PIN máy chỉ được gồm chữ số.'); continue;
       }
-      const id_hien_co = da_co.get(ma_nv.toLowerCase()) ?? null;
+      const hien_co = da_co.get(ma_nv.toLowerCase()) ?? null;
+      const id_hien_co = hien_co?.id ?? null;
       if (pin !== '') {
         const dong_truoc = pin_trong_tep.get(pin);
         if (dong_truoc !== undefined) {
@@ -163,15 +170,21 @@ export async function tuyen_nhap_du_lieu(app: FastifyInstance): Promise<void> {
       ];
 
       if (id_hien_co === null) {
-        const moi = await truy_van_mot<{ id: string }>(
-          `insert into nhan_vien
-             (ma_nv, ho_ten, pin_may, phong_ban_id, ca_lam_id, ngay_vao,
-              so_dien_thoai, email, duoc_cham_cong_dien_thoai)
-           -- Cot NOT NULL co mac dinh false: o de trong trong tep phai thanh false,
-           -- khong duoc de null xuong CSDL.
-           values ($1,$2,$3,$4,$5,$6,$7,$8, coalesce($9, false)) returning id`, ts);
+        // Dong nhan vien VA su kien bao cong trong CUNG mot transaction: tach ra thi mot lan
+        // may chet giua hai cau se de lai mot nhan vien ma cong khong bao gio biet toi.
+        const moi = await trong_giao_dich(async (khach) => {
+          const kq = await khach.query<{ id: string }>(
+            `insert into nhan_vien
+               (ma_nv, ho_ten, pin_may, phong_ban_id, ca_lam_id, ngay_vao,
+                so_dien_thoai, email, duoc_cham_cong_dien_thoai)
+             -- Cot NOT NULL co mac dinh false: o de trong trong tep phai thanh false,
+             -- khong duoc de null xuong CSDL.
+             values ($1,$2,$3,$4,$5,$6,$7,$8, coalesce($9, false)) returning id`, ts);
+          await ghi_su_kien('nhan_su.da_tao', { ma_nv, ho_ten }, khach);
+          return kq.rows[0] ?? null;
+        });
         if (moi !== null) {
-          da_co.set(ma_nv.toLowerCase(), moi.id);
+          da_co.set(ma_nv.toLowerCase(), { id: moi.id, ho_ten });
           if (pin !== '') pin_da_dung.set(pin, moi.id);
           await ghi_ma_dinh_danh_nhap(moi.id, ma_nv, pin, lay('email'));
         }
@@ -180,19 +193,27 @@ export async function tuyen_nhap_du_lieu(app: FastifyInstance): Promise<void> {
         // mot phan cot roi sua, de trong khong co nghia la "xoa gia tri cu".
         // Bo ma_nv khoi danh sach tham so: cau update khong dung toi no (doi chieu bang id),
         // ma tham so thua khien Postgres khong suy duoc kieu -> loi luc chuan bi cau lenh.
-        await thuc_thi(
-          `update nhan_vien
-              set ho_ten = $1,
-                  pin_may = coalesce($2, pin_may),
-                  phong_ban_id = coalesce($3, phong_ban_id),
-                  ca_lam_id = coalesce($4, ca_lam_id),
-                  ngay_vao = coalesce($5, ngay_vao),
-                  so_dien_thoai = coalesce($6, so_dien_thoai),
-                  email = coalesce($7, email),
-                  duoc_cham_cong_dien_thoai = coalesce($8, duoc_cham_cong_dien_thoai),
-                  cap_nhat_luc = now()
-            where id = $9`,
-          [...ts.slice(1), id_hien_co]);
+        await trong_giao_dich(async (khach) => {
+          await khach.query(
+            `update nhan_vien
+                set ho_ten = $1,
+                    pin_may = coalesce($2, pin_may),
+                    phong_ban_id = coalesce($3, phong_ban_id),
+                    ca_lam_id = coalesce($4, ca_lam_id),
+                    ngay_vao = coalesce($5, ngay_vao),
+                    so_dien_thoai = coalesce($6, so_dien_thoai),
+                    email = coalesce($7, email),
+                    duoc_cham_cong_dien_thoai = coalesce($8, duoc_cham_cong_dien_thoai),
+                    cap_nhat_luc = now()
+              where id = $9`,
+            [...ts.slice(1), id_hien_co]);
+          // CHI khi ten that su doi. Nhap lai nguyen si mot tep 900 dong khong duoc sinh ra
+          // 900 su kien doi ten.
+          if (hien_co !== null && hien_co.ho_ten !== ho_ten) {
+            await ghi_su_kien('nhan_su.doi_ten', { ma_nv, ho_ten }, khach);
+          }
+        });
+        da_co.set(ma_nv.toLowerCase(), { id: id_hien_co, ho_ten });
         if (pin !== '') pin_da_dung.set(pin, id_hien_co);
         await ghi_ma_dinh_danh_nhap(id_hien_co, ma_nv, pin, lay('email'));
       }

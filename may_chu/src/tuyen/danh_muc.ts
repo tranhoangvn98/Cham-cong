@@ -10,6 +10,7 @@ import { xep_lenh } from '../adms/tuyen.ts';
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
+import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { dong_bo_thu_muc_nhan_vien } from '../ho_so/sap_xep_tep.ts';
 import { PHAM_VI, la_pham_vi, sinh_khoa } from '../bao_mat/khoa_api.ts';
 import { doc_danh_sach_ip } from '../tien_ich/dia_chi_ip.ts';
@@ -186,14 +187,26 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
 
   app.post('/nhan-vien', { preHandler: can_nhan_su }, async (req, res) => {
     const b = than(req.body);
+    const ts = doc_nhan_vien(b, true);
     const dong = await ghi_bat_trung(
-      () => truy_van_mot<{ id: string }>(
-        `insert into nhan_vien
-           (ma_nv, ho_ten, pin_may, ma_erp, phong_ban_id, ca_lam_id, ngay_vao,
-            so_dien_thoai, email, duoc_cham_cong_dien_thoai, noi_lam_viec_id)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
-        doc_nhan_vien(b, true),
-      ),
+      // Su kien vao `hop_thu_di` CUNG transaction voi dong nhan vien: hai cau roi nhau thi co
+      // luc nhan vien duoc tao ma su kien khong duoc ghi (may chet giua hai cau), va cong se
+      // khong bao gio biet ve nguoi nay.
+      () => trong_giao_dich(async (khach) => {
+        const kq = await khach.query<{ id: string }>(
+          `insert into nhan_vien
+             (ma_nv, ho_ten, pin_may, ma_erp, phong_ban_id, ca_lam_id, ngay_vao,
+              so_dien_thoai, email, duoc_cham_cong_dien_thoai, noi_lam_viec_id)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
+          ts,
+        );
+        await ghi_su_kien(
+          'nhan_su.da_tao',
+          { ma_nv: ts[0], ho_ten: ts[1] },
+          khach,
+        );
+        return kq.rows[0] ?? null;
+      }),
       'Mã nhân viên hoặc PIN máy đã được dùng cho người khác.',
     );
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tao_nhan_vien', 'nhan_vien',
@@ -207,22 +220,68 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const id = lay_id(req);
     const b = than(req.body);
     const ts = doc_nhan_vien(b, true);
-    const so = await ghi_bat_trung(
-      () => thuc_thi(
-        `update nhan_vien set ma_nv=$2, ho_ten=$3, pin_may=$4, ma_erp=$5, phong_ban_id=$6,
-                ca_lam_id=$7, ngay_vao=$8, so_dien_thoai=$9, email=$10,
-                duoc_cham_cong_dien_thoai=$11, noi_lam_viec_id=$12, cap_nhat_luc=now()
-          where id=$1`,
-        [id, ...ts],
-      ),
+    const ma_moi = String(ts[0]);
+    const ten_moi = String(ts[1]);
+
+    const kq = await ghi_bat_trung(
+      () => trong_giao_dich(async (khach) => {
+        // Doc gia tri CU trong cung transaction, `for update`: khong the co ai doi ten xen vao
+        // giua luc doc va luc ghi roi ta gui di mot su kien mo ta cai da khong con dung.
+        const cu = (
+          await khach.query<{ ma_nv: string; ho_ten: string }>(
+            'select ma_nv, ho_ten from nhan_vien where id = $1 for update',
+            [id],
+          )
+        ).rows[0];
+        if (cu === undefined) return { thay: false, doi_ma: false };
+
+        await khach.query(
+          `update nhan_vien set ma_nv=$2, ho_ten=$3, pin_may=$4, ma_erp=$5, phong_ban_id=$6,
+                  ca_lam_id=$7, ngay_vao=$8, so_dien_thoai=$9, email=$10,
+                  duoc_cham_cong_dien_thoai=$11, noi_lam_viec_id=$12, cap_nhat_luc=now()
+            where id=$1`,
+          [id, ...ts],
+        );
+
+        // CHI gui khi ho ten THAT SU doi. Moi lan bam Lưu deu gui mot su kien thi hop thu day
+        // nhung dong khong noi len dieu gi, va nguoi doc nhat ky ben cong het nhin ra lan doi
+        // ten that.
+        if (cu.ho_ten !== ten_moi && cu.ma_nv === ma_moi) {
+          await ghi_su_kien('nhan_su.doi_ten', { ma_nv: ma_moi, ho_ten: ten_moi }, khach);
+        }
+        return { thay: true, doi_ma: cu.ma_nv !== ma_moi, ma_cu: cu.ma_nv };
+      }),
       'Mã nhân viên hoặc PIN máy đã được dùng cho người khác.',
     );
-    if (so === 0) throw new LoiKhongTim('Không tìm thấy nhân viên.');
+    if (!kq.thay) throw new LoiKhongTim('Không tìm thấy nhân viên.');
 
     // Ten thu muc kho tep mang ma nhan vien va ho ten, nen doi hai truong do thi thu muc
     // phai doi theo. KHONG nem loi neu doi cho that bai: `ho_so_tep.ten_luu` van tro dung
     // cho cu nen moi tep van doc duoc, va lan quet dinh ky se sua ten thu muc sau.
     await dong_bo_thu_muc_nhan_vien(id, (m) => { req.log.info(m); });
+
+    // DOI `ma_nv` — hop dong voi cong KHONG co dong tu nao cho viec nay.
+    //
+    // `ma_nv` la khoa noi hai he thong (`nhan_su.ma` ben cong). Doi no o day thi ban ghi ben
+    // cong van mang ma cu, va tai khoan dang nhap cua nguoi do van tro vao ban ghi mang ma cu.
+    //
+    // Da can nhac va BO hai cach chua:
+    //  - Gui `nhan_su.da_tao` voi ma moi: tao them mot ban ghi khong ai tro toi, con tai khoan
+    //    van dinh vao ban ghi cu. Them rac, khong sua duoc gi.
+    //  - Gui `nghi_viec` ma cu + `da_tao` ma moi: `nghi_viec` VO HIEU HOA tai khoan va thu hoi
+    //    moi phien. Doi ma nhan vien khong duoc phep da mot nguoi ra khoi he thong.
+    //
+    // Nen: khong bia ra su kien, ma ghi lai that ro de co nguoi doi chieu bang tay.
+    if (kq.doi_ma) {
+      req.log.warn(
+        { id, ma_cu: kq.ma_cu, ma_moi },
+        'doi ma_nv: ban ghi ben cong van mang ma cu, phai doi chieu bang tay',
+      );
+      await ghi_nhat_ky(
+        nguoi_dung_hien_tai(req).sub, 'doi_ma_nv_lech_cong', 'nhan_vien', id,
+        { ma_cu: kq.ma_cu, ma_moi, ghi_chu: 'Cong chua duoc bao — doi chieu bang tay' }, req.ip,
+      );
+    }
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'sua_nhan_vien', 'nhan_vien', id, null, req.ip);
 
@@ -302,23 +361,40 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const id = lay_id(req);
     const b = than(req.body ?? {});
     const ngay_nghi = ngay(b, 'ngay_nghi_viec');
-    const so = await thuc_thi(
-      `update nhan_vien
-          set dang_hoat_dong = false,
-              ngay_nghi_viec = coalesce($2::date, current_date),
-              cap_nhat_luc = now()
-        where id = $1`,
-      [id, ngay_nghi],
-    );
-    if (so === 0) throw new LoiKhongTim('Không tìm thấy nhân viên.');
-    // Vo hieu hoa luon tai khoan dang nhap cua nguoi do.
-    await thuc_thi('update nguoi_dung set dang_hoat_dong = false where nhan_vien_id = $1', [id]);
-    await thuc_thi(
-      `update token_lam_moi set thu_hoi_luc = now()
-        where thu_hoi_luc is null
-          and nguoi_dung_id in (select id from nguoi_dung where nhan_vien_id = $1)`,
-      [id],
-    );
+    const ma_nv = await trong_giao_dich(async (khach) => {
+      const dong = (
+        await khach.query<{ ma_nv: string }>(
+          `update nhan_vien
+              set dang_hoat_dong = false,
+                  ngay_nghi_viec = coalesce($2::date, current_date),
+                  cap_nhat_luc = now()
+            where id = $1
+            returning ma_nv`,
+          [id, ngay_nghi],
+        )
+      ).rows[0];
+      if (dong === undefined) return null;
+
+      // Vo hieu hoa luon tai khoan dang nhap cua nguoi do.
+      await khach.query('update nguoi_dung set dang_hoat_dong = false where nhan_vien_id = $1', [id]);
+      await khach.query(
+        `update token_lam_moi set thu_hoi_luc = now()
+          where thu_hoi_luc is null
+            and nguoi_dung_id in (select id from nguoi_dung where nhan_vien_id = $1)`,
+        [id],
+      );
+
+      // Bao cong: ben do se doi `nhan_su.trang_thai`, vo hieu hoa tai khoan cong VA thu hoi
+      // moi phien dang song. Buoc cuoi la buoc quan trong nhat — `vo_hieu_hoa` chan duoc dang
+      // nhap lai nhung khong chan duoc tab dang mo.
+      //
+      // Cung transaction voi viec cho nghi: neu tach ra, mot lan may chet dung giua hai buoc
+      // se de lai mot nguoi da nghi viec o Cham cong ma van dang nhap duoc vao moi phan he
+      // khac trong cum. Do la dung loai lo khong ai phat hien ra cho den khi qua muon.
+      await ghi_su_kien('nhan_su.nghi_viec', { ma_nv: dong.ma_nv }, khach);
+      return dong.ma_nv;
+    });
+    if (ma_nv === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'cho_nghi_viec', 'nhan_vien', id, null, req.ip);
     return { ok: true };
   });

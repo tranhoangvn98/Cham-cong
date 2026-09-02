@@ -16,6 +16,7 @@
 //      kiem se thay du lieu cu bien mat.
 //   4. Khuc tai (tru khuc cuoi) phai la boi so cua 320 KiB, khong thi 400.
 //   5. 429 kem `Retry-After` — client phai cho roi thu lai, khong duoc bo cuoc.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';

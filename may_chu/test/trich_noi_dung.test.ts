@@ -12,6 +12,7 @@
 // Tep thu `tep_thu/hop_dong_scan.jpg`: mot trang hop dong tieng Viet ket xuat thanh anh
 // (DejaVu Serif 28px, anh xam 900x300, JPEG q85). Day la ban scan gia lap nhung la ANH
 // THAT — OCR phai doc duoc no.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

@@ -3,6 +3,7 @@
 // Phan nay quyet dinh ai duoc phep ghi vao bang cong, tuc la vao co so tinh luong. Sai
 // theo huong long tay = ai biet serial may cung day duoc lan quet gia; sai theo huong
 // chat tay = may cham cong that bi chan va bang cong dung cap nhat. Ca hai deu nang.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chuan_hoa_ip, doc_danh_sach_ip, ip_duoc_phep } from '../src/tien_ich/dia_chi_ip.ts';

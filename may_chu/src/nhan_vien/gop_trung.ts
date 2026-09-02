@@ -99,7 +99,7 @@ export const COT_MANG_THEO: readonly string[] = [
   'erp_user_id', 'erp_username', 'erp_dong_bo_luc', 'ma_erp', 'email', 'pin_may',
   // Thong tin nhan su — mat la mat du lieu nguoi ta da nhap.
   'phong_ban_id', 'ca_lam_id', 'chuc_danh', 'nguoi_quan_ly_id',
-  'ngay_vao', 'ngay_chinh_thuc', 'so_dien_thoai',
+  'ngay_vao', 'ngay_chinh_thuc', 'so_dien_thoai', 'noi_lam_viec_id',
 ] as const;
 
 /**

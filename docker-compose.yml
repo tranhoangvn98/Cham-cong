@@ -99,6 +99,12 @@ services:
       # Xu ly ky luat tu dong (quet hang ngay): khoan giam thuong 1 ho so >= nguong (dong) phai co
       # nguoi duyet moi ap, duoi nguong he thong tu ap. 0 = moi khoan deu phai duyet.
       KY_LUAT_NGUONG_DUYET: ${KY_LUAT_NGUONG_DUYET:-2000000}
+      # Day su kien nhan su SANG cong (chieu RA). `CONG_SSO_GOC` o tren la chieu VAO.
+      # De trong CONG_SU_KIEN_URL = lay theo CONG_SSO_GOC; chi khai khi hai duong that su
+      # phai tro di hai noi. De trong CONG_TOKEN_DICH_VU = tat chieu RA, su kien nam lai
+      # trong `hop_thu_di` cho, khong mat.
+      CONG_SU_KIEN_URL: ${CONG_SU_KIEN_URL:-}
+      CONG_TOKEN_DICH_VU: ${CONG_TOKEN_DICH_VU:-}
       # Thong bao day toi app dien thoai. Dat 0 de tat (vd: may chu khong ra Internet).
       THONG_BAO_DAY: ${THONG_BAO_DAY:-1}
       EXPO_PUSH_URL: ${EXPO_PUSH_URL:-https://exp.host/--/api/v2/push/send}

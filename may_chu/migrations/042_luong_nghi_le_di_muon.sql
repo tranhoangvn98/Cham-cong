@@ -109,13 +109,22 @@ alter table tham_so_luong add column if not exists ty_le_thu_viec        numeric
 
 -- ------------------------------------------------------------------ đơn xin đi muộn
 -- Thêm loại 'di_muon' vào don_tu. gio_bat_dau = giờ dự kiến có mặt (tùy chọn).
+--
+-- CHỈ thay ràng buộc DANH SÁCH LOẠI (`loai in (...)`), KHÔNG đụng vào các ràng buộc theo từng
+-- loại (`don_tu_lam_them`, `don_tu_cong_tac`, ...). Ràng buộc danh sách là ràng buộc DUY NHẤT
+-- liệt kê đủ cả bốn loại gốc; các ràng buộc theo loại chỉ nhắc tên đúng một loại. Lọc theo
+-- "có mặt cả bốn" nên không bao giờ trúng `don_tu_lam_them` (chỉ nhắc `lam_them`) — nếu trúng
+-- thì ràng buộc "làm thêm phải có cả giờ bắt đầu lẫn giờ kết thúc" biến mất trong im lặng.
 do $$
 declare c record;
 begin
   for c in
     select conname from pg_constraint
     where conrelid = 'don_tu'::regclass and contype = 'c'
-      and pg_get_constraintdef(oid) like '%lam_them%' and pg_get_constraintdef(oid) like '%loai%'
+      and pg_get_constraintdef(oid) like '%lam_them%'
+      and pg_get_constraintdef(oid) like '%doi_ca%'
+      and pg_get_constraintdef(oid) like '%cong_tac%'
+      and pg_get_constraintdef(oid) like '%thoi_viec%'
   loop
     execute format('alter table don_tu drop constraint %I', c.conname);
   end loop;

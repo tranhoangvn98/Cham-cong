@@ -113,7 +113,11 @@ export async function quet_vi_pham(thang: string, nguoi_ghi: string | null): Pro
         // Chay lai trong THANG: cap nhat lai so lieu (gia_tri) cho ban ghi CON 'moi' — de phat
         // theo tung lan (di muon them thi so lan tang). Ban ghi da co nguoi dong toi (khac 'moi')
         // thi GIU NGUYEN: `where vi_pham.trang_thai = 'moi'`.
-        const kq = await khach.query(
+        //
+        // `so_moi` chi dem ban ghi THAT SU MOI TAO, khong dem lan cap nhat: quet lai cung thang
+        // cap nhat lai so lieu la binh thuong, nhung khong duoc bao "sinh ban ghi moi". `xmax = 0`
+        // dung cho dong vua INSERT; dong di qua nhanh DO UPDATE co xmax khac 0.
+        const kq = await khach.query<{ la_moi: boolean }>(
           `insert into vi_pham
              (nhan_vien_id, loai_vi_pham_id, nguon, quy_tac_id, ngay, ky, mo_ta,
               bang_chung, trang_thai, nguoi_ghi)
@@ -123,7 +127,7 @@ export async function quet_vi_pham(thang: string, nguoi_ghi: string | null): Pro
            do update set mo_ta = excluded.mo_ta, bang_chung = excluded.bang_chung,
                          ngay = excluded.ngay, cap_nhat_luc = now()
              where vi_pham.trang_thai = 'moi'
-           returning id`,
+           returning (xmax = 0) as la_moi`,
           [
             nv.nhan_vien_id, q.loai_vi_pham_id, q.id, den, thang,
             `${q.ten}: ghi nhận ${gia_tri} (ngưỡng ${q.toan_tu} ${Number(q.nguong)})`,
@@ -131,7 +135,7 @@ export async function quet_vi_pham(thang: string, nguoi_ghi: string | null): Pro
             nguoi_ghi,
           ],
         );
-        so_moi += kq.rowCount ?? 0;
+        if (kq.rows[0]?.la_moi === true) so_moi += 1;
       }
     }
   });

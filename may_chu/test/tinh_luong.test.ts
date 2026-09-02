@@ -3,6 +3,7 @@
 // Day la cho sai thi mat tien that cua nguoi that, nen moi con so mong doi o duoi deu
 // duoc dan giai trong ghi chu — nguoi doc sau phai kiem lai duoc bang may tinh bo tui,
 // khong phai tin vao ma nguon.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

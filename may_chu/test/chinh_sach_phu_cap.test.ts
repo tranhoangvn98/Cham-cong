@@ -2,6 +2,7 @@
 //
 // Day la cho quyet dinh mot nguoi thang nay nhan them bao nhieu, nen moi con so mong doi deu
 // duoc dan giai — nguoi doc sau phai kiem lai duoc bang may tinh bo tui.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

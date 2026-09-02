@@ -2,6 +2,7 @@
 //
 // Du lieu trong tep nay la BIA RA. Tep nhan su that co CCCD, dia chi, ngay sinh cua nguoi
 // that (Nghi dinh 13/2023) va khong duoc dua vao repo duoi bat ky dang nao.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
