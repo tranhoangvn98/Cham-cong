@@ -24,7 +24,8 @@ export function goc_api_tuyet_doi(): string {
 const KHOA_LUU = 'cham_cong_phien';
 
 export type VaiTroNguoiDung =
-  | 'admin' | 'nhan_su' | 'truong_phong_nhan_su' | 'truong_phong' | 'nhan_vien' | 'cho_duyet';
+  | 'admin' | 'nhan_su' | 'truong_phong_nhan_su' | 'truong_phong' | 'kiem_soat'
+  | 'nhan_vien' | 'cho_duyet';
 
 export interface NguoiDung {
   id: string;
@@ -363,6 +364,18 @@ export function vai_tro_hien_tai(): VaiTroNguoiDung | null {
 
 export function la_admin(): boolean {
   return phien?.nguoi_dung.vai_tro === 'admin';
+}
+
+/**
+ * Vai tro doc duoc module giam sat gian lan.
+ *
+ * KHONG gop `nhan_su` hay `truong_phong` vao day, va do khong phai thieu sot: ho nam trong
+ * so nguoi bi giam sat. May chu cung chan y het (`can_kiem_soat` cua `bao_mat/xac_thuc.ts`),
+ * nen hai ben phai khop — lech mot ben la nguoi dung thay muc menu roi bam vao nhan 403.
+ */
+export function la_kiem_soat(): boolean {
+  const v = phien?.nguoi_dung.vai_tro;
+  return v === 'admin' || v === 'kiem_soat';
 }
 
 // Nhieu request 401 cung luc chi duoc lam moi MOT lan, neu khong token bi xoay

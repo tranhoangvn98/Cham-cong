@@ -10,10 +10,14 @@
 // hoac mot rang buoc phap ly.
 
 export type VaiTro =
-  | 'admin' | 'nhan_su' | 'truong_phong_nhan_su' | 'truong_phong' | 'nhan_vien' | 'cho_duyet';
+  | 'admin' | 'nhan_su' | 'truong_phong_nhan_su' | 'truong_phong' | 'kiem_soat'
+  | 'nhan_vien' | 'cho_duyet';
 
 /** Cac vai tro quan tri cham cong — dung cho cac buoc chi ho lam duoc. */
 export const NHAN_SU: readonly VaiTro[] = ['admin', 'nhan_su', 'truong_phong_nhan_su'];
+
+/** Vai tro doc duoc module giam sat gian lan. Khop `can_kiem_soat` cua may chu. */
+export const KIEM_SOAT: readonly VaiTro[] = ['admin', 'kiem_soat'];
 
 export interface BuocHuongDan {
   chu: string;
@@ -332,6 +336,54 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     luu_y: [
       'Một mã ĐANG HIỆU LỰC chỉ thuộc một người — cơ sở dữ liệu bảo đảm. Muốn chuyển sang người khác phải xác nhận thu hồi, và mã cũ được đóng lại chứ không xóa.',
       'Đối soát sạch là trạng thái bình thường. Có dòng lệch nghĩa là có một đường ghi nào đó chưa đi qua bảng — cần tìm, không phải bỏ qua.',
+    ],
+  },
+  {
+    duong_dan: '/giam-sat',
+    tom_tat: 'Dấu hiệu bất thường máy phát hiện trên dữ liệu ERP 1 — để kiểm tra, không phải để kết luận.',
+    buoc: [
+      { chu: 'Lọc theo trạng thái, nhóm, mức độ hoặc khoảng ngày.', vai_tro: KIEM_SOAT },
+      { chu: 'Bấm vào một dòng để xem bằng chứng: giá trị đo, ngưỡng đã dùng, và số liệu gốc.', vai_tro: KIEM_SOAT },
+      { chu: 'Đối chiếu chứng từ gốc bên ERP 1 và hỏi người liên quan trước khi kết luận.', vai_tro: KIEM_SOAT },
+      { chu: 'Ghi kết luận rồi đổi trạng thái. Mỗi lần đổi đều vào nhật ký xử lý.', vai_tro: KIEM_SOAT },
+    ],
+    luu_y: [
+      'Máy chỉ ghi trạng thái "Mới". Không có đường nào đi thẳng từ "máy phát hiện" đến "kết luận gian lận" — chỉ con người đổi được trạng thái, và mỗi lần đổi đều để lại dấu vết.',
+      'Nhóm "Chéo chấm công" có rất nhiều nguyên nhân vô tội: làm từ xa, quên quẹt thẻ, đi công tác, tài khoản dùng chung. Hỏi người liên quan trước, đừng suy đoán.',
+      'Cảnh báo về việc sửa dữ liệu cho biết CÁI GÌ đổi và TRONG KHOẢNG NÀO, nhưng KHÔNG cho biết AI đổi — ERP 1 không lưu thông tin đó. Muốn biết ai thì phải tra nhật ký truy cập cơ sở dữ liệu bên đó.',
+      'Nếu banner báo có lần quét thất bại, danh sách đang thiếu. "Không có cảnh báo" lúc đó không có nghĩa là không có vấn đề.',
+    ],
+  },
+  {
+    duong_dan: '/giam-sat/danh-muc',
+    tom_tat: 'Khai báo nhóm cảnh báo, loại lỗi và điều kiện phát hiện — không cần lập trình viên.',
+    buoc: [
+      { chu: 'Tab Danh mục cảnh báo: nhóm nghiệp vụ, thời hạn xử lý, bộ phận chịu trách nhiệm.', vai_tro: KIEM_SOAT },
+      { chu: 'Tab Danh mục lỗi: từng tình huống cụ thể, mức độ, hậu quả, hướng khắc phục.', vai_tro: KIEM_SOAT },
+      { chu: 'Tab Điều kiện: chọn phép đo và đặt ngưỡng.', vai_tro: KIEM_SOAT },
+      { chu: 'BẤM CHẠY THỬ TRƯỚC KHI BẬT. Nó cho biết điều kiện sẽ bắt bao nhiêu bản ghi thật.', vai_tro: KIEM_SOAT },
+    ],
+    luu_y: [
+      'Toàn bộ điều kiện cài sẵn đều TẮT, và ngưỡng chỉ là gợi ý. Bật sẵn bằng một con số tự nghĩ ra là để hệ thống kết tội người thật bằng tiêu chí không ai duyệt — phải đối chiếu quy chế nội bộ đã ban hành rồi mới bật.',
+      'Một điều kiện bắt hàng trăm bản ghi thường có nghĩa ngưỡng đặt quá rộng. Danh sách cảnh báo ngập là cách nhanh nhất để không ai đọc nó nữa.',
+      'Nhiều điều kiện của cùng một loại lỗi nối với nhau bằng VÀ. Cần HOẶC thì tạo hai loại lỗi.',
+      'Loại lỗi chỉ thực sự chạy khi cả ba đều bật: nhóm, loại lỗi, và ít nhất một điều kiện.',
+      'Bạn cấu hình ngưỡng và tham số, KHÔNG cấu hình câu truy vấn. Câu lệnh nằm trong mã nguồn — cho nhập SQL tự do ở màn hình này là biến nó thành cổng thực thi SQL trên cơ sở dữ liệu ERP 1.',
+    ],
+  },
+  {
+    duong_dan: '/cai-dat/nguon-erp',
+    tom_tat: 'Chọn database ERP 1 cho từng nguồn dữ liệu, và đối chiếu schema.',
+    buoc: [
+      { chu: 'Bấm Dò tìm database để xem tài khoản đọc được những database nào.', vai_tro: ['admin'] },
+      { chu: 'Chọn database tương ứng cho từng mã nguồn, rồi bấm Kiểm tra.', vai_tro: ['admin'] },
+      { chu: 'Bấm Đối chiếu schema để biết phép đo có còn khớp bảng bên ERP 1 không.', vai_tro: ['admin'] },
+    ],
+    luu_y: [
+      'Thông tin đăng nhập nằm trong biến môi trường ERP1_* của máy chủ, không lưu trong cơ sở dữ liệu và không hiển thị ở màn hình này. Sửa .env xong phải khởi động lại máy chủ.',
+      'Tên database trong mã nguồn ERP 1 là tên môi trường UAT, chưa chắc là tên production. Phải dò tìm rồi chọn, đừng đoán.',
+      'Nếu ERP 1 đổi tên bảng hoặc cột, truy vấn của phép đo trả 0 dòng mà KHÔNG báo lỗi — nhìn y hệt "không có cảnh báo nào". Chạy Đối chiếu schema sau mỗi lần ERP 1 nâng cấp.',
+      'Kết nối là chỉ-đọc ở ba lớp và module không bao giờ ghi sang ERP 1. Nhưng lớp đầu tiên — quyền của tài khoản bên đó — do quản trị ERP 1 nắm, nên hãy xác nhận tài khoản chỉ có GRANT SELECT.',
     ],
   },
   {

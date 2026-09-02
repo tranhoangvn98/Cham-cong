@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   cau_hinh_dang_nhap, da_dang_nhap, dang_xuat, di_cong_dang_nhap, doc_token_cong, dung_cong_sso,
-  la_admin, la_nhan_su, nap_phien_cong, nguoi_dung_hien_tai, nhan_phien_tu_neo,
+  la_admin, la_kiem_soat, la_nhan_su, nap_phien_cong, nguoi_dung_hien_tai,
+  nhan_phien_tu_neo,
 } from './api.ts';
 import { CungCapTuyen, LienKet, dung_tuyen } from './dinh_tuyen.tsx';
 import { CungCapTieuDe, DuongMon, type TieuDeTrang } from './tieu_de_trang.tsx';
@@ -26,6 +27,9 @@ import { TrangDongBoErp } from './trang/dong_bo_erp.tsx';
 import { TrangHoSo } from './trang/ho_so.tsx';
 import { TrangKhoTep } from './trang/kho_tep.tsx';
 import { TrangMaDinhDanh } from './trang/ma_dinh_danh.tsx';
+import { TrangGiamSat } from './trang/giam_sat.tsx';
+import { TrangGiamSatDanhMuc } from './trang/giam_sat_danh_muc.tsx';
+import { TrangNguonErp } from './trang/nguon_erp.tsx';
 import { KhungHuongDan } from './thanh_phan_huong_dan.tsx';
 import { TrangHopDong } from './trang/hop_dong.tsx';
 
@@ -38,7 +42,7 @@ interface MucMenu {
   /** Dong phu tren header khi o trang nay. */
   phu?: string;
   /** Vai tro toi thieu de thay muc nay. */
-  quyen?: 'nhan_su' | 'admin';
+  quyen?: 'nhan_su' | 'admin' | 'kiem_soat';
 }
 
 /*
@@ -66,6 +70,9 @@ const MENU: MucMenu[] = [
   { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Tính từ chấm công, gửi duyệt', quyen: 'nhan_su' },
   { duong_dan: '/phu-cap', ten: 'Phụ cấp', icon: 'plus', nhom: 'Quản trị nhân sự', phu: 'Chính sách phụ cấp từng người', quyen: 'nhan_su' },
   { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Quản trị nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
+
+  { duong_dan: '/giam-sat', ten: 'Giám sát', icon: 'clock-exclamation', nhom: 'Kiểm soát nội bộ', phu: 'Dấu hiệu bất thường trên dữ liệu ERP 1', quyen: 'kiem_soat' },
+  { duong_dan: '/giam-sat/danh-muc', ten: 'Danh mục giám sát', icon: 'list-details', nhom: 'Kiểm soát nội bộ', phu: 'Danh mục cảnh báo, danh mục lỗi và điều kiện', quyen: 'kiem_soat' },
 
   { duong_dan: '/cai-dat', ten: 'Cài đặt', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp' },
 ];
@@ -100,6 +107,7 @@ const MENU_CAI_DAT: MucMenu[] = [
   { duong_dan: '/cai-dat/dong-bo-erp', ten: 'Đồng bộ ERP', icon: 'refresh', nhom: 'Tích hợp & dữ liệu', phu: 'Kéo người dùng từ ERP cũ', quyen: 'admin' },
   { duong_dan: '/cai-dat/kho-tep', ten: 'Kho tệp hồ sơ', icon: 'file-text', nhom: 'Tích hợp & dữ liệu', phu: 'Tệp đính kèm và đường dẫn đã lưu', quyen: 'nhan_su' },
   { duong_dan: '/cai-dat/ma-dinh-danh', ten: 'Mã định danh', icon: 'search', nhom: 'Tích hợp & dữ liệu', phu: 'Tra cứu theo mã, đối soát các nguồn', quyen: 'nhan_su' },
+  { duong_dan: '/cai-dat/nguon-erp', ten: 'Nguồn ERP giám sát', icon: 'key', nhom: 'Tích hợp & dữ liệu', phu: 'Chọn database ERP 1 cho module giám sát', quyen: 'admin' },
 ];
 
 /**
@@ -126,6 +134,7 @@ const CHUYEN_HUONG: Record<string, string> = {
 
 function duoc_xem(m: MucMenu): boolean {
   if (m.quyen === 'admin') return la_admin();
+  if (m.quyen === 'kiem_soat') return la_kiem_soat();
   if (m.quyen === 'nhan_su') return la_nhan_su();
   return true;
 }
@@ -161,6 +170,8 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/bang-luong': return la_nhan_su() ? <TrangBangLuong /> : <KhongCoQuyen />;
     case '/phu-cap': return la_nhan_su() ? <TrangPhuCap /> : <KhongCoQuyen />;
     case '/vi-pham': return <TrangViPham />;
+    case '/giam-sat': return <TrangGiamSat />;
+    case '/giam-sat/danh-muc': return <TrangGiamSatDanhMuc />;
     case '/kpi': return <TrangKpi />;
     case '/hop-dong': return la_nhan_su() ? <TrangHopDong /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;
@@ -181,6 +192,7 @@ function NoiDungCaiDat({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/cai-dat/dong-bo-erp': return <TrangDongBoErp />;
     case '/cai-dat/kho-tep': return <TrangKhoTep />;
     case '/cai-dat/ma-dinh-danh': return <TrangMaDinhDanh />;
+    case '/cai-dat/nguon-erp': return <TrangNguonErp />;
     default: return <KhongTimThay duong_dan={duong_dan} />;
   }
 }
