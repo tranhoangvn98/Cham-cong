@@ -93,3 +93,25 @@ export function doi_chieu_cot(
   }
   return ra;
 }
+
+/**
+ * Boc mot gia tri thanh o CSV an toan.
+ *
+ * HAI VIEC, va viec thu nhat quan trong hon:
+ *
+ * 1. CHAN CSV INJECTION. Excel va Google Sheets coi o bat dau bang `= + - @` (va tab / CR)
+ *    la CONG THUC. Mot o noi dung `=HYPERLINK(...)` trong tep xuat ra se chay khi ke toan mo
+ *    tep — du lieu tu ERP 1 la du lieu nguoi ngoai go duoc, nen day la duong tan cong that.
+ *    Them dau nhay don o dau bien no thanh chuoi.
+ * 2. Boc dau nhay kep khi o co dau phay, xuong dong hoac dau nhay.
+ *
+ * Dat o day thay vi chep vao tung route: `tuyen/bang_cong.ts` va `tuyen/luong.ts` moi tep
+ * dang giu mot ban sao rieng cua ham nay. Ban sao thu ba se lam cai ngay bo sot mot cho khi
+ * co lo hong moi tro nen chac chan.
+ */
+export function o_csv(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  const an_toan = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  return /[",\r\n]/.test(an_toan) ? `"${an_toan.replace(/"/g, '""')}"` : an_toan;
+}
