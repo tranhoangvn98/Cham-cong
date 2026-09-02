@@ -359,7 +359,8 @@ test('vai_tro_tu_quyen: doi chieu theo ma, lay quyen cao nhat, ma la thi bo qua'
 
 test('MA_VAI_TRO_CONG dung la danh sach phai khai ben cong', () => {
   assert.deepEqual([...MA_VAI_TRO_CONG].sort(), [
-    'nhan_su', 'nhan_vien', 'quan_tri', 'truong_phong', 'truong_phong_nhan_su',
+    'kiem_soat', 'nhan_su', 'nhan_vien', 'quan_tri', 'truong_phong',
+    'truong_phong_nhan_su',
   ]);
   // `cho_duyet` KHONG phai mot vai tro ben cong: trang thai do la `quyen` RONG.
   assert.equal(MA_VAI_TRO_CONG.includes('cho_duyet'), false);

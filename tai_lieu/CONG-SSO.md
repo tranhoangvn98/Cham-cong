@@ -95,6 +95,7 @@ nửa kia là danh sách vai trò khai bên sổ đăng ký của cổng.
 | `nhan_su` | Nhân sự | `nhan_su` |
 | `truong_phong_nhan_su` | Trưởng phòng nhân sự | `truong_phong_nhan_su` |
 | `truong_phong` | Trưởng phòng | `truong_phong` |
+| `kiem_soat` | Kiểm soát nội bộ (module Giám sát gian lận) | `kiem_soat` |
 | `nhan_vien` | Nhân viên | `nhan_vien` |
 
 Một người có nhiều vai trò thì lấy quyền **cao nhất**.

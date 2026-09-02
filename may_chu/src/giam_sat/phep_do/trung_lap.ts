@@ -101,6 +101,9 @@ function dong_tu_nhom(nhom: Map<string, DongCoHoi[]>, nhan_khoa: string): DongDo
   for (const [k, v] of nhom) {
     const sap = [...v].sort((a, b) => a.CreatedUtcDate < b.CreatedUtcDate ? 1 : -1);
     const moi = sap[0];
+    // `nhom_khac_nguoi` da bo moi nhom duoi 2 phan tu, nen `sap[0]` luon co. Kiem lai o day
+    // de TypeScript yen tam va de mot lan sua ham tren khong am tham thanh loi runtime.
+    if (moi === undefined) continue;
     ra.push({
       thuc_the: 'tbl_SaleOpportunity',
       thuc_the_khoa: String(moi.Id),

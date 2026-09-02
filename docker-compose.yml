@@ -93,6 +93,26 @@ services:
       # ERP cu — nguon nguoi dung de dong bo. De trong ERP_API_URL = tat han.
       ERP_API_URL: ${ERP_API_URL:-}
       ERP_API_KEY: ${ERP_API_KEY:-}
+
+      # --- Module giam sat gian lan: ket noi CHI-DOC toi CSDL cua ERP 1 ---
+      # De trong ERP1_HOST = tat han module. Tai khoan phai la tai khoan chi co GRANT SELECT.
+      ERP1_HOST: ${ERP1_HOST:-}
+      ERP1_PORT: ${ERP1_PORT:-5432}
+      ERP1_USER: ${ERP1_USER:-}
+      ERP1_PASSWORD: ${ERP1_PASSWORD:-}
+      ERP1_DB_BOOTSTRAP: ${ERP1_DB_BOOTSTRAP:-postgres}
+      ERP1_SSL: ${ERP1_SSL:-0}
+      ERP1_STATEMENT_TIMEOUT_MS: ${ERP1_STATEMENT_TIMEOUT_MS:-20000}
+
+      # --- Ban tin canh bao hang ngay. De trong SMTP_HOST = khong gui email. ---
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SECURE: ${SMTP_SECURE:-0}
+      SMTP_NGUOI_GUI: ${SMTP_NGUOI_GUI:-}
+      GIAM_SAT_EMAIL_NHAN: ${GIAM_SAT_EMAIL_NHAN:-}
+      GIAM_SAT_EMAIL_GIO: ${GIAM_SAT_EMAIL_GIO:-7}
       # Hop dong dien tu vContract (Viettel). De trong VCONTRACT_URL = tat han tinh nang.
       VCONTRACT_URL: ${VCONTRACT_URL:-}
       VCONTRACT_USERNAME: ${VCONTRACT_USERNAME:-}

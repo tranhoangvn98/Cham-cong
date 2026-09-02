@@ -50,8 +50,23 @@ export interface DongDo {
 
 /** Ham doc du lieu ERP 1 ma phep do duoc phep goi. Tiem vao de test khong can CSDL that. */
 export interface NguCanh {
-  doc: <T extends Record<string, unknown>>(
+  // Rang buoc `object` chu khong phai `Record<string, unknown>`: TypeScript khong coi mot
+  // `interface` khong co index signature la thoa `Record<string, unknown>`, nen moi phep do
+  // se phai khai kieu dong bang object literal dai dong. Repo da dung object literal o
+  // `truy_van<{...}>`, nhung phep do can dat ten kieu de tai dung giua cac ham.
+  doc: <T extends object>(
     ma: MaNguon, sql: string, tham_so?: ReadonlyArray<unknown>,
+  ) => Promise<T[]>;
+  /**
+   * Doc CSDL cua chinh he thong cham cong (ERP 2).
+   *
+   * Chi nhom `cheo_cham_cong` dung — do la ly do module nay dat o ERP 2 chu khong o ERP 1:
+   * khong he thong nao khac co dong thoi bang cong va du lieu nghiep vu.
+   *
+   * Tiem qua ngu canh thay vi nhap thang `truy_van` de test chay duoc ma khong can CSDL.
+   */
+  doc_noi_bo: <T extends object>(
+    sql: string, tham_so?: ReadonlyArray<unknown>,
   ) => Promise<T[]>;
   /** Thoi diem chay vong quet. Tiem vao de test co ket qua on dinh. */
   bay_gio: Date;
@@ -73,6 +88,18 @@ export interface PhepDo {
    * `danh_gia.ts` doc co nay de biet co phai cap nhat `anh_chup_erp` sau khi do khong.
    */
   dung_anh_chup?: boolean;
+  /**
+   * Khac `undefined` = phep do KHONG chay duoc, kem ly do bang tieng Viet.
+   *
+   * VI SAO CAN CO NAY thay vi xoa han phep do: co nhung chi so nghiep vu THAT SU can, nhung
+   * ERP 1 khong luu du lieu de tinh (vi du `chi_vuot_han_muc` — bang `chi.tbl_han_muc_chi`
+   * khong co cot so tien). Xoa han thi danh muc mat mot muc ma nguoi dung dang cho doi, va
+   * sau nay khong ai nho tai sao no bien mat. Con de no tra ve 0 dong la kieu hong te nhat:
+   * nhin y het "khong co canh bao nao".
+   *
+   * Nen: giu phep do trong danh muc, tu choi chay, va noi ro thieu gi.
+   */
+  chua_trien_khai?: string;
   do: (ctx: NguCanh, ts: Readonly<Record<string, number>>) => Promise<DongDo[]>;
 }
 
