@@ -11,6 +11,8 @@ import { cau_hinh } from '../cau_hinh.ts';
 import { thuc_thi } from '../csdl/ket_noi.ts';
 import { bat_giam_sat } from './ket_noi_erp.ts';
 import { cac_loi_can_quet, ngu_canh_that, quet_mot_loi } from './danh_gia.ts';
+import { bat_email, gui_ban_tin } from './ban_tin.ts';
+import { gio_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Moi vong chi quet nhung loi den han theo o thoi gian cua chung. */
 const CHU_KY_PHUT = 15;
@@ -135,6 +137,22 @@ export async function chay_mot_vong(
   await don_viec_cu();
   const da_don = await don_canh_bao_cu();
   if (da_don > 0) ghi_log(`[giam_sat] don ${da_don} canh bao da dong tren mot nam`);
+
+  // Ban tin hang ngay. Gio tinh theo mui gio NOI DAT MAY CHAM CONG, khong theo mui gio may
+  // chu — mot ban tin gui luc 7 gio sang phai la 7 gio o cho nguoi doc no.
+  if (bat_email()) {
+    const gio = Number(gio_dia_phuong(luc).slice(0, 2));
+    if (gio === cau_hinh.thu_dien_tu.gio_gui) {
+      try {
+        const bt = await gui_ban_tin(luc);
+        if (bt.da_gui) ghi_log(`[giam_sat] da gui ban tin: ${bt.so_canh_bao} canh bao`);
+      } catch (loi) {
+        // Gui email that bai KHONG duoc lam hong vong quet: quet la viec chinh, ban tin la
+        // viec phu. `gui_ban_tin` da nha khoa nen vong sau se thu lai.
+        ghi_log(`[giam_sat] gui ban tin that bai: ${(loi as Error).message}`);
+      }
+    }
+  }
 
   return { so_loi_quet: so_quet, so_canh_bao_moi: so_moi, so_that_bai: so_hong,
     bo_qua_ly_do: null };
