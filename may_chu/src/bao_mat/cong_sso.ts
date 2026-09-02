@@ -391,12 +391,21 @@ const DOI_VAI_TRO: Readonly<Record<string, VaiTro>> = {
   nhan_su: 'nhan_su',
   truong_phong_nhan_su: 'truong_phong_nhan_su',
   truong_phong: 'truong_phong',
+  kiem_soat: 'kiem_soat',
   nhan_vien: 'nhan_vien',
 };
 
-/** Cao nhat truoc. Mot nguoi co nhieu vai tro thi lay quyen cao nhat. */
+/**
+ * Cao nhat truoc. Mot nguoi co nhieu vai tro thi lay quyen cao nhat.
+ *
+ * `kiem_soat` dat SAU `truong_phong` co chu dich: no khong phai mot bac cao hon trong cung
+ * mot thang bac, ma la mot truc khac. Neu mot nguoi vua la truong phong vua duoc cap quyen
+ * kiem soat, ho vao he thong voi quyen truong phong (rong hon o phan nghiep vu hang ngay),
+ * va cong van cap rieng quyen kiem soat qua vai tro tren tai khoan noi bo neu can. Dat
+ * `kiem_soat` len tren se lam ho MAT quyen truong phong — mot cach im lang.
+ */
 const THU_TU: readonly VaiTro[] = [
-  'admin', 'nhan_su', 'truong_phong_nhan_su', 'truong_phong', 'nhan_vien',
+  'admin', 'nhan_su', 'truong_phong_nhan_su', 'truong_phong', 'kiem_soat', 'nhan_vien',
 ];
 
 /** Danh sach ma vai tro phai khai ben so dang ky cua cong. Dung cho tai lieu va bai kiem. */

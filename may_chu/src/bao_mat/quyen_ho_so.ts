@@ -72,6 +72,21 @@ export function la_quan_tri(vai_tro: string): boolean {
   return vai_tro === 'admin';
 }
 
+/**
+ * Kiem soat noi bo: doc va xu ly canh bao cua module giam sat gian lan.
+ *
+ * TRUC THU BA, tach han khoi hai truc tren. `la_vai_tro_nhan_su` la quan tri nhan su,
+ * `la_quan_tri` la quan tri ky thuat; day la tuyen kiem soat. Ba truc khong long nhau va co
+ * y khong long: nguoi bi giam sat khong duoc la nguoi dong canh bao ve chinh minh, nen
+ * `nhan_su` va `truong_phong` KHONG co mat o day.
+ *
+ * `admin` co mat vi neu khong thi mot he thong khong con ai vao duoc khi tai khoan kiem soat
+ * duy nhat bi khoa — va vi admin la nguoi cau hinh nguon du lieu.
+ */
+export function la_kiem_soat(vai_tro: string): boolean {
+  return vai_tro === 'admin' || vai_tro === 'kiem_soat';
+}
+
 function la_nhan_su(nd: NguoiXem): boolean {
   return la_vai_tro_nhan_su(nd.vai_tro);
 }

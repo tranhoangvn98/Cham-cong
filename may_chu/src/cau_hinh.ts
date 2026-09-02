@@ -226,6 +226,55 @@ export const cau_hinh = {
     api_key: chu('ERP_API_KEY', ''),
   },
 
+  /**
+   * May chu CSDL cua ERP 1 — nguon du lieu cua module giam sat gian lan.
+   *
+   * CHI DOC. Tai khoan dung o day PHAI la tai khoan chi co quyen SELECT ben ERP 1; module
+   * con chan them hai lop nua (chuoi ket noi dat `default_transaction_read_only=on`, va moi
+   * truy van boc trong `begin read only` — xem `giam_sat/ket_noi_erp.ts`). Ba lop de mot lop
+   * cau hinh sai khong bien thanh mot cau UPDATE tren CSDL san xuat cua he thong khac.
+   *
+   * KHONG khai ten database o day. Ten database nam trong bang `nguon_du_lieu`, do man hinh
+   * "Nguon ERP" do tim va dien vao — ten that ben ERP 1 chua duoc xac nhan, va doan bua roi
+   * chet cung vao code la thu phai sua bang mot lan deploy.
+   *
+   * `db_bootstrap` chi dung de MO KET NOI DAU TIEN roi doc `pg_database`. Mac dinh `postgres`
+   * vi day la database luon ton tai tren moi cum.
+   *
+   * De trong `host` = tat han module giam sat (khong pool nao duoc mo).
+   */
+  erp1: {
+    host: chu('ERP1_HOST', ''),
+    port: so('ERP1_PORT', 5432),
+    user: chu('ERP1_USER', ''),
+    mat_khau: chu('ERP1_PASSWORD', ''),
+    db_bootstrap: chu('ERP1_DB_BOOTSTRAP', 'postgres'),
+    ssl: chu('ERP1_SSL', '0') === '1',
+    /** Tran thoi gian mot truy van doc ERP 1. Ngan hon ben ta vi day la CSDL cua nguoi khac. */
+    het_gio_ms: so('ERP1_STATEMENT_TIMEOUT_MS', 20_000),
+  },
+
+  /**
+   * SMTP cho ban tin canh bao hang ngay.
+   *
+   * De trong `host` = KHONG gui email, va do la mot trang thai hop le (khong phai loi). Cac
+   * kenh khac — man hinh web va xuat CSV — van chay day du. Cung nguyen tac voi
+   * `ERP_WEBHOOK_URL`: thieu cau hinh thi tinh nang tat, khong lam sap tien trinh.
+   */
+  thu_dien_tu: {
+    host: chu('SMTP_HOST', ''),
+    port: so('SMTP_PORT', 587),
+    user: chu('SMTP_USER', ''),
+    mat_khau: chu('SMTP_PASSWORD', ''),
+    bao_mat: chu('SMTP_SECURE', '0') === '1',
+    nguoi_gui: chu('SMTP_NGUOI_GUI', ''),
+    /** Danh sach nguoi nhan ban tin, ngan cach bang dau phay. */
+    nguoi_nhan: chu('GIAM_SAT_EMAIL_NHAN', '')
+      .split(',').map((s) => s.trim()).filter((s) => s !== ''),
+    /** Gio (theo mui gio thiet bi) gui ban tin hang ngay. */
+    gio_gui: so('GIAM_SAT_EMAIL_GIO', 7),
+  },
+
   /** Bat migration tu dong khi khoi dong (tien cho Docker 1 diem). */
   /**
    * Trang tai lieu API o /api/v1/tai-lieu.

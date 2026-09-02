@@ -8,7 +8,7 @@ import { cau_hinh } from '../cau_hinh.ts';
  * Tai khoan o trang thai nay dang nhap duoc nhung moi hook phan quyen deu tu choi.
  */
 export type VaiTro = 'admin' | 'nhan_su' | 'truong_phong' | 'truong_phong_nhan_su'
-  | 'nhan_vien' | 'cho_duyet';
+  | 'kiem_soat' | 'nhan_vien' | 'cho_duyet';
 
 export interface NoiDungToken {
   /** id nguoi_dung */

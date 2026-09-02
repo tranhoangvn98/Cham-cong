@@ -143,6 +143,14 @@ export const can_nguoi_duyet = can_vai_tro('admin', 'nhan_su', 'truong_phong_nha
 /** Chi admin (quan tri tai khoan, xoa du lieu). */
 export const can_admin = can_vai_tro('admin');
 
+/**
+ * Kiem soat noi bo: module giam sat gian lan.
+ *
+ * KHONG gop vao `can_nhan_su`: nhan su va truong phong nam trong so nguoi bi giam sat, nen
+ * cho ho doc va dong canh bao la bo luon y nghia cua co che. Xem `la_kiem_soat`.
+ */
+export const can_kiem_soat = can_vai_tro('admin', 'kiem_soat');
+
 /** Lay nguoi dung da xac thuc; nem loi neu route thieu hook (loi lap trinh). */
 export function nguoi_dung_hien_tai(req: FastifyRequest): NoiDungToken {
   const nd = req.nguoi_dung;
