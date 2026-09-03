@@ -1,0 +1,136 @@
+# Nam cong kiem soat truoc khi merge.
+#
+# Moi cong that bai la CHAN merge. Do la diem cua chung — mot cong canh bao roi cho qua thi
+# sau ba thang khong ai doc nua.
+#
+# Thu tu co chu dich: cong re va bat loi som chay truoc, cong cham chay sau. Quet secret
+# chay dau tien vi no la thu duy nhat ma "phat hien muon" khong sua duoc — mot khoa da len
+# GitHub la mot khoa da lo, du co xoa commit sau do.
+name: Kiem tra
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Huy lan chay cu khi co push moi vao cung nhanh: khong ton runner cho mot ban da lac hau.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------- cong 1: quet secret
+  quet_secret:
+    name: Cong 1 — Quet secret
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks can toan bo lich su: mot khoa bi xoa o commit sau van con o commit truoc.
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------- cong 2: lo hong phu thuoc
+  lo_hong_phu_thuoc:
+    name: Cong 2 — Lo hong phu thuoc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: npm audit (muc cao tro len)
+        run: npm audit --audit-level=high
+
+  # ---------------------------------------------------------------- cong 3: SAST
+  sast:
+    name: Cong 3 — Phan tich tinh (CodeQL)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3
+
+  # ---------------------------------------------------------------- cong 4: test
+  test:
+    name: Cong 4 — Test va kiem tra kieu
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: chamcong
+          POSTGRES_PASSWORD: chamcong_dev
+          POSTGRES_DB: chamcong_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      - name: Kiem tra kieu (may_chu + web)
+        # `dien_thoai` cai phu thuoc rieng va khong nam trong workspace, nen kiem rieng o day
+        # se doi hoi mot buoc `npm --prefix dien_thoai ci` nang. Bo qua co y — CHANGELOG va
+        # TECH_DEBT ghi nhan diem nay.
+        run: |
+          npm --workspace may_chu run kiem_tra_kieu
+          npm --workspace web run kiem_tra_kieu
+
+      - name: Test don vi + test thiet ke
+        # `cau_hinh.ts` nem loi khi thieu bien bat buoc, va nhieu tep test nap no o cap module
+        # nen thieu bien la ca TEP do bao loi — nhin nhu "test do", that ra la "chua cau hinh".
+        # Gia tri o day la gia tri KIEM THU, khong phai bi mat: chung khong mo duoc gi that.
+        env:
+          JWT_SECRET: khoa_kiem_thu_du_dai_de_khong_bi_tu_choi_0001
+          DEVICE_TZ_OFFSET_HOURS: '7'
+          DATABASE_URL: postgres://chamcong:chamcong_dev@localhost:5432/chamcong_test
+        run: npm test
+
+      - name: Test e2e
+        env:
+          DATABASE_URL: postgres://chamcong:chamcong_dev@localhost:5432/chamcong_test
+        run: npm --workspace may_chu run test_e2e
+
+      - name: Build web
+        run: npm --workspace web run build
+
+  # ---------------------------------------------------------------- cong 5: rang buoc kien truc
+  #
+  # Chay rieng khoi cong 4 de bao cao doc duoc ngay o danh sach check: "rang buoc kien truc
+  # do" khac han "mot test nao do do", va nguoi doc PR can phan biet duoc hai thu.
+  kien_truc:
+    name: Cong 5 — Rang buoc kien truc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Kiem rang buoc kien truc va thiet ke
+        run: node --test "thiet_ke/*.test.mjs"

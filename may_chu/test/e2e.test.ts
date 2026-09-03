@@ -5575,10 +5575,12 @@ test('ban chot: KHONG mo chot bang cong duoc khi luong thang do da duyet', async
   assert.match(String(r.body['loi']), /đã có bảng lương được duyệt/);
 
   // Va bang cong cua thang do phai dang o trang thai da chot.
+  // Chan tren la MOC DAU THANG SAU tru mot ngay, khong phai `${ky}-31`: thang 4, 6, 9, 11 chi
+  // co 30 ngay nen Postgres tu choi "2026-09-31" — bai kiem cu do sap trong bon thang moi nam.
   const d = await truy_van_mot<{ so: number }>(
     `select count(*)::int as so from bang_cong_ngay
-      where ngay >= $1 and ngay <= $2 and da_chot = false`,
-    [`${ky}-01`, `${ky}-31`]);
+      where ngay >= $1::date and ngay < ($1::date + interval '1 month') and da_chot = false`,
+    [`${ky}-01`]);
   assert.equal(d?.so, 0, 'con dong bang cong chua chot trong thang da duyet luong');
 });
 
