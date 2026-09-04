@@ -2,6 +2,37 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.83.0] — 2026-09-04
+
+**Thêm mới: trang "Khu vực của tôi" (`/ca-nhan`) — giao diện cá nhân theo mẫu thiết kế
+"Giao diện cá nhân", gom năm màn trong một trang và nối dữ liệu thật qua API self-service
+`/api/toi/*`.**
+
+### Năm màn trong một trang — `web/src/trang/ca_nhan.tsx` + khối CSS `cn-*`
+
+- **Trang chủ**: dải ca làm hôm nay (giờ vào/ra, tiến độ ca), hành động nhanh, bốn chỉ số
+  tháng, biểu đồ giờ làm 7 ngày, dòng thời gian các lần quẹt, tuần này, chuyên cần và danh
+  sách "Cần chú ý" tính từ dữ liệu thật.
+- **Bảng công**: chọn tháng, tổng công / giờ làm / tăng ca, lịch tháng màu, chi tiết từng
+  ngày, nút gửi giải trình khi thấy sai lệch.
+- **Đơn từ**: quỹ phép, lọc đơn, thẻ đơn ba bước duyệt, hủy đơn; ba form xin nghỉ phép /
+  giải trình quên quẹt / đơn khác (danh mục lấy từ máy chủ).
+- **Lương**: căn cứ chấm công từng kỳ — không hiện số tiền ước tính (giữ nguyên nguyên tắc).
+- **Cá nhân**: hồ sơ đầy đủ (thông tin chung, tài liệu + tiến độ, hợp đồng, lương, người
+  phụ thuộc, BHXH, công việc, thiết bị), đổi mật khẩu, đăng xuất.
+
+### Backend
+
+- `GET /api/toi/ho-so` (`may_chu/src/tuyen/toi.ts`): bổ sung **thêm** các khối `ca_nhan`,
+  `hop_dong`, `luong`, `nguoi_phu_thuoc`, `bhxh`, `thiet_bi`, `tai_lieu` vào hồ sơ của chính
+  người đang xem — các trường cũ giữ nguyên nên người tiêu dùng hiện tại không bị ảnh hưởng.
+
+### Ghi chú
+
+- Trang gắn cờ `ca_nhan` trong menu nên hiện ở cả góc nhìn Cá nhân lẫn Quản trị; bổ sung
+  mục hướng dẫn tương ứng trong `web/src/huong_dan.ts`.
+- Đơn giải trình không có đường hủy tự phục vụ — giao diện ghi rõ "nhờ nhân sự xử lý".
+
 ## [1.82.0] — 2026-09-02
 
 **Hợp nhất nhánh đẩy sự kiện nhân sự sang cổng (PR #6) vào nhánh lương.**

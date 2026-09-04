@@ -31,6 +31,7 @@ import { TrangMaDinhDanh } from './trang/ma_dinh_danh.tsx';
 import { KhungHuongDan } from './thanh_phan_huong_dan.tsx';
 import { TrangHopDong } from './trang/hop_dong.tsx';
 import { TrangDashboardCaNhan } from './trang/dashboard_ca_nhan.tsx';
+import { TrangCaNhan } from './trang/ca_nhan.tsx';
 import { TrangHoSoToi } from './trang/ho_so_toi.tsx';
 import { TrangPhieuLuongToi } from './trang/phieu_luong_toi.tsx';
 import { TrangThongBaoCaNhan } from './trang/thong_bao_ca_nhan.tsx';
@@ -70,6 +71,7 @@ interface MucMenu {
  */
 const MENU: MucMenu[] = [
   { duong_dan: '/', ten: 'Tổng quan', icon: 'layout-dashboard', nhom: '', phu: 'Tình hình chấm công hôm nay', ca_nhan: true },
+  { duong_dan: '/ca-nhan', ten: 'Khu vực của tôi', icon: 'circle-check', nhom: '', phu: 'Chấm công, đơn từ và hồ sơ của bạn', ca_nhan: true },
   { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: '', phu: 'Log đồng bộ từ máy ADMS', quyen: 'nhan_su' },
   { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: '', phu: 'Tổng hợp theo tháng', quyen: 'quan_tri' },
   { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: '', phu: 'Xin nghỉ phép, giải trình', ca_nhan: true },
@@ -178,6 +180,7 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     // Goc nhin Ca nhan: Tong quan la dashboard CUA CHINH MINH, khong phai toan cong ty. Nguoi
     // khong co quyen quan tri luon o goc Ca nhan (api.ts goc_nhin), nen ho khong bao gio thay
     // dashboard toan cong ty — vua la yeu cau nghiep vu vua la NĐ 13/2023.
+    case '/ca-nhan': return <TrangCaNhan />;
     case '/': return ca_nhan ? <TrangDashboardCaNhan /> : <TrangDashboard />;
     case '/thong-bao': return <TrangThongBaoCaNhan />;
     case '/van-ban': return <TrangVanBan />;
