@@ -356,6 +356,105 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     ),
   );
 
+  // ================================================================ ho so ca nhan
+  //
+  // Man "Ca nhan" (Phu luc B Man 4). Chi tra du lieu cua CHINH nguoi dang xem — duong nay
+  // khong nhan tham so nhan_vien_id nao, nen khong the do tay de xem ho so nguoi khac.
+  // CCCD, ma so thue, so BHXH la du lieu ca nhan theo Nghi dinh 13/2023/ND-CP.
+  app.get('/ho-so', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const nd = nguoi_dung_hien_tai(req);
+
+    const [nv, ca_nhan, hop_dong, luong, phu_thuoc, bhxh, thiet_bi, tai_lieu] =
+      await Promise.all([
+        // Nhan vien + phong + ca + nguoi quan ly.
+        truy_van_mot(
+          `select nv.id, nv.ho_ten, nv.ma_nv, nv.ma_erp, nv.pin_may, nv.ngay_vao,
+                  nv.ngay_chinh_thuc, nv.so_dien_thoai, nv.email, nv.chuc_danh,
+                  nv.duoc_cham_cong_dien_thoai, nv.dang_hoat_dong,
+                  pb.ten as phong_ban,
+                  cl.ten as ca_lam, cl.gio_vao as ca_gio_vao, cl.gio_ra as ca_gio_ra,
+                  ql.ho_ten as quan_ly_ten, ql.chuc_danh as quan_ly_chuc_danh
+             from nhan_vien nv
+             left join phong_ban pb on pb.id = nv.phong_ban_id
+             left join ca_lam cl on cl.id = nv.ca_lam_id
+             left join nhan_vien ql on ql.id = nv.nguoi_quan_ly_id
+            where nv.id = $1`,
+          [nv_id],
+        ),
+        truy_van_mot(
+          `select cccd_so, cccd_ngay_cap, cccd_noi_cap, ngay_sinh, gioi_tinh, noi_sinh,
+                  dan_toc, quoc_tich, tinh_trang_hon_nhan, dia_chi_thuong_tru, dia_chi_hien_tai,
+                  ma_so_thue, ngan_hang, so_tai_khoan, so_bhxh, so_the_bhyt, co_quan_bhxh,
+                  noi_kham_chua_benh, kham_suc_khoe_ngay, kham_suc_khoe_noi, kham_suc_khoe_ket_luan
+             from ho_so_ca_nhan where nhan_vien_id = $1`,
+          [nv_id],
+        ),
+        truy_van_mot(
+          `select so_hd, loai, chuc_danh, noi_lam_viec, ngay_ky, hieu_luc_tu, hieu_luc_den,
+                  luong_co_ban, trang_thai
+             from hop_dong_lao_dong
+            where nhan_vien_id = $1 and trang_thai in ('nhap', 'hieu_luc')
+            order by hieu_luc_tu desc limit 1`,
+          [nv_id],
+        ),
+        truy_van_mot(
+          `select hieu_luc_tu, luong_co_ban, phu_cap, hinh_thuc, so_quyet_dinh
+             from quyet_dinh_luong
+            where nhan_vien_id = $1 and hieu_luc_tu <= current_date
+            order by hieu_luc_tu desc limit 1`,
+          [nv_id],
+        ),
+        truy_van(
+          `select ho_ten, quan_he, ngay_sinh, ma_so_thue, so_cccd, tu_thang, den_thang,
+                  da_dang_ky
+             from nguoi_phu_thuoc
+            where nhan_vien_id = $1
+            order by tu_thang desc nulls last, ho_ten`,
+          [nv_id],
+        ),
+        truy_van(
+          `select loai, thang, muc_dong, ty_le_phan_tram, so_ho_so, trang_thai, ngay_nop, ghi_chu
+             from bhxh_su_kien
+            where nhan_vien_id = $1
+            order by thang desc limit 10`,
+          [nv_id],
+        ),
+        truy_van(
+          `select loai, ten, hang, model, so_seri, ngay_cap, tinh_trang
+             from thiet_bi_cap_phat
+            where nhan_vien_id = $1
+            order by ngay_cap desc nulls last`,
+          [nv_id],
+        ),
+        truy_van(
+          `select dm.ma, dm.ten, dm.nhom, dm.mo_ta, dm.bat_buoc, dm.chi_khi_nghi_viec,
+                  coalesce(tl.trang_thai, 'thieu') as trang_thai,
+                  tl.id is not null as co_dong,
+                  ht.ten_goc as ten_tep
+             from danh_muc_tai_lieu dm
+             left join tai_lieu_nhan_vien tl
+               on tl.danh_muc_id = dm.id and tl.nhan_vien_id = $1
+             left join ho_so_tep ht on ht.id = tl.tep_id
+            where dm.dang_dung = true
+            order by dm.nhom, dm.thu_tu, dm.ten`,
+          [nv_id],
+        ),
+      ]);
+
+    return {
+      nhan_vien: nv,
+      ca_nhan,
+      ten_dang_nhap: nd.ten,
+      hop_dong,
+      luong,
+      nguoi_phu_thuoc: phu_thuoc,
+      bhxh,
+      thiet_bi,
+      tai_lieu,
+    };
+  });
+
   // ================================================================ CHAM CONG BANG DIEN THOAI
   //
   // Dang multipart/form-data:

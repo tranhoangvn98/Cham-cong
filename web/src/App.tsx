@@ -9,6 +9,7 @@ import { DangTai, TEN_VAI_TRO } from './thanh_phan.tsx';
 import { ChonMucCaiDat, TrangCaiDat } from './trang/cai_dat_tong.tsx';
 import { TrangChoDuyet, TrangDangNhap, TrangDoiMatKhau } from './trang/dang_nhap.tsx';
 import { TrangDashboard } from './trang/dashboard.tsx';
+import { TrangCaNhan } from './trang/ca_nhan.tsx';
 import { TrangBangCong } from './trang/bang_cong.tsx';
 import { TrangNhanVien } from './trang/nhan_vien.tsx';
 import { TrangThietBi } from './trang/thiet_bi.tsx';
@@ -55,6 +56,7 @@ interface MucMenu {
  */
 const MENU: MucMenu[] = [
   { duong_dan: '/', ten: 'Tổng quan', icon: 'layout-dashboard', nhom: '', phu: 'Tình hình chấm công hôm nay' },
+  { duong_dan: '/ca-nhan', ten: 'Khu vực của tôi', icon: 'user-check', nhom: '', phu: 'Chấm công, đơn từ và hồ sơ của bạn' },
   { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: '', phu: 'Log đồng bộ từ máy ADMS' },
   { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: '', phu: 'Tổng hợp theo tháng' },
 
@@ -154,6 +156,7 @@ function NoiDung({ duong_dan }: { duong_dan: string }): ReactNode {
 
   switch (duong_dan) {
     case '/': return <TrangDashboard />;
+    case '/ca-nhan': return <TrangCaNhan />;
     case '/bang-cong': return <TrangBangCong />;
     case '/lan-quet': return <TrangLanQuet />;
     case '/duyet-don': return <TrangDuyetDon />;

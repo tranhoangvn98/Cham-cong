@@ -2,6 +2,40 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.54.0] — 2026-09-04
+
+**Thêm mới: Khu vực của tôi (`/ca-nhan`) — giao diện cá nhân cho từng nhân viên trên web,
+theo mẫu thiết kế "Giao diện cá nhân", nối dữ liệu thật qua API self-service `/api/toi/*`.**
+
+### Năm màn trong một trang
+
+- **Trang chủ**: dải ca làm hôm nay (giờ vào/ra, tiến độ ca), hành động nhanh (xin nghỉ phép,
+  giải trình quên quẹt, đơn của tôi), bốn chỉ số tháng (công, đi muộn, OT, phép còn), biểu đồ
+  giờ làm 7 ngày, dòng thời gian các lần quẹt, dải tuần, chuyên cần và danh sách "Cần chú ý"
+  tính từ dữ liệu thật.
+- **Bảng công**: chọn tháng, tổng công / giờ làm / tăng ca, lịch tháng màu theo trạng thái,
+  chi tiết từng ngày, nút gửi giải trình khi thấy sai lệch.
+- **Đơn từ**: quỹ phép, lọc đơn, thẻ đơn với ba bước duyệt, hủy đơn (nghỉ phép và đơn khác);
+  ba form: xin nghỉ phép (6 loại, nửa ngày), giải trình quên quẹt (gợi ý ngày thiếu giờ),
+  đơn khác (làm thêm / đổi ca / công tác / thôi việc — danh mục lấy từ máy chủ).
+- **Lương**: chọn kỳ, căn cứ chấm công (công, giờ làm, OT ghi nhận, vắng), công thực tế/công
+  chuẩn, chi tiết, quỹ phép. Không hiện số tiền ước tính — giữ nguyên nguyên tắc máy chủ.
+- **Cá nhân**: hồ sơ (thông tin chung, tài liệu + tiến độ bắt buộc, hợp đồng, lương & phụ cấp,
+  người phụ thuộc, BHXH, công việc, thiết bị), đổi mật khẩu, đăng xuất.
+
+### Backend
+
+- Thêm `GET /api/toi/ho-so` (`may_chu/src/tuyen/toi.ts`): hồ sơ cá nhân của **chính** người
+  đang xem — không nhận tham số `nhan_vien_id` nên không thể dò để xem hồ sơ người khác.
+  CCCD, mã số thuế, số BHXH nằm trong bảng `ho_so_ca_nhan` riêng (Nghị định 13/2023/ND-CP).
+
+### Ghi chú
+
+- Đơn giải trình không có đường hủy tự phục vụ — giao diện ghi rõ "nhờ nhân sự xử lý" thay vì
+  hiện nút chết.
+- Trang dùng đúng bộ token thiết kế web (không màu/font cứng) và bộ icon hiện có; thêm mục
+  hướng dẫn cho `/ca-nhan` trong `web/src/huong_dan.ts` (test bắt buộc).
+
 ## [1.53.0] — 2026-08-28
 
 **Giai đoạn 1 của kế hoạch bổ sung: hai hàm thuần suy ra CHIỀU (vào/ra) và chạy máy trạng

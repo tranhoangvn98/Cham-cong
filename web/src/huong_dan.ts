@@ -45,6 +45,22 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/ca-nhan',
+    tom_tat: 'Khu vực của tôi: công, đơn từ, căn cứ lương và hồ sơ của chính bạn.',
+    buoc: [
+      { chu: 'Trang chủ: xem giờ vào/ra hôm nay, công tháng, phép còn lại và các lần quẹt.' },
+      { chu: 'Bảng công: xem lịch tháng và từng ngày. Thấy sai lệch thì bấm gửi giải trình quên quẹt.' },
+      { chu: 'Đơn từ: xin nghỉ phép, gửi giải trình hoặc làm đơn khác; hủy được đơn khi còn chờ duyệt.' },
+      { chu: 'Lương: kiểm tra công, giờ làm và OT ghi nhận trước khi kế toán chốt phiếu lương.' },
+      { chu: 'Cá nhân: kiểm tra hồ sơ, hợp đồng, BHXH và tài liệu còn thiếu.' },
+    ],
+    luu_y: [
+      'Tài khoản phải được nhân sự gắn với hồ sơ nhân viên thì các màn này mới có dữ liệu.',
+      'OT hiển thị ở đây là giờ máy đo được, chưa qua duyệt — chỉ OT có đơn duyệt mới được trả thêm.',
+      'Đơn giải trình cho ngày đã chốt bảng công sẽ bị từ chối ngay — kiểm tra sớm, đừng để cuối tháng.',
+    ],
+  },
+  {
     duong_dan: '/lan-quet',
     tom_tat: 'Nhật ký thô từ máy chấm công — nguồn sự thật của mọi con số công.',
     buoc: [
