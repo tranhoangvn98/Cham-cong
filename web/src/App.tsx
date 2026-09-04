@@ -55,6 +55,12 @@ interface MucMenu {
   quyen?: 'nhan_su' | 'admin' | 'nguoi_duyet' | 'quan_tri';
   /** Hien o GOC NHIN CA NHAN (viec cua chinh minh). Khong danh dau = chi hien o goc nhin Quan tri. */
   ca_nhan?: boolean;
+  /**
+   * CHI viec ca nhan — AN o thanh ben goc nhin Quan tri. Cac muc "cua toi" (don, phieu luong,
+   * ho so, thong bao, van ban) da co day du trong "Khu vuc cua toi" (giao dien ca nhan toan man
+   * hinh), nen thanh ben Quan tri khong lap lai chung — chi con viec thuan quan tri.
+   */
+  chi_ca_nhan?: boolean;
 }
 
 /*
@@ -74,12 +80,13 @@ const MENU: MucMenu[] = [
   { duong_dan: '/', ten: 'Tổng quan', icon: 'layout-dashboard', nhom: '', phu: 'Tình hình chấm công hôm nay', ca_nhan: true },
   { duong_dan: '/ca-nhan', ten: 'Khu vực của tôi', icon: 'circle-check', nhom: '', phu: 'Chấm công, đơn từ và hồ sơ của bạn', ca_nhan: true },
 
-  // Cua toi: viec tu phuc vu cua chinh nguoi dang nhap.
-  { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: 'Của tôi', phu: 'Xin nghỉ phép, giải trình', ca_nhan: true },
-  { duong_dan: '/phieu-luong-toi', ten: 'Phiếu lương', icon: 'download', nhom: 'Của tôi', phu: 'Phiếu lương hàng tháng của bạn', ca_nhan: true },
-  { duong_dan: '/ho-so-toi', ten: 'Hồ sơ của tôi', icon: 'user-check', nhom: 'Của tôi', phu: 'Thông tin & liên hệ cá nhân', ca_nhan: true },
-  { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: 'Của tôi', phu: 'Thông báo từ BGĐ & nhân sự', ca_nhan: true },
-  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: 'Của tôi', phu: 'Nội quy, biểu mẫu, chính sách', ca_nhan: true },
+  // Cua toi: viec tu phuc vu cua chinh nguoi dang nhap. `chi_ca_nhan` -> AN o thanh ben Quan tri
+  // (da co day du trong "Khu vuc cua toi"), chi hien o goc nhin Ca nhan.
+  { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: 'Của tôi', phu: 'Xin nghỉ phép, giải trình', ca_nhan: true, chi_ca_nhan: true },
+  { duong_dan: '/phieu-luong-toi', ten: 'Phiếu lương', icon: 'download', nhom: 'Của tôi', phu: 'Phiếu lương hàng tháng của bạn', ca_nhan: true, chi_ca_nhan: true },
+  { duong_dan: '/ho-so-toi', ten: 'Hồ sơ của tôi', icon: 'user-check', nhom: 'Của tôi', phu: 'Thông tin & liên hệ cá nhân', ca_nhan: true, chi_ca_nhan: true },
+  { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: 'Của tôi', phu: 'Thông báo từ BGĐ & nhân sự', ca_nhan: true, chi_ca_nhan: true },
+  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: 'Của tôi', phu: 'Nội quy, biểu mẫu, chính sách', ca_nhan: true, chi_ca_nhan: true },
 
   // Cham cong: log may + tong hop cong + canh bao ra/vao.
   { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: 'Chấm công', phu: 'Log đồng bộ từ máy ADMS', quyen: 'nhan_su' },
@@ -357,7 +364,10 @@ function BoCuc(): ReactNode {
 
   // Goc nhin Ca nhan chi hien viec cua chinh minh (Tong quan, Don cua toi, Duyet don). Goc nhin
   // Quan tri hien het (theo quyen). Nguoi khong co quyen quan tri luon o Ca nhan.
-  const duoc_thay = MENU.filter(duoc_xem).filter((m) => gn === 'quan_tri' || m.ca_nhan === true);
+  // Goc nhin Quan tri: hien moi muc TRU cac muc `chi_ca_nhan` (chung da nam trong "Khu vuc cua
+  // toi"). Goc nhin Ca nhan: chi hien viec cua chinh minh (`ca_nhan`).
+  const duoc_thay = MENU.filter(duoc_xem)
+    .filter((m) => (gn === 'quan_tri' ? m.chi_ca_nhan !== true : m.ca_nhan === true));
   const nhom_menu = [...new Set(duoc_thay.map((m) => m.nhom))];
   // Khop theo TIEN TO: `/nhan-vien/<uuid>` va `/cai-dat/khoa-api` deu phai lam sang muc cha
   // cua no. Truoc day chi so khop chinh xac, nen trang ho so khong muc nao sang va tieu de

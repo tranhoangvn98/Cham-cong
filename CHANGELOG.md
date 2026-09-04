@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.91.0] — 2026-09-04
+
+**Thanh bên góc nhìn Quản trị giờ THUẦN quản trị.**
+
+- Các mục "của tôi" (Đơn của tôi, Phiếu lương, Hồ sơ của tôi, Thông báo, Văn bản công ty) đã
+  có đầy đủ trong "Khu vực của tôi" (giao diện cá nhân toàn màn hình), nên **ẩn khỏi thanh bên
+  Quản trị** — không lặp lại. Thanh admin còn: Tổng quan · Khu vực của tôi · **Chấm công** ·
+  **Nhân sự & lương** · **Hệ thống**.
+- Kỹ thuật: thêm cờ `chi_ca_nhan` cho các mục đó (vẫn nằm trong MENU để giữ ràng buộc menu ↔
+  hướng dẫn), bộ lọc góc nhìn Quản trị bỏ qua chúng.
+
 ## [1.90.0] — 2026-09-04
 
 **Sắp xếp lại thanh bên (góc nhìn Quản trị) cho gọn.**
