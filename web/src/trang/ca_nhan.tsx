@@ -529,7 +529,14 @@ function ManTrangChu({ hom_nay_nap, di_den }: {
   di_den: (t: Tab, mo?: FormMo | null) => void;
 }): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = hom_nay_nap;
-  const bang_cong_thang = dung_nap<BangCongThang>(`/api/toi/bang-cong?thang=${thang_nay()}`);
+  const thang_hien = thang_nay();
+  // 7 ngay gan nhat co the lot sang thang truoc — nap them thang do de bieu do va can chu y
+  // khong trong vao dau thang.
+  const thang_dau_7 = cong_ngay(hom_nay(), -6).slice(0, 7);
+  const bang_cong_thang = dung_nap<BangCongThang>(`/api/toi/bang-cong?thang=${thang_hien}`);
+  const bang_cong_truoc = dung_nap<BangCongThang>(
+    thang_dau_7 !== thang_hien ? `/api/toi/bang-cong?thang=${thang_dau_7}` : null,
+  );
 
   if (dang_tai && du_lieu === null) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
@@ -537,6 +544,10 @@ function ManTrangChu({ hom_nay_nap, di_den }: {
 
   const th = du_lieu.thang_tong_hop;
   const phep = du_lieu.phep;
+  const ds_ngay = [
+    ...(bang_cong_truoc.du_lieu?.ngay ?? []),
+    ...(bang_cong_thang.du_lieu?.ngay ?? []),
+  ];
 
   return (
     <div className="luoi" style={{ marginTop: 16 }}>
@@ -548,7 +559,7 @@ function ManTrangChu({ hom_nay_nap, di_den }: {
         <OSo
           nhan="Công tháng"
           gia_tri={th === null ? '—' : so_viet(th.tong_cong)}
-          phu={`trên ${so(th?.so_ngay_phai_lam)} ngày phải làm`}
+          phu={`${so(th?.so_ngay_co_du_lieu)} ngày đã có dữ liệu`}
         />
         <OSo
           nhan="Đi muộn"
@@ -570,10 +581,10 @@ function ManTrangChu({ hom_nay_nap, di_den }: {
       </div>
 
       <HaiCot>
-        <BieuDoBayNgay nap={bang_cong_thang} />
+        <BieuDoBayNgay ds_ngay={ds_ngay} />
         <DongThoiQuet lan_quet={du_lieu.lan_quet} />
         <TuanNay tuan={du_lieu.tuan} hom_nay={du_lieu.ngay} />
-        <CotPhai th={th} du_lieu={du_lieu} di_den={di_den} />
+        <CotPhai th={th} du_lieu={du_lieu} ds_ngay={ds_ngay} di_den={di_den} />
       </HaiCot>
     </div>
   );
@@ -588,16 +599,24 @@ function LoiChao({ du_lieu, nap_lai }: { du_lieu: HomNay; nap_lai: () => void })
   const ca_ra = phut_cua_gio(nv?.ca_gio_ra ?? null);
 
   // Tien do ca: phan tram thoi gian da troi tu luc vao ca den bay gio.
+  // Ca dem (gio_ra < gio_vao) tinh qua nua dem bang modulo 1440; truoc gio vao ca thi
+  // tien do ve 0, sau gio tan thi ve 100 (ban dau tru thang nen ca dem luon 0%).
   let phan_tram: number | null = null;
   let con_lai: string | null = null;
+  let qua_gio_ra = false;
+  const nay = phut_hien_tai();
   if (ca_vao !== null && ca_ra !== null) {
-    const dai = ca_ra <= ca_vao ? ca_ra + 1440 - ca_vao : ca_ra - ca_vao;
+    const qua_dem = ca_ra <= ca_vao;
+    const dai = qua_dem ? ca_ra + 1440 - ca_vao : ca_ra - ca_vao;
+    qua_gio_ra = nay > ca_ra;
     if (bc !== null && bc.gio_ra !== null) {
       phan_tram = 100;
     } else if (dai > 0) {
-      const nay = phut_hien_tai();
-      const qua = nay >= ca_vao ? nay - ca_vao : (nay < ca_vao ? 0 : nay);
-      phan_tram = Math.max(0, Math.min(100, Math.round((qua / dai) * 100)));
+      const cach = qua_dem ? (nay - ca_vao + 1440) % 1440 : nay - ca_vao;
+      const qua = cach > dai
+        ? (nay >= ca_vao ? dai : 0)
+        : Math.max(0, cach);
+      phan_tram = Math.round((qua / dai) * 100);
       const con = ca_ra - nay;
       if (con > 0) {
         con_lai = `còn ${Math.floor(con / 60)}h ${String(con % 60).padStart(2, '0')}′ đến ${gio_hh_mm(nv?.ca_gio_ra)}`;
@@ -616,8 +635,10 @@ function LoiChao({ du_lieu, nap_lai }: { du_lieu: HomNay; nap_lai: () => void })
   }
 
   const som_muon = bc === null ? 'chưa có dữ liệu chấm công hôm nay'
-    : bc.phut_muon > 0 ? `đi muộn ${phut_thanh_chu(bc.phut_muon)}`
-      : bc.gio_vao !== null ? 'đúng giờ vào ca' : 'chưa quẹt vào';
+    : bc.trang_thai === 'vang' ? 'hôm nay vắng'
+      : bc.trang_thai === 'nghi_phep' ? 'hôm nay nghỉ phép'
+        : bc.phut_muon > 0 ? `đi muộn ${phut_thanh_chu(bc.phut_muon)}`
+          : bc.gio_vao !== null ? 'đúng giờ vào ca' : 'chưa quẹt vào';
 
   return (
     <div className="cn-hero">
@@ -632,7 +653,10 @@ function LoiChao({ du_lieu, nap_lai }: { du_lieu: HomNay; nap_lai: () => void })
           <span className="cn-hero-gio">{bc?.gio_ra !== null && bc?.gio_ra !== undefined ? gio_ngan(bc.gio_ra) : '--:--'}</span>
           <span className="cn-hero-phu">{con_lai ?? (bc?.gio_ra !== null ? 'đã quẹt ra' : 'chưa quẹt ra')}</span>
         </div>
-        {dang_lam && (
+        {dang_lam && qua_gio_ra && (
+          <span className="cn-nhan-cam">Quá giờ ra · {lam_duoc}</span>
+        )}
+        {dang_lam && !qua_gio_ra && (
           <span className="cn-nhan-xanh">Đang làm · {lam_duoc}</span>
         )}
         {!dang_lam && bc?.gio_ra !== null && (
@@ -645,11 +669,9 @@ function LoiChao({ du_lieu, nap_lai }: { du_lieu: HomNay; nap_lai: () => void })
           <div className="cn-tien-do">
             <div className="cn-tien-do-day" style={{ width: `${phan_tram}%` }} />
             <div className="cn-tien-do-num" style={{ left: `${phan_tram}%` }} />
-            <div className="cn-tien-do-moc" style={{ left: '46%' }} />
           </div>
           <div className="cn-tien-do-nhan">
             <span>{gio_hh_mm(nv?.ca_gio_vao)} vào ca</span>
-            <span>12:00 nghỉ trưa</span>
             <span>{gio_hh_mm(nv?.ca_gio_ra)} hết ca</span>
           </div>
         </div>
@@ -707,16 +729,14 @@ function HaiCot({ children }: { children: ReactNode }): ReactNode {
   return <div className="cn-hai-cot">{children}</div>;
 }
 
-/** Bieu do gio lam 7 ngay gan nhat, lay tu bang cong thang hien tai. */
-function BieuDoBayNgay({ nap }: { nap: ReturnType<typeof dung_nap<BangCongThang>> }): ReactNode {
-  const { du_lieu, loi } = nap;
-  if (loi !== null) return <HopLoi loi={loi} />;
-
+/** Bieu do gio lam 7 ngay gan nhat. Nhan danh sach ngay da GHEP hai thang de du lieu
+   khong trong vao dau thang. */
+function BieuDoBayNgay({ ds_ngay }: { ds_ngay: NgayCongNgay[] }): ReactNode {
   const hom = hom_nay();
   const ngay_ds: { ngay: string; gio: number }[] = [];
   for (let i = 6; i >= 0; i -= 1) ngay_ds.push({ ngay: cong_ngay(hom, -i), gio: 0 });
 
-  const bang = new Map((du_lieu?.ngay ?? []).map((n) => [n.ngay, n]));
+  const bang = new Map(ds_ngay.map((n) => [n.ngay, n]));
   let tong_gio = 0;
   let so_ngay_co = 0;
   for (const o of ngay_ds) {
@@ -785,22 +805,33 @@ function DongThoiQuet({ lan_quet }: { lan_quet: LanQuetToi[] }): ReactNode {
   );
 }
 
-/** Dai tuan nay T2..CN. */
+/** Dai tuan nay T2..CN, ve DU 7 ngay ke ca ngay chua co du lieu. */
 function TuanNay({ tuan, hom_nay: hom }: { tuan: NgayTuan[]; hom_nay: string }): ReactNode {
+  const bang = new Map(tuan.map((n) => [n.ngay, n]));
+  const thu = new Date(`${hom}T00:00:00Z`).getUTCDay();
+  const dau_tuan = cong_ngay(hom, -(thu === 0 ? 6 : thu - 1));
+  const ds_ngay = Array.from({ length: 7 }, (_, i) => cong_ngay(dau_tuan, i));
+
   return (
     <div className="the">
       <h2>Tuần này</h2>
       <div className="cn-tuan">
-        {tuan.map((n) => {
-          const hom_nay_la = n.ngay === hom;
-          const lop = n.trang_thai === 'co_mat' ? 'cn-ngay-co-mat'
-            : n.trang_thai === 'vang' ? 'cn-ngay-vang'
-              : hom_nay_la ? 'cn-ngay-hom-nay' : 'cn-ngay-mo';
+        {ds_ngay.map((ng) => {
+          const n = bang.get(ng);
+          const hom_nay_la = ng === hom;
+          const lop = hom_nay_la ? 'cn-ngay-hom-nay'
+            : n?.trang_thai === 'co_mat' ? 'cn-ngay-co-mat'
+              : n?.trang_thai === 'vang' ? 'cn-ngay-vang'
+                : n?.trang_thai === 'nghi_phep' ? 'cn-ngay-phep'
+                  : n?.trang_thai === 'ngay_le' ? 'cn-ngay-le'
+                    : 'cn-ngay-mo';
           return (
-            <div className={`cn-ngay-tuan ${lop}`} key={n.ngay}>
-              <span className="cn-thu">{thu_cua_ngay(n.ngay)}</span>
-              <span className="cn-so-ngay">{Number(n.ngay.slice(8))}</span>
-              <span className="cn-cong">{n.trang_thai === 'co_mat' ? so_viet(n.so_cong) : '·'}</span>
+            <div className={`cn-ngay-tuan ${lop}`} key={ng}>
+              <span className="cn-thu">{thu_cua_ngay(ng)}</span>
+              <span className="cn-so-ngay">{Number(ng.slice(8))}</span>
+              <span className="cn-cong">
+                {n !== undefined && n.trang_thai === 'co_mat' ? so_viet(n.so_cong) : '·'}
+              </span>
             </div>
           );
         })}
@@ -810,53 +841,73 @@ function TuanNay({ tuan, hom_nay: hom }: { tuan: NgayTuan[]; hom_nay: string }):
 }
 
 /** Cot phai: chuyen can + can chu y. */
-function CotPhai({ th, du_lieu, di_den }: {
+function CotPhai({ th, du_lieu, ds_ngay, di_den }: {
   th: TongHopThang | null;
   du_lieu: HomNay;
+  ds_ngay: NgayCongNgay[];
   di_den: (t: Tab, mo?: FormMo | null) => void;
 }): ReactNode {
   const ccy = du_lieu.can_chu_y;
-  const ngay_du_cong = Math.max(0, so(th?.so_ngay_co_mat) - so(th?.so_lan_di_muon));
-  const ngay_phai = so(th?.so_ngay_phai_lam);
-  const ty_le = ngay_phai === 0 ? 0 : Math.round((ngay_du_cong / ngay_phai) * 100);
+  const hom = hom_nay();
+  const da_qua = ds_ngay.filter((d) => d.ngay <= hom);
+  // Chuyen can tinh theo TUNG NGAY, khong theo con so gop: mot ngay thieu gio quet van duoc
+  // tinh 'co_mat' trong tong hop nhung khong duoc tinh la du cong.
+  const ngay_du_cong = da_qua.filter((d) => d.trang_thai === 'co_mat'
+    && so(d.so_cong) >= 1 && so(d.phut_muon) === 0).length;
+  const ngay_phai = da_qua.filter((d) => d.trang_thai !== 'nghi_tuan'
+    && d.trang_thai !== 'ngay_le').length;
+  // Thang chua co ban ghi nao (vd dau thang moi) thi dung con so tong hop lam tam.
+  const dung_ds = da_qua.length > 0;
+  const hien_du = dung_ds
+    ? ngay_du_cong
+    : Math.max(0, so(th?.so_ngay_co_mat) - so(th?.so_lan_di_muon));
+  const hien_phai = dung_ds ? ngay_phai : so(th?.so_ngay_phai_lam);
+  const ty_le = hien_phai === 0 ? 0 : Math.round((hien_du / hien_phai) * 100);
 
   return (
     <>
       <div className="the">
         <div className="cn-tieu-de-hang">
           <h2>Chuyên cần tháng này</h2>
-          <span className="cn-phu">{ngay_du_cong}/{ngay_phai}</span>
+          <span className="cn-phu">{hien_du}/{hien_phai}</span>
         </div>
         <div className="cn-thanh">
-          <div className="cn-thanh-day" style={{ width: `${ty_le}%` }} />
+          <div className="cn-thanh-day" style={{ width: `${Math.min(100, ty_le)}%` }} />
         </div>
-        <span className="cn-chu-nho">Số ngày đủ công, không đi muộn. Điều kiện hưởng phụ cấp do quy chế lương quy định.</span>
+        <span className="cn-chu-nho">
+          {dung_ds
+            ? 'Số ngày đủ công, không đi muộn — tính đến hôm nay.'
+            : 'Chưa có dữ liệu tháng này, bảng công sẽ xuất hiện khi máy đẩy log về.'}
+        </span>
       </div>
 
       <div className="the the-mong">
         <div className="cn-dau-mong">Cần chú ý & sắp tới</div>
-        <CanChuY du_lieu={du_lieu} ccy={ccy} di_den={di_den} />
+        <CanChuY ccy={ccy} ds_ngay={ds_ngay} di_den={di_den} />
       </div>
     </>
   );
 }
 
 /** Danh sach viec can chu y, dung du lieu that thay vi so cung. */
-function CanChuY({ du_lieu, ccy, di_den }: {
-  du_lieu: HomNay;
+function CanChuY({ ccy, ds_ngay, di_den }: {
   ccy: HomNay['can_chu_y'];
+  ds_ngay: NgayCongNgay[];
   di_den: (t: Tab, mo?: FormMo | null) => void;
 }): ReactNode {
   const muc: { icon: string; lop: string; ten: string; mo_ta: string; lam: (() => void) | null; nhan: string }[] = [];
 
-  const thieu_gio = du_lieu.bang_cong !== null
-    && (du_lieu.bang_cong.gio_vao === null || du_lieu.bang_cong.gio_ra === null)
-    && du_lieu.bang_cong.trang_thai === 'co_mat';
-  if (thieu_gio) {
+  // Dem toan bo ngay thieu gio quet da qua (khong chi hom nay).
+  const ngay_thieu = ds_ngay.filter((d) => d.ngay <= hom_nay()
+    && d.trang_thai === 'co_mat'
+    && (d.gio_vao === null || d.gio_ra === null));
+  if (ngay_thieu.length > 0) {
     muc.push({
       icon: 'bt-clock-exclamation', lop: 'cn-o-canh-bao',
-      ten: 'Hôm nay thiếu giờ quẹt',
-      mo_ta: du_lieu.bang_cong?.gio_vao === null ? 'Thiếu giờ vào' : 'Thiếu giờ ra',
+      ten: `${ngay_thieu.length} ngày thiếu giờ quẹt`,
+      mo_ta: ngay_thieu.length === 1
+        ? `ngày ${ngay_viet(ngay_thieu[0]?.ngay ?? '')}`
+        : 'Bổ sung bằng giải trình quên quẹt',
       lam: () => di_den('don_tu', 'giai'), nhan: 'Giải trình',
     });
   }
@@ -995,9 +1046,12 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
                   : d.trang_thai === 'vang' ? '— vắng'
                     : d.trang_thai === 'ngay_le' ? '— ngày lễ'
                       : d.trang_thai === 'nghi_tuan' ? '— nghỉ tuần'
-                        : `${gio_ngan(d.gio_vao)} → ${d.gio_ra === null ? 'thiếu giờ ra' : gio_ngan(d.gio_ra)}`}
+                        : d.gio_vao === null
+                          ? `thiếu giờ vào → ${gio_ngan(d.gio_ra)}`
+                          : `${gio_ngan(d.gio_vao)} → ${d.gio_ra === null ? 'thiếu giờ ra' : gio_ngan(d.gio_ra)}`}
               </span>
-              <span className={`nhan ${d.phut_muon > 0 ? 'nhan-canh-bao'
+              <span className={`nhan ${so(d.phut_muon) > 0 || d.gio_vao === null || d.gio_ra === null
+                ? 'nhan-canh-bao'
                 : d.trang_thai === 'co_mat' ? 'nhan-tot'
                   : d.trang_thai === 'nghi_phep' ? 'nhan-lanh' : 'nhan-mo'}`}>
                 {nhan_ngay_cong(d)}
@@ -1040,6 +1094,7 @@ function LichThang({ thang, ngay }: { thang: string; ngay: NgayCongNgay[] }): Re
       else if (hang.trang_thai === 'nghi_phep') lop = 'cn-lich-phep';
       else if (hang.trang_thai === 'ngay_le') lop = 'cn-lich-le';
       else if (hang.trang_thai === 'nghi_tuan') lop = 'cn-lich-mo';
+      else if (hang.gio_vao === null || hang.gio_ra === null) lop = 'cn-lich-thieu';
       else if (hang.phut_muon > 0) lop = 'cn-lich-muon';
       else lop = 'cn-lich-tot';
     } else if (tuong_lai) {
@@ -1199,7 +1254,7 @@ function ManDonTu({ hom_nay_nap, mo_form, dat_mo_form }: {
           <div className="cn-thanh">
             <div
               className="cn-thanh-day"
-              style={{ width: `${phep.quy === 0 ? 0 : Math.round((phep.con_lai / phep.quy) * 100)}%` }}
+              style={{ width: `${phep.quy === 0 ? 0 : Math.max(0, Math.min(100, Math.round((phep.con_lai / phep.quy) * 100)))}%` }}
             />
           </div>
           <span className="cn-chu-nho">
@@ -1445,10 +1500,9 @@ function SheetNghiPhep({ phep, khi_dong, khi_xong }: {
   );
 }
 
-/** Ngay thieu gio quet trong thang hien tai, de chon trong form giai trinh. */
-function ngay_thieu_gio(nap: BangCongThang | null): NgayCongNgay[] {
-  if (nap === null) return [];
-  return nap.ngay.filter((d) => d.ngay <= hom_nay()
+/** Ngay thieu gio quet trong khoang du lieu nhan duoc, de chon trong form giai trinh. */
+function ngay_thieu_gio(ds: NgayCongNgay[]): NgayCongNgay[] {
+  return ds.filter((d) => d.ngay <= hom_nay()
     && d.trang_thai === 'co_mat'
     && (d.gio_vao === null || d.gio_ra === null))
     .slice().reverse();
@@ -1456,8 +1510,17 @@ function ngay_thieu_gio(nap: BangCongThang | null): NgayCongNgay[] {
 
 function SheetGiaiTrinh({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: () => void }): ReactNode {
   const hd = dung_hanh_dong();
-  const bang_cong = dung_nap<BangCongThang>(`/api/toi/bang-cong?thang=${thang_nay()}`);
-  const ds_thieu = ngay_thieu_gio(bang_cong.du_lieu);
+  // Ghep ca thang truoc de cac ngay thieu gio dau thang khong bien mat.
+  const thang_hien = thang_nay();
+  const thang_dau_7 = cong_ngay(hom_nay(), -6).slice(0, 7);
+  const bang_cong = dung_nap<BangCongThang>(`/api/toi/bang-cong?thang=${thang_hien}`);
+  const bang_cong_truoc = dung_nap<BangCongThang>(
+    thang_dau_7 !== thang_hien ? `/api/toi/bang-cong?thang=${thang_dau_7}` : null,
+  );
+  const ds_thieu = ngay_thieu_gio([
+    ...(bang_cong_truoc.du_lieu?.ngay ?? []),
+    ...(bang_cong.du_lieu?.ngay ?? []),
+  ]);
 
   const [ngay, dat_ngay] = useState(ds_thieu[0]?.ngay ?? hom_nay());
   const [gio_vao, dat_gio_vao] = useState('');
@@ -1702,7 +1765,7 @@ function ManLuong(): ReactNode {
       )}
 
       <div className="luoi luoi-4">
-        <OSo nhan="Công thực tế" gia_tri={so_viet(t.tong_cong)} phu={`trên ${so_ngay_phai} ngày phải làm`} />
+        <OSo nhan="Công thực tế" gia_tri={so_viet(t.tong_cong)} phu={`${so(t.so_ngay_co_du_lieu)} ngày đã có dữ liệu`} />
         <OSo nhan="Giờ làm" gia_tri={phut_thanh_chu(so(t.tong_phut_lam))} phu="đã trừ giờ nghỉ trưa" />
         <OSo nhan="OT ghi nhận" gia_tri={phut_thanh_chu(so(t.tong_phut_ot))} phu="chưa duyệt trả thêm" mau="lanh" />
         <OSo nhan="Vắng" gia_tri={`${so(t.so_ngay_vang)} ngày`} phu="không phép" mau={so(t.so_ngay_vang) > 0 ? 'xau' : undefined} />
@@ -1743,7 +1806,7 @@ function ManLuong(): ReactNode {
           <div className="cn-thanh">
             <div
               className="cn-thanh-day cn-thanh-lanh"
-              style={{ width: `${phep.quy === 0 ? 0 : Math.round((phep.con_lai / phep.quy) * 100)}%` }}
+              style={{ width: `${phep.quy === 0 ? 0 : Math.max(0, Math.min(100, Math.round((phep.con_lai / phep.quy) * 100)))}%` }}
             />
           </div>
           {phep.cho_duyet > 0 && (

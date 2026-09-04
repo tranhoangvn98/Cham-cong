@@ -142,6 +142,8 @@ async function viec_can_chu_y(req: FastifyRequest, nv_id: string): Promise<{
     `select (select count(*) from don_nghi_phep
               where nhan_vien_id = $1 and trang_thai = 'cho_duyet')
           + (select count(*) from don_giai_trinh
+              where nhan_vien_id = $1 and trang_thai = 'cho_duyet')
+          + (select count(*) from don_tu
               where nhan_vien_id = $1 and trang_thai = 'cho_duyet') as so`,
     [nv_id],
   );

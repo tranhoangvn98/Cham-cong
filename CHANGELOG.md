@@ -2,6 +2,27 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.85.0] — 2026-09-04
+
+**Rà soát và sửa logic giao diện Khu vực của tôi.**
+
+- **Tiến độ ca ở dải chào**: sửa cách tính cho **ca đêm** (giờ ra < giờ vào — bản cũ luôn 0%),
+  trước giờ vào ca hiển thị 0% thay vì 100%, sau giờ tan chốt 100%; thêm nhãn "Quá giờ ra"
+  khi chưa quẹt ra quá giờ tan ca; dòng chú thích "12:00 nghỉ trưa" cố định bị bỏ (không
+  đúng với mọi ca).
+- **Biểu đồ giờ làm 7 ngày + gợi ý ngày giải trình**: gộp dữ liệu **cả tháng trước** — đầu
+  tháng không còn trống 6 cột như trước.
+- **Tuần này**: vẽ đủ 7 ngày T2–CN kể cả ngày chưa có dữ liệu, tô màu nghỉ phép / ngày lễ.
+- **Chuyên cần**: đếm theo **từng ngày** (đủ công = có mặt + đủ 1 công + không đi muộn),
+  không còn dùng con số gộp — ngày thiếu giờ quẹt trước đây bị tính nhầm là chuyên cần.
+- **Lịch tháng & danh sách ngày công**: ngày thiếu giờ quẹt tô riêng (viền đứt), nhãn trạng
+  thái không còn xanh lá cho trường hợp thiếu giờ; hiện rõ "thiếu giờ vào" thay vì "—".
+- **Cần chú ý**: đếm **mọi** ngày thiếu giờ quẹt (không chỉ hôm nay).
+- **Huy hiệu đơn chờ duyệt**: máy chủ đếm thêm đơn loại khác (làm thêm, đổi ca, công tác,
+  thôi việc) — trước đây chỉ đếm nghỉ phép + giải trình.
+- **Nhãn công tháng**: ghi số ngày đã có dữ liệu thay vì "trên N ngày phải làm" (giữa tháng
+  đọc dễ hiểu lầm). Thanh quỹ phép kẹp 0–100% để không vỡ khi phép âm.
+
 ## [1.84.0] — 2026-09-04
 
 **Đưa toàn bộ Khu vực của tôi về đúng vỏ của mẫu thiết kế "Giao diện cá nhân".**

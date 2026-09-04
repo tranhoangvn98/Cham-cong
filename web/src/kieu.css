@@ -1812,3 +1812,17 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   border-radius: var(--tron-tron); background: var(--canh-bao); color: #fff;
   font-size: 10.5px; font-weight: 700; display: grid; place-items: center; padding: 0 4px;
 }
+
+/* --- bổ sung trạng thái cho các sửa logic --- */
+.cn-nhan-cam {
+  background: color-mix(in srgb, var(--canh-bao) 16%, transparent);
+  color: var(--canh-bao);
+  font-size: 12px; font-weight: 700;
+  padding: 7px 13px; border-radius: var(--tron-tron);
+}
+.cn-ngay-phep { background: var(--lanh-nen); }
+.cn-ngay-le { background: var(--canh-bao-nen); }
+.cn-lich-thieu {
+  background: var(--canh-bao-nen); color: var(--canh-bao);
+  outline: 1px dashed var(--canh-bao);
+}
