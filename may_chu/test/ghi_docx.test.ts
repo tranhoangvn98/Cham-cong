@@ -9,6 +9,7 @@
 //
 // Cac bai o day kiem dung nhung cho de sai ma toi biet: dau tieng Viet, xuong dong trong mot
 // doan (`<w:br/>` chu khong phai `\n`), va `sectPr` khai kho giay.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { inflateRawSync } from 'node:zlib';

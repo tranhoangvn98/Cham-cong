@@ -226,6 +226,29 @@ export const cau_hinh = {
     api_key: chu('ERP_API_KEY', ''),
   },
 
+  /**
+   * DAY su kien nhan su sang cong (kho `phanquyen`). Khac han `cong_sso` o tren.
+   *
+   * `cong_sso` la chieu VAO: Cham cong nhan token do cong phat va xac minh chu ky.
+   * `cong_su_kien` la chieu RA: Cham cong bao cho cong biet ai vua vao, vua doi ten, vua nghi.
+   *
+   * Hai chieu doc lap nhau — bat mot chieu khong bat chieu kia — nhung deu tro toi CUNG mot
+   * cong, nen `goc` mac dinh lay tu `CONG_SSO_GOC`. Bat mot ten mien thu hai cho cung mot he
+   * thong la tao ra hai nguon su that se lech nhau; `CONG_SU_KIEN_URL` chi de de phong truong
+   * hop hai duong that su phai tro di hai noi.
+   *
+   * `token_dich_vu` co pham vi HEP `cong.day_su_kien_nhan_su` — KHONG phai `cong.quan_tri`.
+   * No nam trong `.env` cua may nay, trong ban sao luu cua no, va trong tay ai deploy no; mot
+   * token quan tri o day nghia la ai doc duoc tep do cung khoa duoc moi tai khoan trong cong ty.
+   *
+   * De TRONG = tat chieu RA. Su kien van duoc ghi vao `hop_thu_di` va nam do cho, KHONG mat.
+   * Bat len luc nao thi chung di luc do.
+   */
+  cong_su_kien: {
+    goc: chu('CONG_SU_KIEN_URL', chu('CONG_SSO_GOC', '')).replace(/\/+$/, ''),
+    token_dich_vu: chu('CONG_TOKEN_DICH_VU', ''),
+  },
+
   /** Bat migration tu dong khi khoi dong (tien cho Docker 1 diem). */
   /**
    * Trang tai lieu API o /api/v1/tai-lieu.
@@ -321,6 +344,38 @@ export const cau_hinh = {
      * ghi nhan viec can day vao bang, de ban xem bang do truoc roi moi bat.
      */
     bat_day: chu('SHAREPOINT_BAT_DAY', '0') === '1',
+  },
+
+  /**
+   * Gui email qua Microsoft Graph (sendMail, app-only). He thong khong co SMTP; day la duong
+   * gui mail duy nhat. Tan dung app SharePoint neu khong khai rieng — NHUNG app do phai duoc
+   * cap them quyen ung dung `Mail.Send` va phai khai `MS_MAIL_NGUOI_GUI` (hop thu gui). Thieu
+   * mot trong ba khoa hoac nguoi_gui thi coi nhu TAT: nhac nho roi ve thong bao day trong app.
+   */
+  mail: {
+    tenant_id: chu('MS_MAIL_TENANT_ID', chu('SHAREPOINT_TENANT_ID', chu('MS_TENANT_ID', ''))),
+    client_id: chu('MS_MAIL_CLIENT_ID', chu('SHAREPOINT_CLIENT_ID', '')),
+    client_secret: chu('MS_MAIL_CLIENT_SECRET', chu('SHAREPOINT_CLIENT_SECRET', '')),
+    /** Hop thu gui (userPrincipalName / email), vd hr@tranhoangvietnam.com. Trong = tat email. */
+    nguoi_gui: chu('MS_MAIL_NGUOI_GUI', ''),
+    goc_graph: chu('SHAREPOINT_GOC_GRAPH', 'https://graph.microsoft.com/v1.0').replace(/\/+$/, ''),
+    goc_token: chu('SHAREPOINT_GOC_TOKEN', 'https://login.microsoftonline.com').replace(/\/+$/, ''),
+  },
+
+  /** Quy tac xu ly canh bao ra/vao van phong. */
+  ra_vao: {
+    /** Cung mot loi >= nguong lan trong thang thi CHUYEN KY LUAT thay vi chi nhac nho. */
+    nguong_ky_luat: Math.max(1, Math.round(so('RA_VAO_NGUONG_KY_LUAT', 3))),
+  },
+
+  /** Xu ly ky luat tu dong. */
+  ky_luat: {
+    /**
+     * Khoan GIAM THUONG cua mot ho so >= nguong (dong) thi phai co nguoi duyet moi ap; duoi
+     * nguong he thong tu ap. Chu cong ty chot 2.000.000d. Dat 0 = MOI khoan giam thuong deu
+     * phai duyet (khong con duong tu ap).
+     */
+    nguong_duyet: Math.max(0, Math.round(so('KY_LUAT_NGUONG_DUYET', 2_000_000))),
   },
 
   /**

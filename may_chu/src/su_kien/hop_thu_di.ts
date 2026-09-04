@@ -6,12 +6,35 @@ import { createHmac } from 'node:crypto';
 import { cau_hinh } from '../cau_hinh.ts';
 import { pool, truy_van, thuc_thi } from '../csdl/ket_noi.ts';
 
-export type LoaiSuKien =
+/**
+ * Su kien gui sang ERP. Than tu do — ERP doc theo hop dong rieng cua no.
+ */
+export type LoaiSuKienErp =
   | 'lan_quet.da_ghi'
   | 'bang_cong.da_chot'
   | 'nghi_phep.da_duyet'
   | 'thiet_bi.mat_ket_noi'
   | 'thiet_bi.ket_noi_lai';
+
+/**
+ * Su kien nhan su gui sang CONG. Bon loai nay do CONG dinh nghia, khong phai ta —
+ * xem `may_chu/src/tuyen/su_kien_nhan_su.ts` cua kho `phanquyen`. Them mot loai o day ma cong
+ * chua biet thi cong tra 400 va dong do nam lai trong hop thu, thu lai mai.
+ *
+ * `du_lieu` cua nhung loai nay BAT BUOC co `ma_nv`; `da_tao` va `doi_ten` con can `ho_ten`.
+ */
+export type LoaiSuKienCong =
+  | 'nhan_su.da_tao'
+  | 'nhan_su.doi_ten'
+  | 'nhan_su.nghi_viec'
+  | 'nhan_su.quay_lai';
+
+export type LoaiSuKien = LoaiSuKienErp | LoaiSuKienCong;
+
+/** Su kien nao di sang cong thay vi sang ERP. */
+function di_sang_cong(loai: string): boolean {
+  return loai.startsWith('nhan_su.');
+}
 
 /** Ghi su kien vao outbox. Dung `khach` de nam trong cung transaction voi du lieu goc. */
 export async function ghi_su_kien(
@@ -32,13 +55,28 @@ interface DongOutbox {
   so_lan: number;
 }
 
+/** Co dich nao duoc cau hinh chua. Chua thi khong can nhan viec ra khoi bang. */
+function co_dich(): boolean {
+  return cau_hinh.erp.webhook_url !== '' || cau_hinh.cong_su_kien.goc !== '';
+}
+
 /**
- * Day toi da `so_luong` su kien chua gui sang ERP webhook.
- * Tra ve so su kien gui thanh cong. Neu chua cau hinh ERP_WEBHOOK_URL thi khong lam gi
- * (su kien nam lai trong bang, khong mat).
+ * Day toi da `so_luong` su kien chua gui. Tra ve so su kien gui thanh cong.
+ *
+ * HAI DICH, MOT HOP THU. Su kien `nhan_su.*` di sang cong dinh danh; con lai di sang ERP.
+ * Dich la thuoc tinh cua LOAI su kien, khong phai cua co che gui — nen phep chon dich nam
+ * trong `gui_mot`, con phan nhan viec / thu lai / backoff dung chung. Tach thanh hai bang la
+ * hai ban sao cua cung mot doan logic kho nhat o day.
+ *
+ * Chua cau hinh dich NAO thi khong lam gi: su kien nam lai trong bang, khong mat. Bat len luc
+ * nao thi chung di luc do.
+ *
+ * Chi cau hinh MOT dich thi van chay: dong cua dich kia se that bai va lui theo backoff cho
+ * den khi dich do duoc khai. Do la co y — mot su kien nhan su khong duoc phep bi danh dau "da
+ * gui" chi vi cong chua duoc cau hinh.
  */
 export async function day_hop_thu_di(so_luong = 50): Promise<number> {
-  if (cau_hinh.erp.webhook_url === '') return 0;
+  if (!co_dich()) return 0;
 
   // Nhan viec bang MOT cau UPDATE nguyen tu: day gui_lai_sau ve tuong lai de instance
   // khac khong lay lai cung su kien. Khong giu transaction trong luc goi HTTP.
@@ -82,6 +120,71 @@ export async function day_hop_thu_di(so_luong = 50): Promise<number> {
 }
 
 async function gui_mot(d: DongOutbox): Promise<void> {
+  if (di_sang_cong(d.loai_su_kien)) return gui_sang_cong(d);
+  return gui_sang_erp(d);
+}
+
+/**
+ * Day mot su kien nhan su sang cong dinh danh.
+ *
+ * `su_kien_id` = `chamcong-<id dong outbox>`. Cong chong trung bang `unique(su_kien_id)` +
+ * `on conflict do nothing`, nen dinh danh nay phai:
+ *
+ *  - ON DINH qua cac lan gui lai. `id` la `bigserial` cua chinh dong nay nen no khong doi du
+ *    gui lai bao nhieu lan. Sinh `randomUUID()` moi lan gui la BO phep chong trung cua cong:
+ *    mot lan gui thanh cong ma mat phan hoi se thanh mot su kien thu hai o ben kia — voi
+ *    `nhan_su.nghi_viec` do la thu hoi phien mot nguoi hai lan, con voi `da_tao` thi vo hai
+ *    nhung lam ban nhat ky. Khong duoc de xay ra.
+ *  - CO TIEN TO he thong. Cong nhan su kien tu nhieu nguon; `chamcong-12` va `rfid-12` phai la
+ *    hai su kien khac nhau.
+ */
+async function gui_sang_cong(d: DongOutbox): Promise<void> {
+  if (cau_hinh.cong_su_kien.goc === '') {
+    // NEM chu khong bo qua: dong nay phai o lai hop thu va thu lai, khong duoc danh dau da
+    // gui. Bo qua o day la mat su kien nhan su khi ai do quen khai goc cua cong.
+    throw new Error('Chua khai CONG_SSO_GOC (hoac CONG_SU_KIEN_URL) — su kien nhan su nam lai cho');
+  }
+  if (cau_hinh.cong_su_kien.token_dich_vu === '') {
+    throw new Error('Chua khai CONG_TOKEN_DICH_VU — su kien nhan su nam lai cho');
+  }
+
+  const du = d.du_lieu;
+  const ma_nv = String(du['ma_nv'] ?? '');
+  if (ma_nv === '') throw new Error(`su kien ${d.id} thieu ma_nv`);
+
+  // `than` cua cong chi nhan nhung gi no dung: `ho_ten`. KHONG day nguyen `du_lieu` sang —
+  // phong ban, ca lam, so dien thoai, ngay vao la du lieu nghiep vu cua Cham cong, va cong
+  // khong co viec gi voi chung (ADR-002: cong giu DANH TINH, khong giu ho so nhan su).
+  const than_cong: Record<string, unknown> = {};
+  if (typeof du['ho_ten'] === 'string' && du['ho_ten'] !== '') than_cong['ho_ten'] = du['ho_ten'];
+
+  const res = await fetch(`${cau_hinh.cong_su_kien.goc}/api/su-kien-nhan-su`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${cau_hinh.cong_su_kien.token_dich_vu}`,
+    },
+    body: JSON.stringify({
+      su_kien_id: `chamcong-${d.id}`,
+      loai: d.loai_su_kien,
+      nhan_su_ma: ma_nv,
+      than: than_cong,
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!res.ok) {
+    // Doc cau tra loi cua cong vao `loi_cuoi`: 400 vi sai hop dong va 401 vi sai token la hai
+    // su co khac han nhau, ma "HTTP 4xx" tran thi nguoi truc khong phan biet duoc.
+    const chi_tiet = await res.text().catch(() => '');
+    throw new Error(`Cong tra ve HTTP ${res.status}${chi_tiet === '' ? '' : `: ${chi_tiet.slice(0, 200)}`}`);
+  }
+}
+
+async function gui_sang_erp(d: DongOutbox): Promise<void> {
+  if (cau_hinh.erp.webhook_url === '') {
+    throw new Error('Chua khai ERP_WEBHOOK_URL — su kien nam lai cho');
+  }
   const than = JSON.stringify({
     id: d.id,
     loai_su_kien: d.loai_su_kien,
@@ -112,7 +215,7 @@ let bo_hen: NodeJS.Timeout | null = null;
 
 /** Chay tien trinh day outbox dinh ky (goi mot lan khi khoi dong may chu). */
 export function bat_tien_trinh_day(chu_ky_giay = 20): void {
-  if (cau_hinh.erp.webhook_url === '') return;
+  if (!co_dich()) return;
   if (bo_hen !== null) return;
   bo_hen = setInterval(() => {
     day_hop_thu_di().catch((loi: unknown) => {

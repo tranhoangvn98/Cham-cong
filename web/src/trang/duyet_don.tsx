@@ -1,11 +1,17 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { goi, tai_anh } from '../api.ts';
+import { goi, la_nhan_su, tai_anh } from '../api.ts';
 import {
   DangTai, HopLoi, HopTot, HopThoai, NhanDon, TEN_LOAI_NGHI, Trong,
   dung_hanh_dong, dung_nap, dung_nhap_chu, gio_ngan, khoa_tinh, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
 
-type Tab = 'nghi_phep' | 'giai_trinh' | 'quet_dien_thoai' | 'don_khac';
+type Tab = 'nghi_phep' | 'giai_trinh' | 'quet_dien_thoai' | 'don_khac' | 'de_xuat';
+
+interface DeXuatDuyet {
+  id: string; ma: string | null; ten_loai: string; tieu_de: string; noi_dung: string;
+  so_luong: number | null; ma_nv: string; ho_ten: string; phong_ban: string | null;
+  trang_thai: string; ghi_chu_duyet: string | null; tao_luc: string;
+}
 
 /** Bon loai don dung chung bang `don_tu`. Danh muc lay TU MAY CHU, khong gõ tay lại. */
 interface LoaiDon {
@@ -94,6 +100,22 @@ export function TrangDuyetDon(): ReactNode {
     `/api/duyet/don?trang_thai=${chi_cho_duyet ? 'cho_duyet' : 'da_duyet'}`);
   const loai_don = dung_nap<{ danh_sach: LoaiDon[] }>('/api/toi/don/loai');
   const dem_khac = dung_nap<Record<string, number>>('/api/duyet/don/dem');
+  const de_xuat = dung_nap<{ danh_sach: DeXuatDuyet[] }>(
+    `/api/de-xuat/cho-duyet?trang_thai=${chi_cho_duyet ? 'cho_duyet' : 'da_duyet'}`);
+  const dem_de_xuat = dung_nap<{ so: number }>('/api/de-xuat/so-cho-duyet');
+
+  const quyet_de_xuat = async (
+    id: string, quyet_dinh: 'da_duyet' | 'tu_choi', ghi_chu?: string,
+  ): Promise<void> => {
+    await hd.chay(
+      () => goi(`/api/de-xuat/${id}/quyet`, {
+        method: 'POST', body: { quyet_dinh, ghi_chu: ghi_chu ?? null },
+      }),
+      quyet_dinh === 'da_duyet' ? 'Đã duyệt đề xuất.' : 'Đã từ chối đề xuất.',
+    );
+    de_xuat.nap_lai();
+    dem_de_xuat.nap_lai();
+  };
 
   const quyet = async (
     nhom: 'nghi-phep' | 'giai-trinh' | 'quet-dien-thoai' | 'don',
@@ -154,6 +176,9 @@ export function TrangDuyetDon(): ReactNode {
           Làm thêm · Đổi ca · Công tác · Thôi việc{' '}
           {dem(Object.values(dem_khac.du_lieu ?? {}).reduce((a, b) => a + b, 0))}
         </button>
+        <button className={tab === 'de_xuat' ? 'dang-chon' : ''} onClick={() => dat_tab('de_xuat')}>
+          Đề xuất &amp; kiến nghị {dem(dem_de_xuat.du_lieu?.so ?? 0)}
+        </button>
       </div>
 
       {tab === 'don_khac' && (
@@ -174,7 +199,135 @@ export function TrangDuyetDon(): ReactNode {
       {tab === 'quet_dien_thoai' && (
         <BangQuetDienThoai kq={quet} quyet={quyet} dang_chay={hd.dang_chay} />
       )}
+      {tab === 'de_xuat' && (
+        <BangDeXuat kq={de_xuat} quyet={quyet_de_xuat} dang_chay={hd.dang_chay} />
+      )}
     </>
+  );
+}
+
+// ============================================================ đề xuất & kiến nghị (duyệt)
+function BangDeXuat(
+  { kq, quyet, dang_chay }: {
+    kq: ReturnType<typeof dung_nap<{ danh_sach: DeXuatDuyet[] }>>;
+    quyet: (id: string, qd: 'da_duyet' | 'tu_choi', gc?: string) => Promise<void>;
+    dang_chay: boolean;
+  },
+): ReactNode {
+  const nhap = dung_nhap_chu();
+  const [quan_ly, dat_quan_ly] = useState(false);
+  const ds = kq.du_lieu?.danh_sach ?? [];
+  const tu_choi = (id: string): void => {
+    void nhap.hoi({
+      tieu_de: 'Từ chối đề xuất', mo_ta: 'Nhập lý do từ chối (nhân viên sẽ thấy):',
+      nhan: 'Lý do',
+    }).then((ly_do) => { if (ly_do !== null) void quyet(id, 'tu_choi', ly_do); });
+  };
+
+  if (kq.dang_tai) return <DangTai />;
+  if (kq.loi !== null) return <HopLoi loi={kq.loi} />;
+  return (
+    <>
+      {nhap.hop_thoai}
+      {la_nhan_su() && (
+        <div className="dau-trang">
+          <div className="hang-nut">
+            <button className="nut-nho nut-phang" onClick={() => dat_quan_ly(true)}>Quản lý loại đề xuất</button>
+          </div>
+        </div>
+      )}
+      {quan_ly && <QuanLyLoaiDeXuat khi_dong={() => dat_quan_ly(false)} />}
+      {ds.length === 0 ? <Trong tieu_de="Không có đề xuất" />
+        : (
+          <div className="the the-mong"><div className="vo-bang"><table>
+            <thead><tr><th>Mã</th><th>Nhân viên</th><th>Loại</th><th>Nội dung</th><th>Trạng thái</th><th /></tr></thead>
+            <tbody>
+              {ds.map((d) => (
+                <tr key={d.id}>
+                  <td className="khong-ngat">{d.ma ?? '—'}</td>
+                  <td className="khong-ngat">{d.ho_ten}<div className="mo-ta">{d.phong_ban ?? ''}</div></td>
+                  <td className="khong-ngat">{d.ten_loai}</td>
+                  <td>
+                    <div><b>{d.tieu_de}</b>{d.so_luong !== null ? ` (SL: ${d.so_luong})` : ''}</div>
+                    {d.noi_dung !== '' && <div className="mo-ta">{d.noi_dung}</div>}
+                  </td>
+                  <td><NhanDon trang_thai={d.trang_thai} /></td>
+                  <td>{d.trang_thai === 'cho_duyet' ? (
+                    <div className="hang-nut">
+                      <button className="nut-nho" disabled={dang_chay}
+                        onClick={() => void quyet(d.id, 'da_duyet')}>Duyệt</button>
+                      <button className="nut-nho nut-phang" disabled={dang_chay}
+                        onClick={() => tu_choi(d.id)}>Từ chối</button>
+                    </div>
+                  ) : d.ghi_chu_duyet !== null ? <span className="mo-ta">{d.ghi_chu_duyet}</span> : null}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div></div>
+        )}
+    </>
+  );
+}
+
+interface LoaiQuanLy {
+  id: string; ma_loai: string; ten: string; mo_ta: string | null;
+  can_so_luong: boolean; dang_dung: boolean; so_don: number;
+}
+
+/** Nhan su quan ly DANH MUC loai de xuat (them / bat-tat) — dung yeu cau "he thong linh hoat". */
+function QuanLyLoaiDeXuat({ khi_dong }: { khi_dong: () => void }): ReactNode {
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<LoaiQuanLy[]>('/api/de-xuat/loai-quan-ly');
+  const [ten, dat_ten] = useState('');
+  const [can_sl, dat_can_sl] = useState(false);
+  const hd = dung_hanh_dong();
+  const them = (): void => {
+    void hd.chay(() => goi('/api/de-xuat/loai', {
+      method: 'POST', body: { ten, can_so_luong: can_sl },
+    }), 'Đã thêm loại.').then((ok) => { if (ok) { dat_ten(''); dat_can_sl(false); nap_lai(); } });
+  };
+  const bat_tat = (l: LoaiQuanLy): void => {
+    void hd.chay(() => goi(`/api/de-xuat/loai/${l.id}`, {
+      method: 'PATCH', body: { dang_dung: !l.dang_dung },
+    })).then((ok) => { if (ok) nap_lai(); });
+  };
+  return (
+    <HopThoai tieu_de="Quản lý loại đề xuất" khi_dong={khi_dong} rong>
+      <HopLoi loi={hd.loi} />
+      <div className="the">
+        <label htmlFor="ldx-ten">Thêm loại mới</label>
+        <div className="luoi luoi-2">
+          <input id="ldx-ten" value={ten} onChange={(e) => dat_ten(e.target.value)}
+            placeholder="vd: Đề xuất công tác phí" />
+          <div className="o-nhap-ngang">
+            <input id="ldx-sl" type="checkbox" checked={can_sl} onChange={(e) => dat_can_sl(e.target.checked)} />
+            <label htmlFor="ldx-sl">Có ô số lượng</label>
+          </div>
+        </div>
+        <div className="hang-nut">
+          <button className="nut-chinh" disabled={hd.dang_chay || ten.trim().length < 2} onClick={them}>
+            {hd.dang_chay ? 'Đang thêm…' : 'Thêm loại'}
+          </button>
+        </div>
+      </div>
+      {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} />
+        : (
+          <div className="the the-mong"><div className="vo-bang"><table>
+            <thead><tr><th>Tên</th><th>Số lượng?</th><th>Đơn</th><th>Trạng thái</th><th /></tr></thead>
+            <tbody>
+              {(du_lieu ?? []).map((l) => (
+                <tr key={l.id}>
+                  <td>{l.ten}</td>
+                  <td>{l.can_so_luong ? 'Có' : '—'}</td>
+                  <td>{l.so_don}</td>
+                  <td>{l.dang_dung ? 'Đang dùng' : 'Đã tắt'}</td>
+                  <td><button className="nut-nho nut-phang" onClick={() => bat_tat(l)}>
+                    {l.dang_dung ? 'Tắt' : 'Bật'}</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div></div>
+        )}
+    </HopThoai>
   );
 }
 
@@ -527,6 +680,11 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
         {d.doi_voi_ten !== null && <><br />đổi với {d.doi_voi_ten}</>}</>;
     }
     if (d.loai === 'cong_tac') return <>{d.noi_den ?? '—'}</>;
+    if (d.loai === 'di_muon') {
+      return d.gio_bat_dau !== null
+        ? <>dự kiến có mặt {d.gio_bat_dau.slice(0, 5)}</>
+        : <span className="mo-ta">—</span>;
+    }
     return <span className="mo-ta">—</span>;
   };
 

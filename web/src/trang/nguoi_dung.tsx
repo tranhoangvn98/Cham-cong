@@ -21,6 +21,8 @@ interface TaiKhoan {
   email_microsoft: string | null;
   duyet_luc: string | null;
   duyet_boi_ten: string | null;
+  /** Truong phong duoc admin cap quyen XEM man hinh quan tri (view-only). */
+  quyen_quan_tri: boolean;
 }
 
 const VAI_TRO_CAP: { ma: string; ten: string; mo_ta: string }[] = [
@@ -58,6 +60,28 @@ export function TrangNguoiDung(): ReactNode {
         method: 'PATCH', body: { dang_hoat_dong: !tk.dang_hoat_dong },
       }),
       tk.dang_hoat_dong ? 'Đã vô hiệu hóa và đăng xuất mọi thiết bị của tài khoản đó.' : 'Đã bật lại.',
+    );
+    nap_lai();
+  };
+
+  // Cap / thu quyen XEM man hinh quan tri cho mot truong phong (chi xem, khong thao tac).
+  const bat_tat_quyen_qt = async (tk: TaiKhoan): Promise<void> => {
+    const cap = !tk.quyen_quan_tri;
+    const dong_y = await xn.hoi({
+      tieu_de: cap ? 'Cấp quyền xem quản trị' : 'Thu quyền xem quản trị',
+      mo_ta: cap
+        ? <>Cho phép trưởng phòng <strong>{tk.ten_dang_nhap}</strong> xem màn hình quản trị
+          (Kỷ luật &amp; vi phạm, Nhân viên, Bảng công) — <strong>chỉ xem</strong>, giới hạn trong
+          phòng của họ, không thao tác. Họ cần đăng nhập lại (hoặc tải lại trang) để có hiệu lực.</>
+        : <>Gỡ quyền xem quản trị của <strong>{tk.ten_dang_nhap}</strong>.</>,
+      chu_dong_y: cap ? 'Cấp quyền' : 'Thu quyền',
+    });
+    if (!dong_y) return;
+    await hd.chay(
+      () => goi(`/api/nguoi-dung/${tk.id}/quyen-quan-tri`, {
+        method: 'PATCH', body: { quyen_quan_tri: cap },
+      }),
+      cap ? 'Đã cấp quyền xem quản trị.' : 'Đã thu quyền xem quản trị.',
     );
     nap_lai();
   };
@@ -118,6 +142,9 @@ export function TrangNguoiDung(): ReactNode {
                           {tk.duyet_boi_ten} cấp {ngay_gio(tk.duyet_luc)}
                         </div>
                       )}
+                      {tk.vai_tro === 'truong_phong' && tk.quyen_quan_tri && (
+                        <div><span className="nhan nhan-lanh">được xem quản trị</span></div>
+                      )}
                     </td>
                     <td className="chu-nho">
                       {tk.email_microsoft === null
@@ -150,6 +177,12 @@ export function TrangNguoiDung(): ReactNode {
                         <button className="nut-nho nut-phang" onClick={() => dat_noi_ms_cho(tk)}>
                           {tk.email_microsoft === null ? 'Nối Microsoft' : 'Sửa email MS'}
                         </button>
+                        {tk.vai_tro === 'truong_phong' && (
+                          <button className="nut-nho nut-phang"
+                            onClick={() => void bat_tat_quyen_qt(tk)}>
+                            {tk.quyen_quan_tri ? 'Thu quyền xem QT' : 'Cấp quyền xem QT'}
+                          </button>
+                        )}
                         {tk.id !== toi?.id && (
                           <button className="nut-nho nut-phang" onClick={() => bat_tat(tk)}>
                             {tk.dang_hoat_dong ? 'Vô hiệu hóa' : 'Bật lại'}

@@ -2,39 +2,546 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
-## [1.54.0] — 2026-09-04
+## [1.88.0] — 2026-09-04
 
-**Thêm mới: Khu vực của tôi (`/ca-nhan`) — giao diện cá nhân cho từng nhân viên trên web,
-theo mẫu thiết kế "Giao diện cá nhân", nối dữ liệu thật qua API self-service `/api/toi/*`.**
+**Sửa tab Cá nhân trắng màn — lệch hợp đồng backend/frontend.**
 
-### Năm màn trong một trang
+- **`/api/toi/ho-so` trả sai hình dạng.** Máy chủ trải phẳng hồ sơ nhân viên ra top-level
+  (`...ho_so`), nhưng giao diện mới (bản làm lại Khu vực của tôi) đọc `du_lieu.nhan_vien.*` →
+  `nhan_vien` là `undefined`, tab **Cá nhân** vỡ ngay khi đọc `.ho_ten` (trắng màn). Nghĩa là
+  tab Cá nhân **chưa từng hiện** kể từ khi làm lại giao diện — endpoint này không có kiểm thử
+  phủ. Nay lồng đúng `nhan_vien: ho_so`; tài khoản chưa nối hồ sơ trả `nhan_vien: null` để
+  giao diện hiện thông báo thân thiện. Giao diện cũng nới guard `nv == null` (chặn cả undefined).
+- **Nút chuông thông báo dùng hình chuông thật** (SVG) thay cho icon ngôi sao — trước đây nhìn
+  không ra là chuông.
 
-- **Trang chủ**: dải ca làm hôm nay (giờ vào/ra, tiến độ ca), hành động nhanh (xin nghỉ phép,
-  giải trình quên quẹt, đơn của tôi), bốn chỉ số tháng (công, đi muộn, OT, phép còn), biểu đồ
-  giờ làm 7 ngày, dòng thời gian các lần quẹt, dải tuần, chuyên cần và danh sách "Cần chú ý"
-  tính từ dữ liệu thật.
-- **Bảng công**: chọn tháng, tổng công / giờ làm / tăng ca, lịch tháng màu theo trạng thái,
-  chi tiết từng ngày, nút gửi giải trình khi thấy sai lệch.
-- **Đơn từ**: quỹ phép, lọc đơn, thẻ đơn với ba bước duyệt, hủy đơn (nghỉ phép và đơn khác);
-  ba form: xin nghỉ phép (6 loại, nửa ngày), giải trình quên quẹt (gợi ý ngày thiếu giờ),
-  đơn khác (làm thêm / đổi ca / công tác / thôi việc — danh mục lấy từ máy chủ).
-- **Lương**: chọn kỳ, căn cứ chấm công (công, giờ làm, OT ghi nhận, vắng), công thực tế/công
-  chuẩn, chi tiết, quỹ phép. Không hiện số tiền ước tính — giữ nguyên nguyên tắc máy chủ.
-- **Cá nhân**: hồ sơ (thông tin chung, tài liệu + tiến độ bắt buộc, hợp đồng, lương & phụ cấp,
-  người phụ thuộc, BHXH, công việc, thiết bị), đổi mật khẩu, đăng xuất.
+## [1.87.0] — 2026-09-04
+
+**Khu vực của tôi: chặn màn hình trắng + thêm nút chuông thông báo.**
+
+- **Không còn "màn hình trắng".** Bọc nội dung Khu vực của tôi bằng ranh giới lỗi: một màn con
+  lỗi khi hiển thị (ví dụ tab **Cá nhân**) giờ chỉ hiện một thẻ báo lỗi **đọc được** (kèm chi
+  tiết để gửi nhân sự), các tab khác vẫn dùng bình thường. Trước đây một lỗi nhỏ làm trắng xoá
+  toàn bộ trang.
+- **Nút chuông thông báo** trên đầu trang (mọi kích thước màn): mở màn Thông báo **ngay trong
+  vỏ cá nhân**, có huy hiệu đếm số chưa đọc. Trên điện thoại (thanh bên ẩn) đây là lối vào
+  Thông báo/– trước chỉ có ở thanh bên desktop.
+
+## [1.86.0] — 2026-09-04
+
+**Sửa lỗi điều hướng & logic ở Khu vực của tôi (giao diện cá nhân).**
+
+- **Bấm xong không còn "quay về giao diện cũ".** Trong vỏ cá nhân toàn màn hình, ba liên kết
+  **Thông báo**, **Văn bản công ty** (thanh bên) và **Đi duyệt** (mục "Cần chú ý") trước đây
+  điều hướng ra route riêng (`/thong-bao`, `/van-ban`, `/duyet-don`) — mà những route đó lại
+  render trong **vỏ quản trị cũ**, nên bấm vào là rơi khỏi giao diện cá nhân.
+  - Thông báo & Văn bản công ty giờ mở **ngay trong vỏ cá nhân** (màn phụ, giữ thanh bên tối,
+    có nút ‹ quay lại), không rời trang.
+  - Đi duyệt (việc quản trị) **đổi hẳn sang góc nhìn Quản trị** rồi tới màn Duyệt đơn — chuyển
+    cảnh có chủ đích, không còn nửa cá nhân nửa quản trị.
+- **Huy hiệu "đơn chờ tôi duyệt" đếm thiếu.** `/api/toi/hom-nay` chỉ cộng đơn nghỉ phép +
+  giải trình, **bỏ sót bảng `don_tu`** (làm thêm, đổi ca, công tác, thôi việc). Trưởng phòng
+  có thể không thấy đơn OT/đổi ca/công tác nào chờ duyệt. Nay cộng đủ cả ba nguồn (đối xứng
+  với ô đếm "đơn của tôi chờ duyệt").
+- **Icon 5 tab & mục "Cần chú ý" đồng nhất quy ước** (`icon` không kèm tiền tố `bt-`, nơi
+  render tự ghép `bt bt-…`) — trước đây lệch quy ước với `App.tsx` làm bài kiểm giao diện đỏ
+  dù icon vẫn hiện đúng.
+- **Bảo mật nhỏ:** `DELETE /api/toi/token-push` nay ràng theo chủ sở hữu (`nguoi_dung_id`) —
+  trước đây ai biết token đẩy của người khác đều gỡ được.
+
+## [1.85.0] — 2026-09-04
+
+**Rà soát và sửa logic giao diện Khu vực của tôi.**
+
+- **Tiến độ ca ở dải chào**: sửa cách tính cho **ca đêm** (giờ ra < giờ vào — bản cũ luôn 0%),
+  trước giờ vào ca hiển thị 0% thay vì 100%, sau giờ tan chốt 100%; thêm nhãn "Quá giờ ra"
+  khi chưa quẹt ra quá giờ tan ca; dòng chú thích "12:00 nghỉ trưa" cố định bị bỏ (không
+  đúng với mọi ca).
+- **Biểu đồ giờ làm 7 ngày + gợi ý ngày giải trình**: gộp dữ liệu **cả tháng trước** — đầu
+  tháng không còn trống 6 cột như trước.
+- **Tuần này**: vẽ đủ 7 ngày T2–CN kể cả ngày chưa có dữ liệu, tô màu nghỉ phép / ngày lễ.
+- **Chuyên cần**: đếm theo **từng ngày** (đủ công = có mặt + đủ 1 công + không đi muộn),
+  không còn dùng con số gộp — ngày thiếu giờ quẹt trước đây bị tính nhầm là chuyên cần.
+- **Lịch tháng & danh sách ngày công**: ngày thiếu giờ quẹt tô riêng (viền đứt), nhãn trạng
+  thái không còn xanh lá cho trường hợp thiếu giờ; hiện rõ "thiếu giờ vào" thay vì "—".
+- **Cần chú ý**: đếm **mọi** ngày thiếu giờ quẹt (không chỉ hôm nay).
+- **Huy hiệu đơn chờ duyệt**: máy chủ đếm thêm đơn loại khác (làm thêm, đổi ca, công tác,
+  thôi việc) — trước đây chỉ đếm nghỉ phép + giải trình.
+- **Nhãn công tháng**: ghi số ngày đã có dữ liệu thay vì "trên N ngày phải làm" (giữa tháng
+  đọc dễ hiểu lầm). Thanh quỹ phép kẹp 0–100% để không vỡ khi phép âm.
+
+## [1.84.0] — 2026-09-04
+
+**Đưa toàn bộ Khu vực của tôi về đúng vỏ của mẫu thiết kế "Giao diện cá nhân".**
+
+- Trang `/ca-nhan` giờ chiếm **toàn màn hình** với khung riêng: thanh bên tối (thương hiệu,
+  5 tab Trang chủ / Bảng công / Đơn từ / Lương / Cá nhân, liên kết Thông báo + Văn bản công ty,
+  chân trang tên · mã NV · ca làm), đầu trang dính ghi tiêu đề + phụ đề theo từng màn.
+- Ở **góc nhìn Cá nhân, Trang chủ CHÍNH LÀ trang này** — không còn vỏ chung với thanh bên
+  quản trị. Người có quyền quản trị có nút "Về góc nhìn Quản trị" ngay trên thanh bên.
+- Màn hẹp (< 900px): thanh bên ẩn, 5 tab chuyển xuống thanh tab dưới, có nút quay lại Trang chủ.
+- Thanh bên có huy hiệu đếm: đơn chờ duyệt trên tab Đơn từ, thông báo chưa đọc trên liên kết
+  Thông báo (dữ liệu từ `/api/toi/hom-nay` và `/api/toi/thong-bao`).
+
+## [1.83.0] — 2026-09-04
+
+**Thêm mới: trang "Khu vực của tôi" (`/ca-nhan`) — giao diện cá nhân theo mẫu thiết kế
+"Giao diện cá nhân", gom năm màn trong một trang và nối dữ liệu thật qua API self-service
+`/api/toi/*`.**
+
+### Năm màn trong một trang — `web/src/trang/ca_nhan.tsx` + khối CSS `cn-*`
+
+- **Trang chủ**: dải ca làm hôm nay (giờ vào/ra, tiến độ ca), hành động nhanh, bốn chỉ số
+  tháng, biểu đồ giờ làm 7 ngày, dòng thời gian các lần quẹt, tuần này, chuyên cần và danh
+  sách "Cần chú ý" tính từ dữ liệu thật.
+- **Bảng công**: chọn tháng, tổng công / giờ làm / tăng ca, lịch tháng màu, chi tiết từng
+  ngày, nút gửi giải trình khi thấy sai lệch.
+- **Đơn từ**: quỹ phép, lọc đơn, thẻ đơn ba bước duyệt, hủy đơn; ba form xin nghỉ phép /
+  giải trình quên quẹt / đơn khác (danh mục lấy từ máy chủ).
+- **Lương**: căn cứ chấm công từng kỳ — không hiện số tiền ước tính (giữ nguyên nguyên tắc).
+- **Cá nhân**: hồ sơ đầy đủ (thông tin chung, tài liệu + tiến độ, hợp đồng, lương, người
+  phụ thuộc, BHXH, công việc, thiết bị), đổi mật khẩu, đăng xuất.
 
 ### Backend
 
-- Thêm `GET /api/toi/ho-so` (`may_chu/src/tuyen/toi.ts`): hồ sơ cá nhân của **chính** người
-  đang xem — không nhận tham số `nhan_vien_id` nên không thể dò để xem hồ sơ người khác.
-  CCCD, mã số thuế, số BHXH nằm trong bảng `ho_so_ca_nhan` riêng (Nghị định 13/2023/ND-CP).
+- `GET /api/toi/ho-so` (`may_chu/src/tuyen/toi.ts`): bổ sung **thêm** các khối `ca_nhan`,
+  `hop_dong`, `luong`, `nguoi_phu_thuoc`, `bhxh`, `thiet_bi`, `tai_lieu` vào hồ sơ của chính
+  người đang xem — các trường cũ giữ nguyên nên người tiêu dùng hiện tại không bị ảnh hưởng.
 
 ### Ghi chú
 
-- Đơn giải trình không có đường hủy tự phục vụ — giao diện ghi rõ "nhờ nhân sự xử lý" thay vì
-  hiện nút chết.
-- Trang dùng đúng bộ token thiết kế web (không màu/font cứng) và bộ icon hiện có; thêm mục
-  hướng dẫn cho `/ca-nhan` trong `web/src/huong_dan.ts` (test bắt buộc).
+- Trang gắn cờ `ca_nhan` trong menu nên hiện ở cả góc nhìn Cá nhân lẫn Quản trị; bổ sung
+  mục hướng dẫn tương ứng trong `web/src/huong_dan.ts`.
+- Đơn giải trình không có đường hủy tự phục vụ — giao diện ghi rõ "nhờ nhân sự xử lý".
+
+## [1.82.0] — 2026-09-02
+
+**Hợp nhất nhánh đẩy sự kiện nhân sự sang cổng (PR #6) vào nhánh lương.**
+
+Hai nhánh cùng tách ra từ 1.53.0 và độc lập đánh số lại 1.54.0/1.55.0; bản hợp nhất này gom
+nội dung của #6 vào một mục mới thay vì giữ hai số trùng.
+
+### Thêm mới (từ PR #6)
+
+- **Ba mốc đời người sinh sự kiện gửi sang cổng định danh chung**: tạo nhân viên →
+  `nhan_su.da_tao`, đổi họ tên → `nhan_su.doi_ten`, cho nghỉ việc → `nhan_su.nghi_viec`. Sự
+  kiện được ghi **cùng transaction** với dòng nhân viên (cả đường tạo từng người lẫn nhập
+  hàng loạt), nên không thể có người đã tạo/đổi/nghỉ mà cổng không hay.
+- **Biến môi trường mới**: `CONG_TOKEN_DICH_VU` và `CONG_SU_KIEN_URL` (tuỳ chọn). Để trống
+  `CONG_TOKEN_DICH_VU` = tắt chiều ra; sự kiện vẫn nằm trong `hop_thu_di` chờ, không mất.
+- **`test/moi_truong_kiem_thu.ts`**: một chỗ đặt biến môi trường dùng chung cho bộ kiểm, nhập
+  làm import đầu tiên của mỗi tệp — bộ kiểm chạy được từ bản sao sạch, không cần tệp `.env`.
+  Kèm phép chặn: tệp kiểm chạm `../src/` mà không khai biến thì `npm test` đỏ.
+
+### Hợp nhất
+
+- `POST /nhan-vien` và `PUT /nhan-vien/:id` giữ **cả** cột `noi_lam_viec_id` (nhánh lương) lẫn
+  việc phát sự kiện `nhan_su.*` trong cùng giao dịch (PR #6).
+- Bộ kiểm gộp: giữ `phat_di_muon.test.ts`, `ky_luat.test.ts`, `khoa_cua.test.ts` (nhánh lương)
+  cùng thứ tự chạy `ra_vao.test.ts` cuối cùng và bộ `su_kien_nhan_su*` trong `test_e2e` (#6).
+
+### Sửa (lỗi bộ kiểm e2e phát lộ khi gộp)
+
+Chạy đủ bộ e2e lộ ra ba lỗi thoái lui của nhánh lương (bộ đơn vị xanh nhưng e2e chưa chạy từ
+khi thêm di trú 042) và một lỗi test phụ thuộc ngày có sẵn trên `main`. Đều đã vá:
+
+- **Di trú 042 lỡ xoá ràng buộc `don_tu_lam_them`.** Vòng lặp gỡ ràng buộc để thêm loại
+  `di_muon` lọc theo `%lam_them% and %loai%` — trúng CẢ ràng buộc "đơn làm thêm phải có đủ giờ
+  bắt đầu/kết thúc", nên nó bị xoá trong im lặng. Hệ quả: CSDL nhận đơn `lam_them` thiếu giờ.
+  042 nay lọc theo "có mặt đủ bốn loại gốc" (chỉ ràng buộc danh sách loại thoả), và **di trú
+  043** dựng lại `don_tu_lam_them` (dạng `not valid`) cho mọi CSDL đã chạy bản 042 cũ — gồm cả
+  VPS đang chạy.
+- **`quet_vi_pham` đếm nhầm lần cập nhật thành bản ghi mới.** Đổi `on conflict do nothing` sang
+  `do update ... returning id` khiến `so_moi` cộng cả dòng cập nhật; quét lại cùng tháng báo
+  "sinh N bản ghi mới" dù không tạo gì. Nay chỉ đếm dòng thật sự INSERT (`xmax = 0`).
+- **Bảng lương chốt: cột đầu là STT.** Bảng lương xuất theo mẫu công ty có cột STT (số thứ tự)
+  đứng trước Mã NV/Họ tên; cập nhật phép kiểm bản chốt cho khớp (bảng công vẫn Mã NV trước).
+- **Test chốt lương gõ cứng `-31`.** `2026-09-31` là ngày không tồn tại → Postgres nem lỗi mỗi
+  tháng 30 ngày. Đổi sang so sánh theo `YYYY-MM`.
+
+## [1.81.0] — 2026-08-31
+
+**Lệnh gán nhân sự Trung Quốc về "Kho Trung quốc" (lịch nghỉ TQ).**
+
+- Lệnh mới `gan_kho_tq_ma_nguon`: tạo nơi làm việc **"Kho Trung quốc"** (lịch nghỉ Trung Quốc) và gán nhân sự vào đó → nghỉ lễ tính theo lịch TQ.
+- Tiêu chí gán: **phòng ban = "Phòng Kho Trung Quốc"** (đã có), cộng các tên chỉ định (mặc định **Thân Thị Vân Anh**; thêm bằng `--ten "Tên 1,Tên 2"`).
+- Chạy thử mặc định (chỉ in), thêm `--that` để ghi thật; idempotent (chạy lại không đổi gì).
+  - `npm --workspace may_chu run gan_kho_tq_ma_nguon` (xem trước) → thêm `-- --that` để áp dụng.
+
+## [1.80.0] — 2026-08-31
+
+**Bảng lương: nhập lương cứng ngay trên bảng + cột Lương cơ bản + dòng Tổng cộng.** Theo phản hồi: các dòng đang 0 vì chưa nhập lương cứng, và cần thấy tổng lương cần chi trả.
+
+- **Nhập lương cứng (P1 + P2) ngay trên bảng lương** (nút Sửa): lưu vào `quyết định lương` hiệu lực từ đầu tháng của kỳ → tính lại ngay, các tháng sau vẫn giữ. Đúng thao tác gõ thẳng vào bảng như Excel. (Endpoint `PUT /api/phieu-luong/:id/luong-cung`, upsert `quyet_dinh_luong`.)
+- **Cột "Lương cơ bản"** thêm vào bảng lương (trước cột Công).
+- **Dòng "Tổng cộng"** cuối bảng: tổng Lương cơ bản, Lương theo công, thưởng, phụ cấp, thu nhập, BH, thuế, khoản trừ, và **Thực lĩnh = tổng lương cần chi trả**.
+- **Xuất Excel/CSV** thêm dòng Tổng cộng tương ứng.
+
+## [1.79.0] — 2026-08-31
+
+**Hoàn tất khối lương: đơn đi muộn, bảng lương xuất theo mẫu, cảnh báo hợp đồng.**
+
+- **Đơn xin đi muộn** (loại đơn mới `di_muon`): nhân viên nộp trên app (ngày + giờ dự kiến có mặt), quản lý duyệt như các đơn khác. Đơn duyệt + gửi trước 07:30 và vào trước 08:30 → miễn phạt đi muộn (tối đa 3 lần/tháng). Khóa trọn cơ chế phạt đi muộn.
+- **Bảng lương xuất (XLSX/CSV) bám mẫu công ty**: thêm cột STT, Chức danh, Email, và **Số lần đi muộn / Số lần đi muộn >30ph**; các phụ cấp và khoản phạt vẫn là cột động theo danh mục.
+- **Cảnh báo hợp đồng — Điều 20.2c BLLĐ**: nhắc hạn hợp đồng phát hiện HĐ xác định thời hạn **lần thứ 2 trở lên** → cảnh báo lần ký tiếp bắt buộc là HĐ không xác định thời hạn (bổ sung cho các mốc Đ.45/Đ.20.2/Đ.27 đã có).
+
+## [1.78.0] — 2026-08-31
+
+**Lương theo mẫu công ty — API + giao diện (phần 2/2).** Nối phần hậu trường ở 1.77 ra giao diện.
+
+- **Cài đặt → Ngày lễ** thành 3 tab: Ngày lễ (thêm cột Lịch VN/TQ), **Kế hoạch nghỉ theo năm** (khai khoảng ngày → tự bung ra từng ngày), **Nơi làm việc** (CRUD + gắn lịch nghỉ).
+- **Cài đặt → Tham số lương**: thêm mục **Phạt đi muộn** (bật/tắt, 4 mốc giờ, mức phạt, số lần miễn/tháng, hạn nộp đơn) + **Tỷ lệ thử việc**, kèm lưu ý pháp lý (BLLĐ Đ.127/Đ.26).
+- **Góc cá nhân → Phiếu lương**: nhân viên tự xem phiếu lương hàng tháng đã duyệt/trả, chi tiết từng khoản thu nhập + khấu trừ (BHXH/BHYT/BHTN, thuế, phạt đi muộn…), thực nhận làm tròn, nút In phiếu.
+- **Nhân viên**: thêm ô **Nơi làm việc** trong form → quyết định lịch nghỉ lễ (VN/TQ) áp cho từng người.
+- API: CRUD nơi làm việc + kế hoạch nghỉ năm; `nhan_vien` nhận `noi_lam_viec_id`.
+- 30 guard thiết kế + tsc backend/web + 676/677 test xanh.
+
+## [1.77.0] — 2026-08-31
+
+**Lương theo mẫu công ty — nền dữ liệu + bộ tính (phần 1/2: hậu trường).** Bám sát file "Bảng Lương" của công ty. Phần API + giao diện ở bản kế tiếp.
+
+- **Migration 042**: 
+  - `lich_nghi_le` (lịch nghỉ VN/TQ), `noi_lam_viec` (nơi làm việc → gắn một lịch), `nhan_vien.noi_lam_viec_id`.
+  - `ngay_le` thêm `lich_ma` + `ke_hoach_id`, đổi khóa chính `(ngay)` → `(ngay, lich_ma)` — một ngày có thể là lễ ở lịch này mà không phải lịch kia.
+  - `ke_hoach_nghi_le` (kế hoạch nghỉ theo NĂM, khai theo khoảng ngày).
+  - `tham_so_luong` thêm cấu hình **phạt đi muộn** (bật/tắt, mốc 08:10/08:30, 50k/lần, miễn 3 lần/tháng, hạn nộp đơn 07:30) + **tỷ lệ thử việc** (mặc định 85%).
+  - `don_tu` thêm loại `di_muon` (đơn xin đi muộn).
+- **Nghỉ lễ theo VỊ TRÍ làm việc**: làm ở VN theo lịch VN, làm ở TQ theo lịch TQ. Bộ tính công (`tinh_cong`) và bộ tính lương (`ky_luong`) đọc lịch theo nơi làm việc của từng người → nghỉ lễ không bị tính trừ công.
+- **Phạt đi muộn 2 mức tự động** (module thuần `phat_di_muon.ts`, có kiểm thử): 08:10–08:29 phạt 50k/lần; ≥08:30 trừ nửa ngày lương cứng/lần; miễn tối đa 3 lần/tháng nếu có đơn duyệt gửi trước 07:30 và vào ≤08:30 (≥08:30 không được miễn). Tự sinh khoản `tru_di_muon`/`tru_nua_ngay` trên phiếu, tôn trọng khoản gõ tay.
+- **Lương thử việc**: hợp đồng loại `thu_viec` tự áp 85% lương cứng (P1+P2), cho ghi đè bằng mức lương ghi thẳng trên hợp đồng thử việc.
+- Route `/ngay-le` nhận thêm `lich_ma` (mặc định `vn`).
+
+## [1.76.0] — 2026-08-31
+
+**Cấu hình cửa qua ADMS: công cụ đọc cấu trúc bảng access-control từ máy.** Để tiến tới đặt khung giờ (time zone) qua ADMS thay vì làm tay trên máy — cần biết cấu trúc bảng `timezone`/`door`/`userauthorize` (không có tài liệu công khai), giống cách đã crack `tablename=user`.
+
+- **Migration 041**: `may_du_lieu_tho` (lưu nguyên văn nội dung mỗi bảng máy đẩy về qua `/iclock/querydata`, mỗi (máy, bảng) một bản mới nhất).
+- Bộ nhận `/querydata` giờ lưu nguyên văn mọi kết quả query (mọi bảng), không chỉ `user`.
+- API (`can_admin`): `POST /thiet-bi/:serial/truy-van-bang` (gửi `DATA QUERY tablename=<bang>`), `GET /thiet-bi/:serial/du-lieu-tho` (đọc nội dung thô).
+- UI Khóa cửa: mục "Cấu hình qua ADMS" — nút Đọc timezone/door/userauthorize + Xem kết quả (chỉ ĐỌC, an toàn). Gửi kết quả cho kỹ thuật soạn lệnh `DATA UPDATE` đặt khung giờ.
+
+## [1.75.0] — 2026-08-31
+
+**Khóa cửa theo giờ: rà soát kỹ SDK ZKTeco + cập nhật hướng dẫn cho đúng.** Sau khi rà bộ lệnh ADMS/PUSH (probe thư viện s0x90, nhiều dự án thật, guide SenseFace 3A):
+
+- Kết luận: `CONTROL DEVICE 1 1`/`1 0`/`4 1` chỉ **mở/đóng relay tức thời**, không có lệnh chặn vào **bền vững**; vài firmware trả `Return 0` nhưng relay không nhả thật từ xa. Chặn theo giờ đúng cách = **Access Time Zone ngay trên máy** (máy tự thực thi cục bộ), phần ghi khung giờ không nằm trong ADMS mở.
+- Dialog "Khóa cửa theo giờ" thêm hộp hướng dẫn: đặt Time Zone trên máy là cách chắc chắn; lệnh gửi từ máy chủ chỉ là lớp bổ trợ best-effort. Gợi ý lệnh chính xác trong placeholder (`CONTROL DEVICE 1 1` mở; `1 0`/`4 1` để thử chặn).
+
+## [1.74.0] — 2026-08-31
+
+**Khóa cửa theo giờ — chặn VÀO ngoài giờ làm việc (Cài đặt → Thiết bị).**
+
+- **Migration 040**: `khoa_cua_lich` (mỗi máy: bật/tắt, giờ mở, giờ đóng, chặn cuối tuần, lệnh mở/chặn, trạng thái đã áp dụng).
+- **Cài đặt → Thiết bị**: mỗi máy thêm nút **"Khóa cửa theo giờ"** — bật chặn VÀO ngoài khung [giờ mở, giờ đóng] (+ tùy chọn chặn cả cuối tuần), khai lệnh điều khiển cửa + **nút Test** gửi lệnh ngay để kiểm chứng trên máy thật (firmware acc kén lệnh, như vụ DATA QUERY).
+- **Bộ lập lịch** (`lich_chay`) mỗi vòng tự tính trạng thái cửa theo giờ và chỉ gửi lệnh KHI đổi trạng thái; lệnh để trống = không gửi gì (an toàn mặc định).
+- **An toàn PCCC (QCVN 06 / NĐ 136)**: chỉ chặn chiều VÀO; lối RA phải luôn tự do bằng phần cứng — cảnh báo rõ trên giao diện. `bat=false` mặc định, không tự bật.
+
+## [1.73.0] — 2026-08-31
+
+**Đề xuất & Kiến nghị (danh mục mở) + quản lý đơn.**
+
+- **Migration 039**: `loai_de_xuat` (danh mục loại HR tự quản lý, seed sẵn: cấp phát thiết bị, mua sắm, sửa chữa, tạm ứng, kiến nghị, khác) + `de_xuat` (mã `DX-`, tiêu đề, nội dung, số lượng; vòng đời chờ duyệt → duyệt/từ chối/hủy).
+- **Nhân viên**: tab **"Đề xuất & kiến nghị"** trong Đơn của tôi — chọn loại, nhập tiêu đề/nội dung (ô số lượng hiện khi loại cần, vd thiết bị), theo dõi trạng thái + hủy khi chờ duyệt.
+- **Quản lý đơn**: Duyệt đơn thêm tab **"Đề xuất & kiến nghị"** — quản lý duyệt phòng mình, nhân sự thấy tất cả (theo phân quyền sẵn có); duyệt/từ chối kèm lý do. Nhân sự có nút **"Quản lý loại đề xuất"** để thêm loại mới / bật-tắt — không cần sửa code.
+- Gửi/duyệt đề xuất tự sinh chuông báo (qua `gui_ngam`) cho người duyệt và người gửi.
+
+## [1.72.0] — 2026-08-31
+
+**Notification: chuông báo trong web + đẩy điện thoại (mọi sự kiện).** Xem mục kỹ thuật ở commit — migration 038 `thong_bao_rieng`, `gui_ngam` lưu chuông cho mọi điểm sự kiện sẵn có, chuông ở header (số chưa đọc + danh sách).
+
+## [1.71.0] — 2026-08-31
+
+**Đơn của tôi: tab "Tăng ca / công tác".** Bề mặt hóa các đơn `don_tu` đã có backend (làm thêm = tăng ca, công tác, thôi việc) qua form thích ứng theo loại.
+
+## [1.70.0] — 2026-08-31
+
+**Hướng dẫn mặc định thu gọn 1 dòng + favicon nội tuyến.** Khung "Quy trình ở trang này" mặc định thu gọn (bấm mới mở, nhớ per-trang); thêm `<link rel="icon">` SVG để hết lỗi `/favicon.ico 401` trên console.
+
+## [1.69.0] — 2026-08-31
+
+**Góc nhìn Cá nhân: gọt giao diện.**
+
+- **Nút trợ lý render qua portal ra `document.body`** — không còn nằm trong khung nào của trang, nên `position:fixed` bám thẳng màn hình, không thể bị khung cha cắt trong bất kỳ hoàn cảnh nào. Đổi emoji 💬 sang **icon SVG chat** nét sạch, đồng nhất mọi thiết bị (không phụ thuộc emoji hệ điều hành).
+- **Bỏ emoji trang trí** (👋 📝 📢 📚 🪪) ở hero, lối tắt, tiêu đề Thông báo/Văn bản và lời chào trợ lý cho gọn, chuyên nghiệp.
+- Thêm khoảng đệm đáy trên điện thoại để nút nổi không che mục cuối.
+
+## [1.68.0] — 2026-08-31
+
+**Góc nhìn Cá nhân: tối ưu điện thoại.** Đa số nhân viên dùng điện thoại nên các trang cá nhân được chỉnh cho khổ nhỏ:
+
+- Thẻ số (công, phép, thông báo, đơn) xếp **2 cột gọn** trên điện thoại thay vì 1 cột dài; lưới thẻ và lối tắt tự về 1 cột khi quá hẹp.
+- Hero thu nhỏ, chống tràn chữ dài (`overflow-wrap`), khóa `max-width` chống tràn ngang.
+- **Nút trợ lý (💬) tròn ở góc dưới bên phải** — sát mép hơn trên điện thoại để không che nội dung; bấm mở khung chat.
+
+## [1.67.0] — 2026-08-31
+
+**Góc nhìn Cá nhân — giao diện (phần 2/2).** Trải nghiệm riêng cho nhân viên, tách hẳn khỏi màn hình quản trị.
+
+- **Dashboard cá nhân thay cho dashboard công ty.** Ở góc nhìn Cá nhân, trang Tổng quan (`/`) giờ là của **chính mình**: công tháng, phép còn lại, nghỉ lễ sắp tới, thông báo mới, đơn chờ — không còn thấy số liệu toàn công ty. Nhân viên thường (không quyền quản trị) luôn ở góc cá nhân nên **không bao giờ** thấy dashboard toàn công ty (NĐ 13/2023).
+- **Tab Thông báo** 📢: đọc thông báo từ BGĐ/HR, bấm "Đã đọc & hiểu". Thông báo gắn cờ **cần giải trình** nổi đỏ, bắt nhập giải trình mới xong (mã `GT-`, gộp vào mục Khiếu nại & giải trình). Nhân sự đăng thông báo mới (mức độ, bắt buộc giải trình) và xem ai đã đọc ngay tại đây.
+- **Tab Văn bản công ty** 📚: kho nội quy, biểu mẫu, chính sách — tải về; nhân sự tải lên (kiểm định dạng thật).
+- **Tab Hồ sơ của tôi** 🪪: xem thông tin công việc (chỉ xem) + tự cập nhật số điện thoại/email.
+- **Trợ lý dữ liệu** 💬: nút nổi góc phải, hỏi tiếng Việt về phép/công/đi muộn/nghỉ lễ/ca làm — trả lời từ dữ liệu của chính mình, không gửi ra ngoài.
+- **Giao diện sống động + sáng/tối.** Các trang cá nhân dùng token màu nên tự đổi theo nút sáng/tối sẵn có; thêm hero gradient và bố cục thẻ sinh động. Menu cá nhân thêm Thông báo, Văn bản, Hồ sơ.
+
+## [1.66.0] — 2026-08-31
+
+**Góc nhìn Cá nhân — nền backend (phần 1/2).** Chuẩn bị cho trải nghiệm nhân viên: dashboard cá nhân, thông báo BGĐ, văn bản công ty, trợ lý dữ liệu. Phần giao diện ở bản kế tiếp.
+
+- **Migration 037**: bảng `thong_bao` (mã `TB-`, mức độ, phạm vi toàn công ty/phòng ban, cờ `can_giai_trinh`), `thong_bao_da_doc` (xác nhận đã đọc + giải trình, mã `GT-` chỉ sinh khi có giải trình), `van_ban_cong_ty` (mã `VB-`, kho tài liệu chung). Tất cả có mã tracking như kỷ luật/khiếu nại.
+- **API tự phục vụ** (`/api/toi`): `GET /tong-quan` (công tháng, phép còn, nghỉ lễ sắp tới, thông báo mới chưa đọc, đơn chờ) — chỉ dữ liệu của chính mình; `GET /ho-so` + `POST /ho-so/lien-he` (tự cập nhật SĐT/email); `GET /thong-bao` + `POST /thong-bao/:id/xac-nhan` (đã đọc + giải trình); `GET /van-ban` + `GET /van-ban/:id/tai`; `GET /tro-ly` (trợ lý dữ liệu).
+- **Trợ lý dữ liệu** (`ca_nhan/tro_ly.ts`): trả lời từ chính dữ liệu nhân viên (phép, công, đi muộn, nghỉ lễ, ca làm, đơn chờ) — không gửi dữ liệu ra ngoài, không phí (NĐ 13/2023). Chừa sẵn chỗ cắm LLM (`hoi_llm`) để nâng cấp sau khi có khóa API.
+- **API quản trị** (`/api`, chỉ nhân sự): tạo/gỡ thông báo, xem ai đã đọc, liệt kê giải trình (nối vào muc Khiếu nại & giải trình), tải/gỡ văn bản công ty (upload có kiểm magic byte, đường lưu `_van_ban/` cấp công ty chống path traversal).
+
+## [1.65.0] — 2026-08-31
+
+**Sửa: máy kho (dòng kiểm soát ra vào `acc`) không kéo được danh sách user.** Máy `NYU7261300256` từ chối `DATA QUERY USERINFO` với mã `-629`: dòng `acc` (SenseFace 2A, PUSH 3.x) dùng **bộ lệnh khác** dòng chấm công `att`. Rà soát lại đúng SDK PUSH và sửa 3 điểm:
+
+- **Lệnh đúng cho máy acc.** `POST /thiet-bi/:serial/lay-nguoi-dung` giờ gửi **cả hai** cú pháp: `DATA QUERY tablename=user,fielddesc=*,filter=*` (acc) và `DATA QUERY USERINFO` (att). Bảng không lưu loại máy nên gửi cả hai; máy tự từ chối lệnh không hiểu (`-629`) và thực thi lệnh đúng.
+- **Route `/iclock/querydata` (mới).** Máy acc đẩy kết quả query **KHÔNG** vào `/iclock/cdata` như dòng att, mà vào endpoint riêng `POST /iclock/querydata?tablename=user`. Trước đây server chưa có route này → kết quả rơi vào `setNotFoundHandler` (404) và danh sách user không bao giờ về, dù lệnh chạy đúng. Đây là nguyên nhân thật khiến máy kho trả `count=0`.
+- **Parser đọc thêm tên trường acc.** Dòng acc dùng `CardNo`/`Privilege` thay cho `Card`/`Pri` của dòng att; `doc_userinfo` đọc cả hai. Heuristic bắt user ở `/cdata` cũng nới để khớp `CardNo=`/`Privilege=`.
+
+Kèm test parser cho định dạng acc. Không có migration.
+
+## [1.64.0] — 2026-08-31
+
+**Kéo danh sách user từ máy về + cảnh báo trùng/lệch PIN.** Giải quyết ca máy kho enroll người dưới PIN đã thuộc nhân viên khác (PIN map toàn cục) → lượt quẹt bị gán nhầm người.
+
+- **Đối chiếu user máy ↔ hệ thống.** Trang **Cài đặt → Thiết bị** thêm nút **"Đối chiếu user"** mỗi máy: bấm **"Lấy từ máy"** để ra lệnh máy đẩy danh sách user (`DATA QUERY USERINFO`), hệ thống bắt bảng `USERINFO` (trước đây bỏ qua) lưu vào `may_nguoi_dung`, rồi so từng PIN với người giữ PIN đó trong hệ thống. Mỗi dòng gắn nhãn: **Khớp** (xanh) / **LỆCH — người khác** (đỏ, PIN thuộc người khác) / **Hệ thống chưa gán** (vàng) / **Máy không gửi tên** (xám).
+- **Cảnh báo đỏ trên Trang tổng quan** khi có PIN lệch/chưa gán: "⚠ N PIN trong máy bị lệch / trùng người" — dẫn thẳng tới trang Thiết bị để xử lý.
+- Chống trùng khi gán PIN vốn đã được đảm bảo (chỉ mục duy nhất trên `ma_dinh_danh`); phần mới lo phát hiện ca **máy tự enroll trùng** mà việc gán trong hệ thống không kiểm được.
+
+Migration 036 (`may_nguoi_dung`). Backend: parser `doc_userinfo`, thu nhận USERINFO/OPERLOG-user trong bộ tiếp nhận ADMS, `POST /thiet-bi/:serial/lay-nguoi-dung`, `GET /thiet-bi/:serial/nguoi-dung` (đối chiếu), đếm `pin_lech` cho dashboard. Lưu ý: lệnh kéo user cần kiểm chứng cú pháp trên máy thật (SenseFace 2A) — bộ nhận đã bắt sẵn nên máy đẩy kiểu nào cũng lưu được.
+
+## [1.63.0] — 2026-08-31
+
+**Trang tổng quan: bấm ô số ra danh sách + biểu đồ hiện số khi rê chuột.**
+
+- **Bấm ô số → danh sách chi tiết.** Các ô ở "Toàn công ty — hôm nay" (và ở góc nhìn Phòng) giờ **bấm được** — có dấu ›: **Tổng nhân viên, Có mặt, Đi muộn, Vắng, Nghỉ phép, Chưa quẹt ra**. Bấm mở hộp thoại liệt kê đúng nhóm người đó (mã NV, họ tên, phòng ban, trạng thái, giờ vào/ra, số phút muộn), bấm tên để mở hồ sơ. Danh sách lọc theo quyền như bảng công (nhân sự thấy hết, trưởng phòng thấy phòng mình). API mới `GET /dashboard/danh-sach?loai=&ngay=`.
+- **Biểu đồ 7 ngày: rê chuột (hoặc focus bàn phím) vào một cột → hiện mạch chú thích** với số lượng từng phần: Đúng giờ / Đi muộn / Vắng / OT. Trước đây chỉ có tooltip mặc định của trình duyệt (chậm, khó thấy).
+
+## [1.62.0] — 2026-08-31
+
+**Admin cấp quyền cho trưởng phòng XEM màn hình quản trị (chỉ xem).** Trong Cài đặt → Tài khoản, admin có nút **"Cấp quyền xem QT" / "Thu quyền xem QT"** cho mỗi trưởng phòng (kèm nhãn *"được xem quản trị"*). Trưởng phòng được cấp quyền có thể chuyển sang góc nhìn Quản trị và xem **Kỷ luật & vi phạm & khiếu nại, Nhân viên, Bảng công** — nhưng **chỉ xem, không thao tác**, và dữ liệu luôn **giới hạn trong phòng của họ** (không thấy toàn công ty; ẩn Lương, Ra/vào, Cài đặt). Mọi màn hình đó hiện băng *"chế độ chỉ xem"*, ẩn các nút quét/duyệt/bãi bỏ/miễn/ghi.
+
+Ranh giới bảo mật đặt ở **máy chủ**: mọi thao tác (POST/PATCH/DELETE) vẫn do guard `can_nhan_su`/`can_admin` chặn — trưởng phòng được cấp quyền bị chặn ở tầng API dù giao diện có lỡ hiện nút. Chỉ Admin và Nhân sự (gồm Trưởng phòng nhân sự) được thao tác. Migration 035 (`quyen_quan_tri` + cột truy vết ai cấp/khi nào); endpoint `PATCH /nguoi-dung/:id/quyen-quan-tri` (chỉ admin, chỉ áp cho vai trò trưởng phòng); cờ trả trong đăng nhập + `/toi` để webapp nhận sau khi làm mới phiên.
+
+## [1.61.0] — 2026-08-31
+
+**Miễn kỷ luật + Khiếu nại + mã tracking.** Ba nghiệp vụ mới trong "Kỷ luật & vi phạm":
+
+- **Miễn kỷ luật (chỉ Admin).** Admin đổi thủ công một hồ sơ hoặc **đồng loạt** (chọn nhiều dòng) từ *Đã áp dụng / Chờ duyệt / Đã nhắc / Mới* sang **Miễn kỷ luật** — khoản giảm thưởng P3 tự **gỡ khỏi lương** (qua chính sách phụ cấp), hồ sơ vẫn được lưu để theo dõi. Khác "bãi bỏ" (bãi bỏ = quyết định sai/rút lại); miễn = công ty khoan hồng, quyết định vẫn đúng. Bổ sung nút "Miễn kỷ luật hàng loạt" trên thanh chọn và nút miễn từng hồ sơ trong hộp thoại.
+- **Khiếu nại & giải trình.** Người lao động khiếu nại một quyết định kỷ luật (BLLĐ Điều 131) hoặc giải trình vi phạm ngay trong app (tab **Kỷ luật & khiếu nại** ở "Đơn của tôi"). Hồ sơ kỷ luật đang có khiếu nại chưa xử lý sẽ **đổi màu + hiện chấm đỏ "● N khiếu nại"** trên dòng đó. Thêm **tab Khiếu nại** để nhân sự/admin tiếp nhận, chấp nhận (Admin có thể "chấp nhận & miễn luôn"), hoặc từ chối kèm phản hồi.
+- **Mã tracking.** Mỗi hồ sơ kỷ luật có mã **KL-NNNNNN**, mỗi khiếu nại có mã **KN-NNNNNN** (sinh tự động, không đổi khi quét lại) để tra cứu và theo dõi.
+
+Migration 034 (trạng thái `mien`, cột `ma`/`ly_do_mien`, bảng `khieu_nai`, sequence + trigger sinh mã). API: `POST /ky-luat/mien` (bulk, admin), `GET /khieu-nai` + `POST /khieu-nai/:id/xu-ly` (quản lý), `GET /toi/ky-luat` + `GET|POST /toi/khieu-nai` (người lao động).
+
+## [1.60.0] — 2026-08-31
+
+**Nút chuyển góc nhìn Quản trị ⇄ Cá nhân (web).** Người có quyền quản trị (nhân sự, và trưởng phòng được admin cấp quyền) giờ có nút ở chân thanh bên để chuyển giữa **Quản trị** (thấy đủ menu theo quyền) và **Cá nhân** (chỉ Tổng quan, Đơn của tôi, Duyệt đơn — bản chất admin/nhân sự cũng là người lao động, cũng xin nghỉ như nhân viên thường). Người không có quyền quản trị luôn ở góc nhìn Cá nhân. Mục "Nghỉ phép" đổi tên **"Duyệt đơn"** và mở cho người duyệt (gồm trưởng phòng duyệt đơn của phòng mình). Chuẩn bị sẵn `quyen_quan_tri` để bước sau admin cấp quyền xem màn hình quản trị cho trưởng phòng.
+
+## [1.59.0] — 2026-08-31
+
+**Trang "Đơn của tôi" cho nhân viên tự nộp đơn (web).** Trước chỉ có trên app điện thoại; giờ nhân viên đăng nhập web cũng tự phục vụ được. Ba tab: **Nghỉ phép** (các loại: phép năm, không lương, ốm, thai sản, kết hôn, hiếu; nửa ngày; hủy khi còn chờ duyệt), **Giải trình chấm công** (quên quẹt — đề xuất giờ vào/ra), **Vi phạm của tôi** (xem vi phạm ghi nhận với mình và gửi giải trình — quyền tự bào chữa BLLĐ Điều 122). Dùng lại API /api/toi/* sẵn có, theo dõi trạng thái duyệt ngay tại trang.
+
+## [1.58.2] — 2026-08-31
+
+**Bảng lương chi tiết mở TOÀN MÀN HÌNH (không còn popup).** Trước là hộp thoại nên bảng nhiều cột bị bó/cắt; giờ mở thành trang phủ kín màn hình, dùng hết chiều rộng — thấy đủ mọi cột (kể cả BHXH+YT+TN, thuế TNCN, khoản trừ, thực lĩnh) một lần, có nút "← Quay lại". (BHXH vốn đã được tính trong bảng, trước bị popup che.)
+
+## [1.58.1] — 2026-08-31
+
+**Gộp tab: Kỷ luật & Vi phạm chung 1 tab; Lương & Phụ cấp chung 1 tab.** Mỗi menu giờ có hai tab con — bớt mục ngoài thanh bên, gom việc liên quan lại một chỗ. Vi phạm (danh mục nội quy, từng bản ghi, biên bản) nằm cạnh Kỷ luật (tổng hợp + tự động); Phụ cấp (chính sách từng người) nằm cạnh Bảng lương.
+
+## [1.58.0] — 2026-08-31
+
+**Phạt đi muộn tự động + quét kỷ luật hằng ngày + form email.**
+
+- **Phạt theo từng lần** (cột `tinh_moi_lan` trên loại vi phạm): đi muộn (NQ-A01) giảm thưởng
+  **50.000đ mỗi lần** (Điều 14 Nội quy, Điều 104 BLLĐ — giảm thưởng P3, không phải phạt tiền).
+  Số tiền = 50.000 × số lần đi muộn trong tháng. Quy tắc phát hiện đi muộn đã bật; khoản dưới
+  2 triệu nên hệ thống tự áp (không cần duyệt).
+- **Quét kỷ luật chạy HẰNG NGÀY** (trước là hằng tháng): mỗi ngày gom lại vi phạm của tháng,
+  cập nhật hồ sơ tự động (đi muộn thêm thì tiền phạt tăng), gửi email/thông báo **một lần**
+  (không gửi lại), giữ nguyên hồ sơ người đã quyết. Hồ sơ vượt ngưỡng tự chuyển chờ duyệt.
+- **Form email** nhắc nhở / thông báo giảm thưởng: mẫu HTML gọn (tiêu đề, bảng vi phạm, khối
+  giảm thưởng, quyền giải trình theo Điều 122). Cần bật email Microsoft 365 (`MS_MAIL_NGUOI_GUI`).
+- Bỏ biến `KY_LUAT_NGAY_CHAY` (không còn dùng khi quét hằng ngày).
+
+## [1.57.3] — 2026-08-31
+
+**Bảng lương chi tiết hiện gần toàn màn hình.** Bảng nhiều cột (công, lương theo công, OT, thưởng, phụ cấp, tổng thu nhập, BHXH, thuế, thực lĩnh…) trước bó trong hộp thoại 760px nên tràn/cắt cột, phải cuộn ngang. Thêm biến thể hộp thoại `toàn màn hình` (96% rộng, 94% cao) và áp cho bảng lương — xem đủ cột một lần.
+
+## [1.57.2] — 2026-08-29
+
+**Thêm nút Sửa thiết bị (đổi tên gợi nhớ / vị trí).** Trang Cài đặt → Thiết bị đã có API sửa
+(`PATCH /thiet-bi/:id`) nhưng thiếu nút trên giao diện — không đổi được tên/vị trí sau khi khai
+báo (vd máy chuyển từ văn phòng ra kho vẫn mang tên cũ). Thêm nút **Sửa** + hộp thoại đổi tên +
+vị trí; serial hiện chỉ đọc (là khóa máy tự nhận diện, không đổi).
+
+## [1.57.1] — 2026-08-29
+
+**Tinh chỉnh giao diện: font, khoảng cách, chữ chú thích.**
+
+- **Đổi font web sang Be Vietnam Pro** (thay Inter). Font sans thiết kế riêng cho tiếng Việt —
+  dấu cân, mềm hơn Inter, bớt cứng/đơn điệu; vẫn chuyên nghiệp. Dùng chung font với app điện
+  thoại nên thương hiệu nhất quán. Tự chứa trong repo (subset từ bản chính thức SIL OFL 1.1 sang
+  woff2, ~150 KB cho 4 độ đậm), không gọi Google Fonts. Web và mobile vẫn là hai theme riêng
+  (khác màu chính + bo góc).
+- **Nhịp khoảng cách chuẩn** trong hộp thoại + thẻ: tiêu đề phụ, nhãn, ô nhập, đoạn mô tả, hàng
+  nút không còn dính vào nhau hay cách xa bất hợp lý. Style lại `blockquote`.
+- **Chữ chú thích in nhỏ hơn và mờ hơn** chữ chính (mô tả, phụ đề, ghi chú) — dễ phân biệt nội
+  dung chính với ghi chú. Vẫn đạt WCAG AA.
+
+## [1.57.0] — 2026-08-29
+
+**Xử lý kỷ luật tự động: gom vi phạm theo tháng & mức độ → hồ sơ kỷ luật → nhắc nhở / giảm thưởng.**
+
+Thêm quy trình tự động gom tất cả vi phạm của một người trong một kỳ theo **từng mức độ** thành
+**một hồ sơ kỷ luật** (`ho_so_ky_luat`), rồi tự xử lý:
+
+- **Tổng tiền = 0** → **nhắc nhở** (gửi email Microsoft 365 + thông báo app), lưu hồ sơ.
+- **0 < tổng tiền < ngưỡng** (mặc định 2.000.000đ) → **tự áp giảm thưởng P3**, báo người lao động.
+- **tổng tiền ≥ ngưỡng** → **chờ duyệt**: báo người có thẩm quyền, phải duyệt mới áp.
+
+Chế tài tài chính là **giảm thưởng P3** (Điều 104 BLLĐ, Điều 14 Nội quy) — **không phải phạt tiền,
+không trừ lương cơ bản** (Điều 127 CẤM). Số tiền áp qua khoản lương `tru_giam_thuong_kl` bằng cơ chế
+`chinh_sach_phu_cap` (tính lương đọc được, sống qua mỗi lần tính lại). Kỷ luật lao động chính thức
+(khiển trách trở lên) **vẫn không tự động** — phải qua họp + giải trình + biên bản (Điều 122/124),
+làm ở tab Vi phạm.
+
+- Di trú `032_ho_so_ky_luat.sql`: cột `muc_tru_tien` (mức giảm thưởng HR khai theo Quy chế thưởng)
+  trên `loai_vi_pham`; bảng `ho_so_ky_luat` (khoá `nhan_vien_id + ky + muc_do`); khoản
+  `tru_giam_thuong_kl`; thêm quy tắc phát hiện (đi muộn, về sớm, vắng, quên quẹt — tất tắt sẵn,
+  đối chiếu Nội quy rồi mới bật).
+- Engine `src/ky_luat/xu_ly.ts` (gom + tự xử lý, hàm thuần kiểm được), route `src/tuyen/ky_luat.ts`
+  (danh sách, tổng quan, quét, duyệt, bãi bỏ), việc chạy định kỳ hằng tháng trong `lich_chay.ts`.
+- Tab **Kỷ luật** trên web: tổng quan, danh sách hồ sơ, nút quét & xử lý, hộp thoại duyệt/bãi bỏ.
+- Biến môi trường mới: `KY_LUAT_NGUONG_DUYET`, `KY_LUAT_NGAY_CHAY`.
+
+## [1.56.4] — 2026-08-29
+
+**cap_nhat_phong_ban: tên phòng đầy đủ (không viết tắt) + mở sẵn phòng kho/lái xe.** Ánh xạ mã trong file sang tên đầy đủ: KD→Phòng Kinh doanh, KS→Phòng Kiểm soát, CSKH→Phòng Chăm sóc khách hàng, MKT→Phòng Marketing, XNK→Phòng Xuất nhập khẩu, IT→Phòng Công nghệ thông tin, KT→Phòng Kế toán, HCNS→Phòng Hành chính nhân sự. Sheet kho Trung Quốc gộp về Phòng Kho Trung Quốc; Quản lý kho/Bốc xếp→Phòng Kho Hà Nội; Lái xe→Phòng Lái xe. Luôn tạo sẵn ba phòng Kho Trung Quốc/Kho Hà Nội/Lái xe.
+
+## [1.56.3] — 2026-08-29
+
+**Lệnh cập nhật phòng ban + chức danh từ file danh sách nhân sự.**
+
+`npm run cap_nhat_phong_ban -- <file.xlsx> [--that]` — đọc file lúc chạy (KHÔNG nhét dữ liệu cá
+nhân vào mã nguồn, NĐ 13/2023), khớp theo họ tên (chuẩn hoá bỏ dấu + so tập từ để chịu lệch chữ
+đệm / đảo thứ tự), rồi cập nhật `nhan_vien.phong_ban_id` (tạo `phong_ban` nếu chưa có) và
+`nhan_vien.chuc_danh`. Mặc định chạy thử: in ai sẽ đổi gì, phòng ban nào sẽ tạo, tên nào không
+khớp / nhập nhằng; thêm `--that` để ghi. Chỉ động tới phòng ban + chức danh — không đụng công,
+lương, PIN. Cảnh báo đọc file che số CCCD/SĐT (chỉ hiện 4 số cuối).
+
+## [1.56.2] — 2026-08-29
+
+**Sửa dải chỉ số trong hộp thoại bị răng cưa.** Các ô `.ho-so-chi-so` là `.o-so` (có viền + bo
+góc riêng), lọt vào dải nên khi nội dung một ô dài (vd tên loại vi phạm 3 dòng) các ô cao thấp
+khác nhau thành những hộp bo góc đáy răng cưa. Reset viền/bo góc của ô con, cho các ô bằng chiều
+cao (`align-items: stretch`), đóng viền trên–dưới của dải → dải liền mạch kiểu Metronic. Ảnh
+hưởng mọi hộp thoại dùng dải chỉ số (Vi phạm, Ra/vào, hồ sơ).
+
+## [1.56.1] — 2026-08-29
+
+**Sửa trình bày + đối chiếu Metronic 9, kiểm bằng render thật (desktop + điện thoại 390px).**
+
+- **Header hộp thoại (`.hop-thoai > .dau-trang`)**: nút đóng ✕ bị rớt xuống dòng dưới trên màn
+  hẹp (do `.dau-trang` có `flex-wrap` vốn cho header trang). Ghim ✕ ở góc trên-phải, tiêu đề
+  dài thì tự xuống dòng.
+- **`.ho-so-chi-so` trên màn hẹp (≤520px)**: xếp 1 cột thay vì lưới auto-fit để lẻ ô (trước đây
+  để một ô trống lửng lơ khi có 3 chỉ số).
+- **Bo góc thẻ (`.the`, `.o-so`) → 12px** (radius-xl) khớp Metronic 9 (ReUI: thẻ dùng
+  `--radius + 4px`); ô nhập/nút giữ 6–8px. Token màu (blue-500, zinc, đỏ) vốn đã khớp Metronic.
+
+## [1.56.0] — 2026-08-29
+
+**Tab "Ra/vào" riêng + quy trình xử lý cảnh báo: tự nhắc nhở (email) / tự chuyển kỷ luật theo
+tần suất, nhân sự xem lại và xử lý. Dashboard chuyển sang góc nhìn điểm nóng.**
+
+### Di trú 031 — bảng `xu_ly_ra_vao`
+
+Lưu lịch sử xử lý mỗi cảnh báo, snapshot `(nhan_vien_id, ngay, ma_loi)` (vì `canh_bao_ra_vao`
+bị ghi đè mỗi lần tính lại): `trang_thai` (da_nhac / chuyen_ky_luat / hop_le / bo_qua),
+`tu_dong`, `da_gui_email`, `vi_pham_id`, `nguoi_xu_ly`, `so_lan_thang`. Bật lại loại vi phạm
+`QUEN_QUET` làm loại kỷ luật cho ra/vào (căn cứ điều nội quy + chế tài).
+
+### Gửi email qua Microsoft 365 Graph — `su_kien/gui_email.ts`
+
+Hệ thống chưa có SMTP; thêm bộ gửi mail qua Graph `sendMail` (app-only, cần quyền `Mail.Send` +
+`MS_MAIL_NGUOI_GUI`). Fail-soft: chưa cấu hình / Graph từ chối thì trả false, nhắc nhở vẫn còn
+đường thông báo đẩy trong app. Env mới: `MS_MAIL_*`, `RA_VAO_NGUONG_KY_LUAT`.
+
+### Quy trình xử lý tự động — `ra_vao/xu_ly.ts` + job trong `lich_chay.ts`
+
+Cùng một lỗi trong tháng: **dưới ngưỡng → nhắc nhở** (email + thông báo app); **từ ngưỡng
+(mặc định 3) → chuyển kỷ luật** (tạo hồ sơ `vi_pham` trạng thái 'moi' để nhân sự đối chiếu điều
+nội quy + mức xử phạt + lập biên bản theo BLLĐ Điều 122/124 — không phạt tiền). Job đêm tự quét
+cảnh báo hôm qua và xử lý cái chưa xử lý; nhân sự ép tay được (hợp lệ / bỏ qua / nhắc / kỷ luật).
+
+### Tab Ra/vào + Dashboard điểm nóng — `web`
+
+Trang `/ra-vao` (chỉ nhân sự): lọc theo ngày + trạng thái, bảng cảnh báo dịch danh, hộp thoại
+**xử lý** (nhắc nhở / kỷ luật / hợp lệ / bỏ qua + ghi chú). Dashboard bỏ bảng chi tiết ra/vào,
+thay bằng khối **"Điểm nóng ra/vào"**: cảnh báo trong tháng, chưa xử lý, top người bị cảnh báo
+nhiều nhất, link sang tab. Bố cục nhiều cột responsive (điện thoại → 2K).
+
+## [1.55.0] — 2026-08-28
+
+**Làm lại Dashboard nhân sự: lấy tình hình ra/vào văn phòng làm trọng tâm, bố cục nhiều cột
+dùng hết chiều ngang màn hình lớn (2K).**
+
+### Lớp `ra_vao` cho `/api/dashboard` (chỉ nhân sự)
+
+Mở rộng payload `dashboard_cho` thêm lớp `ra_vao` — gated `la_vai_tro_nhan_su` như các lớp
+`cong_ty`/`nhan_su`, dữ liệu **không lấy** cho vai trò không được phép (chặn rò rỉ ở tầng máy
+chủ, không phải ẩn ở giao diện). Đọc từ `ra_vao_ngay` + `canh_bao_ra_vao` (v1.54.0 đã ghi) +
+`bang_cong_ngay`: đang trong văn phòng, về sớm, tổng phút ra ngoài, số người ra ngoài, đếm cảnh
+báo theo loại, danh sách cảnh báo dịch danh (join phòng ban) và top ra ngoài nhiều nhất.
+
+### Bố cục bảng điều khiển cho màn 2K — `dashboard.tsx`
+
+Với người xem là nhân sự, trang chuyển sang bố cục `bang-dieu-khien`: hàng tổng quan (gộp chấm
+công + ra/vào), **khối cảnh báo ra/vào** làm trọng tâm (bảng dịch danh, nhãn mức độ, liên kết
+tới hồ sơ), rồi hai cột "ra ngoài nhiều nhất | đi muộn" và "biểu đồ 7 ngày | chờ duyệt", cuối
+cùng là việc nhân sự / hệ thống / của tôi. Vùng nội dung nới rộng tới 2040px **chỉ cho trang
+này** (`.noi-dung:has(> .bang-dieu-khien)`) — các trang khác vẫn giới hạn 1280px cho dễ đọc.
+Vai trò nhân viên / trưởng phòng giữ bố cục xếp dọc như cũ.
+
+## [1.54.0] — 2026-08-28
+
+**Giai đoạn 2: sửa chiều hai cổng (tên đặt ngược), lọc bấm-đúp, và nối suy luận ra/vào vào
+`tinh_lai_ngay` — GHI đo lường + cảnh báo, KHÔNG trừ công (Phương án A).**
+
+### Chẩn đoán thực địa: tên máy bị đảo
+
+Chạy `trien_khai/kiem_chieu_ra_vao{,_2}.sql` trên dữ liệu thật:
+
+- Hai đầu đọc **có tính chiều thật** — khoảng cách giữa hai lần quẹt khác máy trải đều (43,6%
+  trên 30 phút), không dồn ở "dưới 1 phút" ⇒ không phải đi qua cả hai trong một bước chân.
+- **Tên máy bị ĐẢO:** 83,5% ngày-người có lần quẹt đầu ngày ở máy tên "Cổng ra" — người ta đi
+  làm buổi sáng bằng cách quẹt "Cổng ra". Chủ công ty xác nhận trực tiếp.
+- **Bấm-đúp nhiều:** 7.743 cặp cùng máy cách nhau ≤ 3 giây. Sau khi lọc (cửa sổ 120 giây), tỉ lệ
+  cùng-máy-liên-tiếp tụt từ 47% còn **21,4%** (< ngưỡng 30% của kế hoạch), và 83,5% ngày đọc
+  thành "vào…ra" lành mạnh.
+
+### Khai chiều theo serial, không theo tên — di trú `030_chieu_ra_vao.sql`
+
+Thêm cột `thiet_bi.chieu` (`vao`/`ra`/`hai_chieu`, mặc định `hai_chieu`). **Không** suy chiều từ
+tên máy (tên có thể đặt ngược); gán thẳng theo serial: `8116254600440` → `vao`,
+`8116254600435` → `ra`. Thêm hai bảng `ra_vao_ngay` (đo lường một ngày-người) và
+`canh_bao_ra_vao` (cảnh báo mâu thuẫn cho dashboard HR).
+
+### Lọc bấm-đúp — `ra_vao.ts` thêm `loc_bam_dup`
+
+Bỏ lần quẹt nếu lần liền trước **cùng máy** và trong 120 giây — chỉ gộp cùng máy, ra rồi vào lại
+(khác máy) trong vài giây là thật, giữ nguyên. Nhân bản đúng phép `lag()` đã kiểm chứng trong SQL.
+
+### Nối vào `tinh_lai_ngay` — chỉ ĐO, không trừ công
+
+Sau khi ghi `bang_cong_ngay`, tính song song ra/vào và ghi `ra_vao_ngay` + `canh_bao_ra_vao`.
+Tách khỏi giao dịch tính công và bọc `try/catch` — một lỗi ở đây **không được** làm hỏng bảng
+công đã ghi. `phut_ra_ngoai` chỉ để đo, **không** trừ vào `phut_lam`/`so_cong`. Kèm 6 kiểm thử
+`loc_bam_dup` và một khẳng định e2e (ngày sạch → có `ra_vao_ngay`, 0 cảnh báo).
 
 ## [1.53.0] — 2026-08-28
 

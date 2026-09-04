@@ -186,6 +186,61 @@ export function doc_rtlog(body: string): { ban_ghi: BanGhiAttlog[]; so_dong_loi:
   return { ban_ghi, so_dong_loi };
 }
 
+/** Mot dong USERINFO may day len: dinh danh nguoi dung ENROLL TREN MAY (khong phai cong). */
+export interface NguoiDungMay {
+  pin: string;
+  ten: string | null;   // Name tren may (thuong ASCII khong dau, cat ngan)
+  the: string | null;   // Card
+  quyen: number;        // Pri: 0 thuong, 14 admin...
+}
+
+/**
+ * Doc bang USERINFO may day len (sau lenh `DATA QUERY USERINFO`, hoac khi enroll/xoa user).
+ * Moi dong la cap `Khoa=gia tri` phan tach bang TAB, vd:
+ *
+ *   PIN=6⇥Name=NGUYEN VIET⇥Pri=0⇥Passwd=⇥Card=0⇥Grp=1⇥TZ=0000000000000000
+ *
+ * Mot so firmware day qua OPERLOG voi tien to `USER ` dau dong — bo tien to do truoc khi doc.
+ * Khoa doc KHONG PHAN BIET HOA THUONG (USERINFO viet hoa, rtlog viet thuong).
+ */
+export function doc_userinfo(body: string): { nguoi_dung: NguoiDungMay[]; so_dong_loi: number } {
+  const nguoi_dung: NguoiDungMay[] = [];
+  let so_dong_loi = 0;
+  if (typeof body !== 'string' || body.trim().length === 0) return { nguoi_dung, so_dong_loi };
+
+  for (const raw of body.split('\n')) {
+    let dong = raw.replace(/\r$/, '').trim();
+    if (dong.length === 0) continue;
+    // Bo tien to loai ban ghi neu co: "USER PIN=..." / "USERINFO PIN=...".
+    dong = dong.replace(/^(USERINFO|USER|OPLOG)\s+/i, '');
+
+    const o: Record<string, string> = {};
+    for (const token of dong.split('\t')) {
+      const vt = token.indexOf('=');
+      if (vt <= 0) continue;
+      o[token.slice(0, vt).trim().toLowerCase()] = token.slice(vt + 1).trim();
+    }
+
+    const pin = (o['pin'] ?? '').trim();
+    if (pin === '' || pin === '0' || pin.length > 32) {
+      // Dong khong co PIN hop le. Neu khong co cap khoa=gia tri nao thi tinh la dong loi.
+      if (Object.keys(o).length === 0) so_dong_loi++;
+      continue;
+    }
+    // Ten truong khac nhau theo dong may: att dung Card/Pri, acc (kiem soat ra vao)
+    // dung CardNo/Privilege. Doc ca hai de mot parser phuc vu duoc ca hai dong.
+    const ten = (o['name'] ?? '').trim();
+    const the = (o['card'] ?? o['cardno'] ?? '').trim();
+    nguoi_dung.push({
+      pin,
+      ten: ten === '' ? null : ten.slice(0, 100),
+      the: the === '' || the === '0' ? null : the.slice(0, 40),
+      quyen: so_nguyen(o['pri'] ?? o['privilege'], 0, 0, 255),
+    });
+  }
+  return { nguoi_dung, so_dong_loi };
+}
+
 function so_nguyen(gia_tri: string | undefined, mac_dinh: number, min: number, max: number): number {
   if (gia_tri === undefined) return mac_dinh;
   const n = Number.parseInt(gia_tri.trim(), 10);

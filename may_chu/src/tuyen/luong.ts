@@ -18,7 +18,7 @@ import { ghi_nhan_am_tham } from '../sharepoint/dong_bo.ts';
 import { khoang_thang } from '../tien_ich/thoi_gian.ts';
 import { ghi_xlsx } from '../tien_ich/ghi_xlsx.ts';
 import {
-  chuoi, chuoi_bat_buoc, luan_ly, ngay_bat_buoc, so_nguyen, so_thuc, than, trong_tap,
+  chuoi, chuoi_bat_buoc, gio, luan_ly, ngay_bat_buoc, so_nguyen, so_thuc, than, trong_tap,
   uuid, uuid_bat_buoc,
   LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
@@ -156,8 +156,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
          ty_le_bhxh_nld, ty_le_bhyt_nld, ty_le_bhtn_nld,
          ty_le_bhxh_nsdld, ty_le_bhyt_nsdld, ty_le_bhtn_nsdld,
          giam_tru_ban_than, giam_tru_phu_thuoc, can_cu, ghi_chu,
-         cong_chuan_thang, lam_tron_den
-       ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id`,
+         cong_chuan_thang, lam_tron_den,
+         phat_di_muon_bat, di_muon_gio_vao, di_muon_moc_50k, di_muon_muc_50k,
+         di_muon_moc_nua_ngay, di_muon_mien_moi_thang, di_muon_han_don, ty_le_thu_viec
+       ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
+                 $18,$19,$20,$21,$22,$23,$24,$25) returning id`,
       [
         hieu_luc_tu,
         chuoi_bat_buoc(b, 'ten', { toi_da: 200 }),
@@ -175,6 +178,16 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         // nhu nhau, nen phai la lua chon co y thuc chu khong phai mac dinh.
         so_thuc(b, 'cong_chuan_thang', { min: 0, max: 31 }) ?? 0,
         so_thuc(b, 'lam_tron_den', { min: 0, max: 1_000_000 }) ?? 0,
+        // Phat di muon: bat/tat + 4 moc gio + muc phat + so lan mien. Mac dinh = tat, dung
+        // mau mac dinh (08:00/08:10/08:30, 50k, 3 lan/thang, don truoc 07:30).
+        luan_ly(b, 'phat_di_muon_bat', false),
+        gio(b, 'di_muon_gio_vao') ?? '08:00:00',
+        gio(b, 'di_muon_moc_50k') ?? '08:10:00',
+        so_tien(b, 'di_muon_muc_50k', 50000),
+        gio(b, 'di_muon_moc_nua_ngay') ?? '08:30:00',
+        so_nguyen(b, 'di_muon_mien_moi_thang', { min: 0, max: 31 }) ?? 3,
+        gio(b, 'di_muon_han_don') ?? '07:30:00',
+        so_thuc(b, 'ty_le_thu_viec', { min: 0.5, max: 1 }) ?? 0.85,
       ],
     );
 
@@ -650,6 +663,43 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     const k = await lay_ky(p.ky_luong_id);
     await tinh_ky_luong(k.id, k.thang);
     await ghi_nhat_ky(nd.sub, 'sua_phieu_luong', 'phieu_luong', id, b, req.ip);
+    return { ok: true };
+  });
+
+  /**
+   * Nhap LUONG CUNG (luong co ban P1 + phu cap co dinh P2) ngay tren bang luong — dung workflow
+   * Excel: go thang vao bang. Tao/cap nhat mot `quyet_dinh_luong` co hieu luc tu dau thang cua ky
+   * (nen bo tinh luong doc lai duoc va cac ky sau van giu), roi tinh lai ca ky.
+   */
+  app.put('/phieu-luong/:id/luong-cung', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const b = than(req.body);
+
+    const p = await truy_van_mot<{ nhan_vien_id: string; ky_luong_id: string; trang_thai: string }>(
+      `select p.nhan_vien_id, p.ky_luong_id, k.trang_thai from phieu_luong p
+         join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
+      [id],
+    );
+    if (p === null) throw new LoiKhongTim('Không tìm thấy phiếu lương.');
+    if (!SUA_DUOC.has(p.trang_thai)) {
+      throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${p.trang_thai}" nên phiếu đã khóa sửa.`);
+    }
+    const k = await lay_ky(p.ky_luong_id);
+    const hieu_luc_tu = `${k.thang}-01`;
+
+    await thuc_thi(
+      `insert into quyet_dinh_luong
+         (nhan_vien_id, hieu_luc_tu, luong_co_ban, phu_cap, hinh_thuc, ly_do, tao_boi)
+       values ($1, $2, $3, $4, 'thang', 'Nhập từ bảng lương', $5)
+       on conflict (nhan_vien_id, hieu_luc_tu) do update set
+         luong_co_ban = excluded.luong_co_ban, phu_cap = excluded.phu_cap`,
+      [p.nhan_vien_id, hieu_luc_tu, so_tien(b, 'luong_co_ban'), so_tien(b, 'phu_cap'), nd.sub],
+    );
+
+    await tinh_ky_luong(k.id, k.thang);
+    await ghi_nhat_ky(nd.sub, 'nhap_luong_cung', 'phieu_luong', id,
+      { luong_co_ban: b['luong_co_ban'], phu_cap: b['phu_cap'] }, req.ip);
     return { ok: true };
   });
 

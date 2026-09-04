@@ -61,8 +61,8 @@ async function main(): Promise<void> {
   for (const nam_can of [nam, nam + 1]) {
     for (const [md, ten] of NGAY_LE_CO_DINH) {
       so_ngay_le += await thuc_thi(
-        `insert into ngay_le(ngay, ten, huong_luong) values ($1, $2, true)
-         on conflict (ngay) do nothing`,
+        `insert into ngay_le(ngay, ten, huong_luong, lich_ma) values ($1, $2, true, 'vn')
+         on conflict (ngay, lich_ma) do nothing`,
         [`${nam_can}-${md}`, ten],
       );
     }

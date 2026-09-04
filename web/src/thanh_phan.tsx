@@ -182,9 +182,11 @@ interface HopThoaiProps {
   children: ReactNode;
   khi_dong: () => void;
   rong?: boolean;
+  /** Gan het man hinh — cho noi dung rong nhu bang luong chi tiet nhieu cot. */
+  toan_man?: boolean;
 }
 
-export function HopThoai({ tieu_de, children, khi_dong, rong }: HopThoaiProps): ReactNode {
+export function HopThoai({ tieu_de, children, khi_dong, rong, toan_man }: HopThoaiProps): ReactNode {
   useEffect(() => {
     const khi_bam = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') khi_dong();
@@ -196,7 +198,8 @@ export function HopThoai({ tieu_de, children, khi_dong, rong }: HopThoaiProps): 
   return (
     <div className="man-mo" onClick={khi_dong} role="presentation">
       <div
-        className={rong === true ? 'hop-thoai hop-thoai-rong' : 'hop-thoai'}
+        className={toan_man === true ? 'hop-thoai hop-thoai-toan-man'
+          : rong === true ? 'hop-thoai hop-thoai-rong' : 'hop-thoai'}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -398,20 +401,26 @@ interface OSoProps {
   gia_tri: ReactNode;
   phu?: string;
   mau?: 'tot' | 'xau' | 'canh_bao' | 'lanh';
+  /** Co thi o so bam duoc (mo danh sach chi tiet). Them dau ">" + vien nhan chuot. */
+  khi_bam?: () => void;
 }
 
-export function OSo({ nhan, gia_tri, phu, mau }: OSoProps): ReactNode {
+export function OSo({ nhan, gia_tri, phu, mau, khi_bam }: OSoProps): ReactNode {
   const mau_chu = mau === undefined
     ? undefined
     : { tot: 'var(--tot)', xau: 'var(--xau)', canh_bao: 'var(--canh-bao)', lanh: 'var(--lanh)' }[mau];
-  return (
-    <div className="o-so">
-      <div className="o-so-nhan">{nhan}</div>
+  const ben_trong = (
+    <>
+      <div className="o-so-nhan">{nhan}{khi_bam !== undefined && <span className="o-so-mui"> ›</span>}</div>
       <div className="o-so-gia-tri so" style={mau_chu === undefined ? undefined : { color: mau_chu }}>
         {gia_tri}
       </div>
       {phu !== undefined && <div className="o-so-phu">{phu}</div>}
-    </div>
+    </>
+  );
+  if (khi_bam === undefined) return <div className="o-so">{ben_trong}</div>;
+  return (
+    <button type="button" className="o-so o-so-bam" onClick={khi_bam}>{ben_trong}</button>
   );
 }
 

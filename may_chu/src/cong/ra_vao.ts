@@ -59,6 +59,37 @@ export interface KetQuaRaVao {
 
 type TrangThai = 'ngoai' | 'trong';
 
+/**
+ * Cua so gop bam-dup, tinh bang giay. Chan doan thuc dia: 7.743 cap cung may cach nhau <= 3
+ * giay (bam-dup that), roi thua ra toi ~120 giay. Lay 120 giay thi LAP LAI tut tu 47% con
+ * 21,4% — duoi nguong 30% cua ke hoach. Xem trien_khai/kiem_chieu_ra_vao_2.sql.
+ */
+export const CUA_SO_BAM_DUP_GIAY = 120;
+
+/**
+ * Loc bam-dup: bo lan quet neu lan LIEN TRUOC (theo thoi diem, bat ke may nao dung truoc) la
+ * CUNG may va cach khong qua `cua_so_giay`. Chi gop cung may — ra roi vao lai (khac may) trong
+ * vai giay la that, giu nguyen.
+ *
+ * So sanh voi lan LIEN TRUOC trong danh sach da sap (khong phai lan da-giu gan nhat) — dung y
+ * het phep lag() trong kiem_chieu_ra_vao_2.sql, nen ket qua khop voi con so da kiem chung.
+ */
+export function loc_bam_dup(
+  quet: readonly LanQuetCoChieu[], cua_so_giay: number = CUA_SO_BAM_DUP_GIAY,
+): LanQuetCoChieu[] {
+  const ds = [...quet].sort((a, b) => a.thoi_diem.getTime() - b.thoi_diem.getTime());
+  const giu: LanQuetCoChieu[] = [];
+  for (let i = 0; i < ds.length; i++) {
+    const q = ds[i]!;
+    const truoc = i > 0 ? ds[i - 1]! : null;
+    const bam_dup = truoc !== null
+      && truoc.thiet_bi === q.thiet_bi
+      && (q.thoi_diem.getTime() - truoc.thoi_diem.getTime()) / 1000 <= cua_so_giay;
+    if (!bam_dup) giu.push(q);
+  }
+  return giu;
+}
+
 /** Moc tan ca (co tru dung sai ve som): quet 'ra' tu moc nay tro di = ket thuc ngay. */
 function moc_tan_ca(ngay: string, ca: CaLam | null): Date | null {
   if (ca === null || ca.qua_dem) return null;

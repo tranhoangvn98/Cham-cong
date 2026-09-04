@@ -23,6 +23,7 @@ import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
 import { la_quan_tri, la_vai_tro_nhan_su } from '../bao_mat/quyen_ho_so.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { hop_dong_sap_het_han, muc_gap } from '../hop_dong/nhac_han.ts';
+import { dem_pin_lech } from '../dinh_danh/doi_chieu_may.ts';
 
 export interface NguoiXemDashboard {
   vai_tro: string;
@@ -355,6 +356,109 @@ export async function viec_cua_nhan_su(): Promise<ViecNhanSu> {
   };
 }
 
+// ---------------------------------------------------------------- lop 3c: ra/vao van phong (HR)
+
+export interface DiemNongNguoi {
+  nhan_vien_id: string;
+  ma_nv: string;
+  ho_ten: string;
+  phong_ban: string | null;
+  so_canh_bao: number;
+  chua_xu_ly: number;
+}
+
+export interface RaVaoHR {
+  // --- Hom nay ---
+  /** Dang trong van phong ngay LUC NAY (chua quet ra tinh toi thoi diem tinh gan nhat). */
+  dang_trong: number;
+  /** Ve som hom nay (co phut_ve_som > 0). */
+  ve_som: number;
+  /** Tong phut ra ngoai trong gio lam hom nay (da tru phan trum gio nghi trua). */
+  tong_phut_ra_ngoai: number;
+  so_nguoi_ra_ngoai: number;
+  /** So canh bao ra/vao hom nay (don vi = nguoi-ngay-loai). */
+  canh_bao_hom_nay: number;
+  // --- Thang nay (diem nong) ---
+  thang: string;
+  canh_bao_thang: number;
+  chua_xu_ly_thang: number;
+  /** Dem canh bao thang theo tung ma loi. */
+  canh_bao_theo_loai: { ma_loi: string; so: number }[];
+  /** Nguoi bi canh bao nhieu nhat thang (diem nong can xu ly). */
+  top_nguoi: DiemNongNguoi[];
+}
+
+/**
+ * Diem nong ra/vao cho dashboard nhan su. TONG QUAN thoi — danh sach chi tiet + xu ly nam o tab
+ * rieng (/ra-vao). Doc `ra_vao_ngay` + `canh_bao_ra_vao` + `xu_ly_ra_vao` + `bang_cong_ngay`.
+ */
+export async function ra_vao_hr(hom_nay: string): Promise<RaVaoHR> {
+  const thang = hom_nay.slice(0, 7);
+  const [tong_ngay, ve_som, cb_hom_nay, thang_tong, theo_loai, top_nguoi] = await Promise.all([
+    truy_van_mot<{ dang_trong: number; tong_phut_ra_ngoai: number; so_nguoi_ra_ngoai: number }>(
+      `select count(*) filter (where con_trong_van_phong)::int as dang_trong,
+              coalesce(sum(phut_ra_ngoai), 0)::int             as tong_phut_ra_ngoai,
+              count(*) filter (where phut_ra_ngoai > 0)::int   as so_nguoi_ra_ngoai
+         from ra_vao_ngay where ngay = $1`,
+      [hom_nay],
+    ),
+    truy_van_mot<{ so: number }>(
+      `select count(*) filter (where phut_ve_som > 0)::int as so
+         from bang_cong_ngay where ngay = $1`,
+      [hom_nay],
+    ),
+    truy_van_mot<{ so: number }>(
+      `select count(distinct (nhan_vien_id, ma_loi))::int as so
+         from canh_bao_ra_vao where ngay = $1`,
+      [hom_nay],
+    ),
+    truy_van_mot<{ canh_bao: number; chua: number }>(
+      `with dv as (
+         select distinct cb.nhan_vien_id, cb.ngay, cb.ma_loi, (x.trang_thai is null) as chua
+           from canh_bao_ra_vao cb
+           left join xu_ly_ra_vao x on x.nhan_vien_id = cb.nhan_vien_id
+                 and x.ngay = cb.ngay and x.ma_loi = cb.ma_loi
+          where to_char(cb.ngay, 'YYYY-MM') = $1)
+       select count(*)::int as canh_bao, count(*) filter (where chua)::int as chua from dv`,
+      [thang],
+    ),
+    truy_van<{ ma_loi: string; so: number }>(
+      `select ma_loi, count(distinct (nhan_vien_id, ngay))::int as so
+         from canh_bao_ra_vao where to_char(ngay, 'YYYY-MM') = $1
+        group by ma_loi order by so desc`,
+      [thang],
+    ),
+    truy_van<DiemNongNguoi>(
+      `select cb.nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+              count(distinct (cb.ngay, cb.ma_loi))::int as so_canh_bao,
+              count(distinct (cb.ngay, cb.ma_loi))
+                filter (where x.trang_thai is null)::int as chua_xu_ly
+         from canh_bao_ra_vao cb
+         join nhan_vien nv on nv.id = cb.nhan_vien_id
+         left join phong_ban pb on pb.id = nv.phong_ban_id
+         left join xu_ly_ra_vao x on x.nhan_vien_id = cb.nhan_vien_id
+               and x.ngay = cb.ngay and x.ma_loi = cb.ma_loi
+        where to_char(cb.ngay, 'YYYY-MM') = $1
+        group by cb.nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten
+        order by so_canh_bao desc limit 6`,
+      [thang],
+    ),
+  ]);
+
+  return {
+    dang_trong: tong_ngay?.dang_trong ?? 0,
+    ve_som: ve_som?.so ?? 0,
+    tong_phut_ra_ngoai: tong_ngay?.tong_phut_ra_ngoai ?? 0,
+    so_nguoi_ra_ngoai: tong_ngay?.so_nguoi_ra_ngoai ?? 0,
+    canh_bao_hom_nay: cb_hom_nay?.so ?? 0,
+    thang,
+    canh_bao_thang: thang_tong?.canh_bao ?? 0,
+    chua_xu_ly_thang: thang_tong?.chua ?? 0,
+    canh_bao_theo_loai: theo_loai,
+    top_nguoi,
+  };
+}
+
 // ---------------------------------------------------------------- lop 4: he thong
 
 export interface HeThong {
@@ -362,10 +466,12 @@ export interface HeThong {
   /** Ban ghi ERP da noi duoc voi nhan vien. */
   erp_da_noi: number;
   erp_da_cau_hinh: boolean;
+  /** So user trong may bi LECH mapping (PIN thuoc nguoi khac) hoac chua gan — canh bao do. */
+  pin_lech: number;
 }
 
 export async function tinh_trang_he_thong(): Promise<HeThong> {
-  const [may, erp] = await Promise.all([
+  const [may, erp, pin_lech] = await Promise.all([
     truy_van<HeThong['thiet_bi'][number]>(
       `select ten, serial, thay_lan_cuoi,
               (thay_lan_cuoi is not null
@@ -376,11 +482,13 @@ export async function tinh_trang_he_thong(): Promise<HeThong> {
     truy_van_mot<{ so: number }>(
       'select count(*)::int as so from nhan_vien where erp_user_id is not null',
     ),
+    dem_pin_lech(),
   ]);
   return {
     thiet_bi: may,
     erp_da_noi: erp?.so ?? 0,
     erp_da_cau_hinh: cau_hinh.erp.url !== '' && cau_hinh.erp.api_key !== '',
+    pin_lech,
   };
 }
 
@@ -392,6 +500,7 @@ export interface Dashboard {
   toi: CongCuaToi | null;
   phong: PhongCuaToi | null;
   cong_ty: CongTy | null;
+  ra_vao: RaVaoHR | null;
   nhan_su: ViecNhanSu | null;
   he_thong: HeThong | null;
 }
@@ -419,8 +528,9 @@ export async function dashboard_cho(
     : null;
 
   const cong_ty = la_nhan_su ? await toan_cong_ty(hom_nay) : null;
+  const ra_vao = la_nhan_su ? await ra_vao_hr(hom_nay) : null;
   const nhan_su = la_nhan_su ? await viec_cua_nhan_su() : null;
   const he_thong = la_admin ? await tinh_trang_he_thong() : null;
 
-  return { ngay: hom_nay, vai_tro: nd.vai_tro, toi, phong, cong_ty, nhan_su, he_thong };
+  return { ngay: hom_nay, vai_tro: nd.vai_tro, toi, phong, cong_ty, ra_vao, nhan_su, he_thong };
 }

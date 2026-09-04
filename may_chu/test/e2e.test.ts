@@ -30,7 +30,27 @@ process.env['ERP_API_KEY'] = 'khoa_erp_kiem_thu';
 process.env['DATABASE_URL'] ??=
   'postgres://chamcong:chamcong_dev@localhost:5432/chamcong_test';
 
-const ten_db = process.env['DATABASE_URL'].split('/').pop() ?? '';
+/**
+ * Ten CSDL trong chuoi ket noi. BO CHUOI TRUY VAN TRUOC roi moi cat duong dan.
+ *
+ * `split('/').pop()` la sai theo ca hai huong:
+ *
+ *   postgres://cong@/chamcong_test?host=/var/tmp/pgrun  ->  'pgrun'          (tu choi oan)
+ *   postgres://may/that?options=/chamcong_test          ->  'chamcong_test'  (CHO QUA)
+ *
+ * Huong thu nhat chi kho chiu — no chan mat cach chay tren may khong mo cong TCP. Huong thu
+ * hai moi la huong chet: bo kiem nay xoa sach bang. Mot phep chan xoa du lieu khong duoc doc
+ * nham.
+ *
+ * Khong dung `new URL`: dang socket Unix cua libpq co phan host RONG, WHATWG URL tu choi thang.
+ */
+function ten_csdl(url: string): string {
+  const khong_truy_van = url.split('?')[0] ?? '';
+  const sau_giao_thuc = khong_truy_van.replace(/^[a-z+]+:\/\//i, '');
+  const vt = sau_giao_thuc.indexOf('/');
+  return vt < 0 ? '' : sau_giao_thuc.slice(vt + 1);
+}
+const ten_db = ten_csdl(process.env['DATABASE_URL']);
 if (!ten_db.startsWith('chamcong_test')) {
   throw new Error(
     `Kiem thu e2e xoa sach du lieu nen chi chay tren DB ten '*_test'. `
@@ -523,6 +543,62 @@ test('may day ATTLOG -> luu lan quet va TINH LUON bang cong', async () => {
   assert.equal(bc!.phut_ot, 0, 'khong co don lam them -> khong tu sinh OT');
   assert.match(String(bc!.ghi_chu), /khong co don lam them da duyet/);
   assert.equal(bc!.so_cong, 1);
+
+  // Suy luan ra/vao van phong duoc GHI song song (Phuong an A: chi do, khong tru cong).
+  // May SERIAL chua khai chieu -> doc theo Status: vao(08:12) ra(12:01) vao(13:28) ra(18:05).
+  // Phien 12:01-13:28 nam TRON trong gio nghi trua 12:00-13:30 -> 0 phut ra ngoai. Ngay sach.
+  const rv = await truy_van_mot<{
+    phut_ra_ngoai: number; so_phien_ra_ngoai: number; con_trong_van_phong: boolean;
+  }>(
+    `select phut_ra_ngoai, so_phien_ra_ngoai, con_trong_van_phong
+       from ra_vao_ngay where nhan_vien_id = $1 and ngay = $2`,
+    [nhan_vien_id, NGAY],
+  );
+  assert.notEqual(rv, null, 'phai co dong ra_vao_ngay sau khi tinh cong');
+  assert.equal(rv!.phut_ra_ngoai, 0, 'phien nam tron trong gio nghi -> 0 phut ra ngoai');
+  assert.equal(rv!.so_phien_ra_ngoai, 1);
+  assert.equal(rv!.con_trong_van_phong, false);
+  const cb = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from canh_bao_ra_vao where nhan_vien_id = $1 and ngay = $2`,
+    [nhan_vien_id, NGAY],
+  );
+  assert.equal(cb!.so, 0, 'ngay sach -> khong canh bao mau thuan ra/vao');
+});
+
+test('ra/vao: nhan su xem canh bao va bam xu ly -> ghi xu_ly_ra_vao', async () => {
+  // Chen mot canh bao co dinh de kiem duong xu ly (khong phu thuoc canh bao ngau nhien).
+  const NGAY_CB = '2026-08-10';
+  await thuc_thi(
+    `insert into canh_bao_ra_vao (nhan_vien_id, ngay, ma_loi, thoi_diem, mo_ta)
+     values ($1, $2, 'QUEN_QUET_RA', $3, 'Cuối ngày vẫn đang trong văn phòng — quên quẹt ra')
+     on conflict do nothing`,
+    [nhan_vien_id, NGAY_CB, `${NGAY_CB}T10:00:00+07:00`],
+  );
+
+  // HR (admin) thay canh bao trong danh sach.
+  const ds = await goi('GET', `/api/ra-vao?tu=${NGAY_CB}&den=${NGAY_CB}`, { token: token_admin });
+  assert.equal(ds.ma, 200);
+  const dong = (ds.body as unknown as Array<Record<string, unknown>>)
+    .find((d) => d['nhan_vien_id'] === nhan_vien_id && d['ma_loi'] === 'QUEN_QUET_RA');
+  assert.notEqual(dong, undefined, 'phai thay canh bao vua chen');
+  assert.equal(dong!['trang_thai'], null, 'chua xu ly');
+
+  // Bam "hop le" (khong gui email/tao vi pham) — duong xu ly gon nhat.
+  const xl = await goi('POST', '/api/ra-vao/xu-ly', {
+    token: token_admin,
+    body: { nhan_vien_id, ngay: NGAY_CB, ma_loi: 'QUEN_QUET_RA', hanh_dong: 'hop_le',
+      ghi_chu: 'co bao truoc' },
+  });
+  assert.equal(xl.ma, 200);
+  assert.equal(xl.body['trang_thai'], 'hop_le');
+
+  const luu = await truy_van_mot<{ trang_thai: string; nguoi_xu_ly: string | null }>(
+    `select trang_thai, nguoi_xu_ly from xu_ly_ra_vao
+      where nhan_vien_id = $1 and ngay = $2 and ma_loi = 'QUEN_QUET_RA'`,
+    [nhan_vien_id, NGAY_CB],
+  );
+  assert.equal(luu?.trang_thai, 'hop_le');
+  assert.notEqual(luu?.nguoi_xu_ly, null, 'phai ghi nguoi bam (khong phai tu dong)');
 });
 
 // Firmware PUSH kiem soat ra vao day cham cong bang table=rtlog. Truoc khi ho tro, nhanh
@@ -5491,10 +5567,15 @@ test('ban chot: tep XLSX doc lai duoc va co dung cot', async () => {
     const bang = trich_xlsx(du_lieu!);
     assert.notEqual(bang, null, `${loai}: tep khong phai XLSX doc duoc`);
     const tieu_de = bang?.hang[0] ?? [];
-    assert.equal(tieu_de[0], 'Mã NV', `${loai}: cot dau phai la Ma NV`);
-    assert.equal(tieu_de[1], 'Họ tên');
     if (loai === 'bang_luong') {
+      // Bang luong theo mau cong ty: cot dau la STT (so thu tu), roi Ma NV / Ho ten.
+      assert.equal(tieu_de[0], 'STT', 'bang luong: cot dau phai la STT');
+      assert.equal(tieu_de[1], 'Mã NV');
+      assert.equal(tieu_de[2], 'Họ tên');
       assert.ok(tieu_de.includes('Thực lĩnh'), 'bang luong thieu cot Thuc linh');
+    } else {
+      assert.equal(tieu_de[0], 'Mã NV', `${loai}: cot dau phai la Ma NV`);
+      assert.equal(tieu_de[1], 'Họ tên');
     }
   }
 });
@@ -5574,11 +5655,13 @@ test('ban chot: KHONG mo chot bang cong duoc khi luong thang do da duyet', async
   assert.equal(r.ma, 409, JSON.stringify(r.body));
   assert.match(String(r.body['loi']), /đã có bảng lương được duyệt/);
 
-  // Va bang cong cua thang do phai dang o trang thai da chot.
+  // Va bang cong cua thang do phai dang o trang thai da chot. So sanh theo THANG (`YYYY-MM`),
+  // khong go ngay cuoi thang cung `-31` — thang 30 ngay (hay thang 2) thi `2026-09-31` la ngay
+  // khong ton tai, Postgres nem "date/time field value out of range".
   const d = await truy_van_mot<{ so: number }>(
     `select count(*)::int as so from bang_cong_ngay
-      where ngay >= $1 and ngay <= $2 and da_chot = false`,
-    [`${ky}-01`, `${ky}-31`]);
+      where to_char(ngay, 'YYYY-MM') = $1 and da_chot = false`,
+    [ky]);
   assert.equal(d?.so, 0, 'con dong bang cong chua chot trong thang da duyet luong');
 });
 

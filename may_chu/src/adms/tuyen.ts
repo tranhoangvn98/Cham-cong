@@ -17,7 +17,7 @@ import {
   doc_thong_tin_may,
   dung_phan_hoi_handshake,
 } from './giao_thuc.ts';
-import { tiep_nhan_attlog, tiep_nhan_rtlog } from './tiep_nhan.ts';
+import { tiep_nhan_attlog, tiep_nhan_rtlog, tiep_nhan_userinfo } from './tiep_nhan.ts';
 import { ip_duoc_phep } from '../tien_ich/dia_chi_ip.ts';
 
 interface DongThietBi {
@@ -173,8 +173,25 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       return tra_text(res, 'OK\n');
     }
 
-    // Bang khac (OPERLOG, ATTPHOTO, tabledata...): xac nhan da nhan de may khong gui lai
-    // mai. Ghi muc info chu khong phai debug: production chay o muc info, de debug thi
+    // USERINFO: danh sach user enroll tren may (sau lenh query user, hoac khi enroll/xoa user).
+    // Luu de DOI CHIEU voi mapping he thong -> phat hien trung/lech PIN.
+    //
+    // Ten bang khac nhau theo firmware (USERINFO / USER / USERDATA...), va co firmware day user
+    // qua OPERLOG voi dong "USER PIN=...". Nen KHONG chi tin ten bang: bat ca khi THAN co dong
+    // dinh danh nguoi dung (PIN=... kem Name=/Card=/Pri=). Chi lam o day, SAU khi ATTLOG/rtlog da
+    // duoc xu ly rieng — nen khong nham voi ban ghi cham cong.
+    const co_dong_user = /(^|\n)\s*(USER\s+|USERINFO\s+)?PIN=[^\t\n]*\t[^\n]*\b(Name|Card(No)?|Pri(vilege)?)=/i
+      .test(body);
+    if (bang === 'USERINFO' || bang === 'USER' || bang === 'USERDATA'
+        || (co_dong_user && bang !== 'ATTLOG' && bang !== 'RTLOG')) {
+      await cham_thiet_bi(sn, null, req.ip);
+      const kq = await tiep_nhan_userinfo(sn, body);
+      req.log.info({ sn, bang, ...kq }, 'nhan USERINFO');
+      return tra_text(res, 'OK\n');
+    }
+
+    // Bang khac (OPERLOG khong co user, ATTPHOTO, tabledata...): xac nhan da nhan de may khong
+    // gui lai mai. Ghi muc info chu khong phai debug: production chay o muc info, de debug thi
     // mot bang mang du lieu that bi bo qua se khong de lai dau vet nao — dung loi da lam
     // moi lan quet bi vut im lang truoc khi ho tro rtlog.
     await cham_thiet_bi(sn, null, req.ip);
@@ -183,6 +200,55 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
     }
     return tra_text(res, 'OK\n');
   });
+
+  // -------------------------------------------------- ket qua DATA QUERY (dong may acc)
+  //
+  // May kiem soat ra vao (DeviceType=acc, PUSH 3.x) KHONG day ket qua `DATA QUERY
+  // tablename=user,...` vao /cdata nhu dong cham cong (att), ma vao ENDPOINT RIENG
+  // POST /iclock/querydata?tablename=user. Than la cac dong `Pin=..⇥CardNo=..⇥Name=..⇥
+  // Privilege=..`. Thieu route nay thi ket qua roi vao setNotFoundHandler (404) va
+  // danh sach user khong bao gio ve — dung nhu vi sao may kho tra count=0 du lenh chay.
+  //
+  // Bat ca GET lan POST: mot so firmware hoi endpoint bang GET truoc khi day.
+  async function nhan_querydata(req: FastifyRequest, res: FastifyReply): Promise<FastifyReply> {
+    const sn = lay_serial(req);
+    const may = await may_hop_le(sn);
+    if (may === null) {
+      req.log.warn({ sn }, 'may chua khai bao goi querydata');
+      return tra_text(res, 'Unauthorized\n', 401);
+    }
+    await cham_thiet_bi(sn, null, req.ip);
+    const bang = String((req.query as Record<string, unknown>)['tablename'] ?? '').toLowerCase();
+    const body = typeof req.body === 'string' ? req.body : '';
+
+    // Luu NGUYEN VAN moi ket qua query (moi bang) de kham pha cau truc cac bang access-control
+    // (timezone, door, userauthorize...) — chua co tai lieu, phai xem that de soan DATA UPDATE.
+    if (body.trim().length > 0) {
+      const so_dong = body.split('\n').filter((d) => d.trim().length > 0).length;
+      try {
+        await thuc_thi(
+          `insert into may_du_lieu_tho(thiet_bi_serial, bang, noi_dung, so_dong, luc)
+           values ($1,$2,$3,$4, now())
+           on conflict (thiet_bi_serial, bang) do update
+             set noi_dung = excluded.noi_dung, so_dong = excluded.so_dong, luc = now()`,
+          [sn, bang === '' ? '(khong_ten)' : bang, body.slice(0, 100000), so_dong],
+        );
+      } catch (loi) {
+        req.log.warn({ sn, bang, loi: (loi as Error).message }, 'khong luu duoc du lieu tho');
+      }
+    }
+
+    // Bang user chua dinh danh nguoi dung -> parse vao may_nguoi_dung. Cac bang khac chi luu tho.
+    if ((bang === 'user' || bang === '') && body.trim().length > 0) {
+      const kq = await tiep_nhan_userinfo(sn, body);
+      req.log.info({ sn, bang, ...kq }, 'nhan querydata user');
+    } else if (body.trim().length > 0) {
+      req.log.info({ sn, bang, dai: body.length }, 'nhan querydata bang khac (da luu tho)');
+    }
+    return tra_text(res, 'OK\n');
+  }
+  app.post('/querydata', nhan_querydata);
+  app.get('/querydata', nhan_querydata);
 
   // -------------------------------------------------- may hoi lenh can thuc thi
   /**

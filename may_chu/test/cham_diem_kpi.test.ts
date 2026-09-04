@@ -2,6 +2,7 @@
 //
 // Diem KPI se bi chinh nguoi bi cham chat van, nen moi con so mong doi o day deu tinh tay
 // duoc va co dan giai trong ghi chu.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

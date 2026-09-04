@@ -1,6 +1,6 @@
 {
   "name": "@cham-cong/dien-thoai",
-  "version": "1.54.0",
+  "version": "1.56.4",
   "main": "expo-router/entry",
   "dependencies": {
     "expo": "~57.0.11",

@@ -10,6 +10,8 @@ import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { gui_ngam, tai_khoan_nguoi_duyet } from '../su_kien/thong_bao_day.ts';
 import { do_geofence, type DiaDiem } from '../tien_ich/dia_ly.ts';
 import { doc_anh_selfie, luu_anh_selfie } from '../tien_ich/luu_anh.ts';
+import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
+import { tra_loi_tro_ly } from '../ca_nhan/tro_ly.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import {
   cong_ngay, khoang_thang, ngay_dia_phuong, ngay_viet, thu_trong_tuan,
@@ -140,6 +142,8 @@ async function viec_can_chu_y(req: FastifyRequest, nv_id: string): Promise<{
     `select (select count(*) from don_nghi_phep
               where nhan_vien_id = $1 and trang_thai = 'cho_duyet')
           + (select count(*) from don_giai_trinh
+              where nhan_vien_id = $1 and trang_thai = 'cho_duyet')
+          + (select count(*) from don_tu
               where nhan_vien_id = $1 and trang_thai = 'cho_duyet') as so`,
     [nv_id],
   );
@@ -153,6 +157,10 @@ async function viec_can_chu_y(req: FastifyRequest, nv_id: string): Promise<{
                   and (not $1::boolean
                        or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)))
             + (select count(*) from don_giai_trinh d join nhan_vien nv on nv.id = d.nhan_vien_id
+                where d.trang_thai = 'cho_duyet' and d.nhan_vien_id <> $2
+                  and (not $1::boolean
+                       or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)))
+            + (select count(*) from don_tu d join nhan_vien nv on nv.id = d.nhan_vien_id
                 where d.trang_thai = 'cho_duyet' and d.nhan_vien_id <> $2
                   and (not $1::boolean
                        or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2))) as so`,
@@ -355,105 +363,6 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       'select id, ten, vi_do, kinh_do, ban_kinh_m from dia_diem where dang_hoat_dong = true order by ten',
     ),
   );
-
-  // ================================================================ ho so ca nhan
-  //
-  // Man "Ca nhan" (Phu luc B Man 4). Chi tra du lieu cua CHINH nguoi dang xem — duong nay
-  // khong nhan tham so nhan_vien_id nao, nen khong the do tay de xem ho so nguoi khac.
-  // CCCD, ma so thue, so BHXH la du lieu ca nhan theo Nghi dinh 13/2023/ND-CP.
-  app.get('/ho-so', async (req) => {
-    const nv_id = nhan_vien_cua_toi(req);
-    const nd = nguoi_dung_hien_tai(req);
-
-    const [nv, ca_nhan, hop_dong, luong, phu_thuoc, bhxh, thiet_bi, tai_lieu] =
-      await Promise.all([
-        // Nhan vien + phong + ca + nguoi quan ly.
-        truy_van_mot(
-          `select nv.id, nv.ho_ten, nv.ma_nv, nv.ma_erp, nv.pin_may, nv.ngay_vao,
-                  nv.ngay_chinh_thuc, nv.so_dien_thoai, nv.email, nv.chuc_danh,
-                  nv.duoc_cham_cong_dien_thoai, nv.dang_hoat_dong,
-                  pb.ten as phong_ban,
-                  cl.ten as ca_lam, cl.gio_vao as ca_gio_vao, cl.gio_ra as ca_gio_ra,
-                  ql.ho_ten as quan_ly_ten, ql.chuc_danh as quan_ly_chuc_danh
-             from nhan_vien nv
-             left join phong_ban pb on pb.id = nv.phong_ban_id
-             left join ca_lam cl on cl.id = nv.ca_lam_id
-             left join nhan_vien ql on ql.id = nv.nguoi_quan_ly_id
-            where nv.id = $1`,
-          [nv_id],
-        ),
-        truy_van_mot(
-          `select cccd_so, cccd_ngay_cap, cccd_noi_cap, ngay_sinh, gioi_tinh, noi_sinh,
-                  dan_toc, quoc_tich, tinh_trang_hon_nhan, dia_chi_thuong_tru, dia_chi_hien_tai,
-                  ma_so_thue, ngan_hang, so_tai_khoan, so_bhxh, so_the_bhyt, co_quan_bhxh,
-                  noi_kham_chua_benh, kham_suc_khoe_ngay, kham_suc_khoe_noi, kham_suc_khoe_ket_luan
-             from ho_so_ca_nhan where nhan_vien_id = $1`,
-          [nv_id],
-        ),
-        truy_van_mot(
-          `select so_hd, loai, chuc_danh, noi_lam_viec, ngay_ky, hieu_luc_tu, hieu_luc_den,
-                  luong_co_ban, trang_thai
-             from hop_dong_lao_dong
-            where nhan_vien_id = $1 and trang_thai in ('nhap', 'hieu_luc')
-            order by hieu_luc_tu desc limit 1`,
-          [nv_id],
-        ),
-        truy_van_mot(
-          `select hieu_luc_tu, luong_co_ban, phu_cap, hinh_thuc, so_quyet_dinh
-             from quyet_dinh_luong
-            where nhan_vien_id = $1 and hieu_luc_tu <= current_date
-            order by hieu_luc_tu desc limit 1`,
-          [nv_id],
-        ),
-        truy_van(
-          `select ho_ten, quan_he, ngay_sinh, ma_so_thue, so_cccd, tu_thang, den_thang,
-                  da_dang_ky
-             from nguoi_phu_thuoc
-            where nhan_vien_id = $1
-            order by tu_thang desc nulls last, ho_ten`,
-          [nv_id],
-        ),
-        truy_van(
-          `select loai, thang, muc_dong, ty_le_phan_tram, so_ho_so, trang_thai, ngay_nop, ghi_chu
-             from bhxh_su_kien
-            where nhan_vien_id = $1
-            order by thang desc limit 10`,
-          [nv_id],
-        ),
-        truy_van(
-          `select loai, ten, hang, model, so_seri, ngay_cap, tinh_trang
-             from thiet_bi_cap_phat
-            where nhan_vien_id = $1
-            order by ngay_cap desc nulls last`,
-          [nv_id],
-        ),
-        truy_van(
-          `select dm.ma, dm.ten, dm.nhom, dm.mo_ta, dm.bat_buoc, dm.chi_khi_nghi_viec,
-                  coalesce(tl.trang_thai, 'thieu') as trang_thai,
-                  tl.id is not null as co_dong,
-                  ht.ten_goc as ten_tep
-             from danh_muc_tai_lieu dm
-             left join tai_lieu_nhan_vien tl
-               on tl.danh_muc_id = dm.id and tl.nhan_vien_id = $1
-             left join ho_so_tep ht on ht.id = tl.tep_id
-            where dm.dang_dung = true
-            order by dm.nhom, dm.thu_tu, dm.ten`,
-          [nv_id],
-        ),
-      ]);
-
-    return {
-      nhan_vien: nv,
-      ca_nhan,
-      ten_dang_nhap: nd.ten,
-      hop_dong,
-      luong,
-      nguoi_phu_thuoc: phu_thuoc,
-      bhxh,
-      thiet_bi,
-      tai_lieu,
-    };
-  });
 
   // ================================================================ CHAM CONG BANG DIEN THOAI
   //
@@ -825,6 +734,100 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     }
   });
 
+  // ================================================================ KY LUAT CUA TOI
+  /** Ho so ky luat cua CHINH MINH — de nguoi lao dong biet va con khieu nai. */
+  app.get('/ky-luat', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select h.id, h.ma, h.ky, h.muc_do, h.so_vi_pham, h.tong_tien, h.hinh_thuc,
+              h.trang_thai, h.chi_tiet, h.ly_do_mien, h.cap_nhat_luc,
+              (select count(*) from khieu_nai_ky_luat kn
+                where kn.ho_so_ky_luat_id = h.id and kn.nhan_vien_id = h.nhan_vien_id)::int as so_khieu_nai
+         from ho_so_ky_luat h
+        where h.nhan_vien_id = $1 and h.trang_thai <> 'bac_bo'
+        order by h.ky desc, h.cap_nhat_luc desc limit 100`,
+      [nv_id],
+    );
+  });
+
+  // ================================================================ KHIEU NAI CUA TOI
+  /** Khieu nai cua chinh minh (ve ky luat hoac vi pham). */
+  app.get('/khieu-nai', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select kn.id, kn.ma, kn.loai, kn.noi_dung, kn.trang_thai, kn.phan_hoi,
+              kn.tao_luc, kn.xu_ly_luc,
+              h.ma as ma_ky_luat, h.ky as ky_ky_luat, h.tong_tien,
+              v.ngay as ngay_vi_pham, lvp.ten as ten_vi_pham
+         from khieu_nai_ky_luat kn
+         left join ho_so_ky_luat h on h.id = kn.ho_so_ky_luat_id
+         left join vi_pham v on v.id = kn.vi_pham_id
+         left join loai_vi_pham lvp on lvp.id = v.loai_vi_pham_id
+        where kn.nhan_vien_id = $1
+        order by kn.tao_luc desc limit 100`,
+      [nv_id],
+    );
+  });
+
+  /**
+   * Gui khieu nai ve mot quyet dinh ky luat (BLLD Dieu 131 — quyen khieu nai) hoac mot vi pham.
+   * Phai kem ho_so_ky_luat_id HOAC vi_pham_id, va doi tuong do phai la cua chinh minh.
+   */
+  app.post('/khieu-nai', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const b = than(req.body);
+    const ho_so_ky_luat_id = uuid(b, 'ho_so_ky_luat_id');
+    const vi_pham_id = uuid(b, 'vi_pham_id');
+    const loai = trong_tap(b, 'loai', ['khieu_nai', 'giai_trinh'] as const, { mac_dinh: 'khieu_nai' });
+    const noi_dung = chuoi_bat_buoc(b, 'noi_dung', { toi_thieu: 5, toi_da: 2000 });
+
+    if (ho_so_ky_luat_id === null && vi_pham_id === null) {
+      throw new LoiDauVao('Phải chọn hồ sơ kỷ luật hoặc vi phạm để khiếu nại.');
+    }
+
+    // Doi tuong khieu nai phai la CUA CHINH MINH (khong khieu nai ho nguoi khac).
+    if (ho_so_ky_luat_id !== null) {
+      const h = await truy_van_mot<{ ok: boolean }>(
+        'select true as ok from ho_so_ky_luat where id = $1 and nhan_vien_id = $2',
+        [ho_so_ky_luat_id, nv_id],
+      );
+      if (h === null) throw new LoiKhongTim('Không tìm thấy hồ sơ kỷ luật của bạn.');
+    }
+    if (vi_pham_id !== null) {
+      const v = await truy_van_mot<{ ok: boolean }>(
+        'select true as ok from vi_pham where id = $1 and nhan_vien_id = $2', [vi_pham_id, nv_id],
+      );
+      if (v === null) throw new LoiKhongTim('Không tìm thấy vi phạm của bạn.');
+    }
+
+    // Chan khieu nai trung (con dang mo) tren cung mot doi tuong.
+    const trung = await truy_van_mot<{ id: string }>(
+      `select id from khieu_nai_ky_luat
+        where nhan_vien_id = $1 and trang_thai in ('moi','dang_xem')
+          and coalesce(ho_so_ky_luat_id::text,'') = coalesce($2::uuid::text,'')
+          and coalesce(vi_pham_id::text,'') = coalesce($3::uuid::text,'') limit 1`,
+      [nv_id, ho_so_ky_luat_id, vi_pham_id],
+    );
+    if (trung !== null) throw new LoiXungDot('Bạn đã có một khiếu nại đang mở cho mục này.');
+
+    const dong = await truy_van_mot<{ id: string; ma: string }>(
+      `insert into khieu_nai_ky_luat (ho_so_ky_luat_id, vi_pham_id, nhan_vien_id, loai, noi_dung)
+       values ($1,$2,$3,$4,$5) returning id, ma`,
+      [ho_so_ky_luat_id, vi_pham_id, nv_id, loai, noi_dung],
+    );
+    await ghi_nhat_ky(nd.sub, 'gui_khieu_nai', 'khieu_nai', dong?.id ?? null,
+      { ho_so_ky_luat_id, vi_pham_id, loai }, req.ip);
+
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: loai === 'giai_trinh' ? 'Có giải trình mới' : 'Có khiếu nại kỷ luật mới',
+      noi_dung: `${await ten_nhan_vien(nv_id)} gửi ${dong?.ma ?? 'khiếu nại'}.`,
+      du_lieu: { man: 'ky-luat', khieu_nai_id: dong?.id ?? null },
+    });
+    return res.code(201).send({ ...dong, trang_thai: 'moi' });
+  });
+
   // ================================================================ token push (Expo)
   app.post('/token-push', async (req) => {
     const nd = nguoi_dung_hien_tai(req);
@@ -841,9 +844,15 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
   });
 
   app.delete('/token-push', async (req) => {
+    // Rang theo CHU SO HUU: xoa token chi khi no thuoc chinh nguoi dang dang nhap. Thieu dieu
+    // kien nay thi bat ky ai biet token day cua nguoi khac deu go duoc, khien ho ngung nhan push.
+    const nd = nguoi_dung_hien_tai(req);
     const b = than(req.body ?? {});
     const token = chuoi(b, 'token', { toi_da: 300 });
-    if (token !== null) await thuc_thi('delete from token_push where token = $1', [token]);
+    if (token !== null) {
+      await thuc_thi(
+        'delete from token_push where token = $1 and nguoi_dung_id = $2', [token, nd.sub]);
+    }
     return { ok: true };
   });
 
@@ -908,6 +917,378 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       await tinh_lai_khoang(kq.tinh_lai.tu_ngay, kq.tinh_lai.den_ngay, nv_id);
     }
     return { ok: true, da_tinh_lai: kq.tinh_lai !== null };
+  });
+
+  // ================================================================ GOC NHIN CA NHAN
+  //
+  // Dashboard ca nhan, thong bao (BGD), van ban cong ty, ho so cua toi, tro ly du lieu. TAT CA
+  // chi dung du lieu cua CHINH nguoi dang nhap — nhan vien thuong khong bao gio thay dashboard
+  // toan cong ty hay du lieu nguoi khac (NĐ 13/2023).
+
+  /** Tong quan ca nhan: cong thang nay, phep, nghi le sap toi, thong bao moi, don cho. */
+  app.get('/tong-quan', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const hom_nay = ngay_dia_phuong(new Date());
+    const thang = hom_nay.slice(0, 7);
+
+    const [cong, phep, nghi_le, thong_bao, don_cho] = await Promise.all([
+      tong_hop_thang(nv_id, thang),
+      truy_van_mot<{ quota: number; da_dung: number }>(
+        `select nv.so_ngay_phep_nam::float as quota,
+                coalesce((
+                  select sum(case when d.nua_ngay then 0.5
+                                  else (d.den_ngay - d.tu_ngay + 1) end)
+                    from don_nghi_phep d
+                   where d.nhan_vien_id = nv.id and d.loai = 'phep_nam'
+                     and d.trang_thai = 'da_duyet'
+                     and extract(year from d.tu_ngay) = extract(year from current_date)
+                ), 0)::float as da_dung
+           from nhan_vien nv where nv.id = $1`,
+        [nv_id],
+      ),
+      truy_van(
+        'select ngay, ten from ngay_le where ngay >= $1 order by ngay limit 5', [hom_nay],
+      ),
+      truy_van_mot<{ chua_doc: number; can_giai_trinh: number }>(
+        `with cua_toi as (
+           select tb.id, tb.can_giai_trinh from thong_bao tb
+            where tb.da_go = false and (tb.het_han is null or tb.het_han > now())
+              and (tb.pham_vi = 'toan_cong_ty'
+                   or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1))
+         )
+         select count(*) filter (where not exists (
+                  select 1 from thong_bao_da_doc dd
+                   where dd.thong_bao_id = cua_toi.id and dd.nhan_vien_id = $1))::int as chua_doc,
+                count(*) filter (where cua_toi.can_giai_trinh and not exists (
+                  select 1 from thong_bao_da_doc dd
+                   where dd.thong_bao_id = cua_toi.id and dd.nhan_vien_id = $1
+                     and dd.giai_trinh is not null))::int as can_giai_trinh
+           from cua_toi`,
+        [nv_id],
+      ),
+      truy_van_mot<{ so_don_cho: number }>(
+        `select count(*)::int as so_don_cho from (
+           select trang_thai from don_nghi_phep where nhan_vien_id = $1
+           union all select trang_thai from don_giai_trinh where nhan_vien_id = $1
+           union all select trang_thai from don_tu where nhan_vien_id = $1
+         ) t where trang_thai = 'cho_duyet'`,
+        [nv_id],
+      ),
+    ]);
+
+    return { thang, cong, phep, nghi_le, thong_bao, don_cho };
+  });
+
+  /** Ho so cua CHINH minh — thong tin co ban + lien he. Nhan vien thuong xem duoc cua minh.
+   *
+   * Ke tu 1.65.0 tra THEM cac khoi hop dong / luong / phu thuoc / BHXH / thiet bi / tai lieu
+   * (truong PHU, noi them vao chu khong doi hinh dang cu) de man "Ca nhan" trong trang
+   * /ca-nhan co du lieu. CCCD, ma so thue, so BHXH nam o bang ho_so_ca_nhan rieng theo
+   * Nghi dinh 13/2023/ND-CP. */
+  app.get('/ho-so', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const nd = nguoi_dung_hien_tai(req);
+
+    const [ho_so, ca_nhan, hop_dong, luong, phu_thuoc, bhxh, thiet_bi, tai_lieu] =
+      await Promise.all([
+        truy_van_mot(
+          `select nv.ma_nv, nv.ma_erp, nv.ho_ten, nv.chuc_danh, nv.pin_may, nv.ngay_vao,
+                  nv.ngay_chinh_thuc, nv.email, nv.so_dien_thoai,
+                  nv.so_ngay_phep_nam::float as so_ngay_phep_nam,
+                  nv.duoc_cham_cong_dien_thoai, nv.dang_hoat_dong,
+                  pb.ten as phong_ban, cl.ten as ca_lam, cl.gio_vao, cl.gio_ra,
+                  ql.ho_ten as nguoi_quan_ly
+             from nhan_vien nv
+             left join phong_ban pb on pb.id = nv.phong_ban_id
+             left join ca_lam cl on cl.id = nv.ca_lam_id
+             left join nhan_vien ql on ql.id = nv.nguoi_quan_ly_id
+            where nv.id = $1`,
+          [nv_id],
+        ),
+        truy_van_mot(
+          `select cccd_so, cccd_ngay_cap, cccd_noi_cap, ngay_sinh, gioi_tinh, noi_sinh,
+                  dan_toc, quoc_tich, tinh_trang_hon_nhan, dia_chi_thuong_tru, dia_chi_hien_tai,
+                  ma_so_thue, ngan_hang, so_tai_khoan, so_bhxh, so_the_bhyt, co_quan_bhxh,
+                  noi_kham_chua_benh, kham_suc_khoe_ngay, kham_suc_khoe_noi, kham_suc_khoe_ket_luan
+             from ho_so_ca_nhan where nhan_vien_id = $1`,
+          [nv_id],
+        ),
+        truy_van_mot(
+          `select so_hd, loai, chuc_danh, noi_lam_viec, ngay_ky, hieu_luc_tu, hieu_luc_den,
+                  luong_co_ban, trang_thai
+             from hop_dong_lao_dong
+            where nhan_vien_id = $1 and trang_thai in ('nhap', 'hieu_luc')
+            order by hieu_luc_tu desc limit 1`,
+          [nv_id],
+        ),
+        truy_van_mot(
+          `select hieu_luc_tu, luong_co_ban, phu_cap, hinh_thuc, so_quyet_dinh
+             from quyet_dinh_luong
+            where nhan_vien_id = $1 and hieu_luc_tu <= current_date
+            order by hieu_luc_tu desc limit 1`,
+          [nv_id],
+        ),
+        truy_van(
+          `select ho_ten, quan_he, ngay_sinh, ma_so_thue, so_cccd, tu_thang, den_thang,
+                  da_dang_ky
+             from nguoi_phu_thuoc
+            where nhan_vien_id = $1
+            order by tu_thang desc nulls last, ho_ten`,
+          [nv_id],
+        ),
+        truy_van(
+          `select loai, thang, muc_dong, ty_le_phan_tram, so_ho_so, trang_thai, ngay_nop, ghi_chu
+             from bhxh_su_kien
+            where nhan_vien_id = $1
+            order by thang desc limit 10`,
+          [nv_id],
+        ),
+        truy_van(
+          `select loai, ten, hang, model, so_seri, ngay_cap, tinh_trang
+             from thiet_bi_cap_phat
+            where nhan_vien_id = $1
+            order by ngay_cap desc nulls last`,
+          [nv_id],
+        ),
+        truy_van(
+          `select dm.ma, dm.ten, dm.nhom, dm.mo_ta, dm.bat_buoc, dm.chi_khi_nghi_viec,
+                  coalesce(tl.trang_thai, 'thieu') as trang_thai,
+                  tl.id is not null as co_dong,
+                  ht.ten_goc as ten_tep
+             from danh_muc_tai_lieu dm
+             left join tai_lieu_nhan_vien tl
+               on tl.danh_muc_id = dm.id and tl.nhan_vien_id = $1
+             left join ho_so_tep ht on ht.id = tl.tep_id
+            where dm.dang_dung = true
+            order by dm.nhom, dm.thu_tu, dm.ten`,
+          [nv_id],
+        ),
+      ]);
+
+    // Giao dien doc `du_lieu.nhan_vien.*` — PHAI long ho so nhan vien duoi khoa `nhan_vien`,
+    // khong trai phang ra top-level (`...ho_so`), neu khong `du_lieu.nhan_vien` la undefined va
+    // trang Ca nhan vo khi doc `.ho_ten`. Tai khoan chua noi ho so nhan vien -> `nhan_vien: null`,
+    // giao dien tu hien thong bao "chua noi ho so" thay vi bao loi.
+    return {
+      nhan_vien: ho_so,
+      ten_dang_nhap: nd.ten,
+      ca_nhan,
+      hop_dong,
+      luong,
+      nguoi_phu_thuoc: phu_thuoc,
+      bhxh,
+      thiet_bi,
+      tai_lieu,
+    };
+  });
+
+  /** Cap nhat LIEN HE cua chinh minh (SDT, email). Truong nhe, tu phuc vu, ghi nhat ky. */
+  app.post('/ho-so/lien-he', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const b = than(req.body);
+    const sdt = chuoi(b, 'so_dien_thoai', { toi_da: 20 });
+    const email = chuoi(b, 'email', { toi_da: 120 });
+    if (sdt !== null && sdt !== '' && !/^[0-9+\-() .]{6,20}$/.test(sdt)) {
+      throw new LoiDauVao('Số điện thoại không hợp lệ.');
+    }
+    if (email !== null && email !== '' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      throw new LoiDauVao('Email không hợp lệ.');
+    }
+    await thuc_thi(
+      `update nhan_vien set so_dien_thoai = $2, email = $3, cap_nhat_luc = now() where id = $1`,
+      [nv_id, sdt === '' ? null : sdt, email === '' ? null : email],
+    );
+    await ghi_nhat_ky(nd.sub, 'tu_cap_nhat_lien_he', 'nhan_vien', nv_id, {}, req.ip);
+    return res.send({ ok: true });
+  });
+
+  /** Thong bao (BGD/HR) trong pham vi cua toi, kem trang thai da doc / da giai trinh. */
+  app.get('/thong-bao', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select tb.id, tb.ma, tb.tieu_de, tb.noi_dung, tb.muc_do, tb.can_giai_trinh,
+              tb.tao_luc, tb.het_han,
+              dd.doc_luc, dd.giai_trinh, dd.giai_trinh_luc, dd.ma as ma_giai_trinh,
+              (dd.doc_luc is not null) as da_doc,
+              (dd.giai_trinh is not null) as da_giai_trinh
+         from thong_bao tb
+         left join thong_bao_da_doc dd on dd.thong_bao_id = tb.id and dd.nhan_vien_id = $1
+        where tb.da_go = false and (tb.het_han is null or tb.het_han > now())
+          and (tb.pham_vi = 'toan_cong_ty'
+               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1))
+        order by (dd.doc_luc is null) desc, tb.muc_do = 'khan' desc, tb.tao_luc desc
+        limit 200`,
+      [nv_id],
+    );
+  });
+
+  /** Xac nhan da doc mot thong bao; kem giai trinh neu thong bao yeu cau. */
+  app.post('/thong-bao/:id/xac-nhan', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const tb_id = lay_id(req);
+    const b = than(req.body);
+    const giai_trinh = chuoi(b, 'giai_trinh', { toi_da: 2000 });
+
+    const tb = await truy_van_mot<{ can_giai_trinh: boolean }>(
+      `select tb.can_giai_trinh from thong_bao tb
+        where tb.id = $1 and tb.da_go = false
+          and (tb.pham_vi = 'toan_cong_ty'
+               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2))`,
+      [tb_id, nv_id],
+    );
+    if (tb === null) throw new LoiKhongTim('Không tìm thấy thông báo trong phạm vi của bạn.');
+    if (tb.can_giai_trinh && (giai_trinh === null || giai_trinh.trim().length < 5)) {
+      throw new LoiDauVao('Thông báo này yêu cầu bạn nhập giải trình (tối thiểu 5 ký tự).');
+    }
+
+    const dong = await truy_van_mot<{ ma: string | null; giai_trinh: string | null }>(
+      `insert into thong_bao_da_doc(thong_bao_id, nhan_vien_id, giai_trinh)
+       values ($1, $2, $3)
+       on conflict (thong_bao_id, nhan_vien_id) do update
+         set giai_trinh = coalesce(excluded.giai_trinh, thong_bao_da_doc.giai_trinh)
+       returning ma, giai_trinh`,
+      [tb_id, nv_id, giai_trinh === '' ? null : giai_trinh],
+    );
+    await ghi_nhat_ky(nd.sub, 'xac_nhan_thong_bao', 'thong_bao', tb_id,
+      { co_giai_trinh: dong?.giai_trinh != null }, req.ip);
+    return res.send({ ok: true, ma_giai_trinh: dong?.ma ?? null });
+  });
+
+  /** Kho van ban cong ty (noi quy, bieu mau...). Ai dang nhap cung xem duoc. */
+  app.get('/van-ban', async () => truy_van(
+    `select id, ma, tieu_de, mo_ta, danh_muc, ten_goc, mime, kich_thuoc, tao_luc,
+            (ten_luu is not null) as co_tep
+       from van_ban_cong_ty where da_go = false
+      order by danh_muc, tao_luc desc limit 500`,
+  ));
+
+  /** Tai mot van ban cong ty ve. */
+  app.get('/van-ban/:id/tai', async (req, res) => {
+    const id = lay_id(req);
+    const vb = await truy_van_mot<{ ten_luu: string | null; mime: string | null; ten_goc: string | null }>(
+      'select ten_luu, mime, ten_goc from van_ban_cong_ty where id = $1 and da_go = false', [id],
+    );
+    if (vb === null || vb.ten_luu === null) throw new LoiKhongTim('Văn bản không có tệp đính kèm.');
+    const du_lieu = await doc_tep_ho_so(vb.ten_luu);
+    if (du_lieu === null) throw new LoiKhongTim('Tệp không còn trên máy chủ.');
+    const ten = vb.ten_goc ?? 'van-ban';
+    return res
+      .header('content-type', vb.mime ?? 'application/octet-stream')
+      .header('x-content-type-options', 'nosniff')
+      .header('content-security-policy', "default-src 'none'; sandbox")
+      .header('content-disposition', `attachment; filename*=UTF-8''${encodeURIComponent(ten)}`)
+      .send(du_lieu);
+  });
+
+  /** Tro ly du lieu ca nhan: hoi bang tieng Viet, tra loi tu du lieu cua chinh minh. */
+  app.get('/tro-ly', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const q = req.query as Record<string, unknown>;
+    const cau_hoi = typeof q['hoi'] === 'string' ? q['hoi'] : '';
+    return tra_loi_tro_ly(nv_id, cau_hoi);
+  });
+
+  // ---------------------------------------------------------------- chuong bao (notification)
+  /** Thong bao rieng cua CHINH tai khoan nay + so chua doc. */
+  app.get('/bao', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const [danh_sach, dem] = await Promise.all([
+      truy_van(
+        `select id, tieu_de, noi_dung, du_lieu, da_doc, tao_luc
+           from thong_bao_rieng where nguoi_dung_id = $1
+          order by da_doc, tao_luc desc limit 50`,
+        [nd.sub],
+      ),
+      truy_van_mot<{ so: number }>(
+        'select count(*)::int as so from thong_bao_rieng where nguoi_dung_id = $1 and da_doc = false',
+        [nd.sub],
+      ),
+    ]);
+    return { danh_sach, so_chua_doc: dem?.so ?? 0 };
+  });
+
+  /** Danh dau mot thong bao da doc. */
+  app.post('/bao/:id/doc', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    await thuc_thi(
+      'update thong_bao_rieng set da_doc = true where id = $1 and nguoi_dung_id = $2',
+      [lay_id(req), nd.sub],
+    );
+    return { ok: true };
+  });
+
+  /** Danh dau TAT CA da doc. */
+  app.post('/bao/doc-het', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    await thuc_thi(
+      'update thong_bao_rieng set da_doc = true where nguoi_dung_id = $1 and da_doc = false',
+      [nd.sub],
+    );
+    return { ok: true };
+  });
+
+  // ---------------------------------------------------------------- de xuat & kien nghi
+  /** Danh muc loai de xuat dang dung (de giao dien do danh sach, khong go tay). */
+  app.get('/de-xuat/loai', async () => truy_van(
+    `select id, ma_loai, ten, mo_ta, can_so_luong from loai_de_xuat
+      where dang_dung = true order by thu_tu, ten`));
+
+  /** De xuat cua CHINH minh. */
+  app.get('/de-xuat', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select d.id, d.ma, d.tieu_de, d.noi_dung, d.so_luong, d.trang_thai,
+              d.ghi_chu_duyet, d.duyet_luc, d.tao_luc, l.ten as ten_loai, l.can_so_luong
+         from de_xuat d join loai_de_xuat l on l.id = d.loai_de_xuat_id
+        where d.nhan_vien_id = $1 order by d.tao_luc desc limit 200`,
+      [nv_id],
+    );
+  });
+
+  /** Tu gui de xuat. */
+  app.post('/de-xuat', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const b = than(req.body);
+    const loai_id = uuid(b, 'loai_de_xuat_id', { bat_buoc: true }) as string;
+    const tieu_de = chuoi_bat_buoc(b, 'tieu_de', { toi_da: 250, toi_thieu: 3 });
+    const noi_dung = chuoi(b, 'noi_dung', { toi_da: 4000 });
+    const sl_tho = b['so_luong'];
+    const so_luong = typeof sl_tho === 'number' && Number.isInteger(sl_tho) && sl_tho > 0
+      ? Math.min(sl_tho, 100000) : null;
+
+    const loai = await truy_van_mot<{ id: string; ten: string }>(
+      'select id, ten from loai_de_xuat where id = $1 and dang_dung = true', [loai_id],
+    );
+    if (loai === null) throw new LoiKhongTim('Loại đề xuất không hợp lệ.');
+
+    const dong = await truy_van_mot<{ id: string; ma: string }>(
+      `insert into de_xuat(nhan_vien_id, loai_de_xuat_id, tieu_de, noi_dung, so_luong)
+       values ($1,$2,$3,$4,$5) returning id, ma`,
+      [nv_id, loai_id, tieu_de, noi_dung ?? '', so_luong],
+    );
+    await ghi_nhat_ky(nd.sub, 'gui_de_xuat', 'de_xuat', dong?.id ?? null, { loai: loai.ten }, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: `Đề xuất mới chờ duyệt: ${loai.ten}`,
+      noi_dung: `${await ten_nhan_vien(nv_id)}: ${tieu_de}`,
+      du_lieu: { man: 'duyet-don', loai: 'de_xuat', de_xuat_id: dong?.id ?? null },
+    });
+    return res.code(201).send({ ...dong, trang_thai: 'cho_duyet' });
+  });
+
+  /** Tu huy de xuat CUA MINH khi con cho duyet. */
+  app.post('/de-xuat/:id/huy', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const kq = await thuc_thi(
+      `update de_xuat set trang_thai = 'da_huy'
+        where id = $1 and nhan_vien_id = $2 and trang_thai = 'cho_duyet'`,
+      [lay_id(req), nv_id],
+    );
+    if (kq === 0) throw new LoiXungDot('Đề xuất không còn ở trạng thái chờ duyệt.');
+    return { ok: true };
   });
 }
 

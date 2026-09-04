@@ -124,7 +124,11 @@ test('khong quay ve Poppins o bat ky nen tang nao', () => {
   }
 });
 
-test('web va mobile la HAI bo theme khac nhau (dung y ke hoach v2 muc 4.5)', () => {
-  assert.notEqual(t.web.chu_viet.ho, t.mobile.chu_viet.ho, 'hai nen tang phai khac font');
+test('web va mobile van la HAI bo theme khac nhau (mau + bo goc)', () => {
+  // Truoc day yeu cau KHAC CA FONT (web Inter / mobile Be Vietnam Pro). Chu cong ty da chot
+  // dung CHUNG Be Vietnam Pro cho ca hai — font thiet ke rieng cho tieng Viet, thong nhat
+  // thuong hieu. Hai nen tang van la hai theme rieng: mau chinh va bo goc van khac nhau
+  // (web Metronic xanh #3B82F6, bo goc the 12px; mobile Material xanh #4285F4).
   assert.notEqual(t.web.mau.sang.chinh, t.mobile.mau.sang.chinh, 'hai nen tang phai khac mau chinh');
+  assert.notEqual(t.web.bo_goc.lon, t.mobile.bo_goc.lon, 'hai nen tang phai khac bo goc');
 });

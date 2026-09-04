@@ -46,7 +46,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
   },
   {
     duong_dan: '/ca-nhan',
-    tom_tat: 'Khu vực của tôi: công, đơn từ, căn cứ lương và hồ sơ của chính bạn.',
+    tom_tat: 'Khu vực của tôi: công, đơn từ, căn cứ lương và hồ sơ của chính bạn trong một trang.',
     buoc: [
       { chu: 'Trang chủ: xem giờ vào/ra hôm nay, công tháng, phép còn lại và các lần quẹt.' },
       { chu: 'Bảng công: xem lịch tháng và từng ngày. Thấy sai lệch thì bấm gửi giải trình quên quẹt.' },
@@ -57,7 +57,66 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     luu_y: [
       'Tài khoản phải được nhân sự gắn với hồ sơ nhân viên thì các màn này mới có dữ liệu.',
       'OT hiển thị ở đây là giờ máy đo được, chưa qua duyệt — chỉ OT có đơn duyệt mới được trả thêm.',
-      'Đơn giải trình cho ngày đã chốt bảng công sẽ bị từ chối ngay — kiểm tra sớm, đừng để cuối tháng.',
+    ],
+  },
+  {
+    duong_dan: '/don-cua-toi',
+    tom_tat: 'Tự nộp đơn xin nghỉ phép và giải trình (chấm công, vi phạm) — theo dõi trạng thái tại đây.',
+    buoc: [
+      { chu: 'Tab "Nghỉ phép": chọn loại nghỉ, khoảng ngày (hoặc nửa ngày), lý do rồi gửi. Đơn còn chờ duyệt thì hủy được.' },
+      { chu: 'Tab "Giải trình chấm công": khi quên quẹt thẻ, đề xuất giờ vào/ra đúng để nhân sự đối chiếu.' },
+      { chu: 'Tab "Vi phạm của tôi": xem vi phạm ghi nhận với mình và gửi giải trình — quyền tự bào chữa theo BLLĐ Điều 122.' },
+    ],
+    luu_y: [
+      'Đơn gửi tới quản lý / nhân sự duyệt. Duyệt đơn nghỉ phép làm bảng công ngày đó tự đổi, không phải tính tay.',
+      'Khoảng ngày đã chốt bảng công thì không tự nộp đơn được nữa — liên hệ nhân sự.',
+    ],
+  },
+  {
+    duong_dan: '/thong-bao',
+    tom_tat: 'Thông báo từ Ban giám đốc và nhân sự — đọc, xác nhận, và giải trình khi được yêu cầu.',
+    buoc: [
+      { chu: 'Đọc thông báo, bấm "Đã đọc & hiểu" để xác nhận.' },
+      { chu: 'Thông báo gắn nhãn "Cần giải trình" (nổi đỏ) thì phải nhập giải trình mới xong.' },
+      { chu: 'Đăng thông báo mới, chọn mức độ và bật "bắt buộc giải trình" khi cần.', vai_tro: NHAN_SU },
+      { chu: 'Bấm "Xem ai đã đọc" để biết ai đã xác nhận và nội dung giải trình.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Giải trình cho thông báo có mã GT- riêng và gộp chung với mục Khiếu nại & giải trình để nhân sự theo dõi.',
+    ],
+  },
+  {
+    duong_dan: '/van-ban',
+    tom_tat: 'Kho văn bản công ty: nội quy, biểu mẫu, chính sách — tải về khi cần.',
+    buoc: [
+      { chu: 'Chọn danh mục, bấm Tải để lấy văn bản về máy.' },
+      { chu: 'Tải văn bản mới lên, gắn danh mục và mô tả cho dễ tìm.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Tệp nhận PDF, DOCX, XLSX và ảnh — máy chủ kiểm định dạng thật, không tin đuôi tên.',
+    ],
+  },
+  {
+    duong_dan: '/ho-so-toi',
+    tom_tat: 'Hồ sơ cá nhân của bạn: thông tin công việc (chỉ xem) và liên hệ (tự cập nhật).',
+    buoc: [
+      { chu: 'Xem phòng ban, chức danh, ca làm, PIN máy, quỹ phép của mình.' },
+      { chu: 'Bấm Sửa ở ô Liên hệ để tự cập nhật số điện thoại và email.' },
+    ],
+    luu_y: [
+      'Thông tin công việc (chức danh, phòng, ca) do nhân sự quản lý — cần đổi thì liên hệ nhân sự.',
+    ],
+  },
+  {
+    duong_dan: '/phieu-luong-toi',
+    tom_tat: 'Phiếu lương hàng tháng của bạn — từng khoản thu nhập và khấu trừ, đối chiếu được.',
+    buoc: [
+      { chu: 'Chọn kỳ lương ở ô trên để xem phiếu của tháng đó (chỉ hiện kỳ đã duyệt/trả).' },
+      { chu: 'Xem chi tiết: lương theo công, phụ cấp, OT, BHXH/BHYT/BHTN, thuế, các khoản trừ.' },
+      { chu: 'Bấm "In phiếu" để in hoặc lưu PDF.' },
+    ],
+    luu_y: [
+      'Thấy sai thì gửi giải trình ở mục Đơn của tôi hoặc liên hệ nhân sự — mỗi khoản đều ghi rõ để đối chiếu.',
     ],
   },
   {
@@ -122,16 +181,30 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/vi-pham',
-    tom_tat: 'Vi phạm nội quy lao động: do người ghi nhận, hoặc hệ thống tự phát hiện.',
+    duong_dan: '/ra-vao',
+    tom_tat: 'Cảnh báo ra/vào không quẹt thẻ: hệ thống tự nhắc nhở / chuyển kỷ luật, nhân sự xem lại và xử lý.',
     buoc: [
-      { chu: 'Xem danh sách hệ thống tự phát hiện theo điều kiện đã khai (đi muộn nhiều lần…).', vai_tro: NHAN_SU },
-      { chu: 'Ghi nhận vi phạm thủ công khi cần, chọn đúng mục trong danh mục nội quy.', vai_tro: NHAN_SU },
-      { chu: 'Gắn biên bản/tài liệu kèm theo vào hồ sơ người đó.', vai_tro: NHAN_SU },
+      { chu: 'Lọc theo ngày và trạng thái; xem người bị cảnh báo nhiều nhất ở Tổng quan.', vai_tro: NHAN_SU },
+      { chu: 'Bấm "Xử lý": nhắc nhở (gửi email), chuyển kỷ luật, hoặc đánh dấu hợp lệ kèm lý do.', vai_tro: NHAN_SU },
+      { chu: 'Khi chuyển kỷ luật, sang tab Vi phạm đối chiếu điều nội quy + mức xử phạt và lập biên bản.', vai_tro: NHAN_SU },
     ],
     luu_y: [
-      'Danh mục vi phạm và mức xử lý lấy từ Nội quy lao động đã đăng ký. Xử lý ngoài danh mục là rủi ro pháp lý, không phải chuyện tiện tay.',
-      'Kỷ luật lao động phải theo trình tự BLLĐ (họp, biên bản, thời hiệu). Hệ thống ghi nhận, không thay thế trình tự đó.',
+      'Phút ra ngoài chỉ đo, KHÔNG tự trừ công. Cảnh báo là bằng chứng có lần ra/vào không quẹt thẻ.',
+      'Hệ thống tự xử lý theo tần suất: dưới ngưỡng nhắc nhở, từ ngưỡng chuyển kỷ luật. Kỷ luật vẫn phải qua biên bản theo BLLĐ Điều 122.',
+    ],
+  },
+  {
+    duong_dan: '/ky-luat',
+    tom_tat: 'Gom vi phạm theo tháng & mức độ thành hồ sơ kỷ luật; hệ thống tự nhắc nhở hoặc giảm thưởng.',
+    buoc: [
+      { chu: 'Khai mức giảm thưởng cho từng loại vi phạm trong danh mục (tab Vi phạm), và bật quy tắc phát hiện.', vai_tro: NHAN_SU },
+      { chu: 'Bấm "Quét & xử lý" cho tháng — hệ thống gom vi phạm, nhắc nhở, và tự áp giảm thưởng dưới ngưỡng.', vai_tro: NHAN_SU },
+      { chu: 'Hồ sơ giảm thưởng ≥ ngưỡng chuyển "Chờ duyệt": người có thẩm quyền vào xem chi tiết rồi duyệt hoặc bãi bỏ.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Chế tài tài chính ở đây là GIẢM THƯỞNG P3 (Điều 104 BLLĐ, Điều 14 Nội quy) — KHÔNG phải phạt tiền, KHÔNG trừ lương cơ bản (Điều 127 CẤM). Khoản này chỉ vào phần thưởng/phụ cấp khi tính lương.',
+      'Kỷ luật lao động chính thức (khiển trách, kéo dài nâng lương, cách chức, sa thải) vẫn phải qua họp + giải trình + biên bản (BLLĐ Điều 122/124), làm ở tab Vi phạm — hệ thống không tự áp.',
+      'Hệ thống chỉ tự giảm tiền khi nhân sự đã khai mức giảm thưởng trong danh mục. Chưa khai thì chỉ nhắc nhở.',
     ],
   },
   {
@@ -155,30 +228,14 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       { chu: 'Nút "Khoản" trên từng dòng: nhập phụ cấp và các khoản trừ của người đó.', vai_tro: NHAN_SU },
       { chu: 'Soi các dòng bất thường, sửa gốc rồi dựng lại.', vai_tro: NHAN_SU },
       { chu: 'Gửi duyệt → duyệt. Duyệt xong bảng chốt được lưu lại.', vai_tro: ['admin', 'nhan_su', 'truong_phong_nhan_su'] },
+      { chu: 'Tab "Phụ cấp": khai phụ cấp định kỳ của từng người MỘT LẦN (có hiệu lực từ–đến); kỳ lương tự sinh khoản, không phải gõ lại mỗi tháng.', vai_tro: NHAN_SU },
     ],
     luu_y: [
       'Duyệt kỳ lương KHÓA tháng đó: bảng công không tính lại được nữa. Đó là chủ ý — số đã trả lương thì không được đổi sau lưng.',
+      'Phụ cấp: đổi mức thì gán lại với ngày hiệu lực mới, dòng cũ TỰ ĐÓNG và ở lại làm lịch sử (tính lại lương tháng cũ vẫn ra số cũ). Người thôi hưởng thì bấm "Đóng", KHÔNG xóa.',
       'Sửa sau khi duyệt phải mở khóa kỳ, sửa, rồi dựng và duyệt lại. Mọi bước đều vào nhật ký.',
       'Khoản tính theo công thức (phụ cấp ăn trưa, nửa ngày lương) chỉ nhập SỐ LƯỢNG — tiền do hệ thống nhân ra và tính lại mỗi lần dựng bảng. Gõ tiền tay vào đó thì lần dựng sau bị ghi đè.',
       'BLLĐ 2019 Điều 127 khoản 3 CẤM phạt tiền và cấm cắt lương thay cho xử lý kỷ luật. Hai khoản "trừ đi muộn" và "trừ nửa ngày lương" mang cảnh báo này ngay tại chỗ nhập. Cách hợp pháp cho thời gian không làm việc là ghi giảm CÔNG trên bảng chấm công, để nó tự vào lương theo ngày công.',
-    ],
-  },
-  {
-    duong_dan: '/phu-cap',
-    tom_tat: 'Phụ cấp định kỳ của từng người — khai một lần, kỳ lương tự sinh khoản.',
-    buoc: [
-      { chu: 'Bấm "Gán phụ cấp", chọn khoản, chọn người (lọc theo phòng ban để chọn cả nhóm).', vai_tro: NHAN_SU },
-      { chu: 'Điền ngày hiệu lực và lý do — đây là căn cứ của số tiền sẽ trả.', vai_tro: NHAN_SU },
-      { chu: 'Sang Bảng lương, bấm "Tính lương" ở kỳ liên quan thì khoản mới xuất hiện.', vai_tro: NHAN_SU },
-      { chu: 'Người thôi hưởng: bấm "Đóng" và điền ngày hưởng đến hết — không xóa.', vai_tro: NHAN_SU },
-    ],
-    luu_y: [
-      'Đổi mức thì gán lại với ngày hiệu lực mới. Dòng cũ TỰ ĐÓNG vào ngày trước đó và ở lại làm lịch sử — nhờ vậy tính lại lương tháng cũ vẫn ra đúng số cũ.',
-      'Chính sách KHÔNG tự sửa bảng lương đang mở. Phải bấm "Tính lương" ở kỳ đó. Đó là chủ ý: số liệu không được đổi dưới chân người đang làm việc trên nó.',
-      'Gõ tay một khoản trên phiếu là GHI ĐÈ chính sách cho riêng tháng đó — chính sách không cộng thêm dòng thứ hai. Bỏ khoản đó khỏi danh sách gõ tay thì dòng chính sách quay lại.',
-      'Nguồn "số ngày công thực tế" bám theo chấm công: đi làm ít ngày thì hưởng ít, không ai phải sửa tay. Dùng cho hỗ trợ ăn trưa.',
-      'Đơn giá riêng là chỗ để một người hưởng mức khác cả công ty — không phải tạo một khoản mới chỉ cho một người.',
-      'Chính sách đã sinh ra khoản trên phiếu thì KHÔNG xóa được, chỉ đóng. Số tiền đã trả phải giữ được căn cứ.',
     ],
   },
   {

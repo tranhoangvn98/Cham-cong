@@ -9,8 +9,36 @@ process.env['DATABASE_URL'] ??= 'postgres://khong_dung@localhost:5432/khong_dung
 const {
   doc_attlog, doc_rtlog, doc_ket_qua_lenh, doc_thong_tin_may,
   dung_phan_hoi_handshake, dinh_dang_lenh, ma_hoa_thoi_gian_zkteco,
-  nhan_cach_xac_thuc,
+  nhan_cach_xac_thuc, doc_userinfo,
 } = await import('../src/adms/giao_thuc.ts');
+
+test('doc_userinfo: doc PIN + Name + Card + Pri, bo qua PIN=0', () => {
+  const body = 'PIN=6\tName=NGUYEN VAN A\tPri=0\tPasswd=\tCard=123\tGrp=1\tTZ=0000\n'
+    + 'PIN=0\tName=ADMIN\n'                    // PIN=0 -> bo qua (su kien thiet bi)
+    + 'USER PIN=9001\tName=TRAN B\tPri=14\tCard=0\n';  // tien to USER (OPERLOG) + card 0 -> null
+  const { nguoi_dung, so_dong_loi } = doc_userinfo(body);
+  assert.equal(nguoi_dung.length, 2);
+  assert.deepEqual(nguoi_dung[0], { pin: '6', ten: 'NGUYEN VAN A', the: '123', quyen: 0 });
+  assert.deepEqual(nguoi_dung[1], { pin: '9001', ten: 'TRAN B', the: null, quyen: 14 });
+  assert.equal(so_dong_loi, 0);
+});
+
+test('doc_userinfo: doc dinh dang may acc (CardNo/Privilege thay Card/Pri)', () => {
+  // May kiem soat ra vao tra ket qua `DATA QUERY tablename=user,...` vao /iclock/querydata
+  // voi ten truong CardNo/Privilege, khac dong cham cong (Card/Pri).
+  const body = 'Pin=6\tCardNo=456\tPassword=\tGroup=1\tStartTime=0\tEndTime=0\tName=ANH KHO\tPrivilege=0\n'
+    + 'Pin=9001\tCardNo=0\tName=\tPrivilege=14\n';
+  const { nguoi_dung, so_dong_loi } = doc_userinfo(body);
+  assert.equal(so_dong_loi, 0);
+  assert.equal(nguoi_dung.length, 2);
+  assert.deepEqual(nguoi_dung[0], { pin: '6', ten: 'ANH KHO', the: '456', quyen: 0 });
+  assert.deepEqual(nguoi_dung[1], { pin: '9001', ten: null, the: null, quyen: 14 });
+});
+
+test('doc_userinfo: than rong tra ve mang rong, khong nem loi', () => {
+  assert.deepEqual(doc_userinfo(''), { nguoi_dung: [], so_dong_loi: 0 });
+  assert.deepEqual(doc_userinfo('   \n  '), { nguoi_dung: [], so_dong_loi: 0 });
+});
 
 test('doc_attlog: doc dung mot dong chuan tab-separated', () => {
   const { ban_ghi, so_dong_loi } = doc_attlog('1001\t2026-08-06 08:03:12\t0\t15\t0\n');

@@ -1,17 +1,41 @@
 /* Sinh tu thiet_ke/token.json boi thiet_ke/sinh_token.mjs — DUNG SUA TAY.
    Sua token.json roi chay: npm run sinh_token
-   Bien CSS cho webapp. Theme: Inter + Metronic v9. */
+   Bien CSS cho webapp. Theme: Be Vietnam Pro + Metronic v9. */
 
 @font-face {
-  font-family: 'Inter';
-  src: url('/font/Inter-400-700.woff2') format('woff2-variations');
-  font-weight: 400 700;
+  font-family: 'Be Vietnam Pro';
+  src: url('/font/BeVietnamPro-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Be Vietnam Pro';
+  src: url('/font/BeVietnamPro-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Be Vietnam Pro';
+  src: url('/font/BeVietnamPro-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Be Vietnam Pro';
+  src: url('/font/BeVietnamPro-Bold.woff2') format('woff2');
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 
 :root {
-  --chu-viet: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --chu-viet: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
   --trong-thuong: 400;
   --trong-vua: 500;
   --trong-dam: 600;

@@ -3,6 +3,7 @@
 // Chuoi base64 trong bai "login that" duoi day CHEP NGUYEN tu tai lieu dac ta v1.0.11
 // muc III.1 — khong phai tu sinh ra. Neu bo giai ma doc duoc chuoi do thi doc duoc phan
 // hoi that.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
