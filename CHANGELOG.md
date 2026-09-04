@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.88.0] — 2026-09-04
+
+**Sửa tab Cá nhân trắng màn — lệch hợp đồng backend/frontend.**
+
+- **`/api/toi/ho-so` trả sai hình dạng.** Máy chủ trải phẳng hồ sơ nhân viên ra top-level
+  (`...ho_so`), nhưng giao diện mới (bản làm lại Khu vực của tôi) đọc `du_lieu.nhan_vien.*` →
+  `nhan_vien` là `undefined`, tab **Cá nhân** vỡ ngay khi đọc `.ho_ten` (trắng màn). Nghĩa là
+  tab Cá nhân **chưa từng hiện** kể từ khi làm lại giao diện — endpoint này không có kiểm thử
+  phủ. Nay lồng đúng `nhan_vien: ho_so`; tài khoản chưa nối hồ sơ trả `nhan_vien: null` để
+  giao diện hiện thông báo thân thiện. Giao diện cũng nới guard `nv == null` (chặn cả undefined).
+- **Nút chuông thông báo dùng hình chuông thật** (SVG) thay cho icon ngôi sao — trước đây nhìn
+  không ra là chuông.
+
 ## [1.87.0] — 2026-09-04
 
 **Khu vực của tôi: chặn màn hình trắng + thêm nút chuông thông báo.**

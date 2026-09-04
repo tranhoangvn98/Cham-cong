@@ -1065,9 +1065,12 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         ),
       ]);
 
-    if (ho_so === null) throw new LoiKhongTim('Không tìm thấy hồ sơ.');
+    // Giao dien doc `du_lieu.nhan_vien.*` — PHAI long ho so nhan vien duoi khoa `nhan_vien`,
+    // khong trai phang ra top-level (`...ho_so`), neu khong `du_lieu.nhan_vien` la undefined va
+    // trang Ca nhan vo khi doc `.ho_ten`. Tai khoan chua noi ho so nhan vien -> `nhan_vien: null`,
+    // giao dien tu hien thong bao "chua noi ho so" thay vi bao loi.
     return {
-      ...ho_so,
+      nhan_vien: ho_so,
       ten_dang_nhap: nd.ten,
       ca_nhan,
       hop_dong,

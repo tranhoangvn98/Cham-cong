@@ -555,7 +555,11 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
             aria-label={so_chua_doc > 0 ? `Thông báo, ${so_chua_doc} chưa đọc` : 'Thông báo'}
             onClick={() => dat_man_phu(man_phu === 'thong_bao' ? null : 'thong_bao')}
           >
-            <i className="bt bt-star" aria-hidden="true" />
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
             {so_chua_doc > 0 && <span className="cn-dau-chuong-dem">{so_chua_doc}</span>}
           </button>
         </header>
@@ -1956,7 +1960,9 @@ function ManCaNhan(): ReactNode {
   if (du_lieu === null) return null;
 
   const nv = du_lieu.nhan_vien;
-  if (nv === null) {
+  // `== null` bat CA null lan undefined: neu may chu doi hinh dang tra ve (khong long duoi
+  // `nhan_vien`) thi hien thong bao thay vi vo trang khi doc `nv.ho_ten`.
+  if (nv == null) {
     return (
       <Trong
         tieu_de="Tài khoản chưa nối với hồ sơ nhân viên"
