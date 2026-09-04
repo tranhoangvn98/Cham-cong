@@ -12,6 +12,7 @@ import { Component, useEffect, useState, type ReactNode } from 'react';
 import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, mui_gio_offset_gio } from '../api.ts';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
 import { TrangVanBan } from './van_ban.tsx';
+import { ChuongBao } from './chuong_bao.tsx';
 
 /**
  * Ranh gioi loi: mot man con vo (throw khi render) thi CHI man do bao loi, khong lam trang
@@ -463,6 +464,15 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
     dat_man_phu(null);
   };
 
+  // Bam mot bao trong chuong: dieu huong NGAY TRONG vo ca nhan theo `man` cua bao, khong nhay
+  // ra route quan tri. Duyet don la viec quan tri -> doi han goc nhin (di_duyet).
+  const dieu_huong_bao = (man: string | undefined): void => {
+    if (man === 'thong-bao') { dat_tab('trang_chu'); dat_mo_form(null); dat_man_phu('thong_bao'); return; }
+    if (man === 'duyet-don') { di_duyet?.(); return; }
+    if (man === 'ky-luat' || man === 'vi-pham' || man === 'don-cua-toi') { di_den('don_tu'); return; }
+    di_den('trang_chu');
+  };
+
   return (
     <div className="cn-vo">
       {!hep && (
@@ -547,21 +557,9 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
             <b>{tieu_de}</b>
             {phu_de !== '' && <span>{phu_de}</span>}
           </div>
-          {/* Chuong thong bao: mo man Thong bao NGAY trong vo ca nhan (khong dieu huong ra
-              route quan tri). Cung la loi vao Thong bao tren man hep — noi thanh ben an di. */}
-          <button
-            type="button"
-            className={man_phu === 'thong_bao' ? 'cn-dau-chuong cn-dau-chuong-chon' : 'cn-dau-chuong'}
-            aria-label={so_chua_doc > 0 ? `Thông báo, ${so_chua_doc} chưa đọc` : 'Thông báo'}
-            onClick={() => dat_man_phu(man_phu === 'thong_bao' ? null : 'thong_bao')}
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
-              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-            {so_chua_doc > 0 && <span className="cn-dau-chuong-dem">{so_chua_doc}</span>}
-          </button>
+          {/* Chuong bao TONG HOP (/api/toi/bao): thong bao cong ty + nhac nho/canh cao ky luat
+              + trang thai don... `dieu_huong` mo dung man NGAY TRONG vo ca nhan. */}
+          <ChuongBao dieu_huong={dieu_huong_bao} />
         </header>
 
         <main className="cn-noi-dung">
