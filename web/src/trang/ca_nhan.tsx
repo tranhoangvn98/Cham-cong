@@ -8,7 +8,7 @@
 // du lieu cua tai khoan dang dang nhap. Trang nay khong tu loc gi them.
 //
 // Chuoi hien thi cho nhan vien viet co dau; ten bien/ham viet khong dau theo quy uoc du an.
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, mui_gio_offset_gio } from '../api.ts';
 import { LienKet } from '../dinh_tuyen.tsx';
 import {
@@ -336,13 +336,64 @@ const CAC_TAB: { ma: Tab; ten: string; icon: string }[] = [
   { ma: 'ca_nhan', ten: 'Cá nhân', icon: 'bt-user-check' },
 ];
 
-export function TrangCaNhan(): ReactNode {
+/** Tieu de + phu de cua cac man con, theo mau thiet ke. Trang chu tinh rieng vi co ten. */
+const TEN_MAN: Record<Exclude<Tab, 'trang_chu'>, [string, string]> = {
+  bang_cong: ['Bảng công của tôi', 'Số liệu chấm công theo tháng'],
+  don_tu: ['Nghỉ phép & đơn từ', 'Xin nghỉ, giải trình, theo dõi trạng thái duyệt'],
+  luong: ['Phiếu lương', 'Cơ sở tính lương của kỳ'],
+  ca_nhan: ['Cá nhân', 'Hồ sơ, tài liệu, hợp đồng, BHXH, cài đặt'],
+};
+
+function dau_de(tab: Tab, nv: HomNay['nhan_vien']): [string, string] {
+  if (tab === 'trang_chu') {
+    const ca = nv?.ca_lam !== null && nv?.ca_lam !== undefined
+      ? ` · ${nv.ca_lam} ${gio_hh_mm(nv.ca_gio_vao)}–${gio_hh_mm(nv.ca_gio_ra)}`
+      : '';
+    return [
+      `Xin chào, ${nv?.ho_ten ?? 'bạn'}`,
+      `${thu_cua_ngay(hom_nay())}, ${ngay_viet(hom_nay())}${ca}`,
+    ];
+  }
+  return TEN_MAN[tab];
+}
+
+/** Theo doi be rong man hinh: hep = duoi 900px thi thanh ben bien thanh tab day duoi. */
+function dung_hep(): boolean {
+  const [hep, dat_hep] = useState(() => window.matchMedia('(max-width: 899px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 899px)');
+    const doi = (): void => dat_hep(mq.matches);
+    mq.addEventListener('change', doi);
+    return () => mq.removeEventListener('change', doi);
+  }, []);
+  return hep;
+}
+
+interface ThongBaoToi {
+  id: string;
+  da_doc: boolean;
+}
+
+/**
+ * Toan bo KHU VUC CUA TOI theo dung vo cua mau thiet ke "Giao dien ca nhan":
+ * thanh ben toi (thuong hieu, 5 tab, muc phu, chan trang) + dau trang + noi dung.
+ * Tren man hep thanh ben an di va 5 tab chuyen xuong thanh tab duoi.
+ *
+ * `ve_quan_tri` co khi nguoi dung la quan tri — hien nut quay lai goc nhin Quan tri.
+ */
+export function TrangCaNhan({ ve_quan_tri }: { ve_quan_tri?: () => void }): ReactNode {
   const [tab, dat_tab] = useState<Tab>('trang_chu');
   const [mo_form, dat_mo_form] = useState<FormMo | null>(null);
+  const hep = dung_hep();
   const hom_nay_nap = dung_nap<HomNay>('/api/toi/hom-nay');
+  const thong_bao_nap = dung_nap<ThongBaoToi[]>('/api/toi/thong-bao');
 
   // So don dang cho duyet de dat len tab Don tu (lay tu /hom-nay, khong goi them).
   const so_don_cho = so(hom_nay_nap.du_lieu?.can_chu_y?.don_cua_toi_cho_duyet);
+  const so_chua_doc = (thong_bao_nap.du_lieu ?? []).filter((t) => !t.da_doc).length;
+
+  const nv = hom_nay_nap.du_lieu?.nhan_vien ?? null;
+  const [tieu_de, phu_de] = dau_de(tab, nv);
 
   // Chuyen man ben trong trang + mo form neu can. Dung callback chu khong phai duong dan vi
   // bo dinh tuyen cua app khong mang theo chuoi truy van.
@@ -351,37 +402,123 @@ export function TrangCaNhan(): ReactNode {
     dat_mo_form(mo);
   };
 
-  return (
-    <>
-      <div className="hang-tab" role="tablist" aria-label="Các màn khu vực của tôi">
-        {CAC_TAB.map((t) => (
-          <button
-            key={t.ma}
-            role="tab"
-            aria-selected={tab === t.ma}
-            className={tab === t.ma ? 'dang-chon' : ''}
-            onClick={() => {
-              dat_tab(t.ma);
-              dat_mo_form(null);
-            }}
-          >
-            <i className={`bt ${t.icon}`} style={{ marginRight: 6 }} />
-            {t.ten}
-            {t.ma === 'don_tu' && so_don_cho > 0 && (
-              <span className="dem-tab">{so_don_cho}</span>
-            )}
-          </button>
-        ))}
-      </div>
+  const chon_tab = (t: Tab): void => {
+    dat_tab(t);
+    dat_mo_form(null);
+  };
 
-      {tab === 'trang_chu' && <ManTrangChu hom_nay_nap={hom_nay_nap} di_den={di_den} />}
-      {tab === 'bang_cong' && <ManBangCong di_den={di_den} />}
-      {tab === 'don_tu' && (
-        <ManDonTu hom_nay_nap={hom_nay_nap} mo_form={mo_form} dat_mo_form={dat_mo_form} />
+  return (
+    <div className="cn-vo">
+      {!hep && (
+        <nav className="cn-ben" aria-label="Khu vực của tôi">
+          <div className="cn-thuong-hieu">
+            <span className="cn-thuong-hieu-o" aria-hidden="true">C</span>
+            <span className="cn-thuong-hieu-chu">
+              <b>Chấm công</b>
+              <i>Khu vực của tôi</i>
+            </span>
+          </div>
+
+          <div className="cn-ben-tab">
+            {CAC_TAB.map((t) => (
+              <button
+                key={t.ma}
+                type="button"
+                className={tab === t.ma ? 'cn-tab-ben cn-tab-ben-chon' : 'cn-tab-ben'}
+                onClick={() => chon_tab(t.ma)}
+              >
+                <i className={`bt ${t.icon}`} aria-hidden="true" />
+                <span>{t.ten}</span>
+                {t.ma === 'don_tu' && so_don_cho > 0 && (
+                  <span className="cn-ben-dem">{so_don_cho}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="cn-ben-phu">
+            <LienKet den="/thong-bao" lop="cn-ben-phu-lien-ket">
+              <i className="bt bt-star" aria-hidden="true" />
+              <span>Thông báo</span>
+              {so_chua_doc > 0 && <span className="cn-ben-dem">{so_chua_doc}</span>}
+            </LienKet>
+            <LienKet den="/van-ban" lop="cn-ben-phu-lien-ket">
+              <i className="bt bt-file-text" aria-hidden="true" />
+              <span>Văn bản công ty</span>
+            </LienKet>
+          </div>
+
+          <div className="cn-ben-chan">
+            {ve_quan_tri !== undefined && (
+              <button type="button" className="cn-ve-quan-tri" onClick={ve_quan_tri}>
+                ‹ Về góc nhìn Quản trị
+              </button>
+            )}
+            <span className="cn-ben-ten">
+              {nv?.ho_ten ?? '—'}
+              {nv !== null && nv.ma_nv !== null ? ` · ${nv.ma_nv}` : ''}
+            </span>
+            <span className="cn-ben-ca">
+              {nv?.ca_lam !== null && nv?.ca_lam !== undefined
+                ? `${nv.ca_lam} ${gio_hh_mm(nv.ca_gio_vao)}–${gio_hh_mm(nv.ca_gio_ra)}`
+                : 'Chưa gán ca làm việc'}
+            </span>
+          </div>
+        </nav>
       )}
-      {tab === 'luong' && <ManLuong />}
-      {tab === 'ca_nhan' && <ManCaNhan />}
-    </>
+
+      <div className="cn-than">
+        <header className="cn-dau">
+          {hep && tab !== 'trang_chu' && (
+            <button
+              type="button"
+              className="cn-dau-lui"
+              aria-label="Về Trang chủ"
+              onClick={() => chon_tab('trang_chu')}
+            >
+              ‹
+            </button>
+          )}
+          <div className="cn-dau-chu">
+            <b>{tieu_de}</b>
+            {phu_de !== '' && <span>{phu_de}</span>}
+          </div>
+        </header>
+
+        <main className="cn-noi-dung">
+          <div className="cn-noi-dung-trong">
+            {tab === 'trang_chu' && <ManTrangChu hom_nay_nap={hom_nay_nap} di_den={di_den} />}
+            {tab === 'bang_cong' && <ManBangCong di_den={di_den} />}
+            {tab === 'don_tu' && (
+              <ManDonTu hom_nay_nap={hom_nay_nap} mo_form={mo_form} dat_mo_form={dat_mo_form} />
+            )}
+            {tab === 'luong' && <ManLuong />}
+            {tab === 'ca_nhan' && <ManCaNhan />}
+          </div>
+        </main>
+
+        {hep && (
+          <nav className="cn-tab-chan" aria-label="Các màn khu vực của tôi">
+            {CAC_TAB.map((t) => (
+              <button
+                key={t.ma}
+                type="button"
+                className={tab === t.ma ? 'cn-tab-chan-nut cn-tab-chan-chon' : 'cn-tab-chan-nut'}
+                onClick={() => chon_tab(t.ma)}
+              >
+                <span className="cn-tab-chan-hinh">
+                  <i className={`bt ${t.icon}`} aria-hidden="true" />
+                  {t.ma === 'don_tu' && so_don_cho > 0 && (
+                    <span className="cn-tab-chan-dem">{so_don_cho}</span>
+                  )}
+                </span>
+                <span>{t.ten}</span>
+              </button>
+            ))}
+          </nav>
+        )}
+      </div>
+    </div>
   );
 }
 

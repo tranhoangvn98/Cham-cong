@@ -302,7 +302,9 @@ function BoCuc(): ReactNode {
   const doi_goc_nhin = (moi: GocNhin): void => {
     dat_goc_nhin(moi);
     dat_gn(moi);
-    di_toi(moi === 'ca_nhan' ? '/don-cua-toi' : '/');
+    // Ca hai goc nhin deu dung Trang chu: quan tri -> bang tong quan, ca nhan -> khu vuc
+    // cua toi (vo mau thiet ke).
+    di_toi('/');
   };
 
   useEffect(() => {
@@ -326,6 +328,17 @@ function BoCuc(): ReactNode {
       <TrangDoiMatKhau
         bat_buoc={false}
         khi_xong={() => window.location.assign('/')}
+      />
+    );
+  }
+
+  // Trang "Khu vuc cua toi" chiem TOAN MAN HINH bang vo rieng cua mau thiet ke (thanh ben
+  // toi + 5 tab + tab duoi tren man hep). O goc nhin Ca nhan, Trang chu CHINH LA trang nay —
+  // khong con vo chung co thanh ben quan tri. Nguoi co quyen quan tri co nut quay lai.
+  if (duong_dan === '/ca-nhan' || (gn === 'ca_nhan' && duong_dan === '/')) {
+    return (
+      <TrangCaNhan
+        ve_quan_tri={la_quan_tri() ? () => doi_goc_nhin('quan_tri') : undefined}
       />
     );
   }

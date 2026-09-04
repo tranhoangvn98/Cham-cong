@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.84.0] — 2026-09-04
+
+**Đưa toàn bộ Khu vực của tôi về đúng vỏ của mẫu thiết kế "Giao diện cá nhân".**
+
+- Trang `/ca-nhan` giờ chiếm **toàn màn hình** với khung riêng: thanh bên tối (thương hiệu,
+  5 tab Trang chủ / Bảng công / Đơn từ / Lương / Cá nhân, liên kết Thông báo + Văn bản công ty,
+  chân trang tên · mã NV · ca làm), đầu trang dính ghi tiêu đề + phụ đề theo từng màn.
+- Ở **góc nhìn Cá nhân, Trang chủ CHÍNH LÀ trang này** — không còn vỏ chung với thanh bên
+  quản trị. Người có quyền quản trị có nút "Về góc nhìn Quản trị" ngay trên thanh bên.
+- Màn hẹp (< 900px): thanh bên ẩn, 5 tab chuyển xuống thanh tab dưới, có nút quay lại Trang chủ.
+- Thanh bên có huy hiệu đếm: đơn chờ duyệt trên tab Đơn từ, thông báo chưa đọc trên liên kết
+  Thông báo (dữ liệu từ `/api/toi/hom-nay` và `/api/toi/thong-bao`).
+
 ## [1.83.0] — 2026-09-04
 
 **Thêm mới: trang "Khu vực của tôi" (`/ca-nhan`) — giao diện cá nhân theo mẫu thiết kế
