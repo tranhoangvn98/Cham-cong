@@ -70,24 +70,29 @@ interface MucMenu {
  * duoc va nhung ngay do bi tinh la Vang.
  */
 const MENU: MucMenu[] = [
+  // Truy cap nhanh (khong nhom): trang tong quan + cong vao Khu vuc ca nhan.
   { duong_dan: '/', ten: 'Tổng quan', icon: 'layout-dashboard', nhom: '', phu: 'Tình hình chấm công hôm nay', ca_nhan: true },
   { duong_dan: '/ca-nhan', ten: 'Khu vực của tôi', icon: 'circle-check', nhom: '', phu: 'Chấm công, đơn từ và hồ sơ của bạn', ca_nhan: true },
-  { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: '', phu: 'Log đồng bộ từ máy ADMS', quyen: 'nhan_su' },
-  { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: '', phu: 'Tổng hợp theo tháng', quyen: 'quan_tri' },
-  { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: '', phu: 'Xin nghỉ phép, giải trình', ca_nhan: true },
-  { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: '', phu: 'Thông báo từ BGĐ & nhân sự', ca_nhan: true },
-  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: '', phu: 'Nội quy, biểu mẫu, chính sách', ca_nhan: true },
-  { duong_dan: '/ho-so-toi', ten: 'Hồ sơ của tôi', icon: 'user-check', nhom: '', phu: 'Thông tin & liên hệ cá nhân', ca_nhan: true },
-  { duong_dan: '/phieu-luong-toi', ten: 'Phiếu lương', icon: 'download', nhom: '', phu: 'Phiếu lương hàng tháng của bạn', ca_nhan: true },
 
-  { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Quản trị nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
-  { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Quản trị nhân sự', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
+  // Cua toi: viec tu phuc vu cua chinh nguoi dang nhap.
+  { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: 'Của tôi', phu: 'Xin nghỉ phép, giải trình', ca_nhan: true },
+  { duong_dan: '/phieu-luong-toi', ten: 'Phiếu lương', icon: 'download', nhom: 'Của tôi', phu: 'Phiếu lương hàng tháng của bạn', ca_nhan: true },
+  { duong_dan: '/ho-so-toi', ten: 'Hồ sơ của tôi', icon: 'user-check', nhom: 'Của tôi', phu: 'Thông tin & liên hệ cá nhân', ca_nhan: true },
+  { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: 'Của tôi', phu: 'Thông báo từ BGĐ & nhân sự', ca_nhan: true },
+  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: 'Của tôi', phu: 'Nội quy, biểu mẫu, chính sách', ca_nhan: true },
 
-  { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Quản trị nhân sự', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
-  { duong_dan: '/ra-vao', ten: 'Ra/vào', icon: 'clock-exclamation', nhom: 'Quản trị nhân sự', phu: 'Cảnh báo ra/vào & xử lý', quyen: 'nhan_su' },
-  { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Quản trị nhân sự', phu: 'Chấm điểm từ dữ liệu thật', quyen: 'nhan_su' },
-  { duong_dan: '/bang-luong', ten: 'Lương & phụ cấp', icon: 'receipt-2', nhom: 'Quản trị nhân sự', phu: 'Bảng lương, chính sách phụ cấp', quyen: 'nhan_su' },
-  { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Quản trị nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
+  // Cham cong: log may + tong hop cong + canh bao ra/vao.
+  { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: 'Chấm công', phu: 'Log đồng bộ từ máy ADMS', quyen: 'nhan_su' },
+  { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: 'Chấm công', phu: 'Tổng hợp theo tháng', quyen: 'quan_tri' },
+  { duong_dan: '/ra-vao', ten: 'Ra/vào', icon: 'clock-exclamation', nhom: 'Chấm công', phu: 'Cảnh báo ra/vào & xử lý', quyen: 'nhan_su' },
+
+  // Nhan su & luong: quan tri ho so nguoi lao dong.
+  { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Nhân sự & lương', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
+  { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Nhân sự & lương', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
+  { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Nhân sự & lương', phu: 'Chấm điểm từ dữ liệu thật', quyen: 'nhan_su' },
+  { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Nhân sự & lương', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
+  { duong_dan: '/bang-luong', ten: 'Lương & phụ cấp', icon: 'receipt-2', nhom: 'Nhân sự & lương', phu: 'Bảng lương, chính sách phụ cấp', quyen: 'nhan_su' },
+  { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Nhân sự & lương', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
 
   { duong_dan: '/cai-dat', ten: 'Cài đặt', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp', quyen: 'nhan_su' },
 ];
