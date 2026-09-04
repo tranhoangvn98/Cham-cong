@@ -8,10 +8,47 @@
 // du lieu cua tai khoan dang dang nhap. Trang nay khong tu loc gi them.
 //
 // Chuoi hien thi cho nhan vien viet co dau; ten bien/ham viet khong dau theo quy uoc du an.
-import { useEffect, useState, type ReactNode } from 'react';
+import { Component, useEffect, useState, type ReactNode } from 'react';
 import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, mui_gio_offset_gio } from '../api.ts';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
 import { TrangVanBan } from './van_ban.tsx';
+
+/**
+ * Ranh gioi loi: mot man con vo (throw khi render) thi CHI man do bao loi, khong lam trang
+ * ca ung dung. Truoc day mot loi nho o tab Ca nhan lam toan bo Khu vuc cua toi trang xoa.
+ * Hien luon ca `message` de nguoi dung doc lai cho nhan su / dev, khong phai mo cong cu nha
+ * phat trien. Dat `key` theo man dang xem o noi dung -> doi man la dung lai tu dau, khong ket
+ * o trang thai loi.
+ */
+class RanhGioiLoi extends Component<{ children: ReactNode }, { loi: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { loi: null };
+  }
+
+  static getDerivedStateFromError(loi: Error): { loi: Error } {
+    return { loi };
+  }
+
+  render(): ReactNode {
+    if (this.state.loi !== null) {
+      return (
+        <div className="the" style={{ margin: 16 }}>
+          <h2>Màn này đang gặp lỗi hiển thị</h2>
+          <p className="mo-ta">
+            Các màn khác vẫn dùng bình thường — bấm sang tab khác rồi quay lại, hoặc tải lại
+            trang. Nếu vẫn lỗi, gửi giúp nhân sự dòng chi tiết dưới đây.
+          </p>
+          <pre style={{
+            whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12,
+            background: 'var(--nen-mo)', padding: 12, borderRadius: 8, marginTop: 8,
+          }}>{this.state.loi.message}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import {
   HopLoi, HopThoai, OSo, Trong, XuongDanhSach,
   dung_hanh_dong, dung_nap, dung_xac_nhan,
@@ -510,23 +547,36 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
             <b>{tieu_de}</b>
             {phu_de !== '' && <span>{phu_de}</span>}
           </div>
+          {/* Chuong thong bao: mo man Thong bao NGAY trong vo ca nhan (khong dieu huong ra
+              route quan tri). Cung la loi vao Thong bao tren man hep — noi thanh ben an di. */}
+          <button
+            type="button"
+            className={man_phu === 'thong_bao' ? 'cn-dau-chuong cn-dau-chuong-chon' : 'cn-dau-chuong'}
+            aria-label={so_chua_doc > 0 ? `Thông báo, ${so_chua_doc} chưa đọc` : 'Thông báo'}
+            onClick={() => dat_man_phu(man_phu === 'thong_bao' ? null : 'thong_bao')}
+          >
+            <i className="bt bt-star" aria-hidden="true" />
+            {so_chua_doc > 0 && <span className="cn-dau-chuong-dem">{so_chua_doc}</span>}
+          </button>
         </header>
 
         <main className="cn-noi-dung">
           <div className="cn-noi-dung-trong">
-            {man_phu === 'thong_bao' && <TrangThongBaoCaNhan />}
-            {man_phu === 'van_ban' && <TrangVanBan />}
-            {man_phu === null && (
-              <>
-                {tab === 'trang_chu' && <ManTrangChu hom_nay_nap={hom_nay_nap} di_den={di_den} di_duyet={di_duyet} />}
-                {tab === 'bang_cong' && <ManBangCong di_den={di_den} />}
-                {tab === 'don_tu' && (
-                  <ManDonTu hom_nay_nap={hom_nay_nap} mo_form={mo_form} dat_mo_form={dat_mo_form} />
-                )}
-                {tab === 'luong' && <ManLuong />}
-                {tab === 'ca_nhan' && <ManCaNhan />}
-              </>
-            )}
+            <RanhGioiLoi key={man_phu ?? tab}>
+              {man_phu === 'thong_bao' && <TrangThongBaoCaNhan />}
+              {man_phu === 'van_ban' && <TrangVanBan />}
+              {man_phu === null && (
+                <>
+                  {tab === 'trang_chu' && <ManTrangChu hom_nay_nap={hom_nay_nap} di_den={di_den} di_duyet={di_duyet} />}
+                  {tab === 'bang_cong' && <ManBangCong di_den={di_den} />}
+                  {tab === 'don_tu' && (
+                    <ManDonTu hom_nay_nap={hom_nay_nap} mo_form={mo_form} dat_mo_form={dat_mo_form} />
+                  )}
+                  {tab === 'luong' && <ManLuong />}
+                  {tab === 'ca_nhan' && <ManCaNhan />}
+                </>
+              )}
+            </RanhGioiLoi>
           </div>
         </main>
 

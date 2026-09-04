@@ -1791,6 +1791,19 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   width: 40px; height: 40px; border-radius: var(--tron); border: 1px solid var(--vien);
   background: var(--nen-the); font-size: 18px; color: var(--chu);
 }
+.cn-dau-chuong {
+  position: relative; flex: 0 0 auto; width: 40px; height: 40px;
+  border-radius: var(--tron); border: 1px solid var(--vien); background: var(--nen-the);
+  color: var(--chu); font-size: 18px; cursor: pointer;
+  display: grid; place-items: center;
+}
+.cn-dau-chuong:hover { background: var(--nen-mo); }
+.cn-dau-chuong-chon { border-color: var(--chinh); color: var(--chinh); }
+.cn-dau-chuong-dem {
+  position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px;
+  padding: 0 5px; border-radius: var(--tron-tron); background: var(--canh-bao); color: #fff;
+  font-size: 11px; font-weight: 700; display: grid; place-items: center;
+}
 .cn-dau-chu { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .cn-dau-chu b {
   font-size: 17px; font-weight: 700; letter-spacing: -.2px;

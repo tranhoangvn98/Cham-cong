@@ -2,6 +2,18 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.87.0] — 2026-09-04
+
+**Khu vực của tôi: chặn màn hình trắng + thêm nút chuông thông báo.**
+
+- **Không còn "màn hình trắng".** Bọc nội dung Khu vực của tôi bằng ranh giới lỗi: một màn con
+  lỗi khi hiển thị (ví dụ tab **Cá nhân**) giờ chỉ hiện một thẻ báo lỗi **đọc được** (kèm chi
+  tiết để gửi nhân sự), các tab khác vẫn dùng bình thường. Trước đây một lỗi nhỏ làm trắng xoá
+  toàn bộ trang.
+- **Nút chuông thông báo** trên đầu trang (mọi kích thước màn): mở màn Thông báo **ngay trong
+  vỏ cá nhân**, có huy hiệu đếm số chưa đọc. Trên điện thoại (thanh bên ẩn) đây là lối vào
+  Thông báo/– trước chỉ có ở thanh bên desktop.
+
 ## [1.86.0] — 2026-09-04
 
 **Sửa lỗi điều hướng & logic ở Khu vực của tôi (giao diện cá nhân).**
