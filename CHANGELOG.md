@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.89.0] — 2026-09-04
+
+**Chuông thông báo ở Khu vực của tôi là trung tâm thông báo TỔNG HỢP.**
+
+- Bản trước tôi đặt nhầm một nút chuông tự chế chỉ mở màn "Thông báo công ty". Nay dùng đúng
+  component **`ChuongBao`** (`/api/toi/bao`) — gộp **mọi** thông báo: thông báo công ty, nhắc
+  nhở/cảnh cáo kỷ luật, trạng thái đơn từ… có đếm số chưa đọc, "đánh dấu đã đọc".
+- Bấm một thông báo trong chuông **mở đúng màn NGAY trong vỏ cá nhân** (không nhảy ra giao diện
+  quản trị cũ): kỷ luật/vi phạm/đơn → tab Đơn từ; thông báo công ty → màn Thông báo; duyệt đơn
+  → đổi sang góc nhìn Quản trị. `ChuongBao` nhận thêm tuỳ chọn `dieu_huong` cho việc này.
+
 ## [1.88.0] — 2026-09-04
 
 **Sửa tab Cá nhân trắng màn — lệch hợp đồng backend/frontend.**
