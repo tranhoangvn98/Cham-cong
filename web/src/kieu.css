@@ -1755,12 +1755,18 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .cn-ben-phu { display: flex; flex-direction: column; gap: 4px; }
 .cn-ben-phu-lien-ket {
   display: flex; align-items: center; gap: 11px; min-height: 44px; padding: 0 12px;
+  width: 100%; border: 0; cursor: pointer; font-family: inherit;
   border-radius: var(--tron); font-size: 14px; font-weight: 600; text-align: left;
-  color: var(--chu-ben); text-decoration: none;
+  background: transparent; color: var(--chu-ben); text-decoration: none;
 }
 .cn-ben-phu-lien-ket:hover {
   background: var(--vien-ben); color: var(--chu-ben-sang); text-decoration: none;
 }
+.cn-ben-phu-chon {
+  background: color-mix(in srgb, var(--chinh) 24%, transparent);
+  color: var(--lien-ket-ben);
+}
+.cn-ben-phu-chon:hover { color: var(--lien-ket-ben); }
 .cn-ben-phu-lien-ket > span:not(.cn-ben-dem) { flex: 1; }
 
 .cn-ben-chan {

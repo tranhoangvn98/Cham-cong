@@ -339,6 +339,13 @@ function BoCuc(): ReactNode {
     return (
       <TrangCaNhan
         ve_quan_tri={la_quan_tri() ? () => doi_goc_nhin('quan_tri') : undefined}
+        di_duyet={() => {
+          // Duyet don la viec quan tri: doi HAN sang vo quan tri (khong de vo nua ca nhan nua
+          // quan tri), roi toi thang man Duyet don. Nguoi duyet khong co quyen quan tri thi giu
+          // goc nhin ca nhan — /duyet-don van hien voi ho vi muc menu co ca_nhan = true.
+          if (la_quan_tri()) { dat_goc_nhin('quan_tri'); dat_gn('quan_tri'); }
+          di_toi('/duyet-don');
+        }}
       />
     );
   }

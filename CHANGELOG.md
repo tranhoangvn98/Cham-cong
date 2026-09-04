@@ -2,6 +2,28 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.86.0] — 2026-09-04
+
+**Sửa lỗi điều hướng & logic ở Khu vực của tôi (giao diện cá nhân).**
+
+- **Bấm xong không còn "quay về giao diện cũ".** Trong vỏ cá nhân toàn màn hình, ba liên kết
+  **Thông báo**, **Văn bản công ty** (thanh bên) và **Đi duyệt** (mục "Cần chú ý") trước đây
+  điều hướng ra route riêng (`/thong-bao`, `/van-ban`, `/duyet-don`) — mà những route đó lại
+  render trong **vỏ quản trị cũ**, nên bấm vào là rơi khỏi giao diện cá nhân.
+  - Thông báo & Văn bản công ty giờ mở **ngay trong vỏ cá nhân** (màn phụ, giữ thanh bên tối,
+    có nút ‹ quay lại), không rời trang.
+  - Đi duyệt (việc quản trị) **đổi hẳn sang góc nhìn Quản trị** rồi tới màn Duyệt đơn — chuyển
+    cảnh có chủ đích, không còn nửa cá nhân nửa quản trị.
+- **Huy hiệu "đơn chờ tôi duyệt" đếm thiếu.** `/api/toi/hom-nay` chỉ cộng đơn nghỉ phép +
+  giải trình, **bỏ sót bảng `don_tu`** (làm thêm, đổi ca, công tác, thôi việc). Trưởng phòng
+  có thể không thấy đơn OT/đổi ca/công tác nào chờ duyệt. Nay cộng đủ cả ba nguồn (đối xứng
+  với ô đếm "đơn của tôi chờ duyệt").
+- **Icon 5 tab & mục "Cần chú ý" đồng nhất quy ước** (`icon` không kèm tiền tố `bt-`, nơi
+  render tự ghép `bt bt-…`) — trước đây lệch quy ước với `App.tsx` làm bài kiểm giao diện đỏ
+  dù icon vẫn hiện đúng.
+- **Bảo mật nhỏ:** `DELETE /api/toi/token-push` nay ràng theo chủ sở hữu (`nguoi_dung_id`) —
+  trước đây ai biết token đẩy của người khác đều gỡ được.
+
 ## [1.85.0] — 2026-09-04
 
 **Rà soát và sửa logic giao diện Khu vực của tôi.**

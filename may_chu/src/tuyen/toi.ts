@@ -159,6 +159,10 @@ async function viec_can_chu_y(req: FastifyRequest, nv_id: string): Promise<{
             + (select count(*) from don_giai_trinh d join nhan_vien nv on nv.id = d.nhan_vien_id
                 where d.trang_thai = 'cho_duyet' and d.nhan_vien_id <> $2
                   and (not $1::boolean
+                       or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)))
+            + (select count(*) from don_tu d join nhan_vien nv on nv.id = d.nhan_vien_id
+                where d.trang_thai = 'cho_duyet' and d.nhan_vien_id <> $2
+                  and (not $1::boolean
                        or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2))) as so`,
       [chi_phong_minh, nv_id],
     );
@@ -840,9 +844,15 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
   });
 
   app.delete('/token-push', async (req) => {
+    // Rang theo CHU SO HUU: xoa token chi khi no thuoc chinh nguoi dang dang nhap. Thieu dieu
+    // kien nay thi bat ky ai biet token day cua nguoi khac deu go duoc, khien ho ngung nhan push.
+    const nd = nguoi_dung_hien_tai(req);
     const b = than(req.body ?? {});
     const token = chuoi(b, 'token', { toi_da: 300 });
-    if (token !== null) await thuc_thi('delete from token_push where token = $1', [token]);
+    if (token !== null) {
+      await thuc_thi(
+        'delete from token_push where token = $1 and nguoi_dung_id = $2', [token, nd.sub]);
+    }
     return { ok: true };
   });
 

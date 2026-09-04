@@ -10,7 +10,8 @@
 // Chuoi hien thi cho nhan vien viet co dau; ten bien/ham viet khong dau theo quy uoc du an.
 import { useEffect, useState, type ReactNode } from 'react';
 import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, mui_gio_offset_gio } from '../api.ts';
-import { LienKet } from '../dinh_tuyen.tsx';
+import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
+import { TrangVanBan } from './van_ban.tsx';
 import {
   HopLoi, HopThoai, OSo, Trong, XuongDanhSach,
   dung_hanh_dong, dung_nap, dung_xac_nhan,
@@ -328,12 +329,15 @@ function chu_dau(ho_ten: string | null): string {
 type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'ca_nhan';
 type FormMo = 'nghi' | 'giai' | 'khac';
 
+// Ten icon KHONG kem tien to `bt-` (giong MENU o App.tsx) — noi render tu ghep `bt bt-${icon}`.
+// De ca tien to o day thi bai kiem thiet_ke/icon.test.mjs (doc `icon: '...'`) hieu nham ten icon
+// la `bt-...` va bao thieu, du glyph van hien dung.
 const CAC_TAB: { ma: Tab; ten: string; icon: string }[] = [
-  { ma: 'trang_chu', ten: 'Trang chủ', icon: 'bt-layout-dashboard' },
-  { ma: 'bang_cong', ten: 'Bảng công', icon: 'bt-list-details' },
-  { ma: 'don_tu', ten: 'Đơn từ', icon: 'bt-file-text' },
-  { ma: 'luong', ten: 'Lương', icon: 'bt-receipt-2' },
-  { ma: 'ca_nhan', ten: 'Cá nhân', icon: 'bt-user-check' },
+  { ma: 'trang_chu', ten: 'Trang chủ', icon: 'layout-dashboard' },
+  { ma: 'bang_cong', ten: 'Bảng công', icon: 'list-details' },
+  { ma: 'don_tu', ten: 'Đơn từ', icon: 'file-text' },
+  { ma: 'luong', ten: 'Lương', icon: 'receipt-2' },
+  { ma: 'ca_nhan', ten: 'Cá nhân', icon: 'user-check' },
 ];
 
 /** Tieu de + phu de cua cac man con, theo mau thiet ke. Trang chu tinh rieng vi co ten. */
@@ -381,9 +385,18 @@ interface ThongBaoToi {
  *
  * `ve_quan_tri` co khi nguoi dung la quan tri — hien nut quay lai goc nhin Quan tri.
  */
-export function TrangCaNhan({ ve_quan_tri }: { ve_quan_tri?: () => void }): ReactNode {
+export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
+  ve_quan_tri?: () => void;
+  /** Sang goc nhin Quan tri va toi man Duyet don. Duyet don la viec quan tri, khong phai
+   *  viec ca nhan, nen doi han sang vo quan tri thay vi lien ket nua voi nua kia. */
+  di_duyet?: () => void;
+}): ReactNode {
   const [tab, dat_tab] = useState<Tab>('trang_chu');
   const [mo_form, dat_mo_form] = useState<FormMo | null>(null);
+  // Man PHU nam ngoai 5 tab chinh (Thong bao, Van ban cong ty): mo ngay TRONG vo ca nhan chu
+  // khong dieu huong ra route rieng — dieu huong ra se roi ve vo quan tri cu ("quay lai giao
+  // dien cu"). null = dang xem mot trong 5 tab.
+  const [man_phu, dat_man_phu] = useState<'thong_bao' | 'van_ban' | null>(null);
   const hep = dung_hep();
   const hom_nay_nap = dung_nap<HomNay>('/api/toi/hom-nay');
   const thong_bao_nap = dung_nap<ThongBaoToi[]>('/api/toi/thong-bao');
@@ -393,18 +406,24 @@ export function TrangCaNhan({ ve_quan_tri }: { ve_quan_tri?: () => void }): Reac
   const so_chua_doc = (thong_bao_nap.du_lieu ?? []).filter((t) => !t.da_doc).length;
 
   const nv = hom_nay_nap.du_lieu?.nhan_vien ?? null;
-  const [tieu_de, phu_de] = dau_de(tab, nv);
+  const [tieu_de, phu_de] = man_phu === 'thong_bao'
+    ? ['Thông báo', 'Thông báo từ BGĐ & nhân sự']
+    : man_phu === 'van_ban'
+      ? ['Văn bản công ty', 'Nội quy, biểu mẫu, chính sách']
+      : dau_de(tab, nv);
 
   // Chuyen man ben trong trang + mo form neu can. Dung callback chu khong phai duong dan vi
-  // bo dinh tuyen cua app khong mang theo chuoi truy van.
+  // bo dinh tuyen cua app khong mang theo chuoi truy van. Luon dong man phu khi ve 5 tab.
   const di_den = (t: Tab, mo: FormMo | null = null): void => {
     dat_tab(t);
     dat_mo_form(mo);
+    dat_man_phu(null);
   };
 
   const chon_tab = (t: Tab): void => {
     dat_tab(t);
     dat_mo_form(null);
+    dat_man_phu(null);
   };
 
   return (
@@ -427,7 +446,7 @@ export function TrangCaNhan({ ve_quan_tri }: { ve_quan_tri?: () => void }): Reac
                 className={tab === t.ma ? 'cn-tab-ben cn-tab-ben-chon' : 'cn-tab-ben'}
                 onClick={() => chon_tab(t.ma)}
               >
-                <i className={`bt ${t.icon}`} aria-hidden="true" />
+                <i className={`bt bt-${t.icon}`} aria-hidden="true" />
                 <span>{t.ten}</span>
                 {t.ma === 'don_tu' && so_don_cho > 0 && (
                   <span className="cn-ben-dem">{so_don_cho}</span>
@@ -437,15 +456,23 @@ export function TrangCaNhan({ ve_quan_tri }: { ve_quan_tri?: () => void }): Reac
           </div>
 
           <div className="cn-ben-phu">
-            <LienKet den="/thong-bao" lop="cn-ben-phu-lien-ket">
+            <button
+              type="button"
+              className={man_phu === 'thong_bao' ? 'cn-ben-phu-lien-ket cn-ben-phu-chon' : 'cn-ben-phu-lien-ket'}
+              onClick={() => dat_man_phu('thong_bao')}
+            >
               <i className="bt bt-star" aria-hidden="true" />
               <span>Thông báo</span>
               {so_chua_doc > 0 && <span className="cn-ben-dem">{so_chua_doc}</span>}
-            </LienKet>
-            <LienKet den="/van-ban" lop="cn-ben-phu-lien-ket">
+            </button>
+            <button
+              type="button"
+              className={man_phu === 'van_ban' ? 'cn-ben-phu-lien-ket cn-ben-phu-chon' : 'cn-ben-phu-lien-ket'}
+              onClick={() => dat_man_phu('van_ban')}
+            >
               <i className="bt bt-file-text" aria-hidden="true" />
               <span>Văn bản công ty</span>
-            </LienKet>
+            </button>
           </div>
 
           <div className="cn-ben-chan">
@@ -469,12 +496,12 @@ export function TrangCaNhan({ ve_quan_tri }: { ve_quan_tri?: () => void }): Reac
 
       <div className="cn-than">
         <header className="cn-dau">
-          {hep && tab !== 'trang_chu' && (
+          {(man_phu !== null || (hep && tab !== 'trang_chu')) && (
             <button
               type="button"
               className="cn-dau-lui"
-              aria-label="Về Trang chủ"
-              onClick={() => chon_tab('trang_chu')}
+              aria-label={man_phu !== null ? 'Về màn trước' : 'Về Trang chủ'}
+              onClick={() => (man_phu !== null ? dat_man_phu(null) : chon_tab('trang_chu'))}
             >
               ‹
             </button>
@@ -487,13 +514,19 @@ export function TrangCaNhan({ ve_quan_tri }: { ve_quan_tri?: () => void }): Reac
 
         <main className="cn-noi-dung">
           <div className="cn-noi-dung-trong">
-            {tab === 'trang_chu' && <ManTrangChu hom_nay_nap={hom_nay_nap} di_den={di_den} />}
-            {tab === 'bang_cong' && <ManBangCong di_den={di_den} />}
-            {tab === 'don_tu' && (
-              <ManDonTu hom_nay_nap={hom_nay_nap} mo_form={mo_form} dat_mo_form={dat_mo_form} />
+            {man_phu === 'thong_bao' && <TrangThongBaoCaNhan />}
+            {man_phu === 'van_ban' && <TrangVanBan />}
+            {man_phu === null && (
+              <>
+                {tab === 'trang_chu' && <ManTrangChu hom_nay_nap={hom_nay_nap} di_den={di_den} di_duyet={di_duyet} />}
+                {tab === 'bang_cong' && <ManBangCong di_den={di_den} />}
+                {tab === 'don_tu' && (
+                  <ManDonTu hom_nay_nap={hom_nay_nap} mo_form={mo_form} dat_mo_form={dat_mo_form} />
+                )}
+                {tab === 'luong' && <ManLuong />}
+                {tab === 'ca_nhan' && <ManCaNhan />}
+              </>
             )}
-            {tab === 'luong' && <ManLuong />}
-            {tab === 'ca_nhan' && <ManCaNhan />}
           </div>
         </main>
 
@@ -507,7 +540,7 @@ export function TrangCaNhan({ ve_quan_tri }: { ve_quan_tri?: () => void }): Reac
                 onClick={() => chon_tab(t.ma)}
               >
                 <span className="cn-tab-chan-hinh">
-                  <i className={`bt ${t.icon}`} aria-hidden="true" />
+                  <i className={`bt bt-${t.icon}`} aria-hidden="true" />
                   {t.ma === 'don_tu' && so_don_cho > 0 && (
                     <span className="cn-tab-chan-dem">{so_don_cho}</span>
                   )}
@@ -524,9 +557,10 @@ export function TrangCaNhan({ ve_quan_tri }: { ve_quan_tri?: () => void }): Reac
 
 // ==================================================================== man trang chu
 
-function ManTrangChu({ hom_nay_nap, di_den }: {
+function ManTrangChu({ hom_nay_nap, di_den, di_duyet }: {
   hom_nay_nap: ReturnType<typeof dung_nap<HomNay>>;
   di_den: (t: Tab, mo?: FormMo | null) => void;
+  di_duyet?: () => void;
 }): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = hom_nay_nap;
   const thang_hien = thang_nay();
@@ -584,7 +618,7 @@ function ManTrangChu({ hom_nay_nap, di_den }: {
         <BieuDoBayNgay ds_ngay={ds_ngay} />
         <DongThoiQuet lan_quet={du_lieu.lan_quet} />
         <TuanNay tuan={du_lieu.tuan} hom_nay={du_lieu.ngay} />
-        <CotPhai th={th} du_lieu={du_lieu} ds_ngay={ds_ngay} di_den={di_den} />
+        <CotPhai th={th} du_lieu={du_lieu} ds_ngay={ds_ngay} di_den={di_den} di_duyet={di_duyet} />
       </HaiCot>
     </div>
   );
@@ -841,11 +875,12 @@ function TuanNay({ tuan, hom_nay: hom }: { tuan: NgayTuan[]; hom_nay: string }):
 }
 
 /** Cot phai: chuyen can + can chu y. */
-function CotPhai({ th, du_lieu, ds_ngay, di_den }: {
+function CotPhai({ th, du_lieu, ds_ngay, di_den, di_duyet }: {
   th: TongHopThang | null;
   du_lieu: HomNay;
   ds_ngay: NgayCongNgay[];
   di_den: (t: Tab, mo?: FormMo | null) => void;
+  di_duyet?: () => void;
 }): ReactNode {
   const ccy = du_lieu.can_chu_y;
   const hom = hom_nay();
@@ -883,17 +918,18 @@ function CotPhai({ th, du_lieu, ds_ngay, di_den }: {
 
       <div className="the the-mong">
         <div className="cn-dau-mong">Cần chú ý & sắp tới</div>
-        <CanChuY ccy={ccy} ds_ngay={ds_ngay} di_den={di_den} />
+        <CanChuY ccy={ccy} ds_ngay={ds_ngay} di_den={di_den} di_duyet={di_duyet} />
       </div>
     </>
   );
 }
 
 /** Danh sach viec can chu y, dung du lieu that thay vi so cung. */
-function CanChuY({ ccy, ds_ngay, di_den }: {
+function CanChuY({ ccy, ds_ngay, di_den, di_duyet }: {
   ccy: HomNay['can_chu_y'];
   ds_ngay: NgayCongNgay[];
   di_den: (t: Tab, mo?: FormMo | null) => void;
+  di_duyet?: () => void;
 }): ReactNode {
   const muc: { icon: string; lop: string; ten: string; mo_ta: string; lam: (() => void) | null; nhan: string }[] = [];
 
@@ -903,7 +939,7 @@ function CanChuY({ ccy, ds_ngay, di_den }: {
     && (d.gio_vao === null || d.gio_ra === null));
   if (ngay_thieu.length > 0) {
     muc.push({
-      icon: 'bt-clock-exclamation', lop: 'cn-o-canh-bao',
+      icon: 'clock-exclamation', lop: 'cn-o-canh-bao',
       ten: `${ngay_thieu.length} ngày thiếu giờ quẹt`,
       mo_ta: ngay_thieu.length === 1
         ? `ngày ${ngay_viet(ngay_thieu[0]?.ngay ?? '')}`
@@ -913,23 +949,23 @@ function CanChuY({ ccy, ds_ngay, di_den }: {
   }
   if (so(ccy?.don_cua_toi_cho_duyet) > 0) {
     muc.push({
-      icon: 'bt-file-text', lop: 'cn-o-lanh',
+      icon: 'file-text', lop: 'cn-o-lanh',
       ten: `${ccy?.don_cua_toi_cho_duyet} đơn đang chờ duyệt`,
       mo_ta: 'Theo dõi trạng thái ở màn Đơn từ',
       lam: () => di_den('don_tu'), nhan: 'Xem đơn',
     });
   }
-  if (so(ccy?.don_cho_toi_duyet) > 0) {
+  if (so(ccy?.don_cho_toi_duyet) > 0 && di_duyet !== undefined) {
     muc.push({
-      icon: 'bt-check', lop: 'cn-o-tot',
+      icon: 'check', lop: 'cn-o-tot',
       ten: `${ccy?.don_cho_toi_duyet} đơn đang chờ bạn duyệt`,
       mo_ta: 'Bạn là người duyệt của phòng mình',
-      lam: null, nhan: 'Đi duyệt',
+      lam: di_duyet, nhan: 'Đi duyệt',
     });
   }
   if (muc.length === 0) {
     muc.push({
-      icon: 'bt-circle-check', lop: 'cn-o-tot',
+      icon: 'circle-check', lop: 'cn-o-tot',
       ten: 'Không có việc cần chú ý',
       mo_ta: 'Công hôm nay và đơn từ đều ổn',
       lam: () => {}, nhan: '',
@@ -941,7 +977,7 @@ function CanChuY({ ccy, ds_ngay, di_den }: {
       {muc.map((m) => {
         const trong = (
           <span className="cn-cty-hang">
-            <i className={`bt ${m.icon} ${m.lop}`} />
+            <i className={`bt bt-${m.icon} ${m.lop}`} />
             <span className="cn-cty-noi">
               <span className="cn-cty-ten">{m.ten}</span>
               <span className="cn-cty-mo-ta">{m.mo_ta}</span>
@@ -949,9 +985,16 @@ function CanChuY({ ccy, ds_ngay, di_den }: {
             {m.nhan !== '' && <span className="cn-cty-nhan">{m.nhan}</span>}
           </span>
         );
-        return m.lam === null
-          ? <LienKet key={m.ten} den="/duyet-don" lop="cn-cty-lien-ket">{trong}</LienKet>
-          : <button type="button" key={m.ten} className="cn-cty-lien-ket" onClick={m.lam}>{trong}</button>;
+        return (
+          <button
+            type="button"
+            key={m.ten}
+            className="cn-cty-lien-ket"
+            onClick={m.lam ?? undefined}
+          >
+            {trong}
+          </button>
+        );
       })}
     </>
   );
