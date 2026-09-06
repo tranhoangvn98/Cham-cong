@@ -20,7 +20,7 @@ import { ghi_xlsx } from '../tien_ich/ghi_xlsx.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, luan_ly, ngay_bat_buoc, so_nguyen, so_thuc, than, trong_tap,
   uuid, uuid_bat_buoc,
-  LoiDauVao, LoiKhongTim, LoiXungDot,
+  LoiDauVao, LoiKhongTim, LoiXungDot, LoiKhongQuyen,
 } from '../tien_ich/kiem_tra.ts';
 
 /** Trang thai cho phep sua so lieu. Tu cho_duyet tro di la khoa. */
@@ -156,11 +156,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
          ty_le_bhxh_nld, ty_le_bhyt_nld, ty_le_bhtn_nld,
          ty_le_bhxh_nsdld, ty_le_bhyt_nsdld, ty_le_bhtn_nsdld,
          giam_tru_ban_than, giam_tru_phu_thuoc, can_cu, ghi_chu,
-         cong_chuan_thang, lam_tron_den,
+         cong_chuan_thang, lam_tron_den, t7_nua_cong,
          phat_di_muon_bat, di_muon_gio_vao, di_muon_moc_50k, di_muon_muc_50k,
          di_muon_moc_nua_ngay, di_muon_mien_moi_thang, di_muon_han_don, ty_le_thu_viec
-       ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
-                 $18,$19,$20,$21,$22,$23,$24,$25) returning id`,
+       ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+                 $19,$20,$21,$22,$23,$24,$25,$26) returning id`,
       [
         hieu_luc_tu,
         chuoi_bat_buoc(b, 'ten', { toi_da: 200 }),
@@ -178,6 +178,8 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         // nhu nhau, nen phai la lua chon co y thuc chu khong phai mac dinh.
         so_thuc(b, 'cong_chuan_thang', { min: 0, max: 31 }) ?? 0,
         so_thuc(b, 'lam_tron_den', { min: 0, max: 1_000_000 }) ?? 0,
+        // Thu Bay tinh nua cong (ca cong chuan lan cong thuc). Mac dinh bat theo chinh sach cong ty.
+        luan_ly(b, 't7_nua_cong', true),
         // Phat di muon: bat/tat + 4 moc gio + muc phat + so lan mien. Mac dinh = tat, dung
         // mau mac dinh (08:00/08:10/08:30, 50k, 3 lan/thang, don truoc 07:30).
         luan_ly(b, 'phat_di_muon_bat', false),
@@ -637,8 +639,8 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     const id = lay_id(req);
     const b = than(req.body);
 
-    const p = await truy_van_mot<{ ky_luong_id: string; trang_thai: string }>(
-      `select p.ky_luong_id, k.trang_thai from phieu_luong p
+    const p = await truy_van_mot<{ ky_luong_id: string; trang_thai: string; ep_du_cong: boolean }>(
+      `select p.ky_luong_id, k.trang_thai, p.ep_du_cong from phieu_luong p
          join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
       [id],
     );
@@ -647,15 +649,24 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${p.trang_thai}" nên phiếu đã khóa sửa.`);
     }
 
+    // "Ep du cong" = tra du luong thang bat ke cham cong. Day la quyet dinh ve tien luong nen
+    // CHI ADMIN doi duoc; nhan su thuong sua thuong/tru van binh thuong nhung khong dong vao no.
+    // Vang mat trong body (null) = giu nguyen; co mat va khac gia tri cu ma khong phai admin -> chan.
+    const ep_du_cong = luan_ly(b, 'ep_du_cong');
+    if (ep_du_cong !== null && ep_du_cong !== p.ep_du_cong && nd.vai_tro !== 'admin') {
+      throw new LoiKhongQuyen('Chỉ admin được tích "tính đủ công" cho phiếu lương.');
+    }
+
     await thuc_thi(
       `update phieu_luong set
          thuong = $2, phu_cap_khac = $3, tru_khac = $4,
-         ly_do_tru_khac = $5, ghi_chu = $6, sua_boi = $7, sua_luc = now()
+         ly_do_tru_khac = $5, ghi_chu = $6, ep_du_cong = coalesce($8, ep_du_cong),
+         sua_boi = $7, sua_luc = now()
        where id = $1`,
       [
         id, so_tien(b, 'thuong'), so_tien(b, 'phu_cap_khac'), so_tien(b, 'tru_khac'),
         chuoi(b, 'ly_do_tru_khac', { toi_da: 500 }),
-        chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub,
+        chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub, ep_du_cong,
       ],
     );
 

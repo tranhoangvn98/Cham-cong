@@ -99,6 +99,8 @@ interface Phieu {
   thuc_linh: string;
   thuc_linh_lam_tron: string;
   ghi_chu: string | null;
+  /** Admin ép công thực = công chuẩn để trả đủ lương tháng. */
+  ep_du_cong: boolean;
   khoan: KhoanPhieu[];
 }
 
@@ -401,6 +403,7 @@ function HopThoaiChiTiet(
                     <td className="canh-phai">{tien(p.luong_co_ban)}</td>
                     <td className="canh-phai">
                       {Number(p.so_ngay_cong_thuc)}/{Number(p.so_ngay_cong_chuan)}
+                      {p.ep_du_cong && <div className="nhan-canh-bao">đủ công</div>}
                     </td>
                     <td className="canh-phai">{tien(p.luong_theo_cong)}</td>
                     <td className="canh-phai">{tien(p.tien_ot)}</td>
@@ -704,6 +707,8 @@ function HopThoaiSuaPhieu(
   const [tru_khac, dat_tru_khac] = useState(String(Number(phieu.tru_khac)));
   const [ly_do, dat_ly_do] = useState(phieu.ly_do_tru_khac ?? '');
   const [ghi_chu, dat_ghi_chu] = useState(phieu.ghi_chu ?? '');
+  const [ep_du_cong, dat_ep_du_cong] = useState(phieu.ep_du_cong);
+  const admin = la_admin();
   const hd = dung_hanh_dong();
 
   const luong_doi = Number(luong_co_ban) !== Number(phieu.luong_co_ban)
@@ -730,6 +735,22 @@ function HopThoaiSuaPhieu(
       <p className="mo-ta">
         Lương theo công, bảo hiểm và thuế đều suy ra từ chấm công và tham số pháp lý.
       </p>
+
+      {(admin || phieu.ep_du_cong) && (
+        <div className="hop-luu-y" style={{ margin: '0 0 0.75rem' }}>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <input
+              type="checkbox" checked={ep_du_cong} disabled={!admin}
+              onChange={(e) => dat_ep_du_cong(e.target.checked)}
+            />
+            <span>
+              <strong>Tính đủ công</strong> — coi công thực = công chuẩn để trả đủ lương tháng,
+              bất kể chấm công thực tế. <strong>Chỉ admin</strong> được tích. Phụ cấp theo công
+              vẫn tính theo chấm công thật.
+            </span>
+          </label>
+        </div>
+      )}
 
       <label htmlFor="thuong">Thưởng (đ)</label>
       <input id="thuong" type="number" min="0" value={thuong}
@@ -774,6 +795,9 @@ function HopThoaiSuaPhieu(
                   tru_khac: Number(tru_khac) || 0,
                   ly_do_tru_khac: ly_do,
                   ghi_chu,
+                  // Chi gui khi la admin — server cung chan, nhung khong gui thi nhan su thuong
+                  // sua thuong/tru ma khong vo tinh dong vao co nay.
+                  ...(admin ? { ep_du_cong } : {}),
                 },
               });
             },
