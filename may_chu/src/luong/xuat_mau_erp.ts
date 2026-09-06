@@ -129,12 +129,32 @@ export async function xuat_bang_luong_erp(ky_luong_id: string): Promise<Buffer> 
 
   const N = ds.length;
 
-  // Nhan/xoa dong du lieu cho khop so nhan vien (mau co san 30 dong 10..39).
+  // Chup style TRUOC khi bien doi (duplicate xe dich cac dong duoi). Dung de dung lai dong TONG
+  // va cum chu ky o dung vi tri.
+  const style_tong: unknown[] = [];
+  for (let c = 1; c <= 48; c++) style_tong[c] = ws.getCell(40, c).style;
+  const style_sig_nhan = ws.getCell(43, 1).style; // "Người lập bảng"
+  const style_sig_phu = ws.getCell(44, 1).style;  // "(Ký, họ tên)"
+  const style_sig_ten = ws.getCell(48, 1).style;  // ten nguoi ky
+
+  // CHI NHAN dong, KHONG BAO GIO XOA: spliceRows cua exceljs de lai o rac va lam mat gop o
+  // (merge) o cum chu ky. Vi vay ta luon nhan tu mau 30 dong, roi DUNG LAI footer o vi tri
+  // dung ben duoi — khong dua vao viec xoa dong.
   if (N > SO_DONG_MAU) ws.duplicateRow(DATA_START, N - SO_DONG_MAU, true);
-  else if (N > 0 && N < SO_DONG_MAU) ws.spliceRows(DATA_START, SO_DONG_MAU - N);
 
   const cuoi = DATA_START + Math.max(N, 1) - 1; // dong du lieu cuoi
-  const tong_row = DATA_START + Math.max(N, 0); // dong TONG ngay sau vung du lieu
+  const tong_row = DATA_START + N;              // dong TONG ngay sau vung du lieu
+
+  // Xoa vung tu dong TONG tro xuong (dong du thua khi it nguoi + footer goc), va GO GOP O de
+  // dung lai cum chu ky moi khong bi dung do.
+  const xoa_den = Math.max(tong_row + 12, 48);
+  for (const m of [...(ws.model.merges as string[])]) {
+    const top = Number((/(\d+)/.exec(m) ?? [])[1] ?? 0);
+    if (top >= tong_row) ws.unMergeCells(m);
+  }
+  for (let r = tong_row; r <= xoa_den; r++) {
+    for (let c = 1; c <= 48; c++) ws.getCell(r, c).value = null;
+  }
 
   // ---- dien tung dong ----
   for (let i = 0; i < N; i++) {
@@ -199,14 +219,41 @@ export async function xuat_bang_luong_erp(ky_luong_id: string): Promise<Buffer> 
     set('AV', p.email ?? '');
   }
 
-  // ---- dong TONG: viet lai cong thuc SUM cho dung pham vi ----
+  // ---- dong TONG: ap lai style mau + viet cong thuc SUM dung pham vi ----
   if (N > 0) {
+    for (let c = 1; c <= 48; c++) ws.getCell(tong_row, c).style = style_tong[c] as never;
     ws.getCell(`A${tong_row}`).value = 'TỔNG';
     ws.getCell(`C${tong_row}`).value = { formula: `"("&COUNTA(C${DATA_START}:C${cuoi})&" người)"` };
     for (const col of COT_SUM) {
       ws.getCell(`${col}${tong_row}`).value = { formula: `SUM(${col}${DATA_START}:${col}${cuoi})` };
     }
   }
+
+  // ---- cum chu ky: dung lai o vi tri dung (cach TONG 3 dong, giong mau) ----
+  const r_nhan = tong_row + 3;
+  const r_phu = tong_row + 4;
+  const r_ten = tong_row + 8;
+  const dat_cum = (
+    r: number, style: unknown, cot: readonly [string, string, string][],
+  ): void => {
+    for (const [a, b, txt] of cot) {
+      ws.mergeCells(`${a}${r}:${b}${r}`);
+      const cell = ws.getCell(`${a}${r}`);
+      cell.value = txt;
+      cell.style = style as never;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    }
+  };
+  dat_cum(r_nhan, style_sig_nhan, [
+    ['A', 'F', 'Người lập bảng'], ['S', 'X', 'Kế toán trưởng'], ['AO', 'AT', 'Giám đốc'],
+  ]);
+  dat_cum(r_phu, style_sig_phu, [
+    ['A', 'F', '(Ký, họ tên)'], ['S', 'X', '(Ký, họ tên)'], ['AO', 'AT', '(Ký, đóng dấu)'],
+  ]);
+  // Dong ten: nguoi lap o A, giam doc o AO (ke toan truong de trong nhu mau).
+  dat_cum(r_ten, style_sig_ten, [
+    ['A', 'F', ky.nguoi_tao_ten ?? ''], ['AO', 'AT', ky.nguoi_duyet_ten ?? ''],
+  ]);
 
   // ---- token dau trang / o ky: thay tren MOI o co chuoi chua {{...}} ----
   const token: Record<string, string> = {
