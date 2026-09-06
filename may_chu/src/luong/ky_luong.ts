@@ -215,6 +215,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
             and (den_thang is null or den_thang >= $1)
        ) pt on true
       where nv.dang_hoat_dong = true
+        and nv.che_do_luong = 'vn'  -- nhom luong TQ (CNY) tinh o khoi rieng, khong vao bang VND
       order by nv.ma_nv`,
     [tu, den, he_so_t7],
   );
