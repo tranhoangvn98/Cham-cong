@@ -6,7 +6,8 @@ import { useState, type ReactNode } from 'react';
 import { goi, la_admin, chi_xem_quan_tri } from '../api.ts';
 import { LienKet } from '../dinh_tuyen.tsx';
 import {
-  DangTai, HopLoi, HopThoai, OSo, Trong, dung_hanh_dong, dung_nap, dung_nhap_chu, thang_nay,
+  DangTai, HopLoi, HopThoai, OSo, Trong, dung_hanh_dong, dung_nap, dung_nhap_chu, ngay_gio,
+  thang_nay,
 } from '../thanh_phan.tsx';
 
 const TEN_MUC_DO: Record<string, string> = {
@@ -43,6 +44,7 @@ interface Dong {
   tong_tien: string;
   hinh_thuc: string;
   trang_thai: string;
+  tao_luc: string;
   can_duyet: boolean;
   tu_dong: boolean;
   chi_tiet: ChiTiet[] | null;
@@ -208,6 +210,7 @@ export function TrangKyLuat(): ReactNode {
                     {admin && <th></th>}
                     <th>Mã</th><th>Mã NV</th><th>Họ tên</th><th>Phòng ban</th><th>Mức độ</th>
                     <th className="canh-phai">Vi phạm</th><th className="canh-phai">Giảm thưởng</th>
+                    <th className="khong-ngat">Thời gian khởi tạo</th>
                     <th>Trạng thái</th><th></th>
                   </tr>
                 </thead>
@@ -232,6 +235,7 @@ export function TrangKyLuat(): ReactNode {
                       </td>
                       <td className="canh-phai so">{d.so_vi_pham}</td>
                       <td className="canh-phai so">{tien(d.tong_tien)}</td>
+                      <td className="khong-ngat mo-ta">{ngay_gio(d.tao_luc)}</td>
                       <td className="khong-ngat">
                         <span className={NHAN_TT[d.trang_thai]?.lop ?? 'nhan-mo'}>
                           {NHAN_TT[d.trang_thai]?.ten ?? d.trang_thai}
