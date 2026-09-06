@@ -14,6 +14,7 @@ import {
   ban_chot_theo_id, chot_ky, danh_sach_ban_chot, type KetQuaChot,
 } from '../luong/ban_chot.ts';
 import { bang_luong_xuat } from '../luong/bang_xuat.ts';
+import { xuat_bang_luong_erp } from '../luong/xuat_mau_erp.ts';
 import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { ghi_nhan_am_tham } from '../sharepoint/dong_bo.ts';
 import { khoang_thang } from '../tien_ich/thoi_gian.ts';
@@ -998,16 +999,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
 
   app.get('/ky-luong/:id/xuat-xlsx', { preHandler: can_nhan_su }, async (req, res) => {
     const k = await lay_ky(lay_id(req));
-    const b = await bang_luong_xuat({ ky_luong_id: k.id });
-
-    const tep = ghi_xlsx({
-      ten_sheet: `Bảng lương ${k.thang}`,
-      tieu_de: b.tieu_de,
-      hang: b.hang,
-    });
+    // Xuat theo MAU ERP (mau_bang_luong_erp.xlsx): giu logo, nhom cot, cong thuc, in an.
+    const tep = await xuat_bang_luong_erp(k.id);
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xuat_bang_luong', 'ky_luong',
-      k.id, { thang: k.thang, dinh_dang: 'xlsx', so_dong: b.so_dong }, req.ip);
+      k.id, { thang: k.thang, dinh_dang: 'xlsx' }, req.ip);
 
     return res
       .header('content-type',
