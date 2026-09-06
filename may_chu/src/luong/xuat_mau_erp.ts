@@ -156,6 +156,11 @@ export async function xuat_bang_luong_erp(ky_luong_id: string): Promise<Buffer> 
     for (let c = 1; c <= 48; c++) ws.getCell(r, c).value = null;
   }
 
+  // Mo BUNG tat ca cot: mau goc gom nhom + thu gon con 17 cot, nhung o che do thu gon cac tieu
+  // de nhom (gop qua cot an) bi TRAN/DE len nhau. Hien day du 48 cot cho khong bi de; nut +/- cua
+  // nhom van con de nguoi dung tu thu gon neu muon.
+  for (let c = 1; c <= 48; c++) ws.getColumn(c).hidden = false;
+
   // ---- dien tung dong ----
   for (let i = 0; i < N; i++) {
     const p = ds[i] as DongPhieu;
