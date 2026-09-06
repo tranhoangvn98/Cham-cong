@@ -264,6 +264,7 @@ function HopThoaiChiTiet(
     dung_nap<KyLuong & { phieu: Phieu[] }>(`/api/ky-luong/${ky_id}`);
   const [sua, dat_sua] = useState<Phieu | null>(null);
   const [khoan, dat_khoan] = useState<Phieu | null>(null);
+  const [tab, dat_tab] = useState<'vnd' | 'cny'>('vnd');
   const hd = dung_hanh_dong();
 
   if (dang_tai) return <KhungToanMan tieu_de="Kỳ lương" khi_dong={khi_dong}><DangTai /></KhungToanMan>;
@@ -283,6 +284,18 @@ function HopThoaiChiTiet(
     <KhungToanMan tieu_de={`Bảng lương tháng ${k.thang}`} khi_dong={khi_dong}>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
 
+      <div className="thanh-tab">
+        <button className={`tab ${tab === 'vnd' ? 'tab-dang-mo' : ''}`}
+          onClick={() => dat_tab('vnd')}>Lương Việt Nam (VND)</button>
+        <button className={`tab ${tab === 'cny' ? 'tab-dang-mo' : ''}`}
+          onClick={() => dat_tab('cny')}>Lương Trung Quốc (CNY)</button>
+      </div>
+
+      {tab === 'cny' && (
+        <BangCny ky={k} sua_duoc={sua_duoc} khi_doi={() => { nap_lai(); khi_doi(); }} />
+      )}
+
+      {tab === 'vnd' && (<>
       <div className="hang-nut">
         <span className={MAU_TRANG_THAI[k.trang_thai]}>
           {NHAN_TRANG_THAI[k.trang_thai]}
@@ -451,6 +464,7 @@ function HopThoaiChiTiet(
           </table>
         </div>
       )}
+      </>)}
 
       {sua !== null && (
         <HopThoaiSuaPhieu
@@ -802,6 +816,221 @@ function HopThoaiSuaPhieu(
               });
             },
             'Đã lưu và tính lại kỳ lương.',
+          ).then((ok) => { if (ok !== null) khi_xong(); })}
+        >
+          Lưu
+        </button>
+        <button className="nut-phang" onClick={khi_dong}>Hủy</button>
+      </div>
+    </HopThoai>
+  );
+}
+
+// ============================================================ khoi luong Trung Quoc (CNY)
+
+interface PhieuCny {
+  id: string;
+  ma_nv: string;
+  ho_ten: string;
+  phong_ban: string | null;
+  luong_co_ban: string;
+  phu_cap: string;
+  so_ngay_cong_chuan: string;
+  so_ngay_cong_thuc: string;
+  luong_theo_cong: string;
+  thuong: string;
+  phu_cap_khac: string;
+  tru_khac: string;
+  ly_do_tru_khac: string | null;
+  tong_thu_nhap: string;
+  thuc_linh: string;
+  ghi_chu: string | null;
+}
+
+/**
+ * Tab luong Trung Quoc (CNY): nhom che_do_luong = 'tq'. Tinh theo cong y het VND nhung tien CNY
+ * va KHONG BHXH/thue. Dung chung ky luong (thang).
+ */
+function BangCny(
+  { ky, sua_duoc, khi_doi }:
+  { ky: { id: string; thang: string }; sua_duoc: boolean; khi_doi: () => void },
+): ReactNode {
+  const { du_lieu, dang_tai, loi, nap_lai } =
+    dung_nap<{ phieu: PhieuCny[] }>(`/api/ky-luong/${ky.id}/cny`);
+  const [sua, dat_sua] = useState<PhieuCny | null>(null);
+  const hd = dung_hanh_dong();
+
+  if (dang_tai) return <DangTai />;
+  if (loi !== null) return <HopLoi loi={loi} />;
+  const phieu = du_lieu?.phieu ?? [];
+
+  return (
+    <>
+      <div className="hop-luu-y">
+        Nhóm nhận lương <strong>CNY</strong> (chế độ lương Trung Quốc) — tính theo công như bảng
+        VND nhưng <strong>không khấu trừ BHXH/thuế</strong>. Gán chế độ lương ở mục Nhân sự.
+      </div>
+      <div className="hang-nut">
+        {sua_duoc && (
+          <button
+            disabled={hd.dang_chay}
+            onClick={() => void hd.chay(
+              () => goi(`/api/ky-luong/${ky.id}/tinh-cny`, { method: 'POST' }),
+              'Đã tính lại lương CNY.',
+            ).then((ok) => { if (ok !== null) { nap_lai(); khi_doi(); } })}
+          >
+            Tính lương CNY
+          </button>
+        )}
+        <button className="nut-phang" disabled={hd.dang_chay}
+          onClick={() => void hd.chay(
+            () => tai_tep(`/api/ky-luong/${ky.id}/xuat-xlsx-cny`, `luong_cny_${ky.thang}.xlsx`))}>
+          Xuất Excel
+        </button>
+        <button className="nut-phang" disabled={hd.dang_chay}
+          onClick={() => void hd.chay(
+            () => tai_tep(`/api/ky-luong/${ky.id}/xuat-csv-cny`, `luong_cny_${ky.thang}.csv`))}>
+          Xuất CSV
+        </button>
+      </div>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+
+      {phieu.length === 0 ? (
+        <Trong
+          tieu_de="Chưa có phiếu lương CNY"
+          mo_ta={String.raw`Bấm "Tính lương CNY" để sinh phiếu cho nhân sự chế độ lương Trung Quốc.`}
+        />
+      ) : (
+        <div className="vo-bang">
+          <table className="bang-gon bang-neo-cot-dau">
+            <thead>
+              <tr>
+                <th>Mã NV</th><th>Họ tên</th><th>Phòng ban</th>
+                <th className="canh-phai">Lương cơ bản</th>
+                <th className="canh-phai">Phụ cấp</th>
+                <th className="canh-phai">Công</th>
+                <th className="canh-phai">Lương theo công</th>
+                <th className="canh-phai">Thưởng</th>
+                <th className="canh-phai">Phụ cấp khác</th>
+                <th className="canh-phai">Trừ khác</th>
+                <th className="canh-phai">Thực lĩnh</th>
+                {sua_duoc && <th />}
+              </tr>
+            </thead>
+            <tbody>
+              {phieu.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.ma_nv}</td>
+                  <td>{p.ho_ten}</td>
+                  <td>{p.phong_ban ?? <span className="mo-ta">—</span>}</td>
+                  <td className="canh-phai">{tien(p.luong_co_ban)}</td>
+                  <td className="canh-phai">{tien(p.phu_cap)}</td>
+                  <td className="canh-phai">
+                    {Number(p.so_ngay_cong_thuc)}/{Number(p.so_ngay_cong_chuan)}
+                  </td>
+                  <td className="canh-phai">{tien(p.luong_theo_cong)}</td>
+                  <td className="canh-phai">{tien(p.thuong)}</td>
+                  <td className="canh-phai">{tien(p.phu_cap_khac)}</td>
+                  <td className="canh-phai">{tien(p.tru_khac)}</td>
+                  <td className="canh-phai"><strong>{tien(p.thuc_linh)}</strong> ¥</td>
+                  {sua_duoc && (
+                    <td className="canh-phai">
+                      <button className="nut-phang" onClick={() => dat_sua(p)}>Sửa</button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="hang-tong">
+                <td colSpan={3}><strong>Tổng cộng ({phieu.length} người)</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.luong_co_ban), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.phu_cap), 0))}</strong></td>
+                <td className="canh-phai mo-ta">—</td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.luong_theo_cong), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.thuong), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.phu_cap_khac), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.tru_khac), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.thuc_linh), 0))} ¥</strong></td>
+                {sua_duoc && <td />}
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
+      {sua !== null && (
+        <HopThoaiSuaPhieuCny
+          phieu={sua}
+          khi_dong={() => dat_sua(null)}
+          khi_xong={() => { dat_sua(null); nap_lai(); khi_doi(); }}
+        />
+      )}
+    </>
+  );
+}
+
+function HopThoaiSuaPhieuCny(
+  { phieu, khi_dong, khi_xong }:
+  { phieu: PhieuCny; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [luong_co_ban, dat_luong_co_ban] = useState(String(Number(phieu.luong_co_ban)));
+  const [phu_cap, dat_phu_cap] = useState(String(Number(phieu.phu_cap)));
+  const [thuong, dat_thuong] = useState(String(Number(phieu.thuong)));
+  const [phu_cap_khac, dat_phu_cap_khac] = useState(String(Number(phieu.phu_cap_khac)));
+  const [tru_khac, dat_tru_khac] = useState(String(Number(phieu.tru_khac)));
+  const [ly_do, dat_ly_do] = useState(phieu.ly_do_tru_khac ?? '');
+  const [ghi_chu, dat_ghi_chu] = useState(phieu.ghi_chu ?? '');
+  const hd = dung_hanh_dong();
+
+  return (
+    <HopThoai tieu_de={`Sửa phiếu CNY — ${phieu.ho_ten}`} khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+
+      <h3 style={{ margin: '0 0 0.5rem' }}>Lương cứng CNY (áp từ tháng này trở đi)</h3>
+      <label htmlFor="cny-lcb">Lương cơ bản (¥)</label>
+      <input id="cny-lcb" type="number" min="0" value={luong_co_ban}
+        onChange={(e) => dat_luong_co_ban(e.target.value)} />
+      <label htmlFor="cny-pc">Phụ cấp cố định (¥)</label>
+      <input id="cny-pc" type="number" min="0" value={phu_cap}
+        onChange={(e) => dat_phu_cap(e.target.value)} />
+      <p className="mo-ta">
+        Lưu vào <strong>quyết định lương CNY</strong> hiệu lực từ đầu tháng của kỳ — các tháng
+        sau vẫn giữ mức này cho tới khi có quyết định mới. Không áp BHXH/thuế Việt Nam.
+      </p>
+
+      <h3 style={{ margin: '1rem 0 0.5rem' }}>Điều chỉnh riêng kỳ này (¥)</h3>
+      <label htmlFor="cny-thuong">Thưởng (¥)</label>
+      <input id="cny-thuong" type="number" min="0" value={thuong}
+        onChange={(e) => dat_thuong(e.target.value)} />
+      <label htmlFor="cny-pck">Phụ cấp khác (¥)</label>
+      <input id="cny-pck" type="number" min="0" value={phu_cap_khac}
+        onChange={(e) => dat_phu_cap_khac(e.target.value)} />
+      <label htmlFor="cny-tru">Trừ khác (¥)</label>
+      <input id="cny-tru" type="number" min="0" value={tru_khac}
+        onChange={(e) => dat_tru_khac(e.target.value)} />
+      <label htmlFor="cny-lydo">Lý do trừ khác</label>
+      <input id="cny-lydo" value={ly_do} onChange={(e) => dat_ly_do(e.target.value)} />
+      <label htmlFor="cny-gc">Ghi chú</label>
+      <input id="cny-gc" value={ghi_chu} onChange={(e) => dat_ghi_chu(e.target.value)} />
+
+      <div className="hang-nut">
+        <button
+          disabled={hd.dang_chay}
+          onClick={() => void hd.chay(
+            () => goi(`/api/phieu-luong-cny/${phieu.id}`, {
+              method: 'PATCH',
+              body: {
+                luong_co_ban: Number(luong_co_ban) || 0,
+                phu_cap: Number(phu_cap) || 0,
+                thuong: Number(thuong) || 0,
+                phu_cap_khac: Number(phu_cap_khac) || 0,
+                tru_khac: Number(tru_khac) || 0,
+                ly_do_tru_khac: ly_do,
+                ghi_chu,
+              },
+            }),
+            'Đã lưu và tính lại lương CNY.',
           ).then((ok) => { if (ok !== null) khi_xong(); })}
         >
           Lưu
