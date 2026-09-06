@@ -319,9 +319,9 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       // Doc lai phan nguoi da sua tay de khong ghi de len.
       const cu = await khach.query<{
         id: string; thuong: string; phu_cap_khac: string; tru_khac: string;
-        ep_du_cong: boolean;
+        ep_du_cong: boolean; mien_phat: boolean;
       }>(
-        `select id, thuong, phu_cap_khac, tru_khac, ep_du_cong
+        `select id, thuong, phu_cap_khac, tru_khac, ep_du_cong, mien_phat
            from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2`,
         [ky_luong_id, nv.nhan_vien_id],
       );
@@ -329,6 +329,8 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       const thuong = Number(phieu_cu?.thuong ?? 0);
       const phu_cap_khac = Number(phieu_cu?.phu_cap_khac ?? 0);
       const tru_khac = Number(phieu_cu?.tru_khac ?? 0);
+      // Admin da tich "mien phat": bo phan phat di muon tu dong (tru_di_muon/tru_nua_ngay).
+      const mien_phat = Boolean(phieu_cu?.mien_phat ?? false);
       // Admin da tich "ep du cong" tren phieu nay: tra du luong thang, tuc cong thuc = cong
       // chuan trong cong thuc luong theo cong. Phu cap theo cong VAN theo cham cong that —
       // ep du cong la quyet dinh ve luong co ban, khong phai ve so ngay an trua.
@@ -366,7 +368,11 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       // ---- Phat di muon TU DONG: dua thanh dong khoan `tru_di_muon` / `tru_nua_ngay` (danh muc
       // da co san). Chay chung co che voi chinh sach phu cap: tat cong tac -> so_lan = 0 ->
       // dong tu dong nay bien mat o buoc delete duoi. Nguoi da GO TAY khoan do thi ton trong.
-      const muon = tinh_phat_di_muon(muon_theo_nguoi.get(nv.nhan_vien_id) ?? [], ts.cs.di_muon);
+      // Mien phat: khong sinh dong phat di muon nao — cac dong tu dong cu (neu co) se bi xoa
+      // o buoc delete ben duoi vi khong con nam trong `sinh`.
+      const muon = mien_phat
+        ? { so_lan_50k_phat: 0, tien_50k: 0, so_lan_nua_ngay: 0 }
+        : tinh_phat_di_muon(muon_theo_nguoi.get(nv.nhan_vien_id) ?? [], ts.cs.di_muon);
       if (muon.so_lan_50k_phat > 0 && !go_tay.has('tru_di_muon')) {
         sinh.push({
           khoan_ma: 'tru_di_muon', so_luong: muon.so_lan_50k_phat,

@@ -640,8 +640,10 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     const id = lay_id(req);
     const b = than(req.body);
 
-    const p = await truy_van_mot<{ ky_luong_id: string; trang_thai: string; ep_du_cong: boolean }>(
-      `select p.ky_luong_id, k.trang_thai, p.ep_du_cong from phieu_luong p
+    const p = await truy_van_mot<{
+      ky_luong_id: string; trang_thai: string; ep_du_cong: boolean; mien_phat: boolean;
+    }>(
+      `select p.ky_luong_id, k.trang_thai, p.ep_du_cong, p.mien_phat from phieu_luong p
          join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
       [id],
     );
@@ -650,24 +652,28 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${p.trang_thai}" nên phiếu đã khóa sửa.`);
     }
 
-    // "Ep du cong" = tra du luong thang bat ke cham cong. Day la quyet dinh ve tien luong nen
-    // CHI ADMIN doi duoc; nhan su thuong sua thuong/tru van binh thuong nhung khong dong vao no.
-    // Vang mat trong body (null) = giu nguyen; co mat va khac gia tri cu ma khong phai admin -> chan.
+    // "Ep du cong" (tra du luong thang) va "mien phat" (bo phat di muon) deu la quyet dinh ve
+    // tien nen CHI ADMIN doi duoc. Vang mat trong body (null) = giu nguyen; co mat va khac gia
+    // tri cu ma khong phai admin -> chan.
     const ep_du_cong = luan_ly(b, 'ep_du_cong');
     if (ep_du_cong !== null && ep_du_cong !== p.ep_du_cong && nd.vai_tro !== 'admin') {
       throw new LoiKhongQuyen('Chỉ admin được tích "tính đủ công" cho phiếu lương.');
+    }
+    const mien_phat = luan_ly(b, 'mien_phat');
+    if (mien_phat !== null && mien_phat !== p.mien_phat && nd.vai_tro !== 'admin') {
+      throw new LoiKhongQuyen('Chỉ admin được tích "miễn phạt" cho phiếu lương.');
     }
 
     await thuc_thi(
       `update phieu_luong set
          thuong = $2, phu_cap_khac = $3, tru_khac = $4,
          ly_do_tru_khac = $5, ghi_chu = $6, ep_du_cong = coalesce($8, ep_du_cong),
-         sua_boi = $7, sua_luc = now()
+         mien_phat = coalesce($9, mien_phat), sua_boi = $7, sua_luc = now()
        where id = $1`,
       [
         id, so_tien(b, 'thuong'), so_tien(b, 'phu_cap_khac'), so_tien(b, 'tru_khac'),
         chuoi(b, 'ly_do_tru_khac', { toi_da: 500 }),
-        chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub, ep_du_cong,
+        chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub, ep_du_cong, mien_phat,
       ],
     );
 

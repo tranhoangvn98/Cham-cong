@@ -101,6 +101,8 @@ interface Phieu {
   ghi_chu: string | null;
   /** Admin ép công thực = công chuẩn để trả đủ lương tháng. */
   ep_du_cong: boolean;
+  /** Admin miễn phạt đi muộn tự động cho phiếu này. */
+  mien_phat: boolean;
   khoan: KhoanPhieu[];
 }
 
@@ -794,6 +796,7 @@ function HopThoaiSuaPhieu(
   const [ly_do, dat_ly_do] = useState(phieu.ly_do_tru_khac ?? '');
   const [ghi_chu, dat_ghi_chu] = useState(phieu.ghi_chu ?? '');
   const [ep_du_cong, dat_ep_du_cong] = useState(phieu.ep_du_cong);
+  const [mien_phat, dat_mien_phat] = useState(phieu.mien_phat);
   const admin = la_admin();
   const hd = dung_hanh_dong();
 
@@ -833,6 +836,22 @@ function HopThoaiSuaPhieu(
               <strong>Tính đủ công</strong> — coi công thực = công chuẩn để trả đủ lương tháng,
               bất kể chấm công thực tế. <strong>Chỉ admin</strong> được tích. Phụ cấp theo công
               vẫn tính theo chấm công thật.
+            </span>
+          </label>
+        </div>
+      )}
+
+      {(admin || phieu.mien_phat) && (
+        <div className="hop-luu-y" style={{ margin: '0 0 0.75rem' }}>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <input
+              type="checkbox" checked={mien_phat} disabled={!admin}
+              onChange={(e) => dat_mien_phat(e.target.checked)}
+            />
+            <span>
+              <strong>Miễn phạt</strong> — bỏ các khoản phạt đi muộn tự động (50k / nửa ngày công)
+              cho phiếu này. <strong>Chỉ admin</strong> được tích. Không ảnh hưởng khoản trừ gõ tay
+              hay kỷ luật.
             </span>
           </label>
         </div>
@@ -882,8 +901,8 @@ function HopThoaiSuaPhieu(
                   ly_do_tru_khac: ly_do,
                   ghi_chu,
                   // Chi gui khi la admin — server cung chan, nhung khong gui thi nhan su thuong
-                  // sua thuong/tru ma khong vo tinh dong vao co nay.
-                  ...(admin ? { ep_du_cong } : {}),
+                  // sua thuong/tru ma khong vo tinh dong vao hai co nay.
+                  ...(admin ? { ep_du_cong, mien_phat } : {}),
                 },
               });
             },
