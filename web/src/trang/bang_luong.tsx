@@ -264,6 +264,7 @@ function HopThoaiChiTiet(
     dung_nap<KyLuong & { phieu: Phieu[] }>(`/api/ky-luong/${ky_id}`);
   const [sua, dat_sua] = useState<Phieu | null>(null);
   const [khoan, dat_khoan] = useState<Phieu | null>(null);
+  const [xem_tru, dat_xem_tru] = useState<Phieu | null>(null);
   const [tab, dat_tab] = useState<'vnd' | 'cny'>('vnd');
   const hd = dung_hanh_dong();
 
@@ -427,7 +428,14 @@ function HopThoaiChiTiet(
                     <td className="canh-phai">{tien(p.tong_thu_nhap)}</td>
                     <td className="canh-phai">{tien(bh)}</td>
                     <td className="canh-phai">{tien(p.thue_tncn)}</td>
-                    <td className="canh-phai">{tien(tru)}</td>
+                    <td className="canh-phai">
+                      {tru > 0 ? (
+                        <button className="nut-lien-ket" onClick={() => dat_xem_tru(p)}
+                          title="Xem chi tiết các khoản trừ">
+                          {tien(tru)}
+                        </button>
+                      ) : tien(tru)}
+                    </td>
                     <td className="canh-phai">
                       <strong>{tien(lam_tron)}</strong>
                       {lam_tron !== goc && (
@@ -479,6 +487,9 @@ function HopThoaiChiTiet(
           khi_dong={() => dat_khoan(null)}
           khi_xong={() => { dat_khoan(null); nap_lai(); khi_doi(); }}
         />
+      )}
+      {xem_tru !== null && (
+        <HopThoaiKeKhoanTru phieu={xem_tru} khi_dong={() => dat_xem_tru(null)} />
       )}
     </KhungToanMan>
   );
@@ -705,6 +716,67 @@ function HopThoaiKhoan(
           Lưu
         </button>
         <button className="nut-phang" onClick={khi_dong}>Hủy</button>
+      </div>
+    </HopThoai>
+  );
+}
+
+/**
+ * Bang KE cac khoan tru cua mot phieu (chi doc): tung dong khoan loai `tru` tu chinh sach /
+ * go tay, cong voi "Tru khac" (tam ung, doan phi...) neu co. Mo tu cot Khoan tru — de nguoi
+ * xem biet con so tong gom nhung gi, khong phai mo man Sua.
+ */
+function HopThoaiKeKhoanTru(
+  { phieu, khi_dong }: { phieu: Phieu; khi_dong: () => void },
+): ReactNode {
+  const cac_tru = phieu.khoan.filter((k) => k.loai === 'tru');
+  const tru_khac = Number(phieu.tru_khac);
+  const tong = cac_tru.reduce((a, k) => a + Number(k.thanh_tien), 0) + tru_khac;
+
+  return (
+    <HopThoai tieu_de={`Các khoản trừ — ${phieu.ho_ten}`} khi_dong={khi_dong}>
+      {cac_tru.length === 0 && tru_khac === 0 ? (
+        <p className="mo-ta">Phiếu này không có khoản trừ nào.</p>
+      ) : (
+        <table className="bang-gon">
+          <tbody>
+            {cac_tru.map((k) => (
+              <tr key={k.khoan_ma}>
+                <td>
+                  {k.ten}
+                  {k.tu_chinh_sach && <span className="nhan-mo"> theo chính sách</span>}
+                  {k.ghi_chu !== null && k.ghi_chu !== '' && (
+                    <div className="mo-ta">{k.ghi_chu}</div>
+                  )}
+                </td>
+                <td className="canh-phai">{tien(k.thanh_tien)} đ</td>
+              </tr>
+            ))}
+            {tru_khac > 0 && (
+              <tr>
+                <td>
+                  Trừ khác
+                  {phieu.ly_do_tru_khac !== null && phieu.ly_do_tru_khac !== '' && (
+                    <div className="mo-ta">{phieu.ly_do_tru_khac}</div>
+                  )}
+                </td>
+                <td className="canh-phai">{tien(tru_khac)} đ</td>
+              </tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="hang-tong">
+              <td><strong>Tổng khoản trừ</strong></td>
+              <td className="canh-phai"><strong>{tien(tong)} đ</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      )}
+      <p className="mo-ta">
+        BHXH/YT/TN và thuế TNCN là các khoản trừ pháp lý riêng, xem ở cột tương ứng.
+      </p>
+      <div className="hang-nut">
+        <button className="nut-phang" onClick={khi_dong}>Đóng</button>
       </div>
     </HopThoai>
   );
