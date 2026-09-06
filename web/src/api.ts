@@ -561,13 +561,39 @@ export async function gui_tep<T = unknown>(duong_dan: string, du_lieu: FormData)
 }
 
 /**
+ * Fetch mot tep/anh CO XAC THUC, tu LAM MOI token khi 401 roi thu lai MOT lan — giong `goi`.
+ *
+ * Truoc day cac ham tai duoi day fetch mot phat voi `phien.token_truy_cap` va KHONG lam moi khi
+ * 401. He qua: khi token truy cap het han, bang du lieu (goi qua `goi`) van tai duoc vi `goi` tu
+ * lam moi, nhung XUAT EXCEL / tai tep / anh thi 401 ("Khong tai duoc tep (loi 401)").
+ */
+async function fetch_xac_thuc(duong_dan: string): Promise<Response> {
+  let token_da_gui: string | null = null;
+  const gui = async (): Promise<Response> => {
+    const t = dung_cong_sso() ? doc_token_cong() : phien?.token_truy_cap ?? null;
+    token_da_gui = t;
+    return fetch(`${GOC}${duong_dan}`, {
+      headers: t === null ? {} : { authorization: `Bearer ${t}` },
+    });
+  };
+  let res = await gui();
+  if (res.status === 401) {
+    if (dung_cong_sso()) {
+      const t_moi = doc_token_cong();
+      if (t_moi !== null && t_moi !== token_da_gui) res = await gui();
+    } else if (await lam_moi_token()) {
+      res = await gui();
+    }
+  }
+  return res;
+}
+
+/**
  * Tai tep (CSV) qua fetch de gan duoc header Authorization —
  * the <a download> thuong khong gui duoc token.
  */
 export async function tai_tep(duong_dan: string, ten_tep: string): Promise<void> {
-  const res = await fetch(`${GOC}${duong_dan}`, {
-    headers: phien === null ? {} : { authorization: `Bearer ${phien.token_truy_cap}` },
-  });
+  const res = await fetch_xac_thuc(duong_dan);
   if (!res.ok) throw new LoiApi(res.status, `Không tải được tệp (lỗi ${res.status}).`);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
@@ -588,9 +614,7 @@ export async function tai_tep(duong_dan: string, ten_tep: string): Promise<void>
  * Nho goi `URL.revokeObjectURL` khi dong — neu khong blob nam lai trong bo nho tab.
  */
 export async function tai_blob(duong_dan: string): Promise<{ url: string; kieu: string }> {
-  const res = await fetch(`${GOC}${duong_dan}`, {
-    headers: phien === null ? {} : { authorization: `Bearer ${phien.token_truy_cap}` },
-  });
+  const res = await fetch_xac_thuc(duong_dan);
   if (!res.ok) {
     const than: unknown = await res.json().catch(() => null);
     const loi = (than as { loi?: string } | null)?.loi;
@@ -607,9 +631,7 @@ export function url_anh(lan_quet_id: string): string {
 
 /** Tai anh co xac thuc thanh blob URL (the <img> khong gui duoc header). */
 export async function tai_anh(lan_quet_id: string): Promise<string> {
-  const res = await fetch(url_anh(lan_quet_id), {
-    headers: phien === null ? {} : { authorization: `Bearer ${phien.token_truy_cap}` },
-  });
+  const res = await fetch_xac_thuc(`/api/toi/anh/${lan_quet_id}`);
   if (!res.ok) throw new LoiApi(res.status, 'Không tải được ảnh.');
   return URL.createObjectURL(await res.blob());
 }
