@@ -281,6 +281,17 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
   }
 
   await trong_giao_dich(async (khach) => {
+    // Don phieu CU cua nguoi khong con thuoc bang luong VND: chuyen sang che do luong TQ,
+    // hoac da nghi. Khong don thi phieu cu ket lai trong ky (vd nhan su Kho TQ da doi sang
+    // CNY van hien o bang VND). Cascade xoa luon phieu_luong_khoan.
+    await khach.query(
+      `delete from phieu_luong
+        where ky_luong_id = $1
+          and nhan_vien_id not in (
+            select id from nhan_vien where dang_hoat_dong = true and che_do_luong = 'vn')`,
+      [ky_luong_id],
+    );
+
     for (const nv of ds) {
       // Cong chuan CO DINH neu cong ty da khai; khong khai thi dem theo lich that CUA LICH
       // NGHI LE tuong ung noi lam viec (VN/TQ).
