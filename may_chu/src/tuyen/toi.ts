@@ -954,7 +954,8 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
            select tb.id, tb.can_giai_trinh from thong_bao tb
             where tb.da_go = false and (tb.het_han is null or tb.het_han > now())
               and (tb.pham_vi = 'toan_cong_ty'
-                   or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1))
+                   or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+                   or tb.nhan_vien_id = $1)
          )
          select count(*) filter (where not exists (
                   select 1 from thong_bao_da_doc dd
@@ -1116,7 +1117,8 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
          left join thong_bao_da_doc dd on dd.thong_bao_id = tb.id and dd.nhan_vien_id = $1
         where tb.da_go = false and (tb.het_han is null or tb.het_han > now())
           and (tb.pham_vi = 'toan_cong_ty'
-               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1))
+               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+               or tb.nhan_vien_id = $1)
         order by (dd.doc_luc is null) desc, tb.muc_do = 'khan' desc, tb.tao_luc desc
         limit 200`,
       [nv_id],
@@ -1135,7 +1137,8 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       `select tb.can_giai_trinh from thong_bao tb
         where tb.id = $1 and tb.da_go = false
           and (tb.pham_vi = 'toan_cong_ty'
-               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2))`,
+               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)
+               or tb.nhan_vien_id = $2)`,
       [tb_id, nv_id],
     );
     if (tb === null) throw new LoiKhongTim('Không tìm thấy thông báo trong phạm vi của bạn.');
@@ -1156,13 +1159,25 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     return res.send({ ok: true, ma_giai_trinh: dong?.ma ?? null });
   });
 
-  /** Kho van ban cong ty (noi quy, bieu mau...). Ai dang nhap cung xem duoc. */
-  app.get('/van-ban', async () => truy_van(
-    `select id, ma, tieu_de, mo_ta, danh_muc, ten_goc, mime, kich_thuoc, tao_luc,
-            (ten_luu is not null) as co_tep
-       from van_ban_cong_ty where da_go = false
-      order by danh_muc, tao_luc desc limit 500`,
-  ));
+  /**
+   * Kho van ban cong ty. Loc theo PHAM VI: van ban toan cong ty ai cung thay; van ban phong
+   * ban chi nguoi trong phong; van ban ca nhan chi dung nguoi do. Van ban cu (truoc ban soan
+   * thao) co pham_vi mac dinh 'toan_cong_ty' nen van hien voi moi nguoi.
+   */
+  app.get('/van-ban', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select id, ma, tieu_de, mo_ta, noi_dung, nguoi_ban_hanh, danh_muc, ten_goc, mime,
+              kich_thuoc, tao_luc, (ten_luu is not null) as co_tep
+         from van_ban_cong_ty
+        where da_go = false
+          and (pham_vi = 'toan_cong_ty'
+               or phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+               or nhan_vien_id = $1)
+        order by danh_muc, tao_luc desc limit 500`,
+      [nv_id],
+    );
+  });
 
   /** Tai mot van ban cong ty ve. */
   app.get('/van-ban/:id/tai', async (req, res) => {

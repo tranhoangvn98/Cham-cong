@@ -8,6 +8,7 @@ import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { gui_ngam } from '../su_kien/thong_bao_day.ts';
+import { gui_email } from '../su_kien/gui_email.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { luu_van_ban_cong_ty, lam_sach_ten, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
@@ -18,8 +19,36 @@ import {
 } from '../tien_ich/kiem_tra.ts';
 
 const MUC_DO = ['thuong', 'quan_trong', 'khan'] as const;
-const PHAM_VI = ['toan_cong_ty', 'phong_ban'] as const;
-const DANH_MUC_VB = ['noi_quy', 'bieu_mau', 'chinh_sach', 'huong_dan', 'khac'] as const;
+const PHAM_VI = ['toan_cong_ty', 'phong_ban', 'ca_nhan'] as const;
+const DANH_MUC_VB = ['thong_bao', 'quyet_dinh', 'cong_van', 'noi_quy',
+  'bieu_mau', 'chinh_sach', 'huong_dan', 'khac'] as const;
+
+/** Nguoi nhan trong mot pham vi: dung cho ca chuong bao he thong lan gui email. */
+interface NguoiNhan { nguoi_dung_id: string; email: string | null; ho_ten: string }
+
+async function nguoi_nhan_pham_vi(
+  pham_vi: string, phong_ban_id: string | null, nhan_vien_id: string | null,
+): Promise<NguoiNhan[]> {
+  return truy_van<NguoiNhan>(
+    `select u.id as nguoi_dung_id, nv.email, nv.ho_ten
+       from nguoi_dung u
+       join nhan_vien nv on nv.id = u.nhan_vien_id
+      where u.dang_hoat_dong = true and nv.dang_hoat_dong = true
+        and ($1 = 'toan_cong_ty'
+             or ($1 = 'phong_ban' and nv.phong_ban_id = $2::uuid)
+             or ($1 = 'ca_nhan'   and nv.id = $3::uuid))`,
+    [pham_vi, phong_ban_id, nhan_vien_id],
+  );
+}
+
+/** HTML don gian cho email van ban — giu xuong dong, chong chen the. */
+function html_email(tieu_de: string, than_van: string): string {
+  const thoat = (s: string): string => s
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;line-height:1.6">`
+    + `<h2 style="margin:0 0 12px">${thoat(tieu_de)}</h2>`
+    + `<div style="white-space:pre-wrap">${thoat(than_van)}</div></div>`;
+}
 
 function lay_id_param(req: { params: unknown }): string {
   const p = req.params as Record<string, string>;
@@ -125,11 +154,25 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
   // ------------------------------------------------------------ VAN BAN CONG TY (quan tri)
   /** Danh sach van ban (ke ca da go — quan ly). */
   app.get('/van-ban', { preHandler: can_nhan_su }, async () => truy_van(
-    `select vb.id, vb.ma, vb.tieu_de, vb.mo_ta, vb.danh_muc, vb.ten_goc, vb.mime,
-            vb.kich_thuoc, vb.tao_luc, vb.da_go, (vb.ten_luu is not null) as co_tep
-       from van_ban_cong_ty vb order by vb.tao_luc desc limit 500`));
+    `select vb.id, vb.ma, vb.tieu_de, vb.mo_ta, vb.noi_dung, vb.nguoi_ban_hanh, vb.danh_muc,
+            vb.pham_vi, vb.phong_ban_id, pb.ten as phong_ban, vb.nhan_vien_id,
+            nv.ho_ten as nhan_vien, vb.gui_he_thong, vb.gui_email, vb.thong_bao_id,
+            vb.ten_goc, vb.mime, vb.kich_thuoc, vb.tao_luc, vb.da_go,
+            (vb.ten_luu is not null) as co_tep
+       from van_ban_cong_ty vb
+       left join phong_ban pb on pb.id = vb.phong_ban_id
+       left join nhan_vien nv on nv.id = vb.nhan_vien_id
+      order by vb.tao_luc desc limit 500`));
 
-  /** Tai mot van ban len (multipart: tep + tieu_de + danh_muc + mo_ta). */
+  /**
+   * Soan / ban hanh mot van ban (multipart — tep KHONG bat buoc nua):
+   *   tieu_de, danh_muc (loai/hinh thuc), mo_ta, noi_dung, nguoi_ban_hanh,
+   *   pham_vi (+ phong_ban_id / nhan_vien_id), gui_he_thong, gui_email, [tep].
+   *
+   * Phai co NOI DUNG hoac TEP — mot van ban rong khong co gi de ban hanh. Khi `gui_he_thong`
+   * thi tao mot `thong_bao` lien ket (tai dung chuong bao + theo doi da doc); khi `gui_email`
+   * thi gui qua Microsoft 365 (fail-soft — thieu cau hinh mail thi bo qua email, van tao van ban).
+   */
   app.post('/van-ban', {
     preHandler: can_nhan_su,
     bodyLimit: cau_hinh.tep_toi_da_byte + 1024 * 1024,
@@ -141,7 +184,9 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
     for await (const phan of req.parts({ limits: { fileSize: cau_hinh.tep_toi_da_byte } })) {
       if (phan.type === 'file') {
         if (phan.fieldname !== 'tep') { await phan.toBuffer(); continue; }
-        ten_goc = lam_sach_ten(phan.filename ?? 'van-ban');
+        const co_ten = (phan.filename ?? '').trim();
+        if (co_ten === '') { await phan.toBuffer(); continue; } // o chon tep de trong
+        ten_goc = lam_sach_ten(co_ten);
         du_lieu = await phan.toBuffer();
       } else if (typeof phan.value === 'string') {
         truong[phan.fieldname] = phan.value;
@@ -150,26 +195,95 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
     const tieu_de = chuoi_bat_buoc(truong, 'tieu_de', { toi_da: 250, toi_thieu: 3 });
     const danh_muc = trong_tap(truong, 'danh_muc', DANH_MUC_VB, { bat_buoc: false }) ?? 'khac';
     const mo_ta = chuoi(truong, 'mo_ta', { toi_da: 1000 });
-    if (du_lieu === null) throw new LoiDauVao('Thiếu tệp văn bản.');
+    const noi_dung = chuoi(truong, 'noi_dung', { toi_da: 20000 });
+    const nguoi_ban_hanh = chuoi(truong, 'nguoi_ban_hanh', { toi_da: 200 });
+    const pham_vi = trong_tap(truong, 'pham_vi', PHAM_VI, { bat_buoc: false }) ?? 'toan_cong_ty';
+    const phong_ban_id = pham_vi === 'phong_ban'
+      ? uuid(truong, 'phong_ban_id', { bat_buoc: true }) as string : null;
+    const nhan_vien_id = pham_vi === 'ca_nhan'
+      ? uuid(truong, 'nhan_vien_id', { bat_buoc: true }) as string : null;
+    const gui_he_thong = luan_ly(truong, 'gui_he_thong') ?? false;
+    const gui_email_bat = luan_ly(truong, 'gui_email') ?? false;
 
-    const da_luu = await luu_van_ban_cong_ty(du_lieu, ten_goc, danh_muc, ngay_dia_phuong(new Date()));
+    if ((noi_dung === null || noi_dung === '') && du_lieu === null) {
+      throw new LoiDauVao('Văn bản phải có nội dung hoặc tệp đính kèm.');
+    }
+
+    // Tep (neu co) luu truoc — cung co che luu_tep chong path traversal.
+    const da_luu = du_lieu === null
+      ? null
+      : await luu_van_ban_cong_ty(du_lieu, ten_goc, danh_muc, ngay_dia_phuong(new Date()));
+
     let dong: { id: string; ma: string } | null;
     try {
       dong = await truy_van_mot(
-        `insert into van_ban_cong_ty(tieu_de, mo_ta, danh_muc, ten_luu, ten_goc, mime, kich_thuoc,
-                                     nguoi_tao)
-         values ($1,$2,$3,$4,$5,$6,$7,$8) returning id, ma`,
-        [tieu_de, mo_ta === '' ? null : mo_ta, danh_muc, da_luu.ten_luu, ten_goc, da_luu.mime,
-          da_luu.kich_thuoc, nd.sub],
+        `insert into van_ban_cong_ty
+           (tieu_de, mo_ta, noi_dung, nguoi_ban_hanh, danh_muc, pham_vi, phong_ban_id,
+            nhan_vien_id, gui_he_thong, gui_email, ten_luu, ten_goc, mime, kich_thuoc, nguoi_tao)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id, ma`,
+        [
+          tieu_de, mo_ta === '' ? null : mo_ta, noi_dung === '' ? null : noi_dung,
+          nguoi_ban_hanh === '' ? null : nguoi_ban_hanh, danh_muc, pham_vi, phong_ban_id,
+          nhan_vien_id, gui_he_thong, gui_email_bat,
+          da_luu?.ten_luu ?? null, da_luu === null ? null : ten_goc,
+          da_luu?.mime ?? null, da_luu?.kich_thuoc ?? null, nd.sub,
+        ],
       );
     } catch (loi) {
       // Tep da nam tren dia truoc khi co dong CSDL. Ghi that bai -> xoa tep mo coi.
-      await xoa_tep_ho_so(da_luu.ten_luu);
+      if (da_luu !== null) await xoa_tep_ho_so(da_luu.ten_luu);
       throw loi;
     }
-    await ghi_nhat_ky(nd.sub, 'tai_van_ban', 'van_ban_cong_ty', dong?.id ?? null,
-      { danh_muc }, req.ip);
-    return res.code(201).send(dong);
+    const vb_id = dong?.id ?? '';
+
+    // -------------------------------------------------- ban hanh: thong bao he thong + email
+    let so_nguoi_nhan = 0;
+    let da_gui_email = false;
+    if (gui_he_thong || gui_email_bat) {
+      const nhan = await nguoi_nhan_pham_vi(pham_vi, phong_ban_id, nhan_vien_id);
+      so_nguoi_nhan = nhan.length;
+
+      // Than van ban = so hieu + nguoi ban hanh + noi dung. Dung cho ca thong bao lan email.
+      const dau = [`Số hiệu: ${dong?.ma ?? ''}`,
+        nguoi_ban_hanh === '' || nguoi_ban_hanh === null ? '' : `Người ban hành: ${nguoi_ban_hanh}`]
+        .filter((x) => x !== '').join('\n');
+      const than_van = [dau, noi_dung ?? '', da_luu === null ? '' : '(Có tệp đính kèm — xem trên hệ thống.)']
+        .filter((x) => x !== '').join('\n\n');
+
+      if (gui_he_thong && nhan.length > 0) {
+        const tb = await truy_van_mot<{ id: string }>(
+          `insert into thong_bao(tieu_de, noi_dung, muc_do, can_giai_trinh, pham_vi,
+                                 phong_ban_id, nhan_vien_id, nguoi_tao)
+           values ($1,$2,'thuong',false,$3,$4,$5,$6) returning id`,
+          [tieu_de, than_van, pham_vi, phong_ban_id, nhan_vien_id, nd.sub],
+        );
+        if (tb !== null) {
+          await thuc_thi('update van_ban_cong_ty set thong_bao_id = $2 where id = $1',
+            [vb_id, tb.id]);
+          gui_ngam({
+            nguoi_dung_ids: nhan.map((n) => n.nguoi_dung_id),
+            tieu_de: `Văn bản mới: ${tieu_de}`,
+            noi_dung: `${dong?.ma ?? ''} — bấm để xem chi tiết.`,
+            du_lieu: { man: 'thong-bao', thong_bao_id: tb.id },
+          });
+        }
+      }
+
+      if (gui_email_bat) {
+        const dia_chi = nhan.map((n) => n.email).filter((e): e is string => e !== null && e.includes('@'));
+        if (dia_chi.length > 0) {
+          da_gui_email = await gui_email({
+            den: dia_chi,
+            tieu_de: `[${dong?.ma ?? 'Văn bản'}] ${tieu_de}`,
+            noi_dung_html: html_email(tieu_de, than_van),
+          });
+        }
+      }
+    }
+
+    await ghi_nhat_ky(nd.sub, 'tai_van_ban', 'van_ban_cong_ty', vb_id,
+      { danh_muc, pham_vi, gui_he_thong, gui_email: gui_email_bat, so_nguoi_nhan }, req.ip);
+    return res.code(201).send({ ...dong, so_nguoi_nhan, da_gui_email });
   });
 
   /** Go mot van ban (soft delete — con luu tep de khoi phuc). */

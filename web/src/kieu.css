@@ -1243,6 +1243,12 @@ textarea:focus-visible,
 .vb-dong:last-child { border-bottom: 0; }
 .vb-thong-tin { min-width: 0; }
 .vb-tieu-de { font-weight: 600; }
+/* Noi dung van ban da soan: giu xuong dong, gioi han chieu cao de danh sach van gon. */
+.vb-noi-dung {
+  margin-top: 6px; white-space: pre-wrap; color: var(--chu); font-size: 14px;
+  max-height: 8.5em; overflow: auto; padding: 8px 10px;
+  background: var(--nen-mo); border: 1px solid var(--vien); border-radius: 8px;
+}
 
 /* -------- tro ly (chatbot) -------- */
 .troly-nut {
