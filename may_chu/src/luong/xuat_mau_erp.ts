@@ -7,12 +7,35 @@
 // Dung `exceljs` (khac voi cho khac trong du an tu viet `ghi_xlsx`): mau nay co logo nhung, nhom
 // cot outline, cong thuc va thiet lap in — tu dung lai bang bo ghi toi gian la khong kha thi.
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
 import { khoang_thang } from '../tien_ich/thoi_gian.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 
 const DUONG_MAU = fileURLToPath(new URL('../../mau/mau_bang_luong_erp.xlsx', import.meta.url));
+const SHEET_XML = 'xl/worksheets/sheet1.xml';
+const RE_COLS = /<cols>[\s\S]*?<\/cols>/;
+
+/**
+ * exceljs GHI KHONG DUNG khoi <cols> cua mau (mat trang thai an + rong cua cot nhom, dat lai
+ * rong 13). Ta thay thang khoi <cols> trong XML dau ra bang khoi GOC cua mau — nho vay che do
+ * thu gon 17 cot va do rong tung cot khop y HET mau.
+ */
+async function va_cols(buf: Buffer): Promise<Buffer> {
+  const zin = await JSZip.loadAsync(buf);
+  const ztpl = await JSZip.loadAsync(readFileSync(DUONG_MAU));
+  const f_tpl = ztpl.file(SHEET_XML);
+  const f_out = zin.file(SHEET_XML);
+  if (f_tpl === null || f_out === null) return buf;
+  const cols = RE_COLS.exec(await f_tpl.async('string'))?.[0];
+  if (cols === undefined) return buf;
+  let xml = await f_out.async('string');
+  xml = RE_COLS.test(xml) ? xml.replace(RE_COLS, cols) : xml.replace('<sheetData', `${cols}<sheetData`);
+  zin.file(SHEET_XML, xml);
+  return zin.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+}
 
 const DATA_START = 10;
 const SO_DONG_MAU = 30; // dong 10..39 trong mau
@@ -156,11 +179,6 @@ export async function xuat_bang_luong_erp(ky_luong_id: string): Promise<Buffer> 
     for (let c = 1; c <= 48; c++) ws.getCell(r, c).value = null;
   }
 
-  // Mo BUNG tat ca cot: mau goc gom nhom + thu gon con 17 cot, nhung o che do thu gon cac tieu
-  // de nhom (gop qua cot an) bi TRAN/DE len nhau. Hien day du 48 cot cho khong bi de; nut +/- cua
-  // nhom van con de nguoi dung tu thu gon neu muon.
-  for (let c = 1; c <= 48; c++) ws.getColumn(c).hidden = false;
-
   // ---- dien tung dong ----
   for (let i = 0; i < N; i++) {
     const p = ds[i] as DongPhieu;
@@ -281,5 +299,5 @@ export async function xuat_bang_luong_erp(ky_luong_id: string): Promise<Buffer> 
   });
 
   const ab = await wb.xlsx.writeBuffer();
-  return Buffer.from(ab as ArrayBuffer);
+  return va_cols(Buffer.from(ab as ArrayBuffer));
 }
