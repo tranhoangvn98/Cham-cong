@@ -2,6 +2,37 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.91.0] — 2026-09-04
+
+**Thanh bên góc nhìn Quản trị giờ THUẦN quản trị.**
+
+- Các mục "của tôi" (Đơn của tôi, Phiếu lương, Hồ sơ của tôi, Thông báo, Văn bản công ty) đã
+  có đầy đủ trong "Khu vực của tôi" (giao diện cá nhân toàn màn hình), nên **ẩn khỏi thanh bên
+  Quản trị** — không lặp lại. Thanh admin còn: Tổng quan · Khu vực của tôi · **Chấm công** ·
+  **Nhân sự & lương** · **Hệ thống**.
+- Kỹ thuật: thêm cờ `chi_ca_nhan` cho các mục đó (vẫn nằm trong MENU để giữ ràng buộc menu ↔
+  hướng dẫn), bộ lọc góc nhìn Quản trị bỏ qua chúng.
+
+## [1.90.0] — 2026-09-04
+
+**Sắp xếp lại thanh bên (góc nhìn Quản trị) cho gọn.**
+
+- Khối trên cùng trước đây trộn lẫn mục "của tôi" (Đơn của tôi, Thông báo, Hồ sơ, Phiếu lương…)
+  với mục quản trị (Chấm công, Bảng công) mà không có tiêu đề nhóm. Nay chia rõ 5 khối:
+  truy cập nhanh (**Tổng quan**, **Khu vực của tôi**) · **Của tôi** · **Chấm công** · **Nhân sự
+  & lương** · **Hệ thống**. Không thêm/bớt mục, chỉ gom nhóm và sắp thứ tự.
+
+## [1.89.0] — 2026-09-04
+
+**Chuông thông báo ở Khu vực của tôi là trung tâm thông báo TỔNG HỢP.**
+
+- Bản trước tôi đặt nhầm một nút chuông tự chế chỉ mở màn "Thông báo công ty". Nay dùng đúng
+  component **`ChuongBao`** (`/api/toi/bao`) — gộp **mọi** thông báo: thông báo công ty, nhắc
+  nhở/cảnh cáo kỷ luật, trạng thái đơn từ… có đếm số chưa đọc, "đánh dấu đã đọc".
+- Bấm một thông báo trong chuông **mở đúng màn NGAY trong vỏ cá nhân** (không nhảy ra giao diện
+  quản trị cũ): kỷ luật/vi phạm/đơn → tab Đơn từ; thông báo công ty → màn Thông báo; duyệt đơn
+  → đổi sang góc nhìn Quản trị. `ChuongBao` nhận thêm tuỳ chọn `dieu_huong` cho việc này.
+
 ## [1.88.0] — 2026-09-04
 
 **Sửa tab Cá nhân trắng màn — lệch hợp đồng backend/frontend.**

@@ -394,6 +394,15 @@ export const cau_hinh = {
   /** Noi luu tep dinh kem ho so nhan su (hop dong scan, bien ban...). */
   thu_muc_ho_so: resolve(process.cwd(), chu('THU_MUC_HO_SO', './du_lieu/ho_so')),
 
+  /**
+   * Thong tin cong ty in tren dau bang luong xuat Excel (mau ERP). De TRONG thi o do bo trong
+   * tren file — khong hard-code ten cong ty vao ma nguon.
+   */
+  cong_ty: {
+    ten: chu('CONG_TY_TEN', ''),
+    dia_chi: chu('CONG_TY_DIA_CHI', ''),
+  },
+
   /** Kich thuoc mot tep dinh kem toi da (byte). Hop dong scan nhieu trang thi nang len. */
   tep_toi_da_byte: so('TEP_TOI_DA_BYTE', 15 * 1024 * 1024),
 } as const;

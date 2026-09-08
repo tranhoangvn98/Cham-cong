@@ -33,7 +33,14 @@ function IconChuong(): ReactNode {
   );
 }
 
-export function ChuongBao(): ReactNode {
+/**
+ * `dieu_huong` (tuy chon): thay cho dieu huong mac dinh bang route. Vo ca nhan truyen callback
+ * nay de bam mot bao mo man NGAY TRONG vo ca nhan (khong nhay ra vo quan tri cu). Khong truyen
+ * thi giu hanh vi cu: `di_toi` theo `DUONG_THEO_MAN`.
+ */
+export function ChuongBao({ dieu_huong }: {
+  dieu_huong?: (man: string | undefined) => void;
+} = {}): ReactNode {
   const { di_toi } = dung_tuyen();
   const [mo, dat_mo] = useState(false);
   const [ds, dat_ds] = useState<Bao[]>([]);
@@ -69,6 +76,7 @@ export function ChuongBao(): ReactNode {
     }
     dat_mo(false);
     const man = b.du_lieu?.man;
+    if (dieu_huong !== undefined) { dieu_huong(man); return; }
     di_toi(man !== undefined ? (DUONG_THEO_MAN[man] ?? '/') : '/');
   };
 

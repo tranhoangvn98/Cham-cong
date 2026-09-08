@@ -9,10 +9,12 @@ import {
 } from '../bao_mat/xac_thuc.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { tinh_ky_luong } from '../luong/ky_luong.ts';
+import { tinh_ky_luong_cny } from '../luong/ky_luong_cny.ts';
 import {
   ban_chot_theo_id, chot_ky, danh_sach_ban_chot, type KetQuaChot,
 } from '../luong/ban_chot.ts';
 import { bang_luong_xuat } from '../luong/bang_xuat.ts';
+import { xuat_bang_luong_erp } from '../luong/xuat_mau_erp.ts';
 import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { ghi_nhan_am_tham } from '../sharepoint/dong_bo.ts';
 import { khoang_thang } from '../tien_ich/thoi_gian.ts';
@@ -20,7 +22,7 @@ import { ghi_xlsx } from '../tien_ich/ghi_xlsx.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, luan_ly, ngay_bat_buoc, so_nguyen, so_thuc, than, trong_tap,
   uuid, uuid_bat_buoc,
-  LoiDauVao, LoiKhongTim, LoiXungDot,
+  LoiDauVao, LoiKhongTim, LoiXungDot, LoiKhongQuyen,
 } from '../tien_ich/kiem_tra.ts';
 
 /** Trang thai cho phep sua so lieu. Tu cho_duyet tro di la khoa. */
@@ -156,11 +158,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
          ty_le_bhxh_nld, ty_le_bhyt_nld, ty_le_bhtn_nld,
          ty_le_bhxh_nsdld, ty_le_bhyt_nsdld, ty_le_bhtn_nsdld,
          giam_tru_ban_than, giam_tru_phu_thuoc, can_cu, ghi_chu,
-         cong_chuan_thang, lam_tron_den,
+         cong_chuan_thang, lam_tron_den, t7_nua_cong,
          phat_di_muon_bat, di_muon_gio_vao, di_muon_moc_50k, di_muon_muc_50k,
          di_muon_moc_nua_ngay, di_muon_mien_moi_thang, di_muon_han_don, ty_le_thu_viec
-       ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
-                 $18,$19,$20,$21,$22,$23,$24,$25) returning id`,
+       ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+                 $19,$20,$21,$22,$23,$24,$25,$26) returning id`,
       [
         hieu_luc_tu,
         chuoi_bat_buoc(b, 'ten', { toi_da: 200 }),
@@ -178,6 +180,8 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         // nhu nhau, nen phai la lua chon co y thuc chu khong phai mac dinh.
         so_thuc(b, 'cong_chuan_thang', { min: 0, max: 31 }) ?? 0,
         so_thuc(b, 'lam_tron_den', { min: 0, max: 1_000_000 }) ?? 0,
+        // Thu Bay tinh nua cong (ca cong chuan lan cong thuc). Mac dinh bat theo chinh sach cong ty.
+        luan_ly(b, 't7_nua_cong', true),
         // Phat di muon: bat/tat + 4 moc gio + muc phat + so lan mien. Mac dinh = tat, dung
         // mau mac dinh (08:00/08:10/08:30, 50k, 3 lan/thang, don truoc 07:30).
         luan_ly(b, 'phat_di_muon_bat', false),
@@ -637,8 +641,10 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     const id = lay_id(req);
     const b = than(req.body);
 
-    const p = await truy_van_mot<{ ky_luong_id: string; trang_thai: string }>(
-      `select p.ky_luong_id, k.trang_thai from phieu_luong p
+    const p = await truy_van_mot<{
+      ky_luong_id: string; trang_thai: string; ep_du_cong: boolean; mien_phat: boolean;
+    }>(
+      `select p.ky_luong_id, k.trang_thai, p.ep_du_cong, p.mien_phat from phieu_luong p
          join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
       [id],
     );
@@ -647,15 +653,28 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${p.trang_thai}" nên phiếu đã khóa sửa.`);
     }
 
+    // "Ep du cong" (tra du luong thang) va "mien phat" (bo phat di muon) deu la quyet dinh ve
+    // tien nen CHI ADMIN doi duoc. Vang mat trong body (null) = giu nguyen; co mat va khac gia
+    // tri cu ma khong phai admin -> chan.
+    const ep_du_cong = luan_ly(b, 'ep_du_cong');
+    if (ep_du_cong !== null && ep_du_cong !== p.ep_du_cong && nd.vai_tro !== 'admin') {
+      throw new LoiKhongQuyen('Chỉ admin được tích "tính đủ công" cho phiếu lương.');
+    }
+    const mien_phat = luan_ly(b, 'mien_phat');
+    if (mien_phat !== null && mien_phat !== p.mien_phat && nd.vai_tro !== 'admin') {
+      throw new LoiKhongQuyen('Chỉ admin được tích "miễn phạt" cho phiếu lương.');
+    }
+
     await thuc_thi(
       `update phieu_luong set
          thuong = $2, phu_cap_khac = $3, tru_khac = $4,
-         ly_do_tru_khac = $5, ghi_chu = $6, sua_boi = $7, sua_luc = now()
+         ly_do_tru_khac = $5, ghi_chu = $6, ep_du_cong = coalesce($8, ep_du_cong),
+         mien_phat = coalesce($9, mien_phat), sua_boi = $7, sua_luc = now()
        where id = $1`,
       [
         id, so_tien(b, 'thuong'), so_tien(b, 'phu_cap_khac'), so_tien(b, 'tru_khac'),
         chuoi(b, 'ly_do_tru_khac', { toi_da: 500 }),
-        chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub,
+        chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub, ep_du_cong, mien_phat,
       ],
     );
 
@@ -846,6 +865,117 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     }));
   });
 
+  // ============================================================ khoi luong Trung Quoc (CNY)
+  //
+  // Nhom che_do_luong = 'tq' tra bang CNY, khong BHXH/thue VN — tinh & xem o tab rieng, dung
+  // chung ky luong (thang) voi bang VND.
+
+  /** Danh sach phieu luong CNY cua mot ky. */
+  app.get('/ky-luong/:id/cny', { preHandler: can_nhan_su }, async (req) => {
+    const k = await lay_ky(lay_id(req));
+    const phieu = await truy_van<Record<string, unknown>>(
+      `select p.*, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban
+         from phieu_luong_cny p
+         join nhan_vien nv on nv.id = p.nhan_vien_id
+         left join phong_ban pb on pb.id = nv.phong_ban_id
+        where p.ky_luong_id = $1
+        order by pb.ten nulls last, nv.ma_nv`,
+      [k.id],
+    );
+    return { ...k, phieu };
+  });
+
+  /** Tinh (hoac tinh lai) phieu luong CNY cua ky. */
+  app.post('/ky-luong/:id/tinh-cny', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const k = await lay_ky(lay_id(req));
+    if (!SUA_DUOC.has(k.trang_thai)) {
+      throw new LoiXungDot(
+        `Kỳ lương đang ở trạng thái "${k.trang_thai}" nên không tính lại được. `
+        + 'Hãy thu hồi về nháp trước.',
+      );
+    }
+    const so = await tinh_ky_luong_cny(k.id, k.thang);
+    await ghi_nhat_ky(nd.sub, 'tinh_ky_luong_cny', 'ky_luong', k.id, { so_phieu: so }, req.ip);
+    return { ok: true, so_phieu: so };
+  });
+
+  /**
+   * Sua mot phieu luong CNY: luong cung CNY (luu quyet_dinh_luong_cny hieu luc tu dau thang) +
+   * dieu chinh tay rieng ky (thuong / phu cap khac / tru khac / ghi chu), roi tinh lai ca ky.
+   */
+  app.patch('/phieu-luong-cny/:id', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const b = than(req.body);
+
+    const p = await truy_van_mot<{ nhan_vien_id: string; ky_luong_id: string; trang_thai: string }>(
+      `select p.nhan_vien_id, p.ky_luong_id, k.trang_thai from phieu_luong_cny p
+         join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
+      [id],
+    );
+    if (p === null) throw new LoiKhongTim('Không tìm thấy phiếu lương CNY.');
+    if (!SUA_DUOC.has(p.trang_thai)) {
+      throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${p.trang_thai}" nên phiếu đã khóa sửa.`);
+    }
+    const k = await lay_ky(p.ky_luong_id);
+
+    // Luong cung CNY: chi ghi khi client co gui (co the chi sua thuong/tru). Luu vao
+    // quyet_dinh_luong_cny hieu luc tu dau thang cua ky, giong duong /luong-cung cua VND.
+    const co_luong = b['luong_co_ban'] !== undefined || b['phu_cap'] !== undefined;
+    if (co_luong) {
+      await thuc_thi(
+        `insert into quyet_dinh_luong_cny (nhan_vien_id, hieu_luc_tu, luong_co_ban, phu_cap, ly_do, tao_boi)
+         values ($1, $2, $3, $4, 'Nhập từ bảng lương CNY', $5)
+         on conflict (nhan_vien_id, hieu_luc_tu) do update set
+           luong_co_ban = excluded.luong_co_ban, phu_cap = excluded.phu_cap`,
+        [p.nhan_vien_id, `${k.thang}-01`, so_tien(b, 'luong_co_ban'), so_tien(b, 'phu_cap'), nd.sub],
+      );
+    }
+
+    await thuc_thi(
+      `update phieu_luong_cny set
+         thuong = $2, phu_cap_khac = $3, tru_khac = $4, ly_do_tru_khac = $5,
+         ghi_chu = $6, sua_boi = $7, sua_luc = now()
+       where id = $1`,
+      [
+        id, so_tien(b, 'thuong'), so_tien(b, 'phu_cap_khac'), so_tien(b, 'tru_khac'),
+        chuoi(b, 'ly_do_tru_khac', { toi_da: 500 }), chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub,
+      ],
+    );
+
+    await tinh_ky_luong_cny(k.id, k.thang);
+    await ghi_nhat_ky(nd.sub, 'sua_phieu_luong_cny', 'phieu_luong_cny', id, b, req.ip);
+    return { ok: true };
+  });
+
+  /** Xuat bang luong CNY (xlsx). */
+  app.get('/ky-luong/:id/xuat-xlsx-cny', { preHandler: can_nhan_su }, async (req, res) => {
+    const k = await lay_ky(lay_id(req));
+    const b = await bang_cny_xuat(k.id);
+    const tep = ghi_xlsx({ ten_sheet: `Lương CNY ${k.thang}`, tieu_de: b.tieu_de, hang: b.hang });
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xuat_bang_luong_cny', 'ky_luong',
+      k.id, { thang: k.thang, dinh_dang: 'xlsx', so_dong: b.hang.length }, req.ip);
+    return res
+      .header('content-type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .header('content-disposition', `attachment; filename="luong_cny_${k.thang}.xlsx"`)
+      .send(tep);
+  });
+
+  /** Xuat bang luong CNY (csv). */
+  app.get('/ky-luong/:id/xuat-csv-cny', { preHandler: can_nhan_su }, async (req, res) => {
+    const k = await lay_ky(lay_id(req));
+    const b = await bang_cny_xuat(k.id);
+    const csv = '﻿' + [b.tieu_de, ...b.hang].map((r) => r.map(o_csv).join(',')).join('\r\n');
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xuat_bang_luong_cny', 'ky_luong',
+      k.id, { thang: k.thang, dinh_dang: 'csv', so_dong: b.hang.length }, req.ip);
+    return res
+      .header('content-type', 'text/csv; charset=utf-8')
+      .header('content-disposition', `attachment; filename="luong_cny_${k.thang}.csv"`)
+      .send(csv);
+  });
+
   // ============================================================ xuat bang
   //
   // Ca hai dinh dang deu dung `bang_luong_xuat` — cung mot bang voi ban chot duoc duyet.
@@ -869,16 +999,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
 
   app.get('/ky-luong/:id/xuat-xlsx', { preHandler: can_nhan_su }, async (req, res) => {
     const k = await lay_ky(lay_id(req));
-    const b = await bang_luong_xuat({ ky_luong_id: k.id });
-
-    const tep = ghi_xlsx({
-      ten_sheet: `Bảng lương ${k.thang}`,
-      tieu_de: b.tieu_de,
-      hang: b.hang,
-    });
+    // Xuat theo MAU ERP (mau_bang_luong_erp.xlsx): giu logo, nhom cot, cong thuc, in an.
+    const tep = await xuat_bang_luong_erp(k.id);
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'xuat_bang_luong', 'ky_luong',
-      k.id, { thang: k.thang, dinh_dang: 'xlsx', so_dong: b.so_dong }, req.ip);
+      k.id, { thang: k.thang, dinh_dang: 'xlsx' }, req.ip);
 
     return res
       .header('content-type',
@@ -921,6 +1046,36 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
           `attachment; filename="${b.ten_goc.replace(/[^\w.-]/g, '_')}"`)
         .send(du_lieu);
     });
+}
+
+/** Bang xuat luong CNY: tieu de + cac hang, dung chung cho csv va xlsx. */
+async function bang_cny_xuat(
+  ky_luong_id: string,
+): Promise<{ tieu_de: string[]; hang: (string | number)[][] }> {
+  const phieu = await truy_van<Record<string, unknown>>(
+    `select nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+            p.luong_co_ban, p.phu_cap, p.so_ngay_cong_chuan, p.so_ngay_cong_thuc,
+            p.luong_theo_cong, p.thuong, p.phu_cap_khac, p.tru_khac, p.tong_thu_nhap, p.thuc_linh
+       from phieu_luong_cny p
+       join nhan_vien nv on nv.id = p.nhan_vien_id
+       left join phong_ban pb on pb.id = nv.phong_ban_id
+      where p.ky_luong_id = $1
+      order by pb.ten nulls last, nv.ma_nv`,
+    [ky_luong_id],
+  );
+  const tieu_de = [
+    'Mã NV', 'Họ tên', 'Phòng ban', 'Lương cơ bản (CNY)', 'Phụ cấp (CNY)',
+    'Công chuẩn', 'Công thực', 'Lương theo công (CNY)', 'Thưởng (CNY)',
+    'Phụ cấp khác (CNY)', 'Trừ khác (CNY)', 'Tổng thu nhập (CNY)', 'Thực lĩnh (CNY)',
+  ];
+  const hang: (string | number)[][] = phieu.map((p) => [
+    String(p['ma_nv'] ?? ''), String(p['ho_ten'] ?? ''), String(p['phong_ban'] ?? ''),
+    Number(p['luong_co_ban']), Number(p['phu_cap']),
+    Number(p['so_ngay_cong_chuan']), Number(p['so_ngay_cong_thuc']),
+    Number(p['luong_theo_cong']), Number(p['thuong']), Number(p['phu_cap_khac']),
+    Number(p['tru_khac']), Number(p['tong_thu_nhap']), Number(p['thuc_linh']),
+  ]);
+  return { tieu_de, hang };
 }
 
 function o_csv(v: unknown): string {

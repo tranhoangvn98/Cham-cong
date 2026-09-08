@@ -169,6 +169,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
               nv.phong_ban_id, pb.ten as phong_ban,
               nv.ca_lam_id, cl.ten as ca_lam,
               nv.noi_lam_viec_id, nlv.ten as noi_lam_viec, nlv.lich_nghi_ma,
+              nv.che_do_luong,
               (nd.id is not null) as co_tai_khoan
          from nhan_vien nv
          left join phong_ban pb on pb.id = nv.phong_ban_id
@@ -196,8 +197,8 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         const kq = await khach.query<{ id: string }>(
           `insert into nhan_vien
              (ma_nv, ho_ten, pin_may, ma_erp, phong_ban_id, ca_lam_id, ngay_vao,
-              so_dien_thoai, email, duoc_cham_cong_dien_thoai, noi_lam_viec_id)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
+              so_dien_thoai, email, duoc_cham_cong_dien_thoai, noi_lam_viec_id, che_do_luong)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`,
           ts,
         );
         await ghi_su_kien(
@@ -238,7 +239,8 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         await khach.query(
           `update nhan_vien set ma_nv=$2, ho_ten=$3, pin_may=$4, ma_erp=$5, phong_ban_id=$6,
                   ca_lam_id=$7, ngay_vao=$8, so_dien_thoai=$9, email=$10,
-                  duoc_cham_cong_dien_thoai=$11, noi_lam_viec_id=$12, cap_nhat_luc=now()
+                  duoc_cham_cong_dien_thoai=$11, noi_lam_viec_id=$12, che_do_luong=$13,
+                  cap_nhat_luc=now()
             where id=$1`,
           [id, ...ts],
         );
@@ -1443,6 +1445,7 @@ function doc_nhan_vien(b: Record<string, unknown>, bat_buoc: boolean): unknown[]
     chuoi(b, 'email', { toi_da: 200 }),
     luan_ly(b, 'duoc_cham_cong_dien_thoai', false),
     uuid(b, 'noi_lam_viec_id'),
+    trong_tap(b, 'che_do_luong', ['vn', 'tq'] as const, { bat_buoc: false }) ?? 'vn',
   ];
 }
 

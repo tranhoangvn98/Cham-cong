@@ -164,7 +164,8 @@ const RE_BAN_CHOT = new RegExp(
  * `danh_muc` lay tu mot tap dong, hex do may chu sinh — chi doan ten goc den tu nguoi dung va da
  * qua `lam_doan`.
  */
-const DANH_MUC_VAN_BAN = 'noi_quy|bieu_mau|chinh_sach|huong_dan|khac';
+const DANH_MUC_VAN_BAN =
+  'thong_bao|quyet_dinh|cong_van|noi_quy|bieu_mau|chinh_sach|huong_dan|khac';
 
 const RE_VAN_BAN = new RegExp(
   `^_van_ban/(${DANH_MUC_VAN_BAN})`
@@ -172,7 +173,8 @@ const RE_VAN_BAN = new RegExp(
   + `\\.(${DUOI_CHO_PHEP})$`,
 );
 
-export type DanhMucVanBan = 'noi_quy' | 'bieu_mau' | 'chinh_sach' | 'huong_dan' | 'khac';
+export type DanhMucVanBan = 'thong_bao' | 'quyet_dinh' | 'cong_van'
+  | 'noi_quy' | 'bieu_mau' | 'chinh_sach' | 'huong_dan' | 'khac';
 
 /** Duong dan tren dia cho mot van ban cong ty. `ma` la hex do may chu sinh. */
 export function duong_dan_van_ban(

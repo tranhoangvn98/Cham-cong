@@ -369,3 +369,29 @@ test('khong co khoan nao thi moi tong ve 0 — bang luong cu tinh ra dung so cu'
   // nhung BHTN co tran rieng (20 x 4.960.000 = 99,2tr) nen chua cham tran.
   assert.equal(kq.tong_thu_nhap, 20_000_000);
 });
+
+// ---------------------------------------------------------------- nua cong thu Bay
+const { ngay_cong_chuan } = await import('../src/luong/ky_luong.ts');
+
+// Thang 8/2025: thu Bay roi vao 2, 9, 16, 23, 30 (5 thu Bay). Ca lam T2-T7.
+const LAM_T2_T7 = [1, 2, 3, 4, 5, 6];
+
+test('cong chuan: thu Bay tinh nua cong khi bat he so 0,5', () => {
+  const day_du = ngay_cong_chuan('2025-08-01', '2025-08-31', LAM_T2_T7, new Set(), 1);
+  const nua = ngay_cong_chuan('2025-08-01', '2025-08-31', LAM_T2_T7, new Set(), 0.5);
+  // Thang 8/2025 co 5 thu Bay. Moi thu Bay bot 0,5 cong -> chenh dung 2,5.
+  assert.equal(day_du - nua, 2.5);
+});
+
+test('cong chuan: he so mac dinh = 1 (thu Bay van 1 cong khi khong truyen)', () => {
+  const mac_dinh = ngay_cong_chuan('2025-08-01', '2025-08-31', LAM_T2_T7, new Set());
+  const he_so_1 = ngay_cong_chuan('2025-08-01', '2025-08-31', LAM_T2_T7, new Set(), 1);
+  assert.equal(mac_dinh, he_so_1);
+});
+
+test('cong chuan: khong lam thu Bay thi he so T7 khong anh huong', () => {
+  const lam_t2_t6 = [1, 2, 3, 4, 5];
+  const a = ngay_cong_chuan('2025-08-01', '2025-08-31', lam_t2_t6, new Set(), 1);
+  const b = ngay_cong_chuan('2025-08-01', '2025-08-31', lam_t2_t6, new Set(), 0.5);
+  assert.equal(a, b);
+});
