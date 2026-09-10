@@ -15,7 +15,7 @@ import { quet_vi_pham } from '../vi_pham/phat_hien.ts';
 import { gom_va_xu_ly_thang } from '../ky_luat/xu_ly.ts';
 import { email_nhac_loi } from '../ky_luat/nhac_email.ts';
 import { ghi_nhan, ma_viec_dong_bo, moc_dong_bo, quet } from '../sharepoint/dong_bo.ts';
-import { cong_ngay, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
+import { cong_ngay, khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. Khai duoc trong .env. */
 const CHU_KY_PHUT = cau_hinh.lich_chu_ky_phut;
@@ -256,27 +256,52 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     }
   }
 
-  // Email nhac loi dinh ky — CHI o che do 'nhac_nho' (chu cong ty chot: tam thoi chua xu phat,
-  // 3 ngay/lan). Che do 'xu_phat' da gui email ngay khi phat sinh nen khong chay o day. Khoa theo
-  // "o <chu_ky> ngay" nen mot cua so chi gui mot lan du bo lich chay moi 5 phut.
+  // Email nhac loi — CHI o che do 'nhac_nho' (chu cong ty chot: tam thoi chua xu phat).
+  // (a) Dinh ky <chu_ky> ngay/lan: CHI thong ke loi trong <chu_ky> NGAY GAN NHAT (den hom qua —
+  //     ngay da chot cuoi cung), khong lap lai ca thang.
+  // (b) Cuoi thang (ngay 01): gui TONG HOP CA THANG cua thang truoc.
   if (cau_hinh.ky_luat.che_do === 'nhac_nho') {
     const chu_ky_nhac = cau_hinh.ky_luat.chu_ky_nhac_ngay;
-    const epoch_ngay = Math.floor(Date.parse(`${hom_nay}T00:00:00Z`) / 86_400_000);
-    const o_nhac = Math.floor(epoch_ngay / chu_ky_nhac);
+
+    // (a) dinh ky theo cua so <chu_ky> ngay. Khoa theo "o <chu_ky> ngay" nen mot cua so chi gui
+    // mot lan du bo lich chay moi 5 phut.
+    const epoch_hq = Math.floor(Date.parse(`${hom_qua}T00:00:00Z`) / 86_400_000);
+    const o_nhac = Math.floor(epoch_hq / chu_ky_nhac);
     const ma_nhac_email = `ky_luat_nhac_email:${o_nhac}`;
     if (await nhan_viec(ma_nhac_email)) {
+      const tu = cong_ngay(hom_qua, -(chu_ky_nhac - 1));
       try {
-        const r = await email_nhac_loi(hom_nay.slice(0, 7), hom_nay);
+        const r = await email_nhac_loi(tu, hom_qua);
         await ghi_ket_qua(ma_nhac_email,
-          `ky ${hom_nay.slice(0, 7)}: ${String(r.so_nguoi)} nguoi, `
-          + `gui ${String(r.so_email_ca_nhan)} email ca nhan, HR ${r.hr_gui ? 'co' : 'khong'}`);
+          `${tu}..${hom_qua}: ${String(r.so_nguoi)} nguoi, `
+          + `gui ${String(r.so_email_ca_nhan)} email, HR ${r.hr_gui ? 'co' : 'khong'}`);
         if (r.so_email_ca_nhan > 0 || r.hr_gui) {
-          ghi_log(`[lich] ky luat: gui ${String(r.so_email_ca_nhan)} email nhac loi ca nhan`
-            + `${r.hr_gui ? ' + tong hop HR' : ''}`);
+          ghi_log(`[lich] ky luat: gui ${String(r.so_email_ca_nhan)} email nhac loi (${String(chu_ky_nhac)} ngay)`);
         }
       } catch (loi) {
         await nha_viec(ma_nhac_email);
         ghi_log(`[lich] LOI khi gui email nhac loi: ${(loi as Error).message}`);
+      }
+    }
+
+    // (b) cuoi thang: ngay 01 -> tong hop ca thang TRUOC (hom qua la ngay cuoi thang truoc).
+    if (hom_nay.slice(8) === '01') {
+      const thang_truoc = hom_qua.slice(0, 7);
+      const { tu, den } = khoang_thang(thang_truoc);
+      const ma_thang = `ky_luat_thang_tong_hop:${thang_truoc}`;
+      if (await nhan_viec(ma_thang)) {
+        try {
+          const r = await email_nhac_loi(tu, den, { toan_thang: true });
+          await ghi_ket_qua(ma_thang,
+            `thang ${thang_truoc}: ${String(r.so_nguoi)} nguoi, `
+            + `gui ${String(r.so_email_ca_nhan)} email, HR ${r.hr_gui ? 'co' : 'khong'}`);
+          if (r.so_email_ca_nhan > 0 || r.hr_gui) {
+            ghi_log(`[lich] ky luat: gui tong hop thang ${thang_truoc} (${String(r.so_email_ca_nhan)} email)`);
+          }
+        } catch (loi) {
+          await nha_viec(ma_thang);
+          ghi_log(`[lich] LOI khi gui tong hop thang: ${(loi as Error).message}`);
+        }
       }
     }
   }
