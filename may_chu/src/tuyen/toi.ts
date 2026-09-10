@@ -20,6 +20,7 @@ import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
 import { CAC_LOAI, MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_don.ts';
 import { don_cua_nhan_vien, huy_don, tao_don } from '../don_tu/nghiep_vu.ts';
 import { tu_dong_quyet_don, TU_NGAY_AP } from '../don_tu/tu_dong_duyet.ts';
+import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, khoang_ngay, luan_ly, ngay_bat_buoc, than, trong_tap, uuid,
   LoiDauVao, LoiKhongQuyen, LoiKhongTim, LoiXungDot,
@@ -973,6 +974,17 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     });
 
     await ghi_nhat_ky(nd.sub, `tu_lam_don_${loai}`, 'don_tu', kq.id, { loai }, req.ip);
+
+    // Don DI MUON tu dong duyet ngay (truoc 7h30 + con luot mien -> duyet; nguoc lai tu choi).
+    // Loi tu dong khong lam hong viec nop don — roi ve cho duyet tay nhu cu.
+    if (loai === 'di_muon') {
+      const r = await tu_dong_quyet_di_muon(kq.id).catch((e: unknown) => {
+        console.error('[tu_dong_di_muon] loi:', (e as Error).message);
+        return null;
+      });
+      if (r !== null) return res.code(201).send({ ...kq, trang_thai: r.quyet, tu_dong: true });
+    }
+
     gui_ngam({
       nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
       tieu_de: `${dt.ten} chờ duyệt`,
