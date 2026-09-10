@@ -258,6 +258,49 @@ export async function xu_ly_mot_don(don: DonNghi, opts: { email?: boolean } = {}
   return kq;
 }
 
+/**
+ * Gui (hoac gui lai) email QUYET DINH cho cac don da TU DONG quyet (marker [auto_duyet]) tu
+ * `tu_ngay`. Dung khi backlog da chay voi email tat. Bo qua don khong co email. KHONG gui cho don
+ * khong luong "phan vuot" cua mot don tach (de moi don goc chi mot email).
+ */
+export async function gui_email_da_quyet(
+  tu_ngay: string = TU_NGAY_AP,
+): Promise<{ so_gui: number; so_bo_qua: number }> {
+  if (!email_bat()) return { so_gui: 0, so_bo_qua: 0 };
+  const dons = await truy_van<{
+    loai: string; tu_ngay: string; den_ngay: string; trang_thai: string;
+    ghi_chu_duyet: string | null; ho_ten: string; email: string | null;
+  }>(
+    `select d.loai, to_char(d.tu_ngay,'YYYY-MM-DD') as tu_ngay,
+            to_char(d.den_ngay,'YYYY-MM-DD') as den_ngay, d.trang_thai, d.ghi_chu_duyet,
+            nv.ho_ten, nv.email
+       from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id
+      where d.ghi_chu_duyet like '${MARKER}%'
+        and d.ghi_chu_duyet not like '${MARKER} Phần vượt%'
+        and d.trang_thai in ('da_duyet', 'tu_choi') and d.tu_ngay >= $1
+      order by d.tu_ngay`,
+    [tu_ngay],
+  );
+  let so_gui = 0;
+  let so_bo_qua = 0;
+  for (const d of dons) {
+    if (d.email === null || !d.email.includes('@')) { so_bo_qua += 1; continue; }
+    const tach = /Duyệt (\d+) ngày phép \+ (\d+) ngày/.exec(d.ghi_chu_duyet ?? '');
+    const kq: KetQuaDon = d.trang_thai === 'tu_choi'
+      ? { don_id: '', quyet: 'tu_choi', kieu: 'tu_choi', so_phep: 0, so_kl: 0,
+        ly_do: 'Đã hết phép năm — không đủ phép để duyệt.' }
+      : tach !== null
+        ? { don_id: '', quyet: 'da_duyet', kieu: 'tach', so_phep: Number(tach[1]), so_kl: Number(tach[2]) }
+        : d.loai === 'khong_luong'
+          ? { don_id: '', quyet: 'da_duyet', kieu: 'duyet_khong_luong', so_phep: 0, so_kl: 0 }
+          : { don_id: '', quyet: 'da_duyet', kieu: 'duyet_phep', so_phep: 0, so_kl: 0 };
+    const e = than_email(d.ho_ten, d.loai, d.tu_ngay, d.den_ngay, kq);
+    const ok = await gui_email({ den: [d.email], tieu_de: e.tieu_de, noi_dung_html: e.html });
+    if (ok) so_gui += 1; else so_bo_qua += 1;
+  }
+  return { so_gui, so_bo_qua };
+}
+
 /** Tu dong xu ly mot don theo id (dung khi nop don moi). Bo qua neu don khong con 'cho_duyet'. */
 export async function tu_dong_quyet_don(don_id: string, opts: { email?: boolean } = {}): Promise<KetQuaDon | null> {
   const don = await truy_van_mot<DonNghi>(
