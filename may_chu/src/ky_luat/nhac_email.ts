@@ -1,35 +1,43 @@
-// Email NHAC LOI dinh ky (che do 'nhac_nho', 3 ngay/lan).
+// Email NHAC LOI (che do 'nhac_nho'): thong ke loi cham cong theo KHOANG NGAY.
 //
-// Chu cong ty chot: TAM THOI chi tong hop loi + nhac nho, CHUA xu phat. Moi <chu_ky> ngay, gui:
-//   - cho TUNG nhan vien co loi: mot email tong hop loi cua chinh minh trong ky (chua giam thuong).
-//   - cho NHAN SU/BGD: mot email tong hop toan bo loi trong ky de theo doi.
+// Chu cong ty chot:
+//   - Email dinh ky 3 ngay/lan: CHI thong ke loi trong 3 NGAY GAN NHAT (khong lap lai ca thang).
+//   - Cuoi thang: gui email TONG HOP CA THANG.
+// Tam thoi chi nhac nho, CHUA xu phat.
 //
-// Email la HTML thuan (email client khong chay CSS ngoai) — style inline. Bo cuc khop mau da
-// duyet voi chu cong ty (nhac loi, chua xu phat).
+// Nguon so lieu la `bang_cong_ngay` (theo TUNG NGAY) — chinh xac cho tung ngay, khac voi bang
+// `vi_pham` (gom ca thang, gia_tri lech don vi). Loi lay tu tung ngay:
+//   - phut_muon  > 0        -> Di muon (kem so phut)
+//   - phut_ve_som > 0       -> Ve som (kem so phut)
+//   - trang_thai = 'vang'   -> Vang khong phep (khong co don nghi da duyet trum ngay)
+//
+// Email la HTML thuan (email client khong chay CSS ngoai) — style inline.
 import { truy_van } from '../csdl/ket_noi.ts';
 import { gui_email, email_bat } from '../su_kien/gui_email.ts';
 import { ngay_viet } from '../tien_ich/thoi_gian.ts';
-import { cau_hinh } from '../cau_hinh.ts';
 
-/** Trang thai vi pham duoc tinh (chua bac bo / chua xu ly rieng) — khop ky_luat/xu_ly.ts. */
-const TRANG_THAI_TINH = ['moi', 'cho_giai_trinh', 'da_xac_nhan'];
-
-interface DongLoi {
+export interface DongNgay {
   nhan_vien_id: string;
   ho_ten: string;
   ma_nv: string;
   email: string | null;
   phong_ban: string | null;
-  loai_ten: string;
-  ngay: string;      // 'YYYY-MM-DD'
+  ngay: string;       // 'YYYY-MM-DD'
+  phut_muon: number;
+  phut_ve_som: number;
+  trang_thai: string;
 }
 
-// so_lan = SO BAN GHI vi pham cua loai do (moi ban ghi = mot lan bi ghi nhan). KHONG cong gia_tri
-// vi gia_tri co don vi khac nhau tuy loai (di muon = so PHUT, ra/vao = so lan) — cong lai vo nghia.
-interface LoaiGop { loai_ten: string; so_lan: number; ngay_gan_nhat: string }
+type MaLoi = 'di_muon' | 've_som' | 'vang';
+const TEN_LOI: Record<MaLoi, string> = {
+  di_muon: 'Đi muộn', ve_som: 'Về sớm', vang: 'Vắng không phép',
+};
+const THU_TU: MaLoi[] = ['di_muon', 've_som', 'vang'];
+
+interface LoaiGop { ma: MaLoi; so_ngay: number; tong_phut: number; ngay_gan_nhat: string }
 interface NguoiLoi {
   ho_ten: string; ma_nv: string; email: string | null; phong_ban: string | null;
-  loai: Map<string, LoaiGop>; tong_lan: number;
+  loai: Map<MaLoi, LoaiGop>; tong_ngay_loi: number;
 }
 
 function thang_viet(thang: string): string {
@@ -37,58 +45,84 @@ function thang_viet(thang: string): string {
   return `${m}/${n}`;
 }
 
-function gop_theo_nguoi(ds: readonly DongLoi[]): Map<string, NguoiLoi> {
+/** So ngay giua hai chuoi 'YYYY-MM-DD', tinh ca hai dau. */
+function so_ngay_khoang(tu: string, den: string): number {
+  const a = Date.parse(`${tu}T00:00:00Z`);
+  const b = Date.parse(`${den}T00:00:00Z`);
+  return Math.round((b - a) / 86_400_000) + 1;
+}
+
+function them_loi(ng: NguoiLoi, ma: MaLoi, ngay: string, phut: number): void {
+  let g = ng.loai.get(ma);
+  if (g === undefined) { g = { ma, so_ngay: 0, tong_phut: 0, ngay_gan_nhat: ngay }; ng.loai.set(ma, g); }
+  g.so_ngay += 1;
+  g.tong_phut += phut;
+  if (ngay > g.ngay_gan_nhat) g.ngay_gan_nhat = ngay;
+  ng.tong_ngay_loi += 1;
+}
+
+export function gop_theo_nguoi(ds: readonly DongNgay[]): Map<string, NguoiLoi> {
   const map = new Map<string, NguoiLoi>();
   for (const d of ds) {
     let ng = map.get(d.nhan_vien_id);
     if (ng === undefined) {
       ng = { ho_ten: d.ho_ten, ma_nv: d.ma_nv, email: d.email, phong_ban: d.phong_ban,
-        loai: new Map(), tong_lan: 0 };
+        loai: new Map(), tong_ngay_loi: 0 };
       map.set(d.nhan_vien_id, ng);
     }
-    const lan = 1; // dem theo SO BAN GHI vi pham, khong cong gia_tri (don vi khac nhau tuy loai)
-    const g = ng.loai.get(d.loai_ten);
-    if (g === undefined) ng.loai.set(d.loai_ten, { loai_ten: d.loai_ten, so_lan: lan, ngay_gan_nhat: d.ngay });
-    else { g.so_lan += lan; if (d.ngay > g.ngay_gan_nhat) g.ngay_gan_nhat = d.ngay; }
-    ng.tong_lan += lan;
+    if (d.phut_muon > 0) them_loi(ng, 'di_muon', d.ngay, d.phut_muon);
+    if (d.phut_ve_som > 0) them_loi(ng, 've_som', d.ngay, d.phut_ve_som);
+    if (d.trang_thai === 'vang') them_loi(ng, 'vang', d.ngay, 0);
   }
   return map;
 }
 
-/** Than email nhac loi cho MOT nhan vien (chua xu phat). Khop mau da duyet voi chu cong ty. */
-function than_email_ca_nhan(ng: NguoiLoi, thang: string, den_ngay: string, chu_ky: number): string {
-  const hang = [...ng.loai.values()]
-    .sort((a, b) => b.so_lan - a.so_lan)
-    .map((g) => `
+function hang_loai(ng: NguoiLoi): string {
+  return THU_TU.filter((m) => ng.loai.has(m)).map((m) => {
+    const g = ng.loai.get(m)!;
+    const phut = m === 'vang' ? '—' : `${String(g.tong_phut)} phút`;
+    return `
       <tr>
-        <td style="padding:7px 10px;border-bottom:1px solid #eee">${g.loai_ten}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center">${String(g.so_lan)}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #eee">${TEN_LOI[m]}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center">${String(g.so_ngay)}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center">${phut}</td>
         <td style="padding:7px 10px;border-bottom:1px solid #eee">${ngay_viet(g.ngay_gan_nhat)}</td>
-      </tr>`).join('');
+      </tr>`;
+  }).join('');
+}
 
+/** Cụm mô tả phạm vi: "trong 3 ngày gần nhất (…)" hoặc "trong cả tháng MM/YYYY". */
+function cum_pham_vi(tu: string, den: string, toan_thang: boolean): { tieu_de: string; cau: string } {
+  if (toan_thang) {
+    const t = thang_viet(den.slice(0, 7));
+    return { tieu_de: `Tổng hợp lỗi chấm công tháng ${t}`,
+      cau: `trong <b>cả tháng ${t}</b>` };
+  }
+  const n = so_ngay_khoang(tu, den);
+  return { tieu_de: 'Nhắc nhở lỗi chấm công', cau: `trong <b>${String(n)} ngày gần nhất</b> (${ngay_viet(tu)}–${ngay_viet(den)})` };
+}
+
+function than_email_ca_nhan(ng: NguoiLoi, tu: string, den: string, toan_thang: boolean): string {
+  const pv = cum_pham_vi(tu, den, toan_thang);
   return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111;line-height:1.55;max-width:600px">
     <div style="background:#2563EB;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;font-size:17px;font-weight:700">
-      Nhắc nhở lỗi chấm công — Kỳ ${thang_viet(thang)}
+      ${pv.tieu_de}
     </div>
     <div style="border:1px solid #E5E7EB;border-top:0;border-radius:0 0 8px 8px;padding:20px">
       <p style="margin:0 0 12px">Kính gửi <b>${ng.ho_ten}</b> (Mã NV: ${ng.ma_nv}${ng.phong_ban !== null ? ` — ${ng.phong_ban}` : ''}),</p>
       <p style="margin:0 0 12px">
-        Hệ thống chấm công ghi nhận trong kỳ <b>tháng ${thang_viet(thang)}</b> (tính đến ngày ${ngay_viet(den_ngay)})
-        bạn có các vi phạm sau <b>chưa điều chỉnh</b>. Đây là <b>nhắc nhở</b> để bạn nắm và điều chỉnh —
-        <b style="color:#1E40AF">chưa áp dụng giảm thưởng / xử phạt</b>.
+        Hệ thống chấm công ghi nhận ${pv.cau} bạn có các lỗi sau. Đây là <b>nhắc nhở</b> để bạn nắm và
+        điều chỉnh — <b style="color:#1E40AF">chưa áp dụng giảm thưởng / xử phạt</b>.
       </p>
       <table style="border-collapse:collapse;width:100%;font-size:13px;margin:8px 0 4px">
         <thead><tr>
-          <th style="text-align:left;padding:7px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Loại vi phạm</th>
-          <th style="text-align:center;padding:7px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Số lần ghi nhận</th>
+          <th style="text-align:left;padding:7px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Loại lỗi</th>
+          <th style="text-align:center;padding:7px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Số ngày</th>
+          <th style="text-align:center;padding:7px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Tổng phút</th>
           <th style="text-align:left;padding:7px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Ngày gần nhất</th>
         </tr></thead>
-        <tbody>${hang}</tbody>
+        <tbody>${hang_loai(ng)}</tbody>
       </table>
-      <p style="margin:2px 0 0;font-size:12px;color:#6B7280">
-        Chi tiết cụ thể (số phút đi muộn, ngày vi phạm…) xem trong ứng dụng chấm công, mục
-        <b>Vi phạm của tôi</b>.
-      </p>
       <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 14px;margin:14px 0;font-size:13px;color:#1E40AF">
         Hiện công ty <b>tạm thời chỉ nhắc nhở</b>, chưa áp dụng giảm thưởng. Nếu các lỗi tiếp tục lặp lại,
         công ty sẽ xem xét giảm thưởng P3 theo <b>Điều 14 Nội quy lao động</b> và <b>Điều 104 Bộ luật Lao động</b>
@@ -97,10 +131,7 @@ function than_email_ca_nhan(ng: NguoiLoi, thang: string, den_ngay: string, chu_k
       <p style="margin:0 0 12px">
         Nếu có lý do chính đáng (quên quẹt thẻ, đi công tác, sự cố…), bạn có quyền <b>giải trình</b>
         (Bộ luật Lao động 2019, Điều 122): đăng nhập ứng dụng chấm công vào mục <b>Vi phạm của tôi</b>
-        để gửi giải trình, hoặc phản hồi trực tiếp Phòng Nhân sự.
-      </p>
-      <p style="margin:0 0 4px;font-size:13px;color:#374151">
-        Email nhắc nhở này được gửi định kỳ <b>${String(chu_ky)} ngày một lần</b> khi còn lỗi chưa được xử lý.
+        / <b>Đơn của tôi</b>, hoặc phản hồi trực tiếp Phòng Nhân sự.
       </p>
       <p style="margin:14px 0 0;color:#6B7280;font-size:12px">
         Email tự động từ hệ thống chấm công — vui lòng không trả lời trực tiếp email này.<br/>
@@ -110,33 +141,37 @@ function than_email_ca_nhan(ng: NguoiLoi, thang: string, den_ngay: string, chu_k
   </div>`;
 }
 
-/** Than email TONG HOP cho Nhan su / BGD: danh sach nhan vien co loi trong ky. */
-function than_email_tong_hop(nguoi: readonly NguoiLoi[], thang: string, den_ngay: string): string {
+function than_email_tong_hop(
+  nguoi: readonly NguoiLoi[], tu: string, den: string, toan_thang: boolean,
+): string {
+  const pv = cum_pham_vi(tu, den, toan_thang);
   const hang = [...nguoi]
-    .sort((a, b) => b.tong_lan - a.tong_lan)
+    .sort((a, b) => b.tong_ngay_loi - a.tong_ngay_loi)
     .map((ng, i) => {
-      const chi_tiet = [...ng.loai.values()].sort((a, b) => b.so_lan - a.so_lan)
-        .map((g) => `${g.loai_ten} (${String(g.so_lan)})`).join(', ');
+      const chi_tiet = THU_TU.filter((m) => ng.loai.has(m)).map((m) => {
+        const g = ng.loai.get(m)!;
+        return m === 'vang' ? `${TEN_LOI[m]} ${String(g.so_ngay)} ngày`
+          : `${TEN_LOI[m]} ${String(g.so_ngay)} ngày/${String(g.tong_phut)} phút`;
+      }).join('; ');
       return `
         <tr>
           <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:center">${String(i + 1)}</td>
           <td style="padding:6px 10px;border-bottom:1px solid #eee;white-space:nowrap">${ng.ma_nv}</td>
           <td style="padding:6px 10px;border-bottom:1px solid #eee">${ng.ho_ten}</td>
           <td style="padding:6px 10px;border-bottom:1px solid #eee">${ng.phong_ban ?? '—'}</td>
-          <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:center">${String(ng.tong_lan)}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:center">${String(ng.tong_ngay_loi)}</td>
           <td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:12px;color:#374151">${chi_tiet}</td>
         </tr>`;
     }).join('');
-  const tong_loi = nguoi.reduce((s, n) => s + n.tong_lan, 0);
 
   return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111;line-height:1.5;max-width:720px">
     <div style="background:#111827;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;font-size:16px;font-weight:700">
-      Tổng hợp lỗi chấm công — Kỳ ${thang_viet(thang)} (tính đến ${ngay_viet(den_ngay)})
+      ${pv.tieu_de} — ${ngay_viet(tu)}–${ngay_viet(den)}
     </div>
     <div style="border:1px solid #E5E7EB;border-top:0;border-radius:0 0 8px 8px;padding:18px">
       <p style="margin:0 0 12px">
-        <b>${String(nguoi.length)}</b> nhân viên còn lỗi chưa xử lý, tổng <b>${String(tong_loi)}</b> lỗi.
-        Chế độ hiện tại: <b>chỉ nhắc nhở, chưa xử phạt</b>. Nhân viên đã được gửi email nhắc nhở.
+        <b>${String(nguoi.length)}</b> nhân viên có lỗi ${pv.cau}. Chế độ hiện tại:
+        <b>chỉ nhắc nhở, chưa xử phạt</b>. Nhân viên đã được gửi email nhắc nhở.
       </p>
       <table style="border-collapse:collapse;width:100%;font-size:13px">
         <thead><tr>
@@ -144,7 +179,7 @@ function than_email_tong_hop(nguoi: readonly NguoiLoi[], thang: string, den_ngay
           <th style="text-align:left;padding:6px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Mã NV</th>
           <th style="text-align:left;padding:6px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Họ tên</th>
           <th style="text-align:left;padding:6px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Phòng ban</th>
-          <th style="text-align:center;padding:6px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Số lỗi</th>
+          <th style="text-align:center;padding:6px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Số ngày lỗi</th>
           <th style="text-align:left;padding:6px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Chi tiết</th>
         </tr></thead>
         <tbody>${hang}</tbody>
@@ -168,44 +203,45 @@ async function email_nhan_su(): Promise<string[]> {
 export interface KetQuaNhacLoi {
   so_nguoi: number;
   so_email_ca_nhan: number;
-  so_loi_gui: number;
+  so_ngay_loi: number;
   hr_gui: boolean;
 }
 
 /**
- * Gui email nhac loi cho mot ky (thang 'YYYY-MM'). Tra ve so lieu. Idempotent ve DU LIEU (chi doc
- * + gui email, khong sua CSDL); tan suat do bo lich khoa (3 ngay/lan). Chi chay khi email da bat.
+ * Gui email nhac loi cho khoang ngay [tu_ngay, den_ngay]. `toan_thang=true` -> email "tong hop ca
+ * thang" (dung cuoi thang). Tra ve so lieu. Chi doc + gui email (khong sua CSDL); tan suat do bo
+ * lich khoa. Chi chay khi email da bat.
  */
 export async function email_nhac_loi(
-  thang: string, den_ngay: string = new Date().toISOString().slice(0, 10),
+  tu_ngay: string, den_ngay: string, opts: { toan_thang?: boolean } = {},
 ): Promise<KetQuaNhacLoi> {
-  const kq: KetQuaNhacLoi = { so_nguoi: 0, so_email_ca_nhan: 0, so_loi_gui: 0, hr_gui: false };
+  const toan_thang = opts.toan_thang ?? false;
+  const kq: KetQuaNhacLoi = { so_nguoi: 0, so_email_ca_nhan: 0, so_ngay_loi: 0, hr_gui: false };
   if (!email_bat()) return kq;
 
-  const ds = await truy_van<DongLoi>(
-    `select v.nhan_vien_id, nv.ho_ten, nv.ma_nv, nv.email, pb.ten as phong_ban,
-            l.ten as loai_ten,
-            to_char(v.ngay,'YYYY-MM-DD') as ngay
-       from vi_pham v
-       join loai_vi_pham l on l.id = v.loai_vi_pham_id
-       join nhan_vien nv on nv.id = v.nhan_vien_id and nv.dang_hoat_dong = true
+  const ds = await truy_van<DongNgay>(
+    `select bc.nhan_vien_id, nv.ho_ten, nv.ma_nv, nv.email, pb.ten as phong_ban,
+            to_char(bc.ngay,'YYYY-MM-DD') as ngay,
+            bc.phut_muon, bc.phut_ve_som, bc.trang_thai
+       from bang_cong_ngay bc
+       join nhan_vien nv on nv.id = bc.nhan_vien_id and nv.dang_hoat_dong = true
        left join phong_ban pb on pb.id = nv.phong_ban_id
-      where v.ky = $1 and v.trang_thai = any($2)`,
-    [thang, TRANG_THAI_TINH],
+      where bc.ngay >= $1 and bc.ngay <= $2
+        and (bc.phut_muon > 0 or bc.phut_ve_som > 0 or bc.trang_thai = 'vang')`,
+    [tu_ngay, den_ngay],
   );
 
   const nguoi = gop_theo_nguoi(ds);
   kq.so_nguoi = nguoi.size;
   if (nguoi.size === 0) return kq;
 
-  const chu_ky = cau_hinh.ky_luat.chu_ky_nhac_ngay;
   for (const ng of nguoi.values()) {
-    kq.so_loi_gui += ng.tong_lan;
+    kq.so_ngay_loi += ng.tong_ngay_loi;
     if (ng.email !== null && ng.email.includes('@')) {
       const ok = await gui_email({
         den: [ng.email],
-        tieu_de: `Nhắc nhở lỗi chấm công — kỳ ${thang_viet(thang)}`,
-        noi_dung_html: than_email_ca_nhan(ng, thang, den_ngay, chu_ky),
+        tieu_de: `${cum_pham_vi(tu_ngay, den_ngay, toan_thang).tieu_de} (${ngay_viet(tu_ngay)}–${ngay_viet(den_ngay)})`,
+        noi_dung_html: than_email_ca_nhan(ng, tu_ngay, den_ngay, toan_thang),
       });
       if (ok) kq.so_email_ca_nhan += 1;
     }
@@ -215,8 +251,8 @@ export async function email_nhac_loi(
   if (hr.length > 0) {
     kq.hr_gui = await gui_email({
       den: hr,
-      tieu_de: `Tổng hợp lỗi chấm công — kỳ ${thang_viet(thang)}`,
-      noi_dung_html: than_email_tong_hop([...nguoi.values()], thang, den_ngay),
+      tieu_de: `${cum_pham_vi(tu_ngay, den_ngay, toan_thang).tieu_de} (${ngay_viet(tu_ngay)}–${ngay_viet(den_ngay)})`,
+      noi_dung_html: than_email_tong_hop([...nguoi.values()], tu_ngay, den_ngay, toan_thang),
     });
   }
   return kq;
