@@ -20,6 +20,13 @@ export interface SoLieuKy {
   so_cong: number;
 }
 
+/**
+ * Khoan phu cap khai theo QUY nhung tra deu hang thang: so tien luu la muc CA QUY, khi sinh dong
+ * thang thi chia 3. Vd "Phu cap trang phuc quy" 500.000/quy -> ghi nhan ~166.667/thang.
+ * (Chu DN chot: "moi quy phu cap 500.000, chia deu tung thang".)
+ */
+const KHOAN_THEO_QUY = new Set(['pc_trang_phuc']);
+
 /** Mot dong khoan sap ghi vao `phieu_luong_khoan`. */
 export interface DongKhoanSinhRa {
   khoan_ma: string;
@@ -50,7 +57,10 @@ export function khoan_tu_chinh_sach(
       // Khoan go thang so tien: chinh sach phai noi so tien la bao nhieu. Khong noi thi
       // khong sinh dong — mot dong 0 dong tren bang luong chi lam nhieu bang.
       if (cs.so_tien === null || cs.so_tien <= 0) continue;
-      ra.push({ khoan_ma: cs.khoan_ma, so_luong: null, don_gia: null, so_tien: cs.so_tien });
+      const so_tien = KHOAN_THEO_QUY.has(cs.khoan_ma)
+        ? Math.round(cs.so_tien / 3) // khai theo quy -> tra deu 3 thang
+        : cs.so_tien;
+      ra.push({ khoan_ma: cs.khoan_ma, so_luong: null, don_gia: null, so_tien });
       continue;
     }
 

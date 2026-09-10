@@ -76,6 +76,16 @@ test('khoan "nhap tay": lay so tien co dinh moi thang cua chinh sach', () => {
   assert.equal(ra[0]!.so_luong, null, 'khoan go tay khong co so luong');
 });
 
+test('phu cap trang phuc (theo quy): so tien khai la ca quy, chia deu 3 thang', () => {
+  const ra = khoan_tu_chinh_sach(
+    [{ ...GOC, khoan_ma: 'pc_trang_phuc', cach_tinh: 'nhap_tay', so_tien: 500_000 }],
+    { so_cong: 23 },
+    KHONG_GO_TAY,
+  );
+  assert.equal(ra.length, 1);
+  assert.equal(ra[0]!.so_tien, 166_667, '500.000/quy -> ~166.667/thang');
+});
+
 test('khoan "nhap tay" ma chinh sach khong noi so tien thi khong sinh dong', () => {
   const ra = khoan_tu_chinh_sach(
     [{ ...GOC, cach_tinh: 'nhap_tay', so_tien: null }],
