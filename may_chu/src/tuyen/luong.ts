@@ -663,8 +663,10 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
 
     const p = await truy_van_mot<{
       ky_luong_id: string; trang_thai: string; ep_du_cong: boolean; mien_phat: boolean;
+      mien_thue: boolean; mien_bh: boolean;
     }>(
-      `select p.ky_luong_id, k.trang_thai, p.ep_du_cong, p.mien_phat from phieu_luong p
+      `select p.ky_luong_id, k.trang_thai, p.ep_du_cong, p.mien_phat, p.mien_thue, p.mien_bh
+         from phieu_luong p
          join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
       [id],
     );
@@ -684,17 +686,27 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     if (mien_phat !== null && mien_phat !== p.mien_phat && nd.vai_tro !== 'admin') {
       throw new LoiKhongQuyen('Chỉ admin được tích "miễn phạt" cho phiếu lương.');
     }
+    // Mien thue TNCN / mien BHXH-BHYT-BHTN: quyet dinh ve nghia vu thue & bao hiem, CHI ADMIN.
+    const mien_thue = luan_ly(b, 'mien_thue');
+    if (mien_thue !== null && mien_thue !== p.mien_thue && nd.vai_tro !== 'admin') {
+      throw new LoiKhongQuyen('Chỉ admin được tích "miễn thuế TNCN" cho phiếu lương.');
+    }
+    const mien_bh = luan_ly(b, 'mien_bh');
+    if (mien_bh !== null && mien_bh !== p.mien_bh && nd.vai_tro !== 'admin') {
+      throw new LoiKhongQuyen('Chỉ admin được tích "miễn BHXH/BHYT/BHTN" cho phiếu lương.');
+    }
 
     await thuc_thi(
       `update phieu_luong set
          thuong = $2, phu_cap_khac = $3, tru_khac = $4,
          ly_do_tru_khac = $5, ghi_chu = $6, ep_du_cong = coalesce($8, ep_du_cong),
-         mien_phat = coalesce($9, mien_phat), sua_boi = $7, sua_luc = now()
+         mien_phat = coalesce($9, mien_phat), mien_thue = coalesce($10, mien_thue),
+         mien_bh = coalesce($11, mien_bh), sua_boi = $7, sua_luc = now()
        where id = $1`,
       [
         id, so_tien(b, 'thuong'), so_tien(b, 'phu_cap_khac'), so_tien(b, 'tru_khac'),
         chuoi(b, 'ly_do_tru_khac', { toi_da: 500 }),
-        chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub, ep_du_cong, mien_phat,
+        chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub, ep_du_cong, mien_phat, mien_thue, mien_bh,
       ],
     );
 

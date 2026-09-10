@@ -324,9 +324,9 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       // Doc lai phan nguoi da sua tay de khong ghi de len.
       const cu = await khach.query<{
         id: string; thuong: string; phu_cap_khac: string; tru_khac: string;
-        ep_du_cong: boolean; mien_phat: boolean;
+        ep_du_cong: boolean; mien_phat: boolean; mien_thue: boolean; mien_bh: boolean;
       }>(
-        `select id, thuong, phu_cap_khac, tru_khac, ep_du_cong, mien_phat
+        `select id, thuong, phu_cap_khac, tru_khac, ep_du_cong, mien_phat, mien_thue, mien_bh
            from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2`,
         [ky_luong_id, nv.nhan_vien_id],
       );
@@ -341,6 +341,9 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       // ep du cong la quyet dinh ve luong co ban, khong phai ve so ngay an trua.
       const ep_du_cong = Boolean(phieu_cu?.ep_du_cong ?? false);
       const cong_thuc = ep_du_cong ? chuan : nv.so_cong;
+      // Admin tich "mien thue" / "mien BH": bo thue TNCN / mien dong bao hiem cho phieu nay.
+      const mien_thue = Boolean(phieu_cu?.mien_thue ?? false);
+      const mien_bh = Boolean(phieu_cu?.mien_bh ?? false);
 
       // Phai co ID phieu TRUOC khi ap chinh sach, vi dong khoan tro ve phieu. Chua co thi tao
       // mot dong rong — cac con so duoc ghi o buoc cuoi, va ca vong nay nam trong mot giao
@@ -443,14 +446,16 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
         so_tien: r.so_tien === null ? null : Number(r.so_tien),
       }));
 
-      // Thu viec va thuc tap/hoc viec KHONG dong BHXH bat buoc.
-      const dong_bao_hiem = nv.loai_hop_dong !== 'thu_viec' && nv.loai_hop_dong !== 'hoc_viec';
+      // Thu viec va thuc tap/hoc viec KHONG dong BHXH bat buoc; admin tich "mien BH" cung mien.
+      const dong_bao_hiem = !mien_bh
+        && nv.loai_hop_dong !== 'thu_viec' && nv.loai_hop_dong !== 'hoc_viec';
 
       const kq = tinh_phieu_luong({
         luong_co_ban,
         phu_cap,
         luong_dong_bh: nv.luong_dong_bh_ql,
         dong_bao_hiem,
+        mien_thue,
         so_ngay_cong_chuan: chuan,
         so_ngay_cong_thuc: cong_thuc,
         phut_ot: nv.phut_ot,

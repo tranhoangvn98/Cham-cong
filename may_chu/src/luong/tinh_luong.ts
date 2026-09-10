@@ -46,6 +46,11 @@ export interface DauVaoPhieu {
    * thuoc dien dong). Mac dinh true. Mien thi can cu dong = 0 nen moi khoan BH deu = 0.
    */
   dong_bao_hiem?: boolean;
+  /**
+   * Mien thue TNCN cho phieu nay (thue_tncn = 0). Tich thu cong cua admin cho truong hop dac
+   * biet. Mac dinh false = tinh thue theo bieu thue luy tien nhu binh thuong.
+   */
+  mien_thue?: boolean;
   so_ngay_cong_chuan: number;
   so_ngay_cong_thuc: number;
   phut_ot: number;
@@ -204,7 +209,8 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
   // Tinh thue tren ca tien hoan ung la thu thue tren mot khoan khong phai thu nhap.
   const thu_nhap_chiu_thue = Math.max(0, tong_thu_nhap - khoan.thu_nhap_mien_thue);
   const thu_nhap_tinh_thue = Math.max(0, thu_nhap_chiu_thue - giam_tru_tong);
-  const thue_tncn = thue_luy_tien(thu_nhap_tinh_thue, ts.bac_thue);
+  // Admin tich "mien thue TNCN" -> thue = 0 (van giu thu_nhap_tinh_thue de doi chieu).
+  const thue_tncn = d.mien_thue === true ? 0 : thue_luy_tien(thu_nhap_tinh_thue, ts.bac_thue);
 
   // ------------------------------------------------------------ thuc linh
   const tong_tru = bao_hiem_nld + thue_tncn + d.tru_khac + khoan.tru;

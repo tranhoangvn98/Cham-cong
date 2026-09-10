@@ -136,6 +136,18 @@ test('phieu luong day du: du cong, khong phu thuoc', () => {
   assert.equal(kq.thuc_linh, 17_460_000);
 });
 
+test('mien thue TNCN (admin tich): thue = 0, van giu thu nhap tinh thue de doi chieu', () => {
+  const thuong = tinh_phieu_luong(CO_BAN, TS);
+  const mien = tinh_phieu_luong({ ...CO_BAN, mien_thue: true }, TS);
+
+  assert.ok(thuong.thue_tncn > 0, 'binh thuong co thue');
+  assert.equal(mien.thue_tncn, 0, 'mien thue -> thue = 0');
+  // Thu nhap tinh thue KHONG bi xoa (chi thue = 0) — con doi chieu duoc.
+  assert.equal(mien.thu_nhap_tinh_thue, thuong.thu_nhap_tinh_thue);
+  // Thuc linh tang dung bang so thue duoc mien.
+  assert.equal(mien.thuc_linh - thuong.thuc_linh, thuong.thue_tncn);
+});
+
 test('nguoi phu thuoc lam giam thue, moi nguoi 4.4tr', () => {
   const khong = tinh_phieu_luong(CO_BAN, TS);
   const hai = tinh_phieu_luong({ ...CO_BAN, so_nguoi_phu_thuoc: 2 }, TS);

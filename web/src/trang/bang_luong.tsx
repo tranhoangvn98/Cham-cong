@@ -104,6 +104,10 @@ interface Phieu {
   ep_du_cong: boolean;
   /** Admin miễn phạt đi muộn tự động cho phiếu này. */
   mien_phat: boolean;
+  /** Admin miễn thuế TNCN cho phiếu này (thuế = 0). */
+  mien_thue: boolean;
+  /** Admin miễn BHXH/BHYT/BHTN cho phiếu này (căn cứ đóng = 0). */
+  mien_bh: boolean;
   khoan: KhoanPhieu[];
 }
 
@@ -424,6 +428,8 @@ function HopThoaiChiTiet(
                       {Number(p.so_ngay_cong_thuc)}/{Number(p.so_ngay_cong_chuan)}
                       {p.ep_du_cong && <div className="nhan-canh-bao" title="Được tính đủ ngày công (miễn chấm công)">đủ công</div>}
                       {p.mien_phat && <div className="nhan-canh-bao" title="Được miễn phạt đi muộn/về sớm">miễn phạt</div>}
+                      {p.mien_thue && <div className="nhan-canh-bao" title="Miễn thuế TNCN cho phiếu này">miễn thuế</div>}
+                      {p.mien_bh && <div className="nhan-canh-bao" title="Miễn BHXH/BHYT/BHTN cho phiếu này">miễn BH</div>}
                     </td>
                     <td className="canh-phai">{tien(p.luong_theo_cong)}</td>
                     <td className="canh-phai">{tien(p.tien_ot)}</td>
@@ -873,6 +879,8 @@ function HopThoaiSuaPhieu(
   const [ghi_chu, dat_ghi_chu] = useState(phieu.ghi_chu ?? '');
   const [ep_du_cong, dat_ep_du_cong] = useState(phieu.ep_du_cong);
   const [mien_phat, dat_mien_phat] = useState(phieu.mien_phat);
+  const [mien_thue, dat_mien_thue] = useState(phieu.mien_thue);
+  const [mien_bh, dat_mien_bh] = useState(phieu.mien_bh);
   // Luong dong BH: trong = dong theo luong that. Chi hien so khi da khai muc rieng.
   const bh_khai_ban_dau = Number(phieu.luong_dong_bh) !== Number(phieu.luong_co_ban) + Number(phieu.phu_cap)
     ? String(Number(phieu.luong_dong_bh)) : '';
@@ -946,6 +954,36 @@ function HopThoaiSuaPhieu(
         </div>
       )}
 
+      {(admin || phieu.mien_thue) && (
+        <div className="hop-luu-y" style={{ margin: '0 0 0.75rem' }}>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <input
+              type="checkbox" checked={mien_thue} disabled={!admin}
+              onChange={(e) => dat_mien_thue(e.target.checked)}
+            />
+            <span>
+              <strong>Miễn thuế TNCN</strong> — không trừ thuế thu nhập cá nhân cho phiếu này
+              (thuế = 0). <strong>Chỉ admin</strong> được tích.
+            </span>
+          </label>
+        </div>
+      )}
+
+      {(admin || phieu.mien_bh) && (
+        <div className="hop-luu-y" style={{ margin: '0 0 0.75rem' }}>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <input
+              type="checkbox" checked={mien_bh} disabled={!admin}
+              onChange={(e) => dat_mien_bh(e.target.checked)}
+            />
+            <span>
+              <strong>Miễn BHXH/BHYT/BHTN</strong> — không trừ bảo hiểm bắt buộc cho phiếu này
+              (căn cứ đóng = 0). <strong>Chỉ admin</strong> được tích.
+            </span>
+          </label>
+        </div>
+      )}
+
       <label htmlFor="thuong">Thưởng (đ)</label>
       <input id="thuong" type="number" min="0" value={thuong}
         onChange={(e) => dat_thuong(e.target.value)} />
@@ -996,7 +1034,7 @@ function HopThoaiSuaPhieu(
                   ghi_chu,
                   // Chi gui khi la admin — server cung chan, nhung khong gui thi nhan su thuong
                   // sua thuong/tru ma khong vo tinh dong vao hai co nay.
-                  ...(admin ? { ep_du_cong, mien_phat } : {}),
+                  ...(admin ? { ep_du_cong, mien_phat, mien_thue, mien_bh } : {}),
                 },
               });
             },
