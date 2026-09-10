@@ -138,6 +138,9 @@ export interface DongBaoCao {
   hanh_dong: HanhDong[];
 }
 
+/** Mot o cong bi anh huong (can tinh lai) do co ngay phep chuyen sang khong luong. */
+export interface CapAnhHuong { nhan_vien_id: string; ngay: string }
+
 export interface BaoCao {
   nam: number;
   dry_run: boolean;
@@ -145,6 +148,15 @@ export interface BaoCao {
   so_nguoi_vuot: number;
   tong_ngay_chuyen: number;
   dong: DongBaoCao[];
+  /** Chinh xac cac o (nhan vien + ngay) doi trang thai — de tinh lai DUNG o do, khong dung ca thang. */
+  cap_anh_huong: CapAnhHuong[];
+}
+
+/** Cac ngay cu the cua mot hanh dong chuyen/tach (de tinh lai dung o do). */
+function ngay_cua_hanh_dong(h: HanhDong): string[] {
+  if (h.kieu === 'chuyen') return danh_sach_ngay(h.tu_ngay, h.den_ngay);
+  if (h.kieu === 'tach') return danh_sach_ngay(h.km_tu, h.km_den);
+  return [];
 }
 
 interface NhanVienPhep {
@@ -192,6 +204,7 @@ export async function ap_quy_phep_nam(
   );
 
   const dong: DongBaoCao[] = [];
+  const cap_anh_huong: CapAnhHuong[] = [];
   let tong_ngay_chuyen = 0;
   let so_nguoi_vuot = 0;
 
@@ -222,6 +235,9 @@ export async function ap_quy_phep_nam(
 
     if (so_ngay_chuyen > 0) so_nguoi_vuot++;
     tong_ngay_chuyen += so_ngay_chuyen;
+    for (const h of hanh_dong) {
+      for (const ngay of ngay_cua_hanh_dong(h)) cap_anh_huong.push({ nhan_vien_id: nv.id, ngay });
+    }
     dong.push({
       ma_nv: nv.ma_nv, ho_ten: nv.ho_ten, so_thang, quy,
       phep_da_duyet: tong_ngay(dons, nam), so_ngay_chuyen,
@@ -235,6 +251,7 @@ export async function ap_quy_phep_nam(
 
   return {
     nam, dry_run, so_nguoi_xet: nvs.length, so_nguoi_vuot, tong_ngay_chuyen, dong,
+    cap_anh_huong,
   };
 }
 
