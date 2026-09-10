@@ -23,14 +23,36 @@ const RE_COLS = /<cols>[\s\S]*?<\/cols>/;
  * rong 13). Ta thay thang khoi <cols> trong XML dau ra bang khoi GOC cua mau — nho vay che do
  * thu gon 17 cot va do rong tung cot khop y HET mau.
  */
+// Do rong TOI THIEU cho cac cot HIEN (khong an) — de tieu de + so tien khong bi cat chu.
+// Chi NOI RONG (max voi mau), khong lam hep, va khong dung toi cac cot chi tiet dang an.
+const RONG_TOI_THIEU: Record<number, number> = {
+  1: 6, 3: 24, 4: 20, 5: 26,        // STT, Ho ten, Chuc danh, Phong ban
+  7: 12, 8: 12, 9: 14, 12: 15, 14: 12, // Cong chuan/thuc, Luong co ban, Luong theo cong, Tien OT
+  22: 16, 23: 15, 29: 14, 36: 13,   // Tong PC+thuong, Tong thu nhap, Tong BH, Thue TNCN
+  44: 13, 45: 15, 47: 22,           // Tong tru, Thuc linh, Ghi chu
+};
+
+/** Noi rong cac cot hien trong khoi <cols>, giu nguyen thuoc tinh an/nhom. */
+function noi_rong_cols(cols: string): string {
+  return cols.replace(/<col\b[^>]*\/>/g, (tag) => {
+    const min = Number(/min="(\d+)"/.exec(tag)?.[1] ?? '0');
+    const toi_thieu = RONG_TOI_THIEU[min];
+    if (toi_thieu === undefined) return tag;
+    const cur = Number(/width="([\d.]+)"/.exec(tag)?.[1] ?? '0');
+    const w = Math.max(cur, toi_thieu);
+    return tag.replace(/width="[\d.]+"/, `width="${w}"`);
+  });
+}
+
 async function va_cols(buf: Buffer): Promise<Buffer> {
   const zin = await JSZip.loadAsync(buf);
   const ztpl = await JSZip.loadAsync(readFileSync(DUONG_MAU));
   const f_tpl = ztpl.file(SHEET_XML);
   const f_out = zin.file(SHEET_XML);
   if (f_tpl === null || f_out === null) return buf;
-  const cols = RE_COLS.exec(await f_tpl.async('string'))?.[0];
-  if (cols === undefined) return buf;
+  const cols_goc = RE_COLS.exec(await f_tpl.async('string'))?.[0];
+  if (cols_goc === undefined) return buf;
+  const cols = noi_rong_cols(cols_goc);
   let xml = await f_out.async('string');
   xml = RE_COLS.test(xml) ? xml.replace(RE_COLS, cols) : xml.replace('<sheetData', `${cols}<sheetData`);
   zin.file(SHEET_XML, xml);
@@ -297,6 +319,12 @@ export async function xuat_bang_luong_erp(ky_luong_id: string): Promise<Buffer> 
       }
     });
   });
+
+  // Tieu de A6 (da gop A6:AV6): CAN GIUA, IN HOA, Times New Roman.
+  const o_tieu_de = ws.getCell('A6');
+  if (typeof o_tieu_de.value === 'string') o_tieu_de.value = o_tieu_de.value.toUpperCase();
+  o_tieu_de.font = { name: 'Times New Roman', bold: true, size: 16 };
+  o_tieu_de.alignment = { horizontal: 'center', vertical: 'middle' };
 
   const ab = await wb.xlsx.writeBuffer();
   return va_cols(Buffer.from(ab as ArrayBuffer));
