@@ -271,6 +271,49 @@ export async function tu_dong_quyet_don(don_id: string, opts: { email?: boolean 
   return xu_ly_mot_don(don, opts);
 }
 
+export interface DongXemTruoc {
+  ma_nv: string; ho_ten: string; loai: string; tu_ngay: string; den_ngay: string;
+  quyet: 'da_duyet' | 'tu_choi'; kieu: QuyetDinh['kieu']; so_phep: number; so_kl: number;
+}
+
+/**
+ * XEM TRUOC (dry-run) backlog: tinh quyet dinh cho tung don ma KHONG sua CSDL. Mo phong tich luy
+ * quy phep trong bo nho theo thu tu thoi gian de ket qua khop voi khi chay that.
+ */
+export async function xem_truoc_backlog(tu_ngay: string = TU_NGAY_AP): Promise<DongXemTruoc[]> {
+  const dons = await truy_van<DonNghi & { ma_nv: string; ho_ten: string }>(
+    `select d.id, d.nhan_vien_id, d.loai, to_char(d.tu_ngay,'YYYY-MM-DD') as tu_ngay,
+            to_char(d.den_ngay,'YYYY-MM-DD') as den_ngay, d.nua_ngay, d.ly_do,
+            nv.ma_nv, nv.ho_ten
+       from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id
+      where d.trang_thai = 'cho_duyet' and d.tu_ngay >= $1
+      order by d.nhan_vien_id, d.tu_ngay, d.id`,
+    [tu_ngay],
+  );
+  const con = new Map<string, number>();
+  const kq: DongXemTruoc[] = [];
+  for (const d of dons) {
+    const nam = Number(d.tu_ngay.slice(0, 4));
+    if (!con.has(d.nhan_vien_id)) {
+      // Don dang xet 'cho_duyet' khong tinh vao da_dung (chi dem da_duyet), nen truyen id gia.
+      con.set(d.nhan_vien_id, await con_lai_phep(d.nhan_vien_id, d.id, nam));
+    }
+    const c = con.get(d.nhan_vien_id)!;
+    const dau = `${nam}-01-01`;
+    const cuoi = `${nam}-12-31`;
+    const ngays = danh_sach_ngay(d.tu_ngay > dau ? d.tu_ngay : dau, d.den_ngay < cuoi ? d.den_ngay : cuoi);
+    const qd = quyet_dinh_don(d.loai, ngays, d.nua_ngay, d.loai === 'khong_luong' ? 1 : c);
+    const so_phep = qd.kieu === 'tach' ? qd.so_phep : qd.kieu === 'duyet_phep' ? ngays.length : 0;
+    const so_kl = qd.kieu === 'tach' ? qd.so_kl : qd.kieu === 'duyet_khong_luong' ? ngays.length : 0;
+    if (d.loai !== 'khong_luong') con.set(d.nhan_vien_id, c - so_phep * (d.nua_ngay ? 0.5 : 1));
+    kq.push({
+      ma_nv: d.ma_nv, ho_ten: d.ho_ten, loai: d.loai, tu_ngay: d.tu_ngay, den_ngay: d.den_ngay,
+      quyet: qd.kieu === 'tu_choi' ? 'tu_choi' : 'da_duyet', kieu: qd.kieu, so_phep, so_kl,
+    });
+  }
+  return kq;
+}
+
 export interface KetQuaBacklog {
   so_xet: number; so_duyet_phep: number; so_tach: number; so_khong_luong: number; so_tu_choi: number;
 }
