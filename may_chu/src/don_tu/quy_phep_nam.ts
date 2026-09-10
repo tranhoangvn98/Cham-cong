@@ -25,6 +25,7 @@
 import type pg from 'pg';
 import { truy_van, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { danh_sach_ngay } from '../tien_ich/thoi_gian.ts';
+import { id_tai_khoan_he_thong } from '../bao_mat/tai_khoan_he_thong.ts';
 
 const MARKER = 'auto_quy_phep';
 
@@ -259,6 +260,9 @@ export async function ap_quy_phep_nam(
 async function ap_cho_nhan_vien(
   nv: NhanVienPhep, nam: number, hanh_dong: readonly HanhDong[], dons: readonly DonPhep[],
 ): Promise<void> {
+  // Quyet dinh tu dong phai mang danh tinh he thong ro rang (KHONG de nguoi_duyet_id NULL).
+  const nd_he_thong = await id_tai_khoan_he_thong();
+
   await trong_giao_dich(async (khach) => {
     for (const h of hanh_dong) {
       if (h.kieu === 'chuyen') {
@@ -266,11 +270,11 @@ async function ap_cho_nhan_vien(
         await khach.query(
           `update don_nghi_phep
               set trang_thai = 'tu_choi', quyet_luc = now(),
-                  ghi_chu_duyet = $2
+                  nguoi_duyet_id = $3, ghi_chu_duyet = $2
             where id = $1`,
-          [h.don_id, `[${MARKER}] Vuot quy phep nam ${nam} -> chuyen nghi khong luong`],
+          [h.don_id, `[${MARKER}] Vuot quy phep nam ${nam} -> chuyen nghi khong luong`, nd_he_thong],
         );
-        await tao_don_khong_luong(khach, nv.id, h.tu_ngay, h.den_ngay, h.nua_ngay, nam);
+        await tao_don_khong_luong(khach, nv.id, h.tu_ngay, h.den_ngay, h.nua_ngay, nam, nd_he_thong);
       } else if (h.kieu === 'tach') {
         // Rut ngan don phep: giu phan trong quy (tu_ngay .. giu_den).
         await khach.query(
@@ -281,7 +285,7 @@ async function ap_cho_nhan_vien(
           [h.don_id, h.giu_den, `[${MARKER}] Cat phan vuot quy phep nam ${nam} sang khong luong`],
         );
         // Phan vuot (km_tu .. km_den) -> khong luong.
-        await tao_don_khong_luong(khach, nv.id, h.km_tu, h.km_den, false, nam);
+        await tao_don_khong_luong(khach, nv.id, h.km_tu, h.km_den, false, nam, nd_he_thong);
       }
     }
   });
@@ -291,6 +295,7 @@ async function ap_cho_nhan_vien(
 async function tao_don_khong_luong(
   khach: pg.PoolClient,
   nhan_vien_id: string, tu_ngay: string, den_ngay: string, nua_ngay: boolean, nam: number,
+  nguoi_duyet_id: string,
 ): Promise<void> {
   const da_co = await khach.query(
     `select 1 from don_nghi_phep
@@ -301,11 +306,12 @@ async function tao_don_khong_luong(
   if (da_co.rows.length > 0) return;
   await khach.query(
     `insert into don_nghi_phep
-       (nhan_vien_id, loai, tu_ngay, den_ngay, nua_ngay, ly_do, trang_thai, quyet_luc, ghi_chu_duyet)
-     values ($1,'khong_luong',$2,$3,$4,$5,'da_duyet', now(), $6)`,
+       (nhan_vien_id, loai, tu_ngay, den_ngay, nua_ngay, ly_do, trang_thai, quyet_luc,
+        nguoi_duyet_id, ghi_chu_duyet)
+     values ($1,'khong_luong',$2,$3,$4,$5,'da_duyet', now(), $7, $6)`,
     [nhan_vien_id, tu_ngay, den_ngay, nua_ngay,
       `Chuyen tu nghi phep nam vuot quy ${nam}`,
-      `[${MARKER}] Tao tu phan vuot quy phep nam ${nam}`],
+      `[${MARKER}] Tao tu phan vuot quy phep nam ${nam}`, nguoi_duyet_id],
   );
 }
 
