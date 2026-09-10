@@ -96,6 +96,7 @@ interface DongPhieu {
   so_nguoi_phu_thuoc: number; giam_tru_tong: number; thu_nhap_tinh_thue: number; thue_tncn: number;
   tru_khac: number; ly_do_tru_khac: string | null; tong_tru: number;
   thuc_linh: number; thuc_linh_lam_tron: number; ghi_chu: string | null; email: string | null;
+  mien_thue: boolean; mien_bh: boolean;
   pc_theo_ca: number; pc_an_trua: number; pc_trang_diem: number; pc_trang_phuc: number; pc_kpi: number;
   tru_di_muon_tien: number; tru_di_muon_lan: number;
   tru_nua_ngay_tien: number; tru_nua_ngay_lan: number;
@@ -123,6 +124,7 @@ function them_sheet_giam_tru(wb: ExcelJS.Workbook, ds: readonly DongPhieu[]): vo
     { h: 'Tổng BH (NLĐ)', w: 14 }, { h: 'Thuế TNCN', w: 13 },
     { h: 'Trừ đi muộn', w: 13 }, { h: 'Trừ nửa ngày', w: 13 },
     { h: 'Giảm thưởng/PC (kỷ luật)', w: 16 }, { h: 'Trừ khác', w: 13 }, { h: 'TỔNG TRỪ', w: 15 },
+    { h: 'Miễn giảm (đã duyệt)', w: 22 },
   ];
   ws.getRow(1).values = cot.map((c) => c.h);
   cot.forEach((c, i) => { ws.getColumn(i + 1).width = c.w; });
@@ -134,10 +136,14 @@ function them_sheet_giam_tru(wb: ExcelJS.Workbook, ds: readonly DongPhieu[]): vo
   ds.forEach((p, i) => {
     const bh = p.bhxh_nld + p.bhyt_nld + p.bhtn_nld;
     const giam_kl = p.khoan_tru - p.tru_di_muon_tien - p.tru_nua_ngay_tien;
+    const mien: string[] = [];
+    if (p.mien_thue) mien.push('Miễn thuế TNCN');
+    if (p.mien_bh) mien.push('Miễn BHXH/YT/TN');
     const row = ws.addRow([
       i + 1, p.ma_nv, p.ho_ten, p.phong_ban ?? '',
       p.bhxh_nld, p.bhyt_nld, p.bhtn_nld, bh, p.thue_tncn,
       p.tru_di_muon_tien, p.tru_nua_ngay_tien, giam_kl, p.tru_khac, p.tong_tru,
+      mien.join('; '),
     ]);
     for (let c = 5; c <= 14; c++) row.getCell(c).numFmt = FMT;
   });
@@ -200,7 +206,7 @@ export async function xuat_bang_luong_erp(ky_luong_id: string): Promise<Buffer> 
             p.so_nguoi_phu_thuoc::int, p.giam_tru_tong::float8, p.thu_nhap_tinh_thue::float8,
             p.thue_tncn::float8, p.tru_khac::float8, p.ly_do_tru_khac,
             p.tong_tru::float8, p.thuc_linh::float8, p.thuc_linh_lam_tron::float8,
-            p.ghi_chu, nv.email,
+            p.ghi_chu, nv.email, p.mien_thue, p.mien_bh,
             coalesce(k.pc_theo_ca,0)::float8       as pc_theo_ca,
             coalesce(k.pc_an_trua,0)::float8       as pc_an_trua,
             coalesce(k.pc_trang_diem,0)::float8    as pc_trang_diem,
@@ -324,7 +330,14 @@ export async function xuat_bang_luong_erp(ky_luong_id: string): Promise<Buffer> 
     set('AR', tong_tru_nhom);
     set('AS', p.thuc_linh);
     set('AT', p.thuc_linh_lam_tron);
-    set('AU', p.ghi_chu ?? '');
+    // Ghi chu: kem dau MIEN GIAM da duyet (admin tich) de bang luong the hien ro vi sao
+    // thue TNCN / BH = 0 cho nguoi nay.
+    const mien: string[] = [];
+    if (p.mien_thue) mien.push('Miễn thuế TNCN');
+    if (p.mien_bh) mien.push('Miễn BHXH/YT/TN');
+    const ghi_chu_cot = [p.ghi_chu, mien.length > 0 ? `[${mien.join('; ')}]` : '']
+      .filter((s) => s != null && s !== '').join(' ');
+    set('AU', ghi_chu_cot);
     set('AV', p.email ?? '');
   }
 
