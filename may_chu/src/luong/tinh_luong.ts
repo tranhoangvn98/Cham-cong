@@ -41,6 +41,11 @@ export interface DauVaoPhieu {
    * luong that. null/0/khong truyen = dong theo luong that (luong_co_ban + phu_cap) nhu cu.
    */
   luong_dong_bh?: number | null;
+  /**
+   * Co dong BHXH/BHYT/BHTN bat buoc khong. false = MIEN (thu viec, thuc tap/hoc viec khong
+   * thuoc dien dong). Mac dinh true. Mien thi can cu dong = 0 nen moi khoan BH deu = 0.
+   */
+  dong_bao_hiem?: boolean;
   so_ngay_cong_chuan: number;
   so_ngay_cong_thuc: number;
   phut_ot: number;
@@ -165,11 +170,16 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
   const tong_thu_nhap = luong_theo_cong + tien_ot + d.thuong + d.phu_cap_khac + khoan.thu_nhap;
 
   // ------------------------------------------------------------ bao hiem
+  // Mien BHXH bat buoc: thu viec (HD thu viec rieng) va thuc tap/hoc viec KHONG thuoc dien dong
+  // BHXH/BHYT/BHTN. Nguoi goi truyen `dong_bao_hiem = false` -> can cu dong = 0 -> mien het.
+  //
   // Can cu dong bao hiem = muc KHAI dong BH neu co, khong thi luong that (luong_co_ban + phu_cap).
   // Muc khai co the thap hon luong that — day la ly do tach rieng khoi luong tinh cong/thue.
-  const luong_dong_bh = d.luong_dong_bh != null && d.luong_dong_bh > 0
-    ? d.luong_dong_bh
-    : d.luong_co_ban + d.phu_cap;
+  const luong_dong_bh = d.dong_bao_hiem === false
+    ? 0
+    : d.luong_dong_bh != null && d.luong_dong_bh > 0
+      ? d.luong_dong_bh
+      : d.luong_co_ban + d.phu_cap;
   const muc_bhxh_bhyt = Math.min(luong_dong_bh, tran_bhxh_bhyt(ts));
   const muc_bhtn = Math.min(luong_dong_bh, tran_bhtn(ts));
 

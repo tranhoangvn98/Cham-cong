@@ -441,10 +441,14 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
         so_tien: r.so_tien === null ? null : Number(r.so_tien),
       }));
 
+      // Thu viec va thuc tap/hoc viec KHONG dong BHXH bat buoc.
+      const dong_bao_hiem = nv.loai_hop_dong !== 'thu_viec' && nv.loai_hop_dong !== 'hoc_viec';
+
       const kq = tinh_phieu_luong({
         luong_co_ban,
         phu_cap,
         luong_dong_bh: nv.luong_dong_bh_ql,
+        dong_bao_hiem,
         so_ngay_cong_chuan: chuan,
         so_ngay_cong_thuc: cong_thuc,
         phut_ot: nv.phut_ot,

@@ -185,6 +185,24 @@ test('luong dong BH khai cao vuot tran: van bi kep o tran', () => {
   assert.equal(kq.bhxh_nld, 3_744_000);
 });
 
+test('mien bao hiem (thu viec / thuc tap): moi khoan BH deu 0, khong tru vao luong', () => {
+  const kq = tinh_phieu_luong({ ...CO_BAN, dong_bao_hiem: false }, TS);
+  assert.equal(kq.luong_dong_bh, 0);
+  assert.equal(kq.muc_dong_bh, 0);
+  assert.equal(kq.bhxh_nld, 0);
+  assert.equal(kq.bhyt_nld, 0);
+  assert.equal(kq.bhtn_nld, 0);
+  assert.equal(kq.bhxh_nsdld, 0, 'phan doanh nghiep cung 0');
+  // Mien BH thi giam tru truoc thue chi con ban than + phu thuoc (khong con BH).
+  const co_bh = tinh_phieu_luong(CO_BAN, TS);
+  assert.ok(kq.thuc_linh > co_bh.thuc_linh, 'mien BH -> thuc linh cao hon');
+});
+
+test('mien bao hiem TRUM CA luong dong BH khai rieng', () => {
+  const kq = tinh_phieu_luong({ ...CO_BAN, luong_dong_bh: 5_000_000, dong_bao_hiem: false }, TS);
+  assert.equal(kq.bhxh_nld, 0, 'da mien thi khai rieng cung khong dong');
+});
+
 test('lam them gio: tinh theo don gia gio cua thang, nhan he so', () => {
   // 22 ngay x 8h = 176 gio chuan. Don gia gio = 20tr/176 = 113.636,36
   // 10 gio OT x 1.5 = 113.636,36 x 10 x 1.5 = 1.704.545 (lam tron)

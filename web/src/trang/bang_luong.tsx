@@ -268,6 +268,7 @@ function HopThoaiChiTiet(
   const [sua, dat_sua] = useState<Phieu | null>(null);
   const [khoan, dat_khoan] = useState<Phieu | null>(null);
   const [xem_tru, dat_xem_tru] = useState<Phieu | null>(null);
+  const [xem_pc, dat_xem_pc] = useState<Phieu | null>(null);
   const [tab, dat_tab] = useState<'vnd' | 'cny'>('vnd');
   const hd = dung_hanh_dong();
 
@@ -427,7 +428,12 @@ function HopThoaiChiTiet(
                     <td className="canh-phai">{tien(p.tien_ot)}</td>
                     <td className="canh-phai">{tien(p.thuong)}</td>
                     <td className="canh-phai">
-                      {tien(Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac))}
+                      {Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac) > 0 ? (
+                        <button className="nut-lien-ket" onClick={() => dat_xem_pc(p)}
+                          title="Xem chi tiết phụ cấp">
+                          {tien(Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac))}
+                        </button>
+                      ) : tien(Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac))}
                     </td>
                     <td className="canh-phai">{tien(p.tong_thu_nhap)}</td>
                     <td className="canh-phai">
@@ -500,6 +506,9 @@ function HopThoaiChiTiet(
       )}
       {xem_tru !== null && (
         <HopThoaiKeKhoanTru phieu={xem_tru} khi_dong={() => dat_xem_tru(null)} />
+      )}
+      {xem_pc !== null && (
+        <HopThoaiKePhuCap phieu={xem_pc} khi_dong={() => dat_xem_pc(null)} />
       )}
     </KhungToanMan>
   );
@@ -784,6 +793,64 @@ function HopThoaiKeKhoanTru(
       )}
       <p className="mo-ta">
         BHXH/YT/TN và thuế TNCN là các khoản trừ pháp lý riêng, xem ở cột tương ứng.
+      </p>
+      <div className="hang-nut">
+        <button className="nut-phang" onClick={khi_dong}>Đóng</button>
+      </div>
+    </HopThoai>
+  );
+}
+
+/**
+ * Bang KE cac khoan PHU CAP / thu nhap them cua mot phieu (chi doc): tung dong khoan loai
+ * `thu_nhap` tu chinh sach / go tay, cong voi "Phu cap khac" neu co. Mo tu cot Phu cap.
+ */
+function HopThoaiKePhuCap(
+  { phieu, khi_dong }: { phieu: Phieu; khi_dong: () => void },
+): ReactNode {
+  const cac_pc = phieu.khoan.filter((k) => k.loai === 'thu_nhap');
+  const pc_khac = Number(phieu.phu_cap_khac);
+  const tong = cac_pc.reduce((a, k) => a + Number(k.thanh_tien), 0) + pc_khac;
+
+  return (
+    <HopThoai tieu_de={`Chi tiết phụ cấp — ${phieu.ho_ten}`} khi_dong={khi_dong}>
+      {cac_pc.length === 0 && pc_khac === 0 ? (
+        <p className="mo-ta">Phiếu này không có phụ cấp nào.</p>
+      ) : (
+        <table className="bang-gon">
+          <tbody>
+            {cac_pc.map((k) => (
+              <tr key={k.khoan_ma}>
+                <td>
+                  {k.ten}
+                  {k.tu_chinh_sach && <span className="nhan-mo"> theo chính sách</span>}
+                  {k.so_luong !== null && k.don_gia !== null && (
+                    <div className="mo-ta">{Number(k.so_luong)} × {tien(k.don_gia)} đ</div>
+                  )}
+                  {k.ghi_chu !== null && k.ghi_chu !== '' && (
+                    <div className="mo-ta">{k.ghi_chu}</div>
+                  )}
+                </td>
+                <td className="canh-phai">{tien(k.thanh_tien)} đ</td>
+              </tr>
+            ))}
+            {pc_khac > 0 && (
+              <tr>
+                <td>Phụ cấp khác</td>
+                <td className="canh-phai">{tien(pc_khac)} đ</td>
+              </tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="hang-tong">
+              <td><strong>Tổng phụ cấp</strong></td>
+              <td className="canh-phai"><strong>{tien(tong)} đ</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      )}
+      <p className="mo-ta">
+        Phụ cấp theo chính sách tự tính lại mỗi kỳ theo chấm công; muốn sửa bấm nút <strong>Khoản</strong>.
       </p>
       <div className="hang-nut">
         <button className="nut-phang" onClick={khi_dong}>Đóng</button>
