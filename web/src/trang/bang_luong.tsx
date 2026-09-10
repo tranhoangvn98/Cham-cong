@@ -76,6 +76,7 @@ interface Phieu {
   loai_hop_dong: string | null;
   luong_co_ban: string;
   phu_cap: string;
+  luong_dong_bh: string;
   luong_ngay: string;
   so_ngay_cong_chuan: string;
   so_ngay_cong_thuc: string;
@@ -392,6 +393,7 @@ function HopThoaiChiTiet(
                 <th className="canh-phai">Thưởng</th>
                 <th className="canh-phai">Phụ cấp</th>
                 <th className="canh-phai">Tổng thu nhập</th>
+                <th className="canh-phai">Lương đóng BH</th>
                 <th className="canh-phai">BHXH+YT+TN</th>
                 <th className="canh-phai">Thuế TNCN</th>
                 <th className="canh-phai">Khoản trừ</th>
@@ -428,6 +430,11 @@ function HopThoaiChiTiet(
                       {tien(Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac))}
                     </td>
                     <td className="canh-phai">{tien(p.tong_thu_nhap)}</td>
+                    <td className="canh-phai">
+                      {tien(p.luong_dong_bh)}
+                      {Number(p.luong_dong_bh) !== Number(p.luong_co_ban) + Number(p.phu_cap)
+                        && <div className="mo-ta">khai riêng</div>}
+                    </td>
                     <td className="canh-phai">{tien(bh)}</td>
                     <td className="canh-phai">{tien(p.thue_tncn)}</td>
                     <td className="canh-phai">
@@ -464,6 +471,7 @@ function HopThoaiChiTiet(
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.thuong), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.tong_thu_nhap), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.luong_dong_bh), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.bhxh_nld) + Number(p.bhyt_nld) + Number(p.bhtn_nld), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.thue_tncn), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.khoan_tru) + Number(p.tru_khac), 0))}</strong></td>
@@ -797,11 +805,16 @@ function HopThoaiSuaPhieu(
   const [ghi_chu, dat_ghi_chu] = useState(phieu.ghi_chu ?? '');
   const [ep_du_cong, dat_ep_du_cong] = useState(phieu.ep_du_cong);
   const [mien_phat, dat_mien_phat] = useState(phieu.mien_phat);
+  // Luong dong BH: trong = dong theo luong that. Chi hien so khi da khai muc rieng.
+  const bh_khai_ban_dau = Number(phieu.luong_dong_bh) !== Number(phieu.luong_co_ban) + Number(phieu.phu_cap)
+    ? String(Number(phieu.luong_dong_bh)) : '';
+  const [luong_dong_bh, dat_luong_dong_bh] = useState(bh_khai_ban_dau);
   const admin = la_admin();
   const hd = dung_hanh_dong();
 
   const luong_doi = Number(luong_co_ban) !== Number(phieu.luong_co_ban)
-    || Number(phu_cap) !== Number(phieu.phu_cap);
+    || Number(phu_cap) !== Number(phieu.phu_cap)
+    || luong_dong_bh !== bh_khai_ban_dau;
 
   return (
     <HopThoai tieu_de={`Sửa phiếu — ${phieu.ho_ten}`} khi_dong={khi_dong}>
@@ -814,6 +827,14 @@ function HopThoaiSuaPhieu(
       <label htmlFor="p2">Phụ cấp cố định — P2 (đ)</label>
       <input id="p2" type="number" min="0" value={phu_cap}
         onChange={(e) => dat_phu_cap(e.target.value)} />
+      <label htmlFor="ldbh">Lương đóng BHXH (đ) — để trống nếu đóng theo lương thật</label>
+      <input id="ldbh" type="number" min="0" value={luong_dong_bh}
+        placeholder="theo lương thật (P1 + P2)"
+        onChange={(e) => dat_luong_dong_bh(e.target.value)} />
+      <p className="mo-ta" style={{ margin: '0 0 0.5rem' }}>
+        Mức khai đóng BHXH/BHYT/BHTN — thường thấp hơn lương thật. Bỏ trống = đóng trên lương cứng
+        (P1 + P2). BHXH/YT/TN sẽ tính trên mức này (vẫn áp trần theo luật).
+      </p>
       <p className="mo-ta">
         Lương cứng = P1 + P2 (theo mẫu bảng lương công ty). Lưu vào <strong>quyết định lương</strong>
         {' '}hiệu lực từ đầu tháng của kỳ — các tháng sau vẫn giữ mức này cho tới khi có quyết định mới.
@@ -889,7 +910,12 @@ function HopThoaiSuaPhieu(
               if (luong_doi) {
                 await goi(`/api/phieu-luong/${phieu.id}/luong-cung`, {
                   method: 'PUT',
-                  body: { luong_co_ban: Number(luong_co_ban) || 0, phu_cap: Number(phu_cap) || 0 },
+                  body: {
+                    luong_co_ban: Number(luong_co_ban) || 0,
+                    phu_cap: Number(phu_cap) || 0,
+                    // Trong = 0 = dong theo luong that; co so = khai muc rieng.
+                    luong_dong_bh: luong_dong_bh === '' ? 0 : Number(luong_dong_bh) || 0,
+                  },
                 });
               }
               return goi(`/api/phieu-luong/${phieu.id}`, {

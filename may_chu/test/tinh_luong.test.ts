@@ -156,6 +156,35 @@ test('nghi nua thang: luong theo cong giam, nhung MUC DONG BAO HIEM khong giam',
   assert.equal(kq.bhxh_nld, 1_600_000);
 });
 
+test('luong dong BH khai rieng (thap hon luong that): BH tinh tren muc khai', () => {
+  // Luong that 20tr, nhung KHAI dong BH chi 5tr -> BH tinh tren 5tr, luong theo cong van tren 20tr.
+  const kq = tinh_phieu_luong({ ...CO_BAN, luong_dong_bh: 5_000_000 }, TS);
+
+  assert.equal(kq.luong_theo_cong, 20_000_000, 'luong theo cong KHONG doi theo muc dong BH');
+  assert.equal(kq.luong_dong_bh, 5_000_000, 'can cu dong BH = muc khai');
+  assert.equal(kq.muc_dong_bh, 5_000_000);
+  assert.equal(kq.bhxh_nld, 400_000);  // 5tr x 8%
+  assert.equal(kq.bhyt_nld, 75_000);   // 5tr x 1.5%
+  assert.equal(kq.bhtn_nld, 50_000);   // 5tr x 1%
+  assert.equal(kq.bhxh_nsdld, 875_000); // 5tr x 17.5%
+});
+
+test('luong dong BH khong khai (null / 0): dong theo luong that nhu cu', () => {
+  const mac_dinh = tinh_phieu_luong(CO_BAN, TS);
+  const bang_null = tinh_phieu_luong({ ...CO_BAN, luong_dong_bh: null }, TS);
+  const bang_khong = tinh_phieu_luong({ ...CO_BAN, luong_dong_bh: 0 }, TS);
+
+  assert.equal(bang_null.luong_dong_bh, 20_000_000);
+  assert.equal(bang_null.bhxh_nld, mac_dinh.bhxh_nld);
+  assert.equal(bang_khong.bhxh_nld, mac_dinh.bhxh_nld);
+});
+
+test('luong dong BH khai cao vuot tran: van bi kep o tran', () => {
+  const kq = tinh_phieu_luong({ ...CO_BAN, luong_dong_bh: 60_000_000 }, TS);
+  assert.equal(kq.muc_dong_bh, 46_800_000, 'BHXH/BHYT kep o 20 lan luong co so');
+  assert.equal(kq.bhxh_nld, 3_744_000);
+});
+
 test('lam them gio: tinh theo don gia gio cua thang, nhan he so', () => {
   // 22 ngay x 8h = 176 gio chuan. Don gia gio = 20tr/176 = 113.636,36
   // 10 gio OT x 1.5 = 113.636,36 x 10 x 1.5 = 1.704.545 (lam tron)

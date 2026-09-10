@@ -36,6 +36,11 @@ export interface BacThue {
 export interface DauVaoPhieu {
   luong_co_ban: number;
   phu_cap: number;
+  /**
+   * Muc luong KHAI dong bao hiem (BHXH/BHYT/BHTN). Nhieu doanh nghiep khai muc nay THAP hon
+   * luong that. null/0/khong truyen = dong theo luong that (luong_co_ban + phu_cap) nhu cu.
+   */
+  luong_dong_bh?: number | null;
   so_ngay_cong_chuan: number;
   so_ngay_cong_thuc: number;
   phut_ot: number;
@@ -67,6 +72,9 @@ export interface KetQuaPhieu {
   /** Tung dong khoan da tinh ra tien, de ghi vao `phieu_luong_khoan`. */
   cac_khoan: KhoanKetQua[];
   tong_thu_nhap: number;
+  /** Can cu dong bao hiem da dung (muc khai neu co, khong thi luong that) — TRUOC khi ap tran. */
+  luong_dong_bh: number;
+  /** Muc thuc te dong BHXH/BHYT sau khi ap tran (= min(luong_dong_bh, tran)). */
   muc_dong_bh: number;
   bhxh_nld: number;
   bhyt_nld: number;
@@ -157,9 +165,13 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
   const tong_thu_nhap = luong_theo_cong + tien_ot + d.thuong + d.phu_cap_khac + khoan.thu_nhap;
 
   // ------------------------------------------------------------ bao hiem
-  const muc_hop_dong = d.luong_co_ban + d.phu_cap;
-  const muc_bhxh_bhyt = Math.min(muc_hop_dong, tran_bhxh_bhyt(ts));
-  const muc_bhtn = Math.min(muc_hop_dong, tran_bhtn(ts));
+  // Can cu dong bao hiem = muc KHAI dong BH neu co, khong thi luong that (luong_co_ban + phu_cap).
+  // Muc khai co the thap hon luong that — day la ly do tach rieng khoi luong tinh cong/thue.
+  const luong_dong_bh = d.luong_dong_bh != null && d.luong_dong_bh > 0
+    ? d.luong_dong_bh
+    : d.luong_co_ban + d.phu_cap;
+  const muc_bhxh_bhyt = Math.min(luong_dong_bh, tran_bhxh_bhyt(ts));
+  const muc_bhtn = Math.min(luong_dong_bh, tran_bhtn(ts));
 
   const bhxh_nld = dong(muc_bhxh_bhyt * (ts.ty_le_bhxh_nld / 100));
   const bhyt_nld = dong(muc_bhxh_bhyt * (ts.ty_le_bhyt_nld / 100));
@@ -200,6 +212,7 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
     thu_nhap_mien_thue: khoan.thu_nhap_mien_thue,
     cac_khoan: khoan.dong,
     tong_thu_nhap,
+    luong_dong_bh,
     muc_dong_bh: muc_bhxh_bhyt,
     bhxh_nld,
     bhyt_nld,

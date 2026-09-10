@@ -129,6 +129,8 @@ interface DongNhanVien {
   phu_cap_ql: number;
   /** Luong co ban ghi trong hop dong dang hieu luc. */
   luong_hd: number | null;
+  /** Muc khai dong bao hiem theo quyet dinh luong. Null = dong theo luong that. */
+  luong_dong_bh_ql: number | null;
   cac_ngay_lam: number[];
   so_cong: number;
   phut_ot: number;
@@ -178,6 +180,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
     `select nv.id                                            as nhan_vien_id,
             ql.luong_co_ban::float8                                as luong_ql,
             coalesce(ql.phu_cap, 0)::float8                        as phu_cap_ql,
+            ql.luong_dong_bh::float8                               as luong_dong_bh_ql,
             hd.luong_co_ban::float8                                as luong_hd,
             coalesce(cl.cac_ngay_lam, '{1,2,3,4,5}')               as cac_ngay_lam,
             coalesce(bc.so_cong, 0)::float8                        as so_cong,
@@ -189,7 +192,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
        left join ca_lam cl on cl.id = nv.ca_lam_id
        left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
        left join lateral (
-         select luong_co_ban, phu_cap from quyet_dinh_luong
+         select luong_co_ban, phu_cap, luong_dong_bh from quyet_dinh_luong
           where nhan_vien_id = nv.id and hieu_luc_tu <= $2
           order by hieu_luc_tu desc limit 1
        ) ql on true
@@ -441,6 +444,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       const kq = tinh_phieu_luong({
         luong_co_ban,
         phu_cap,
+        luong_dong_bh: nv.luong_dong_bh_ql,
         so_ngay_cong_chuan: chuan,
         so_ngay_cong_thuc: cong_thuc,
         phut_ot: nv.phut_ot,
@@ -464,7 +468,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
            so_nguoi_phu_thuoc = $20, giam_tru_tong = $21, thu_nhap_tinh_thue = $22,
            thue_tncn = $23, tru_khac = $24, tong_tru = $25, thuc_linh = $26,
            luong_ngay = $27, khoan_thu_nhap = $28, khoan_tru = $29, thu_nhap_mien_thue = $30,
-           thuc_linh_lam_tron = $31, loai_hop_dong = $32, tinh_luc = now()
+           thuc_linh_lam_tron = $31, loai_hop_dong = $32, luong_dong_bh = $33, tinh_luc = now()
          where id = $1`,
         [
           phieu_id, luong_co_ban, phu_cap,
@@ -476,7 +480,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
           nv.so_nguoi_phu_thuoc, kq.giam_tru_tong, kq.thu_nhap_tinh_thue,
           kq.thue_tncn, tru_khac, kq.tong_tru, kq.thuc_linh,
           kq.luong_ngay, kq.khoan_thu_nhap, kq.khoan_tru, kq.thu_nhap_mien_thue,
-          kq.thuc_linh_lam_tron, nv.loai_hop_dong,
+          kq.thuc_linh_lam_tron, nv.loai_hop_dong, kq.luong_dong_bh,
         ],
       );
 
