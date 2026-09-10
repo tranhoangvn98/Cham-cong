@@ -305,14 +305,14 @@ export async function xuat_bang_luong_erp(ky_luong_id: string): Promise<Buffer> 
     set('S', p.pc_trang_diem);
     set('T', p.pc_trang_phuc);
     set('U', p.pc_kpi);
-    ws.getCell(`V${r}`).value = { formula: `SUM(O${r}:U${r})` };
+    ws.getCell(`V${r}`).value = { formula: `SUM(O${r}:U${r})`, result: p.thuong + phu_cap_khac_cot + tach };
     set('W', p.tong_thu_nhap);
     set('X', p.thu_nhap_mien_thue);
     set('Y', p.muc_dong_bh);
     set('Z', p.bhxh_nld);
     set('AA', p.bhyt_nld);
     set('AB', p.bhtn_nld);
-    ws.getCell(`AC${r}`).value = { formula: `SUM(Z${r}:AB${r})` };
+    ws.getCell(`AC${r}`).value = { formula: `SUM(Z${r}:AB${r})`, result: p.bhxh_nld + p.bhyt_nld + p.bhtn_nld };
     set('AD', p.bhxh_nsdld);
     set('AE', p.bhyt_nsdld);
     set('AF', p.bhtn_nsdld);
@@ -405,6 +405,11 @@ export async function xuat_bang_luong_erp(ky_luong_id: string): Promise<Buffer> 
 
   // ---- sheet rieng: chi tiet cac khoan giam tru tung nguoi ----
   them_sheet_giam_tru(wb, ds);
+
+  // Bat "tinh lai khi mo": exceljs ghi cong thuc (SUM Tong BH, Tong phu cap, dong TONG...) KHONG
+  // kem gia tri cache, nen neu khong bat co thi Excel hien 0 o cac o cong thuc. Cac o quan trong
+  // (V, AC) da co san `result`; co nay bao dam moi o cong thuc con lai cung tinh dung khi mo.
+  wb.calcProperties.fullCalcOnLoad = true;
 
   const ab = await wb.xlsx.writeBuffer();
   return va_cols(Buffer.from(ab as ArrayBuffer));
