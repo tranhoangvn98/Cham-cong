@@ -16,6 +16,7 @@ import {
 } from '../luong/ban_chot.ts';
 import { bang_luong_xuat } from '../luong/bang_xuat.ts';
 import { xuat_bang_luong_erp } from '../luong/xuat_mau_erp.ts';
+import { gui_phieu_luong_ky } from '../luong/phieu_luong_email.ts';
 import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { ghi_nhan_am_tham } from '../sharepoint/dong_bo.ts';
 import { khoang_thang } from '../tien_ich/thoi_gian.ts';
@@ -587,6 +588,12 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       // trach nhiem.
       ban_chot = await chot_ky(k.thang, nd.sub);
       for (const bc of ban_chot) await ghi_nhan_am_tham(bc.id);
+
+      // Gui email PHIEU LUONG cho tung nguoi (nen chi gui lan dau duyet — idempotent theo
+      // gui_phieu_luc). Chay nen, KHONG chan viec duyet neu email loi/cham.
+      void gui_phieu_luong_ky(k.id).then((r) => {
+        if (r.so_gui > 0) console.log(`[phieu_luong_email] ky ${k.thang}: gui ${String(r.so_gui)}/${String(r.so_nguoi)} phieu`);
+      }).catch((e: unknown) => console.error('[phieu_luong_email]', (e as Error).message));
     } else {
       // Tra lai ve nhap de nhan su sua roi gui lai.
       await thuc_thi(
@@ -614,6 +621,18 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     );
     await ghi_nhat_ky(nd.sub, 'ky_luong_da_tra', 'ky_luong', k.id, null, req.ip);
     return { ok: true };
+  });
+
+  /** Gui (hoac gui lai) email phieu luong cho tung nguoi trong ky. Chi admin. */
+  app.post('/ky-luong/:id/gui-phieu', { preHandler: can_admin }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const k = await lay_ky(lay_id(req));
+    if (k.trang_thai !== 'da_duyet' && k.trang_thai !== 'da_tra') {
+      throw new LoiXungDot('Chỉ gửi phiếu lương cho kỳ đã duyệt/đã trả.');
+    }
+    const r = await gui_phieu_luong_ky(k.id, { bat_buoc: true });
+    await ghi_nhat_ky(nd.sub, 'gui_phieu_luong', 'ky_luong', k.id, { ...r }, req.ip);
+    return r;
   });
 
   /** Thu hoi ve nhap de sua. Chi tu cho_duyet — da duyet roi thi phai tra lai truoc. */

@@ -29,10 +29,15 @@ interface Phieu {
   so_ngay_cong_thuc: string;
   luong_ngay: string;
   luong_theo_cong: string;
+  phut_ot: string;
   tien_ot: string;
   thuong: string;
   phu_cap_khac: string;
   tong_thu_nhap: string;
+  muc_dong_bh: string;
+  so_nguoi_phu_thuoc: string;
+  giam_tru_tong: string;
+  thu_nhap_tinh_thue: string;
   bhxh_nld: string;
   bhyt_nld: string;
   bhtn_nld: string;
@@ -159,7 +164,11 @@ export function TrangPhieuLuongToi(): ReactNode {
                 <td className="phai">{tien(p.luong_theo_cong)}</td>
               </tr>
               {Number(p.tien_ot) > 0 && (
-                <tr><td>Làm thêm giờ (OT)</td><td className="phai">{tien(p.tien_ot)}</td></tr>
+                <tr>
+                  <td>Làm thêm giờ (OT){Number(p.phut_ot) > 0 &&
+                    <span className="mo-ta"> {Math.floor(Number(p.phut_ot) / 60)}h{Number(p.phut_ot) % 60 > 0 ? String(Number(p.phut_ot) % 60).padStart(2, '0') : ''}</span>}</td>
+                  <td className="phai">{tien(p.tien_ot)}</td>
+                </tr>
               )}
               {thu_nhap.map((k) => (
                 <tr key={k.khoan_ma}>
@@ -215,6 +224,15 @@ export function TrangPhieuLuongToi(): ReactNode {
         <div className="phieu-ket">
           <span>Thực nhận (làm tròn)</span>
           <strong>{tien(p.thuc_linh_lam_tron)} đ</strong>
+        </div>
+
+        <div className="hop-thong-bao" style={{ marginTop: 12, fontSize: 13 }}>
+          <strong>Chi tiết thuế &amp; bảo hiểm</strong>
+          <div className="mo-ta" style={{ marginTop: 4 }}>
+            Mức lương đóng BHXH: <strong>{tien(p.muc_dong_bh)} đ</strong> · Giảm trừ gia cảnh:
+            bản thân + <strong>{p.so_nguoi_phu_thuoc}</strong> người phụ thuộc
+            (tổng {tien(p.giam_tru_tong)} đ) · Thu nhập tính thuế: {tien(p.thu_nhap_tinh_thue)} đ
+          </div>
         </div>
       </div>
 
