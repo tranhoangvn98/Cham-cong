@@ -121,7 +121,8 @@ const MARKER = '[auto_duyet]';
 export interface KetQuaDon {
   don_id: string;
   quyet: 'da_duyet' | 'tu_choi';
-  kieu: QuyetDinh['kieu'];
+  // 'chuyen_quy' = don bi bo can doi quy phep nam (ap_quy_phep_nam) chuyen sang khong luong.
+  kieu: QuyetDinh['kieu'] | 'chuyen_quy';
   so_phep: number;
   so_kl: number;
   ly_do?: string;
@@ -131,12 +132,19 @@ function than_email(
   ho_ten: string, loai: string, tu: string, den: string, kq: KetQuaDon,
 ): { tieu_de: string; html: string } {
   const khoang = tu === den ? ngay_viet(tu) : `${ngay_viet(tu)}–${ngay_viet(den)}`;
+  const chuyen_quy = kq.kieu === 'chuyen_quy';
   const duyet = kq.quyet === 'da_duyet';
-  const mau = duyet ? '#16A34A' : '#DC2626';
-  const tieu_de = duyet ? 'Đơn nghỉ đã được duyệt' : 'Đơn nghỉ bị từ chối';
+  const mau = chuyen_quy ? '#2563EB' : duyet ? '#16A34A' : '#DC2626';
+  const tieu_de = chuyen_quy ? 'Cập nhật đơn nghỉ (quỹ phép năm)'
+    : duyet ? 'Đơn nghỉ đã được duyệt' : 'Đơn nghỉ bị từ chối';
 
   let chi_tiet = '';
-  if (kq.kieu === 'tach') {
+  if (chuyen_quy) {
+    chi_tiet = `<p style="margin:0 0 10px">Do đã dùng hết/vượt <b>quỹ phép năm</b>,
+      ${kq.quyet === 'tu_choi' ? '<b>toàn bộ</b>' : '<b>một phần</b>'} ngày nghỉ của đơn này được
+      chuyển sang <b>nghỉ không lương</b>. Xem chi tiết từng ngày trong ứng dụng (mục
+      <b>Đơn của tôi</b>).</p>`;
+  } else if (kq.kieu === 'tach') {
     chi_tiet = `<p style="margin:0 0 10px">Kết quả: <b>${String(kq.so_phep)} ngày nghỉ phép năm</b>
       (có lương) + <b>${String(kq.so_kl)} ngày nghỉ không lương</b> (do vượt quỹ phép năm).</p>`;
   } else if (kq.kieu === 'duyet_phep') {
@@ -264,9 +272,12 @@ export async function xu_ly_mot_don(don: DonNghi, opts: { email?: boolean } = {}
  * khong luong "phan vuot" cua mot don tach (de moi don goc chi mot email).
  */
 export async function gui_email_da_quyet(
-  tu_ngay: string = TU_NGAY_AP,
+  tu_ngay: string = TU_NGAY_AP, opts: { chi_quy_phep?: boolean } = {},
 ): Promise<{ so_gui: number; so_bo_qua: number }> {
   if (!email_bat()) return { so_gui: 0, so_bo_qua: 0 };
+  // `chi_quy_phep` = chi gui cho don bi bo can doi quy phep ([auto_quy_phep]) — de gui bo sung ma
+  // KHONG gui lai cho cac don [auto_duyet] da gui truoc do.
+  const chi_quy = opts.chi_quy_phep ?? false;
   const dons = await truy_van<{
     loai: string; tu_ngay: string; den_ngay: string; trang_thai: string;
     ghi_chu_duyet: string | null; ho_ten: string; email: string | null;
@@ -275,25 +286,31 @@ export async function gui_email_da_quyet(
             to_char(d.den_ngay,'YYYY-MM-DD') as den_ngay, d.trang_thai, d.ghi_chu_duyet,
             nv.ho_ten, nv.email
        from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id
-      where d.ghi_chu_duyet like '${MARKER}%'
+      where ($2::boolean is not true and d.ghi_chu_duyet like '${MARKER}%'
+             or d.ghi_chu_duyet like '[auto_quy_phep]%')
         and d.ghi_chu_duyet not like '${MARKER} Phần vượt%'
+        and d.ghi_chu_duyet not like '[auto_quy_phep] Tao tu phan vuot%'
         and d.trang_thai in ('da_duyet', 'tu_choi') and d.tu_ngay >= $1
       order by d.tu_ngay`,
-    [tu_ngay],
+    [tu_ngay, chi_quy],
   );
   let so_gui = 0;
   let so_bo_qua = 0;
   for (const d of dons) {
     if (d.email === null || !d.email.includes('@')) { so_bo_qua += 1; continue; }
+    const la_quy = (d.ghi_chu_duyet ?? '').startsWith('[auto_quy_phep]');
     const tach = /Duyệt (\d+) ngày phép \+ (\d+) ngày/.exec(d.ghi_chu_duyet ?? '');
-    const kq: KetQuaDon = d.trang_thai === 'tu_choi'
-      ? { don_id: '', quyet: 'tu_choi', kieu: 'tu_choi', so_phep: 0, so_kl: 0,
-        ly_do: 'Đã hết phép năm — không đủ phép để duyệt.' }
-      : tach !== null
-        ? { don_id: '', quyet: 'da_duyet', kieu: 'tach', so_phep: Number(tach[1]), so_kl: Number(tach[2]) }
-        : d.loai === 'khong_luong'
-          ? { don_id: '', quyet: 'da_duyet', kieu: 'duyet_khong_luong', so_phep: 0, so_kl: 0 }
-          : { don_id: '', quyet: 'da_duyet', kieu: 'duyet_phep', so_phep: 0, so_kl: 0 };
+    const kq: KetQuaDon = la_quy
+      ? { don_id: '', quyet: d.trang_thai === 'tu_choi' ? 'tu_choi' : 'da_duyet',
+        kieu: 'chuyen_quy', so_phep: 0, so_kl: 0 }
+      : d.trang_thai === 'tu_choi'
+        ? { don_id: '', quyet: 'tu_choi', kieu: 'tu_choi', so_phep: 0, so_kl: 0,
+          ly_do: 'Đã hết phép năm — không đủ phép để duyệt.' }
+        : tach !== null
+          ? { don_id: '', quyet: 'da_duyet', kieu: 'tach', so_phep: Number(tach[1]), so_kl: Number(tach[2]) }
+          : d.loai === 'khong_luong'
+            ? { don_id: '', quyet: 'da_duyet', kieu: 'duyet_khong_luong', so_phep: 0, so_kl: 0 }
+            : { don_id: '', quyet: 'da_duyet', kieu: 'duyet_phep', so_phep: 0, so_kl: 0 };
     const e = than_email(d.ho_ten, d.loai, d.tu_ngay, d.den_ngay, kq);
     const ok = await gui_email({ den: [d.email], tieu_de: e.tieu_de, noi_dung_html: e.html });
     if (ok) so_gui += 1; else so_bo_qua += 1;
