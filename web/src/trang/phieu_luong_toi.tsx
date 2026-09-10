@@ -39,6 +39,8 @@ interface Phieu {
   thuc_linh: string;
   thuc_linh_lam_tron: string;
   loai_hop_dong: string | null;
+  ep_du_cong: boolean;
+  mien_phat: boolean;
   khoan: KhoanPhieu[];
 }
 
@@ -101,6 +103,16 @@ export function TrangPhieuLuongToi(): ReactNode {
             <span className="nhan nhan-tot">{TRANG_THAI[p.trang_thai_ky] ?? p.trang_thai_ky}</span>
             {p.loai_hop_dong !== null && (
               <span className="nhan nhan-mo"> {LOAI_HD[p.loai_hop_dong] ?? p.loai_hop_dong}</span>
+            )}
+            {p.ep_du_cong && (
+              <span className="nhan nhan-canh-bao" title="Được tính đủ ngày công (miễn chấm công)">
+                {' '}Đủ công
+              </span>
+            )}
+            {p.mien_phat && (
+              <span className="nhan nhan-canh-bao" title="Được miễn phạt đi muộn/về sớm">
+                {' '}Miễn phạt
+              </span>
             )}
           </div>
           <div className="phieu-thuc-linh">
