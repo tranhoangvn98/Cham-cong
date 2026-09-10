@@ -194,6 +194,19 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/khieu-nai-luong',
+    tom_tat: 'Khiếu nại của nhân viên về phiếu lương đã duyệt/đã trả: tiếp nhận, đối chiếu, phản hồi.',
+    buoc: [
+      { chu: 'Lọc theo Mới / Đang xem xét để thấy việc cần xử lý.' },
+      { chu: 'Mở khiếu nại, đọc nội dung và đối chiếu với phiếu lương của nhân viên.', vai_tro: NHAN_SU },
+      { chu: 'Chấp nhận hoặc từ chối kèm phản hồi; nếu đúng thì mở lại kỳ lương và sửa tay.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Chấp nhận khiếu nại KHÔNG tự sửa lương. Muốn sửa số liệu: mở lại kỳ ở "Lương & phụ cấp", sửa rồi duyệt lại.',
+      'Nhân viên gửi khiếu nại từ mục "Phiếu lương" của họ. Mỗi phiếu chỉ có một khiếu nại đang mở.',
+    ],
+  },
+  {
     duong_dan: '/ra-vao',
     tom_tat: 'Cảnh báo ra/vào không quẹt thẻ: hệ thống tự nhắc nhở / chuyển kỷ luật, nhân sự xem lại và xử lý.',
     buoc: [

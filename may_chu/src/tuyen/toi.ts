@@ -828,6 +828,66 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     return res.code(201).send({ ...dong, trang_thai: 'moi' });
   });
 
+  // ================================================================ KHIEU NAI PHIEU LUONG CUA TOI
+  /** Khieu nai phieu luong cua chinh minh. */
+  app.get('/khieu-nai-luong', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select kn.id, kn.ma, kn.noi_dung, kn.trang_thai, kn.phan_hoi,
+              kn.tao_luc, kn.xu_ly_luc, k.thang
+         from khieu_nai_luong kn
+         join phieu_luong p on p.id = kn.phieu_luong_id
+         join ky_luong k on k.id = p.ky_luong_id
+        where kn.nhan_vien_id = $1
+        order by kn.tao_luc desc limit 100`,
+      [nv_id],
+    );
+  });
+
+  /**
+   * Gui khieu nai ve MOT phieu luong da duyet/da tra cua chinh minh (minh bach tien luong). Phai
+   * kem `phieu_luong_id` cua chinh minh; chan khieu nai trung con dang mo tren cung phieu.
+   */
+  app.post('/khieu-nai-luong', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const b = than(req.body);
+    const phieu_luong_id = uuid(b, 'phieu_luong_id');
+    const noi_dung = chuoi_bat_buoc(b, 'noi_dung', { toi_thieu: 5, toi_da: 2000 });
+    if (phieu_luong_id === null) throw new LoiDauVao('Thiếu phiếu lương cần khiếu nại.');
+
+    const p = await truy_van_mot<{ id: string }>(
+      `select p.id from phieu_luong p
+         join ky_luong k on k.id = p.ky_luong_id
+        where p.id = $1 and p.nhan_vien_id = $2 and k.trang_thai in ('da_duyet','da_tra')`,
+      [phieu_luong_id, nv_id],
+    );
+    if (p === null) throw new LoiKhongTim('Không tìm thấy phiếu lương của bạn.');
+
+    const trung = await truy_van_mot<{ id: string }>(
+      `select id from khieu_nai_luong
+        where nhan_vien_id = $1 and phieu_luong_id = $2 and trang_thai in ('moi','dang_xem') limit 1`,
+      [nv_id, phieu_luong_id],
+    );
+    if (trung !== null) throw new LoiXungDot('Bạn đã có một khiếu nại đang mở cho phiếu lương này.');
+
+    const dong = await truy_van_mot<{ id: string; ma: string }>(
+      `insert into khieu_nai_luong (phieu_luong_id, nhan_vien_id, noi_dung)
+       values ($1,$2,$3) returning id, ma`,
+      [phieu_luong_id, nv_id, noi_dung],
+    );
+    await ghi_nhat_ky(nd.sub, 'gui_khieu_nai_luong', 'khieu_nai_luong', dong?.id ?? null,
+      { phieu_luong_id }, req.ip);
+
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: 'Có khiếu nại phiếu lương mới',
+      noi_dung: `${await ten_nhan_vien(nv_id)} gửi ${dong?.ma ?? 'khiếu nại'} về phiếu lương.`,
+      du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: dong?.id ?? null },
+    });
+    return res.code(201).send({ ...dong, trang_thai: 'moi' });
+  });
+
   // ================================================================ token push (Expo)
   app.post('/token-push', async (req) => {
     const nd = nguoi_dung_hien_tai(req);

@@ -5,8 +5,9 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import {
-  can_admin, can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai,
+  can_admin, can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai, xem_duoc_tat_ca,
 } from '../bao_mat/xac_thuc.ts';
+import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { tinh_ky_luong } from '../luong/ky_luong.ts';
 import { tinh_ky_luong_cny } from '../luong/ky_luong_cny.ts';
@@ -872,6 +873,72 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       ...p,
       khoan: khoan.filter((x) => String(x['phieu_luong_id']) === String(p['id'])),
     }));
+  });
+
+  // ============================================================ KHIEU NAI PHIEU LUONG (quan ly)
+  /** Danh sach khieu nai phieu luong. Truong phong chi thay phong minh; nhan su/admin thay het. */
+  app.get('/khieu-nai-luong', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const q = than(req.query) as Record<string, unknown>;
+    const tt = trong_tap(q, 'trang_thai', ['moi', 'dang_xem', 'chap_nhan', 'tu_choi'] as const);
+    const chi_phong_minh = !xem_duoc_tat_ca(nd);
+    return truy_van(
+      `select kn.id, kn.ma, kn.noi_dung, kn.trang_thai, kn.phan_hoi, kn.tao_luc, kn.xu_ly_luc,
+              kn.nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+              k.thang, p.thuc_linh_lam_tron::float8 as thuc_linh
+         from khieu_nai_luong kn
+         join nhan_vien nv on nv.id = kn.nhan_vien_id
+         left join phong_ban pb on pb.id = nv.phong_ban_id
+         join phieu_luong p on p.id = kn.phieu_luong_id
+         join ky_luong k on k.id = p.ky_luong_id
+        where ($1::text is null or kn.trang_thai = $1)
+          and ($2::boolean is not true
+               or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $3))
+        order by (kn.trang_thai in ('moi','dang_xem')) desc, kn.tao_luc desc
+        limit 500`,
+      [tt ?? null, chi_phong_minh, nd.nv],
+    );
+  });
+
+  /**
+   * Xu ly khieu nai phieu luong: 'dang_xem' (tiep nhan), 'chap_nhan' (dong y) hoac 'tu_choi'.
+   * KHONG tu sua luong — neu dung, ke toan mo lai ky luong va sua tay theo quy trinh; day chi ghi
+   * nhan ket qua xu ly va phan hoi cho nguoi lao dong.
+   */
+  app.post('/khieu-nai-luong/:id/xu-ly', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const b = than(req.body) as Record<string, unknown>;
+    const trang_thai = trong_tap(b, 'trang_thai', ['dang_xem', 'chap_nhan', 'tu_choi'] as const,
+      { bat_buoc: true }) as 'dang_xem' | 'chap_nhan' | 'tu_choi';
+    const phan_hoi = chuoi(b, 'phan_hoi', { toi_da: 2000 }) ?? null;
+
+    const kn = await truy_van_mot<{ nhan_vien_id: string; trang_thai: string }>(
+      'select nhan_vien_id, trang_thai from khieu_nai_luong where id = $1', [id],
+    );
+    if (kn === null) throw new LoiKhongTim('Không tìm thấy khiếu nại.');
+    if (kn.trang_thai === 'chap_nhan' || kn.trang_thai === 'tu_choi') {
+      throw new LoiXungDot('Khiếu nại đã được xử lý xong, không sửa được nữa.');
+    }
+    await thuc_thi(
+      `update khieu_nai_luong set trang_thai = $2, phan_hoi = coalesce($3, phan_hoi),
+              nguoi_xu_ly = $4,
+              xu_ly_luc = case when $2 in ('chap_nhan','tu_choi') then now() else xu_ly_luc end,
+              cap_nhat_luc = now()
+        where id = $1`,
+      [id, trang_thai, phan_hoi, nd.sub],
+    );
+    await ghi_nhat_ky(nd.sub, 'xu_ly_khieu_nai_luong', 'khieu_nai_luong', id, { trang_thai }, req.ip);
+
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_cua_nhan_vien(kn.nhan_vien_id).catch(() => []),
+      tieu_de: trang_thai === 'chap_nhan' ? 'Khiếu nại phiếu lương được chấp nhận'
+        : trang_thai === 'tu_choi' ? 'Khiếu nại phiếu lương bị từ chối'
+          : 'Khiếu nại phiếu lương đang được xem xét',
+      noi_dung: phan_hoi ?? 'Phòng Nhân sự đã cập nhật khiếu nại phiếu lương của bạn.',
+      du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: id },
+    });
+    return { ok: true };
   });
 
   // ============================================================ khoi luong Trung Quoc (CNY)
