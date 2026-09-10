@@ -57,6 +57,9 @@ COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/may_chu/node_modules ./may_chu/node_modules
 COPY --from=build --chown=node:node /app/may_chu/dist ./may_chu/dist
 COPY --from=build --chown=node:node /app/may_chu/migrations ./may_chu/migrations
+# Mau xuat bang luong ERP (.xlsx) — xuat_mau_erp.ts doc tep nay luc chay. THIEU thi
+# "Xuat Excel" bao loi 500 (ENOENT). Khong nam trong dist nen phai COPY rieng.
+COPY --from=build --chown=node:node /app/may_chu/mau ./may_chu/mau
 COPY --from=build --chown=node:node /app/may_chu/package.json ./may_chu/
 
 USER node
