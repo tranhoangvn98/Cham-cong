@@ -313,7 +313,7 @@ function HopThoaiChiTiet(
             Tính lương
           </button>
         )}
-        {sua_duoc && k.so_phieu > 0 && (
+        {sua_duoc && k.phieu.length > 0 && (
           <button
             disabled={hd.dang_chay}
             onClick={chay(`/api/ky-luong/${k.id}/gui-duyet`, 'Đã gửi duyệt. Phiếu đã khóa sửa.')}
