@@ -203,12 +203,13 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
           order by hieu_luc_tu desc limit 1
        ) hd on true
        left join lateral (
-         -- Cong thuc = TONG so_cong da cham, KHONG nhan them he so thu Bay. so_cong da phan anh
-         -- phan ngay lam thuc te: lam nua ngay thu Bay (ca hanh chinh, moi dat nua nguong du cong)
-         -- = 0,5 roi. Nhan he so thu Bay o day nua la tinh nua cong HAI LAN (0,5 x 0,5 = 0,25).
-         -- He so thu Bay chi ap cho CONG CHUAN (ngay_cong_chuan). Ai lam ca chieu thu Bay thi
-         -- so_cong = 1 -> duoc tron cong ngay do (co che lam bu). OT KHONG bi anh huong.
-         select coalesce(sum(so_cong), 0)                                    as so_cong,
+         -- Cong thuc = tong cong tung ngay, moi ngay CAP theo chuan ngay do (khong the huong hon
+         -- chuan cua ngay). Ngay thuong toi da 1; thu Bay toi da he so $3 (0,5 khi nua cong) — ai
+         -- lam ca chieu thu Bay (so_cong=1) van chi tinh 0,5 vi thu Bay la nua ngay, phan lam them
+         -- KHONG doi thanh cong (la lam bu / OT). Nho vay cong thuc KHONG BAO GIO vuot cong chuan.
+         -- Dung LEAST (cap), KHONG nhan (nhan se thanh 0,5 x 0,5 = 0,25 — sai). OT khong bi anh huong.
+         select coalesce(sum(least(so_cong,
+                   case when extract(dow from ngay) = 6 then $3::numeric else 1 end)), 0) as so_cong,
                 coalesce(sum(phut_ot), 0)                                    as phut_ot
            from bang_cong_ngay
           where nhan_vien_id = nv.id and ngay >= $1 and ngay <= $2
@@ -222,7 +223,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       where nv.dang_hoat_dong = true
         and nv.che_do_luong = 'vn'  -- nhom luong TQ (CNY) tinh o khoi rieng, khong vao bang VND
       order by nv.ma_nv`,
-    [tu, den],
+    [tu, den, he_so_t7],
   );
 
   // Chinh sach phu cap con hieu luc trong ky, cua CA cong ty, doc mot lan.
@@ -340,7 +341,9 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       // chuan trong cong thuc luong theo cong. Phu cap theo cong VAN theo cham cong that —
       // ep du cong la quyet dinh ve luong co ban, khong phai ve so ngay an trua.
       const ep_du_cong = Boolean(phieu_cu?.ep_du_cong ?? false);
-      const cong_thuc = ep_du_cong ? chuan : nv.so_cong;
+      // Cong thuc KHONG BAO GIO vuot cong chuan (lam them ngay/gio ngoai chuan la OT, khong phai
+      // cong). SQL da cap tung ngay; chan tran o day mot lan nua cho moi truong hop (vd lam CN/le).
+      const cong_thuc = ep_du_cong ? chuan : Math.min(nv.so_cong, chuan);
       // Admin tich "mien thue" / "mien BH": bo thue TNCN / mien dong bao hiem cho phieu nay.
       const mien_thue = Boolean(phieu_cu?.mien_thue ?? false);
       const mien_bh = Boolean(phieu_cu?.mien_bh ?? false);
