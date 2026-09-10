@@ -21,11 +21,11 @@ interface DongLoi {
   email: string | null;
   phong_ban: string | null;
   loai_ten: string;
-  tinh_moi_lan: boolean;
   ngay: string;      // 'YYYY-MM-DD'
-  so_lan: number;
 }
 
+// so_lan = SO BAN GHI vi pham cua loai do (moi ban ghi = mot lan bi ghi nhan). KHONG cong gia_tri
+// vi gia_tri co don vi khac nhau tuy loai (di muon = so PHUT, ra/vao = so lan) — cong lai vo nghia.
 interface LoaiGop { loai_ten: string; so_lan: number; ngay_gan_nhat: string }
 interface NguoiLoi {
   ho_ten: string; ma_nv: string; email: string | null; phong_ban: string | null;
@@ -46,7 +46,7 @@ function gop_theo_nguoi(ds: readonly DongLoi[]): Map<string, NguoiLoi> {
         loai: new Map(), tong_lan: 0 };
       map.set(d.nhan_vien_id, ng);
     }
-    const lan = d.tinh_moi_lan ? d.so_lan : 1;
+    const lan = 1; // dem theo SO BAN GHI vi pham, khong cong gia_tri (don vi khac nhau tuy loai)
     const g = ng.loai.get(d.loai_ten);
     if (g === undefined) ng.loai.set(d.loai_ten, { loai_ten: d.loai_ten, so_lan: lan, ngay_gan_nhat: d.ngay });
     else { g.so_lan += lan; if (d.ngay > g.ngay_gan_nhat) g.ngay_gan_nhat = d.ngay; }
@@ -74,17 +74,21 @@ function than_email_ca_nhan(ng: NguoiLoi, thang: string, den_ngay: string, chu_k
       <p style="margin:0 0 12px">Kính gửi <b>${ng.ho_ten}</b> (Mã NV: ${ng.ma_nv}${ng.phong_ban !== null ? ` — ${ng.phong_ban}` : ''}),</p>
       <p style="margin:0 0 12px">
         Hệ thống chấm công ghi nhận trong kỳ <b>tháng ${thang_viet(thang)}</b> (tính đến ngày ${ngay_viet(den_ngay)})
-        bạn có <b>${String(ng.tong_lan)} lỗi</b> chưa điều chỉnh. Đây là <b>nhắc nhở</b> để bạn nắm và điều chỉnh —
+        bạn có các vi phạm sau <b>chưa điều chỉnh</b>. Đây là <b>nhắc nhở</b> để bạn nắm và điều chỉnh —
         <b style="color:#1E40AF">chưa áp dụng giảm thưởng / xử phạt</b>.
       </p>
       <table style="border-collapse:collapse;width:100%;font-size:13px;margin:8px 0 4px">
         <thead><tr>
-          <th style="text-align:left;padding:7px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Loại lỗi</th>
-          <th style="text-align:center;padding:7px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Số lần</th>
+          <th style="text-align:left;padding:7px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Loại vi phạm</th>
+          <th style="text-align:center;padding:7px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Số lần ghi nhận</th>
           <th style="text-align:left;padding:7px 10px;background:#F4F4F5;border-bottom:1px solid #E5E7EB">Ngày gần nhất</th>
         </tr></thead>
         <tbody>${hang}</tbody>
       </table>
+      <p style="margin:2px 0 0;font-size:12px;color:#6B7280">
+        Chi tiết cụ thể (số phút đi muộn, ngày vi phạm…) xem trong ứng dụng chấm công, mục
+        <b>Vi phạm của tôi</b>.
+      </p>
       <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 14px;margin:14px 0;font-size:13px;color:#1E40AF">
         Hiện công ty <b>tạm thời chỉ nhắc nhở</b>, chưa áp dụng giảm thưởng. Nếu các lỗi tiếp tục lặp lại,
         công ty sẽ xem xét giảm thưởng P3 theo <b>Điều 14 Nội quy lao động</b> và <b>Điều 104 Bộ luật Lao động</b>
@@ -180,9 +184,8 @@ export async function email_nhac_loi(
 
   const ds = await truy_van<DongLoi>(
     `select v.nhan_vien_id, nv.ho_ten, nv.ma_nv, nv.email, pb.ten as phong_ban,
-            l.ten as loai_ten, l.tinh_moi_lan,
-            to_char(v.ngay,'YYYY-MM-DD') as ngay,
-            coalesce((v.bang_chung->>'gia_tri')::numeric, 1)::float8 as so_lan
+            l.ten as loai_ten,
+            to_char(v.ngay,'YYYY-MM-DD') as ngay
        from vi_pham v
        join loai_vi_pham l on l.id = v.loai_vi_pham_id
        join nhan_vien nv on nv.id = v.nhan_vien_id and nv.dang_hoat_dong = true
