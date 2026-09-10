@@ -246,7 +246,12 @@ export interface KetQuaMotHoSo {
 async function xu_ly_mot_ho_so(
   nhom: NhomKyLuat, ky: string, tu_dong: boolean,
 ): Promise<KetQuaMotHoSo> {
-  const { hinh_thuc, can_duyet } = quyet_hinh_thuc(nhom.tong_tien, cau_hinh.ky_luat.nguong_duyet);
+  const che_do = cau_hinh.ky_luat.che_do;
+  // Che do 'nhac_nho' (tam thoi): CHI tong hop + nhac nho, KHONG tu ap giam thuong. Moi ho so tu
+  // dong deu ve 'da_nhac'; email do viec dinh ky 3 ngay/lan lo (khong gui o day de tranh trung).
+  const qht = quyet_hinh_thuc(nhom.tong_tien, cau_hinh.ky_luat.nguong_duyet);
+  const hinh_thuc = che_do === 'nhac_nho' ? 'nhac_nho' : qht.hinh_thuc;
+  const can_duyet = che_do === 'nhac_nho' ? false : qht.can_duyet;
 
   return trong_giao_dich(async (khach) => {
     // Da co ho so chua? Bo/huy hoac CO NGUOI quyet dinh -> giu nguyen (ton trong quyet dinh cua
@@ -292,8 +297,17 @@ async function xu_ly_mot_ho_so(
 
     if (hinh_thuc === 'nhac_nho') {
       trang_thai = 'da_nhac';
+      // Ghi trang thai xuong CSDL: upsert de 'moi', va mot ho so 'da_ap_dung' cu (che do nhac_nho
+      // hoan lai) phai ve 'da_nhac' — neu khong bang van hien "Da ap dung" sai su that.
+      await khach.query(
+        `update ho_so_ky_luat set trang_thai = 'da_nhac', cap_nhat_luc = now() where id = $1`,
+        [ho_so_id],
+      );
       const ng = await lay_nguoi(khach, nhom.nhan_vien_id);
-      if (!email_truoc && email_bat() && ng.email !== null && ng.email.includes('@')) {
+      // O che do 'nhac_nho', email do viec dinh ky 3 ngay/lan gui (email_nhac_loi) — khong gui o
+      // day de tranh trung. O che do 'xu_phat', nhac nho (tong_tien = 0) van gui ngay nhu cu.
+      if (che_do !== 'nhac_nho'
+          && !email_truoc && email_bat() && ng.email !== null && ng.email.includes('@')) {
         da_gui_email = await gui_email({
           den: [ng.email],
           tieu_de: `Nhắc nhở vi phạm nội quy — kỳ ${ky}`,

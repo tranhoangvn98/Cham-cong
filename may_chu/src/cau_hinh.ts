@@ -376,6 +376,19 @@ export const cau_hinh = {
      * phai duyet (khong con duong tu ap).
      */
     nguong_duyet: Math.max(0, Math.round(so('KY_LUAT_NGUONG_DUYET', 2_000_000))),
+
+    /**
+     * Che do xu ly ky luat tu dong:
+     *   'nhac_nho' (mac dinh, chu cong ty chot) — CHI TONG HOP loi + nhac nho, KHONG tu ap giam
+     *              thuong. Ho so tu dong luon o 'da_nhac'; email nhac nho gui dinh ky 3 ngay/lan.
+     *              Chay lai quet se HOAN cac ho so tu dong da ap ve nhac nho (go giam thuong).
+     *   'xu_phat' — hanh vi cu: duoi nguong tu ap giam thuong, tu nguong cho duyet.
+     * Doi lai bang bien moi truong KY_LUAT_CHE_DO=xu_phat khi muon bat xu phat tro lai.
+     */
+    che_do: chu('KY_LUAT_CHE_DO', 'nhac_nho') === 'xu_phat' ? 'xu_phat' as const : 'nhac_nho' as const,
+
+    /** Chu ky gui email nhac loi (ngay) khi o che do 'nhac_nho'. Chu cong ty chot 3 ngay/lan. */
+    chu_ky_nhac_ngay: Math.max(1, Math.round(so('KY_LUAT_CHU_KY_NHAC_NGAY', 3))),
   },
 
   /**
