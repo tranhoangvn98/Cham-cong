@@ -14,6 +14,8 @@ import { TrangBangCong } from './trang/bang_cong.tsx';
 import { TrangNhanVien } from './trang/nhan_vien.tsx';
 import { TrangThietBi } from './trang/thiet_bi.tsx';
 import { TrangDuyetDon } from './trang/duyet_don.tsx';
+import { TrangQuanLyPhep } from './trang/quan_ly_phep.tsx';
+import { TrangKhieuNaiLuong } from './trang/khieu_nai_luong.tsx';
 import { TrangCaLam, TrangDiaDiem, TrangNgayLe } from './trang/cai_dat.tsx';
 import { TrangLanQuet } from './trang/lan_quet.tsx';
 import { TrangNguoiDung, TrangNhatKy } from './trang/nguoi_dung.tsx';
@@ -99,8 +101,10 @@ const MENU: MucMenu[] = [
   // Nhan su & luong: quan tri ho so nguoi lao dong.
   { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Nhân sự & lương', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
   { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Nhân sự & lương', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
+  { duong_dan: '/quan-ly-phep', ten: 'Quản lý phép', icon: 'calendar-stats', nhom: 'Nhân sự & lương', phu: 'Tổng hợp ngày phép từng người', quyen: 'nguoi_duyet' },
   { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Nhân sự & lương', phu: 'Chấm điểm từ dữ liệu thật', quyen: 'nhan_su' },
   { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Nhân sự & lương', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
+  { duong_dan: '/khieu-nai-luong', ten: 'Khiếu nại lương', icon: 'receipt-2', nhom: 'Nhân sự & lương', phu: 'Khiếu nại phiếu lương của nhân viên', quyen: 'nhan_su' },
   { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Nhân sự & lương', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
 
   { duong_dan: '/cai-dat', ten: 'Cài đặt', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp', quyen: 'nhan_su' },
@@ -204,10 +208,12 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     case '/bang-cong': return <TrangBangCong />;
     case '/lan-quet': return <TrangLanQuet />;
     case '/duyet-don': return <TrangDuyetDon />;
+    case '/quan-ly-phep': return la_nguoi_duyet() ? <TrangQuanLyPhep /> : <KhongCoQuyen />;
     case '/nhan-vien': return <TrangNhanVien />;
     case '/bang-luong': return la_nhan_su() ? <TrangLuongPhuCap /> : <KhongCoQuyen />;
     case '/ra-vao': return la_nhan_su() ? <TrangRaVao /> : <KhongCoQuyen />;
     case '/ky-luat': return la_quan_tri() ? <TrangKyLuatViPham /> : <KhongCoQuyen />;
+    case '/khieu-nai-luong': return la_nhan_su() ? <TrangKhieuNaiLuong /> : <KhongCoQuyen />;
     case '/kpi': return <TrangKpi />;
     case '/hop-dong': return la_nhan_su() ? <TrangHopDong /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;

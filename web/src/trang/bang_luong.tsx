@@ -422,7 +422,8 @@ function HopThoaiChiTiet(
                     <td className="canh-phai">{tien(p.luong_co_ban)}</td>
                     <td className="canh-phai">
                       {Number(p.so_ngay_cong_thuc)}/{Number(p.so_ngay_cong_chuan)}
-                      {p.ep_du_cong && <div className="nhan-canh-bao">đủ công</div>}
+                      {p.ep_du_cong && <div className="nhan-canh-bao" title="Được tính đủ ngày công (miễn chấm công)">đủ công</div>}
+                      {p.mien_phat && <div className="nhan-canh-bao" title="Được miễn phạt đi muộn/về sớm">miễn phạt</div>}
                     </td>
                     <td className="canh-phai">{tien(p.luong_theo_cong)}</td>
                     <td className="canh-phai">{tien(p.tien_ot)}</td>

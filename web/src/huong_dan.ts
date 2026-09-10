@@ -181,6 +181,32 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/quan-ly-phep',
+    tom_tat: 'Tổng hợp ngày phép năm của từng người: quỹ theo Luật (chia theo tháng làm), đã nghỉ, chờ duyệt, còn lại.',
+    buoc: [
+      { chu: 'Chọn năm cần xem ở bộ lọc.' },
+      { chu: 'Đối chiếu cột Còn lại; số âm nghĩa là đã nghỉ vượt quỹ phép năm.' },
+      { chu: 'Bấm "Sang trang duyệt đơn" để xử lý đơn phép còn chờ.', vai_tro: ['admin', 'nhan_su', 'truong_phong_nhan_su', 'truong_phong'] },
+    ],
+    luu_y: [
+      'Quỹ phép tính theo Điều 113 BLLĐ: chia theo số tháng làm trong năm, làm tròn 0,5 ngày. Người làm đủ 12 tháng hưởng nguyên quỹ.',
+      'Trưởng phòng chỉ thấy nhân viên phòng mình. Cột Chờ duyệt chưa trừ vào Còn lại.',
+    ],
+  },
+  {
+    duong_dan: '/khieu-nai-luong',
+    tom_tat: 'Khiếu nại của nhân viên về phiếu lương đã duyệt/đã trả: tiếp nhận, đối chiếu, phản hồi.',
+    buoc: [
+      { chu: 'Lọc theo Mới / Đang xem xét để thấy việc cần xử lý.' },
+      { chu: 'Mở khiếu nại, đọc nội dung và đối chiếu với phiếu lương của nhân viên.', vai_tro: NHAN_SU },
+      { chu: 'Chấp nhận hoặc từ chối kèm phản hồi; nếu đúng thì mở lại kỳ lương và sửa tay.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Chấp nhận khiếu nại KHÔNG tự sửa lương. Muốn sửa số liệu: mở lại kỳ ở "Lương & phụ cấp", sửa rồi duyệt lại.',
+      'Nhân viên gửi khiếu nại từ mục "Phiếu lương" của họ. Mỗi phiếu chỉ có một khiếu nại đang mở.',
+    ],
+  },
+  {
     duong_dan: '/ra-vao',
     tom_tat: 'Cảnh báo ra/vào không quẹt thẻ: hệ thống tự nhắc nhở / chuyển kỷ luật, nhân sự xem lại và xử lý.',
     buoc: [

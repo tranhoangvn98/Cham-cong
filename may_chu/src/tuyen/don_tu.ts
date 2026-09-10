@@ -8,6 +8,7 @@ import {
   ban_don_am_tham, ban_don_giai_trinh, ban_don_khac, ban_don_nghi_phep,
 } from '../don_tu/ban_don.ts';
 import { MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_don.ts';
+import { so_thang_lam_trong_nam, quy_phep_theo_luat } from '../don_tu/quy_phep_nam.ts';
 import {
   canh_bao_cho_don, dem_cho_duyet, don_cho_nguoi_duyet, don_theo_id, quyet_don,
 } from '../don_tu/nghiep_vu.ts';
@@ -64,6 +65,69 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
         limit 300`,
       [trang_thai, chi_phong_minh, nd.nv],
     );
+  });
+
+  // ---------------------------------------------------------------- tong hop quan ly ngay phep
+  /**
+   * Bang tong hop PHEP NAM cua tung nhan vien trong mot nam: quy theo Luat (chia theo thang lam),
+   * so da nghi (da_duyet), so dang cho duyet, va con lai. Nhan su/admin xem toan bo; truong phong
+   * chi xem phong minh. Dung de "quan ly ngay phep tung nguoi".
+   */
+  app.get('/nghi-phep/tong-hop', { preHandler: can_nguoi_duyet }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const q = req.query as Record<string, unknown>;
+    const nam_tho = Number(q['nam']);
+    const nam = Number.isInteger(nam_tho) && nam_tho >= 2000 && nam_tho <= 2100
+      ? nam_tho : new Date().getFullYear();
+    const chi_phong_minh = !xem_duoc_tat_ca(nd);
+
+    const ds = await truy_van<{
+      id: string; ma_nv: string; ho_ten: string; phong_ban: string | null;
+      ngay_vao: string | null; ngay_nghi_viec: string | null;
+      base: number; da_dung: number; cho_duyet: number;
+    }>(
+      `select nv.id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+              to_char(nv.ngay_vao,'YYYY-MM-DD')       as ngay_vao,
+              to_char(nv.ngay_nghi_viec,'YYYY-MM-DD') as ngay_nghi_viec,
+              coalesce(nv.so_ngay_phep_nam, 12)::float8 as base,
+              coalesce(dp.da_dung, 0)::float8   as da_dung,
+              coalesce(dp.cho_duyet, 0)::float8 as cho_duyet
+         from nhan_vien nv
+         left join phong_ban pb on pb.id = nv.phong_ban_id
+         left join lateral (
+           select
+             sum(case when d.trang_thai = 'da_duyet'  then x.w end) as da_dung,
+             sum(case when d.trang_thai = 'cho_duyet' then x.w end) as cho_duyet
+           from don_nghi_phep d
+           cross join lateral (
+             select (case when d.nua_ngay then 0.5 else 1 end) * count(*)::float8 as w
+               from generate_series(
+                      greatest(d.tu_ngay, make_date($1::int, 1, 1)),
+                      least   (d.den_ngay, make_date($1::int, 12, 31)),
+                      interval '1 day') g
+           ) x
+          where d.nhan_vien_id = nv.id and d.loai = 'phep_nam'
+            and d.trang_thai in ('da_duyet', 'cho_duyet')
+            and d.tu_ngay <= make_date($1::int, 12, 31)
+            and d.den_ngay >= make_date($1::int, 1, 1)
+         ) dp on true
+        where nv.dang_hoat_dong = true
+          and ($2::boolean is not true
+               or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $3))
+        order by pb.ten nulls last, nv.ma_nv`,
+      [nam, chi_phong_minh, nd.nv],
+    );
+
+    const dong = ds.map((r) => {
+      const so_thang = so_thang_lam_trong_nam(r.ngay_vao, r.ngay_nghi_viec, nam);
+      const quy = quy_phep_theo_luat(r.base, so_thang);
+      return {
+        ma_nv: r.ma_nv, ho_ten: r.ho_ten, phong_ban: r.phong_ban, ngay_vao: r.ngay_vao,
+        so_ngay_phep_nam: r.base, so_thang, quy, da_dung: r.da_dung, cho_duyet: r.cho_duyet,
+        con_lai: Math.round((quy - r.da_dung) * 10) / 10,
+      };
+    });
+    return { nam, dong };
   });
 
   app.post('/nghi-phep/:id/quyet', { preHandler: can_nguoi_duyet }, async (req) => {

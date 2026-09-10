@@ -3,7 +3,10 @@
 // Mot bang luong khong giai thich duoc la mot don khieu nai — nen o day hien tung khoan thu
 // nhap va tung khoan tru, khong gop thanh mot con so "phu cap".
 import { useState, type ReactNode } from 'react';
-import { DangTai, HopLoi, Trong, dung_nap } from '../thanh_phan.tsx';
+import { goi } from '../api.ts';
+import {
+  DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+} from '../thanh_phan.tsx';
 
 interface KhoanPhieu {
   khoan_ma: string;
@@ -39,8 +42,27 @@ interface Phieu {
   thuc_linh: string;
   thuc_linh_lam_tron: string;
   loai_hop_dong: string | null;
+  ep_du_cong: boolean;
+  mien_phat: boolean;
   khoan: KhoanPhieu[];
 }
+
+interface KhieuNai {
+  id: string;
+  ma: string | null;
+  noi_dung: string;
+  trang_thai: string;
+  phan_hoi: string | null;
+  tao_luc: string;
+  thang: string;
+}
+
+const NHAN_TT_KN: Record<string, { ten: string; lop: string }> = {
+  moi: { ten: 'Mới', lop: 'nhan-xau' },
+  dang_xem: { ten: 'Đang xem xét', lop: 'nhan-canh-bao' },
+  chap_nhan: { ten: 'Đã chấp nhận', lop: 'nhan-tot' },
+  tu_choi: { ten: 'Đã từ chối', lop: 'nhan-mo' },
+};
 
 const dinh_dang = new Intl.NumberFormat('vi-VN');
 const tien = (v: unknown): string => dinh_dang.format(Math.round(Number(v) || 0));
@@ -56,7 +78,9 @@ const LOAI_HD: Record<string, string> = {
 
 export function TrangPhieuLuongToi(): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<Phieu[]>('/api/toi/phieu-luong');
+  const kn = dung_nap<KhieuNai[]>('/api/toi/khieu-nai-luong');
   const [chon, dat_chon] = useState(0);
+  const [mo_kn, dat_mo_kn] = useState(false);
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
@@ -101,6 +125,16 @@ export function TrangPhieuLuongToi(): ReactNode {
             <span className="nhan nhan-tot">{TRANG_THAI[p.trang_thai_ky] ?? p.trang_thai_ky}</span>
             {p.loai_hop_dong !== null && (
               <span className="nhan nhan-mo"> {LOAI_HD[p.loai_hop_dong] ?? p.loai_hop_dong}</span>
+            )}
+            {p.ep_du_cong && (
+              <span className="nhan nhan-canh-bao" title="Được tính đủ ngày công (miễn chấm công)">
+                {' '}Đủ công
+              </span>
+            )}
+            {p.mien_phat && (
+              <span className="nhan nhan-canh-bao" title="Được miễn phạt đi muộn/về sớm">
+                {' '}Miễn phạt
+              </span>
             )}
           </div>
           <div className="phieu-thuc-linh">
@@ -184,10 +218,83 @@ export function TrangPhieuLuongToi(): ReactNode {
         </div>
       </div>
 
-      <div className="hop-thong-bao hop-luu-y">
-        Phiếu lương chỉ hiện khi kỳ đã được duyệt/trả. Nếu thấy sai, gửi giải trình ở mục
-        <strong> Đơn của tôi</strong> hoặc liên hệ nhân sự — mỗi khoản đều ghi rõ để đối chiếu.
+      <div className="phieu-ket-nut">
+        <button className="nut-phang" onClick={() => dat_mo_kn(true)}>Khiếu nại phiếu lương này</button>
       </div>
+
+      {(() => {
+        const cua_ky = (kn.du_lieu ?? []).filter((x) => x.thang === p.thang);
+        if (cua_ky.length === 0) return null;
+        return (
+          <div className="the the-mong">
+            <h3 style={{ marginTop: 0 }}>Khiếu nại của bạn về kỳ này</h3>
+            {cua_ky.map((x) => (
+              <div key={x.id} className="hop-thong-bao" style={{ marginBottom: 8 }}>
+                <div>
+                  <span className={`nhan ${NHAN_TT_KN[x.trang_thai]?.lop ?? 'nhan-mo'}`}>
+                    {NHAN_TT_KN[x.trang_thai]?.ten ?? x.trang_thai}
+                  </span>
+                  <span className="mo-ma"> {x.ma ?? ''} · {ngay_gio(x.tao_luc)}</span>
+                </div>
+                <div style={{ marginTop: 4 }}>{x.noi_dung}</div>
+                {x.phan_hoi !== null && (
+                  <div className="hop-tot" style={{ marginTop: 6 }}>
+                    <strong>Phản hồi:</strong> {x.phan_hoi}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      <div className="hop-thong-bao hop-luu-y">
+        Phiếu lương chỉ hiện khi kỳ đã được duyệt/trả. Nếu thấy sai, bấm
+        <strong> Khiếu nại phiếu lương này</strong> để gửi Phòng Nhân sự, hoặc gửi giải trình ở mục
+        <strong> Đơn của tôi</strong> — mỗi khoản đều ghi rõ để đối chiếu.
+      </div>
+
+      {mo_kn && (
+        <HopThoaiKhieuNaiLuong
+          phieu_id={p.id} thang={thang_viet(p.thang)}
+          khi_dong={() => dat_mo_kn(false)}
+          khi_xong={() => { dat_mo_kn(false); kn.nap_lai(); }}
+        />
+      )}
     </>
+  );
+}
+
+function HopThoaiKhieuNaiLuong(
+  { phieu_id, thang, khi_dong, khi_xong }:
+  { phieu_id: string; thang: string; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [noi_dung, dat_noi_dung] = useState('');
+  const hd = dung_hanh_dong();
+
+  const gui = (): void => {
+    void hd.chay(
+      () => goi('/api/toi/khieu-nai-luong', { method: 'POST', body: { phieu_luong_id: phieu_id, noi_dung } }),
+      'Đã gửi khiếu nại.',
+    ).then((ok) => { if (ok) khi_xong(); });
+  };
+
+  return (
+    <HopThoai tieu_de={`Khiếu nại phiếu lương ${thang}`} khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <p className="mo-ta">
+        Mô tả rõ khoản bạn cho là chưa đúng (công, thưởng, phụ cấp, khấu trừ…) để Phòng Nhân sự
+        đối chiếu và phản hồi.
+      </p>
+      <label htmlFor="knnd">Nội dung khiếu nại</label>
+      <textarea id="knnd" value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)}
+        placeholder="Ví dụ: Công thực tế tháng này là 24 nhưng phiếu ghi 22…" rows={4} />
+      <div className="hang-nut" style={{ marginTop: 12 }}>
+        <button className="nut-lanh" disabled={hd.dang_chay || noi_dung.trim().length < 5} onClick={gui}>
+          Gửi khiếu nại
+        </button>
+        <button className="nut-phang" onClick={khi_dong}>Đóng</button>
+      </div>
+    </HopThoai>
   );
 }
