@@ -28,19 +28,28 @@ const RE_COLS = /<cols>[\s\S]*?<\/cols>/;
 const RONG_TOI_THIEU: Record<number, number> = {
   1: 6, 3: 24, 4: 20, 5: 26,        // STT, Ho ten, Chuc danh, Phong ban
   7: 12, 8: 12, 9: 14, 12: 15, 14: 12, // Cong chuan/thuc, Luong co ban, Luong theo cong, Tien OT
+  15: 12, 16: 13,                   // Thuong, Phu cap khac (bo an)
+  17: 13, 18: 13, 19: 13, 20: 14, 21: 12, // PC theo ca/an trua/trang diem/trang phuc/KPI (bo an)
   22: 16, 23: 15, 29: 14, 36: 13,   // Tong PC+thuong, Tong thu nhap, Tong BH, Thue TNCN
   44: 13, 45: 15, 47: 22,           // Tong tru, Thuc linh, Ghi chu
 };
 
-/** Noi rong cac cot hien trong khoi <cols>, giu nguyen thuoc tinh an/nhom. */
+// Cot Thuong + Phu cap (O..U): BO AN de hien ro tren bang chinh (yeu cau: "thuong phu cap
+// chua co trong bang luong"). Van nam trong nhom outline nen co the thu gon lai neu muon.
+const BO_AN = new Set([15, 16, 17, 18, 19, 20, 21]);
+
+/** Noi rong + bo an cac cot Thuong/Phu cap trong khoi <cols>, giu nguyen cac cot chi tiet khac. */
 function noi_rong_cols(cols: string): string {
   return cols.replace(/<col\b[^>]*\/>/g, (tag) => {
     const min = Number(/min="(\d+)"/.exec(tag)?.[1] ?? '0');
+    let t = tag;
+    if (BO_AN.has(min)) t = t.replace(/\s*hidden="1"/, '');
     const toi_thieu = RONG_TOI_THIEU[min];
-    if (toi_thieu === undefined) return tag;
-    const cur = Number(/width="([\d.]+)"/.exec(tag)?.[1] ?? '0');
-    const w = Math.max(cur, toi_thieu);
-    return tag.replace(/width="[\d.]+"/, `width="${w}"`);
+    if (toi_thieu !== undefined) {
+      const cur = Number(/width="([\d.]+)"/.exec(t)?.[1] ?? '0');
+      t = t.replace(/width="[\d.]+"/, `width="${Math.max(cur, toi_thieu)}"`);
+    }
+    return t;
   });
 }
 
@@ -100,6 +109,61 @@ function d2(n: number): string {
 function ngay_vn(iso: string): string {
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
+}
+
+/**
+ * Them SHEET RIENG liet ke CHI TIET CAC KHOAN GIAM TRU cua tung nguoi (BHXH/YT/TN, thue TNCN,
+ * tru di muon, tru nua ngay, giam thuong/phu cap do ky luat, tru khac) + dong TONG.
+ */
+function them_sheet_giam_tru(wb: ExcelJS.Workbook, ds: readonly DongPhieu[]): void {
+  const ws = wb.addWorksheet('Chi tiết giảm trừ');
+  const cot = [
+    { h: 'STT', w: 6 }, { h: 'Mã NV', w: 12 }, { h: 'Họ tên', w: 24 }, { h: 'Phòng ban', w: 20 },
+    { h: 'BHXH (NLĐ)', w: 13 }, { h: 'BHYT (NLĐ)', w: 13 }, { h: 'BHTN (NLĐ)', w: 13 },
+    { h: 'Tổng BH (NLĐ)', w: 14 }, { h: 'Thuế TNCN', w: 13 },
+    { h: 'Trừ đi muộn', w: 13 }, { h: 'Trừ nửa ngày', w: 13 },
+    { h: 'Giảm thưởng/PC (kỷ luật)', w: 16 }, { h: 'Trừ khác', w: 13 }, { h: 'TỔNG TRỪ', w: 15 },
+  ];
+  ws.getRow(1).values = cot.map((c) => c.h);
+  cot.forEach((c, i) => { ws.getColumn(i + 1).width = c.w; });
+  const dau = ws.getRow(1);
+  dau.font = { name: 'Times New Roman', bold: true };
+  dau.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+  const FMT = '#,##0';
+  ds.forEach((p, i) => {
+    const bh = p.bhxh_nld + p.bhyt_nld + p.bhtn_nld;
+    const giam_kl = p.khoan_tru - p.tru_di_muon_tien - p.tru_nua_ngay_tien;
+    const row = ws.addRow([
+      i + 1, p.ma_nv, p.ho_ten, p.phong_ban ?? '',
+      p.bhxh_nld, p.bhyt_nld, p.bhtn_nld, bh, p.thue_tncn,
+      p.tru_di_muon_tien, p.tru_nua_ngay_tien, giam_kl, p.tru_khac, p.tong_tru,
+    ]);
+    for (let c = 5; c <= 14; c++) row.getCell(c).numFmt = FMT;
+  });
+
+  const n = ds.length;
+  if (n > 0) {
+    const tong = ws.addRow([]);
+    tong.getCell(1).value = 'TỔNG';
+    for (let c = 5; c <= 14; c++) {
+      const L = String.fromCharCode(64 + c);
+      tong.getCell(c).value = { formula: `SUM(${L}2:${L}${n + 1})` };
+      tong.getCell(c).numFmt = FMT;
+    }
+    tong.font = { name: 'Times New Roman', bold: true };
+  }
+
+  ws.eachRow((row) => {
+    row.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' },
+      };
+      if (cell.font?.name === undefined) cell.font = { name: 'Times New Roman' };
+    });
+  });
+  ws.views = [{ state: 'frozen', ySplit: 1 }];
 }
 
 /**
@@ -325,6 +389,9 @@ export async function xuat_bang_luong_erp(ky_luong_id: string): Promise<Buffer> 
   if (typeof o_tieu_de.value === 'string') o_tieu_de.value = o_tieu_de.value.toUpperCase();
   o_tieu_de.font = { name: 'Times New Roman', bold: true, size: 16 };
   o_tieu_de.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  // ---- sheet rieng: chi tiet cac khoan giam tru tung nguoi ----
+  them_sheet_giam_tru(wb, ds);
 
   const ab = await wb.xlsx.writeBuffer();
   return va_cols(Buffer.from(ab as ArrayBuffer));
