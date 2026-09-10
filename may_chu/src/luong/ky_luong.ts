@@ -203,10 +203,12 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
           order by hieu_luc_tu desc limit 1
        ) hd on true
        left join lateral (
-         -- Cong thuc: thu Bay nhan he so $3 (0,5 khi bat nua cong). extract(dow) tra 6 = thu Bay.
-         -- OT KHONG bi anh huong — no la gio lam them, khong phai cong ngay.
-         select coalesce(sum(so_cong * case when extract(dow from ngay) = 6
-                                            then $3::numeric else 1 end), 0) as so_cong,
+         -- Cong thuc = TONG so_cong da cham, KHONG nhan them he so thu Bay. so_cong da phan anh
+         -- phan ngay lam thuc te: lam nua ngay thu Bay (ca hanh chinh, moi dat nua nguong du cong)
+         -- = 0,5 roi. Nhan he so thu Bay o day nua la tinh nua cong HAI LAN (0,5 x 0,5 = 0,25).
+         -- He so thu Bay chi ap cho CONG CHUAN (ngay_cong_chuan). Ai lam ca chieu thu Bay thi
+         -- so_cong = 1 -> duoc tron cong ngay do (co che lam bu). OT KHONG bi anh huong.
+         select coalesce(sum(so_cong), 0)                                    as so_cong,
                 coalesce(sum(phut_ot), 0)                                    as phut_ot
            from bang_cong_ngay
           where nhan_vien_id = nv.id and ngay >= $1 and ngay <= $2
@@ -220,7 +222,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       where nv.dang_hoat_dong = true
         and nv.che_do_luong = 'vn'  -- nhom luong TQ (CNY) tinh o khoi rieng, khong vao bang VND
       order by nv.ma_nv`,
-    [tu, den, he_so_t7],
+    [tu, den],
   );
 
   // Chinh sach phu cap con hieu luc trong ky, cua CA cong ty, doc mot lan.
