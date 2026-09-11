@@ -251,8 +251,24 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
         </div>
       </div>
 
-      <div className="phieu-ket-nut">
-        <button className="nut-phang" onClick={() => dat_mo_kn(true)}>Khiếu nại phiếu lương này</button>
+      <div
+        className="phieu-ket-nut"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          border: '1.5px solid #DC2626', background: '#FEF2F2',
+          borderRadius: 8, padding: '12px 14px', marginTop: 12,
+        }}
+      >
+        <span style={{ color: '#B91C1C', fontSize: 13, flex: '1 1 220px' }}>
+          Thấy sai số liệu? Gửi <strong>khiếu nại</strong> để Phòng Nhân sự tiếp nhận và chỉnh sửa.
+        </span>
+        <button
+          className="nut-phang"
+          style={{ borderColor: '#DC2626', color: '#fff', background: '#DC2626', fontWeight: 600 }}
+          onClick={() => dat_mo_kn(true)}
+        >
+          Khiếu nại phiếu lương này
+        </button>
       </div>
 
       {(() => {
