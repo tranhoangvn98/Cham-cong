@@ -392,11 +392,9 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         + 'Dữ liệu chấm công dưới đây là căn cứ để đối chiếu trước khi chốt.',
     };
   });
-
-  // Phieu luong cua CHINH nhan vien — chi ky da duyet/da tra (minh bach tien luong sau khi chot).
-  app.get('/phieu-luong', async (req) => {
-    return phieu_luong_cua_toi(nhan_vien_cua_toi(req), null);
-  });
+  // Chu y: route GET /toi/phieu-luong (danh sach phieu cua chinh minh) da DANG KY o tuyen_luong
+  // (luong.ts) — KHONG dang ky lai o day, se bi FST_ERR_DUPLICATED_ROUTE. Man Luong ca nhan chi
+  // can `phieu_luong` cua thang, lay qua /toi/luong o tren (dung phieu_luong_cua_toi).
 
   // ================================================================ lan quet cua toi
   app.get('/lan-quet', async (req) => {
