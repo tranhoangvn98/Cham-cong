@@ -383,7 +383,13 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
   const vao_hieu_luc = gio_vao > ca_bat_dau ? gio_vao : ca_bat_dau;
   const ra_hieu_luc = gio_ra < ca_ket_thuc ? gio_ra : ca_ket_thuc;
   const tho = so_phut(vao_hieu_luc, ra_hieu_luc);
+  // `phut_lam`: so phut lam THUC TE (da tru gio nghi) — chi de HIEN THI / doi chieu.
   const phut_lam = Math.max(0, tho - phut_nghi_giao(vao_hieu_luc, ra_hieu_luc, dv.ngay, ca));
+
+  // `phut_cong`: so phut dung de TINH SO CONG, theo nguyen tac "co mat buoi nao du cong buoi
+  // do" (BGD chot). DI MUON / VE SOM khong con lam tut so cong — chi NGHI HET MOT BUOI (khong
+  // phep) moi giam cong. Phat di muon la khoan TRU TIEN rieng ben module luong, khong o day.
+  const phut_cong = phut_cong_theo_ca(vao_hieu_luc, ra_hieu_luc, dv.ngay, ca);
 
   const muon = Math.max(0, so_phut(ca_bat_dau, gio_vao) - ca.dung_sai_muon_phut);
   const ve_som = Math.max(0, so_phut(gio_ra, ca_ket_thuc) - ca.dung_sai_som_phut);
@@ -406,7 +412,7 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
     phut_muon: muon,
     phut_ve_som: ve_som,
     phut_ot: ot_da_duyet,
-    so_cong: quy_ra_cong(phut_lam, ca.phut_du_cong),
+    so_cong: quy_ra_cong(phut_cong, ca.phut_du_cong),
     co_dieu_chinh,
     ghi_chu: gop_chu_thich(chu_thich),
   };
@@ -433,6 +439,44 @@ function phut_nghi_giao(tu: Date, den: Date, ngay: string, ca: CaLam | null): nu
 function tru_gio_nghi(vao: Date | null, ra: Date | null, ngay: string, ca: CaLam | null): number {
   if (vao === null || ra === null) return 0;
   return Math.max(0, so_phut(vao, ra) - phut_nghi_giao(vao, ra, ngay, ca));
+}
+
+/** Khoang [vao, ra] co GIAO THUC SU (> 0 phut) voi buoi [tu, den] khong. */
+function co_mat_trong(vao: Date, ra: Date, tu: Date, den: Date): boolean {
+  return vao.getTime() < den.getTime() && ra.getTime() > tu.getTime();
+}
+
+/**
+ * So phut dung de TINH SO CONG theo nguyen tac "co mat buoi nao du cong buoi do" (BGD chot):
+ * chia ngay lam thanh buoi sang / buoi chieu boi gio nghi trua; buoi nao nhan vien CO MAT (du
+ * den muon hay ve som) thi tinh TRON so phut cua buoi do, buoi VANG han thi 0.
+ *
+ * Nho vay DI MUON / VE SOM khong lam tut so cong — chi NGHI HET MOT BUOI (khong phep) moi giam
+ * cong. Phat di muon la khoan TRU TIEN rieng ben module luong, khong tinh o day. Truoc day
+ * `so_cong` lay theo so phut lam thuc, nen den muon nhieu vua bi tru cong VUA bi phat tien —
+ * mot lan di muon bi phat hai duong.
+ *
+ * Ca khong khai gio nghi trua (vd sang thu Bay) = mot buoi duy nhat: co mat thi du, vang thi 0.
+ */
+function phut_cong_theo_ca(vao: Date, ra: Date, ngay: string, ca: CaLam): number {
+  const cong_ngay_ra = ca.qua_dem ? 1 : 0;
+  const ca_vao = moc_thoi_gian(ngay, ca.gio_vao);
+  const ca_ra = moc_thoi_gian(ngay, ca.gio_ra, cong_ngay_ra);
+
+  // Ca mot khoi (khong khai gio nghi): co mat trong ca thi tinh tron, khong thi 0.
+  if (ca.nghi_tu === null || ca.nghi_den === null) {
+    return co_mat_trong(vao, ra, ca_vao, ca_ra) ? so_phut(ca_vao, ca_ra) : 0;
+  }
+
+  // Ca qua dem co the co gio nghi thuoc ngay hom sau — cung quy uoc voi `phut_nghi_giao`.
+  const cong_ngay_nghi = ca.qua_dem && ca.nghi_tu < ca.gio_vao ? 1 : 0;
+  const nghi_tu = moc_thoi_gian(ngay, ca.nghi_tu, cong_ngay_nghi);
+  const nghi_den = moc_thoi_gian(ngay, ca.nghi_den, cong_ngay_nghi);
+
+  let phut = 0;
+  if (co_mat_trong(vao, ra, ca_vao, nghi_tu)) phut += so_phut(ca_vao, nghi_tu);   // buoi sang
+  if (co_mat_trong(vao, ra, nghi_den, ca_ra)) phut += so_phut(nghi_den, ca_ra);   // buoi chieu
+  return phut;
 }
 
 function gop_chu_thich(ds: string[]): string | null {

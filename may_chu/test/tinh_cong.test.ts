@@ -71,11 +71,28 @@ test('di muon vuot dung sai: chi tinh phan vuot', () => {
   assert.match(kq.ghi_chu ?? '', /Di muon 15 phut/);
 });
 
-test('ve som vuot dung sai', () => {
+test('ve som vuot dung sai: ghi nhan ve som nhung KHONG tru cong (con o buoi chieu)', () => {
   const kq = tinh_cong_ngay(co_ban(T5, CA_HC, q(T5, '08:00', '16:00')));
   assert.equal(kq.phut_ve_som, 55, '60 phut som - 5 phut dung sai');
-  assert.equal(kq.phut_lam, 390);
-  assert.equal(kq.so_cong, 0.5, 'chua du 420 phut nhung >= nua nguong');
+  assert.equal(kq.phut_lam, 390, 'so phut lam thuc te van la 390');
+  assert.equal(kq.so_cong, 1, 've luc 16:00 van co mat ca hai buoi -> du cong, chi bi phat tien');
+});
+
+test('di muon nhieu nhung du ca hai buoi: du cong (khong tru cong, phat tien tinh ben luong)', () => {
+  // Vao 09:08 (muon > 1 tieng), lam den 17:00: van co mat ca buoi sang lan buoi chieu.
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC, q(T5, '09:08', '17:00')));
+  assert.equal(kq.so_cong, 1, 'di muon khong lam tut so cong');
+  assert.match(kq.ghi_chu ?? '', /Di muon 63 phut/);
+});
+
+test('chi lam buoi chieu (vao 14:00): nghi ca sang -> 0.5 cong', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC, q(T5, '14:00', '17:00')));
+  assert.equal(kq.so_cong, 0.5, 'vang han buoi sang, du buoi chieu');
+});
+
+test('chi lam buoi sang, ve luc 12:00 (nghi ca chieu): 0.5 cong', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC, q(T5, '08:00', '12:00')));
+  assert.equal(kq.so_cong, 0.5, 'du buoi sang, vang han buoi chieu');
 });
 
 // ==================================================================================
@@ -403,11 +420,11 @@ test('theo thu: sang T7 lam du 08:00-12:00 -> KHONG ve som, 0,5 cong', () => {
   assert.equal(kq.so_cong, 0.5, '240 phut / nguong 480 -> nua cong');
 });
 
-test('theo thu: T7 ve som that (11:00) van bi ghi nhan ve som', () => {
+test('theo thu: T7 ve som that (11:00) van ghi nhan ve som nhung KHONG tru cong', () => {
   const kq = tinh_cong_ngay(co_ban(T7, CA_HD, q(T7, '08:00', '11:00')));
   assert.equal(kq.phut_ve_som, 55, '60 phut som - 5 phut dung sai');
-  assert.equal(kq.phut_lam, 180);
-  assert.equal(kq.so_cong, 0, '180 phut chua toi nua nguong 480');
+  assert.equal(kq.phut_lam, 180, 'so phut lam thuc te van la 180');
+  assert.equal(kq.so_cong, 0.5, 'T7 mot buoi: co mat thi du 0,5 cong, ve som chi bi phat tien');
 });
 
 test('theo thu: lam qua trua T7 KHONG co don -> 0 OT', () => {
