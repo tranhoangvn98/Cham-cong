@@ -202,6 +202,57 @@ function kq_tu_ngay(b: Record<string, unknown>): string {
   return ngay_bat_buoc(b, 'tu_ngay');
 }
 
+interface KhoanPhieuRa {
+  phieu_luong_id: string;
+  khoan_ma: string; ten: string; loai: string;
+  so_luong: string | null; don_gia: string | null; thanh_tien: string;
+  ghi_chu: string | null; chiu_thue: boolean;
+}
+
+/**
+ * Phieu luong cua CHINH nhan vien — CHI ky da_duyet / da_tra (khong lo phieu chua chot). Tra ve
+ * mang (moi nhat truoc), kem tung khoan thu nhap/tru. `chi_thang` != null thi loc ve 1 thang.
+ * Dung chung cho ca man "Phieu luong" (mang) va man "Luong" ca nhan (lay phan tu dau).
+ */
+async function phieu_luong_cua_toi(
+  nv_id: string, chi_thang: string | null,
+): Promise<Record<string, unknown>[]> {
+  const phieu = await truy_van<{ id: string } & Record<string, unknown>>(
+    `select p.id, k.thang, k.trang_thai as trang_thai_ky,
+            p.luong_co_ban, p.phu_cap, p.so_ngay_cong_chuan, p.so_ngay_cong_thuc,
+            p.luong_ngay, p.luong_theo_cong, p.phut_ot, p.tien_ot, p.thuong, p.phu_cap_khac,
+            p.tong_thu_nhap, p.muc_dong_bh, p.so_nguoi_phu_thuoc, p.giam_tru_tong,
+            p.thu_nhap_tinh_thue, p.bhxh_nld, p.bhyt_nld, p.bhtn_nld, p.thue_tncn,
+            p.tru_khac, p.tong_tru, p.thuc_linh, p.thuc_linh_lam_tron,
+            p.loai_hop_dong, p.ep_du_cong, p.mien_phat
+       from phieu_luong p
+       join ky_luong k on k.id = p.ky_luong_id
+      where p.nhan_vien_id = $1 and k.trang_thai in ('da_duyet', 'da_tra')
+        and ($2::text is null or k.thang = $2)
+      order by k.thang desc`,
+    [nv_id, chi_thang],
+  );
+  if (phieu.length === 0) return [];
+  const ids = phieu.map((p) => p.id);
+  const khoan = await truy_van<KhoanPhieuRa>(
+    `select pk.phieu_luong_id, pk.khoan_ma, kl.ten, kl.loai,
+            pk.so_luong, pk.don_gia, pk.thanh_tien, pk.ghi_chu, kl.chiu_thue
+       from phieu_luong_khoan pk
+       join khoan_luong kl on kl.ma = pk.khoan_ma
+      where pk.phieu_luong_id = any($1::uuid[])
+      order by kl.loai, kl.ten`,
+    [ids],
+  );
+  const theo_phieu = new Map<string, Omit<KhoanPhieuRa, 'phieu_luong_id'>[]>();
+  for (const k of khoan) {
+    const { phieu_luong_id, ...con } = k;
+    const ds = theo_phieu.get(phieu_luong_id) ?? [];
+    ds.push(con);
+    theo_phieu.set(phieu_luong_id, ds);
+  }
+  return phieu.map((p) => ({ ...p, khoan: theo_phieu.get(p.id) ?? [] }));
+}
+
 export async function tuyen_toi(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', can_dang_nhap);
 
@@ -331,14 +382,20 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       phep,
       // Ky cong da chot chua: chua chot thi so lieu con co the doi khi mot lan quet ve muon.
       da_chot: da_chot_het,
-      phieu_luong: null,
+      // Phieu luong THAT cua thang (chi khi ky da duyet/da tra). Null neu chua co.
+      phieu_luong: (await phieu_luong_cua_toi(nv_id, thang))[0] ?? null,
       ghi_chu_ot:
         'Số phút OT ở đây là OT máy ghi nhận, chưa qua duyệt. Tiền làm thêm giờ chỉ được '
         + 'trả theo số phút OT đã có đơn duyệt.',
       ly_do_chua_co_phieu_luong:
-        'Phiếu lương sẽ hiển thị sau khi kế toán cấu hình kỳ lương và các tham số bảo hiểm, '
-        + 'thuế thu nhập cá nhân. Phần tính lương chưa được triển khai.',
+        'Phiếu lương hiển thị sau khi kỳ lương của tháng được nhân sự duyệt. '
+        + 'Dữ liệu chấm công dưới đây là căn cứ để đối chiếu trước khi chốt.',
     };
+  });
+
+  // Phieu luong cua CHINH nhan vien — chi ky da duyet/da tra (minh bach tien luong sau khi chot).
+  app.get('/phieu-luong', async (req) => {
+    return phieu_luong_cua_toi(nhan_vien_cua_toi(req), null);
   });
 
   // ================================================================ lan quet cua toi

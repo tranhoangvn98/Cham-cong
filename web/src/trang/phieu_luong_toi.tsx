@@ -81,7 +81,7 @@ const LOAI_HD: Record<string, string> = {
   thoi_vu: 'Thời vụ', cong_tac_vien: 'Cộng tác viên', hoc_viec: 'Học việc',
 };
 
-export function TrangPhieuLuongToi(): ReactNode {
+export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<Phieu[]>('/api/toi/phieu-luong');
   const kn = dung_nap<KhieuNai[]>('/api/toi/khieu-nai-luong');
   const [chon, dat_chon] = useState(0);
@@ -89,7 +89,10 @@ export function TrangPhieuLuongToi(): ReactNode {
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
-  const ds = du_lieu ?? [];
+  // `thang_loc` (khi nhung trong màn Lương cá nhân): chỉ hiện phiếu của tháng đó, ẩn ô chọn kỳ.
+  const ds = thang_loc != null
+    ? (du_lieu ?? []).filter((x) => x.thang === thang_loc)
+    : (du_lieu ?? []);
   if (ds.length === 0) {
     return (
       <Trong tieu_de="Chưa có phiếu lương"
@@ -110,18 +113,20 @@ export function TrangPhieuLuongToi(): ReactNode {
         <button className="nut-phang" onClick={() => window.print()}>In phiếu</button>
       </div>
 
-      <div className="bo-loc">
-        <div className="o-nhap">
-          <label htmlFor="ky">Kỳ lương</label>
-          <select id="ky" value={chon} onChange={(e) => dat_chon(Number(e.target.value))}>
-            {ds.map((x, i) => (
-              <option key={x.id} value={i}>
-                {thang_viet(x.thang)} — {TRANG_THAI[x.trang_thai_ky] ?? x.trang_thai_ky}
-              </option>
-            ))}
-          </select>
+      {thang_loc == null && (
+        <div className="bo-loc">
+          <div className="o-nhap">
+            <label htmlFor="ky">Kỳ lương</label>
+            <select id="ky" value={chon} onChange={(e) => dat_chon(Number(e.target.value))}>
+              {ds.map((x, i) => (
+                <option key={x.id} value={i}>
+                  {thang_viet(x.thang)} — {TRANG_THAI[x.trang_thai_ky] ?? x.trang_thai_ky}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="the phieu-luong">
         <div className="phieu-dau">

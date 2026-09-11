@@ -11,6 +11,7 @@
 import { Component, useEffect, useState, type ReactNode } from 'react';
 import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, mui_gio_offset_gio } from '../api.ts';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
+import { TrangPhieuLuongToi } from './phieu_luong_toi.tsx';
 import { TrangVanBan } from './van_ban.tsx';
 import { ChuongBao } from './chuong_bao.tsx';
 
@@ -1856,7 +1857,10 @@ function ManLuong(): ReactNode {
         </div>
       )}
       {du_lieu.phieu_luong !== null && (
-        <div className="hop-thong-bao hop-tot">Kỳ này đã có phiếu lương.</div>
+        <>
+          <TrangPhieuLuongToi thang_loc={thang} />
+          <div className="cn-dau-mong" style={{ marginTop: 8 }}>Cơ sở tính lương (chấm công)</div>
+        </>
       )}
 
       <div className="luoi luoi-4">
