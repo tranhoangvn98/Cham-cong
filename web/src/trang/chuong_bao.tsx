@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { goi } from '../api.ts';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
+import { dat_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import { khoa_tinh, ngay_gio } from '../thanh_phan.tsx';
 
 interface Bao {
   id: string;
   tieu_de: string;
   noi_dung: string;
-  du_lieu: { man?: string } | null;
+  // Ngoai `man` (di toi dau), thong bao con kem id ban ghi de mo dung khieu nai / don cu the.
+  du_lieu: { man?: string; khieu_nai_id?: string; don_id?: string } | null;
   da_doc: boolean;
   tao_luc: string;
 }
@@ -79,6 +81,12 @@ export function ChuongBao({ dieu_huong }: {
     }
     dat_mo(false);
     const man = b.du_lieu?.man;
+    // Kem id ban ghi (neu co) de man dich mo dung khieu nai / don va dung thao luan, khong chi
+    // dung o dau man. Dat truoc khi dieu huong; man dich doc mot lan luc mount.
+    const id_ban_ghi = b.du_lieu?.khieu_nai_id ?? b.du_lieu?.don_id;
+    if (man !== undefined && id_ban_ghi != null && id_ban_ghi !== '') {
+      dat_muc_tieu_bao({ man, id: id_ban_ghi });
+    }
     if (dieu_huong !== undefined) { dieu_huong(man); return; }
     di_toi(man !== undefined ? (DUONG_THEO_MAN[man] ?? '/') : '/');
   };

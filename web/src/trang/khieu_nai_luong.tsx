@@ -3,9 +3,10 @@
 //
 // KHONG tu sua luong o day — day la kenh minh bach & phan hoi, con sua so lieu van theo quy trinh
 // ky luong (mo chot -> sua -> duyet lai).
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { goi, chi_xem_quan_tri, la_admin } from '../api.ts';
 import { LienKet } from '../dinh_tuyen.tsx';
+import { lay_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import {
   AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
   type TinNhanKN,
@@ -48,9 +49,19 @@ const thang_viet = (t: string): string => {
 export function TrangKhieuNaiLuong(): ReactNode {
   const [loc, dat_loc] = useState('');
   const [dang, dat_dang] = useState<Dong | null>(null);
+  // Muc tieu tu thong bao: mo thang dung khieu nai + thao luan. Doc mot lan luc mount.
+  const can_mo = useRef<string | null>(lay_muc_tieu_bao('khieu-nai-luong'));
 
   const url = `/api/khieu-nai-luong${loc === '' ? '' : `?trang_thai=${loc}`}`;
   const ds = dung_nap<Dong[]>(url, [loc]);
+
+  // Khi danh sach ve, neu co muc tieu tu thong bao thi mo dung hop thoai ticket do (mot lan).
+  useEffect(() => {
+    if (can_mo.current === null || ds.du_lieu === null) return;
+    const dong = ds.du_lieu.find((d) => d.id === can_mo.current);
+    can_mo.current = null;
+    if (dong !== undefined) dat_dang(dong);
+  }, [ds.du_lieu]);
 
   return (
     <>

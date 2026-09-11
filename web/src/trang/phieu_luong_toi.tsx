@@ -2,8 +2,9 @@
 //
 // Mot bang luong khong giai thich duoc la mot don khieu nai — nen o day hien tung khoan thu
 // nhap va tung khoan tru, khong gop thanh mot con so "phu cap".
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { goi, gui_tep } from '../api.ts';
+import { lay_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import {
   AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
   type TinNhanKN,
@@ -407,13 +408,39 @@ function OThemAnhKN({ kn_id, khi_gui }: { kn_id: string; khi_gui: () => void }):
 export function DanhSachKhieuNai(
   { ds, khi_doi }: { ds: KhieuNai[]; khi_doi: () => void },
 ): ReactNode {
+  // Muc tieu tu thong bao: cuon toi dung ticket + lam noi bat thoang qua (thao luan da hien san
+  // trong tung ticket). Doc mot lan luc mount.
+  const can_mo = useRef<string | null>(lay_muc_tieu_bao('khieu-nai-luong'));
+  const [noi_bat, dat_noi_bat] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (can_mo.current === null) return;
+    const id = can_mo.current;
+    if (!ds.some((x) => x.id === id)) return; // chua co trong danh sach -> cho lan nap sau
+    can_mo.current = null;
+    // Cho DOM ve xong roi cuon toi; lam noi bat ~2,5s roi tat.
+    const t = window.setTimeout(() => {
+      document.getElementById(`kn-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      dat_noi_bat(id);
+      window.setTimeout(() => dat_noi_bat(null), 2500);
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [ds]);
+
   return (
     <div className="the">
       <h3 style={{ marginTop: 0 }}>Khiếu nại phiếu lương của bạn</h3>
       {ds.map((x) => {
         const mo = x.trang_thai === 'moi' || x.trang_thai === 'dang_xem';
         return (
-          <div key={x.id} className="hop-thong-bao" style={{ marginBottom: 12 }}>
+          <div key={x.id} id={`kn-${x.id}`} className="hop-thong-bao"
+            style={{
+              marginBottom: 12,
+              transition: 'box-shadow .3s, background-color .3s',
+              ...(x.id === noi_bat
+                ? { boxShadow: '0 0 0 2px var(--mau-chinh, #2563eb)', borderRadius: 8 }
+                : {}),
+            }}>
             <div>
               <span className={`nhan ${NHAN_TT_KN[x.trang_thai]?.lop ?? 'nhan-mo'}`}>
                 {NHAN_TT_KN[x.trang_thai]?.ten ?? x.trang_thai}
