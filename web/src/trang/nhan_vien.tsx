@@ -37,6 +37,7 @@ interface NhanVien {
   noi_lam_viec: string | null;
   lich_nghi_ma: string | null;
   che_do_luong: 'vn' | 'tq';
+  luong_net: boolean;
   co_tai_khoan: boolean;
 }
 
@@ -280,6 +281,7 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
     duoc_cham_cong_dien_thoai: nhan_vien?.duoc_cham_cong_dien_thoai ?? false,
     noi_lam_viec_id: nhan_vien?.noi_lam_viec_id ?? '',
     che_do_luong: nhan_vien?.che_do_luong ?? 'vn',
+    luong_net: nhan_vien?.luong_net ?? false,
   });
   const noi = dung_nap<NoiLamViec[]>('/api/noi-lam-viec');
   const hd = dung_hanh_dong();
@@ -303,6 +305,7 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
       duoc_cham_cong_dien_thoai: f.duoc_cham_cong_dien_thoai,
       noi_lam_viec_id: f.noi_lam_viec_id === '' ? null : f.noi_lam_viec_id,
       che_do_luong: f.che_do_luong,
+      luong_net: f.luong_net,
     };
     const ok = await hd.chay(() =>
       nhan_vien === null
@@ -437,6 +440,17 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
         <div className="goi-y" style={{ marginTop: -8, marginBottom: 12 }}>
           Chỉ bật cho người thường xuyên đi công tác / công trường. Chấm công ngoài phạm vi địa điểm
           đã khai vẫn phải chờ nhân sự duyệt mới được tính công.
+        </div>
+
+        <div className="o-nhap-ngang">
+          <input id="lnet" type="checkbox" checked={f.luong_net}
+            onChange={(e) => doi('luong_net', e.target.checked)} />
+          <label htmlFor="lnet">Lương NET (công ty chịu BHXH của người lao động)</label>
+        </div>
+        <div className="goi-y" style={{ marginTop: -8, marginBottom: 12 }}>
+          Bật khi thỏa thuận trả <strong>lương net</strong>: phần BHXH/BHYT/BHTN của người lao động
+          <strong> không bị trừ</strong> khỏi thực lĩnh (công ty gánh), nhưng vẫn được tính vào giảm
+          trừ khi tính thuế TNCN. Thuế và các khoản khác giữ nguyên.
         </div>
 
         <div className="hang-nut">
