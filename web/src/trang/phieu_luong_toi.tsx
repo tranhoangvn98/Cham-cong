@@ -374,7 +374,7 @@ export function DanhSachKhieuNai(
   { ds, khi_doi }: { ds: KhieuNai[]; khi_doi: () => void },
 ): ReactNode {
   return (
-    <div className="the the-mong">
+    <div className="the">
       <h3 style={{ marginTop: 0 }}>Khiếu nại phiếu lương của bạn</h3>
       {ds.map((x) => {
         const mo = x.trang_thai === 'moi' || x.trang_thai === 'dang_xem';
@@ -422,7 +422,7 @@ export function TrangKhieuNaiToi(): ReactNode {
 
   return (
     <div className="cn-cot-gap" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div className="the the-mong">
+      <div className="the">
         <h3 style={{ marginTop: 0 }}>Lập khiếu nại phiếu lương</h3>
         {ds_phieu.length === 0 ? (
           <div className="mo-ta">Chưa có phiếu lương đã duyệt nào để khiếu nại.</div>
