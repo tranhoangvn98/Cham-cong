@@ -414,6 +414,8 @@ export const cau_hinh = {
   cong_ty: {
     ten: chu('CONG_TY_TEN', ''),
     dia_chi: chu('CONG_TY_DIA_CHI', ''),
+    // URL tuyet doi cua logo (PNG/JPG) de nhung vao email thuong hieu. Rong = chi dung chu.
+    logo_url: chu('CONG_TY_LOGO_URL', ''),
   },
 
   /** Kich thuoc mot tep dinh kem toi da (byte). Hop dong scan nhieu trang thi nang len. */

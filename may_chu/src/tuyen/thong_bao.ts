@@ -41,13 +41,51 @@ async function nguoi_nhan_pham_vi(
   );
 }
 
+function thoat_html(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 /** HTML don gian cho email van ban — giu xuong dong, chong chen the. */
 function html_email(tieu_de: string, than_van: string): string {
-  const thoat = (s: string): string => s
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;line-height:1.6">`
-    + `<h2 style="margin:0 0 12px">${thoat(tieu_de)}</h2>`
-    + `<div style="white-space:pre-wrap">${thoat(than_van)}</div></div>`;
+    + `<h2 style="margin:0 0 12px">${thoat_html(tieu_de)}</h2>`
+    + `<div style="white-space:pre-wrap">${thoat_html(than_van)}</div></div>`;
+}
+
+const NHAN_MUC_DO_EMAIL: Record<string, { chu: string; nen: string; chu_mau: string }> = {
+  khan: { chu: 'KHẨN', nen: '#fdecec', chu_mau: '#b00000' },
+  quan_trong: { chu: 'QUAN TRỌNG', nen: '#fff4e0', chu_mau: '#8a5a00' },
+  thuong: { chu: 'THÔNG BÁO', nen: '#eef3f9', chu_mau: '#1f4e79' },
+};
+
+/**
+ * Email THONG BAO co khung thuong hieu: header xanh + ten cong ty + nhan muc do + noi dung (giu
+ * xuong dong) + footer. Style inline, layout bang - an toan voi moi email client.
+ */
+function than_email_thong_bao(tieu_de: string, noi_dung: string, muc_do: string): string {
+  const ten_cty = cau_hinh.cong_ty.ten !== '' ? cau_hinh.cong_ty.ten : 'Công ty';
+  const md = NHAN_MUC_DO_EMAIL[muc_do] ?? NHAN_MUC_DO_EMAIL['thuong'] as { chu: string; nen: string; chu_mau: string };
+  const logo = cau_hinh.cong_ty.logo_url;
+  const khoi_logo = logo !== ''
+    ? `<div style="margin-bottom:12px;"><img src="${logo}" alt="${thoat_html(ten_cty)}" height="46" style="height:46px;display:block;background:#ffffff;border-radius:8px;padding:8px 12px;"></div>`
+    : '';
+  return `<div style="margin:0;padding:0;background:#eef1f5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f5;padding:24px 12px;"><tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+  <tr><td style="background:#1f4e79;padding:20px 26px;">
+    ${khoi_logo}<div style="color:#cfe0f3;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">${thoat_html(ten_cty)} · Phòng Nhân sự</div>
+    <div style="color:#ffffff;font-size:20px;font-weight:700;line-height:1.35;">${thoat_html(tieu_de)}</div>
+  </td></tr>
+  <tr><td style="padding:16px 26px 0;">
+    <span style="display:inline-block;background:${md.nen};color:${md.chu_mau};font-size:12px;font-weight:700;letter-spacing:.5px;border-radius:4px;padding:3px 10px;">${md.chu}</span>
+  </td></tr>
+  <tr><td style="padding:14px 26px 6px;font-size:14px;color:#2b3648;line-height:1.7;white-space:pre-wrap;">${thoat_html(noi_dung)}</td></tr>
+  <tr><td style="background:#f4f7fb;padding:16px 26px;border-top:1px solid #e2e8f0;font-size:12px;color:#8792a2;line-height:1.6;">
+    Email tự động từ Hệ thống chấm công${cau_hinh.cong_ty.ten !== '' ? ` – ${thoat_html(cau_hinh.cong_ty.ten)}` : ''}. Vui lòng không trả lời email này; mọi thắc mắc gửi qua kênh <strong>Khiếu nại phiếu lương</strong> trong ứng dụng.
+  </td></tr>
+</table>
+</td></tr></table>
+</div>`;
 }
 
 function lay_id_param(req: { params: unknown }): string {
@@ -110,7 +148,7 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
     // loi khong chan dia chi khac, va khong lam hong viec tao thong bao. Chi gui khi email da bat.
     let so_email = 0;
     if (gui_email_bat) {
-      const than_html = html_email(tieu_de, noi_dung);
+      const than_html = than_email_thong_bao(tieu_de, noi_dung, muc_do);
       const ds_email = nguoi_nhan.filter((n) => n.email !== null && n.email !== '');
       so_email = email_bat() ? ds_email.length : 0;
       void (async () => {
