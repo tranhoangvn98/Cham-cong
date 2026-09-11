@@ -95,3 +95,16 @@ test('phan_bo_phep: don vat qua HAI NAM chi canh bao, khong tach', () => {
   const kq = phan_bo_phep(dons, 12, 2026);
   assert.equal(kq[0]?.kieu, 'canh_bao_hai_nam');
 });
+
+test('phan_bo_phep (BC01/L4): don bac qua cuoi tuan chi dem NGAY LAM VIEC vao quy', () => {
+  // 19/06(T6)..23/06(T3): lich 5 ngay nhung chi 3 ngay LAM (bo T7 20 + CN 21).
+  const dons = [{ id: 'a', tu_ngay: '2026-06-19', den_ngay: '2026-06-23', nua_ngay: false }];
+  const chi_ngay_lam = (ng: string): boolean => {
+    const d = new Date(`${ng}T00:00:00Z`).getUTCDay();
+    return d !== 0 && d !== 6; // bo CN(0) va T7(6)
+  };
+  // Quy = 3: dem theo NGAY LAM thi vua du -> giu ca don.
+  assert.equal(phan_bo_phep(dons, 3, 2026, chi_ngay_lam)[0]?.kieu, 'giu');
+  // Con neu dem ca ngay lich (loi cu) thi 5 > 3 -> tach oan.
+  assert.equal(phan_bo_phep(dons, 3, 2026)[0]?.kieu, 'tach');
+});

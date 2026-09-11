@@ -187,10 +187,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         // Thu Bay tinh nua cong (ca cong chuan lan cong thuc). Mac dinh bat theo chinh sach cong ty.
         luan_ly(b, 't7_nua_cong', true),
         // Phat di muon: bat/tat + 4 moc gio + muc phat + so lan mien. Mac dinh = tat, dung
-        // mau mac dinh (08:00/08:10/08:30, 50k, 3 lan/thang, don truoc 07:30).
+        // mau mac dinh (08:00/08:11/08:30, 50k, 3 lan/thang, don truoc 07:30).
+        // Moc 50k = 08:11 (BC 01, L2): 08:10:00-08:10:59 KHONG phat, chi tu 08:11 tro di.
         luan_ly(b, 'phat_di_muon_bat', false),
         gio(b, 'di_muon_gio_vao') ?? '08:00:00',
-        gio(b, 'di_muon_moc_50k') ?? '08:10:00',
+        gio(b, 'di_muon_moc_50k') ?? '08:11:00',
         so_tien(b, 'di_muon_muc_50k', 50000),
         gio(b, 'di_muon_moc_nua_ngay') ?? '08:30:00',
         so_nguyen(b, 'di_muon_mien_moi_thang', { min: 0, max: 31 }) ?? 3,

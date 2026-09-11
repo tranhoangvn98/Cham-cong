@@ -47,6 +47,18 @@ test('08:10–08:29 -> tang 50k; 08:30 tro di -> tang nua ngay', () => {
   assert.equal(kq.tien_50k, 100000);
 });
 
+test('BC01/L2 — moc 08:11: vao 08:10 KHONG phat, 08:11 moi phat', () => {
+  // Moc chinh sach 08:11 (491 phut). Giay da bo o buoc quy ve phut, nen 08:10:xx = 490 < 491.
+  const ch_0811 = { ...CH, moc_50k_phut: 8 * 60 + 11 }; // 491
+  const kq = tinh_phat_di_muon([
+    { phut_trong_ngay: 8 * 60 + 10, co_don_truoc_han: false }, // 08:10 -> KHONG phat
+    { phut_trong_ngay: 8 * 60 + 11, co_don_truoc_han: false }, // 08:11 -> phat 50k
+  ], ch_0811);
+  assert.equal(kq.so_lan_50k, 1);
+  assert.equal(kq.so_lan_50k_phat, 1);
+  assert.equal(kq.tien_50k, 50000);
+});
+
 test('mien toi da 3 lan/thang cho tang 50k co don', () => {
   const ngay = [
     { phut_trong_ngay: 8 * 60 + 15, co_don_truoc_han: true },

@@ -74,7 +74,7 @@ export async function tham_so_cho_thang(thang: string): Promise<
       ty_le_thu_viec: Number(d['ty_le_thu_viec'] ?? 0.85),
       di_muon: {
         bat: Boolean(d['phat_di_muon_bat'] ?? false),
-        moc_50k_phut: gio_sang_phut(String(d['di_muon_moc_50k'] ?? '08:10')),
+        moc_50k_phut: gio_sang_phut(String(d['di_muon_moc_50k'] ?? '08:11')),
         moc_nua_ngay_phut: gio_sang_phut(String(d['di_muon_moc_nua_ngay'] ?? '08:30')),
         muc_50k: Number(d['di_muon_muc_50k'] ?? 50000),
         mien_moi_thang: Number(d['di_muon_mien_moi_thang'] ?? 3),
