@@ -955,7 +955,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     return truy_van(
       `select kn.id, kn.ma, kn.noi_dung, kn.trang_thai, kn.phan_hoi, kn.tao_luc, kn.xu_ly_luc,
               kn.nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
-              k.thang, p.thuc_linh_lam_tron::float8 as thuc_linh
+              k.thang, p.thuc_linh_lam_tron::float8 as thuc_linh,
+              coalesce((select json_agg(json_build_object('id', t.id, 'ten', t.ten_goc)
+                                        order by t.tao_luc)
+                          from ho_so_tep t
+                         where t.nhom = 'khieu_nai' and t.thuoc_id = kn.id), '[]') as anh
          from khieu_nai_luong kn
          join nhan_vien nv on nv.id = kn.nhan_vien_id
          left join phong_ban pb on pb.id = nv.phong_ban_id

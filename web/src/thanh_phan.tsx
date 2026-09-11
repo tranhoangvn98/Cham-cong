@@ -1,6 +1,6 @@
 // Thanh phan dung chung cho toan bo webapp.
 import { useEffect, useState, type ReactNode } from 'react';
-import { goi, tai_blob, tai_tep, LoiApi, mui_gio_offset_gio } from './api.ts';
+import { goi, tai_anh_tu, tai_blob, tai_tep, LoiApi, mui_gio_offset_gio } from './api.ts';
 
 /**
  * Khoa React cho mot danh sach CHI DOC, sinh lai toan bo moi lan.
@@ -838,5 +838,31 @@ export function HopThoaiXemTep(
         <button type="button" onClick={khi_dong}>Đóng</button>
       </div>
     </HopThoai>
+  );
+}
+
+/**
+ * Anh tai qua fetch CO TOKEN (Authorization header) roi ve bang <img> qua blob URL — vi anh rieng
+ * tu can token ma the <img src> khong gui duoc header. Dung cho anh dinh kem khieu nai, v.v.
+ */
+export function AnhCoToken(
+  { duong_dan, alt, cao = 72 }: { duong_dan: string; alt: string; cao?: number },
+): ReactNode {
+  const [url, dat_url] = useState<string | null>(null);
+  const [loi, dat_loi] = useState(false);
+  useEffect(() => {
+    let con_dung = true;
+    let da_tao: string | null = null;
+    tai_anh_tu(duong_dan)
+      .then((u) => { if (con_dung) { da_tao = u; dat_url(u); } else URL.revokeObjectURL(u); })
+      .catch(() => { if (con_dung) dat_loi(true); });
+    return () => { con_dung = false; if (da_tao !== null) URL.revokeObjectURL(da_tao); };
+  }, [duong_dan]);
+  if (loi) return <span className="o-so-phu">không tải được ảnh</span>;
+  if (url === null) return <span className="o-so-phu">…</span>;
+  return (
+    <a href={url} target="_blank" rel="noreferrer noopener">
+      <img src={url} alt={alt} style={{ height: cao, borderRadius: 6, border: '1px solid #E5E7EB', display: 'block', objectFit: 'cover' }} />
+    </a>
   );
 }

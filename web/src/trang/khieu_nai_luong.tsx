@@ -7,7 +7,7 @@ import { useState, type ReactNode } from 'react';
 import { goi, chi_xem_quan_tri } from '../api.ts';
 import { LienKet } from '../dinh_tuyen.tsx';
 import {
-  DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  AnhCoToken, DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
 
 const NHAN_TT: Record<string, { ten: string; lop: string }> = {
@@ -31,6 +31,7 @@ interface Dong {
   phong_ban: string | null;
   thang: string;
   thuc_linh: number;
+  anh: { id: string; ten: string }[];
 }
 
 const tien = (v: unknown): string => {
@@ -161,6 +162,17 @@ function HopThoaiXuLy(
 
       <h3>Nội dung khiếu nại</h3>
       <blockquote>{d.noi_dung}</blockquote>
+
+      {d.anh.length > 0 && (
+        <>
+          <h3>Ảnh đính kèm</h3>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            {d.anh.map((a) => (
+              <AnhCoToken key={a.id} duong_dan={`/api/toi/khieu-nai-luong/anh/${a.id}`} alt={a.ten} cao={120} />
+            ))}
+          </div>
+        </>
+      )}
 
       {xong ? (
         <>

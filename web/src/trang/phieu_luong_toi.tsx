@@ -3,9 +3,9 @@
 // Mot bang luong khong giai thich duoc la mot don khieu nai — nen o day hien tung khoan thu
 // nhap va tung khoan tru, khong gop thanh mot con so "phu cap".
 import { useState, type ReactNode } from 'react';
-import { goi } from '../api.ts';
+import { goi, gui_tep } from '../api.ts';
 import {
-  DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  AnhCoToken, DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
 
 interface KhoanPhieu {
@@ -60,6 +60,7 @@ interface KhieuNai {
   phan_hoi: string | null;
   tao_luc: string;
   thang: string;
+  anh: { id: string; ten: string }[];
 }
 
 const NHAN_TT_KN: Record<string, { ten: string; lop: string }> = {
@@ -272,23 +273,32 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
       </div>
 
       {(() => {
-        const cua_ky = (kn.du_lieu ?? []).filter((x) => x.thang === p.thang);
-        if (cua_ky.length === 0) return null;
+        // Danh sach GOP TAT CA khieu nai phieu luong cua minh (moi ky), kem tinh trang + phan hoi
+        // (ket qua xu ly) va anh dinh kem.
+        const ds_kn = kn.du_lieu ?? [];
+        if (ds_kn.length === 0) return null;
         return (
           <div className="the the-mong">
-            <h3 style={{ marginTop: 0 }}>Khiếu nại của bạn về kỳ này</h3>
-            {cua_ky.map((x) => (
+            <h3 style={{ marginTop: 0 }}>Khiếu nại phiếu lương của bạn</h3>
+            {ds_kn.map((x) => (
               <div key={x.id} className="hop-thong-bao" style={{ marginBottom: 8 }}>
                 <div>
                   <span className={`nhan ${NHAN_TT_KN[x.trang_thai]?.lop ?? 'nhan-mo'}`}>
                     {NHAN_TT_KN[x.trang_thai]?.ten ?? x.trang_thai}
                   </span>
-                  <span className="mo-ma"> {x.ma ?? ''} · {ngay_gio(x.tao_luc)}</span>
+                  <span className="mo-ma"> {x.ma ?? ''} · Kỳ {thang_viet(x.thang)} · {ngay_gio(x.tao_luc)}</span>
                 </div>
                 <div style={{ marginTop: 4 }}>{x.noi_dung}</div>
+                {x.anh.length > 0 && (
+                  <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {x.anh.map((a) => (
+                      <AnhCoToken key={a.id} duong_dan={`/api/toi/khieu-nai-luong/anh/${a.id}`} alt={a.ten} cao={72} />
+                    ))}
+                  </div>
+                )}
                 {x.phan_hoi !== null && (
                   <div className="hop-tot" style={{ marginTop: 6 }}>
-                    <strong>Phản hồi:</strong> {x.phan_hoi}
+                    <strong>Phản hồi (kết quả xử lý):</strong> {x.phan_hoi}
                   </div>
                 )}
               </div>
@@ -321,13 +331,23 @@ function HopThoaiKhieuNaiLuong(
   { phieu_id: string; thang: string; khi_dong: () => void; khi_xong: () => void },
 ): ReactNode {
   const [noi_dung, dat_noi_dung] = useState('');
+  const [anh, dat_anh] = useState<File | null>(null);
   const hd = dung_hanh_dong();
 
   const gui = (): void => {
-    void hd.chay(
-      () => goi('/api/toi/khieu-nai-luong', { method: 'POST', body: { phieu_luong_id: phieu_id, noi_dung } }),
-      'Đã gửi khiếu nại.',
-    ).then((ok) => { if (ok) khi_xong(); });
+    void hd.chay(async () => {
+      const kq = await goi<{ id: string }>(
+        '/api/toi/khieu-nai-luong',
+        { method: 'POST', body: { phieu_luong_id: phieu_id, noi_dung } },
+      );
+      // Co anh thi dinh kem sau khi tao khieu nai (can id vua tao).
+      if (anh !== null && typeof kq.id === 'string') {
+        const fd = new FormData();
+        fd.append('anh', anh);
+        await gui_tep(`/api/toi/khieu-nai-luong/${kq.id}/anh`, fd);
+      }
+      return kq;
+    }, 'Đã gửi khiếu nại.').then((ok) => { if (ok) khi_xong(); });
   };
 
   return (
@@ -340,6 +360,10 @@ function HopThoaiKhieuNaiLuong(
       <label htmlFor="knnd">Nội dung khiếu nại</label>
       <textarea id="knnd" value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)}
         placeholder="Ví dụ: Công thực tế tháng này là 24 nhưng phiếu ghi 22…" rows={4} />
+      <label htmlFor="knanh" style={{ marginTop: 10, display: 'block' }}>Ảnh đính kèm (tùy chọn)</label>
+      <input id="knanh" type="file" accept="image/*"
+        onChange={(e) => dat_anh(e.target.files?.[0] ?? null)} />
+      {anh !== null && <div className="mo-ta" style={{ marginTop: 4 }}>Đã chọn: {anh.name}</div>}
       <div className="hang-nut" style={{ marginTop: 12 }}>
         <button className="nut-lanh" disabled={hd.dang_chay || noi_dung.trim().length < 5} onClick={gui}>
           Gửi khiếu nại

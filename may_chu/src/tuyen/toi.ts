@@ -10,7 +10,7 @@ import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { gui_ngam, tai_khoan_nguoi_duyet } from '../su_kien/thong_bao_day.ts';
 import { do_geofence, type DiaDiem } from '../tien_ich/dia_ly.ts';
 import { doc_anh_selfie, luu_anh_selfie } from '../tien_ich/luu_anh.ts';
-import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
+import { doc_tep_ho_so, luu_tep_ho_so, lam_sach_ten, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { tra_loi_tro_ly } from '../ca_nhan/tro_ly.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import {
@@ -930,7 +930,11 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     const nv_id = nhan_vien_cua_toi(req);
     return truy_van(
       `select kn.id, kn.ma, kn.noi_dung, kn.trang_thai, kn.phan_hoi,
-              kn.tao_luc, kn.xu_ly_luc, k.thang
+              kn.tao_luc, kn.xu_ly_luc, k.thang,
+              coalesce((select json_agg(json_build_object('id', t.id, 'ten', t.ten_goc)
+                                        order by t.tao_luc)
+                          from ho_so_tep t
+                         where t.nhom = 'khieu_nai' and t.thuoc_id = kn.id), '[]') as anh
          from khieu_nai_luong kn
          join phieu_luong p on p.id = kn.phieu_luong_id
          join ky_luong k on k.id = p.ky_luong_id
@@ -938,6 +942,94 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         order by kn.tao_luc desc limit 100`,
       [nv_id],
     );
+  });
+
+  // Dinh kem ANH cho mot khieu nai CUA MINH (bang chung). Tai dung he thong tep ho so (nhom
+  // 'khieu_nai'). Chi anh; magic byte da kiem trong luu_tep_ho_so, chan them theo mime.
+  app.post('/khieu-nai-luong/:id/anh', {
+    bodyLimit: cau_hinh.tep_toi_da_byte + 1024 * 1024,
+  }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const p = req.params as Record<string, string>;
+    const kn_id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+
+    const kn = await truy_van_mot<{ id: string }>(
+      'select id from khieu_nai_luong where id = $1 and nhan_vien_id = $2', [kn_id, nv_id],
+    );
+    if (kn === null) throw new LoiKhongTim('Không tìm thấy khiếu nại của bạn.');
+
+    let du_lieu: Buffer | null = null;
+    let ten_goc = 'anh';
+    for await (const phan of req.parts({ limits: { fileSize: cau_hinh.tep_toi_da_byte } })) {
+      if (phan.type === 'file') {
+        if (phan.fieldname !== 'anh') { await phan.toBuffer(); continue; }
+        ten_goc = lam_sach_ten(phan.filename ?? 'anh');
+        du_lieu = await phan.toBuffer();
+      }
+    }
+    if (du_lieu === null) throw new LoiDauVao('Thiếu ảnh đính kèm.');
+
+    const nv = await truy_van_mot<{ ma_nv: string; ho_ten: string }>(
+      'select ma_nv, ho_ten from nhan_vien where id = $1', [nv_id],
+    );
+    const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, {
+      ma_nv: nv?.ma_nv ?? 'NV', ho_ten: nv?.ho_ten ?? '',
+      nhom: 'khieu_nai', ngay: ngay_dia_phuong(new Date()),
+    });
+    if (!da_luu.mime.startsWith('image/')) {
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* da co loi that o tren */ });
+      throw new LoiDauVao('Chỉ đính kèm được tệp ảnh (jpg, png…).');
+    }
+    let moi: Record<string, unknown> | null;
+    try {
+      moi = await truy_van_mot(
+        `insert into ho_so_tep(id, nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
+                               kich_thuoc, tai_len_boi)
+         values ($1,$2,'khieu_nai',$3,$4,$5,$6,$7,$8)
+         returning id, ten_goc`,
+        [da_luu.ma_tep, nv_id, kn_id, ten_goc, da_luu.ten_luu, da_luu.mime, da_luu.kich_thuoc, nd.sub],
+      );
+    } catch (loi) {
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* da co loi that o tren */ });
+      throw loi;
+    }
+    await ghi_nhat_ky(nd.sub, 'khieu_nai_luong.dinh_kem_anh', 'khieu_nai_luong', kn_id,
+      { tep_id: moi?.['id'] ?? null }, req.ip);
+    return res.code(201).send({ id: moi?.['id'] ?? null, ten: ten_goc });
+  });
+
+  // Xem ANH dinh kem cua mot khieu nai: chu khieu nai, hoac admin/nhan su, hoac truong phong cua
+  // nguoi do. Tra 404 (khong phai 403) neu khong duoc xem — de khong lo su ton tai cua anh.
+  app.get('/khieu-nai-luong/anh/:tep_id', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const p = req.params as Record<string, string>;
+    const tep_id = uuid({ id: p['tep_id'] }, 'id', { bat_buoc: true }) as string;
+    const t = await truy_van_mot<{
+      ten_luu: string; kieu_mime: string; nhan_vien_id: string | null; phong_ban_id: string | null;
+    }>(
+      `select t.ten_luu, t.kieu_mime, t.nhan_vien_id, nv.phong_ban_id
+         from ho_so_tep t left join nhan_vien nv on nv.id = t.nhan_vien_id
+        where t.id = $1 and t.nhom = 'khieu_nai'`,
+      [tep_id],
+    );
+    if (t === null) throw new LoiKhongTim('Không tìm thấy ảnh.');
+    if (!xem_duoc_tat_ca(nd)) {
+      let duoc = nd.nv !== null && nd.nv === t.nhan_vien_id;
+      if (!duoc && nd.vai_tro === 'truong_phong' && t.phong_ban_id !== null) {
+        const cung = await truy_van_mot<{ ok: boolean }>(
+          'select (phong_ban_id = $2) as ok from nhan_vien where id = $1', [nd.nv, t.phong_ban_id],
+        );
+        duoc = cung?.ok === true;
+      }
+      if (!duoc) throw new LoiKhongTim('Không tìm thấy ảnh.');
+    }
+    const buf = await doc_tep_ho_so(t.ten_luu);
+    if (buf === null) throw new LoiKhongTim('Không tìm thấy tệp ảnh trên đĩa.');
+    return res
+      .header('content-type', t.kieu_mime)
+      .header('cache-control', 'private, max-age=3600')
+      .send(buf);
   });
 
   /**
