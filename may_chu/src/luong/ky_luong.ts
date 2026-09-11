@@ -38,6 +38,14 @@ export interface ChinhSachTra {
   t7_nua_cong: boolean;
 }
 
+/**
+ * Tu thang nay tro di, viec mien 3 lan di muon/thang BAT BUOC phai co don xin phep duyet
+ * truoc han (07:30). Truoc do (giai doan chuyen tiep) van mien tu dong khong can don.
+ *
+ * So sanh chuoi 'YYYY-MM' — dung truc tiep vi dinh dang co dinh, khop thu tu thoi gian.
+ */
+const THANG_BAT_BUOC_DON_DI_MUON = '2026-11';
+
 /** Tham so phap ly co hieu luc tai ngay dau cua ky. */
 export async function tham_so_cho_thang(thang: string): Promise<
   { id: string; ts: ThamSoLuong; cs: ChinhSachTra } | null
@@ -70,6 +78,8 @@ export async function tham_so_cho_thang(thang: string): Promise<
         moc_nua_ngay_phut: gio_sang_phut(String(d['di_muon_moc_nua_ngay'] ?? '08:30')),
         muc_50k: Number(d['di_muon_muc_50k'] ?? 50000),
         mien_moi_thang: Number(d['di_muon_mien_moi_thang'] ?? 3),
+        // Giai doan chuyen tiep: truoc THANG_BAT_BUOC_DON_DI_MUON van mien tu dong khong can don.
+        yeu_cau_don_mien: thang >= THANG_BAT_BUOC_DON_DI_MUON,
       },
       di_muon_han_don_phut: gio_sang_phut(String(d['di_muon_han_don'] ?? '07:30')),
       t7_nua_cong: Boolean(d['t7_nua_cong'] ?? true),
@@ -138,6 +148,10 @@ interface DongNhanVien {
   loai_hop_dong: string | null;
   /** Lich nghi le theo noi lam viec (mac dinh 'vn'). */
   lich_nghi_ma: string;
+  /** Moc phat 50k RIENG cua nguoi nay ('HH:MM:SS'). Null = dung moc chung cong ty. */
+  di_muon_moc_50k: string | null;
+  /** Moc tru nua ngay RIENG cua nguoi nay ('HH:MM:SS'). Null = dung moc chung cong ty. */
+  di_muon_moc_nua_ngay: string | null;
 }
 
 /**
@@ -187,7 +201,9 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
             coalesce(bc.phut_ot, 0)::int                           as phut_ot,
             coalesce(pt.so_nguoi, 0)::int                          as so_nguoi_phu_thuoc,
             hd.loai                                               as loai_hop_dong,
-            coalesce(nlv.lich_nghi_ma, 'vn')                      as lich_nghi_ma
+            coalesce(nlv.lich_nghi_ma, 'vn')                      as lich_nghi_ma,
+            nv.di_muon_moc_50k::text                              as di_muon_moc_50k,
+            nv.di_muon_moc_nua_ngay::text                         as di_muon_moc_nua_ngay
        from nhan_vien nv
        left join ca_lam cl on cl.id = nv.ca_lam_id
        left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
@@ -381,9 +397,18 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       // dong tu dong nay bien mat o buoc delete duoi. Nguoi da GO TAY khoan do thi ton trong.
       // Mien phat: khong sinh dong phat di muon nao — cac dong tu dong cu (neu co) se bi xoa
       // o buoc delete ben duoi vi khong con nam trong `sinh`.
+      // Moc phat RIENG cua nguoi nay (khai o ho so nhan su) ghi de moc chung cong ty; khong
+      // khai thi dung moc chung. Vd ERP100: ca vao 08:30 -> phat 50k tu 08:40, nua ngay tu 09:00.
+      const cau_hinh_dm: CauHinhDiMuon = {
+        ...ts.cs.di_muon,
+        moc_50k_phut: nv.di_muon_moc_50k !== null
+          ? gio_sang_phut(nv.di_muon_moc_50k) : ts.cs.di_muon.moc_50k_phut,
+        moc_nua_ngay_phut: nv.di_muon_moc_nua_ngay !== null
+          ? gio_sang_phut(nv.di_muon_moc_nua_ngay) : ts.cs.di_muon.moc_nua_ngay_phut,
+      };
       const muon = mien_phat
         ? { so_lan_50k_phat: 0, tien_50k: 0, so_lan_nua_ngay: 0 }
-        : tinh_phat_di_muon(muon_theo_nguoi.get(nv.nhan_vien_id) ?? [], ts.cs.di_muon);
+        : tinh_phat_di_muon(muon_theo_nguoi.get(nv.nhan_vien_id) ?? [], cau_hinh_dm);
       if (muon.so_lan_50k_phat > 0 && !go_tay.has('tru_di_muon')) {
         sinh.push({
           khoan_ma: 'tru_di_muon', so_luong: muon.so_lan_50k_phat,

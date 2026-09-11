@@ -70,6 +70,60 @@ test('don KHONG mien duoc tang nua ngay (>= 08:30)', () => {
   assert.equal(kq.so_lan_mien, 0);
 });
 
+test('giai doan an han (yeu_cau_don_mien=false): mien 3 lan/thang KHONG can don', () => {
+  const ngay = [
+    { phut_trong_ngay: 8 * 60 + 15, co_don_truoc_han: false },
+    { phut_trong_ngay: 8 * 60 + 15, co_don_truoc_han: false },
+    { phut_trong_ngay: 8 * 60 + 15, co_don_truoc_han: false },
+  ];
+  const kq = tinh_phat_di_muon(ngay, { ...CH, yeu_cau_don_mien: false });
+  assert.equal(kq.so_lan_50k, 3);
+  assert.equal(kq.so_lan_mien, 3);
+  assert.equal(kq.so_lan_50k_phat, 0);
+  assert.equal(kq.tien_50k, 0);
+});
+
+test('an han: qua 3 lan/thang thi tu lan thu 4 van phat du khong don', () => {
+  const ngay = [
+    { phut_trong_ngay: 8 * 60 + 15, co_don_truoc_han: false },
+    { phut_trong_ngay: 8 * 60 + 15, co_don_truoc_han: false },
+    { phut_trong_ngay: 8 * 60 + 15, co_don_truoc_han: false },
+    { phut_trong_ngay: 8 * 60 + 15, co_don_truoc_han: false },
+  ];
+  const kq = tinh_phat_di_muon(ngay, { ...CH, yeu_cau_don_mien: false });
+  assert.equal(kq.so_lan_mien, 3);
+  assert.equal(kq.so_lan_50k_phat, 1);
+  assert.equal(kq.tien_50k, 50000);
+});
+
+test('an han KHONG mien duoc tang nua ngay (>= 08:30)', () => {
+  const kq = tinh_phat_di_muon([
+    { phut_trong_ngay: 9 * 60, co_don_truoc_han: false },
+  ], { ...CH, yeu_cau_don_mien: false });
+  assert.equal(kq.so_lan_nua_ngay, 1);
+  assert.equal(kq.so_lan_mien, 0);
+});
+
+test('bat buoc don (yeu_cau_don_mien=true): khong don -> khong mien', () => {
+  const kq = tinh_phat_di_muon([
+    { phut_trong_ngay: 8 * 60 + 15, co_don_truoc_han: false },
+  ], { ...CH, yeu_cau_don_mien: true });
+  assert.equal(kq.so_lan_mien, 0);
+  assert.equal(kq.so_lan_50k_phat, 1);
+});
+
+test('moc phat RIENG (ERP100): 08:40 moi phat 50k, 09:00 moi tru nua ngay', () => {
+  const ch_erp100 = { ...CH, moc_50k_phut: 8 * 60 + 40, moc_nua_ngay_phut: 9 * 60 };
+  const kq = tinh_phat_di_muon([
+    { phut_trong_ngay: 8 * 60 + 20, co_don_truoc_han: false }, // 08:20 -> khong phat (< 08:40)
+    { phut_trong_ngay: 8 * 60 + 45, co_don_truoc_han: false }, // 08:45 -> tang 50k
+    { phut_trong_ngay: 9 * 60 + 5, co_don_truoc_han: false },  // 09:05 -> nua ngay
+  ], ch_erp100);
+  assert.equal(kq.so_lan_50k, 1);
+  assert.equal(kq.so_lan_nua_ngay, 1);
+  assert.equal(kq.so_lan_50k_phat, 1);
+});
+
 test('gio_sang_phut doc chuoi PG', () => {
   assert.equal(gio_sang_phut('08:10:00'), 490);
   assert.equal(gio_sang_phut('08:30'), 510);
