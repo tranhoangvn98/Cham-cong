@@ -21,6 +21,7 @@ import { CAC_LOAI, MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_do
 import { don_cua_nhan_vien, huy_don, tao_don } from '../don_tu/nghiep_vu.ts';
 import { tu_dong_quyet_don, TU_NGAY_AP } from '../don_tu/tu_dong_duyet.ts';
 import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
+import { email_nhan_vien_tra_loi } from '../luong/khieu_nai_email.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, khoang_ngay, luan_ly, ngay_bat_buoc, than, trong_tap, uuid,
   LoiDauVao, LoiKhongQuyen, LoiKhongTim, LoiXungDot,
@@ -975,6 +976,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       noi_dung: `${await ten_nhan_vien(nv_id)} vừa trả lời khiếu nại phiếu lương.`,
       du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: kn_id },
     });
+    void email_nhan_vien_tra_loi(kn_id, noi_dung);
     return res.code(201).send({ ok: true });
   });
 

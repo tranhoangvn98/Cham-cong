@@ -17,6 +17,7 @@ import {
 import { bang_luong_xuat } from '../luong/bang_xuat.ts';
 import { xuat_bang_luong_erp } from '../luong/xuat_mau_erp.ts';
 import { gui_phieu_luong_ky } from '../luong/phieu_luong_email.ts';
+import { email_hr_tra_loi, email_hr_xu_ly } from '../luong/khieu_nai_email.ts';
 import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { ghi_nhan_am_tham } from '../sharepoint/dong_bo.ts';
 import { khoang_thang } from '../tien_ich/thoi_gian.ts';
@@ -1016,6 +1017,7 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       noi_dung: phan_hoi ?? 'Phòng Nhân sự đã cập nhật khiếu nại phiếu lương của bạn.',
       du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: id },
     });
+    void email_hr_xu_ly(id, trang_thai, phan_hoi);
     return { ok: true };
   });
 
@@ -1053,6 +1055,7 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       noi_dung: 'Phòng Nhân sự vừa trả lời khiếu nại phiếu lương của bạn.',
       du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: id },
     });
+    void email_hr_tra_loi(id, noi_dung);
     return { ok: true };
   });
 
