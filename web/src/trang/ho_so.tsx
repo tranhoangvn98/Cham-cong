@@ -959,6 +959,8 @@ const O_FORM: Record<Nhom, OForm[]> = {
     { ten: 'phu_cap', nhan: 'Phụ cấp (₫)', kieu: 'so' },
     { ten: 'hinh_thuc', nhan: 'Hình thức', kieu: 'chon', chon: 'hinh_thuc_luong' },
     { ten: 'so_quyet_dinh', nhan: 'Số quyết định' },
+    { ten: 'chung_tu_mo_ta', nhan: 'Chứng từ duyệt', bat_buoc: true, rong: true,
+      goi_y: 'Số/tên quyết định · biên bản làm căn cứ duyệt mức lương (bắt buộc — kiểm soát lương).' },
     { ten: 'ly_do', nhan: 'Lý do', goi_y: 'Ví dụ: ký HĐ chính thức, tăng lương định kỳ.' },
     { ten: 'ghi_chu', nhan: 'Ghi chú', kieu: 'van_ban', rong: true },
   ],

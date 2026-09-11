@@ -786,15 +786,22 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       ? null
       : so_tien(b, 'luong_dong_bh');
 
+    // YC-1: chan cung — nhap muc luong phai kem CHUNG TU duyet. nguoi_duyet_id = nguoi dang
+    // nhap (chiu trach nhiem), chung tu do form nhap.
+    const chung_tu_mo_ta = chuoi_bat_buoc(b, 'chung_tu_mo_ta', { toi_da: 300, toi_thieu: 3 });
+    const nguoi_duyet_id = nd.sub;
+
     await thuc_thi(
       `insert into quyet_dinh_luong
-         (nhan_vien_id, hieu_luc_tu, luong_co_ban, phu_cap, luong_dong_bh, hinh_thuc, ly_do, tao_boi)
-       values ($1, $2, $3, $4, $5, 'thang', 'Nhập từ bảng lương', $6)
+         (nhan_vien_id, hieu_luc_tu, luong_co_ban, phu_cap, luong_dong_bh, hinh_thuc, ly_do,
+          tao_boi, nguoi_duyet_id, chung_tu_mo_ta)
+       values ($1, $2, $3, $4, $5, 'thang', 'Nhập từ bảng lương', $6, $7, $8)
        on conflict (nhan_vien_id, hieu_luc_tu) do update set
          luong_co_ban = excluded.luong_co_ban, phu_cap = excluded.phu_cap,
-         luong_dong_bh = coalesce(excluded.luong_dong_bh, quyet_dinh_luong.luong_dong_bh)`,
+         luong_dong_bh = coalesce(excluded.luong_dong_bh, quyet_dinh_luong.luong_dong_bh),
+         nguoi_duyet_id = excluded.nguoi_duyet_id, chung_tu_mo_ta = excluded.chung_tu_mo_ta`,
       [p.nhan_vien_id, hieu_luc_tu, so_tien(b, 'luong_co_ban'), so_tien(b, 'phu_cap'),
-       luong_dong_bh, nd.sub],
+       luong_dong_bh, nd.sub, nguoi_duyet_id, chung_tu_mo_ta],
     );
 
     await tinh_ky_luong(k.id, k.thang);

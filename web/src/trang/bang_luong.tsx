@@ -921,6 +921,8 @@ function HopThoaiSuaPhieu(
   const bh_khai_ban_dau = Number(phieu.luong_dong_bh) !== Number(phieu.luong_co_ban) + Number(phieu.phu_cap)
     ? String(Number(phieu.luong_dong_bh)) : '';
   const [luong_dong_bh, dat_luong_dong_bh] = useState(bh_khai_ban_dau);
+  // YC-1: doi muc luong phai kem chung tu duyet.
+  const [chung_tu, dat_chung_tu] = useState('');
   const admin = la_admin();
   const hd = dung_hanh_dong();
 
@@ -952,6 +954,14 @@ function HopThoaiSuaPhieu(
         {' '}hiệu lực từ đầu tháng của kỳ — các tháng sau vẫn giữ mức này cho tới khi có quyết định mới.
         Thử việc tự tính 85% theo tỷ lệ trong Tham số lương.
       </p>
+
+      {luong_doi && (
+        <label className="truong" style={{ marginTop: 8 }}>
+          <span style={{ color: '#b00000' }}>Chứng từ duyệt mức lương (bắt buộc khi đổi lương) *</span>
+          <input value={chung_tu} onChange={(e) => dat_chung_tu(e.target.value)}
+            placeholder="VD: QĐ nâng lương số 12/2026 ngày 01/08 / biên bản thỏa thuận…" />
+        </label>
+      )}
 
       <h3 style={{ margin: '1rem 0 0.5rem' }}>Điều chỉnh riêng kỳ này</h3>
       <p className="mo-ta">
@@ -1044,7 +1054,7 @@ function HopThoaiSuaPhieu(
 
       <div className="hang-nut">
         <button
-          disabled={hd.dang_chay}
+          disabled={hd.dang_chay || (luong_doi && chung_tu.trim().length < 3)}
           onClick={() => void hd.chay(
             async () => {
               // Luu luong cung TRUOC (tao quyet dinh luong + tinh lai), roi luu dieu chinh rieng
@@ -1057,6 +1067,7 @@ function HopThoaiSuaPhieu(
                     phu_cap: Number(phu_cap) || 0,
                     // Trong = 0 = dong theo luong that; co so = khai muc rieng.
                     luong_dong_bh: luong_dong_bh === '' ? 0 : Number(luong_dong_bh) || 0,
+                    chung_tu_mo_ta: chung_tu,
                   },
                 });
               }
