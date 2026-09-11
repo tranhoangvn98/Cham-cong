@@ -960,12 +960,17 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     );
     if (p === null) throw new LoiKhongTim('Không tìm thấy phiếu lương của bạn.');
 
+    // Cho gui NHIEU khieu nai cho cung mot phieu (nhieu van de khac nhau). Chi chan gui TRUNG Y HET
+    // (cung noi dung) khi con dang mo — de tranh nhan nham 2 lan; noi dung khac thi cho qua.
     const trung = await truy_van_mot<{ id: string }>(
       `select id from khieu_nai_luong
-        where nhan_vien_id = $1 and phieu_luong_id = $2 and trang_thai in ('moi','dang_xem') limit 1`,
-      [nv_id, phieu_luong_id],
+        where nhan_vien_id = $1 and phieu_luong_id = $2 and trang_thai in ('moi','dang_xem')
+          and btrim(noi_dung) = btrim($3) limit 1`,
+      [nv_id, phieu_luong_id, noi_dung],
     );
-    if (trung !== null) throw new LoiXungDot('Bạn đã có một khiếu nại đang mở cho phiếu lương này.');
+    if (trung !== null) {
+      throw new LoiXungDot('Bạn vừa gửi một khiếu nại y hệt cho phiếu này (đang được xử lý).');
+    }
 
     const dong = await truy_van_mot<{ id: string; ma: string }>(
       `insert into khieu_nai_luong (phieu_luong_id, nhan_vien_id, noi_dung)
