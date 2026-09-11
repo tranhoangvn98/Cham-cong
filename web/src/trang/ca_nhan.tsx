@@ -365,7 +365,7 @@ function chu_dau(ho_ten: string | null): string {
 
 // ==================================================================== trang goc
 
-type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'ca_nhan';
+type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'phep' | 'ca_nhan';
 type FormMo = 'nghi' | 'giai' | 'khac';
 
 // Ten icon KHONG kem tien to `bt-` (giong MENU o App.tsx) — noi render tu ghep `bt bt-${icon}`.
@@ -376,6 +376,7 @@ const CAC_TAB: { ma: Tab; ten: string; icon: string }[] = [
   { ma: 'bang_cong', ten: 'Bảng công', icon: 'list-details' },
   { ma: 'don_tu', ten: 'Đơn từ', icon: 'file-text' },
   { ma: 'luong', ten: 'Lương', icon: 'receipt-2' },
+  { ma: 'phep', ten: 'Phép', icon: 'calendar-stats' },
   { ma: 'ca_nhan', ten: 'Cá nhân', icon: 'user-check' },
 ];
 
@@ -384,6 +385,7 @@ const TEN_MAN: Record<Exclude<Tab, 'trang_chu'>, [string, string]> = {
   bang_cong: ['Bảng công của tôi', 'Số liệu chấm công theo tháng'],
   don_tu: ['Nghỉ phép & đơn từ', 'Xin nghỉ, giải trình, theo dõi trạng thái duyệt'],
   luong: ['Phiếu lương', 'Cơ sở tính lương của kỳ'],
+  phep: ['Quản lý phép', 'Quỹ phép năm & lịch sử nghỉ của bạn'],
   ca_nhan: ['Cá nhân', 'Hồ sơ, tài liệu, hợp đồng, BHXH, cài đặt'],
 };
 
@@ -576,6 +578,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
                     <ManDonTu hom_nay_nap={hom_nay_nap} mo_form={mo_form} dat_mo_form={dat_mo_form} />
                   )}
                   {tab === 'luong' && <ManLuong />}
+                  {tab === 'phep' && <NoiDungPhep />}
                   {tab === 'ca_nhan' && <ManCaNhan />}
                 </>
               )}
@@ -1943,7 +1946,7 @@ interface LuongToi {
 
 // ==================================================================== man ca nhan
 
-type TabCN = 'chung' | 'tai_lieu' | 'hop_dong' | 'luong' | 'phep' | 'phu_thuoc' | 'bhxh'
+type TabCN = 'chung' | 'tai_lieu' | 'hop_dong' | 'luong' | 'phu_thuoc' | 'bhxh'
   | 'cong_viec' | 'thiet_bi' | 'cai_dat';
 
 const CAC_TAB_CN: { ma: TabCN; ten: string }[] = [
@@ -1951,7 +1954,6 @@ const CAC_TAB_CN: { ma: TabCN; ten: string }[] = [
   { ma: 'tai_lieu', ten: 'Tài liệu' },
   { ma: 'hop_dong', ten: 'Hợp đồng' },
   { ma: 'luong', ten: 'Lương' },
-  { ma: 'phep', ten: 'Quản lý phép' },
   { ma: 'phu_thuoc', ten: 'Người phụ thuộc' },
   { ma: 'bhxh', ten: 'BHXH – BHYT' },
   { ma: 'cong_viec', ten: 'Công việc' },
@@ -2062,7 +2064,6 @@ function ManCaNhan(): ReactNode {
       {tab === 'tai_lieu' && <NoiDungTaiLieu du_lieu={du_lieu} ty_le_tl={ty_le_tl} />}
       {tab === 'hop_dong' && <NoiDungHopDong du_lieu={du_lieu} />}
       {tab === 'luong' && <NoiDungLuongCN du_lieu={du_lieu} />}
-      {tab === 'phep' && <NoiDungPhep />}
       {tab === 'phu_thuoc' && <NoiDungPhuThuoc du_lieu={du_lieu} />}
       {tab === 'bhxh' && <NoiDungBhxh du_lieu={du_lieu} />}
       {tab === 'cong_viec' && <NoiDungCongViec du_lieu={du_lieu} />}
