@@ -4,7 +4,7 @@
 // KHONG tu sua luong o day — day la kenh minh bach & phan hoi, con sua so lieu van theo quy trinh
 // ky luong (mo chot -> sua -> duyet lai).
 import { useState, type ReactNode } from 'react';
-import { goi, chi_xem_quan_tri } from '../api.ts';
+import { goi, chi_xem_quan_tri, la_admin } from '../api.ts';
 import { LienKet } from '../dinh_tuyen.tsx';
 import {
   AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
@@ -150,6 +150,14 @@ function HopThoaiXuLy(
     ).then((ok) => { if (ok) { dat_tra_loi_nd(''); khi_xong(); } });
   };
 
+  const la_ad = la_admin();
+  const mo_lai = (): void => {
+    void hd.chay(
+      () => goi(`/api/khieu-nai-luong/${d.id}/mo-lai`, { method: 'POST' }),
+      'Đã mở lại khiếu nại để trao đổi / giải trình thêm.',
+    ).then((ok) => { if (ok) khi_xong(); });
+  };
+
   return (
     <HopThoai tieu_de={`Khiếu nại lương ${d.ma ?? ''} — ${d.ho_ten}`} khi_dong={khi_dong} rong>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
@@ -203,6 +211,13 @@ function HopThoaiXuLy(
             {d.phan_hoi !== null && <> {d.phan_hoi}</>}
             {d.xu_ly_luc !== null && <div className="mo-ta">Xử lý lúc {ngay_gio(d.xu_ly_luc)}</div>}
           </div>
+          {la_ad && (
+            <div className="hang-nut" style={{ marginTop: 8 }}>
+              <button className="nut-phang" disabled={hd.dang_chay} onClick={mo_lai}>
+                Mở lại để trao đổi / giải trình thêm
+              </button>
+            </div>
+          )}
         </>
       ) : chi_xem ? (
         <div className="hop-thong-bao hop-tin">

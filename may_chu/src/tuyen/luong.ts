@@ -1021,6 +1021,40 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
+  /**
+   * MO LAI mot khieu nai da dong (chap_nhan / tu_choi) de trao doi / giai trinh them.
+   * CHI ADMIN duoc thuc hien. Dua ve 'dang_xem' (mo), xoa xu_ly_luc; giu lai phan_hoi/thread
+   * lam lich su. Sau khi mo lai, nhan su co the tra loi / xu ly lai nhu binh thuong.
+   */
+  app.post('/khieu-nai-luong/:id/mo-lai', { preHandler: can_admin }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const kn = await truy_van_mot<{ nhan_vien_id: string; trang_thai: string }>(
+      'select nhan_vien_id, trang_thai from khieu_nai_luong where id = $1', [id],
+    );
+    if (kn === null) throw new LoiKhongTim('Không tìm thấy khiếu nại.');
+    if (kn.trang_thai !== 'chap_nhan' && kn.trang_thai !== 'tu_choi') {
+      throw new LoiXungDot('Chỉ mở lại được khiếu nại đã đóng (đã chấp nhận / đã từ chối).');
+    }
+    await thuc_thi(
+      `update khieu_nai_luong set trang_thai = 'dang_xem', xu_ly_luc = null,
+              nguoi_xu_ly = $2, cap_nhat_luc = now()
+        where id = $1`,
+      [id, nd.sub],
+    );
+    await ghi_nhat_ky(nd.sub, 'khieu_nai_luong.mo_lai', 'khieu_nai_luong', id,
+      { tu_trang_thai: kn.trang_thai }, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_cua_nhan_vien(kn.nhan_vien_id).catch(() => []),
+      tieu_de: 'Khiếu nại phiếu lương được mở lại',
+      noi_dung: 'Phòng Nhân sự đã mở lại khiếu nại phiếu lương của bạn để trao đổi / giải trình thêm.',
+      du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: id },
+    });
+    void email_hr_xu_ly(id, 'dang_xem',
+      'Khiếu nại của bạn được mở lại để trao đổi / giải trình thêm.');
+    return { ok: true };
+  });
+
   /** Nhan su TRA LOI vao thread khieu nai (trao doi voi nguoi lao dong) — khi ticket con mo. */
   app.post('/khieu-nai-luong/:id/tra-loi', { preHandler: can_nhan_su }, async (req) => {
     const nd = nguoi_dung_hien_tai(req);
