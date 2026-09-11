@@ -959,7 +959,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
               coalesce((select json_agg(json_build_object('id', t.id, 'ten', t.ten_goc)
                                         order by t.tao_luc)
                           from ho_so_tep t
-                         where t.nhom = 'khieu_nai' and t.thuoc_id = kn.id), '[]') as anh
+                         where t.nhom = 'khieu_nai' and t.thuoc_id = kn.id), '[]') as anh,
+              coalesce((select json_agg(json_build_object('vai', r.vai, 'noi_dung', r.noi_dung,
+                                                          'tao_luc', r.tao_luc) order by r.tao_luc)
+                          from khieu_nai_luong_tra_loi r
+                         where r.khieu_nai_id = kn.id), '[]') as tra_loi
          from khieu_nai_luong kn
          join nhan_vien nv on nv.id = kn.nhan_vien_id
          left join phong_ban pb on pb.id = nv.phong_ban_id
@@ -1010,6 +1014,43 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         : trang_thai === 'tu_choi' ? 'Khiếu nại phiếu lương bị từ chối'
           : 'Khiếu nại phiếu lương đang được xem xét',
       noi_dung: phan_hoi ?? 'Phòng Nhân sự đã cập nhật khiếu nại phiếu lương của bạn.',
+      du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: id },
+    });
+    return { ok: true };
+  });
+
+  /** Nhan su TRA LOI vao thread khieu nai (trao doi voi nguoi lao dong) — khi ticket con mo. */
+  app.post('/khieu-nai-luong/:id/tra-loi', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const noi_dung = chuoi_bat_buoc(than(req.body) as Record<string, unknown>, 'noi_dung',
+      { toi_thieu: 1, toi_da: 2000 });
+    const kn = await truy_van_mot<{ nhan_vien_id: string; trang_thai: string }>(
+      'select nhan_vien_id, trang_thai from khieu_nai_luong where id = $1', [id],
+    );
+    if (kn === null) throw new LoiKhongTim('Không tìm thấy khiếu nại.');
+    if (kn.trang_thai === 'chap_nhan' || kn.trang_thai === 'tu_choi') {
+      throw new LoiXungDot('Khiếu nại đã đóng, không trả lời thêm được.');
+    }
+    await trong_giao_dich(async (khach) => {
+      await khach.query(
+        `insert into khieu_nai_luong_tra_loi (khieu_nai_id, vai, nguoi_dung_id, noi_dung)
+         values ($1, 'nhan_su', $2, $3)`,
+        [id, nd.sub, noi_dung],
+      );
+      if (kn.trang_thai === 'moi') {
+        await khach.query(
+          `update khieu_nai_luong set trang_thai = 'dang_xem', nguoi_xu_ly = $2, cap_nhat_luc = now()
+            where id = $1`,
+          [id, nd.sub],
+        );
+      }
+    });
+    await ghi_nhat_ky(nd.sub, 'khieu_nai_luong.tra_loi', 'khieu_nai_luong', id, null, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_cua_nhan_vien(kn.nhan_vien_id).catch(() => []),
+      tieu_de: 'Khiếu nại phiếu lương có phản hồi mới',
+      noi_dung: 'Phòng Nhân sự vừa trả lời khiếu nại phiếu lương của bạn.',
       du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: id },
     });
     return { ok: true };

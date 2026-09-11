@@ -7,7 +7,8 @@ import { useState, type ReactNode } from 'react';
 import { goi, chi_xem_quan_tri } from '../api.ts';
 import { LienKet } from '../dinh_tuyen.tsx';
 import {
-  AnhCoToken, DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  type TinNhanKN,
 } from '../thanh_phan.tsx';
 
 const NHAN_TT: Record<string, { ten: string; lop: string }> = {
@@ -32,6 +33,7 @@ interface Dong {
   thang: string;
   thuc_linh: number;
   anh: { id: string; ten: string }[];
+  tra_loi: TinNhanKN[];
 }
 
 const tien = (v: unknown): string => {
@@ -129,6 +131,7 @@ function HopThoaiXuLy(
   { d, khi_dong, khi_xong }: { d: Dong; khi_dong: () => void; khi_xong: () => void },
 ): ReactNode {
   const [phan_hoi, dat_phan_hoi] = useState(d.phan_hoi ?? '');
+  const [tra_loi_nd, dat_tra_loi_nd] = useState('');
   const hd = dung_hanh_dong();
   const chi_xem = chi_xem_quan_tri();
   const xong = d.trang_thai === 'chap_nhan' || d.trang_thai === 'tu_choi';
@@ -138,6 +141,13 @@ function HopThoaiXuLy(
       () => goi(`/api/khieu-nai-luong/${d.id}/xu-ly`, { method: 'POST', body: { trang_thai, phan_hoi } }),
       chu,
     ).then((ok) => { if (ok) khi_xong(); });
+  };
+
+  const gui_tra_loi = (): void => {
+    void hd.chay(
+      () => goi(`/api/khieu-nai-luong/${d.id}/tra-loi`, { method: 'POST', body: { noi_dung: tra_loi_nd } }),
+      'Đã gửi trả lời.',
+    ).then((ok) => { if (ok) { dat_tra_loi_nd(''); khi_xong(); } });
   };
 
   return (
@@ -160,8 +170,19 @@ function HopThoaiXuLy(
         </div>
       </div>
 
-      <h3>Nội dung khiếu nại</h3>
-      <blockquote>{d.noi_dung}</blockquote>
+      <h3>Trao đổi</h3>
+      <ThreadKhieuNai noi_dung={d.noi_dung} tao_luc={d.tao_luc} tra_loi={d.tra_loi} la_admin />
+
+      {!xong && !chi_xem && (
+        <div style={{ marginTop: 4, marginBottom: 8 }}>
+          <textarea value={tra_loi_nd} onChange={(e) => dat_tra_loi_nd(e.target.value)} rows={2}
+            placeholder="Trả lời / trao đổi với người lao động…" />
+          <div className="hang-nut" style={{ marginTop: 6 }}>
+            <button className="nut-phang" disabled={hd.dang_chay || tra_loi_nd.trim().length < 1}
+              onClick={gui_tra_loi}>Gửi trả lời</button>
+          </div>
+        </div>
+      )}
 
       {d.anh.length > 0 && (
         <>

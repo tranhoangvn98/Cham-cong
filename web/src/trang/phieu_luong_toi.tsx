@@ -5,7 +5,8 @@
 import { useState, type ReactNode } from 'react';
 import { goi, gui_tep } from '../api.ts';
 import {
-  AnhCoToken, DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  type TinNhanKN,
 } from '../thanh_phan.tsx';
 
 interface KhoanPhieu {
@@ -61,6 +62,7 @@ interface KhieuNai {
   tao_luc: string;
   thang: string;
   anh: { id: string; ten: string }[];
+  tra_loi: TinNhanKN[];
 }
 
 const NHAN_TT_KN: Record<string, { ten: string; lop: string }> = {
@@ -272,40 +274,9 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
         </button>
       </div>
 
-      {(() => {
-        // Danh sach GOP TAT CA khieu nai phieu luong cua minh (moi ky), kem tinh trang + phan hoi
-        // (ket qua xu ly) va anh dinh kem.
-        const ds_kn = kn.du_lieu ?? [];
-        if (ds_kn.length === 0) return null;
-        return (
-          <div className="the the-mong">
-            <h3 style={{ marginTop: 0 }}>Khiếu nại phiếu lương của bạn</h3>
-            {ds_kn.map((x) => (
-              <div key={x.id} className="hop-thong-bao" style={{ marginBottom: 8 }}>
-                <div>
-                  <span className={`nhan ${NHAN_TT_KN[x.trang_thai]?.lop ?? 'nhan-mo'}`}>
-                    {NHAN_TT_KN[x.trang_thai]?.ten ?? x.trang_thai}
-                  </span>
-                  <span className="mo-ma"> {x.ma ?? ''} · Kỳ {thang_viet(x.thang)} · {ngay_gio(x.tao_luc)}</span>
-                </div>
-                <div style={{ marginTop: 4 }}>{x.noi_dung}</div>
-                {x.anh.length > 0 && (
-                  <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {x.anh.map((a) => (
-                      <AnhCoToken key={a.id} duong_dan={`/api/toi/khieu-nai-luong/anh/${a.id}`} alt={a.ten} cao={72} />
-                    ))}
-                  </div>
-                )}
-                {x.phan_hoi !== null && (
-                  <div className="hop-tot" style={{ marginTop: 6 }}>
-                    <strong>Phản hồi (kết quả xử lý):</strong> {x.phan_hoi}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        );
-      })()}
+      {(kn.du_lieu ?? []).length > 0 && (
+        <DanhSachKhieuNai ds={kn.du_lieu ?? []} khi_doi={() => kn.nap_lai()} />
+      )}
 
       {thang_loc == null && (
         <div className="hop-thong-bao hop-luu-y">
@@ -371,5 +342,117 @@ function HopThoaiKhieuNaiLuong(
         <button className="nut-phang" onClick={khi_dong}>Đóng</button>
       </div>
     </HopThoai>
+  );
+}
+
+/** O tra loi cua NGUOI LAO DONG vao thread khieu nai (khi ticket con mo). */
+function OTraLoiKN({ kn_id, khi_gui }: { kn_id: string; khi_gui: () => void }): ReactNode {
+  const [noi_dung, dat_noi_dung] = useState('');
+  const hd = dung_hanh_dong();
+  const gui = (): void => {
+    void hd.chay(
+      () => goi(`/api/toi/khieu-nai-luong/${kn_id}/tra-loi`, { method: 'POST', body: { noi_dung } }),
+      'Đã gửi trả lời.',
+    ).then((ok) => { if (ok) { dat_noi_dung(''); khi_gui(); } });
+  };
+  return (
+    <div style={{ marginTop: 8 }}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <textarea value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} rows={2}
+        placeholder="Trả lời / bổ sung thông tin cho Phòng Nhân sự…" />
+      <div className="hang-nut" style={{ marginTop: 6 }}>
+        <button className="nut-lanh" disabled={hd.dang_chay || noi_dung.trim().length < 1} onClick={gui}>
+          Gửi trả lời
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Danh sach khieu nai + thread trao doi; dung o ca man Phieu luong lan tab Khieu nai. */
+export function DanhSachKhieuNai(
+  { ds, khi_doi }: { ds: KhieuNai[]; khi_doi: () => void },
+): ReactNode {
+  return (
+    <div className="the the-mong">
+      <h3 style={{ marginTop: 0 }}>Khiếu nại phiếu lương của bạn</h3>
+      {ds.map((x) => {
+        const mo = x.trang_thai === 'moi' || x.trang_thai === 'dang_xem';
+        return (
+          <div key={x.id} className="hop-thong-bao" style={{ marginBottom: 12 }}>
+            <div>
+              <span className={`nhan ${NHAN_TT_KN[x.trang_thai]?.lop ?? 'nhan-mo'}`}>
+                {NHAN_TT_KN[x.trang_thai]?.ten ?? x.trang_thai}
+              </span>
+              <span className="mo-ma"> {x.ma ?? ''} · Kỳ {thang_viet(x.thang)} · {ngay_gio(x.tao_luc)}</span>
+            </div>
+            <ThreadKhieuNai noi_dung={x.noi_dung} tao_luc={x.tao_luc} tra_loi={x.tra_loi} />
+            {x.anh.length > 0 && (
+              <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {x.anh.map((a) => (
+                  <AnhCoToken key={a.id} duong_dan={`/api/toi/khieu-nai-luong/anh/${a.id}`} alt={a.ten} cao={72} />
+                ))}
+              </div>
+            )}
+            {mo ? <OTraLoiKN kn_id={x.id} khi_gui={khi_doi} />
+              : (
+                <div className="mo-ta" style={{ marginTop: 6 }}>
+                  Ticket đã đóng ({NHAN_TT_KN[x.trang_thai]?.ten ?? x.trang_thai}).
+                </div>
+              )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Tab "Khieu nai" ben ca nhan: lap khieu nai moi (chon ky) + theo doi & trao doi. */
+export function TrangKhieuNaiToi(): ReactNode {
+  const phieu = dung_nap<{ id: string; thang: string; trang_thai_ky: string }[]>('/api/toi/phieu-luong');
+  const kn = dung_nap<KhieuNai[]>('/api/toi/khieu-nai-luong');
+  const [chon, dat_chon] = useState(0);
+  const [mo, dat_mo] = useState(false);
+
+  if (phieu.dang_tai || kn.dang_tai) return <DangTai />;
+  if (phieu.loi !== null) return <HopLoi loi={phieu.loi} />;
+  const ds_phieu = phieu.du_lieu ?? [];
+  const ds_kn = kn.du_lieu ?? [];
+  const p = ds_phieu[Math.min(chon, Math.max(0, ds_phieu.length - 1))];
+
+  return (
+    <div className="cn-cot-gap" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="the the-mong">
+        <h3 style={{ marginTop: 0 }}>Lập khiếu nại phiếu lương</h3>
+        {ds_phieu.length === 0 ? (
+          <div className="mo-ta">Chưa có phiếu lương đã duyệt nào để khiếu nại.</div>
+        ) : (
+          <>
+            <label htmlFor="kn_ky">Chọn kỳ lương</label>
+            <select id="kn_ky" value={chon} onChange={(e) => dat_chon(Number(e.target.value))}>
+              {ds_phieu.map((x, i) => <option key={x.id} value={i}>{thang_viet(x.thang)}</option>)}
+            </select>
+            <div className="hang-nut" style={{ marginTop: 8 }}>
+              <button className="nut-lanh" onClick={() => dat_mo(true)}>Lập khiếu nại kỳ này</button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {ds_kn.length === 0 ? (
+        <Trong tieu_de="Chưa có khiếu nại nào"
+          mo_ta="Khi bạn gửi khiếu nại phiếu lương, nó hiện ở đây kèm trạng thái xử lý và trao đổi với Nhân sự." />
+      ) : (
+        <DanhSachKhieuNai ds={ds_kn} khi_doi={() => kn.nap_lai()} />
+      )}
+
+      {mo && p !== undefined && (
+        <HopThoaiKhieuNaiLuong
+          phieu_id={p.id} thang={thang_viet(p.thang)}
+          khi_dong={() => dat_mo(false)}
+          khi_xong={() => { dat_mo(false); kn.nap_lai(); }}
+        />
+      )}
+    </div>
   );
 }

@@ -934,7 +934,11 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
               coalesce((select json_agg(json_build_object('id', t.id, 'ten', t.ten_goc)
                                         order by t.tao_luc)
                           from ho_so_tep t
-                         where t.nhom = 'khieu_nai' and t.thuoc_id = kn.id), '[]') as anh
+                         where t.nhom = 'khieu_nai' and t.thuoc_id = kn.id), '[]') as anh,
+              coalesce((select json_agg(json_build_object('vai', r.vai, 'noi_dung', r.noi_dung,
+                                                          'tao_luc', r.tao_luc) order by r.tao_luc)
+                          from khieu_nai_luong_tra_loi r
+                         where r.khieu_nai_id = kn.id), '[]') as tra_loi
          from khieu_nai_luong kn
          join phieu_luong p on p.id = kn.phieu_luong_id
          join ky_luong k on k.id = p.ky_luong_id
@@ -942,6 +946,36 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         order by kn.tao_luc desc limit 100`,
       [nv_id],
     );
+  });
+
+  // Nguoi lao dong TRA LOI vao thread khieu nai CUA MINH — chi khi ticket con MO (moi/dang_xem).
+  app.post('/khieu-nai-luong/:id/tra-loi', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const p = req.params as Record<string, string>;
+    const kn_id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+    const noi_dung = chuoi_bat_buoc(than(req.body), 'noi_dung', { toi_thieu: 1, toi_da: 2000 });
+
+    const kn = await truy_van_mot<{ trang_thai: string }>(
+      'select trang_thai from khieu_nai_luong where id = $1 and nhan_vien_id = $2', [kn_id, nv_id],
+    );
+    if (kn === null) throw new LoiKhongTim('Không tìm thấy khiếu nại của bạn.');
+    if (kn.trang_thai !== 'moi' && kn.trang_thai !== 'dang_xem') {
+      throw new LoiXungDot('Khiếu nại đã đóng, không trả lời thêm được.');
+    }
+    await thuc_thi(
+      `insert into khieu_nai_luong_tra_loi (khieu_nai_id, vai, nguoi_dung_id, noi_dung)
+       values ($1, 'nhan_vien', $2, $3)`,
+      [kn_id, nd.sub, noi_dung],
+    );
+    await ghi_nhat_ky(nd.sub, 'khieu_nai_luong.tra_loi', 'khieu_nai_luong', kn_id, null, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: 'Khiếu nại lương có trả lời mới',
+      noi_dung: `${await ten_nhan_vien(nv_id)} vừa trả lời khiếu nại phiếu lương.`,
+      du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: kn_id },
+    });
+    return res.code(201).send({ ok: true });
   });
 
   // Dinh kem ANH cho mot khieu nai CUA MINH (bang chung). Tai dung he thong tep ho so (nhom

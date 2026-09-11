@@ -11,7 +11,7 @@
 import { Component, useEffect, useState, type ReactNode } from 'react';
 import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, mui_gio_offset_gio } from '../api.ts';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
-import { TrangPhieuLuongToi } from './phieu_luong_toi.tsx';
+import { TrangPhieuLuongToi, TrangKhieuNaiToi } from './phieu_luong_toi.tsx';
 import { TrangVanBan } from './van_ban.tsx';
 import { ChuongBao } from './chuong_bao.tsx';
 
@@ -365,7 +365,7 @@ function chu_dau(ho_ten: string | null): string {
 
 // ==================================================================== trang goc
 
-type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'phep' | 'ca_nhan';
+type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'phep' | 'khieu_nai' | 'ca_nhan';
 type FormMo = 'nghi' | 'giai' | 'khac';
 
 // Ten icon KHONG kem tien to `bt-` (giong MENU o App.tsx) — noi render tu ghep `bt bt-${icon}`.
@@ -377,6 +377,7 @@ const CAC_TAB: { ma: Tab; ten: string; icon: string }[] = [
   { ma: 'don_tu', ten: 'Đơn từ', icon: 'file-text' },
   { ma: 'luong', ten: 'Lương', icon: 'receipt-2' },
   { ma: 'phep', ten: 'Phép', icon: 'calendar-stats' },
+  { ma: 'khieu_nai', ten: 'Khiếu nại', icon: 'alert-triangle' },
   { ma: 'ca_nhan', ten: 'Cá nhân', icon: 'user-check' },
 ];
 
@@ -386,6 +387,7 @@ const TEN_MAN: Record<Exclude<Tab, 'trang_chu'>, [string, string]> = {
   don_tu: ['Nghỉ phép & đơn từ', 'Xin nghỉ, giải trình, theo dõi trạng thái duyệt'],
   luong: ['Phiếu lương', 'Cơ sở tính lương của kỳ'],
   phep: ['Quản lý phép', 'Quỹ phép năm & lịch sử nghỉ của bạn'],
+  khieu_nai: ['Khiếu nại lương', 'Lập & theo dõi khiếu nại phiếu lương, trao đổi với Nhân sự'],
   ca_nhan: ['Cá nhân', 'Hồ sơ, tài liệu, hợp đồng, BHXH, cài đặt'],
 };
 
@@ -579,6 +581,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
                   )}
                   {tab === 'luong' && <ManLuong />}
                   {tab === 'phep' && <NoiDungPhep />}
+                  {tab === 'khieu_nai' && <TrangKhieuNaiToi />}
                   {tab === 'ca_nhan' && <ManCaNhan />}
                 </>
               )}

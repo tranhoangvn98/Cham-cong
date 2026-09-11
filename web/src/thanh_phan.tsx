@@ -866,3 +866,37 @@ export function AnhCoToken(
     </a>
   );
 }
+
+export interface TinNhanKN { vai: string; noi_dung: string; tao_luc: string }
+
+/**
+ * Thread hoi thoai cua mot khieu nai: tin nhan dau (noi_dung goc, phia nhan vien) + cac tra loi
+ * qua lai. `la_admin` doi nhan de biet "Ban" la phia nao.
+ */
+export function ThreadKhieuNai(
+  { noi_dung, tao_luc, tra_loi, la_admin = false }:
+  { noi_dung: string; tao_luc: string; tra_loi: TinNhanKN[]; la_admin?: boolean },
+): ReactNode {
+  const tat_ca: TinNhanKN[] = [{ vai: 'nhan_vien', noi_dung, tao_luc }, ...tra_loi];
+  const ten = (vai: string): string => {
+    if (vai === 'nhan_su') return la_admin ? 'Nhân sự (bạn)' : 'Phòng Nhân sự';
+    return la_admin ? 'Người lao động' : 'Bạn';
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0' }}>
+      {tat_ca.map((m, i) => (
+        <div
+          key={`${String(i)}-${m.tao_luc}`}
+          style={{
+            maxWidth: '85%', padding: '6px 10px', borderRadius: 8,
+            background: m.vai === 'nhan_su' ? '#EFF6FF' : '#F3F4F6',
+            alignSelf: m.vai === 'nhan_su' ? 'flex-end' : 'flex-start',
+          }}
+        >
+          <div className="mo-ta" style={{ fontSize: 12 }}>{ten(m.vai)} · {ngay_gio(m.tao_luc)}</div>
+          <div style={{ whiteSpace: 'pre-wrap' }}>{m.noi_dung}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
