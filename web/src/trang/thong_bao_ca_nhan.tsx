@@ -107,7 +107,16 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
   const [can_gt, dat_can_gt] = useState(false);
   const [popup, dat_popup] = useState(false);
   const [gui_email, dat_gui_email] = useState(false);
+  const [xem_html, dat_xem_html] = useState<string | null>(null);
   const hd = dung_hanh_dong();
+
+  const xem_truoc = async (): Promise<void> => {
+    try {
+      const kq = await goi<{ html: string }>('/api/thong-bao/xem-truoc-email',
+        { method: 'POST', body: { tieu_de, noi_dung, muc_do } });
+      dat_xem_html(kq.html);
+    } catch { /* xem truoc la phu, loi thi bo qua */ }
+  };
 
   const gui = async (): Promise<void> => {
     const ok = await hd.chay(
@@ -176,8 +185,23 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
           disabled={hd.dang_chay || tieu_de.trim().length < 3 || noi_dung.trim().length < 3}>
           {hd.dang_chay ? 'Đang đăng…' : 'Đăng'}
         </button>
+        <button type="button" className="nut-phang" onClick={() => { void xem_truoc(); }}
+          disabled={tieu_de.trim() === '' && noi_dung.trim() === ''}>
+          Xem trước email
+        </button>
         <button className="nut-phang" onClick={() => dat_mo(false)}>Hủy</button>
       </div>
+
+      {xem_html !== null && (
+        <div style={{ marginTop: 12 }}>
+          <div className="mo-ta" style={{ marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+            <span>Xem trước email (bấm "Xem trước email" lại để cập nhật)</span>
+            <button type="button" className="nut-nho nut-phang" onClick={() => dat_xem_html(null)}>Đóng</button>
+          </div>
+          <iframe title="Xem trước email" srcDoc={xem_html}
+            style={{ width: '100%', height: 540, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff' }} />
+        </div>
+      )}
     </div>
   );
 }

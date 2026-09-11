@@ -98,15 +98,11 @@ function than_email_thong_bao(tieu_de: string, noi_dung: string, muc_do: string)
   const ten_cty = cau_hinh.cong_ty.ten !== '' ? cau_hinh.cong_ty.ten : 'Công ty';
   const md = NHAN_MUC_DO_EMAIL[muc_do] ?? NHAN_MUC_DO_EMAIL['thuong'] as
     { chu: string; nen: string; chu_mau: string; vien: string };
-  const logo = cau_hinh.cong_ty.logo_url;
-  const khoi_logo = logo !== ''
-    ? `<div style="margin-bottom:16px;"><img src="${logo}" alt="${thoat_html(ten_cty)}" height="48" style="height:48px;display:block;background:#ffffff;border-radius:10px;padding:10px 16px;border:0;"></div>`
-    : '';
   return `<div style="margin:0;padding:0;background:#eef1f5;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f5;padding:24px 12px;"><tr><td align="center">
 <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.08);">
   <tr><td style="background:#1f4e79;padding:24px 28px;">
-    ${khoi_logo}<div style="color:#cfe0f3;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">${thoat_html(ten_cty)} · Phòng Nhân sự</div>
+    <div style="color:#cfe0f3;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">${thoat_html(ten_cty)} · Phòng Nhân sự</div>
     <div style="color:#ffffff;font-size:22px;font-weight:700;line-height:1.3;">${thoat_html(tieu_de)}</div>
   </td></tr>
   <tr><td style="padding:18px 28px 0;">
@@ -194,6 +190,15 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
       })();
     }
     return res.code(201).send({ ...dong, so_nguoi_nhan: nguoi_nhan.length, so_email, popup });
+  });
+
+  /** Xem truoc email (khong luu, khong gui): tra ve HTML da render de hien trong app. */
+  app.post('/thong-bao/xem-truoc-email', { preHandler: can_nhan_su }, async (req) => {
+    const b = than(req.body);
+    const tieu_de = chuoi(b, 'tieu_de', { toi_da: 250 }) ?? '(Chưa có tiêu đề)';
+    const noi_dung = chuoi(b, 'noi_dung', { toi_da: 8000 }) ?? '';
+    const muc_do = trong_tap(b, 'muc_do', MUC_DO, { bat_buoc: false }) ?? 'thuong';
+    return { html: than_email_thong_bao(tieu_de, noi_dung, muc_do) };
   });
 
   /** Sua thong bao: go xuong hoac dat lai han. */
