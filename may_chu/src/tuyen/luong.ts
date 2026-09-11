@@ -14,6 +14,7 @@ import { tinh_ky_luong_cny } from '../luong/ky_luong_cny.ts';
 import {
   ban_chot_theo_id, chot_ky, danh_sach_ban_chot, type KetQuaChot,
 } from '../luong/ban_chot.ts';
+import { lech_luong_ky } from '../luong/kiem_lech_luong.ts';
 import { bang_luong_xuat } from '../luong/bang_xuat.ts';
 import { xuat_bang_luong_erp } from '../luong/xuat_mau_erp.ts';
 import { gui_phieu_luong_ky } from '../luong/phieu_luong_email.ts';
@@ -559,6 +560,8 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     const b = than(req.body);
     const quyet = trong_tap(b, 'quyet_dinh', ['da_duyet', 'tra_lai'] as const, { bat_buoc: true });
     const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
+    // YC-2: da xem canh bao lech luong va van quyet chot. Mac dinh false — chan lan dau.
+    const bo_qua_lech = luan_ly(b, 'bo_qua_lech', false) ?? false;
 
     if (k.trang_thai !== 'cho_duyet') {
       throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${k.trang_thai}", không quyết được.`);
@@ -567,6 +570,27 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     let ban_chot: KetQuaChot[] = [];
 
     if (quyet === 'da_duyet') {
+      // YC-2 — CANH BAO LECH LUONG TRUOC KHI CHOT. Neu luong co ban trong phieu khong con khop
+      // quyet dinh luong hien hanh (vd ai do sua quyet dinh sau khi tinh ma chua bam "Tinh lai"),
+      // chan lan duyet dau va tra ve danh sach lech. Admin xem, roi hoac bam "Tinh lai" cho khop,
+      // hoac duyet lai voi bo_qua_lech = true (co chu dich, co ghi nhat ky).
+      const lech = await lech_luong_ky(k.id, k.thang);
+      if (lech.length > 0 && !bo_qua_lech) {
+        await ghi_nhat_ky(nd.sub, 'ky_luong_chan_lech_luong', 'ky_luong', k.id,
+          { so_lech: lech.length, ma_nv: lech.map((x) => x.ma_nv) }, req.ip);
+        return {
+          ok: false,
+          ma_loi: 'LECH_LUONG',
+          thong_bao: `Có ${String(lech.length)} nhân viên lương cơ bản trong phiếu không khớp `
+            + 'quyết định lương hiện hành. Hãy "Tính lại" kỳ hoặc rà soát quyết định lương '
+            + 'trước khi chốt.',
+          lech,
+        };
+      }
+      if (lech.length > 0 && bo_qua_lech) {
+        await ghi_nhat_ky(nd.sub, 'ky_luong_bo_qua_lech_luong', 'ky_luong', k.id,
+          { so_lech: lech.length, ma_nv: lech.map((x) => x.ma_nv) }, req.ip);
+      }
       await thuc_thi(
         `update ky_luong set trang_thai = 'da_duyet', nguoi_duyet = $2, duyet_luc = now(),
                 ghi_chu_duyet = $3, cap_nhat_luc = now() where id = $1`,
@@ -607,6 +631,17 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       { ghi_chu, ban_chot: ban_chot.map((x) => ({ loai: x.loai, so_dong: x.so_dong })) },
       req.ip);
     return { ok: true, ban_chot };
+  });
+
+  /**
+   * YC-2 — BAO CAO LECH LUONG cua mot ky: nhung nhan vien co luong co ban / phu cap trong phieu
+   * KHONG khop quyet dinh luong dang hieu luc. Xem duoc bat cu luc nao (khong doi trang thai) de
+   * ra soat truoc khi duyet. Mang rong = khong lech.
+   */
+  app.get('/ky-luong/:id/lech-luong', { preHandler: can_nhan_su }, async (req) => {
+    const k = await lay_ky(lay_id(req));
+    const lech = await lech_luong_ky(k.id, k.thang);
+    return { ky: k.thang, so_lech: lech.length, lech };
   });
 
   app.post('/ky-luong/:id/da-tra', { preHandler: can_admin }, async (req) => {
