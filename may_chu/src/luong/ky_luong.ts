@@ -279,8 +279,9 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
   const han_don_chuoi =
     `${String(Math.floor(han_don / 60)).padStart(2, '0')}:${String(han_don % 60).padStart(2, '0')}`;
   const muon_ngay = ts.cs.di_muon.bat
-    ? await truy_van<{ nhan_vien_id: string; gio_vao: Date; co_don: boolean }>(
+    ? await truy_van<{ nhan_vien_id: string; gio_vao: Date; co_don: boolean; ca_nghi_tu: string | null }>(
         `select bc.nhan_vien_id, bc.gio_vao,
+                to_char(cl.nghi_tu, 'HH24:MI') as ca_nghi_tu,
                 exists(
                   select 1 from don_tu dt
                    where dt.nhan_vien_id = bc.nhan_vien_id
@@ -289,6 +290,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
                      and ((dt.tao_luc + make_interval(hours => $3))::time) <= $4::time
                 ) as co_don
            from bang_cong_ngay bc
+           left join ca_lam cl on cl.id = bc.ca_lam_id
           where bc.ngay >= $1 and bc.ngay <= $2 and bc.gio_vao is not null`,
         [tu, den, cau_hinh.device_tz_offset_hours, han_don_chuoi],
       )
@@ -297,6 +299,12 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
   for (const m of muon_ngay) {
     const dia = new Date(m.gio_vao.getTime() + OFFSET_MAY_MS);
     const phut = dia.getUTCHours() * 60 + dia.getUTCMinutes();
+    // Phan loai DI MUON vs NGHI CA SANG: chi tinh phat di muon khi quet dau (gio_vao) nam
+    // TRONG ca sang, tuc truoc gio nghi trua cua ca. Neu nguoi do chi co mat SAU gio nghi trua
+    // thi do la NGHI CA SANG (da tinh 0,5 cong o quy_tac_tinh_cong), KHONG phai di muon —
+    // truoc day quet dau buoi chieu (vd 14:00) bi coi la "di muon >= 08:30" va phat oan nua ngay.
+    const nghi_phut = m.ca_nghi_tu === null ? null : gio_sang_phut(m.ca_nghi_tu);
+    if (nghi_phut !== null && phut >= nghi_phut) continue;
     const ds_m = muon_theo_nguoi.get(m.nhan_vien_id) ?? [];
     ds_m.push({ phut_trong_ngay: phut, co_don_truoc_han: m.co_don });
     muon_theo_nguoi.set(m.nhan_vien_id, ds_m);
