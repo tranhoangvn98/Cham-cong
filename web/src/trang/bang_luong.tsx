@@ -106,7 +106,7 @@ interface Phieu {
   mien_phat: boolean;
   /** Admin miễn thuế TNCN cho phiếu này (thuế = 0). */
   mien_thue: boolean;
-  /** Admin miễn BHXH/BHYT/BHTN cho phiếu này (căn cứ đóng = 0). */
+  /** Admin miễn BHXH/BHYT/BHTN cho phiếu này (căn cứ đóng = 0) — dùng cho lương NET. */
   mien_bh: boolean;
   khoan: KhoanPhieu[];
 }
@@ -465,7 +465,7 @@ function HopThoaiChiTiet(
                       {p.ep_du_cong && <div className="nhan-canh-bao" title="Được tính đủ ngày công (miễn chấm công)">đủ công</div>}
                       {p.mien_phat && <div className="nhan-canh-bao" title="Được miễn phạt đi muộn/về sớm">miễn phạt</div>}
                       {p.mien_thue && <div className="nhan-canh-bao" title="Miễn thuế TNCN cho phiếu này">miễn thuế</div>}
-                      {p.mien_bh && <div className="nhan-canh-bao" title="Miễn BHXH/BHYT/BHTN cho phiếu này">miễn BH</div>}
+                      {p.mien_bh && <div className="nhan-canh-bao" title="Miễn BHXH/BHYT/BHTN cho phiếu này (lương NET)">miễn BH · net</div>}
                     </td>
                     <td className="canh-phai">{tien(p.luong_theo_cong)}</td>
                     <td className="canh-phai">{tien(p.tien_ot)}</td>
@@ -1023,8 +1023,9 @@ function HopThoaiSuaPhieu(
               onChange={(e) => dat_mien_bh(e.target.checked)}
             />
             <span>
-              <strong>Miễn BHXH/BHYT/BHTN</strong> — không trừ bảo hiểm bắt buộc cho phiếu này
-              (căn cứ đóng = 0). <strong>Chỉ admin</strong> được tích.
+              <strong>Miễn BHXH/BHYT/BHTN (lương NET)</strong> — không trừ bảo hiểm bắt buộc của
+              người lao động khỏi thực lĩnh cho phiếu này (căn cứ đóng = 0). Tích cho ai được trả
+              <strong> lương net</strong>. <strong>Chỉ admin</strong> được tích.
             </span>
           </label>
         </div>

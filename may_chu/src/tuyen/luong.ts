@@ -770,7 +770,6 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     if (mien_bh !== null && mien_bh !== p.mien_bh && nd.vai_tro !== 'admin') {
       throw new LoiKhongQuyen('Chỉ admin được tích "miễn BHXH/BHYT/BHTN" cho phiếu lương.');
     }
-
     await thuc_thi(
       `update phieu_luong set
          thuong = $2, phu_cap_khac = $3, tru_khac = $4,

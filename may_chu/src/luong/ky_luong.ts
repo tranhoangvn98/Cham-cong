@@ -152,8 +152,6 @@ interface DongNhanVien {
   di_muon_moc_50k: string | null;
   /** Moc tru nua ngay RIENG cua nguoi nay ('HH:MM:SS'). Null = dung moc chung cong ty. */
   di_muon_moc_nua_ngay: string | null;
-  /** Luong NET: cong ty chiu BHXH, khong tru phan NLD vao thuc nhan (YC-4). */
-  luong_net: boolean;
 }
 
 /**
@@ -205,8 +203,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
             hd.loai                                               as loai_hop_dong,
             coalesce(nlv.lich_nghi_ma, 'vn')                      as lich_nghi_ma,
             nv.di_muon_moc_50k::text                              as di_muon_moc_50k,
-            nv.di_muon_moc_nua_ngay::text                         as di_muon_moc_nua_ngay,
-            nv.luong_net                                          as luong_net
+            nv.di_muon_moc_nua_ngay::text                         as di_muon_moc_nua_ngay
        from nhan_vien nv
        left join ca_lam cl on cl.id = nv.ca_lam_id
        left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
@@ -499,7 +496,6 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
         luong_dong_bh: nv.luong_dong_bh_ql,
         dong_bao_hiem,
         mien_thue,
-        luong_net: nv.luong_net,
         so_ngay_cong_chuan: chuan,
         so_ngay_cong_thuc: cong_thuc,
         phut_ot: nv.phut_ot,
