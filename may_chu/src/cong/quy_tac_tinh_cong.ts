@@ -93,7 +93,7 @@ export function ca_cua_ngay(ca: CaLam | null, ngay: string): CaLam | null {
 }
 
 export type TrangThaiNgay =
-  'vang' | 'co_mat' | 'nghi_phep' | 'ngay_le' | 'nghi_tuan' | 'cong_tac';
+  'vang' | 'co_mat' | 'nghi_phep' | 'nghi_khong_luong' | 'ngay_le' | 'nghi_tuan' | 'cong_tac';
 
 export interface DauVaoTinhCong {
   /** 'YYYY-MM-DD' */
@@ -266,14 +266,21 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
   // --- Nhanh 1: dang nghi phep da duyet ---
   if (dv.nghi_phep !== null) {
     const np = dv.nghi_phep;
-    const cong = np.nua_ngay ? 0.5 : np.loai === 'khong_luong' ? 0 : 1;
+    const la_khong_luong = np.loai === 'khong_luong';
+    const cong = np.nua_ngay ? 0.5 : la_khong_luong ? 0 : 1;
+    // Nghi KHONG LUONG phai co nhan rieng: enum bang_cong_ngay truoc day chi co 'nghi_phep' nen
+    // nghi khong luong bi gan nham nhan "Nghi phep" — ke toan va nhan vien nhin bang cong khong
+    // phan biet duoc phep CO luong voi KHONG luong. Nua ngay khong luong van con di lam nua buoi
+    // (so_cong=0,5) nen giu nhan 'nghi_phep'; chi ngay khong luong tron moi doi nhan.
+    const trang_thai_ngay: TrangThaiNgay =
+      la_khong_luong && !np.nua_ngay ? 'nghi_khong_luong' : 'nghi_phep';
     if (phut_co_mat > 0) chu_thich.push('Co quet the trong ngay nghi phep');
     if (phut_co_mat > 0 && ot_da_duyet === 0) {
       chu_thich.push(`O lai ${phut_co_mat} phut nhung khong co don lam them da duyet`);
     }
     return {
       ...RONG,
-      trang_thai: 'nghi_phep',
+      trang_thai: trang_thai_ngay,
       gio_vao,
       gio_ra,
       phut_ot: ot_da_duyet,

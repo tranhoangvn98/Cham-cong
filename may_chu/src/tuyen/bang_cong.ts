@@ -22,8 +22,10 @@ const NHAN_TRANG_THAI_NGAY: Record<string, string> = {
   vang: 'Vắng',
   co_mat: 'Có mặt',
   nghi_phep: 'Nghỉ phép',
+  nghi_khong_luong: 'Nghỉ không lương',
   ngay_le: 'Ngày lễ',
   nghi_tuan: 'Nghỉ tuần',
+  cong_tac: 'Công tác',
 };
 
 /**
@@ -655,6 +657,7 @@ async function xuat_tong_hop_thang(
             count(*) filter (where bc.trang_thai = 'co_mat')::int    as so_ngay_co_mat,
             count(*) filter (where bc.trang_thai = 'vang')::int      as so_ngay_vang,
             count(*) filter (where bc.trang_thai = 'nghi_phep')::int as so_ngay_nghi_phep,
+            count(*) filter (where bc.trang_thai = 'nghi_khong_luong')::int as so_ngay_nghi_khong_luong,
             count(*) filter (where bc.trang_thai = 'ngay_le')::int   as so_ngay_le,
             count(*) filter (where bc.phut_muon > 0)::int            as so_lan_di_muon,
             count(*) filter (where bc.phut_ve_som > 0)::int          as so_lan_ve_som,
@@ -672,14 +675,15 @@ async function xuat_tong_hop_thang(
 
   const tieu_de = [
     'Mã NV', 'Họ tên', 'Phòng ban', 'Ca làm', 'Số công',
-    'Ngày có mặt', 'Ngày vắng', 'Ngày nghỉ phép', 'Ngày lễ',
+    'Ngày có mặt', 'Ngày vắng', 'Ngày nghỉ phép', 'Ngày nghỉ không lương', 'Ngày lễ',
     'Phút làm', 'Giờ làm', 'Phút OT', 'Giờ OT',
     'Số lần đi muộn', 'Tổng phút muộn', 'Số lần về sớm', 'Tổng phút về sớm',
     'Số ngày đã chốt',
   ];
   const hang = dong.map((d) => [
     d['ma_nv'], d['ho_ten'], d['phong_ban'], d['ca_lam'], d['tong_cong'],
-    d['so_ngay_co_mat'], d['so_ngay_vang'], d['so_ngay_nghi_phep'], d['so_ngay_le'],
+    d['so_ngay_co_mat'], d['so_ngay_vang'], d['so_ngay_nghi_phep'],
+    d['so_ngay_nghi_khong_luong'], d['so_ngay_le'],
     d['tong_phut_lam'], phut_thanh_chu(Number(d['tong_phut_lam'])),
     d['tong_phut_ot'], phut_thanh_chu(Number(d['tong_phut_ot'])),
     d['so_lan_di_muon'], d['tong_phut_muon'],

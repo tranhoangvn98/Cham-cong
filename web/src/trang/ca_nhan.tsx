@@ -1065,6 +1065,7 @@ function CanChuY({ ccy, ds_ngay, di_den, di_duyet }: {
 /** Nhan trang thai mot ngay cong trong danh sach chi tiet. */
 function nhan_ngay_cong(d: NgayCongNgay): string {
   if (d.trang_thai === 'nghi_phep') return 'Nghỉ phép';
+  if (d.trang_thai === 'nghi_khong_luong') return 'Nghỉ không lương';
   if (d.trang_thai === 'vang') return 'Vắng';
   if (d.trang_thai === 'ngay_le') return 'Ngày lễ';
   if (d.trang_thai === 'nghi_tuan') return 'Nghỉ tuần';
@@ -1146,7 +1147,8 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
             <div className="cn-ngay-cong-gio">
               <span>
                 {d.trang_thai === 'nghi_phep' ? '— nghỉ phép'
-                  : d.trang_thai === 'vang' ? '— vắng'
+                  : d.trang_thai === 'nghi_khong_luong' ? '— nghỉ không lương'
+                    : d.trang_thai === 'vang' ? '— vắng'
                     : d.trang_thai === 'ngay_le' ? '— ngày lễ'
                       : d.trang_thai === 'nghi_tuan' ? '— nghỉ tuần'
                         : d.gio_vao === null

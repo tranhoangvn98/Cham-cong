@@ -349,8 +349,10 @@ const NHAN_NGAY: Record<string, { chu: string; lop: string }> = {
   co_mat: { chu: 'Có mặt', lop: 'nhan-tot' },
   vang: { chu: 'Vắng', lop: 'nhan-xau' },
   nghi_phep: { chu: 'Nghỉ phép', lop: 'nhan-lanh' },
+  nghi_khong_luong: { chu: 'Nghỉ không lương', lop: 'nhan-canh-bao' },
   ngay_le: { chu: 'Ngày lễ', lop: 'nhan-canh-bao' },
   nghi_tuan: { chu: 'Nghỉ tuần', lop: 'nhan-mo' },
+  cong_tac: { chu: 'Công tác', lop: 'nhan-lanh' },
 };
 
 export function NhanNgay({ trang_thai }: { trang_thai: string }): ReactNode {
