@@ -52,35 +52,68 @@ function html_email(tieu_de: string, than_van: string): string {
     + `<div style="white-space:pre-wrap">${thoat_html(than_van)}</div></div>`;
 }
 
-const NHAN_MUC_DO_EMAIL: Record<string, { chu: string; nen: string; chu_mau: string }> = {
-  khan: { chu: 'KHẨN', nen: '#fdecec', chu_mau: '#b00000' },
-  quan_trong: { chu: 'QUAN TRỌNG', nen: '#fff4e0', chu_mau: '#8a5a00' },
-  thuong: { chu: 'THÔNG BÁO', nen: '#eef3f9', chu_mau: '#1f4e79' },
+const NHAN_MUC_DO_EMAIL: Record<string, { chu: string; nen: string; chu_mau: string; vien: string }> = {
+  khan: { chu: 'KHẨN', nen: '#fdeceb', chu_mau: '#c0392b', vien: '#f3c9c4' },
+  quan_trong: { chu: 'QUAN TRỌNG', nen: '#fff8e6', chu_mau: '#8a6d00', vien: '#f0dca0' },
+  thuong: { chu: 'THÔNG BÁO', nen: '#eef4fb', chu_mau: '#1f4e79', vien: '#d3e2f2' },
 };
 
 /**
- * Email THONG BAO co khung thuong hieu: header xanh + ten cong ty + nhan muc do + noi dung (giu
- * xuong dong) + footer. Style inline, layout bang - an toan voi moi email client.
+ * Render noi dung email theo cu phap nhe (giong ban demo): '## ' -> de muc co vien trai xanh;
+ * '- ' hoac '• ' -> gach dau dong; '**dam**' -> in dam; dong trong -> khoang cach. Nguoi soan
+ * chi go van ban thuong van ra dep. Escape truoc, chi cho phep the do template sinh.
+ */
+function render_noi_dung_email(noi_dung: string): string {
+  const inline = (s: string): string =>
+    thoat_html(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  const dong = noi_dung.replace(/\r\n/g, '\n').split('\n');
+  const ra: string[] = [];
+  let trong_ds = false;
+  const dong_ds = (): void => { if (trong_ds) { ra.push('</ul>'); trong_ds = false; } };
+  for (const raw of dong) {
+    const line = raw.trimEnd();
+    if (line.trim() === '') { dong_ds(); continue; }
+    if (line.startsWith('## ')) {
+      dong_ds();
+      ra.push(`<div style="font-size:15px;font-weight:700;color:#1f4e79;border-left:4px solid #1f4e79;padding-left:10px;margin:18px 0 8px;">${inline(line.slice(3).trim())}</div>`);
+    } else if (/^[-•]\s+/.test(line.trim())) {
+      if (!trong_ds) { ra.push('<ul style="margin:0 0 4px;padding-left:20px;">'); trong_ds = true; }
+      ra.push(`<li style="margin:2px 0;">${inline(line.trim().replace(/^[-•]\s+/, ''))}</li>`);
+    } else {
+      dong_ds();
+      ra.push(`<div style="margin:0 0 8px;">${inline(line)}</div>`);
+    }
+  }
+  dong_ds();
+  return ra.join('');
+}
+
+/**
+ * Email THONG BAO khung thuong hieu (dung phong cach ban demo da duyet): header XANH DAM, ten
+ * cong ty (uppercase) + tieu de, badge muc do, noi dung render theo cu phap nhe, footer. Neu co
+ * CONG_TY_LOGO_URL thi logo nam trong the trang tren header xanh. Style inline, layout bang -
+ * an toan voi Outlook/M365/Gmail.
  */
 function than_email_thong_bao(tieu_de: string, noi_dung: string, muc_do: string): string {
   const ten_cty = cau_hinh.cong_ty.ten !== '' ? cau_hinh.cong_ty.ten : 'Công ty';
-  const md = NHAN_MUC_DO_EMAIL[muc_do] ?? NHAN_MUC_DO_EMAIL['thuong'] as { chu: string; nen: string; chu_mau: string };
+  const md = NHAN_MUC_DO_EMAIL[muc_do] ?? NHAN_MUC_DO_EMAIL['thuong'] as
+    { chu: string; nen: string; chu_mau: string; vien: string };
   const logo = cau_hinh.cong_ty.logo_url;
   const khoi_logo = logo !== ''
-    ? `<div style="margin-bottom:12px;"><img src="${logo}" alt="${thoat_html(ten_cty)}" height="46" style="height:46px;display:block;background:#ffffff;border-radius:8px;padding:8px 12px;"></div>`
+    ? `<div style="margin-bottom:16px;"><img src="${logo}" alt="${thoat_html(ten_cty)}" height="48" style="height:48px;display:block;background:#ffffff;border-radius:10px;padding:10px 16px;border:0;"></div>`
     : '';
   return `<div style="margin:0;padding:0;background:#eef1f5;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f5;padding:24px 12px;"><tr><td align="center">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.08);">
-  <tr><td style="background:#1f4e79;padding:20px 26px;">
+<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+  <tr><td style="background:#1f4e79;padding:24px 28px;">
     ${khoi_logo}<div style="color:#cfe0f3;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">${thoat_html(ten_cty)} · Phòng Nhân sự</div>
-    <div style="color:#ffffff;font-size:20px;font-weight:700;line-height:1.35;">${thoat_html(tieu_de)}</div>
+    <div style="color:#ffffff;font-size:22px;font-weight:700;line-height:1.3;">${thoat_html(tieu_de)}</div>
   </td></tr>
-  <tr><td style="padding:16px 26px 0;">
-    <span style="display:inline-block;background:${md.nen};color:${md.chu_mau};font-size:12px;font-weight:700;letter-spacing:.5px;border-radius:4px;padding:3px 10px;">${md.chu}</span>
+  <tr><td style="padding:18px 28px 0;">
+    <span style="display:inline-block;background:${md.nen};color:${md.chu_mau};border:1px solid ${md.vien};font-size:12px;font-weight:700;letter-spacing:.5px;border-radius:4px;padding:3px 12px;">${md.chu}</span>
   </td></tr>
-  <tr><td style="padding:14px 26px 6px;font-size:14px;color:#2b3648;line-height:1.7;white-space:pre-wrap;">${thoat_html(noi_dung)}</td></tr>
-  <tr><td style="background:#f4f7fb;padding:16px 26px;border-top:1px solid #e2e8f0;font-size:12px;color:#8792a2;line-height:1.6;">
+  <tr><td style="padding:16px 28px 6px;font-size:14px;color:#2b3648;line-height:1.7;">${render_noi_dung_email(noi_dung)}</td></tr>
+  <tr><td style="background:#f4f7fb;padding:16px 28px;border-top:1px solid #e2e8f0;font-size:12px;color:#8792a2;line-height:1.6;">
     Email tự động từ Hệ thống chấm công${cau_hinh.cong_ty.ten !== '' ? ` – ${thoat_html(cau_hinh.cong_ty.ten)}` : ''}. Vui lòng không trả lời email này; mọi thắc mắc gửi qua kênh <strong>Khiếu nại phiếu lương</strong> trong ứng dụng.
   </td></tr>
 </table>

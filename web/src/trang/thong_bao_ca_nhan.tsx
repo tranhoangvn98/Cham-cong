@@ -142,7 +142,11 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
       <label className="truong"><span>Tiêu đề</span>
         <input value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)} /></label>
       <label className="truong"><span>Nội dung</span>
-        <textarea rows={4} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
+        <textarea rows={6} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
+      <div className="mo-ta" style={{ marginTop: -4 }}>
+        Mẹo trình bày email: <code>## Đề mục</code> → tiêu đề có viền xanh · <code>- </code> đầu dòng
+        → gạch đầu dòng · <code>**chữ**</code> → in đậm.
+      </div>
       <div className="tb-dang-hang">
         <label className="truong"><span>Mức độ</span>
           <select value={muc_do} onChange={(e) => dat_muc_do(e.target.value)}>
