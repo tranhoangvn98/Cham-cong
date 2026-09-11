@@ -396,6 +396,33 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
   // (luong.ts) — KHONG dang ky lai o day, se bi FST_ERR_DUPLICATED_ROUTE. Man Luong ca nhan chi
   // can `phieu_luong` cua thang, lay qua /toi/luong o tren (dung phieu_luong_cua_toi).
 
+  // ================================================================ quan ly phep nam CUA TOI
+  // Nhan vien tu xem QUY phep nam + CHI TIET tung lan nghi (da dung / dang cho duyet) trong nam.
+  app.get('/phep', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const q = req.query as Record<string, unknown>;
+    const nam = (chuoi(q, 'nam', { toi_da: 4 }) as string | null)
+      ?? ngay_dia_phuong(new Date()).slice(0, 4);
+    const quy = await quy_phep(nv_id, nam, await quy_phep_cua(nv_id));
+    // Cac lan nghi CO GIAO trong nam (moi loai), moi nhat truoc. So ngay: nua ngay = 0,5;
+    // don nhieu ngay = so ngay lich (den - tu + 1) — du de nguoi lao dong doi chieu.
+    const cac_lan = await truy_van(
+      `select id, loai,
+              to_char(tu_ngay, 'YYYY-MM-DD') as tu_ngay,
+              to_char(den_ngay, 'YYYY-MM-DD') as den_ngay,
+              nua_ngay, trang_thai, ly_do, ghi_chu_duyet,
+              to_char(tao_luc, 'YYYY-MM-DD"T"HH24:MI:SSOF') as tao_luc,
+              (case when nua_ngay then 0.5 else (den_ngay - tu_ngay + 1) end)::float8 as so_ngay
+         from don_nghi_phep
+        where nhan_vien_id = $1
+          and tu_ngay <= make_date($2::int, 12, 31)
+          and den_ngay >= make_date($2::int, 1, 1)
+        order by tu_ngay desc`,
+      [nv_id, nam],
+    );
+    return { nam, quy, cac_lan };
+  });
+
   // ================================================================ lan quet cua toi
   app.get('/lan-quet', async (req) => {
     const nv_id = nhan_vien_cua_toi(req);

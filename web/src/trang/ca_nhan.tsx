@@ -1943,7 +1943,7 @@ interface LuongToi {
 
 // ==================================================================== man ca nhan
 
-type TabCN = 'chung' | 'tai_lieu' | 'hop_dong' | 'luong' | 'phu_thuoc' | 'bhxh'
+type TabCN = 'chung' | 'tai_lieu' | 'hop_dong' | 'luong' | 'phep' | 'phu_thuoc' | 'bhxh'
   | 'cong_viec' | 'thiet_bi' | 'cai_dat';
 
 const CAC_TAB_CN: { ma: TabCN; ten: string }[] = [
@@ -1951,6 +1951,7 @@ const CAC_TAB_CN: { ma: TabCN; ten: string }[] = [
   { ma: 'tai_lieu', ten: 'Tài liệu' },
   { ma: 'hop_dong', ten: 'Hợp đồng' },
   { ma: 'luong', ten: 'Lương' },
+  { ma: 'phep', ten: 'Quản lý phép' },
   { ma: 'phu_thuoc', ten: 'Người phụ thuộc' },
   { ma: 'bhxh', ten: 'BHXH – BHYT' },
   { ma: 'cong_viec', ten: 'Công việc' },
@@ -2061,6 +2062,7 @@ function ManCaNhan(): ReactNode {
       {tab === 'tai_lieu' && <NoiDungTaiLieu du_lieu={du_lieu} ty_le_tl={ty_le_tl} />}
       {tab === 'hop_dong' && <NoiDungHopDong du_lieu={du_lieu} />}
       {tab === 'luong' && <NoiDungLuongCN du_lieu={du_lieu} />}
+      {tab === 'phep' && <NoiDungPhep />}
       {tab === 'phu_thuoc' && <NoiDungPhuThuoc du_lieu={du_lieu} />}
       {tab === 'bhxh' && <NoiDungBhxh du_lieu={du_lieu} />}
       {tab === 'cong_viec' && <NoiDungCongViec du_lieu={du_lieu} />}
@@ -2221,6 +2223,82 @@ function NoiDungLuongCN({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
           { nhan: 'Hiệu lực từ', gia_tri: ngay_viet(l.hieu_luc_tu) },
         ]}
     />
+  );
+}
+
+const TEN_LOAI_NGHI: Record<string, string> = {
+  phep_nam: 'Phép năm', khong_luong: 'Không lương', om: 'Nghỉ ốm',
+  thai_san: 'Thai sản', ket_hon: 'Kết hôn', hieu: 'Việc riêng (hiếu)',
+};
+const TEN_TT_NGHI: Record<string, { ten: string; lop: string }> = {
+  cho_duyet: { ten: 'Chờ duyệt', lop: 'nhan-canh-bao' },
+  da_duyet: { ten: 'Đã duyệt', lop: 'nhan-tot' },
+  tu_choi: { ten: 'Từ chối', lop: 'nhan-xau' },
+  da_huy: { ten: 'Đã hủy', lop: 'nhan-mo' },
+};
+
+interface LanNghi {
+  id: string; loai: string; tu_ngay: string; den_ngay: string; nua_ngay: boolean;
+  trang_thai: string; ly_do: string | null; so_ngay: number;
+}
+interface PhepData {
+  nam: string;
+  quy: { quy: number; da_dung: number; con_lai: number; cho_duyet: number };
+  cac_lan: LanNghi[];
+}
+
+/** Quan ly phep nam CUA TOI: quy phep + chi tiet tung lan nghi da dung trong nam. */
+function NoiDungPhep(): ReactNode {
+  const nam_nay = new Date().getFullYear();
+  const [nam, dat_nam] = useState(nam_nay);
+  const { du_lieu, dang_tai, loi } = dung_nap<PhepData>(`/api/toi/phep?nam=${nam}`, [nam]);
+  if (dang_tai && du_lieu === null) return <XuongDanhSach />;
+  if (loi !== null) return <HopLoi loi={loi} />;
+  if (du_lieu === null) return null;
+  const q = du_lieu.quy;
+  const khoang = (x: LanNghi): string => (x.tu_ngay === x.den_ngay
+    ? ngay_viet(x.tu_ngay) : `${ngay_viet(x.tu_ngay)} – ${ngay_viet(x.den_ngay)}`);
+
+  return (
+    <div className="cn-cot-gap">
+      <div className="cn-chon-thang">
+        <button type="button" className="cn-nut-vuong" aria-label="Năm trước"
+          onClick={() => dat_nam(nam - 1)}>‹</button>
+        <span className="cn-chon-thang-ten">Phép năm {nam}</span>
+        <button type="button" className="cn-nut-vuong" aria-label="Năm sau"
+          disabled={nam >= nam_nay} onClick={() => dat_nam(nam + 1)}>›</button>
+      </div>
+
+      <Khoi
+        ten="Quỹ phép năm"
+        phu="Chỉ nghỉ PHÉP NĂM đã duyệt mới trừ vào quỹ. Nghỉ ốm / không lương không trừ phép."
+        dong={[
+          { nhan: 'Tổng quỹ phép', gia_tri: `${so_viet(q.quy)} ngày` },
+          { nhan: 'Đã dùng', gia_tri: `${so_viet(q.da_dung)} ngày` },
+          { nhan: 'Còn lại', gia_tri: `${so_viet(q.con_lai)} ngày`, mau: q.con_lai <= 0 ? 'xau' : 'tot' },
+          { nhan: 'Đang chờ duyệt', gia_tri: `${so_viet(q.cho_duyet)} ngày`, mau: q.cho_duyet > 0 ? 'lanh' : undefined },
+        ]}
+      />
+
+      <div className="the the-mong">
+        <div className="cn-dau-mong">Chi tiết các lần nghỉ (năm {nam})</div>
+        {du_lieu.cac_lan.length === 0 && (
+          <div className="cn-hang-don"><span className="mo-ta">Chưa có lần nghỉ nào trong năm.</span></div>
+        )}
+        {du_lieu.cac_lan.map((x) => (
+          <div className="cn-hang-don" key={x.id}>
+            <div>
+              <strong>{khoang(x)}</strong>
+              <span className="mo-ta"> · {TEN_LOAI_NGHI[x.loai] ?? x.loai} · {so_viet(x.so_ngay)} ngày{x.nua_ngay ? ' (nửa ngày)' : ''}</span>
+              {x.ly_do !== null && x.ly_do !== '' && <div className="mo-ta">{x.ly_do}</div>}
+            </div>
+            <span className={`nhan ${TEN_TT_NGHI[x.trang_thai]?.lop ?? 'nhan-mo'}`}>
+              {TEN_TT_NGHI[x.trang_thai]?.ten ?? x.trang_thai}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
