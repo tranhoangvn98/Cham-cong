@@ -333,6 +333,18 @@ function HopThoaiChiTiet(
             Thu hồi
           </button>
         )}
+        {la_admin() && k.phieu.length > 0
+          && (k.trang_thai === 'nhap' || k.trang_thai === 'cho_duyet') && (
+          <button
+            className="nut-phang" disabled={hd.dang_chay}
+            onClick={chay(`/api/ky-luong/${k.id}/gui-phieu`,
+              'Đã gửi email phiếu lương để nhân viên xác nhận. '
+              + 'Nhân viên có thể khiếu nại lương nếu có sai sót để hệ thống chỉnh sửa.')}
+            title="Gửi phiếu lương cho từng người xác nhận trước khi duyệt. Nhân viên có quyền khiếu nại lương."
+          >
+            Gửi email xác nhận
+          </button>
+        )}
         {k.trang_thai === 'cho_duyet' && la_admin() && (
           <>
             <button
@@ -358,11 +370,35 @@ function HopThoaiChiTiet(
           </>
         )}
         {k.trang_thai === 'da_duyet' && la_admin() && (
+          <>
+            <button
+              disabled={hd.dang_chay}
+              onClick={chay(`/api/ky-luong/${k.id}/da-tra`, 'Đã đánh dấu đã trả lương.')}
+            >
+              Đánh dấu đã trả
+            </button>
+            <button
+              className="nut-phang" disabled={hd.dang_chay}
+              onClick={() => {
+                if (!window.confirm(
+                  'Thu hồi duyệt sẽ mở lại kỳ lương về "nháp" để sửa/bổ sung '
+                  + '(giữ nguyên công 31/8 làm bù và các ngày chỉnh tay). Tiếp tục?')) return;
+                void hd.chay(
+                  () => goi(`/api/ky-luong/${k.id}/thu-hoi-duyet`, { method: 'POST' }),
+                  'Đã thu hồi duyệt. Kỳ mở lại để sửa — nhớ Tính lại rồi Gửi duyệt / Duyệt lại.',
+                ).then(() => { nap_lai(); khi_doi(); });
+              }}
+            >
+              Thu hồi duyệt
+            </button>
+          </>
+        )}
+        {(k.trang_thai === 'da_duyet' || k.trang_thai === 'da_tra') && la_admin() && (
           <button
-            disabled={hd.dang_chay}
-            onClick={chay(`/api/ky-luong/${k.id}/da-tra`, 'Đã đánh dấu đã trả lương.')}
+            className="nut-phang" disabled={hd.dang_chay}
+            onClick={chay(`/api/ky-luong/${k.id}/gui-phieu`, 'Đã gửi lại email phiếu lương.')}
           >
-            Đánh dấu đã trả
+            Gửi lại phiếu
           </button>
         )}
         <button

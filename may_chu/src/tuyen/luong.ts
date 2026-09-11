@@ -3,7 +3,7 @@
 // Quy trinh: nhap -> cho_duyet -> da_duyet -> da_tra. Khoa sua tu buoc cho_duyet tro di,
 // vi so lieu da gui len cho nguoi khac xem thi khong duoc phep tu doi duoi chan ho.
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
+import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_noi.ts';
 import {
   can_admin, can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai, xem_duoc_tat_ca,
 } from '../bao_mat/xac_thuc.ts';
@@ -623,15 +623,23 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
-  /** Gui (hoac gui lai) email phieu luong cho tung nguoi trong ky. Chi admin. */
+  /**
+   * Gui (hoac gui lai) email phieu luong cho tung nguoi trong ky. Chi admin.
+   *
+   * Cho phep gui khi kỳ CHUA duyet (nhap / cho_duyet) — day la buoc "gui email XAC NHAN" truoc
+   * khi duyet: nhan vien nhan phieu, ra soat, va co the KHIEU NAI luong (mục "Khiếu nại lương"
+   * trong app) de he thong tiep nhan va chinh sua truoc khi chot. Cung dung sau khi duyet/da tra
+   * de gui lai phieu chinh thuc. Luon `bat_buoc` de gui lai duoc du da gui lan truoc.
+   */
   app.post('/ky-luong/:id/gui-phieu', { preHandler: can_admin }, async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     const k = await lay_ky(lay_id(req));
-    if (k.trang_thai !== 'da_duyet' && k.trang_thai !== 'da_tra') {
-      throw new LoiXungDot('Chỉ gửi phiếu lương cho kỳ đã duyệt/đã trả.');
+    if (k.trang_thai === 'huy') {
+      throw new LoiXungDot('Kỳ đã hủy, không gửi phiếu lương được.');
     }
     const r = await gui_phieu_luong_ky(k.id, { bat_buoc: true });
-    await ghi_nhat_ky(nd.sub, 'gui_phieu_luong', 'ky_luong', k.id, { ...r }, req.ip);
+    await ghi_nhat_ky(nd.sub, 'gui_phieu_luong', 'ky_luong', k.id,
+      { ...r, trang_thai: k.trang_thai }, req.ip);
     return r;
   });
 
@@ -648,6 +656,37 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       [k.id],
     );
     await ghi_nhat_ky(nd.sub, 'thu_hoi_ky_luong', 'ky_luong', k.id, null, req.ip);
+    return { ok: true };
+  });
+
+  /**
+   * THU HOI DUYET: da_duyet -> nhap de admin bo sung / sua roi duyet lai. Chi admin.
+   *
+   * Duyet da KHOA bang cong ca thang (da_chot = true) va sinh ban chot. Thu hoi mo lai ky de sua;
+   * mo khoa bang cong cac ngay quet may (co_dieu_chinh = false) de tinh lai duoc, NHUNG GIU KHOA
+   * cac ngay chinh sua tay (co_dieu_chinh = true) nhu cong 31/8 lam bu / giai trinh — khong de
+   * "Tinh lai" ghi de mat du lieu tay. Xoa gui_phieu_luc de phieu (sau khi sua) gui lai duoc.
+   */
+  app.post('/ky-luong/:id/thu-hoi-duyet', { preHandler: can_admin }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const k = await lay_ky(lay_id(req));
+    if (k.trang_thai !== 'da_duyet') {
+      throw new LoiXungDot(`Chỉ thu hồi duyệt được kỳ đã duyệt (hiện: "${k.trang_thai}").`);
+    }
+    const { tu, den } = khoang_thang(k.thang);
+    await trong_giao_dich(async (khach) => {
+      await khach.query(
+        `update ky_luong set trang_thai = 'nhap', nguoi_duyet = null, duyet_luc = null,
+                gui_duyet_luc = null, gui_phieu_luc = null, cap_nhat_luc = now() where id = $1`,
+        [k.id],
+      );
+      await khach.query(
+        `update bang_cong_ngay set da_chot = false
+          where ngay >= $1 and ngay <= $2 and co_dieu_chinh = false`,
+        [tu, den],
+      );
+    });
+    await ghi_nhat_ky(nd.sub, 'thu_hoi_duyet_ky_luong', 'ky_luong', k.id, null, req.ip);
     return { ok: true };
   });
 
