@@ -1814,10 +1814,15 @@ function SheetDonKhac({ loai_don, khi_dong, khi_xong }: {
 // ==================================================================== man luong
 
 function ManLuong(): ReactNode {
-  const [thang, dat_thang] = useState(thang_nay());
+  // Mặc định mở KỲ LƯƠNG MỚI NHẤT ĐÃ CÓ (có kỳ nào hiện kỳ đó), KHÔNG phải tháng lịch hiện tại —
+  // tháng chưa có kỳ mà mở ra "chưa có phiếu" gây hiểu nhầm. Người dùng vẫn bấm ‹ › để xem tháng khác.
+  const phieu = dung_nap<{ thang: string }[]>('/api/toi/phieu-luong');
+  const [thang_chon, dat_thang] = useState<string | null>(null);
+  const ky_moi_nhat = (phieu.du_lieu ?? [])[0]?.thang ?? null;
+  const thang = thang_chon ?? ky_moi_nhat ?? thang_nay();
   const { du_lieu, dang_tai, loi } = dung_nap<LuongToi>(`/api/toi/luong?thang=${thang}`, [thang]);
 
-  if (dang_tai && du_lieu === null) return <XuongDanhSach />;
+  if (phieu.dang_tai || (dang_tai && du_lieu === null)) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
   if (du_lieu === null) return null;
 
