@@ -302,7 +302,7 @@ function HopThoaiKhieuNaiLuong(
   { phieu_id: string; thang: string; khi_dong: () => void; khi_xong: () => void },
 ): ReactNode {
   const [noi_dung, dat_noi_dung] = useState('');
-  const [anh, dat_anh] = useState<File | null>(null);
+  const [anh, dat_anh] = useState<File[]>([]);
   const hd = dung_hanh_dong();
 
   const gui = (): void => {
@@ -311,11 +311,14 @@ function HopThoaiKhieuNaiLuong(
         '/api/toi/khieu-nai-luong',
         { method: 'POST', body: { phieu_luong_id: phieu_id, noi_dung } },
       );
-      // Co anh thi dinh kem sau khi tao khieu nai (can id vua tao).
-      if (anh !== null && typeof kq.id === 'string') {
-        const fd = new FormData();
-        fd.append('anh', anh);
-        await gui_tep(`/api/toi/khieu-nai-luong/${kq.id}/anh`, fd);
+      // Co anh thi dinh kem sau khi tao khieu nai (can id vua tao). Gui LAN LUOT tung anh —
+      // moi anh mot ban ghi tep, khong gioi han so luong.
+      if (anh.length > 0 && typeof kq.id === 'string') {
+        for (const f of anh) {
+          const fd = new FormData();
+          fd.append('anh', f);
+          await gui_tep(`/api/toi/khieu-nai-luong/${kq.id}/anh`, fd);
+        }
       }
       return kq;
     }, 'Đã gửi khiếu nại.').then((ok) => { if (ok) khi_xong(); });
@@ -331,10 +334,14 @@ function HopThoaiKhieuNaiLuong(
       <label htmlFor="knnd">Nội dung khiếu nại</label>
       <textarea id="knnd" value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)}
         placeholder="Ví dụ: Công thực tế tháng này là 24 nhưng phiếu ghi 22…" rows={4} />
-      <label htmlFor="knanh" style={{ marginTop: 10, display: 'block' }}>Ảnh đính kèm (tùy chọn)</label>
-      <input id="knanh" type="file" accept="image/*"
-        onChange={(e) => dat_anh(e.target.files?.[0] ?? null)} />
-      {anh !== null && <div className="mo-ta" style={{ marginTop: 4 }}>Đã chọn: {anh.name}</div>}
+      <label htmlFor="knanh" style={{ marginTop: 10, display: 'block' }}>Ảnh đính kèm (có thể chọn nhiều ảnh — tùy chọn)</label>
+      <input id="knanh" type="file" accept="image/*" multiple
+        onChange={(e) => dat_anh(Array.from(e.target.files ?? []))} />
+      {anh.length > 0 && (
+        <div className="mo-ta" style={{ marginTop: 4 }}>
+          Đã chọn {anh.length} ảnh: {anh.map((f) => f.name).join(', ')}
+        </div>
+      )}
       <div className="hang-nut" style={{ marginTop: 12 }}>
         <button className="nut-lanh" disabled={hd.dang_chay || noi_dung.trim().length < 5} onClick={gui}>
           Gửi khiếu nại
@@ -369,6 +376,33 @@ function OTraLoiKN({ kn_id, khi_gui }: { kn_id: string; khi_gui: () => void }): 
   );
 }
 
+/** Them nhieu anh minh chung vao mot khieu nai DANG MO (nguoi lao dong). */
+function OThemAnhKN({ kn_id, khi_gui }: { kn_id: string; khi_gui: () => void }): ReactNode {
+  const hd = dung_hanh_dong();
+  const them = (files: FileList | null): void => {
+    const ds = Array.from(files ?? []);
+    if (ds.length === 0) return;
+    void hd.chay(async () => {
+      for (const f of ds) {
+        const fd = new FormData();
+        fd.append('anh', f);
+        await gui_tep(`/api/toi/khieu-nai-luong/${kn_id}/anh`, fd);
+      }
+      return true;
+    }, `Đã thêm ${ds.length} ảnh.`).then((ok) => { if (ok) khi_gui(); });
+  };
+  return (
+    <div style={{ marginTop: 6 }}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <label className="mo-ta" style={{ display: 'block', marginBottom: 2 }}>
+        Thêm ảnh minh chứng (có thể chọn nhiều):
+      </label>
+      <input type="file" accept="image/*" multiple disabled={hd.dang_chay}
+        onChange={(e) => { them(e.target.files); e.currentTarget.value = ''; }} />
+    </div>
+  );
+}
+
 /** Danh sach khieu nai + thread trao doi; dung o ca man Phieu luong lan tab Khieu nai. */
 export function DanhSachKhieuNai(
   { ds, khi_doi }: { ds: KhieuNai[]; khi_doi: () => void },
@@ -394,12 +428,16 @@ export function DanhSachKhieuNai(
                 ))}
               </div>
             )}
-            {mo ? <OTraLoiKN kn_id={x.id} khi_gui={khi_doi} />
-              : (
-                <div className="mo-ta" style={{ marginTop: 6 }}>
-                  Ticket đã đóng ({NHAN_TT_KN[x.trang_thai]?.ten ?? x.trang_thai}).
-                </div>
-              )}
+            {mo ? (
+              <>
+                <OTraLoiKN kn_id={x.id} khi_gui={khi_doi} />
+                <OThemAnhKN kn_id={x.id} khi_gui={khi_doi} />
+              </>
+            ) : (
+              <div className="mo-ta" style={{ marginTop: 6 }}>
+                Ticket đã đóng ({NHAN_TT_KN[x.trang_thai]?.ten ?? x.trang_thai}).
+              </div>
+            )}
           </div>
         );
       })}
