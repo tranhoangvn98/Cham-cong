@@ -93,7 +93,8 @@ export function ca_cua_ngay(ca: CaLam | null, ngay: string): CaLam | null {
 }
 
 export type TrangThaiNgay =
-  'vang' | 'co_mat' | 'nghi_phep' | 'nghi_khong_luong' | 'ngay_le' | 'nghi_tuan' | 'cong_tac';
+  'vang' | 'co_mat' | 'nghi_phep' | 'nghi_khong_luong' | 'ngay_le' | 'nghi_tuan'
+  | 'cong_tac' | 'lam_bu';
 
 export interface DauVaoTinhCong {
   /** 'YYYY-MM-DD' */

@@ -76,6 +76,61 @@ export async function tinh_lai_ngay(
     if (da_chot?.da_chot === true) return null;
   }
 
+  // --- LAM BU: ngay nay la NGAY DUOC NGHI BU? Cong = tong 0,5 moi buoi bu "da lam". ---
+  // Xu ly TRUOC quy tac thuong: ngay nghi bu khong quet the, tinh nhu ngay lam viec se ra 'vang'.
+  // Cac ngay lam bu (vd 22/8, 29/8) phai duoc tinh TRUOC ngay nghi (vd 31/8) — dung khi tinh lai
+  // ca thang theo thu tu tang dan. Luong da chan trung: thu Bay bi cap 0,5 (he_so_t7), phan con
+  // lai cua buoi chieu chay qua ngay nghi bu nay.
+  const lam_bu = await truy_van_mot<{ id: string }>(
+    'select id from ngay_lam_bu where ngay_nghi = $1', [ngay],
+  );
+  if (lam_bu !== null) {
+    const buoi = await truy_van<{ da_lam: boolean }>(
+      `select
+          (bc.trang_thai = 'nghi_phep'
+           or (bc.trang_thai = 'co_mat' and (
+                bc.so_cong >= 1
+                or (b.buoi = 'chieu' and bc.gio_ra is not null
+                    and extract(hour from bc.gio_ra at time zone 'Asia/Ho_Chi_Minh') >= 13)
+                or (b.buoi = 'sang'  and bc.gio_vao is not null
+                    and extract(hour from bc.gio_vao at time zone 'Asia/Ho_Chi_Minh') < 12)
+           ))) as da_lam
+         from buoi_lam_bu b
+         left join bang_cong_ngay bc
+                on bc.nhan_vien_id = $1 and bc.ngay = b.ngay
+        where b.ngay_lam_bu_id = $2`,
+      [nhan_vien_id, lam_bu.id],
+    );
+    const so_lam = buoi.filter((x) => x.da_lam).length;
+    const kq_lb: KetQuaTinhCong = {
+      trang_thai: 'lam_bu', gio_vao: null, gio_ra: null,
+      phut_lam: 0, phut_muon: 0, phut_ve_som: 0, phut_ot: 0,
+      so_cong: so_lam * 0.5, co_dieu_chinh: false,
+      ghi_chu: `Ngày nghỉ bù — ${so_lam}/${buoi.length} buổi làm bù đã làm`,
+    };
+    await trong_giao_dich(async (khach) => {
+      await khach.query(
+        `insert into bang_cong_ngay
+           (nhan_vien_id, ngay, ca_lam_id, trang_thai, gio_vao, gio_ra,
+            phut_lam, phut_muon, phut_ve_som, phut_ot, so_cong, co_dieu_chinh, ghi_chu, tinh_luc)
+         values ($1,$2,$3,'lam_bu',null,null,0,0,0,0,$4,false,$5, now())
+         on conflict (nhan_vien_id, ngay) do update set
+           ca_lam_id = excluded.ca_lam_id, trang_thai = 'lam_bu',
+           gio_vao = null, gio_ra = null, phut_lam = 0, phut_muon = 0, phut_ve_som = 0,
+           phut_ot = 0, so_cong = excluded.so_cong, co_dieu_chinh = false,
+           ghi_chu = excluded.ghi_chu, tinh_luc = now()
+         where bang_cong_ngay.da_chot = false`,
+        [nhan_vien_id, ngay, nv.ca_lam_id, kq_lb.so_cong, kq_lb.ghi_chu],
+      );
+      await ghi_su_kien('bang_cong.da_chot', {
+        nhan_vien_id, ma_nv: nv.ma_nv, ma_erp: nv.ma_erp, ngay,
+        trang_thai: 'lam_bu', phut_lam: 0, phut_muon: 0, phut_ve_som: 0, phut_ot: 0,
+        so_cong: kq_lb.so_cong,
+      }, khach);
+    });
+    return kq_lb;
+  }
+
   const ca = await nap_ca(nv.ca_lam_id);
   const khoang = khoang_lay_quet(ngay, ca);
 

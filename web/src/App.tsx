@@ -17,6 +17,7 @@ import { TrangDuyetDon } from './trang/duyet_don.tsx';
 import { TrangQuanLyPhep } from './trang/quan_ly_phep.tsx';
 import { TrangKhieuNaiLuong } from './trang/khieu_nai_luong.tsx';
 import { TrangCaLam, TrangDiaDiem, TrangNgayLe } from './trang/cai_dat.tsx';
+import { TrangLamBu } from './trang/lam_bu.tsx';
 import { TrangLanQuet } from './trang/lan_quet.tsx';
 import { TrangNguoiDung, TrangNhatKy } from './trang/nguoi_dung.tsx';
 import { TrangKhoaApi } from './trang/khoa_api.tsx';
@@ -131,6 +132,7 @@ const MENU_CAI_DAT: MucMenu[] = [
   { duong_dan: '/cai-dat/ca-lam', ten: 'Ca làm việc', icon: 'clock', nhom: 'Chấm công', phu: 'Giờ vào/ra, dung sai, ngưỡng OT' },
   { duong_dan: '/cai-dat/dia-diem', ten: 'Địa điểm', icon: 'map-pin', nhom: 'Chấm công', phu: 'Đối chiếu GPS khi đi công tác' },
   { duong_dan: '/cai-dat/ngay-le', ten: 'Ngày lễ', icon: 'star', nhom: 'Chấm công', phu: 'Tết Nguyên đán phải tự thêm mỗi năm' },
+  { duong_dan: '/cai-dat/lam-bu', ten: 'Ngày làm bù', icon: 'calendar-plus', nhom: 'Chấm công', phu: 'Ngày được nghỉ, kiếm công bằng buổi làm bù', quyen: 'nhan_su' },
 
   { duong_dan: '/cai-dat/tham-so-luong', ten: 'Tham số lương', icon: 'receipt-2', nhom: 'Nhân sự & lương', phu: 'BHXH, thuế TNCN, giảm trừ gia cảnh', quyen: 'nhan_su' },
 
@@ -228,6 +230,7 @@ function NoiDungCaiDat({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/cai-dat/ca-lam': return <TrangCaLam />;
     case '/cai-dat/dia-diem': return <TrangDiaDiem />;
     case '/cai-dat/ngay-le': return <TrangNgayLe />;
+    case '/cai-dat/lam-bu': return <TrangLamBu />;
     case '/cai-dat/tham-so-luong': return <TrangThamSoLuong />;
     case '/cai-dat/tai-khoan': return <TrangNguoiDung />;
     case '/cai-dat/khoa-api': return <TrangKhoaApi />;

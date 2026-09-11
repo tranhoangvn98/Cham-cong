@@ -26,6 +26,7 @@ const NHAN_TRANG_THAI_NGAY: Record<string, string> = {
   ngay_le: 'Ngày lễ',
   nghi_tuan: 'Nghỉ tuần',
   cong_tac: 'Công tác',
+  lam_bu: 'Làm bù',
 };
 
 /**
@@ -258,6 +259,77 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tinh_lai_bang_cong', 'bang_cong_ngay',
       null, { tu, den, nhan_vien_id, so_ngay: so }, req.ip);
     return { ok: true, so_ngay_da_tinh: so };
+  });
+
+  // ============================================================ LAM BU (ngay nghi bu)
+  /** Danh sach ngay nghi bu + cac buoi lam bu cua no. */
+  app.get('/lam-bu', { preHandler: can_nhan_su }, async () => truy_van(
+    `select lb.id, lb.ngay_nghi, lb.ghi_chu, lb.tao_luc,
+            coalesce((select json_agg(json_build_object('ngay', b.ngay, 'buoi', b.buoi)
+                                      order by b.ngay, b.buoi)
+                        from buoi_lam_bu b where b.ngay_lam_bu_id = lb.id), '[]') as buoi
+       from ngay_lam_bu lb order by lb.ngay_nghi desc`));
+
+  /** Tao ngay nghi bu + cac buoi lam bu (mang {ngay, buoi}). */
+  app.post('/lam-bu', { preHandler: can_nhan_su }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body);
+    const ngay_nghi = ngay_bat_buoc(b, 'ngay_nghi');
+    const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 300 });
+    const buoi_raw = Array.isArray(b['buoi']) ? b['buoi'] as unknown[] : [];
+    if (buoi_raw.length === 0) throw new LoiDauVao('Cần ít nhất một buổi làm bù.');
+    const buoi = buoi_raw.map((x) => {
+      const o = than(x);
+      return { ngay: ngay_bat_buoc(o, 'ngay'), buoi: trong_tap(o, 'buoi', ['sang', 'chieu'] as const, { bat_buoc: true }) as string };
+    });
+
+    const lb = await truy_van_mot<{ id: string }>(
+      `insert into ngay_lam_bu(ngay_nghi, ghi_chu, tao_boi) values ($1,$2,$3)
+       on conflict (ngay_nghi) do update set ghi_chu = excluded.ghi_chu returning id`,
+      [ngay_nghi, ghi_chu, nd.sub],
+    );
+    const lb_id = lb?.id as string;
+    await thuc_thi('delete from buoi_lam_bu where ngay_lam_bu_id = $1', [lb_id]);
+    for (const s of buoi) {
+      await thuc_thi(
+        `insert into buoi_lam_bu(ngay_lam_bu_id, ngay, buoi) values ($1,$2,$3)
+         on conflict (ngay_lam_bu_id, ngay, buoi) do nothing`,
+        [lb_id, s.ngay, s.buoi],
+      );
+    }
+    await ghi_nhat_ky(nd.sub, 'tao_ngay_lam_bu', 'ngay_lam_bu', lb_id,
+      { ngay_nghi, so_buoi: buoi.length }, req.ip);
+    return res.code(201).send({ id: lb_id });
+  });
+
+  /** Xoa ngay nghi bu (kem cac buoi). Sau khi xoa nen tinh lai ngay do de tra ve binh thuong. */
+  app.delete('/lam-bu/:id', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const p = req.params as Record<string, string>;
+    const id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+    const kq = await thuc_thi('delete from ngay_lam_bu where id = $1', [id]);
+    if (kq === 0) throw new LoiKhongTim('Không tìm thấy ngày nghỉ bù.');
+    await ghi_nhat_ky(nd.sub, 'xoa_ngay_lam_bu', 'ngay_lam_bu', id, {}, req.ip);
+    return { ok: true };
+  });
+
+  /** Ap dung: tinh lai cong khoang bao trum (ngay nghi + moi buoi lam bu) cho MOI nhan vien. */
+  app.post('/lam-bu/:id/tinh-lai', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const p = req.params as Record<string, string>;
+    const id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+    const moc = await truy_van_mot<{ tu: string; den: string }>(
+      `select least(lb.ngay_nghi, min(b.ngay))::text as tu,
+              greatest(lb.ngay_nghi, max(b.ngay))::text as den
+         from ngay_lam_bu lb left join buoi_lam_bu b on b.ngay_lam_bu_id = lb.id
+        where lb.id = $1 group by lb.ngay_nghi`,
+      [id],
+    );
+    if (moc === null) throw new LoiKhongTim('Không tìm thấy ngày nghỉ bù.');
+    const so = await tinh_lai_khoang(moc.tu, moc.den);
+    await ghi_nhat_ky(nd.sub, 'tinh_lai_lam_bu', 'ngay_lam_bu', id,
+      { tu: moc.tu, den: moc.den, so_ngay: so }, req.ip);
+    return { ok: true, so_ngay_da_tinh: so, tu: moc.tu, den: moc.den };
   });
 
   // ============================================================ sua tay mot ngay cong
