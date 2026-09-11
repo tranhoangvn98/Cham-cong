@@ -103,15 +103,22 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
   const p = ds[Math.min(chon, ds.length - 1)]!;
   const thu_nhap = p.khoan.filter((k) => k.loai === 'thu_nhap');
   const khau_tru = p.khoan.filter((k) => k.loai === 'tru');
+  // Cac khoan PHAT (di muon / nua ngay do di muon) — de hien ro "chi tiet phat" cho nguoi bi phat,
+  // hoac ghi "da mien phat" khi admin da mien va khong co dong phat nao.
+  const co_khoan_phat = khau_tru.some(
+    (k) => k.khoan_ma === 'tru_di_muon' || k.khoan_ma === 'tru_nua_ngay',
+  );
 
   return (
     <>
-      <div className="dau-trang">
-        <div>
-          <p className="mo-ta">Phiếu lương hàng tháng của bạn — xem chi tiết từng khoản.</p>
+      {thang_loc == null && (
+        <div className="dau-trang">
+          <div>
+            <p className="mo-ta">Phiếu lương hàng tháng của bạn — xem chi tiết từng khoản.</p>
+          </div>
+          <button className="nut-phang" onClick={() => window.print()}>In phiếu</button>
         </div>
-        <button className="nut-phang" onClick={() => window.print()}>In phiếu</button>
-      </div>
+      )}
 
       {thang_loc == null && (
         <div className="bo-loc">
@@ -218,6 +225,9 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
               {Number(p.tru_khac) > 0 && (
                 <tr><td>Trừ khác</td><td className="phai">{tien(p.tru_khac)}</td></tr>
               )}
+              {p.mien_phat && !co_khoan_phat && (
+                <tr><td className="mo-ta" colSpan={2}>Đã miễn phạt đi muộn/về sớm kỳ này (không trừ).</td></tr>
+              )}
               <tr className="hang-tong">
                 <td><strong>Tổng khấu trừ</strong></td>
                 <td className="phai"><strong>{tien(p.tong_tru)}</strong></td>
@@ -271,11 +281,13 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
         );
       })()}
 
-      <div className="hop-thong-bao hop-luu-y">
-        Phiếu lương chỉ hiện khi kỳ đã được duyệt/trả. Nếu thấy sai, bấm
-        <strong> Khiếu nại phiếu lương này</strong> để gửi Phòng Nhân sự, hoặc gửi giải trình ở mục
-        <strong> Đơn của tôi</strong> — mỗi khoản đều ghi rõ để đối chiếu.
-      </div>
+      {thang_loc == null && (
+        <div className="hop-thong-bao hop-luu-y">
+          Phiếu lương chỉ hiện khi kỳ đã được duyệt/trả. Nếu thấy sai, bấm
+          <strong> Khiếu nại phiếu lương này</strong> để gửi Phòng Nhân sự, hoặc gửi giải trình ở mục
+          <strong> Đơn của tôi</strong> — mỗi khoản đều ghi rõ để đối chiếu.
+        </div>
+      )}
 
       {mo_kn && (
         <HopThoaiKhieuNaiLuong
