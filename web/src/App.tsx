@@ -40,6 +40,7 @@ import { TrangThongBaoCaNhan } from './trang/thong_bao_ca_nhan.tsx';
 import { TrangVanBan } from './trang/van_ban.tsx';
 import { TroLyCaNhan } from './trang/tro_ly.tsx';
 import { ChuongBao } from './trang/chuong_bao.tsx';
+import { PopupThongBao } from './trang/popup_thong_bao.tsx';
 
 interface MucMenu {
   duong_dan: string;
@@ -357,7 +358,9 @@ function BoCuc(): ReactNode {
   // khong con vo chung co thanh ben quan tri. Nguoi co quyen quan tri co nut quay lai.
   if (duong_dan === '/ca-nhan' || (gn === 'ca_nhan' && duong_dan === '/')) {
     return (
-      <TrangCaNhan
+      <>
+        <PopupThongBao />
+        <TrangCaNhan
         ve_quan_tri={la_quan_tri() ? () => doi_goc_nhin('quan_tri') : undefined}
         di_duyet={() => {
           // Duyet don la viec quan tri: doi HAN sang vo quan tri (khong de vo nua ca nhan nua
@@ -366,7 +369,8 @@ function BoCuc(): ReactNode {
           if (la_quan_tri()) { dat_goc_nhin('quan_tri'); dat_gn('quan_tri'); }
           di_toi('/duyet-don');
         }}
-      />
+        />
+      </>
     );
   }
 
@@ -386,6 +390,7 @@ function BoCuc(): ReactNode {
 
   return (
     <div className="vo-app">
+      <PopupThongBao />
       <aside className={ben_mo ? 'thanh-ben mo' : 'thanh-ben'}>
         <div className="thuong-hieu">
           <div className="thuong-hieu-o" aria-hidden="true">TH</div>

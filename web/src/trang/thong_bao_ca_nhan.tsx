@@ -105,18 +105,24 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
   const [noi_dung, dat_noi_dung] = useState('');
   const [muc_do, dat_muc_do] = useState('thuong');
   const [can_gt, dat_can_gt] = useState(false);
+  const [popup, dat_popup] = useState(false);
+  const [gui_email, dat_gui_email] = useState(false);
   const hd = dung_hanh_dong();
 
   const gui = async (): Promise<void> => {
     const ok = await hd.chay(
       () => goi('/api/thong-bao', {
         method: 'POST',
-        body: { tieu_de, noi_dung, muc_do, can_giai_trinh: can_gt, pham_vi: 'toan_cong_ty' },
+        body: {
+          tieu_de, noi_dung, muc_do, can_giai_trinh: can_gt, pham_vi: 'toan_cong_ty',
+          popup, gui_email,
+        },
       }),
       'Đã đăng thông báo.',
     );
     if (ok) {
       dat_tieu_de(''); dat_noi_dung(''); dat_muc_do('thuong'); dat_can_gt(false);
+      dat_popup(false); dat_gui_email(false);
       dat_mo(false); khi_xong();
     }
   };
@@ -148,6 +154,17 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
         <label className="truong-hang">
           <input type="checkbox" checked={can_gt} onChange={(e) => dat_can_gt(e.target.checked)} />
           <span>Bắt buộc giải trình</span>
+        </label>
+      </div>
+      <div className="tb-dang-hang">
+        <label className="truong-hang">
+          <input type="checkbox" checked={popup} onChange={(e) => dat_popup(e.target.checked)} />
+          <span>Hiện popup khi mở app (bắt buộc đọc)</span>
+        </label>
+        <label className="truong-hang">
+          <input type="checkbox" checked={gui_email}
+            onChange={(e) => dat_gui_email(e.target.checked)} />
+          <span>Gửi email tới toàn công ty</span>
         </label>
       </div>
       <div className="hang-nut">

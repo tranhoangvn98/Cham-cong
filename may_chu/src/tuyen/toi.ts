@@ -1460,6 +1460,28 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
   });
 
   /**
+   * Thong bao POPUP con hieu luc, CHUA doc — de app hien hop thoai bat buoc doc khi mo. Dismiss
+   * = POST /thong-bao/:id/xac-nhan (tao dong da_doc), sau do khong con tra ve o day.
+   */
+  app.get('/thong-bao/popup', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select tb.id, tb.ma, tb.tieu_de, tb.noi_dung, tb.muc_do, tb.can_giai_trinh, tb.tao_luc
+         from thong_bao tb
+         left join thong_bao_da_doc dd on dd.thong_bao_id = tb.id and dd.nhan_vien_id = $1
+        where tb.popup = true and tb.da_go = false
+          and (tb.het_han is null or tb.het_han > now())
+          and dd.doc_luc is null
+          and (tb.pham_vi = 'toan_cong_ty'
+               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+               or tb.nhan_vien_id = $1)
+        order by tb.muc_do = 'khan' desc, tb.tao_luc desc
+        limit 20`,
+      [nv_id],
+    );
+  });
+
+  /**
    * Kho van ban cong ty. Loc theo PHAM VI: van ban toan cong ty ai cung thay; van ban phong
    * ban chi nguoi trong phong; van ban ca nhan chi dung nguoi do. Van ban cu (truoc ban soan
    * thao) co pham_vi mac dinh 'toan_cong_ty' nen van hien voi moi nguoi.
