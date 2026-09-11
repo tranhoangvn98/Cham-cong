@@ -473,7 +473,8 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
   // ra route quan tri. Duyet don la viec quan tri -> doi han goc nhin (di_duyet).
   const dieu_huong_bao = (man: string | undefined): void => {
     if (man === 'thong-bao') { dat_tab('trang_chu'); dat_mo_form(null); dat_man_phu('thong_bao'); return; }
-    if (man === 'duyet-don') { di_duyet?.(); return; }
+    if (man === 'khieu-nai-luong') { di_den('khieu_nai'); return; }
+    if (man === 'duyet-don' || man === 'don-tu') { di_duyet?.(); return; }
     if (man === 'ky-luat' || man === 'vi-pham' || man === 'don-cua-toi') { di_den('don_tu'); return; }
     di_den('trang_chu');
   };

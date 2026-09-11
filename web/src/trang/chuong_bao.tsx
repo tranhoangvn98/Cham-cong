@@ -17,6 +17,9 @@ interface Bao {
 /** man (trong du_lieu) -> duong dan trong web. Khong khop thi ve trang chu. */
 const DUONG_THEO_MAN: Record<string, string> = {
   'duyet-don': '/duyet-don',
+  'don-tu': '/duyet-don',
+  'khieu-nai-luong': '/khieu-nai-luong',
+  'ra-vao': '/ra-vao',
   'thong-bao': '/thong-bao',
   'ky-luat': '/don-cua-toi',
   'vi-pham': '/don-cua-toi',
