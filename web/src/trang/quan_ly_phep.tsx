@@ -4,10 +4,11 @@
 // muc phep nam (HR dat), so thang lam, quy theo luat, so da nghi (da duyet), so dang cho duyet,
 // va con lai — de Nhan su/Truong phong quan ly phep cua tung nguoi.
 import { useState, type ReactNode } from 'react';
-import { DangTai, HopLoi, Trong, dung_nap } from '../thanh_phan.tsx';
+import { DangTai, HopLoi, HopThoai, Trong, dung_nap } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
 
 interface Dong {
+  id: string;
   ma_nv: string;
   ho_ten: string;
   phong_ban: string | null;
@@ -27,9 +28,62 @@ interface KetQua {
 
 const so = (v: number): string => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 
+const TEN_TT_PHEP: Record<string, string> = {
+  cho_duyet: 'Chờ duyệt', da_duyet: 'Đã duyệt', tu_choi: 'Từ chối', da_huy: 'Đã hủy',
+};
+
+interface LanPhep {
+  id: string; tu_ngay: string; den_ngay: string; nua_ngay: boolean;
+  trang_thai: string; ly_do: string | null; so_ngay: number;
+}
+interface ChiTietPhepData { nam: number; ma_nv: string; ho_ten: string; cac_lan: LanPhep[]; }
+
+/** Modal "Chi tiet" — lich su tru phep nam cua MOT nguoi trong nam. */
+function ChiTietPhep(
+  { nhan_vien_id, ho_ten, nam, khi_dong }:
+  { nhan_vien_id: string; ho_ten: string; nam: number; khi_dong: () => void },
+): ReactNode {
+  const ds = dung_nap<ChiTietPhepData>(
+    `/api/duyet/nghi-phep/chi-tiet?nhan_vien_id=${nhan_vien_id}&nam=${nam}`,
+  );
+  const cac_lan = ds.du_lieu?.cac_lan ?? [];
+  return (
+    <HopThoai tieu_de={`Lịch sử trừ phép — ${ho_ten} (${nam})`} khi_dong={khi_dong} rong>
+      {ds.dang_tai ? <DangTai /> : ds.loi !== null ? <HopLoi loi={ds.loi} />
+        : cac_lan.length === 0 ? (
+          <Trong tieu_de="Chưa dùng phép năm"
+            mo_ta={`Trong năm ${String(nam)} người này chưa có đơn phép năm nào.`} />
+        ) : (
+          <div className="vo-bang">
+            <table>
+              <thead>
+                <tr>
+                  <th>Từ ngày</th><th>Đến ngày</th>
+                  <th className="canh-phai">Số ngày</th><th>Trạng thái</th><th>Lý do</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cac_lan.map((x) => (
+                  <tr key={x.id}>
+                    <td className="khong-ngat mo-ma">{x.tu_ngay}</td>
+                    <td className="khong-ngat mo-ma">{x.den_ngay}</td>
+                    <td className="canh-phai">{so(x.so_ngay)}{x.nua_ngay ? ' (½)' : ''}</td>
+                    <td className="khong-ngat">{TEN_TT_PHEP[x.trang_thai] ?? x.trang_thai}</td>
+                    <td>{x.ly_do ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+    </HopThoai>
+  );
+}
+
 export function TrangQuanLyPhep(): ReactNode {
   const nam_nay = new Date().getFullYear();
   const [nam, dat_nam] = useState(nam_nay);
+  const [chi_tiet, dat_chi_tiet] = useState<Dong | null>(null);
   const ds = dung_nap<KetQua>(`/api/duyet/nghi-phep/tong-hop?nam=${nam}`, [nam]);
 
   const cac_nam: number[] = [];
@@ -71,6 +125,7 @@ export function TrangQuanLyPhep(): ReactNode {
                     <th className="canh-phai">Đã nghỉ</th>
                     <th className="canh-phai">Chờ duyệt</th>
                     <th className="canh-phai">Còn lại</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
@@ -90,6 +145,9 @@ export function TrangQuanLyPhep(): ReactNode {
                           {so(d.con_lai)}
                         </strong>
                       </td>
+                      <td className="canh-phai">
+                        <button className="nut-phang" onClick={() => dat_chi_tiet(d)}>Chi tiết</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -100,6 +158,13 @@ export function TrangQuanLyPhep(): ReactNode {
             </p>
           </div>
         )}
+
+      {chi_tiet !== null && (
+        <ChiTietPhep
+          nhan_vien_id={chi_tiet.id} ho_ten={chi_tiet.ho_ten} nam={nam}
+          khi_dong={() => dat_chi_tiet(null)}
+        />
+      )}
     </>
   );
 }

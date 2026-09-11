@@ -122,12 +122,53 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
       const so_thang = so_thang_lam_trong_nam(r.ngay_vao, r.ngay_nghi_viec, nam);
       const quy = quy_phep_theo_luat(r.base, so_thang);
       return {
+        id: r.id,
         ma_nv: r.ma_nv, ho_ten: r.ho_ten, phong_ban: r.phong_ban, ngay_vao: r.ngay_vao,
         so_ngay_phep_nam: r.base, so_thang, quy, da_dung: r.da_dung, cho_duyet: r.cho_duyet,
         con_lai: Math.round((quy - r.da_dung) * 10) / 10,
       };
     });
     return { nam, dong };
+  });
+
+  /**
+   * Chi tiet LICH SU TRU PHEP cua MOT nguoi trong nam (nut "Chi tiet" o trang Quan ly phep):
+   * liet ke tung don phep nam (da_duyet = da tru; cho_duyet = chua tru) kem so ngay.
+   */
+  app.get('/nghi-phep/chi-tiet', { preHandler: can_nguoi_duyet }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const q = than(req.query);
+    const nhan_vien_id = uuid(q, 'nhan_vien_id');
+    if (nhan_vien_id === null) throw new LoiDauVao('Thiếu nhân viên cần xem.');
+    const nam_tho = Number(q['nam']);
+    const nam = Number.isInteger(nam_tho) && nam_tho >= 2000 && nam_tho <= 2100
+      ? nam_tho : new Date().getFullYear();
+
+    // Truong phong chi xem duoc nguoi trong phong minh (admin/nhan su xem tat ca).
+    if (!xem_duoc_tat_ca(nd)) {
+      const cung = await truy_van_mot<{ ok: boolean }>(
+        `select true as ok from nhan_vien
+          where id = $1 and phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)`,
+        [nhan_vien_id, nd.nv],
+      );
+      if (cung === null) throw new LoiKhongTim('Không xem được nhân viên ngoài phòng của bạn.');
+    }
+
+    const nguoi = await truy_van_mot<{ ma_nv: string; ho_ten: string }>(
+      'select ma_nv, ho_ten from nhan_vien where id = $1', [nhan_vien_id],
+    );
+    const cac_lan = await truy_van(
+      `select id, to_char(tu_ngay,'YYYY-MM-DD') as tu_ngay,
+              to_char(den_ngay,'YYYY-MM-DD') as den_ngay, nua_ngay, trang_thai, ly_do, ghi_chu_duyet,
+              to_char(tao_luc,'YYYY-MM-DD"T"HH24:MI:SSOF') as tao_luc,
+              (case when nua_ngay then 0.5 else (den_ngay - tu_ngay + 1) end)::float8 as so_ngay
+         from don_nghi_phep
+        where nhan_vien_id = $1 and loai = 'phep_nam'
+          and tu_ngay <= make_date($2::int, 12, 31) and den_ngay >= make_date($2::int, 1, 1)
+        order by tu_ngay desc`,
+      [nhan_vien_id, nam],
+    );
+    return { nam, ma_nv: nguoi?.ma_nv ?? '', ho_ten: nguoi?.ho_ten ?? '', cac_lan };
   });
 
   app.post('/nghi-phep/:id/quyet', { preHandler: can_nguoi_duyet }, async (req) => {
