@@ -2,9 +2,9 @@
 //
 // Mot bang luong khong giai thich duoc la mot don khieu nai — nen o day hien tung khoan thu
 // nhap va tung khoan tru, khong gop thanh mot con so "phu cap".
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { goi, gui_tep } from '../api.ts';
-import { lay_muc_tieu_bao } from '../dieu_huong_sau.ts';
+import { lay_muc_tieu_bao, nghe_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import {
   AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
   type TinNhanKN,
@@ -409,15 +409,20 @@ export function DanhSachKhieuNai(
   { ds, khi_doi }: { ds: KhieuNai[]; khi_doi: () => void },
 ): ReactNode {
   // Muc tieu tu thong bao: cuon toi dung ticket + lam noi bat thoang qua (thao luan da hien san
-  // trong tung ticket). Doc mot lan luc mount.
-  const can_mo = useRef<string | null>(lay_muc_tieu_bao('khieu-nai-luong'));
+  // trong tung ticket). Doc luc mount VA nghe tin hieu sau (dang o san tab nay ma bam thong bao).
+  const [can_mo, dat_can_mo] = useState<string | null>(() => lay_muc_tieu_bao('khieu-nai-luong'));
   const [noi_bat, dat_noi_bat] = useState<string | null>(null);
 
+  useEffect(() => nghe_muc_tieu_bao(() => {
+    const id = lay_muc_tieu_bao('khieu-nai-luong');
+    if (id !== null) dat_can_mo(id);
+  }), []);
+
   useEffect(() => {
-    if (can_mo.current === null) return;
-    const id = can_mo.current;
-    if (!ds.some((x) => x.id === id)) return; // chua co trong danh sach -> cho lan nap sau
-    can_mo.current = null;
+    if (can_mo === null) return;
+    if (!ds.some((x) => x.id === can_mo)) return; // chua co trong danh sach -> cho lan nap sau
+    const id = can_mo;
+    dat_can_mo(null);
     // Cho DOM ve xong roi cuon toi; lam noi bat ~2,5s roi tat.
     const t = window.setTimeout(() => {
       document.getElementById(`kn-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -425,7 +430,7 @@ export function DanhSachKhieuNai(
       window.setTimeout(() => dat_noi_bat(null), 2500);
     }, 60);
     return () => window.clearTimeout(t);
-  }, [ds]);
+  }, [ds, can_mo]);
 
   return (
     <div className="the">

@@ -3,10 +3,10 @@
 //
 // KHONG tu sua luong o day — day la kenh minh bach & phan hoi, con sua so lieu van theo quy trinh
 // ky luong (mo chot -> sua -> duyet lai).
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { goi, chi_xem_quan_tri, la_admin } from '../api.ts';
 import { LienKet } from '../dinh_tuyen.tsx';
-import { lay_muc_tieu_bao } from '../dieu_huong_sau.ts';
+import { lay_muc_tieu_bao, nghe_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import {
   AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
   type TinNhanKN,
@@ -49,19 +49,25 @@ const thang_viet = (t: string): string => {
 export function TrangKhieuNaiLuong(): ReactNode {
   const [loc, dat_loc] = useState('');
   const [dang, dat_dang] = useState<Dong | null>(null);
-  // Muc tieu tu thong bao: mo thang dung khieu nai + thao luan. Doc mot lan luc mount.
-  const can_mo = useRef<string | null>(lay_muc_tieu_bao('khieu-nai-luong'));
+  // Muc tieu tu thong bao: mo thang dung khieu nai + thao luan. Doc luc mount VA nghe tin hieu
+  // sau (khi dang o san trang nay ma bam mot thong bao khac — router khong mount lai).
+  const [can_mo, dat_can_mo] = useState<string | null>(() => lay_muc_tieu_bao('khieu-nai-luong'));
+
+  useEffect(() => nghe_muc_tieu_bao(() => {
+    const id = lay_muc_tieu_bao('khieu-nai-luong');
+    if (id !== null) dat_can_mo(id);
+  }), []);
 
   const url = `/api/khieu-nai-luong${loc === '' ? '' : `?trang_thai=${loc}`}`;
   const ds = dung_nap<Dong[]>(url, [loc]);
 
-  // Khi danh sach ve, neu co muc tieu tu thong bao thi mo dung hop thoai ticket do (mot lan).
+  // Khi danh sach ve, neu co muc tieu thi mo dung hop thoai ticket do (mot lan).
   useEffect(() => {
-    if (can_mo.current === null || ds.du_lieu === null) return;
-    const dong = ds.du_lieu.find((d) => d.id === can_mo.current);
-    can_mo.current = null;
+    if (can_mo === null || ds.du_lieu === null) return;
+    const dong = ds.du_lieu.find((d) => d.id === can_mo);
+    dat_can_mo(null);
     if (dong !== undefined) dat_dang(dong);
-  }, [ds.du_lieu]);
+  }, [ds.du_lieu, can_mo]);
 
   return (
     <>
