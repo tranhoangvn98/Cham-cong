@@ -267,13 +267,16 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
   if (dv.nghi_phep !== null) {
     const np = dv.nghi_phep;
     const la_khong_luong = np.loai === 'khong_luong';
-    const cong = np.nua_ngay ? 0.5 : la_khong_luong ? 0 : 1;
-    // Nghi KHONG LUONG phai co nhan rieng: enum bang_cong_ngay truoc day chi co 'nghi_phep' nen
-    // nghi khong luong bi gan nham nhan "Nghi phep" — ke toan va nhan vien nhin bang cong khong
-    // phan biet duoc phep CO luong voi KHONG luong. Nua ngay khong luong van con di lam nua buoi
-    // (so_cong=0,5) nen giu nhan 'nghi_phep'; chi ngay khong luong tron moi doi nhan.
-    const trang_thai_ngay: TrangThaiNgay =
-      la_khong_luong && !np.nua_ngay ? 'nghi_khong_luong' : 'nghi_phep';
+    // Cong theo loai don:
+    //   - KHONG luong  -> 0 (ca ngay lan nua ngay): nghi khong luong khong sinh cong. Truoc day
+    //     nua ngay khong luong van duoc 0,5 -> TRA DU (Loi 5, BC so 02). Nua buoi lam that (neu co)
+    //     duoc ghi nhan qua nhanh 'co mat', khong phai o day.
+    //   - CO luong nua ngay -> 0,5 (nua buoi phep huong luong); ca ngay -> 1.
+    const cong = la_khong_luong ? 0 : np.nua_ngay ? 0.5 : 1;
+    // Nghi KHONG luong phai co nhan rieng (enum truoc chi co 'nghi_phep' -> bi gop nham "Nghi
+    // phep"). Moi ngay khong luong (ca ngay lan nua ngay, deu 0 cong) mang nhan 'nghi_khong_luong'
+    // de ke toan/nhan vien phan biet phep CO luong voi KHONG luong tren bang cong.
+    const trang_thai_ngay: TrangThaiNgay = la_khong_luong ? 'nghi_khong_luong' : 'nghi_phep';
     if (phut_co_mat > 0) chu_thich.push('Co quet the trong ngay nghi phep');
     if (phut_co_mat > 0 && ot_da_duyet === 0) {
       chu_thich.push(`O lai ${phut_co_mat} phut nhung khong co don lam them da duyet`);

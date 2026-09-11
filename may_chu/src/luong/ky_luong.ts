@@ -291,7 +291,11 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
                 ) as co_don
            from bang_cong_ngay bc
            left join ca_lam cl on cl.id = bc.ca_lam_id
-          where bc.ngay >= $1 and bc.ngay <= $2 and bc.gio_vao is not null`,
+          where bc.ngay >= $1 and bc.ngay <= $2 and bc.gio_vao is not null
+            -- CHI xet di muon cho ngay CO MAT. Ngay nghi_phep / nghi_khong_luong / nghi_tuan /
+            -- ngay_le du co quet the (vao lam not nua ngay, hoac quet le ngay nghi) KHONG phai
+            -- di muon -> loai ra, khoi bi tru nua ngay oan (Loi 2, BC so 02).
+            and bc.trang_thai = 'co_mat'`,
         [tu, den, cau_hinh.device_tz_offset_hours, han_don_chuoi],
       )
     : [];

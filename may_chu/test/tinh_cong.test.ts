@@ -292,13 +292,33 @@ test('nghi phep ma van den lam, khong co don lam them: 0 OT', () => {
   assert.match(kq.ghi_chu ?? '', /khong co don lam them/);
 });
 
-test('nghi khong luong: 0 cong', () => {
+test('nghi khong luong ca ngay: 0 cong, nhan rieng', () => {
   const kq = tinh_cong_ngay({
     ...co_ban(T5, CA_HC, []),
     nghi_phep: { loai: 'khong_luong', nua_ngay: false },
   });
-  assert.equal(kq.trang_thai, 'nghi_phep');
+  // Nghi khong luong co nhan rieng, khong gop vao 'nghi_phep' (Loi 6, BC so 02).
+  assert.equal(kq.trang_thai, 'nghi_khong_luong');
   assert.equal(kq.so_cong, 0);
+});
+
+test('nghi khong luong NUA ngay: 0 cong (khong tra du 0,5)', () => {
+  // Loi 5, BC so 02: truoc day nua ngay khong luong duoc 0,5 cong -> tra du. Phai la 0.
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'khong_luong', nua_ngay: true },
+  });
+  assert.equal(kq.trang_thai, 'nghi_khong_luong');
+  assert.equal(kq.so_cong, 0);
+});
+
+test('nghi phep CO luong nua ngay: 0,5 cong', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'phep_nam', nua_ngay: true },
+  });
+  assert.equal(kq.trang_thai, 'nghi_phep');
+  assert.equal(kq.so_cong, 0.5);
 });
 
 test('nghi phep uu tien cao hon ngay le', () => {
