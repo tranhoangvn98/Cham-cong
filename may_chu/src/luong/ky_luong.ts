@@ -321,8 +321,10 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
   const han_don_chuoi =
     `${String(Math.floor(han_don / 60)).padStart(2, '0')}:${String(han_don % 60).padStart(2, '0')}`;
   const muon_ngay = ts.cs.di_muon.bat
-    ? await truy_van<{ nhan_vien_id: string; gio_vao: Date; co_don: boolean; ca_nghi_tu: string | null }>(
-        `select bc.nhan_vien_id, bc.gio_vao,
+    ? await truy_van<{
+        nhan_vien_id: string; ngay: string; gio_vao: Date; co_don: boolean; ca_nghi_tu: string | null;
+      }>(
+        `select bc.nhan_vien_id, to_char(bc.ngay, 'YYYY-MM-DD') as ngay, bc.gio_vao,
                 to_char(cl.nghi_tu, 'HH24:MI') as ca_nghi_tu,
                 exists(
                   select 1 from don_tu dt
@@ -341,8 +343,35 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
         [tu, den, cau_hinh.device_tz_offset_hours, han_don_chuoi],
       )
     : [];
+  // THU VIEC — mien phat di muon 3 NGAY CONG DAU tinh tu ngay vao (mien HOAN TOAN: ca 50k lan
+  // tru nua ngay). Lay 3 ngay co_mat dau doi (toan bo lich su, khong chi trong ky) cua tung nguoi
+  // dang thu viec; ngay nam trong 3 ngay do se bi bo khoi danh sach di muon ben duoi.
+  const thu_viec_ids = ds.filter((x) => x.loai_hop_dong === 'thu_viec').map((x) => x.nhan_vien_id);
+  const mien_3_ngay_dau = new Map<string, Set<string>>();
+  if (ts.cs.di_muon.bat && thu_viec_ids.length > 0) {
+    const dau3 = await truy_van<{ nhan_vien_id: string; ngay: string }>(
+      `select nhan_vien_id, ngay from (
+         select bc.nhan_vien_id, to_char(bc.ngay, 'YYYY-MM-DD') as ngay,
+                row_number() over (partition by bc.nhan_vien_id order by bc.ngay) as rn
+           from bang_cong_ngay bc
+           join nhan_vien nv on nv.id = bc.nhan_vien_id
+          where bc.nhan_vien_id = any($1::uuid[]) and bc.trang_thai = 'co_mat'
+            and (nv.ngay_vao is null or bc.ngay >= nv.ngay_vao)
+       ) t where t.rn <= 3`,
+      [thu_viec_ids],
+    );
+    for (const r of dau3) {
+      const s = mien_3_ngay_dau.get(r.nhan_vien_id) ?? new Set<string>();
+      s.add(r.ngay);
+      mien_3_ngay_dau.set(r.nhan_vien_id, s);
+    }
+  }
+
   const muon_theo_nguoi = new Map<string, { phut_trong_ngay: number; co_don_truoc_han: boolean }[]>();
   for (const m of muon_ngay) {
+    // Thu viec trong 3 ngay cong dau: mien phat di muon hoan toan -> bo qua ngay nay.
+    const mien = mien_3_ngay_dau.get(m.nhan_vien_id);
+    if (mien !== undefined && mien.has(m.ngay)) continue;
     const dia = new Date(m.gio_vao.getTime() + OFFSET_MAY_MS);
     const phut = dia.getUTCHours() * 60 + dia.getUTCMinutes();
     // Phan loai DI MUON vs NGHI CA SANG: chi tinh phat di muon khi quet dau (gio_vao) nam
