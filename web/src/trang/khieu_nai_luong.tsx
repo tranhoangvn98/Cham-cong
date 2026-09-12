@@ -3,11 +3,13 @@
 //
 // KHONG tu sua luong o day — day la kenh minh bach & phan hoi, con sua so lieu van theo quy trinh
 // ky luong (mo chot -> sua -> duyet lai).
-import { useState, type ReactNode } from 'react';
-import { goi, chi_xem_quan_tri } from '../api.ts';
+import { useEffect, useState, type ReactNode } from 'react';
+import { goi, chi_xem_quan_tri, la_admin } from '../api.ts';
 import { LienKet } from '../dinh_tuyen.tsx';
+import { lay_muc_tieu_bao, nghe_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import {
-  DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  type TinNhanKN,
 } from '../thanh_phan.tsx';
 
 const NHAN_TT: Record<string, { ten: string; lop: string }> = {
@@ -31,6 +33,8 @@ interface Dong {
   phong_ban: string | null;
   thang: string;
   thuc_linh: number;
+  anh: { id: string; ten: string }[];
+  tra_loi: TinNhanKN[];
 }
 
 const tien = (v: unknown): string => {
@@ -45,9 +49,25 @@ const thang_viet = (t: string): string => {
 export function TrangKhieuNaiLuong(): ReactNode {
   const [loc, dat_loc] = useState('');
   const [dang, dat_dang] = useState<Dong | null>(null);
+  // Muc tieu tu thong bao: mo thang dung khieu nai + thao luan. Doc luc mount VA nghe tin hieu
+  // sau (khi dang o san trang nay ma bam mot thong bao khac — router khong mount lai).
+  const [can_mo, dat_can_mo] = useState<string | null>(() => lay_muc_tieu_bao('khieu-nai-luong'));
+
+  useEffect(() => nghe_muc_tieu_bao(() => {
+    const id = lay_muc_tieu_bao('khieu-nai-luong');
+    if (id !== null) dat_can_mo(id);
+  }), []);
 
   const url = `/api/khieu-nai-luong${loc === '' ? '' : `?trang_thai=${loc}`}`;
   const ds = dung_nap<Dong[]>(url, [loc]);
+
+  // Khi danh sach ve, neu co muc tieu thi mo dung hop thoai ticket do (mot lan).
+  useEffect(() => {
+    if (can_mo === null || ds.du_lieu === null) return;
+    const dong = ds.du_lieu.find((d) => d.id === can_mo);
+    dat_can_mo(null);
+    if (dong !== undefined) dat_dang(dong);
+  }, [ds.du_lieu, can_mo]);
 
   return (
     <>
@@ -128,6 +148,7 @@ function HopThoaiXuLy(
   { d, khi_dong, khi_xong }: { d: Dong; khi_dong: () => void; khi_xong: () => void },
 ): ReactNode {
   const [phan_hoi, dat_phan_hoi] = useState(d.phan_hoi ?? '');
+  const [tra_loi_nd, dat_tra_loi_nd] = useState('');
   const hd = dung_hanh_dong();
   const chi_xem = chi_xem_quan_tri();
   const xong = d.trang_thai === 'chap_nhan' || d.trang_thai === 'tu_choi';
@@ -136,6 +157,21 @@ function HopThoaiXuLy(
     void hd.chay(
       () => goi(`/api/khieu-nai-luong/${d.id}/xu-ly`, { method: 'POST', body: { trang_thai, phan_hoi } }),
       chu,
+    ).then((ok) => { if (ok) khi_xong(); });
+  };
+
+  const gui_tra_loi = (): void => {
+    void hd.chay(
+      () => goi(`/api/khieu-nai-luong/${d.id}/tra-loi`, { method: 'POST', body: { noi_dung: tra_loi_nd } }),
+      'Đã gửi trả lời.',
+    ).then((ok) => { if (ok) { dat_tra_loi_nd(''); khi_xong(); } });
+  };
+
+  const la_ad = la_admin();
+  const mo_lai = (): void => {
+    void hd.chay(
+      () => goi(`/api/khieu-nai-luong/${d.id}/mo-lai`, { method: 'POST' }),
+      'Đã mở lại khiếu nại để trao đổi / giải trình thêm.',
     ).then((ok) => { if (ok) khi_xong(); });
   };
 
@@ -159,8 +195,30 @@ function HopThoaiXuLy(
         </div>
       </div>
 
-      <h3>Nội dung khiếu nại</h3>
-      <blockquote>{d.noi_dung}</blockquote>
+      <h3>Trao đổi</h3>
+      <ThreadKhieuNai noi_dung={d.noi_dung} tao_luc={d.tao_luc} tra_loi={d.tra_loi} la_admin />
+
+      {!xong && !chi_xem && (
+        <div style={{ marginTop: 4, marginBottom: 8 }}>
+          <textarea value={tra_loi_nd} onChange={(e) => dat_tra_loi_nd(e.target.value)} rows={2}
+            placeholder="Trả lời / trao đổi với người lao động…" />
+          <div className="hang-nut" style={{ marginTop: 6 }}>
+            <button className="nut-phang" disabled={hd.dang_chay || tra_loi_nd.trim().length < 1}
+              onClick={gui_tra_loi}>Gửi trả lời</button>
+          </div>
+        </div>
+      )}
+
+      {d.anh.length > 0 && (
+        <>
+          <h3>Ảnh đính kèm</h3>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            {d.anh.map((a) => (
+              <AnhCoToken key={a.id} duong_dan={`/api/toi/khieu-nai-luong/anh/${a.id}`} alt={a.ten} cao={120} />
+            ))}
+          </div>
+        </>
+      )}
 
       {xong ? (
         <>
@@ -170,6 +228,13 @@ function HopThoaiXuLy(
             {d.phan_hoi !== null && <> {d.phan_hoi}</>}
             {d.xu_ly_luc !== null && <div className="mo-ta">Xử lý lúc {ngay_gio(d.xu_ly_luc)}</div>}
           </div>
+          {la_ad && (
+            <div className="hang-nut" style={{ marginTop: 8 }}>
+              <button className="nut-phang" disabled={hd.dang_chay} onClick={mo_lai}>
+                Mở lại để trao đổi / giải trình thêm
+              </button>
+            </div>
+          )}
         </>
       ) : chi_xem ? (
         <div className="hop-thong-bao hop-tin">

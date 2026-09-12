@@ -10,7 +10,7 @@ process.env['DEVICE_TZ_OFFSET_HOURS'] ??= '7';
 // vi module cau_hinh doc bien moi truong khi nap.
 import type { CaLam, KhoangLamThem } from '../src/cong/quy_tac_tinh_cong.ts';
 
-const { tinh_cong_ngay, khoang_lay_quet, ca_cua_ngay } = await import('../src/cong/quy_tac_tinh_cong.ts');
+const { tinh_cong_ngay, khoang_lay_quet, ca_cua_ngay, buoi_lam_bu_da_lam } = await import('../src/cong/quy_tac_tinh_cong.ts');
 const { moc_thoi_gian } = await import('../src/tien_ich/thoi_gian.ts');
 
 /** Ca hanh chinh 08:00-17:00, nghi trua 12:00-13:30, T2-T6. */
@@ -71,11 +71,47 @@ test('di muon vuot dung sai: chi tinh phan vuot', () => {
   assert.match(kq.ghi_chu ?? '', /Di muon 15 phut/);
 });
 
-test('ve som vuot dung sai', () => {
+// Nguong moi (chu cong ty chot): dung_sai 10 -> ca 08:00 tinh muon TU 08:11:00. Giay truoc do
+// KHONG tinh (so_phut lam tron xuong).
+const CA_HC_10 = { ...CA_HC, dung_sai_muon_phut: 10 } satisfies CaLam;
+
+test('nguong 08:11:00 — 08:10:59 chua tinh muon', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC_10, q(T5, '08:10:59', '17:00')));
+  assert.equal(kq.phut_muon, 0, '08:10:59 van trong dung sai (lam tron xuong = 10 phut)');
+});
+
+test('nguong 08:11:00 — dung 08:11:00 tinh muon 1 phut', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC_10, q(T5, '08:11:00', '17:00')));
+  assert.equal(kq.phut_muon, 1, 'tu 08:11:00 bat dau tinh vi pham');
+});
+
+test('nguong 08:11:00 — 08:06 khong con bi tinh muon', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC_10, q(T5, '08:06', '17:00')));
+  assert.equal(kq.phut_muon, 0, '08:06 nam trong dung sai 10 phut');
+});
+
+test('ve som vuot dung sai: ghi nhan ve som nhung KHONG tru cong (con o buoi chieu)', () => {
   const kq = tinh_cong_ngay(co_ban(T5, CA_HC, q(T5, '08:00', '16:00')));
   assert.equal(kq.phut_ve_som, 55, '60 phut som - 5 phut dung sai');
-  assert.equal(kq.phut_lam, 390);
-  assert.equal(kq.so_cong, 0.5, 'chua du 420 phut nhung >= nua nguong');
+  assert.equal(kq.phut_lam, 390, 'so phut lam thuc te van la 390');
+  assert.equal(kq.so_cong, 1, 've luc 16:00 van co mat ca hai buoi -> du cong, chi bi phat tien');
+});
+
+test('di muon nhieu nhung du ca hai buoi: du cong (khong tru cong, phat tien tinh ben luong)', () => {
+  // Vao 09:08 (muon > 1 tieng), lam den 17:00: van co mat ca buoi sang lan buoi chieu.
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC, q(T5, '09:08', '17:00')));
+  assert.equal(kq.so_cong, 1, 'di muon khong lam tut so cong');
+  assert.match(kq.ghi_chu ?? '', /Di muon 63 phut/);
+});
+
+test('chi lam buoi chieu (vao 14:00): nghi ca sang -> 0.5 cong', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC, q(T5, '14:00', '17:00')));
+  assert.equal(kq.so_cong, 0.5, 'vang han buoi sang, du buoi chieu');
+});
+
+test('chi lam buoi sang, ve luc 12:00 (nghi ca chieu): 0.5 cong', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC, q(T5, '08:00', '12:00')));
+  assert.equal(kq.so_cong, 0.5, 'du buoi sang, vang han buoi chieu');
 });
 
 // ==================================================================================
@@ -275,13 +311,33 @@ test('nghi phep ma van den lam, khong co don lam them: 0 OT', () => {
   assert.match(kq.ghi_chu ?? '', /khong co don lam them/);
 });
 
-test('nghi khong luong: 0 cong', () => {
+test('nghi khong luong ca ngay: 0 cong, nhan rieng', () => {
   const kq = tinh_cong_ngay({
     ...co_ban(T5, CA_HC, []),
     nghi_phep: { loai: 'khong_luong', nua_ngay: false },
   });
-  assert.equal(kq.trang_thai, 'nghi_phep');
+  // Nghi khong luong co nhan rieng, khong gop vao 'nghi_phep' (Loi 6, BC so 02).
+  assert.equal(kq.trang_thai, 'nghi_khong_luong');
   assert.equal(kq.so_cong, 0);
+});
+
+test('nghi khong luong NUA ngay: 0 cong (khong tra du 0,5)', () => {
+  // Loi 5, BC so 02: truoc day nua ngay khong luong duoc 0,5 cong -> tra du. Phai la 0.
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'khong_luong', nua_ngay: true },
+  });
+  assert.equal(kq.trang_thai, 'nghi_khong_luong');
+  assert.equal(kq.so_cong, 0);
+});
+
+test('nghi phep CO luong nua ngay: 0,5 cong', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'phep_nam', nua_ngay: true },
+  });
+  assert.equal(kq.trang_thai, 'nghi_phep');
+  assert.equal(kq.so_cong, 0.5);
 });
 
 test('nghi phep uu tien cao hon ngay le', () => {
@@ -293,26 +349,28 @@ test('nghi phep uu tien cao hon ngay le', () => {
   assert.equal(kq.trang_thai, 'nghi_phep');
 });
 
-test('don giai trinh da duyet ghi de gio vao/ra', () => {
+test('don giai trinh da duyet ghi de gio vao/ra — KHONG danh dau sua tay', () => {
   // Quen quet ra, chi co 1 moc 08:00; giai trinh de xuat ra 17:00
   const kq = tinh_cong_ngay({
     ...co_ban(T5, CA_HC, q(T5, '08:00')),
     giai_trinh: { gio_vao_de_xuat: null, gio_ra_de_xuat: '17:00' },
   });
-  assert.equal(kq.co_dieu_chinh, true);
+  // Don giai trinh da duyet la logic he thong (tai lap duoc), khong phai sua tay.
+  assert.equal(kq.co_dieu_chinh, false);
   assert.equal(kq.phut_lam, 450);
   assert.equal(kq.so_cong, 1);
   assert.match(kq.ghi_chu ?? '', /giai trinh/);
 });
 
-test('giai trinh ca hai moc khi quen quet ca ngay', () => {
+test('giai trinh ca hai moc khi quen quet ca ngay — KHONG danh dau sua tay', () => {
   const kq = tinh_cong_ngay({
     ...co_ban(T5, CA_HC, []),
     giai_trinh: { gio_vao_de_xuat: '08:00', gio_ra_de_xuat: '17:00' },
   });
   assert.equal(kq.trang_thai, 'co_mat');
   assert.equal(kq.phut_lam, 450);
-  assert.equal(kq.co_dieu_chinh, true);
+  assert.equal(kq.co_dieu_chinh, false);
+  assert.match(kq.ghi_chu ?? '', /giai trinh/);
 });
 
 // ---------------------------------------------------------------- ca dem
@@ -403,11 +461,11 @@ test('theo thu: sang T7 lam du 08:00-12:00 -> KHONG ve som, 0,5 cong', () => {
   assert.equal(kq.so_cong, 0.5, '240 phut / nguong 480 -> nua cong');
 });
 
-test('theo thu: T7 ve som that (11:00) van bi ghi nhan ve som', () => {
+test('theo thu: T7 ve som that (11:00) van ghi nhan ve som nhung KHONG tru cong', () => {
   const kq = tinh_cong_ngay(co_ban(T7, CA_HD, q(T7, '08:00', '11:00')));
   assert.equal(kq.phut_ve_som, 55, '60 phut som - 5 phut dung sai');
-  assert.equal(kq.phut_lam, 180);
-  assert.equal(kq.so_cong, 0, '180 phut chua toi nua nguong 480');
+  assert.equal(kq.phut_lam, 180, 'so phut lam thuc te van la 180');
+  assert.equal(kq.so_cong, 0.5, 'T7 mot buoi: co mat thi du 0,5 cong, ve som chi bi phat tien');
 });
 
 test('theo thu: lam qua trua T7 KHONG co don -> 0 OT', () => {
@@ -531,4 +589,89 @@ test('cong tac: NGAY NGHI TUAN thang cong tac', () => {
   });
   assert.equal(kq.trang_thai, 'nghi_tuan');
   assert.equal(kq.so_cong, 0);
+});
+
+// ================================================================ lam bu (YC-03)
+test('lam bu — di lam CHIEU thu Bay (ra >= 13h) -> duoc 0,5 buoi chieu', () => {
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'co_mat', 8, 17, 0.5), true);
+});
+
+test('lam bu — chi lam SANG thu Bay (ra ~12h) -> KHONG duoc buoi chieu', () => {
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'co_mat', 8, 12, 0.5), false);
+});
+
+test('lam bu — nghi PHEP co luong da duyet -> duoc mien (0,5) ca sang lan chieu', () => {
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'nghi_phep', null, null, 0.5), true);
+  assert.equal(buoi_lam_bu_da_lam('sang', 'nghi_phep', null, null, 0.5), true);
+});
+
+test('lam bu — nghi KHONG luong / vang -> KHONG duoc cong buoi bu', () => {
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'nghi_khong_luong', null, null, 0), false);
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'vang', null, null, 0), false);
+});
+
+test('lam bu — co mat CA NGAY (so_cong >= 1) -> ca hai buoi deu duoc', () => {
+  assert.equal(buoi_lam_bu_da_lam('sang', 'co_mat', 8, 18, 1), true);
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'co_mat', 8, 18, 1), true);
+});
+
+test('lam bu — buoi SANG: vao truoc 12h -> duoc; vao chieu -> khong', () => {
+  assert.equal(buoi_lam_bu_da_lam('sang', 'co_mat', 8, null, 0.5), true);
+  assert.equal(buoi_lam_bu_da_lam('sang', 'co_mat', 14, null, 0.5), false);
+});
+
+// --- Nua ngay nghi (phep/khong luong) + di lam nua ngay con lai (ap dung toan cong ty) ---
+// Ngay THUONG hai buoi: nua ngay nghi phep + buoi con lai di lam thi buoi lam VAN duoc tinh cong.
+test('nua ngay phep co luong + di lam buoi chieu -> 1.0 (0.5 phep + 0.5 chieu)', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, q(T5, '13:27', '18:40')),
+    nghi_phep: { loai: 'nam', nua_ngay: true },
+  });
+  assert.equal(kq.trang_thai, 'nghi_phep');
+  assert.equal(kq.so_cong, 1);
+});
+
+test('nua ngay phep co luong + KHONG di lam -> giu 0.5', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'nam', nua_ngay: true },
+  });
+  assert.equal(kq.so_cong, 0.5);
+});
+
+test('nghi KHONG luong nua ngay + di lam buoi chieu -> 0.5 (nhat quan, chi tinh buoi lam)', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, q(T5, '13:27', '18:40')),
+    nghi_phep: { loai: 'khong_luong', nua_ngay: true },
+  });
+  assert.equal(kq.trang_thai, 'nghi_khong_luong');
+  assert.equal(kq.so_cong, 0.5);
+});
+
+test('nghi KHONG luong nua ngay + KHONG di lam -> 0 (khong tra du - Loi 5 BC-02)', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'khong_luong', nua_ngay: true },
+  });
+  assert.equal(kq.so_cong, 0);
+});
+
+test('phep ca ngay van 1.0 (fix nua ngay khong dung cham ngay ca ngay)', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'nam', nua_ngay: false },
+  });
+  assert.equal(kq.so_cong, 1);
+});
+
+test('T7 mot buoi (khong gio nghi): nua ngay phep + di lam sang -> giu 0.5, khong cong du', () => {
+  const CA_T7 = {
+    ...CA_HC, gio_ra: '12:00', nghi_tu: null, nghi_den: null,
+    phut_du_cong: 480, cac_ngay_lam: [1, 2, 3, 4, 5, 6],
+  } satisfies CaLam;
+  const kq = tinh_cong_ngay({
+    ...co_ban(T7, CA_T7, q(T7, '08:00', '12:10')),
+    nghi_phep: { loai: 'nam', nua_ngay: true },
+  });
+  assert.equal(kq.so_cong, 0.5);
 });

@@ -8,7 +8,7 @@ import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { gui_ngam } from '../su_kien/thong_bao_day.ts';
-import { gui_email } from '../su_kien/gui_email.ts';
+import { gui_email, email_bat } from '../su_kien/gui_email.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { luu_van_ban_cong_ty, lam_sach_ten, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
@@ -41,13 +41,80 @@ async function nguoi_nhan_pham_vi(
   );
 }
 
+function thoat_html(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 /** HTML don gian cho email van ban — giu xuong dong, chong chen the. */
 function html_email(tieu_de: string, than_van: string): string {
-  const thoat = (s: string): string => s
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;line-height:1.6">`
-    + `<h2 style="margin:0 0 12px">${thoat(tieu_de)}</h2>`
-    + `<div style="white-space:pre-wrap">${thoat(than_van)}</div></div>`;
+    + `<h2 style="margin:0 0 12px">${thoat_html(tieu_de)}</h2>`
+    + `<div style="white-space:pre-wrap">${thoat_html(than_van)}</div></div>`;
+}
+
+const NHAN_MUC_DO_EMAIL: Record<string, { chu: string; nen: string; chu_mau: string; vien: string }> = {
+  khan: { chu: 'KHẨN', nen: '#fdeceb', chu_mau: '#c0392b', vien: '#f3c9c4' },
+  quan_trong: { chu: 'QUAN TRỌNG', nen: '#fff8e6', chu_mau: '#8a6d00', vien: '#f0dca0' },
+  thuong: { chu: 'THÔNG BÁO', nen: '#eef4fb', chu_mau: '#1f4e79', vien: '#d3e2f2' },
+};
+
+/**
+ * Render noi dung email theo cu phap nhe (giong ban demo): '## ' -> de muc co vien trai xanh;
+ * '- ' hoac '• ' -> gach dau dong; '**dam**' -> in dam; dong trong -> khoang cach. Nguoi soan
+ * chi go van ban thuong van ra dep. Escape truoc, chi cho phep the do template sinh.
+ */
+function render_noi_dung_email(noi_dung: string): string {
+  const inline = (s: string): string =>
+    thoat_html(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  const dong = noi_dung.replace(/\r\n/g, '\n').split('\n');
+  const ra: string[] = [];
+  let trong_ds = false;
+  const dong_ds = (): void => { if (trong_ds) { ra.push('</ul>'); trong_ds = false; } };
+  for (const raw of dong) {
+    const line = raw.trimEnd();
+    if (line.trim() === '') { dong_ds(); continue; }
+    if (line.startsWith('## ')) {
+      dong_ds();
+      ra.push(`<div style="font-size:15px;font-weight:700;color:#1f4e79;border-left:4px solid #1f4e79;padding-left:10px;margin:18px 0 8px;">${inline(line.slice(3).trim())}</div>`);
+    } else if (/^[-•]\s+/.test(line.trim())) {
+      if (!trong_ds) { ra.push('<ul style="margin:0 0 4px;padding-left:20px;">'); trong_ds = true; }
+      ra.push(`<li style="margin:2px 0;">${inline(line.trim().replace(/^[-•]\s+/, ''))}</li>`);
+    } else {
+      dong_ds();
+      ra.push(`<div style="margin:0 0 8px;">${inline(line)}</div>`);
+    }
+  }
+  dong_ds();
+  return ra.join('');
+}
+
+/**
+ * Email THONG BAO khung thuong hieu (dung phong cach ban demo da duyet): header XANH DAM, ten
+ * cong ty (uppercase) + tieu de, badge muc do, noi dung render theo cu phap nhe, footer. Neu co
+ * CONG_TY_LOGO_URL thi logo nam trong the trang tren header xanh. Style inline, layout bang -
+ * an toan voi Outlook/M365/Gmail.
+ */
+function than_email_thong_bao(tieu_de: string, noi_dung: string, muc_do: string): string {
+  const ten_cty = cau_hinh.cong_ty.ten !== '' ? cau_hinh.cong_ty.ten : 'Công ty';
+  const md = NHAN_MUC_DO_EMAIL[muc_do] ?? NHAN_MUC_DO_EMAIL['thuong'] as
+    { chu: string; nen: string; chu_mau: string; vien: string };
+  return `<div style="margin:0;padding:0;background:#eef1f5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f5;padding:24px 12px;"><tr><td align="center">
+<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+  <tr><td style="background:#1f4e79;padding:24px 28px;">
+    <div style="color:#cfe0f3;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">${thoat_html(ten_cty)} · Phòng Nhân sự</div>
+    <div style="color:#ffffff;font-size:22px;font-weight:700;line-height:1.3;">${thoat_html(tieu_de)}</div>
+  </td></tr>
+  <tr><td style="padding:18px 28px 0;">
+    <span style="display:inline-block;background:${md.nen};color:${md.chu_mau};border:1px solid ${md.vien};font-size:12px;font-weight:700;letter-spacing:.5px;border-radius:4px;padding:3px 12px;">${md.chu}</span>
+  </td></tr>
+  <tr><td style="padding:16px 28px 6px;font-size:14px;color:#2b3648;line-height:1.7;">${render_noi_dung_email(noi_dung)}</td></tr>
+  <tr><td style="background:#f4f7fb;padding:16px 28px;border-top:1px solid #e2e8f0;font-size:12px;color:#8792a2;line-height:1.6;">
+    Email tự động từ Hệ thống chấm công${cau_hinh.cong_ty.ten !== '' ? ` – ${thoat_html(cau_hinh.cong_ty.ten)}` : ''}. Vui lòng không trả lời email này; mọi thắc mắc gửi qua kênh <strong>Khiếu nại phiếu lương</strong> trong ứng dụng.
+  </td></tr>
+</table>
+</td></tr></table>
+</div>`;
 }
 
 function lay_id_param(req: { params: unknown }): string {
@@ -80,34 +147,58 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
       ? uuid(b, 'phong_ban_id', { bat_buoc: true }) as string : null;
     const het_han = b['het_han'] === undefined || b['het_han'] === null || b['het_han'] === ''
       ? null : ngay(b, 'het_han');
+    // Hai kenh phat them: popup (hop thoai bat buoc doc) va gui email toan bo nguoi nhan.
+    const popup = luan_ly(b, 'popup') ?? false;
+    const gui_email_bat = luan_ly(b, 'gui_email') ?? false;
 
     const dong = await truy_van_mot<{ id: string; ma: string }>(
       `insert into thong_bao(tieu_de, noi_dung, muc_do, can_giai_trinh, pham_vi, phong_ban_id,
-                             nguoi_tao, het_han)
-       values ($1,$2,$3,$4,$5,$6,$7,$8) returning id, ma`,
-      [tieu_de, noi_dung, muc_do, can_giai_trinh, pham_vi, phong_ban_id, nd.sub, het_han],
+                             nguoi_tao, het_han, popup, gui_email)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id, ma`,
+      [tieu_de, noi_dung, muc_do, can_giai_trinh, pham_vi, phong_ban_id, nd.sub, het_han,
+        popup, gui_email_bat],
     );
     await ghi_nhat_ky(nd.sub, 'tao_thong_bao', 'thong_bao', dong?.id ?? null,
-      { pham_vi, muc_do, can_giai_trinh }, req.ip);
+      { pham_vi, muc_do, can_giai_trinh, popup, gui_email: gui_email_bat }, req.ip);
 
-    // Chuong bao (+ push) cho nguoi nhan trong pham vi. Nhan vien thuong doc o tab Thong bao;
-    // day chi de noi do so chua doc + day ve dien thoai.
-    const nguoi_nhan = await truy_van<{ id: string }>(
-      `select u.id from nguoi_dung u
-         join nhan_vien nv on nv.id = u.nhan_vien_id
-        where u.dang_hoat_dong = true and nv.dang_hoat_dong = true
-          and ($1 = 'toan_cong_ty' or nv.phong_ban_id = $2::uuid)`,
-      [pham_vi, phong_ban_id],
-    );
+    // Nguoi nhan trong pham vi (kem email de gui thu neu bat). Chuong bao/push + popup deu dua
+    // tren cung tap nay.
+    const nguoi_nhan = await nguoi_nhan_pham_vi(pham_vi, phong_ban_id, null);
     if (nguoi_nhan.length > 0) {
       gui_ngam({
-        nguoi_dung_ids: nguoi_nhan.map((n) => n.id),
+        nguoi_dung_ids: nguoi_nhan.map((n) => n.nguoi_dung_id),
         tieu_de: `Thông báo mới: ${tieu_de}`,
         noi_dung: can_giai_trinh ? 'Thông báo này yêu cầu bạn giải trình.' : 'Bấm để xem chi tiết.',
         du_lieu: { man: 'thong-bao', thong_bao_id: dong?.id ?? null },
       });
     }
-    return res.code(201).send(dong);
+
+    // Gui email TOAN CONG TY (neu bat) — chi toi nguoi CO email, gui nen, fail-soft: mot dia chi
+    // loi khong chan dia chi khac, va khong lam hong viec tao thong bao. Chi gui khi email da bat.
+    let so_email = 0;
+    if (gui_email_bat) {
+      const than_html = than_email_thong_bao(tieu_de, noi_dung, muc_do);
+      const ds_email = nguoi_nhan.filter((n) => n.email !== null && n.email !== '');
+      so_email = email_bat() ? ds_email.length : 0;
+      void (async () => {
+        for (const n of ds_email) {
+          try {
+            await gui_email({ den: [n.email as string], tieu_de: `[Thông báo] ${tieu_de}`,
+              noi_dung_html: than_html });
+          } catch { /* fail-soft: bo qua dia chi loi, tiep tuc */ }
+        }
+      })();
+    }
+    return res.code(201).send({ ...dong, so_nguoi_nhan: nguoi_nhan.length, so_email, popup });
+  });
+
+  /** Xem truoc email (khong luu, khong gui): tra ve HTML da render de hien trong app. */
+  app.post('/thong-bao/xem-truoc-email', { preHandler: can_nhan_su }, async (req) => {
+    const b = than(req.body);
+    const tieu_de = chuoi(b, 'tieu_de', { toi_da: 250 }) ?? '(Chưa có tiêu đề)';
+    const noi_dung = chuoi(b, 'noi_dung', { toi_da: 8000 }) ?? '';
+    const muc_do = trong_tap(b, 'muc_do', MUC_DO, { bat_buoc: false }) ?? 'thuong';
+    return { html: than_email_thong_bao(tieu_de, noi_dung, muc_do) };
   });
 
   /** Sua thong bao: go xuong hoac dat lai han. */

@@ -3,7 +3,7 @@
 // Quy trinh: nhap -> cho_duyet -> da_duyet -> da_tra. Khoa sua tu buoc cho_duyet tro di,
 // vi so lieu da gui len cho nguoi khac xem thi khong duoc phep tu doi duoi chan ho.
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
+import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_noi.ts';
 import {
   can_admin, can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai, xem_duoc_tat_ca,
 } from '../bao_mat/xac_thuc.ts';
@@ -14,8 +14,17 @@ import { tinh_ky_luong_cny } from '../luong/ky_luong_cny.ts';
 import {
   ban_chot_theo_id, chot_ky, danh_sach_ban_chot, type KetQuaChot,
 } from '../luong/ban_chot.ts';
+import { lech_luong_ky } from '../luong/kiem_lech_luong.ts';
+import { KHOAN_GIAM_THUONG, gom_va_xu_ly_thang } from '../ky_luat/xu_ly.ts';
+import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
+import { quet_vi_pham } from '../vi_pham/phat_hien.ts';
+import {
+  chi_tiet_ky_luat_theo_phieu, chi_tiet_di_muon_theo_phieu, type DongLietKe,
+} from '../luong/chi_tiet_ky_luat.ts';
 import { bang_luong_xuat } from '../luong/bang_xuat.ts';
 import { xuat_bang_luong_erp } from '../luong/xuat_mau_erp.ts';
+import { gui_phieu_luong_ky } from '../luong/phieu_luong_email.ts';
+import { email_hr_tra_loi, email_hr_xu_ly } from '../luong/khieu_nai_email.ts';
 import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { ghi_nhan_am_tham } from '../sharepoint/dong_bo.ts';
 import { khoang_thang } from '../tien_ich/thoi_gian.ts';
@@ -132,6 +141,7 @@ async function lay_ky(id: string): Promise<{ id: string; thang: string; trang_th
   return k;
 }
 
+
 export async function tuyen_luong(app: FastifyInstance): Promise<void> {
   // ============================================================ tham so phap ly
   app.get('/tham-so-luong', { preHandler: can_nhan_su }, async () => {
@@ -184,10 +194,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         // Thu Bay tinh nua cong (ca cong chuan lan cong thuc). Mac dinh bat theo chinh sach cong ty.
         luan_ly(b, 't7_nua_cong', true),
         // Phat di muon: bat/tat + 4 moc gio + muc phat + so lan mien. Mac dinh = tat, dung
-        // mau mac dinh (08:00/08:10/08:30, 50k, 3 lan/thang, don truoc 07:30).
+        // mau mac dinh (08:00/08:11/08:30, 50k, 3 lan/thang, don truoc 07:30).
+        // Moc 50k = 08:11 (BC 01, L2): 08:10:00-08:10:59 KHONG phat, chi tu 08:11 tro di.
         luan_ly(b, 'phat_di_muon_bat', false),
         gio(b, 'di_muon_gio_vao') ?? '08:00:00',
-        gio(b, 'di_muon_moc_50k') ?? '08:10:00',
+        gio(b, 'di_muon_moc_50k') ?? '08:11:00',
         so_tien(b, 'di_muon_muc_50k', 50000),
         gio(b, 'di_muon_moc_nua_ngay') ?? '08:30:00',
         so_nguyen(b, 'di_muon_mien_moi_thang', { min: 0, max: 31 }) ?? 3,
@@ -247,14 +258,20 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     );
     if (co !== null) throw new LoiXungDot(`Đã có khoản mã "${ma}".`);
 
+    const loai = trong_tap(b, 'loai', ['thu_nhap', 'tru'] as const, { bat_buoc: true });
+    // `nhom` chi co y nghia voi khoan thu_nhap (phu_cap / thuong). Khoan tru: null.
+    const nhom = loai === 'thu_nhap'
+      ? (trong_tap(b, 'nhom', ['phu_cap', 'thuong'] as const) ?? 'phu_cap')
+      : null;
     await thuc_thi(
-      `insert into khoan_luong (ma, ten, loai, cach_tinh, don_gia, chiu_thue,
+      `insert into khoan_luong (ma, ten, loai, nhom, cach_tinh, don_gia, chiu_thue,
                                 thu_tu, canh_bao, ghi_chu)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       [
         ma,
         chuoi_bat_buoc(b, 'ten', { toi_da: 200 }),
-        trong_tap(b, 'loai', ['thu_nhap', 'tru'] as const, { bat_buoc: true }),
+        loai,
+        nhom,
         cach_tinh,
         don_gia,
         luan_ly(b, 'chiu_thue', true),
@@ -284,10 +301,13 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     );
     if (cu === null) throw new LoiKhongTim('Không tìm thấy khoản lương.');
 
+    // nhom chi doi duoc voi khoan thu_nhap (phu_cap/thuong); null = giu nguyen.
+    const nhom = trong_tap(b, 'nhom', ['phu_cap', 'thuong'] as const);
     await thuc_thi(
       `update khoan_luong set ten = coalesce($2, ten), don_gia = $3,
               chiu_thue = coalesce($4, chiu_thue), thu_tu = coalesce($5, thu_tu),
-              dang_dung = coalesce($6, dang_dung), canh_bao = $7, ghi_chu = $8
+              dang_dung = coalesce($6, dang_dung), canh_bao = $7, ghi_chu = $8,
+              nhom = case when loai = 'thu_nhap' then coalesce($9, nhom) else nhom end
         where ma = $1`,
       [
         ma,
@@ -298,6 +318,7 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         luan_ly(b, 'dang_dung'),
         chuoi(b, 'canh_bao', { toi_da: 1000 }),
         chuoi(b, 'ghi_chu', { toi_da: 1000 }),
+        nhom,
       ],
     );
     await ghi_nhat_ky(nd.sub, 'sua_khoan_luong', 'khoan_luong', ma, b, req.ip);
@@ -448,6 +469,170 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
+  // ============================================================ chinh sach phu cap THEO KHOI
+  //
+  // Phu cap mac dinh cua ca mot KHOI (vd ca khoi Van phong huong an trua). Cung mo hinh hieu luc
+  // tu-den nhu ca nhan, chi khac gan theo `khoi_id`. Ky luong gop khoi + ca nhan (ca nhan de khoi
+  // theo tung khoan). HD thoi vu / cong tac vien KHONG huong phu cap khoi (chan o ky_luong.ts).
+
+  async function mo_chinh_sach_khoi(
+    nguoi: string, khoi_id: string, hieu_luc_tu: string, b: Record<string, unknown>,
+  ): Promise<{ id: string }> {
+    const khoan_ma = chuoi_bat_buoc(b, 'khoan_ma', { toi_da: 40 });
+    const dm = await truy_van_mot<{ cach_tinh: string; dang_dung: boolean; ten: string }>(
+      'select cach_tinh, dang_dung, ten from khoan_luong where ma = $1', [khoan_ma],
+    );
+    if (dm === null) throw new LoiDauVao(`Không có khoản mã "${khoan_ma}" trong danh mục.`);
+    if (!dm.dang_dung) {
+      throw new LoiDauVao(`Khoản "${dm.ten}" đã ngừng dùng nên không mở chính sách mới được.`);
+    }
+    const khoi = await truy_van_mot<{ ten: string }>(
+      'select ten from khoi where id = $1', [khoi_id],
+    );
+    if (khoi === null) throw new LoiKhongTim('Không tìm thấy khối.');
+
+    const nguon = trong_tap(b, 'nguon_so_luong', ['co_dinh', 'theo_cong'] as const) ?? 'co_dinh';
+    const so_luong = so_thuc(b, 'so_luong', { min: 0, max: 999 });
+    const so_tien_thang = so_thuc(b, 'so_tien', { min: 0 });
+    if (dm.cach_tinh === 'nhap_tay') {
+      if (so_tien_thang === null || so_tien_thang <= 0) {
+        throw new LoiDauVao(`Khoản "${dm.ten}" gõ thẳng số tiền, nên phải nói số tiền mỗi tháng.`);
+      }
+    } else if (nguon === 'co_dinh' && (so_luong === null || so_luong <= 0)) {
+      throw new LoiDauVao(
+        `Khoản "${dm.ten}" tính theo số lượng. Hãy điền số lượng cố định, `
+        + 'hoặc chọn nguồn "theo công thực tế".',
+      );
+    }
+
+    await thuc_thi(
+      `update chinh_sach_phu_cap_khoi
+          set hieu_luc_den = ($3::date - interval '1 day')::date
+        where khoi_id = $1 and khoan_ma = $2 and hieu_luc_den is null and hieu_luc_tu < $3::date`,
+      [khoi_id, khoan_ma, hieu_luc_tu],
+    );
+    const con_mo = await truy_van_mot<{ hieu_luc_tu: string }>(
+      `select to_char(hieu_luc_tu, 'YYYY-MM-DD') as hieu_luc_tu from chinh_sach_phu_cap_khoi
+        where khoi_id = $1 and khoan_ma = $2 and hieu_luc_den is null`,
+      [khoi_id, khoan_ma],
+    );
+    if (con_mo !== null) {
+      throw new LoiXungDot(
+        `Khối "${khoi.ten}" đã có chính sách "${dm.ten}" hiệu lực từ ${con_mo.hieu_luc_tu} — `
+        + `ngày mới (${hieu_luc_tu}) không sau ngày đó nên không nối tiếp được. `
+        + 'Hãy chọn ngày hiệu lực sau, hoặc đóng chính sách cũ trước.',
+      );
+    }
+
+    const dong = await truy_van_mot<{ id: string }>(
+      `insert into chinh_sach_phu_cap_khoi
+         (khoi_id, khoan_ma, nguon_so_luong, so_luong, so_tien, don_gia,
+          hieu_luc_tu, ly_do, ghi_chu, tao_boi)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id`,
+      [
+        khoi_id, khoan_ma, nguon,
+        dm.cach_tinh === 'nhap_tay' ? null : so_luong,
+        dm.cach_tinh === 'nhap_tay' ? so_tien_thang : null,
+        so_thuc(b, 'don_gia', { min: 0 }),
+        hieu_luc_tu,
+        chuoi(b, 'ly_do', { toi_da: 500 }),
+        chuoi(b, 'ghi_chu', { toi_da: 500 }),
+        nguoi,
+      ],
+    );
+    return dong!;
+  }
+
+  /** Chinh sach phu cap cua tat ca khoi, hoac cua mot khoi neu truyen `khoi_id`. */
+  app.get('/chinh-sach-phu-cap-khoi', { preHandler: can_nhan_su }, async (req) => {
+    const q = than((req as { query?: unknown }).query ?? {});
+    const khoi_id = uuid(q, 'khoi_id');
+    const con_hieu_luc = luan_ly(q, 'con_hieu_luc', true) === true;
+    return truy_van(
+      `select cs.*, kh.ma as khoi_ma, kh.ten as khoi_ten,
+              d.ten as khoan_ten, d.loai, d.cach_tinh, d.chiu_thue, d.canh_bao,
+              d.don_gia as don_gia_danh_muc, d.dang_dung as khoan_dang_dung,
+              u.ten_dang_nhap as nguoi_tao
+         from chinh_sach_phu_cap_khoi cs
+         join khoi kh on kh.id = cs.khoi_id
+         join khoan_luong d on d.ma = cs.khoan_ma
+         left join nguoi_dung u on u.id = cs.tao_boi
+        where ($1::uuid is null or cs.khoi_id = $1)
+          and ($2::boolean is false or cs.hieu_luc_den is null)
+        order by kh.ma, d.thu_tu, cs.hieu_luc_tu desc`,
+      [khoi_id, con_hieu_luc],
+    );
+  });
+
+  /** Gan mot chinh sach cho MOT hoac NHIEU khoi. */
+  app.post('/chinh-sach-phu-cap-khoi/hang-loat', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body);
+    const hieu_luc_tu = ngay_bat_buoc(b, 'hieu_luc_tu');
+    const ds = b['khoi_ids'];
+    if (!Array.isArray(ds) || ds.length === 0) throw new LoiDauVao('Chưa chọn khối nào.');
+    if (ds.length > 50) throw new LoiDauVao('Mỗi lần gán tối đa 50 khối.');
+
+    const ket_qua: { khoi_id: string; id: string }[] = [];
+    for (const raw of ds) {
+      const khoi_id = uuid_bat_buoc({ id: raw }, 'id');
+      const dong = await mo_chinh_sach_khoi(nd.sub, khoi_id, hieu_luc_tu, b);
+      ket_qua.push({ khoi_id, id: dong.id });
+    }
+    await ghi_nhat_ky(nd.sub, 'gan_chinh_sach_khoi_hang_loat', 'chinh_sach_phu_cap_khoi', null,
+      { khoan_ma: b['khoan_ma'], hieu_luc_tu, so_khoi: ket_qua.length }, req.ip);
+    return { ok: true, so_khoi: ket_qua.length, danh_sach: ket_qua };
+  });
+
+  /** Dong mot chinh sach khoi. */
+  app.post('/chinh-sach-phu-cap-khoi/:id/dong', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const den = ngay_bat_buoc(than(req.body), 'hieu_luc_den');
+    const cs = await truy_van_mot<{ hieu_luc_tu: string; hieu_luc_den: string | null }>(
+      `select to_char(hieu_luc_tu, 'YYYY-MM-DD') as hieu_luc_tu,
+              to_char(hieu_luc_den, 'YYYY-MM-DD') as hieu_luc_den
+         from chinh_sach_phu_cap_khoi where id = $1`,
+      [id],
+    );
+    if (cs === null) throw new LoiKhongTim('Không tìm thấy chính sách phụ cấp khối.');
+    if (cs.hieu_luc_den !== null) throw new LoiXungDot('Chính sách này đã đóng rồi.');
+    if (den < cs.hieu_luc_tu) {
+      throw new LoiDauVao(`Ngày kết thúc (${den}) không được trước ngày hiệu lực (${cs.hieu_luc_tu}).`);
+    }
+    await thuc_thi('update chinh_sach_phu_cap_khoi set hieu_luc_den = $2 where id = $1', [id, den]);
+    await ghi_nhat_ky(nd.sub, 'dong_chinh_sach_khoi', 'chinh_sach_phu_cap_khoi', id,
+      { hieu_luc_den: den }, req.ip);
+    return { ok: true };
+  });
+
+  /** Xoa han chinh sach khoi — chi khi CHUA sinh khoan nao cho nguoi trong khoi. */
+  app.delete('/chinh-sach-phu-cap-khoi/:id', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const cs = await truy_van_mot<{ khoi_id: string; khoan_ma: string }>(
+      'select khoi_id, khoan_ma from chinh_sach_phu_cap_khoi where id = $1', [id],
+    );
+    if (cs === null) throw new LoiKhongTim('Không tìm thấy chính sách phụ cấp khối.');
+    const da_dung = await truy_van_mot<{ so: number }>(
+      `select count(*)::int as so
+         from phieu_luong_khoan pk
+         join phieu_luong p on p.id = pk.phieu_luong_id
+         join nhan_vien nv on nv.id = p.nhan_vien_id
+        where nv.khoi_id = $1 and pk.khoan_ma = $2 and pk.tu_chinh_sach = true`,
+      [cs.khoi_id, cs.khoan_ma],
+    );
+    if ((da_dung?.so ?? 0) > 0) {
+      throw new LoiXungDot(
+        'Chính sách khối này đã sinh khoản trên phiếu lương nên không xóa được. '
+        + 'Hãy ĐÓNG nó lại từ một ngày.',
+      );
+    }
+    await thuc_thi('delete from chinh_sach_phu_cap_khoi where id = $1', [id]);
+    await ghi_nhat_ky(nd.sub, 'xoa_chinh_sach_khoi', 'chinh_sach_phu_cap_khoi', id, cs, req.ip);
+    return { ok: true };
+  });
+
   // ============================================================ ky luong
   app.get('/ky-luong', { preHandler: can_nhan_su }, async () =>
     truy_van(
@@ -461,10 +646,12 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
   app.get('/ky-luong/:id', { preHandler: can_nhan_su }, async (req) => {
     const k = await lay_ky(lay_id(req));
     const phieu = await truy_van<Record<string, unknown>>(
-      `select p.*, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban
+      `select p.*, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+              nv.khoi_id, kh.ten as khoi
          from phieu_luong p
          join nhan_vien nv on nv.id = p.nhan_vien_id
          left join phong_ban pb on pb.id = nv.phong_ban_id
+         left join khoi kh on kh.id = nv.khoi_id
         where p.ky_luong_id = $1
         order by pb.ten nulls last, nv.ma_nv`,
       [k.id],
@@ -473,7 +660,7 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     // Gan cac khoan vao dung phieu cua no. Mot truy van cho ca ky, khong phai mot truy van
     // moi dong: 50 nguoi la 50 vong tuan tu, va so do chi tang.
     const khoan = await truy_van<Record<string, unknown>>(
-      `select pk.*, d.ten, d.loai, d.cach_tinh, d.chiu_thue, d.canh_bao, d.thu_tu
+      `select pk.*, d.ten, d.loai, d.nhom, d.cach_tinh, d.chiu_thue, d.canh_bao, d.thu_tu
          from phieu_luong_khoan pk
          join khoan_luong d on d.ma = pk.khoan_ma
          join phieu_luong p on p.id = pk.phieu_luong_id
@@ -481,11 +668,30 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         order by d.loai desc, d.thu_tu, d.ten`,
       [k.id],
     );
+    // Chi tiet tung LAN phat co NGAY + GIO (tu ho_so_ky_luat da_ap_dung + bang_cong_ngay), CHI
+    // DOC. Dinh kem vao dung dong khoan: giam thuong ky luat, phat di muon, tru nua ngay do muon.
+    const ids = phieu.map((p) => String(p['id']));
+    const ct_ky_luat = await chi_tiet_ky_luat_theo_phieu(ids);
+    const ct_di_muon = await chi_tiet_di_muon_theo_phieu(ids);
+    const lan_thanh_dong = (id: string, cac_lan: string[], so_tien: unknown): DongLietKe[] =>
+      (cac_lan.length === 0 ? [] : [{
+        id: `${id}:lan`, ly_do: '', so_tien: String(so_tien ?? '0'), thu_tu: 0, cac_lan,
+      }]);
+
     const theo_phieu = new Map<string, Record<string, unknown>[]>();
     for (const x of khoan) {
       const id = String(x['phieu_luong_id']);
+      const ma = x['khoan_ma'];
+      let chi_tiet: DongLietKe[] = [];
+      if (ma === KHOAN_GIAM_THUONG) chi_tiet = ct_ky_luat.get(id) ?? [];
+      else if (ma === 'tru_di_muon') {
+        chi_tiet = lan_thanh_dong(id, ct_di_muon.get(id)?.tang_50k ?? [], x['thanh_tien']);
+      } else if (ma === 'tru_nua_ngay') {
+        chi_tiet = lan_thanh_dong(id, ct_di_muon.get(id)?.tang_nua_ngay ?? [], x['thanh_tien']);
+      }
+      const voi_ct = { ...x, chi_tiet };
       const ds = theo_phieu.get(id);
-      if (ds === undefined) theo_phieu.set(id, [x]); else ds.push(x);
+      if (ds === undefined) theo_phieu.set(id, [voi_ct]); else ds.push(voi_ct);
     }
 
     return {
@@ -523,9 +729,17 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         + 'Hãy thu hồi về nháp trước.',
       );
     }
+    // TINH LUONG = tinh lai CA CHUOI, mot nut lam het (chu cong ty chot): tinh lai bang cong ->
+    // quet vi pham -> gom ky luat -> tinh luong. Tranh canh sua nguong xong luong khong doi vi
+    // quen chay tay tung buoc. Bang cong tinh KHONG cuong buc (ngay da chot van khoa).
+    const { tu, den } = khoang_thang(k.thang);
+    const so_cong = await tinh_lai_khoang(tu, den);
+    const quet = await quet_vi_pham(k.thang, nd.sub);
+    const gom = await gom_va_xu_ly_thang(k.thang, { tu_dong: false });
     const so = await tinh_ky_luong(k.id, k.thang);
-    await ghi_nhat_ky(nd.sub, 'tinh_ky_luong', 'ky_luong', k.id, { so_phieu: so }, req.ip);
-    return { ok: true, so_phieu: so };
+    await ghi_nhat_ky(nd.sub, 'tinh_ky_luong', 'ky_luong', k.id,
+      { so_phieu: so, so_cong, quet, gom }, req.ip);
+    return { ok: true, so_phieu: so, so_ngay_cong: so_cong, ky_luat: gom };
   });
 
   app.post('/ky-luong/:id/gui-duyet', { preHandler: can_nhan_su }, async (req) => {
@@ -557,6 +771,8 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     const b = than(req.body);
     const quyet = trong_tap(b, 'quyet_dinh', ['da_duyet', 'tra_lai'] as const, { bat_buoc: true });
     const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
+    // YC-2: da xem canh bao lech luong va van quyet chot. Mac dinh false — chan lan dau.
+    const bo_qua_lech = luan_ly(b, 'bo_qua_lech', false) ?? false;
 
     if (k.trang_thai !== 'cho_duyet') {
       throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${k.trang_thai}", không quyết được.`);
@@ -565,6 +781,27 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     let ban_chot: KetQuaChot[] = [];
 
     if (quyet === 'da_duyet') {
+      // YC-2 — CANH BAO LECH LUONG TRUOC KHI CHOT. Neu luong co ban trong phieu khong con khop
+      // quyet dinh luong hien hanh (vd ai do sua quyet dinh sau khi tinh ma chua bam "Tinh lai"),
+      // chan lan duyet dau va tra ve danh sach lech. Admin xem, roi hoac bam "Tinh lai" cho khop,
+      // hoac duyet lai voi bo_qua_lech = true (co chu dich, co ghi nhat ky).
+      const lech = await lech_luong_ky(k.id, k.thang);
+      if (lech.length > 0 && !bo_qua_lech) {
+        await ghi_nhat_ky(nd.sub, 'ky_luong_chan_lech_luong', 'ky_luong', k.id,
+          { so_lech: lech.length, ma_nv: lech.map((x) => x.ma_nv) }, req.ip);
+        return {
+          ok: false,
+          ma_loi: 'LECH_LUONG',
+          thong_bao: `Có ${String(lech.length)} nhân viên lương cơ bản trong phiếu không khớp `
+            + 'quyết định lương hiện hành. Hãy "Tính lại" kỳ hoặc rà soát quyết định lương '
+            + 'trước khi chốt.',
+          lech,
+        };
+      }
+      if (lech.length > 0 && bo_qua_lech) {
+        await ghi_nhat_ky(nd.sub, 'ky_luong_bo_qua_lech_luong', 'ky_luong', k.id,
+          { so_lech: lech.length, ma_nv: lech.map((x) => x.ma_nv) }, req.ip);
+      }
       await thuc_thi(
         `update ky_luong set trang_thai = 'da_duyet', nguoi_duyet = $2, duyet_luc = now(),
                 ghi_chu_duyet = $3, cap_nhat_luc = now() where id = $1`,
@@ -587,6 +824,12 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       // trach nhiem.
       ban_chot = await chot_ky(k.thang, nd.sub);
       for (const bc of ban_chot) await ghi_nhan_am_tham(bc.id);
+
+      // Gui email PHIEU LUONG cho tung nguoi (nen chi gui lan dau duyet — idempotent theo
+      // gui_phieu_luc). Chay nen, KHONG chan viec duyet neu email loi/cham.
+      void gui_phieu_luong_ky(k.id).then((r) => {
+        if (r.so_gui > 0) console.log(`[phieu_luong_email] ky ${k.thang}: gui ${String(r.so_gui)}/${String(r.so_nguoi)} phieu`);
+      }).catch((e: unknown) => console.error('[phieu_luong_email]', (e as Error).message));
     } else {
       // Tra lai ve nhap de nhan su sua roi gui lai.
       await thuc_thi(
@@ -599,6 +842,17 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       { ghi_chu, ban_chot: ban_chot.map((x) => ({ loai: x.loai, so_dong: x.so_dong })) },
       req.ip);
     return { ok: true, ban_chot };
+  });
+
+  /**
+   * YC-2 — BAO CAO LECH LUONG cua mot ky: nhung nhan vien co luong co ban / phu cap trong phieu
+   * KHONG khop quyet dinh luong dang hieu luc. Xem duoc bat cu luc nao (khong doi trang thai) de
+   * ra soat truoc khi duyet. Mang rong = khong lech.
+   */
+  app.get('/ky-luong/:id/lech-luong', { preHandler: can_nhan_su }, async (req) => {
+    const k = await lay_ky(lay_id(req));
+    const lech = await lech_luong_ky(k.id, k.thang);
+    return { ky: k.thang, so_lech: lech.length, lech };
   });
 
   app.post('/ky-luong/:id/da-tra', { preHandler: can_admin }, async (req) => {
@@ -614,6 +868,26 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     );
     await ghi_nhat_ky(nd.sub, 'ky_luong_da_tra', 'ky_luong', k.id, null, req.ip);
     return { ok: true };
+  });
+
+  /**
+   * Gui (hoac gui lai) email phieu luong cho tung nguoi trong ky. Chi admin.
+   *
+   * Cho phep gui khi kỳ CHUA duyet (nhap / cho_duyet) — day la buoc "gui email XAC NHAN" truoc
+   * khi duyet: nhan vien nhan phieu, ra soat, va co the KHIEU NAI luong (mục "Khiếu nại lương"
+   * trong app) de he thong tiep nhan va chinh sua truoc khi chot. Cung dung sau khi duyet/da tra
+   * de gui lai phieu chinh thuc. Luon `bat_buoc` de gui lai duoc du da gui lan truoc.
+   */
+  app.post('/ky-luong/:id/gui-phieu', { preHandler: can_admin }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const k = await lay_ky(lay_id(req));
+    if (k.trang_thai === 'huy') {
+      throw new LoiXungDot('Kỳ đã hủy, không gửi phiếu lương được.');
+    }
+    const r = await gui_phieu_luong_ky(k.id, { bat_buoc: true });
+    await ghi_nhat_ky(nd.sub, 'gui_phieu_luong', 'ky_luong', k.id,
+      { ...r, trang_thai: k.trang_thai }, req.ip);
+    return r;
   });
 
   /** Thu hoi ve nhap de sua. Chi tu cho_duyet — da duyet roi thi phai tra lai truoc. */
@@ -632,6 +906,37 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
+  /**
+   * THU HOI DUYET: da_duyet -> nhap de admin bo sung / sua roi duyet lai. Chi admin.
+   *
+   * Duyet da KHOA bang cong ca thang (da_chot = true) va sinh ban chot. Thu hoi mo lai ky de sua;
+   * mo khoa bang cong cac ngay quet may (co_dieu_chinh = false) de tinh lai duoc, NHUNG GIU KHOA
+   * cac ngay chinh sua tay (co_dieu_chinh = true) nhu cong 31/8 lam bu / giai trinh — khong de
+   * "Tinh lai" ghi de mat du lieu tay. Xoa gui_phieu_luc de phieu (sau khi sua) gui lai duoc.
+   */
+  app.post('/ky-luong/:id/thu-hoi-duyet', { preHandler: can_admin }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const k = await lay_ky(lay_id(req));
+    if (k.trang_thai !== 'da_duyet') {
+      throw new LoiXungDot(`Chỉ thu hồi duyệt được kỳ đã duyệt (hiện: "${k.trang_thai}").`);
+    }
+    const { tu, den } = khoang_thang(k.thang);
+    await trong_giao_dich(async (khach) => {
+      await khach.query(
+        `update ky_luong set trang_thai = 'nhap', nguoi_duyet = null, duyet_luc = null,
+                gui_duyet_luc = null, gui_phieu_luc = null, cap_nhat_luc = now() where id = $1`,
+        [k.id],
+      );
+      await khach.query(
+        `update bang_cong_ngay set da_chot = false
+          where ngay >= $1 and ngay <= $2 and co_dieu_chinh = false`,
+        [tu, den],
+      );
+    });
+    await ghi_nhat_ky(nd.sub, 'thu_hoi_duyet_ky_luong', 'ky_luong', k.id, null, req.ip);
+    return { ok: true };
+  });
+
   // ============================================================ sua tay mot phieu
   //
   // Chi cho sua THUONG / PHU CAP KHAC / TRU KHAC / GHI CHU. Cac con so con lai deu suy ra
@@ -644,8 +949,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
 
     const p = await truy_van_mot<{
       ky_luong_id: string; trang_thai: string; ep_du_cong: boolean; mien_phat: boolean;
+      mien_thue: boolean; mien_bh: boolean; luong_net: boolean;
     }>(
-      `select p.ky_luong_id, k.trang_thai, p.ep_du_cong, p.mien_phat from phieu_luong p
+      `select p.ky_luong_id, k.trang_thai, p.ep_du_cong, p.mien_phat, p.mien_thue, p.mien_bh,
+              p.luong_net
+         from phieu_luong p
          join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
       [id],
     );
@@ -665,17 +973,33 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     if (mien_phat !== null && mien_phat !== p.mien_phat && nd.vai_tro !== 'admin') {
       throw new LoiKhongQuyen('Chỉ admin được tích "miễn phạt" cho phiếu lương.');
     }
-
+    // Mien thue TNCN / mien BHXH-BHYT-BHTN: quyet dinh ve nghia vu thue & bao hiem, CHI ADMIN.
+    const mien_thue = luan_ly(b, 'mien_thue');
+    if (mien_thue !== null && mien_thue !== p.mien_thue && nd.vai_tro !== 'admin') {
+      throw new LoiKhongQuyen('Chỉ admin được tích "miễn thuế TNCN" cho phiếu lương.');
+    }
+    const mien_bh = luan_ly(b, 'mien_bh');
+    if (mien_bh !== null && mien_bh !== p.mien_bh && nd.vai_tro !== 'admin') {
+      throw new LoiKhongQuyen('Chỉ admin được tích "miễn BHXH/BHYT/BHTN" cho phiếu lương.');
+    }
+    // Luong NET: cong ty ganh BHXH cua NLD (van dong du) — quyet dinh ve tien, CHI ADMIN.
+    const luong_net = luan_ly(b, 'luong_net');
+    if (luong_net !== null && luong_net !== p.luong_net && nd.vai_tro !== 'admin') {
+      throw new LoiKhongQuyen('Chỉ admin được tích "lương NET" cho phiếu lương.');
+    }
     await thuc_thi(
       `update phieu_luong set
          thuong = $2, phu_cap_khac = $3, tru_khac = $4,
          ly_do_tru_khac = $5, ghi_chu = $6, ep_du_cong = coalesce($8, ep_du_cong),
-         mien_phat = coalesce($9, mien_phat), sua_boi = $7, sua_luc = now()
+         mien_phat = coalesce($9, mien_phat), mien_thue = coalesce($10, mien_thue),
+         mien_bh = coalesce($11, mien_bh), luong_net = coalesce($12, luong_net),
+         sua_boi = $7, sua_luc = now()
        where id = $1`,
       [
         id, so_tien(b, 'thuong'), so_tien(b, 'phu_cap_khac'), so_tien(b, 'tru_khac'),
         chuoi(b, 'ly_do_tru_khac', { toi_da: 500 }),
-        chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub, ep_du_cong, mien_phat,
+        chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub, ep_du_cong, mien_phat, mien_thue, mien_bh,
+        luong_net,
       ],
     );
 
@@ -715,15 +1039,22 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       ? null
       : so_tien(b, 'luong_dong_bh');
 
+    // YC-1: chan cung — nhap muc luong phai kem CHUNG TU duyet. nguoi_duyet_id = nguoi dang
+    // nhap (chiu trach nhiem), chung tu do form nhap.
+    const chung_tu_mo_ta = chuoi_bat_buoc(b, 'chung_tu_mo_ta', { toi_da: 300, toi_thieu: 3 });
+    const nguoi_duyet_id = nd.sub;
+
     await thuc_thi(
       `insert into quyet_dinh_luong
-         (nhan_vien_id, hieu_luc_tu, luong_co_ban, phu_cap, luong_dong_bh, hinh_thuc, ly_do, tao_boi)
-       values ($1, $2, $3, $4, $5, 'thang', 'Nhập từ bảng lương', $6)
+         (nhan_vien_id, hieu_luc_tu, luong_co_ban, phu_cap, luong_dong_bh, hinh_thuc, ly_do,
+          tao_boi, nguoi_duyet_id, chung_tu_mo_ta)
+       values ($1, $2, $3, $4, $5, 'thang', 'Nhập từ bảng lương', $6, $7, $8)
        on conflict (nhan_vien_id, hieu_luc_tu) do update set
          luong_co_ban = excluded.luong_co_ban, phu_cap = excluded.phu_cap,
-         luong_dong_bh = coalesce(excluded.luong_dong_bh, quyet_dinh_luong.luong_dong_bh)`,
+         luong_dong_bh = coalesce(excluded.luong_dong_bh, quyet_dinh_luong.luong_dong_bh),
+         nguoi_duyet_id = excluded.nguoi_duyet_id, chung_tu_mo_ta = excluded.chung_tu_mo_ta`,
       [p.nhan_vien_id, hieu_luc_tu, so_tien(b, 'luong_co_ban'), so_tien(b, 'phu_cap'),
-       luong_dong_bh, nd.sub],
+       luong_dong_bh, nd.sub, nguoi_duyet_id, chung_tu_mo_ta],
     );
 
     await tinh_ky_luong(k.id, k.thang);
@@ -841,6 +1172,79 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     };
   });
 
+
+  /**
+   * YC 02 phan B (GD1) — NHAP NHANH THUONG KPI cho ca ky theo tung nhan vien (loc san theo
+   * khoi/phong o giao dien). Ghi khoan GO TAY vao tung phieu roi tinh lai ky mot lan.
+   *
+   * Bat buoc CHUNG TU duyet (nhat quan YC 01) va ghi nguoi thao tac. Chi admin. So tien = 0 thi
+   * GO khoan do khoi phieu (de sua nham). Kho da chot (khong con 'nhap') thi khoa.
+   */
+  const KHOAN_THUONG_KPI = [
+    'thuong_kpi_ca_nhan', 'thuong_kpi_phong', 'hoa_hong_cskh', 'pc_doanh_so', 'pc_kpi',
+  ] as const;
+  app.post('/ky-luong/:id/thuong-kpi-hang-loat', { preHandler: can_admin }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const k = await lay_ky(lay_id(req));
+    if (!SUA_DUOC.has(k.trang_thai)) {
+      throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${k.trang_thai}" nên đã khóa sửa.`);
+    }
+    const b = than(req.body);
+    const khoan_ma = trong_tap(b, 'khoan_ma', KHOAN_THUONG_KPI, { bat_buoc: true });
+    // Chung tu duyet bat buoc — thuong thanh tien phai co can cu (YC 01).
+    const chung_tu_mo_ta = chuoi_bat_buoc(b, 'chung_tu_mo_ta', { toi_da: 300, toi_thieu: 3 });
+    const dong = b['dong'];
+    if (!Array.isArray(dong) || dong.length === 0) throw new LoiDauVao('Thiếu danh sách "dong".');
+    if (dong.length > 500) throw new LoiDauVao('Tối đa 500 dòng mỗi lần.');
+
+    const ds: { nhan_vien_id: string; so_tien: number; ghi_chu: string | null }[] = [];
+    for (const raw of dong) {
+      const r = than(raw);
+      const nhan_vien_id = uuid_bat_buoc(r, 'nhan_vien_id');
+      if (ds.some((x) => x.nhan_vien_id === nhan_vien_id)) {
+        throw new LoiDauVao('Một nhân viên xuất hiện hai lần trong danh sách.');
+      }
+      ds.push({
+        nhan_vien_id, so_tien: so_tien(r, 'so_tien'), ghi_chu: chuoi(r, 'ghi_chu', { toi_da: 500 }),
+      });
+    }
+
+    const khong_co_phieu: string[] = [];
+    let so_ap = 0;
+    await trong_giao_dich(async (khach) => {
+      for (const d of ds) {
+        const pl = (await khach.query<{ id: string }>(
+          'select id from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2',
+          [k.id, d.nhan_vien_id],
+        )).rows[0];
+        if (pl === undefined) { khong_co_phieu.push(d.nhan_vien_id); continue; }
+        if (d.so_tien <= 0) {
+          await khach.query(
+            `delete from phieu_luong_khoan
+              where phieu_luong_id = $1 and khoan_ma = $2 and tu_chinh_sach = false`,
+            [pl.id, khoan_ma],
+          );
+        } else {
+          await khach.query(
+            `insert into phieu_luong_khoan
+               (phieu_luong_id, khoan_ma, so_luong, thanh_tien, ghi_chu, tu_chinh_sach)
+             values ($1,$2,null,$3,$4,false)
+             on conflict (phieu_luong_id, khoan_ma) do update set
+               so_luong = null, thanh_tien = excluded.thanh_tien,
+               ghi_chu = excluded.ghi_chu, tu_chinh_sach = false`,
+            [pl.id, khoan_ma, d.so_tien, d.ghi_chu ?? chung_tu_mo_ta],
+          );
+        }
+        so_ap++;
+      }
+    });
+    // Tinh lai ca ky de tong khop tung dong.
+    await tinh_ky_luong(k.id, k.thang);
+    await ghi_nhat_ky(nd.sub, 'thuong_kpi_hang_loat', 'ky_luong', k.id,
+      { khoan_ma, chung_tu_mo_ta, so_ap, so_dong: ds.length, khong_co_phieu }, req.ip);
+    return { ok: true, so_ap, khong_co_phieu };
+  });
+
   // ============================================================ phieu luong cua toi
   //
   // Nhan vien chi thay phieu cua CHINH MINH, va chi khi ky da duoc duyet: so lieu dang
@@ -885,7 +1289,15 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     return truy_van(
       `select kn.id, kn.ma, kn.noi_dung, kn.trang_thai, kn.phan_hoi, kn.tao_luc, kn.xu_ly_luc,
               kn.nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
-              k.thang, p.thuc_linh_lam_tron::float8 as thuc_linh
+              k.thang, p.thuc_linh_lam_tron::float8 as thuc_linh,
+              coalesce((select json_agg(json_build_object('id', t.id, 'ten', t.ten_goc)
+                                        order by t.tao_luc)
+                          from ho_so_tep t
+                         where t.nhom = 'khieu_nai' and t.thuoc_id = kn.id), '[]') as anh,
+              coalesce((select json_agg(json_build_object('vai', r.vai, 'noi_dung', r.noi_dung,
+                                                          'tao_luc', r.tao_luc) order by r.tao_luc)
+                          from khieu_nai_luong_tra_loi r
+                         where r.khieu_nai_id = kn.id), '[]') as tra_loi
          from khieu_nai_luong kn
          join nhan_vien nv on nv.id = kn.nhan_vien_id
          left join phong_ban pb on pb.id = nv.phong_ban_id
@@ -938,6 +1350,79 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
       noi_dung: phan_hoi ?? 'Phòng Nhân sự đã cập nhật khiếu nại phiếu lương của bạn.',
       du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: id },
     });
+    void email_hr_xu_ly(id, trang_thai, phan_hoi);
+    return { ok: true };
+  });
+
+  /**
+   * MO LAI mot khieu nai da dong (chap_nhan / tu_choi) de trao doi / giai trinh them.
+   * CHI ADMIN duoc thuc hien. Dua ve 'dang_xem' (mo), xoa xu_ly_luc; giu lai phan_hoi/thread
+   * lam lich su. Sau khi mo lai, nhan su co the tra loi / xu ly lai nhu binh thuong.
+   */
+  app.post('/khieu-nai-luong/:id/mo-lai', { preHandler: can_admin }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const kn = await truy_van_mot<{ nhan_vien_id: string; trang_thai: string }>(
+      'select nhan_vien_id, trang_thai from khieu_nai_luong where id = $1', [id],
+    );
+    if (kn === null) throw new LoiKhongTim('Không tìm thấy khiếu nại.');
+    if (kn.trang_thai !== 'chap_nhan' && kn.trang_thai !== 'tu_choi') {
+      throw new LoiXungDot('Chỉ mở lại được khiếu nại đã đóng (đã chấp nhận / đã từ chối).');
+    }
+    await thuc_thi(
+      `update khieu_nai_luong set trang_thai = 'dang_xem', xu_ly_luc = null,
+              nguoi_xu_ly = $2, cap_nhat_luc = now()
+        where id = $1`,
+      [id, nd.sub],
+    );
+    await ghi_nhat_ky(nd.sub, 'khieu_nai_luong.mo_lai', 'khieu_nai_luong', id,
+      { tu_trang_thai: kn.trang_thai }, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_cua_nhan_vien(kn.nhan_vien_id).catch(() => []),
+      tieu_de: 'Khiếu nại phiếu lương được mở lại',
+      noi_dung: 'Phòng Nhân sự đã mở lại khiếu nại phiếu lương của bạn để trao đổi / giải trình thêm.',
+      du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: id },
+    });
+    void email_hr_xu_ly(id, 'dang_xem',
+      'Khiếu nại của bạn được mở lại để trao đổi / giải trình thêm.');
+    return { ok: true };
+  });
+
+  /** Nhan su TRA LOI vao thread khieu nai (trao doi voi nguoi lao dong) — khi ticket con mo. */
+  app.post('/khieu-nai-luong/:id/tra-loi', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const noi_dung = chuoi_bat_buoc(than(req.body) as Record<string, unknown>, 'noi_dung',
+      { toi_thieu: 1, toi_da: 2000 });
+    const kn = await truy_van_mot<{ nhan_vien_id: string; trang_thai: string }>(
+      'select nhan_vien_id, trang_thai from khieu_nai_luong where id = $1', [id],
+    );
+    if (kn === null) throw new LoiKhongTim('Không tìm thấy khiếu nại.');
+    if (kn.trang_thai === 'chap_nhan' || kn.trang_thai === 'tu_choi') {
+      throw new LoiXungDot('Khiếu nại đã đóng, không trả lời thêm được.');
+    }
+    await trong_giao_dich(async (khach) => {
+      await khach.query(
+        `insert into khieu_nai_luong_tra_loi (khieu_nai_id, vai, nguoi_dung_id, noi_dung)
+         values ($1, 'nhan_su', $2, $3)`,
+        [id, nd.sub, noi_dung],
+      );
+      if (kn.trang_thai === 'moi') {
+        await khach.query(
+          `update khieu_nai_luong set trang_thai = 'dang_xem', nguoi_xu_ly = $2, cap_nhat_luc = now()
+            where id = $1`,
+          [id, nd.sub],
+        );
+      }
+    });
+    await ghi_nhat_ky(nd.sub, 'khieu_nai_luong.tra_loi', 'khieu_nai_luong', id, null, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_cua_nhan_vien(kn.nhan_vien_id).catch(() => []),
+      tieu_de: 'Khiếu nại phiếu lương có phản hồi mới',
+      noi_dung: 'Phòng Nhân sự vừa trả lời khiếu nại phiếu lương của bạn.',
+      du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: id },
+    });
+    void email_hr_tra_loi(id, noi_dung);
     return { ok: true };
   });
 

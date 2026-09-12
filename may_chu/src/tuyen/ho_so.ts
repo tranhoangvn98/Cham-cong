@@ -109,7 +109,8 @@ const DAC_TA: DacTaNhom[] = [
   },
   {
     nhom: 'luong', duong: 'luong', bang: 'quyet_dinh_luong', ten: 'quyết định lương',
-    cot: `id, hieu_luc_tu, luong_co_ban, phu_cap, hinh_thuc, so_quyet_dinh, ly_do, ghi_chu, tao_luc`,
+    cot: `id, hieu_luc_tu, luong_co_ban, phu_cap, hinh_thuc, so_quyet_dinh, ly_do, ghi_chu,
+          nguoi_duyet_id, chung_tu_mo_ta, chung_tu_tep_id, tao_luc`,
     sap_xep: 'hieu_luc_tu desc',
     truong: {
       hieu_luc_tu: (b) => ngay_bat_buoc(b, 'hieu_luc_tu'),
@@ -119,6 +120,10 @@ const DAC_TA: DacTaNhom[] = [
       so_quyet_dinh: (b) => chuoi(b, 'so_quyet_dinh', { toi_da: 60 }),
       ly_do: (b) => chuoi(b, 'ly_do', { toi_da: 500 }),
       ghi_chu: (b) => chuoi(b, 'ghi_chu', { toi_da: 2000 }),
+      // YC-1: bat buoc CHUNG TU duyet (chan cung khi TAO). nguoi_duyet_id dat o server
+      // (them_nguoi_thao_tac). Sua muc tien co chan rieng o handler patch ben duoi.
+      chung_tu_mo_ta: (b) => chuoi_bat_buoc(b, 'chung_tu_mo_ta', { toi_da: 300, toi_thieu: 3 }),
+      chung_tu_tep_id: (b) => uuid(b, 'chung_tu_tep_id'),
     },
   },
   {
@@ -495,6 +500,13 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       bat_buoc_sua(nd, dac.nhom, bc, dac.ten);
 
       const b = than(req.body);
+      // YC-1: sua muc luong (tien / mock hieu luc) phai kem nguoi duyet + chung tu. Nang luong
+      // dung la them ban ghi moi; day chi cho sua co chung tu.
+      if (dac.bang === 'quyet_dinh_luong'
+          && ['luong_co_ban', 'phu_cap', 'hinh_thuc', 'hieu_luc_tu'].some((k) => Object.hasOwn(b, k))
+          && (chuoi(b, 'chung_tu_mo_ta') ?? '').trim().length < 3) {
+        throw new LoiDauVao('Sửa mức lương phải kèm mô tả chứng từ duyệt (YC-1).');
+      }
       const gioi_han = chi_duoc_sua_o(nd, dac.nhom, bc);
       const dat: string[] = [];
       const gia_tri: unknown[] = [];
@@ -1326,6 +1338,11 @@ function them_nguoi_thao_tac(
   gia_tri: unknown[],
   nguoi_dung_id: string,
 ): void {
-  if (dac.bang === 'quyet_dinh_luong') { cot.push('tao_boi'); gia_tri.push(nguoi_dung_id); }
+  if (dac.bang === 'quyet_dinh_luong') {
+    // tao_boi = nguoi nhap; nguoi_duyet_id = nguoi chiu trach nhiem duyet (mac dinh = nguoi
+    // dang nhap, YC-1). Chung tu duyet do form nhap (chung_tu_mo_ta, bat buoc).
+    cot.push('tao_boi', 'nguoi_duyet_id');
+    gia_tri.push(nguoi_dung_id, nguoi_dung_id);
+  }
   if (dac.bang === 'cong_viec') { cot.push('giao_boi'); gia_tri.push(nguoi_dung_id); }
 }

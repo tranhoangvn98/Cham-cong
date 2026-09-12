@@ -105,18 +105,33 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
   const [noi_dung, dat_noi_dung] = useState('');
   const [muc_do, dat_muc_do] = useState('thuong');
   const [can_gt, dat_can_gt] = useState(false);
+  const [popup, dat_popup] = useState(false);
+  const [gui_email, dat_gui_email] = useState(false);
+  const [xem_html, dat_xem_html] = useState<string | null>(null);
   const hd = dung_hanh_dong();
+
+  const xem_truoc = async (): Promise<void> => {
+    try {
+      const kq = await goi<{ html: string }>('/api/thong-bao/xem-truoc-email',
+        { method: 'POST', body: { tieu_de, noi_dung, muc_do } });
+      dat_xem_html(kq.html);
+    } catch { /* xem truoc la phu, loi thi bo qua */ }
+  };
 
   const gui = async (): Promise<void> => {
     const ok = await hd.chay(
       () => goi('/api/thong-bao', {
         method: 'POST',
-        body: { tieu_de, noi_dung, muc_do, can_giai_trinh: can_gt, pham_vi: 'toan_cong_ty' },
+        body: {
+          tieu_de, noi_dung, muc_do, can_giai_trinh: can_gt, pham_vi: 'toan_cong_ty',
+          popup, gui_email,
+        },
       }),
       'Đã đăng thông báo.',
     );
     if (ok) {
       dat_tieu_de(''); dat_noi_dung(''); dat_muc_do('thuong'); dat_can_gt(false);
+      dat_popup(false); dat_gui_email(false);
       dat_mo(false); khi_xong();
     }
   };
@@ -136,7 +151,11 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
       <label className="truong"><span>Tiêu đề</span>
         <input value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)} /></label>
       <label className="truong"><span>Nội dung</span>
-        <textarea rows={4} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
+        <textarea rows={6} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
+      <div className="mo-ta" style={{ marginTop: -4 }}>
+        Mẹo trình bày email: <code>## Đề mục</code> → tiêu đề có viền xanh · <code>- </code> đầu dòng
+        → gạch đầu dòng · <code>**chữ**</code> → in đậm.
+      </div>
       <div className="tb-dang-hang">
         <label className="truong"><span>Mức độ</span>
           <select value={muc_do} onChange={(e) => dat_muc_do(e.target.value)}>
@@ -150,13 +169,39 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
           <span>Bắt buộc giải trình</span>
         </label>
       </div>
+      <div className="tb-dang-hang">
+        <label className="truong-hang">
+          <input type="checkbox" checked={popup} onChange={(e) => dat_popup(e.target.checked)} />
+          <span>Hiện popup khi mở app (bắt buộc đọc)</span>
+        </label>
+        <label className="truong-hang">
+          <input type="checkbox" checked={gui_email}
+            onChange={(e) => dat_gui_email(e.target.checked)} />
+          <span>Gửi email tới toàn công ty</span>
+        </label>
+      </div>
       <div className="hang-nut">
         <button onClick={() => { void gui(); }}
           disabled={hd.dang_chay || tieu_de.trim().length < 3 || noi_dung.trim().length < 3}>
           {hd.dang_chay ? 'Đang đăng…' : 'Đăng'}
         </button>
+        <button type="button" className="nut-phang" onClick={() => { void xem_truoc(); }}
+          disabled={tieu_de.trim() === '' && noi_dung.trim() === ''}>
+          Xem trước email
+        </button>
         <button className="nut-phang" onClick={() => dat_mo(false)}>Hủy</button>
       </div>
+
+      {xem_html !== null && (
+        <div style={{ marginTop: 12 }}>
+          <div className="mo-ta" style={{ marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+            <span>Xem trước email (bấm "Xem trước email" lại để cập nhật)</span>
+            <button type="button" className="nut-nho nut-phang" onClick={() => dat_xem_html(null)}>Đóng</button>
+          </div>
+          <iframe title="Xem trước email" srcDoc={xem_html}
+            style={{ width: '100%', height: 540, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff' }} />
+        </div>
+      )}
     </div>
   );
 }

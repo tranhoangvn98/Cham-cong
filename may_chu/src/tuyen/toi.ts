@@ -10,7 +10,7 @@ import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { gui_ngam, tai_khoan_nguoi_duyet } from '../su_kien/thong_bao_day.ts';
 import { do_geofence, type DiaDiem } from '../tien_ich/dia_ly.ts';
 import { doc_anh_selfie, luu_anh_selfie } from '../tien_ich/luu_anh.ts';
-import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
+import { doc_tep_ho_so, luu_tep_ho_so, lam_sach_ten, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { tra_loi_tro_ly } from '../ca_nhan/tro_ly.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import {
@@ -21,6 +21,10 @@ import { CAC_LOAI, MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_do
 import { don_cua_nhan_vien, huy_don, tao_don } from '../don_tu/nghiep_vu.ts';
 import { tu_dong_quyet_don, TU_NGAY_AP } from '../don_tu/tu_dong_duyet.ts';
 import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
+import { email_nhan_vien_tra_loi } from '../luong/khieu_nai_email.ts';
+import {
+  chi_tiet_ky_luat_theo_phieu, chi_tiet_di_muon_theo_phieu, type DongLietKe,
+} from '../luong/chi_tiet_ky_luat.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, khoang_ngay, luan_ly, ngay_bat_buoc, than, trong_tap, uuid,
   LoiDauVao, LoiKhongQuyen, LoiKhongTim, LoiXungDot,
@@ -202,6 +206,74 @@ function kq_tu_ngay(b: Record<string, unknown>): string {
   return ngay_bat_buoc(b, 'tu_ngay');
 }
 
+interface KhoanPhieuRa {
+  phieu_luong_id: string;
+  khoan_ma: string; ten: string; loai: string; nhom: string | null;
+  so_luong: string | null; don_gia: string | null; thanh_tien: string;
+  ghi_chu: string | null; chiu_thue: boolean;
+}
+
+/**
+ * Phieu luong cua CHINH nhan vien — CHI ky da_duyet / da_tra (khong lo phieu chua chot). Tra ve
+ * mang (moi nhat truoc), kem tung khoan thu nhap/tru. `chi_thang` != null thi loc ve 1 thang.
+ * Dung chung cho ca man "Phieu luong" (mang) va man "Luong" ca nhan (lay phan tu dau).
+ */
+async function phieu_luong_cua_toi(
+  nv_id: string, chi_thang: string | null,
+): Promise<Record<string, unknown>[]> {
+  const phieu = await truy_van<{ id: string } & Record<string, unknown>>(
+    `select p.id, k.thang, k.trang_thai as trang_thai_ky,
+            p.luong_co_ban, p.phu_cap, p.so_ngay_cong_chuan, p.so_ngay_cong_thuc,
+            p.luong_ngay, p.luong_theo_cong, p.phut_ot, p.tien_ot, p.thuong, p.phu_cap_khac,
+            p.tong_thu_nhap, p.muc_dong_bh, p.so_nguoi_phu_thuoc, p.giam_tru_tong,
+            p.thu_nhap_tinh_thue, p.bhxh_nld, p.bhyt_nld, p.bhtn_nld, p.thue_tncn,
+            p.tru_khac, p.tong_tru, p.thuc_linh, p.thuc_linh_lam_tron,
+            p.loai_hop_dong, p.ep_du_cong, p.mien_phat
+       from phieu_luong p
+       join ky_luong k on k.id = p.ky_luong_id
+      where p.nhan_vien_id = $1 and k.trang_thai in ('da_duyet', 'da_tra')
+        and ($2::text is null or k.thang = $2)
+      order by k.thang desc`,
+    [nv_id, chi_thang],
+  );
+  if (phieu.length === 0) return [];
+  const ids = phieu.map((p) => p.id);
+  const khoan = await truy_van<KhoanPhieuRa>(
+    `select pk.phieu_luong_id, pk.khoan_ma, kl.ten, kl.loai, kl.nhom,
+            pk.so_luong, pk.don_gia, pk.thanh_tien, pk.ghi_chu, kl.chiu_thue
+       from phieu_luong_khoan pk
+       join khoan_luong kl on kl.ma = pk.khoan_ma
+      where pk.phieu_luong_id = any($1::uuid[])
+      order by kl.loai, kl.ten`,
+    [ids],
+  );
+  // LIET KE tung LAN co NGAY + GIO (chi doc): giam thuong ky luat (tu ho_so_ky_luat da_ap_dung),
+  // phat di muon va tru nua ngay do muon (tu bang_cong_ngay). De nguoi lao dong biet bi tru vi
+  // loi nao, ngay gio nao — khong phai mot cuc gop.
+  const ct_ky_luat = await chi_tiet_ky_luat_theo_phieu(ids);
+  const ct_di_muon = await chi_tiet_di_muon_theo_phieu(ids);
+  const lan_thanh_dong = (id: string, cac_lan: string[], so_tien: string): DongLietKe[] =>
+    (cac_lan.length === 0 ? [] : [{
+      id: `${id}:lan`, ly_do: '', so_tien, thu_tu: 0, cac_lan,
+    }]);
+
+  const theo_phieu = new Map<string, Record<string, unknown>[]>();
+  for (const k of khoan) {
+    const { phieu_luong_id, ...con } = k;
+    const ds = theo_phieu.get(phieu_luong_id) ?? [];
+    let chi_tiet: DongLietKe[] = [];
+    if (k.khoan_ma === 'tru_giam_thuong_kl') chi_tiet = ct_ky_luat.get(phieu_luong_id) ?? [];
+    else if (k.khoan_ma === 'tru_di_muon') {
+      chi_tiet = lan_thanh_dong(phieu_luong_id, ct_di_muon.get(phieu_luong_id)?.tang_50k ?? [], k.thanh_tien);
+    } else if (k.khoan_ma === 'tru_nua_ngay') {
+      chi_tiet = lan_thanh_dong(phieu_luong_id, ct_di_muon.get(phieu_luong_id)?.tang_nua_ngay ?? [], k.thanh_tien);
+    }
+    ds.push({ ...con, chi_tiet });
+    theo_phieu.set(phieu_luong_id, ds);
+  }
+  return phieu.map((p) => ({ ...p, khoan: theo_phieu.get(p.id) ?? [] }));
+}
+
 export async function tuyen_toi(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', can_dang_nhap);
 
@@ -331,14 +403,45 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       phep,
       // Ky cong da chot chua: chua chot thi so lieu con co the doi khi mot lan quet ve muon.
       da_chot: da_chot_het,
-      phieu_luong: null,
+      // Phieu luong THAT cua thang (chi khi ky da duyet/da tra). Null neu chua co.
+      phieu_luong: (await phieu_luong_cua_toi(nv_id, thang))[0] ?? null,
       ghi_chu_ot:
         'Số phút OT ở đây là OT máy ghi nhận, chưa qua duyệt. Tiền làm thêm giờ chỉ được '
         + 'trả theo số phút OT đã có đơn duyệt.',
       ly_do_chua_co_phieu_luong:
-        'Phiếu lương sẽ hiển thị sau khi kế toán cấu hình kỳ lương và các tham số bảo hiểm, '
-        + 'thuế thu nhập cá nhân. Phần tính lương chưa được triển khai.',
+        'Phiếu lương hiển thị sau khi kỳ lương của tháng được nhân sự duyệt. '
+        + 'Dữ liệu chấm công dưới đây là căn cứ để đối chiếu trước khi chốt.',
     };
+  });
+  // Chu y: route GET /toi/phieu-luong (danh sach phieu cua chinh minh) da DANG KY o tuyen_luong
+  // (luong.ts) — KHONG dang ky lai o day, se bi FST_ERR_DUPLICATED_ROUTE. Man Luong ca nhan chi
+  // can `phieu_luong` cua thang, lay qua /toi/luong o tren (dung phieu_luong_cua_toi).
+
+  // ================================================================ quan ly phep nam CUA TOI
+  // Nhan vien tu xem QUY phep nam + CHI TIET tung lan nghi (da dung / dang cho duyet) trong nam.
+  app.get('/phep', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const q = req.query as Record<string, unknown>;
+    const nam = (chuoi(q, 'nam', { toi_da: 4 }) as string | null)
+      ?? ngay_dia_phuong(new Date()).slice(0, 4);
+    const quy = await quy_phep(nv_id, nam, await quy_phep_cua(nv_id));
+    // Cac lan nghi CO GIAO trong nam (moi loai), moi nhat truoc. So ngay: nua ngay = 0,5;
+    // don nhieu ngay = so ngay lich (den - tu + 1) — du de nguoi lao dong doi chieu.
+    const cac_lan = await truy_van(
+      `select id, loai,
+              to_char(tu_ngay, 'YYYY-MM-DD') as tu_ngay,
+              to_char(den_ngay, 'YYYY-MM-DD') as den_ngay,
+              nua_ngay, trang_thai, ly_do, ghi_chu_duyet,
+              to_char(tao_luc, 'YYYY-MM-DD"T"HH24:MI:SSOF') as tao_luc,
+              (case when nua_ngay then 0.5 else (den_ngay - tu_ngay + 1) end)::float8 as so_ngay
+         from don_nghi_phep
+        where nhan_vien_id = $1
+          and tu_ngay <= make_date($2::int, 12, 31)
+          and den_ngay >= make_date($2::int, 1, 1)
+        order by tu_ngay desc`,
+      [nv_id, nam],
+    );
+    return { nam, quy, cac_lan };
   });
 
   // ================================================================ lan quet cua toi
@@ -848,7 +951,15 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     const nv_id = nhan_vien_cua_toi(req);
     return truy_van(
       `select kn.id, kn.ma, kn.noi_dung, kn.trang_thai, kn.phan_hoi,
-              kn.tao_luc, kn.xu_ly_luc, k.thang
+              kn.tao_luc, kn.xu_ly_luc, k.thang,
+              coalesce((select json_agg(json_build_object('id', t.id, 'ten', t.ten_goc)
+                                        order by t.tao_luc)
+                          from ho_so_tep t
+                         where t.nhom = 'khieu_nai' and t.thuoc_id = kn.id), '[]') as anh,
+              coalesce((select json_agg(json_build_object('vai', r.vai, 'noi_dung', r.noi_dung,
+                                                          'tao_luc', r.tao_luc) order by r.tao_luc)
+                          from khieu_nai_luong_tra_loi r
+                         where r.khieu_nai_id = kn.id), '[]') as tra_loi
          from khieu_nai_luong kn
          join phieu_luong p on p.id = kn.phieu_luong_id
          join ky_luong k on k.id = p.ky_luong_id
@@ -856,6 +967,125 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         order by kn.tao_luc desc limit 100`,
       [nv_id],
     );
+  });
+
+  // Nguoi lao dong TRA LOI vao thread khieu nai CUA MINH — chi khi ticket con MO (moi/dang_xem).
+  app.post('/khieu-nai-luong/:id/tra-loi', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const p = req.params as Record<string, string>;
+    const kn_id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+    const noi_dung = chuoi_bat_buoc(than(req.body), 'noi_dung', { toi_thieu: 1, toi_da: 2000 });
+
+    const kn = await truy_van_mot<{ trang_thai: string }>(
+      'select trang_thai from khieu_nai_luong where id = $1 and nhan_vien_id = $2', [kn_id, nv_id],
+    );
+    if (kn === null) throw new LoiKhongTim('Không tìm thấy khiếu nại của bạn.');
+    if (kn.trang_thai !== 'moi' && kn.trang_thai !== 'dang_xem') {
+      throw new LoiXungDot('Khiếu nại đã đóng, không trả lời thêm được.');
+    }
+    await thuc_thi(
+      `insert into khieu_nai_luong_tra_loi (khieu_nai_id, vai, nguoi_dung_id, noi_dung)
+       values ($1, 'nhan_vien', $2, $3)`,
+      [kn_id, nd.sub, noi_dung],
+    );
+    await ghi_nhat_ky(nd.sub, 'khieu_nai_luong.tra_loi', 'khieu_nai_luong', kn_id, null, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: 'Khiếu nại lương có trả lời mới',
+      noi_dung: `${await ten_nhan_vien(nv_id)} vừa trả lời khiếu nại phiếu lương.`,
+      du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: kn_id },
+    });
+    void email_nhan_vien_tra_loi(kn_id, noi_dung);
+    return res.code(201).send({ ok: true });
+  });
+
+  // Dinh kem ANH cho mot khieu nai CUA MINH (bang chung). Tai dung he thong tep ho so (nhom
+  // 'khieu_nai'). Chi anh; magic byte da kiem trong luu_tep_ho_so, chan them theo mime.
+  app.post('/khieu-nai-luong/:id/anh', {
+    bodyLimit: cau_hinh.tep_toi_da_byte + 1024 * 1024,
+  }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const p = req.params as Record<string, string>;
+    const kn_id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+
+    const kn = await truy_van_mot<{ id: string }>(
+      'select id from khieu_nai_luong where id = $1 and nhan_vien_id = $2', [kn_id, nv_id],
+    );
+    if (kn === null) throw new LoiKhongTim('Không tìm thấy khiếu nại của bạn.');
+
+    let du_lieu: Buffer | null = null;
+    let ten_goc = 'anh';
+    for await (const phan of req.parts({ limits: { fileSize: cau_hinh.tep_toi_da_byte } })) {
+      if (phan.type === 'file') {
+        if (phan.fieldname !== 'anh') { await phan.toBuffer(); continue; }
+        ten_goc = lam_sach_ten(phan.filename ?? 'anh');
+        du_lieu = await phan.toBuffer();
+      }
+    }
+    if (du_lieu === null) throw new LoiDauVao('Thiếu ảnh đính kèm.');
+
+    const nv = await truy_van_mot<{ ma_nv: string; ho_ten: string }>(
+      'select ma_nv, ho_ten from nhan_vien where id = $1', [nv_id],
+    );
+    const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, {
+      ma_nv: nv?.ma_nv ?? 'NV', ho_ten: nv?.ho_ten ?? '',
+      nhom: 'khieu_nai', ngay: ngay_dia_phuong(new Date()),
+    });
+    if (!da_luu.mime.startsWith('image/')) {
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* da co loi that o tren */ });
+      throw new LoiDauVao('Chỉ đính kèm được tệp ảnh (jpg, png…).');
+    }
+    let moi: Record<string, unknown> | null;
+    try {
+      moi = await truy_van_mot(
+        `insert into ho_so_tep(id, nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
+                               kich_thuoc, tai_len_boi)
+         values ($1,$2,'khieu_nai',$3,$4,$5,$6,$7,$8)
+         returning id, ten_goc`,
+        [da_luu.ma_tep, nv_id, kn_id, ten_goc, da_luu.ten_luu, da_luu.mime, da_luu.kich_thuoc, nd.sub],
+      );
+    } catch (loi) {
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* da co loi that o tren */ });
+      throw loi;
+    }
+    await ghi_nhat_ky(nd.sub, 'khieu_nai_luong.dinh_kem_anh', 'khieu_nai_luong', kn_id,
+      { tep_id: moi?.['id'] ?? null }, req.ip);
+    return res.code(201).send({ id: moi?.['id'] ?? null, ten: ten_goc });
+  });
+
+  // Xem ANH dinh kem cua mot khieu nai: chu khieu nai, hoac admin/nhan su, hoac truong phong cua
+  // nguoi do. Tra 404 (khong phai 403) neu khong duoc xem — de khong lo su ton tai cua anh.
+  app.get('/khieu-nai-luong/anh/:tep_id', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const p = req.params as Record<string, string>;
+    const tep_id = uuid({ id: p['tep_id'] }, 'id', { bat_buoc: true }) as string;
+    const t = await truy_van_mot<{
+      ten_luu: string; kieu_mime: string; nhan_vien_id: string | null; phong_ban_id: string | null;
+    }>(
+      `select t.ten_luu, t.kieu_mime, t.nhan_vien_id, nv.phong_ban_id
+         from ho_so_tep t left join nhan_vien nv on nv.id = t.nhan_vien_id
+        where t.id = $1 and t.nhom = 'khieu_nai'`,
+      [tep_id],
+    );
+    if (t === null) throw new LoiKhongTim('Không tìm thấy ảnh.');
+    if (!xem_duoc_tat_ca(nd)) {
+      let duoc = nd.nv !== null && nd.nv === t.nhan_vien_id;
+      if (!duoc && nd.vai_tro === 'truong_phong' && t.phong_ban_id !== null) {
+        const cung = await truy_van_mot<{ ok: boolean }>(
+          'select (phong_ban_id = $2) as ok from nhan_vien where id = $1', [nd.nv, t.phong_ban_id],
+        );
+        duoc = cung?.ok === true;
+      }
+      if (!duoc) throw new LoiKhongTim('Không tìm thấy ảnh.');
+    }
+    const buf = await doc_tep_ho_so(t.ten_luu);
+    if (buf === null) throw new LoiKhongTim('Không tìm thấy tệp ảnh trên đĩa.');
+    return res
+      .header('content-type', t.kieu_mime)
+      .header('cache-control', 'private, max-age=3600')
+      .send(buf);
   });
 
   /**
@@ -878,12 +1108,17 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     );
     if (p === null) throw new LoiKhongTim('Không tìm thấy phiếu lương của bạn.');
 
+    // Cho gui NHIEU khieu nai cho cung mot phieu (nhieu van de khac nhau). Chi chan gui TRUNG Y HET
+    // (cung noi dung) khi con dang mo — de tranh nhan nham 2 lan; noi dung khac thi cho qua.
     const trung = await truy_van_mot<{ id: string }>(
       `select id from khieu_nai_luong
-        where nhan_vien_id = $1 and phieu_luong_id = $2 and trang_thai in ('moi','dang_xem') limit 1`,
-      [nv_id, phieu_luong_id],
+        where nhan_vien_id = $1 and phieu_luong_id = $2 and trang_thai in ('moi','dang_xem')
+          and btrim(noi_dung) = btrim($3) limit 1`,
+      [nv_id, phieu_luong_id, noi_dung],
     );
-    if (trung !== null) throw new LoiXungDot('Bạn đã có một khiếu nại đang mở cho phiếu lương này.');
+    if (trung !== null) {
+      throw new LoiXungDot('Bạn vừa gửi một khiếu nại y hệt cho phiếu này (đang được xử lý).');
+    }
 
     const dong = await truy_van_mot<{ id: string; ma: string }>(
       `insert into khieu_nai_luong (phieu_luong_id, nhan_vien_id, noi_dung)
@@ -1242,6 +1477,28 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     await ghi_nhat_ky(nd.sub, 'xac_nhan_thong_bao', 'thong_bao', tb_id,
       { co_giai_trinh: dong?.giai_trinh != null }, req.ip);
     return res.send({ ok: true, ma_giai_trinh: dong?.ma ?? null });
+  });
+
+  /**
+   * Thong bao POPUP con hieu luc, CHUA doc — de app hien hop thoai bat buoc doc khi mo. Dismiss
+   * = POST /thong-bao/:id/xac-nhan (tao dong da_doc), sau do khong con tra ve o day.
+   */
+  app.get('/thong-bao/popup', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select tb.id, tb.ma, tb.tieu_de, tb.noi_dung, tb.muc_do, tb.can_giai_trinh, tb.tao_luc
+         from thong_bao tb
+         left join thong_bao_da_doc dd on dd.thong_bao_id = tb.id and dd.nhan_vien_id = $1
+        where tb.popup = true and tb.da_go = false
+          and (tb.het_han is null or tb.het_han > now())
+          and dd.doc_luc is null
+          and (tb.pham_vi = 'toan_cong_ty'
+               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+               or tb.nhan_vien_id = $1)
+        order by tb.muc_do = 'khan' desc, tb.tao_luc desc
+        limit 20`,
+      [nv_id],
+    );
   });
 
   /**

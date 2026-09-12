@@ -25,8 +25,11 @@ interface ChiSo {
   diem_toi_da: string;
   trong_so: string;
   dang_bat: boolean;
+  ap_dung_phong_ban: string | null;
   ten_phong_ban: string | null;
 }
+
+interface PhongBan { id: string; ten: string }
 
 interface Ky {
   id: string;
@@ -69,6 +72,45 @@ const NHAN_NGUON: Record<string, string> = {
   cong_viec: 'Công việc',
   bao_cao: 'Báo cáo',
   nhap_tay: 'Nhập tay',
+};
+
+// Nhom chi so (khac voi nguon): dung de gom nhom hien thi.
+const NHOM = ['cham_cong', 'ky_luat', 'cong_viec', 'bao_cao', 'khac'] as const;
+const NHAN_NHOM: Record<string, string> = {
+  cham_cong: 'Chấm công',
+  ky_luat: 'Kỷ luật',
+  cong_viec: 'Công việc',
+  bao_cao: 'Báo cáo',
+  khac: 'Khác',
+};
+
+const NGUON = ['cham_cong', 'vi_pham', 'cong_viec', 'bao_cao', 'nhap_tay'] as const;
+
+// Moi nguon co bo chi so lay so tu dong rieng (khop rang buoc CSDL). 'nhap_tay' khong co chi so.
+const CHI_SO_THEO_NGUON: Record<string, string[]> = {
+  cham_cong: ['ty_le_du_cong', 'so_ngay_co_mat', 'so_ngay_vang', 'so_lan_di_muon',
+    'tong_phut_muon', 'so_lan_ve_som', 'gio_ot', 'so_ngay_nghi_phep'],
+  vi_pham: ['so_vi_pham', 'diem_tru_vi_pham'],
+  cong_viec: ['so_cong_viec_hoan_thanh', 'so_cong_viec_dung_han', 'ty_le_dung_han'],
+  bao_cao: ['so_bao_cao_da_nop'],
+  nhap_tay: [],
+};
+
+const NHAN_CHI_SO: Record<string, string> = {
+  ty_le_du_cong: 'Tỷ lệ đủ công (%)',
+  so_ngay_co_mat: 'Số ngày có mặt',
+  so_ngay_vang: 'Số ngày vắng',
+  so_lan_di_muon: 'Số lần đi muộn',
+  tong_phut_muon: 'Tổng phút muộn',
+  so_lan_ve_som: 'Số lần về sớm',
+  gio_ot: 'Giờ làm thêm (OT)',
+  so_ngay_nghi_phep: 'Số ngày nghỉ phép',
+  so_vi_pham: 'Số vi phạm',
+  diem_tru_vi_pham: 'Điểm trừ vi phạm',
+  so_cong_viec_hoan_thanh: 'Số công việc hoàn thành',
+  so_cong_viec_dung_han: 'Số công việc đúng hạn',
+  ty_le_dung_han: 'Tỷ lệ đúng hạn (%)',
+  so_bao_cao_da_nop: 'Số báo cáo đã nộp',
 };
 
 function so(v: unknown): number {
@@ -405,6 +447,8 @@ function HopThoaiSuaDiem(
 // ================================================================ danh muc chi so
 function TabDanhMuc(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<ChiSo[]>('/api/danh-muc-kpi');
+  const [sua, dat_sua] = useState<ChiSo | null>(null);
+  const [them, dat_them] = useState(false);
   const hd = dung_hanh_dong();
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
@@ -416,44 +460,199 @@ function TabDanhMuc(): ReactNode {
     ).then(nap_lai);
   };
 
+  // Gom theo nhom, giu thu tu NHOM (nhom nao khong co chi so thi bo qua).
+  const theo_nhom = NHOM
+    .map((nh) => ({ nhom: nh, cac: ds.filter((c) => c.nhom === nh) }))
+    .filter((g) => g.cac.length > 0);
+
   return (
     <>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <div className="hang-nut">
+        <button onClick={() => dat_them(true)}>Thêm chỉ số</button>
+      </div>
       <div className="hop-luu-y">
-        Chỉ số <strong>Công việc</strong> và <strong>Báo cáo</strong> để sẵn nhưng đang tắt —
-        chúng chỉ đúng nếu nhân viên thực sự dùng hai mục đó trong hồ sơ. Bật khi chưa dùng
-        sẽ chấm 0 oan cho cả công ty.
+        Chỉ số <strong>Công việc</strong> / <strong>Báo cáo</strong> chỉ đúng khi nhân viên thực sự
+        dùng hai mục đó — bật khi chưa dùng sẽ chấm 0 oan. Cột <strong>Phạm vi</strong> cho biết chỉ
+        số chấm cho <em>toàn công ty</em> hay riêng một phòng ban.
       </div>
-      <div className="vo-bang">
-        <table>
-          <thead>
-            <tr>
-              <th>Mã</th><th>Chỉ số</th><th>Nguồn</th><th>Chiều</th>
-              <th>Thang chấm</th><th className="canh-phai">Trọng số</th><th />
-            </tr>
-          </thead>
-          <tbody>
-            {ds.map((c) => (
-              <tr key={c.id} style={c.dang_bat ? undefined : { opacity: 0.55 }}>
-                <td><code>{c.ma}</code></td>
-                <td>{c.ten}<div className="mo-ta">{c.mo_ta}</div></td>
-                <td>{NHAN_NGUON[c.nguon] ?? c.nguon}</td>
-                <td>{c.chieu === 'cao_tot' ? 'Càng cao càng tốt' : 'Càng thấp càng tốt'}</td>
-                <td className="mo-ta">
-                  {so(c.muc_toi_thieu)}{c.don_vi ?? ''} = 0đ →{' '}
-                  {so(c.muc_muc_tieu)}{c.don_vi ?? ''} = {so(c.diem_toi_da)}đ
-                </td>
-                <td className="canh-phai">{so(c.trong_so)}</td>
-                <td className="canh-phai">
-                  <button className="nut-phang" disabled={hd.dang_chay} onClick={bat_tat(c)}>
-                    {c.dang_bat ? 'Tắt' : 'Bật'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+
+      {ds.length === 0 ? (
+        <Trong tieu_de="Chưa có chỉ số nào"
+          hanh_dong={<button onClick={() => dat_them(true)}>Thêm chỉ số đầu tiên</button>} />
+      ) : theo_nhom.map((g) => (
+        <div key={g.nhom}>
+          <h3>{NHAN_NHOM[g.nhom] ?? g.nhom}</h3>
+          <div className="vo-bang">
+            <table>
+              <thead>
+                <tr>
+                  <th>Mã</th><th>Chỉ số</th><th>Nguồn</th><th>Phạm vi</th><th>Chiều</th>
+                  <th>Thang chấm</th><th className="canh-phai">Trọng số</th><th />
+                </tr>
+              </thead>
+              <tbody>
+                {g.cac.map((c) => (
+                  <tr key={c.id} style={c.dang_bat ? undefined : { opacity: 0.55 }}>
+                    <td><code>{c.ma}</code></td>
+                    <td>{c.ten}<div className="mo-ta">{c.mo_ta}</div></td>
+                    <td>{NHAN_NGUON[c.nguon] ?? c.nguon}</td>
+                    <td>{c.ten_phong_ban === null
+                      ? <span className="nhan-mo">Toàn công ty</span>
+                      : <span className="nhan-lanh">{c.ten_phong_ban}</span>}</td>
+                    <td>{c.chieu === 'cao_tot' ? 'Càng cao càng tốt' : 'Càng thấp càng tốt'}</td>
+                    <td className="mo-ta">
+                      {so(c.muc_toi_thieu)}{c.don_vi ?? ''} = 0đ →{' '}
+                      {so(c.muc_muc_tieu)}{c.don_vi ?? ''} = {so(c.diem_toi_da)}đ
+                    </td>
+                    <td className="canh-phai">{so(c.trong_so)}</td>
+                    <td className="canh-phai">
+                      <button className="nut-phang" onClick={() => dat_sua(c)}>Sửa</button>{' '}
+                      <button className="nut-phang" disabled={hd.dang_chay} onClick={bat_tat(c)}>
+                        {c.dang_bat ? 'Tắt' : 'Bật'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+
+      {them && <HopThoaiChiSo khi_dong={() => dat_them(false)}
+        khi_xong={() => { dat_them(false); nap_lai(); }} />}
+      {sua !== null && <HopThoaiChiSo chi_so={sua} khi_dong={() => dat_sua(null)}
+        khi_xong={() => { dat_sua(null); nap_lai(); }} />}
     </>
+  );
+}
+
+/**
+ * Them / sua mot chi so KPI. Co `chi_so` = sua (nguon/chi_so KHONG doi duoc — dinh nghia lay so
+ * lieu, doi se lech ket qua da cham); khong co = them moi.
+ */
+function HopThoaiChiSo(
+  { chi_so, khi_dong, khi_xong }: {
+    chi_so?: ChiSo; khi_dong: () => void; khi_xong: () => void;
+  },
+): ReactNode {
+  const phong = dung_nap<PhongBan[]>('/api/phong-ban');
+  const [ma, dat_ma] = useState(chi_so?.ma ?? '');
+  const [ten, dat_ten] = useState(chi_so?.ten ?? '');
+  const [mo_ta, dat_mo_ta] = useState(chi_so?.mo_ta ?? '');
+  const [nhom, dat_nhom] = useState<string>(chi_so?.nhom ?? 'khac');
+  const [nguon, dat_nguon] = useState<string>(chi_so?.nguon ?? 'cham_cong');
+  const [chi_so_ma, dat_chi_so_ma] = useState(chi_so?.chi_so ?? '');
+  const [chieu, dat_chieu] = useState<'cao_tot' | 'thap_tot'>(chi_so?.chieu ?? 'cao_tot');
+  const [don_vi, dat_don_vi] = useState(chi_so?.don_vi ?? '');
+  const [mtt, dat_mtt] = useState(chi_so ? String(so(chi_so.muc_toi_thieu)) : '0');
+  const [mmt, dat_mmt] = useState(chi_so ? String(so(chi_so.muc_muc_tieu)) : '100');
+  const [dtd, dat_dtd] = useState(chi_so ? String(so(chi_so.diem_toi_da)) : '100');
+  const [ts, dat_ts] = useState(chi_so ? String(so(chi_so.trong_so)) : '1');
+  const [pb, dat_pb] = useState(chi_so?.ap_dung_phong_ban ?? '');
+  const hd = dung_hanh_dong();
+
+  const luu = async (): Promise<void> => {
+    const body: Record<string, unknown> = {
+      ten, mo_ta, nhom, chieu, don_vi,
+      muc_toi_thieu: Number(mtt), muc_muc_tieu: Number(mmt),
+      diem_toi_da: Number(dtd), trong_so: Number(ts),
+      ap_dung_phong_ban: pb === '' ? null : pb,
+    };
+    if (chi_so === undefined) {
+      body['ma'] = ma;
+      body['nguon'] = nguon;
+      body['chi_so'] = nguon === 'nhap_tay' || chi_so_ma === '' ? null : chi_so_ma;
+    }
+    const ok = await hd.chay(
+      () => goi(chi_so ? `/api/danh-muc-kpi/${chi_so.id}` : '/api/danh-muc-kpi',
+        { method: chi_so ? 'PATCH' : 'POST', body }),
+      chi_so ? 'Đã lưu chỉ số.' : 'Đã thêm chỉ số.',
+    );
+    if (ok !== null) khi_xong();
+  };
+
+  return (
+    <HopThoai tieu_de={chi_so ? `Sửa chỉ số — ${chi_so.ma}` : 'Thêm chỉ số KPI'} khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      {chi_so === undefined && (
+        <>
+          <label htmlFor="ma">Mã chỉ số</label>
+          <input id="ma" value={ma} onChange={(e) => dat_ma(e.target.value)}
+            placeholder="VD: DU_CONG (viết liền, in hoa)" />
+        </>
+      )}
+      <label htmlFor="ten">Tên chỉ số</label>
+      <input id="ten" value={ten} onChange={(e) => dat_ten(e.target.value)} />
+      <label htmlFor="mota">Mô tả</label>
+      <input id="mota" value={mo_ta} onChange={(e) => dat_mo_ta(e.target.value)} />
+
+      <label htmlFor="nhom">Nhóm</label>
+      <select id="nhom" value={nhom} onChange={(e) => dat_nhom(e.target.value)}>
+        {NHOM.map((n) => <option key={n} value={n}>{NHAN_NHOM[n]}</option>)}
+      </select>
+
+      <label htmlFor="pb">Phạm vi áp dụng</label>
+      <select id="pb" value={pb} onChange={(e) => dat_pb(e.target.value)}>
+        <option value="">Toàn công ty</option>
+        {(phong.du_lieu ?? []).map((p) => <option key={p.id} value={p.id}>{p.ten}</option>)}
+      </select>
+      <p className="mo-ta">Chọn một phòng ban để chỉ chấm chỉ số này cho người phòng đó; để
+        &quot;Toàn công ty&quot; nếu áp cho tất cả.</p>
+
+      {chi_so ? (
+        <p className="mo-ta">Nguồn dữ liệu: <strong>{NHAN_NGUON[nguon] ?? nguon}</strong>
+          {chi_so.chi_so !== null && ` — ${NHAN_CHI_SO[chi_so.chi_so] ?? chi_so.chi_so}`}
+          {' '}(không đổi được sau khi tạo).</p>
+      ) : (
+        <>
+          <label htmlFor="nguon">Nguồn dữ liệu</label>
+          <select id="nguon" value={nguon}
+            onChange={(e) => { dat_nguon(e.target.value); dat_chi_so_ma(''); }}>
+            {NGUON.map((n) => <option key={n} value={n}>{NHAN_NGUON[n]}</option>)}
+          </select>
+          {nguon !== 'nhap_tay' && (
+            <>
+              <label htmlFor="chiso">Lấy số liệu từ</label>
+              <select id="chiso" value={chi_so_ma} onChange={(e) => dat_chi_so_ma(e.target.value)}>
+                <option value="">— chọn chỉ số —</option>
+                {(CHI_SO_THEO_NGUON[nguon] ?? []).map((cs) =>
+                  <option key={cs} value={cs}>{NHAN_CHI_SO[cs] ?? cs}</option>)}
+              </select>
+            </>
+          )}
+          {nguon === 'nhap_tay' && (
+            <p className="mo-ta">Chỉ số nhập tay: không lấy số tự động — quản lý tự chấm mỗi kỳ.</p>
+          )}
+        </>
+      )}
+
+      <label htmlFor="chieu">Chiều</label>
+      <select id="chieu" value={chieu}
+        onChange={(e) => dat_chieu(e.target.value as 'cao_tot' | 'thap_tot')}>
+        <option value="cao_tot">Càng cao càng tốt</option>
+        <option value="thap_tot">Càng thấp càng tốt</option>
+      </select>
+
+      <label htmlFor="dv">Đơn vị (tùy chọn)</label>
+      <input id="dv" value={don_vi} onChange={(e) => dat_don_vi(e.target.value)}
+        placeholder="VD: %, ngày, lần" />
+
+      <label htmlFor="mtt">Mức tối thiểu (= 0 điểm)</label>
+      <input id="mtt" type="number" step="any" value={mtt} onChange={(e) => dat_mtt(e.target.value)} />
+      <label htmlFor="mmt">Mức mục tiêu (= điểm tối đa)</label>
+      <input id="mmt" type="number" step="any" value={mmt} onChange={(e) => dat_mmt(e.target.value)} />
+      <label htmlFor="dtd">Điểm tối đa</label>
+      <input id="dtd" type="number" step="any" value={dtd} onChange={(e) => dat_dtd(e.target.value)} />
+      <label htmlFor="ts">Trọng số</label>
+      <input id="ts" type="number" step="any" value={ts} onChange={(e) => dat_ts(e.target.value)} />
+
+      <div className="hang-nut">
+        <button disabled={hd.dang_chay || ten.trim() === '' || (chi_so === undefined && ma.trim() === '')}
+          onClick={() => void luu()}>{chi_so ? 'Lưu' : 'Thêm'}</button>
+        <button className="nut-phang" onClick={khi_dong}>Hủy</button>
+      </div>
+    </HopThoai>
   );
 }
