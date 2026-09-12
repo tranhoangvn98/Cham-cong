@@ -80,9 +80,11 @@ export async function tinh_lai_ngay(
   // --- LAM BU (YC-03): ngay nay la NGAY NGUON duoc nghi? Cong cua no = 0 — da PHAN BO ve cac
   // BUOI lam bu tren cac ngay_bu (vd 31/8 phan ve chieu T7 22/8 + 29/8). Khong tu cong o day,
   // khong con nam trong tu so. (Cong duoc kiem tren chinh cac ngay_bu — xem khoi kq ben duoi.)
-  const lam_bu = await truy_van_mot<{ id: string }>(
-    'select id from ngay_lam_bu where ngay_nghi = $1', [ngay],
-  );
+  // Chi ap lam bu cho nhan vien theo LICH VN (nghi le 31/8 la sap xep phia VN). Nguoi theo lich
+  // khac (vd Kho TQ — 31/8 khong phai le, van di lam) KHONG bi zero cong ngay nguon.
+  const lam_bu = nv.lich_nghi_ma === 'vn'
+    ? await truy_van_mot<{ id: string }>('select id from ngay_lam_bu where ngay_nghi = $1', [ngay])
+    : null;
   if (lam_bu !== null) {
     const kq_lb: KetQuaTinhCong = {
       trang_thai: 'lam_bu', gio_vao: null, gio_ra: null,
@@ -204,9 +206,9 @@ export async function tinh_lai_ngay(
   //   - nghi phep CO luong da duyet trum buoi -> 0,5 (mien lam bu)
   //   - nghi khong luong / vang -> 0
   // Chan tran 1,0 (nua ngay T7 + buoi bu). Nguon (ngay_nghi) da = 0 o tren.
-  const buoi_bu = await truy_van<{ buoi: string }>(
-    'select buoi from buoi_lam_bu where ngay = $1', [ngay],
-  );
+  const buoi_bu = nv.lich_nghi_ma === 'vn'
+    ? await truy_van<{ buoi: string }>('select buoi from buoi_lam_bu where ngay = $1', [ngay])
+    : [];
   if (buoi_bu.length > 0) {
     const gio_hcm = (d: Date | null): number | null =>
       d === null ? null : new Date(d.getTime() + 7 * 3_600_000).getUTCHours();
