@@ -6,7 +6,7 @@ import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { khoan_tu_chinh_sach, con_hieu_luc } = await import('../src/luong/chinh_sach.ts');
+const { khoan_tu_chinh_sach, con_hieu_luc, gop_chinh_sach } = await import('../src/luong/chinh_sach.ts');
 
 type DongChinhSach = Parameters<typeof khoan_tu_chinh_sach>[0][number];
 
@@ -187,4 +187,42 @@ test('nhieu chinh sach ra nhieu dong, giu nguyen thu tu dua vao', () => {
 
 test('khong co chinh sach nao thi khong sinh dong nao', () => {
   assert.deepEqual(khoan_tu_chinh_sach([], { so_cong: 22 }, KHONG_GO_TAY), []);
+});
+
+// ================================================================ gop khoi + ca nhan (YC02 A)
+test('gop_chinh_sach: khong co chinh sach khoi -> giu nguyen ca nhan', () => {
+  const cn = [{ ...GOC, khoan_ma: 'pc_an_trua', so_tien: 30_000 }];
+  assert.deepEqual(gop_chinh_sach(cn, []), cn);
+});
+
+test('gop_chinh_sach: khoan chi co o khoi -> ke thua tu khoi', () => {
+  const khoi = [{ ...GOC, khoan_ma: 'pc_trang_phuc', cach_tinh: 'nhap_tay' as const, so_tien: 500_000 }];
+  const ra = gop_chinh_sach([], khoi);
+  assert.equal(ra.length, 1);
+  assert.equal(ra[0]!.khoan_ma, 'pc_trang_phuc');
+  assert.equal(ra[0]!.so_tien, 500_000);
+});
+
+test('gop_chinh_sach: ca nhan DE len khoi cung khoan_ma (doi muc)', () => {
+  const khoi = [{ ...GOC, khoan_ma: 'pc_an_trua', cach_tinh: 'nhap_tay' as const, so_tien: 30_000 }];
+  const cn = [{ ...GOC, khoan_ma: 'pc_an_trua', cach_tinh: 'nhap_tay' as const, so_tien: 50_000 }];
+  const ra = gop_chinh_sach(cn, khoi);
+  assert.equal(ra.length, 1);
+  assert.equal(ra[0]!.so_tien, 50_000); // lay ca nhan, khong nhan doi
+});
+
+test('gop_chinh_sach: ca nhan mo dong so_tien=0 -> MIEN khoan cua khoi', () => {
+  const khoi = [{ ...GOC, khoan_ma: 'pc_trang_phuc', cach_tinh: 'nhap_tay' as const, so_tien: 500_000 }];
+  const cn = [{ ...GOC, khoan_ma: 'pc_trang_phuc', cach_tinh: 'nhap_tay' as const, so_tien: 0 }];
+  const gop = gop_chinh_sach(cn, khoi);
+  // Gop chi con dong ca nhan 0 dong; khoan_tu_chinh_sach bo qua -> khong sinh dong.
+  assert.equal(khoan_tu_chinh_sach(gop, { so_cong: 22 }, KHONG_GO_TAY).length, 0);
+});
+
+test('gop_chinh_sach: khoi + ca nhan khoan khac nhau -> cong ca hai', () => {
+  const khoi = [{ ...GOC, khoan_ma: 'pc_trang_phuc', cach_tinh: 'nhap_tay' as const, so_tien: 500_000 }];
+  const cn = [{ ...GOC, khoan_ma: 'pc_gui_xe', cach_tinh: 'nhap_tay' as const, so_tien: 200_000 }];
+  const ra = gop_chinh_sach(cn, khoi);
+  assert.equal(ra.length, 2);
+  assert.deepEqual(new Set(ra.map((x) => x.khoan_ma)), new Set(['pc_trang_phuc', 'pc_gui_xe']));
 });

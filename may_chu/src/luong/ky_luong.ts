@@ -7,7 +7,7 @@ import { khoang_thang, danh_sach_ngay, thu_trong_tuan } from '../tien_ich/thoi_g
 import { OFFSET_MAY_MS, cau_hinh } from '../cau_hinh.ts';
 import { tinh_phieu_luong, type BacThue, type ThamSoLuong } from './tinh_luong.ts';
 import type { CachTinhKhoan, LoaiKhoan } from './khoan.ts';
-import { khoan_tu_chinh_sach, type DongChinhSach } from './chinh_sach.ts';
+import { khoan_tu_chinh_sach, gop_chinh_sach, type DongChinhSach } from './chinh_sach.ts';
 import { tinh_phat_di_muon, gio_sang_phut, type CauHinhDiMuon } from './phat_di_muon.ts';
 
 /** Mot dong chinh sach doc tu CSDL — them `nhan_vien_id` de nhom lai. */
@@ -154,6 +154,8 @@ interface DongNhanVien {
   di_muon_moc_nua_ngay: string | null;
   /** Mac dinh luong NET cua ho so — dung SEED cho phieu moi (co that su nam tren phieu). */
   luong_net: boolean;
+  /** Khoi cua nguoi nay (YC 02 phan A) — de ap chinh sach phu cap cap khoi. Null = chua gan. */
+  khoi_id: string | null;
 }
 
 /**
@@ -206,7 +208,8 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
             coalesce(nlv.lich_nghi_ma, 'vn')                      as lich_nghi_ma,
             nv.di_muon_moc_50k::text                              as di_muon_moc_50k,
             nv.di_muon_moc_nua_ngay::text                         as di_muon_moc_nua_ngay,
-            nv.luong_net                                          as luong_net
+            nv.luong_net                                          as luong_net,
+            nv.khoi_id::text                                      as khoi_id
        from nhan_vien nv
        left join ca_lam cl on cl.id = nv.ca_lam_id
        left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
@@ -274,6 +277,42 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
     };
     if (ds_c === undefined) theo_nguoi.set(c.nhan_vien_id, [dong]); else ds_c.push(dong);
   }
+
+  // Chinh sach phu cap CAP KHOI (YC 02 phan A): mac dinh cho ca khoi. Ca nhan (028) DE len khoi.
+  // Cung quy tac `distinct on` lay dong moi nhat con hieu luc trong ky.
+  const chinh_sach_khoi = await truy_van<DongChinhSach & { khoi_id: string }>(
+    `select distinct on (csk.khoi_id, csk.khoan_ma)
+            csk.khoi_id, csk.khoan_ma, csk.nguon_so_luong,
+            csk.so_luong::float8 as so_luong, csk.so_tien::float8 as so_tien,
+            csk.don_gia::float8 as don_gia, d.cach_tinh
+       from chinh_sach_phu_cap_khoi csk
+       join khoan_luong d on d.ma = csk.khoan_ma
+      where csk.hieu_luc_tu <= $2
+        and (csk.hieu_luc_den is null or csk.hieu_luc_den >= $1)
+      order by csk.khoi_id, csk.khoan_ma, csk.hieu_luc_tu desc`,
+    [tu, den],
+  );
+  const theo_khoi = new Map<string, DongChinhSach[]>();
+  for (const c of chinh_sach_khoi) {
+    const ds_k = theo_khoi.get(c.khoi_id);
+    const dong: DongChinhSach = {
+      khoan_ma: c.khoan_ma,
+      cach_tinh: c.cach_tinh,
+      nguon_so_luong: c.nguon_so_luong,
+      so_luong: c.so_luong,
+      so_tien: c.so_tien,
+      don_gia: c.don_gia,
+    };
+    if (ds_k === undefined) theo_khoi.set(c.khoi_id, [dong]); else ds_k.push(dong);
+  }
+
+  // Gop chinh sach khoi + ca nhan cho mot nguoi: ca nhan DE len khoi theo khoan_ma (override
+  // mien/doi muc/khoan rieng). Ca nhan muon MIEN mot khoan khoi thi mo dong ca nhan so_tien = 0.
+  const chinh_sach_cua = (nhan_vien_id: string, khoi_id: string | null): DongChinhSach[] =>
+    gop_chinh_sach(
+      theo_nguoi.get(nhan_vien_id) ?? [],
+      khoi_id === null ? [] : (theo_khoi.get(khoi_id) ?? []),
+    );
 
   // ------------------------------------------------------------ ngay di muon cua ca cong ty
   // Doc mot lan moi ngay co gio vao trong ky, kem co / khong co don di muon da duyet gui truoc
@@ -407,7 +446,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       );
 
       const sinh = khoan_tu_chinh_sach(
-        theo_nguoi.get(nv.nhan_vien_id) ?? [],
+        chinh_sach_cua(nv.nhan_vien_id, nv.khoi_id),
         { so_cong: nv.so_cong },
         go_tay,
       );

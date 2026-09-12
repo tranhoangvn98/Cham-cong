@@ -14,6 +14,21 @@ export interface DongChinhSach {
   don_gia: number | null;
 }
 
+/**
+ * Gop chinh sach phu cap CAP KHOI + CA NHAN cho mot nguoi (YC 02 phan A).
+ *
+ * Ca nhan (028) DE len khoi theo `khoan_ma`: khoan nao ca nhan da khai thi lay ca nhan (override
+ * mien/doi muc), con lai lay theo khoi. Muon MIEN mot khoan cua khoi thi ca nhan mo dong khoan do
+ * voi so_tien = 0 (khoan_tu_chinh_sach se bo qua dong 0 dong).
+ */
+export function gop_chinh_sach(
+  ca_nhan: readonly DongChinhSach[], cua_khoi: readonly DongChinhSach[],
+): DongChinhSach[] {
+  if (cua_khoi.length === 0) return [...ca_nhan];
+  const ma_ca_nhan = new Set(ca_nhan.map((x) => x.khoan_ma));
+  return [...cua_khoi.filter((k) => !ma_ca_nhan.has(k.khoan_ma)), ...ca_nhan];
+}
+
 /** So lieu cua ky, dung cho cac nguon so luong tu dong. */
 export interface SoLieuKy {
   /** So ngay cong THUC TE cua nguoi do trong ky. */
