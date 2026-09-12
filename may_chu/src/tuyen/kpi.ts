@@ -97,11 +97,18 @@ export async function tuyen_kpi(app: FastifyInstance): Promise<void> {
     const loi = loi_khai_bao({ ma: String(cu['ma']), ...gop } as never);
     if (loi !== null) throw new LoiDauVao(loi);
 
+    // Pham vi (ap_dung_phong_ban) va nhom co the sua: HR gan chi so cho mot phong hoac dua ve
+    // toan cong ty (null). Dung co `co_pham_vi` de phan biet "khong gui" voi "gui null (toan cong ty)".
+    const co_pham_vi = Object.hasOwn(b, 'ap_dung_phong_ban');
+    const pham_vi = co_pham_vi ? uuid(b, 'ap_dung_phong_ban') : null;
+    const nhom = trong_tap(b, 'nhom', NHOM);
     await thuc_thi(
       `update danh_muc_kpi set
          ten = $2, mo_ta = coalesce($3, mo_ta), chieu = $4,
          muc_toi_thieu = $5, muc_muc_tieu = $6, diem_toi_da = $7, trong_so = $8,
          don_vi = coalesce($9, don_vi), dang_bat = coalesce($10, dang_bat),
+         nhom = coalesce($11, nhom),
+         ap_dung_phong_ban = case when $12 then $13 else ap_dung_phong_ban end,
          cap_nhat_luc = now()
        where id = $1`,
       [
@@ -109,6 +116,7 @@ export async function tuyen_kpi(app: FastifyInstance): Promise<void> {
         gop.muc_toi_thieu, gop.muc_muc_tieu, gop.diem_toi_da, gop.trong_so,
         chuoi(b, 'don_vi', { toi_da: 30 }),
         Object.hasOwn(b, 'dang_bat') ? luan_ly(b, 'dang_bat', true) : null,
+        nhom, co_pham_vi, pham_vi,
       ],
     );
     await ghi_nhat_ky(nd.sub, 'sua_chi_so_kpi', 'danh_muc_kpi', id, b, req.ip);
