@@ -590,6 +590,15 @@ const NHAN_TT_NGAY: Record<string, string> = {
   vang: 'Vắng', co_mat: 'Có mặt', nghi_phep: 'Nghỉ phép', nghi_khong_luong: 'Nghỉ không lương',
   ngay_le: 'Ngày lễ', nghi_tuan: 'Nghỉ tuần', cong_tac: 'Công tác', lam_bu: 'Làm bù',
 };
+// Cột "Phép / lý do": vắng = KHÔNG phép (đơn nghỉ duyệt sẽ đổi trạng thái sang nghỉ phép/không lương).
+const PHEP_NGAY: Record<string, ReactNode> = {
+  vang: <span className="nhan-canh-bao" title="Vắng không có đơn duyệt">Không phép</span>,
+  nghi_phep: 'Có phép (phép năm)',
+  nghi_khong_luong: 'Nghỉ không lương',
+  cong_tac: 'Công tác',
+  ngay_le: 'Nghỉ lễ',
+  lam_bu: 'Nghỉ bù',
+};
 const THU_VN = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 interface NgayCong {
   ngay: string; trang_thai: string; gio_vao: string | null; gio_ra: string | null;
@@ -610,6 +619,10 @@ function HopThoaiCong(
   const den = `${ky_thang}-${String(so_ngay).padStart(2, '0')}`;
   const { du_lieu, dang_tai, loi } = dung_nap<NgayCong[]>(
     `/api/bang-cong?nhan_vien_id=${phieu.nhan_vien_id}&tu=${tu}&den=${den}`);
+  // Quy phep nam cua nguoi nay (da dung / quy / con lai) — de theo doi ngay tren bang cong.
+  const quy = dung_nap<{ dong: { id: string; quy: number; da_dung: number; con_lai: number }[] }>(
+    `/api/nghi-phep?nam=${nam}`);
+  const phep = (quy.du_lieu?.dong ?? []).find((x) => x.id === phieu.nhan_vien_id) ?? null;
 
   const gio = (s: string | null): string => (s === null ? '' : ngay_gio(s).slice(-5));
   const ds = du_lieu ?? [];
@@ -627,13 +640,18 @@ function HopThoaiCong(
             <strong>{Number(phieu.so_ngay_cong_chuan)}</strong> công ·{' '}
             <strong>{bi_tru.length}</strong> ngày bị trừ / thiếu công (bôi đậm bên dưới).
             {phieu.ep_du_cong && ' — Phiếu đang được "tính đủ công".'}
+            {phep !== null && (
+              <> · <strong>Phép năm:</strong> đã dùng <strong>{Number(phep.da_dung)}</strong>{' '}
+                / quỹ <strong>{Number(phep.quy)}</strong> (còn{' '}
+                <strong>{Number(phep.con_lai)}</strong>)</>
+            )}
           </div>
           <div className="vo-bang" style={{ maxHeight: '72vh', overflow: 'auto' }}>
             <table className="bang-gon">
               <thead><tr>
-                <th>Ngày</th><th>Thứ</th><th>Trạng thái</th>
+                <th>Ngày</th><th>Thứ</th><th>Trạng thái</th><th>Phép / lý do</th>
                 <th className="canh-phai">Công</th><th>Vào–Ra</th><th>Đi muộn / Về sớm</th>
-                <th>Ghi chú / lý do</th>
+                <th>Ghi chú</th>
               </tr></thead>
               <tbody>
                 {ds.map((d) => {
@@ -649,6 +667,7 @@ function HopThoaiCong(
                       <td>{NHAN_TT_NGAY[d.trang_thai] ?? d.trang_thai}
                         {d.co_dieu_chinh && <span className="nhan-canh-bao" title="Có điều chỉnh tay / giải trình">sửa tay</span>}
                       </td>
+                      <td>{PHEP_NGAY[d.trang_thai] ?? ''}</td>
                       <td className="canh-phai">{Number(d.so_cong)}</td>
                       <td>{gio(d.gio_vao)}{d.gio_ra !== null ? `–${gio(d.gio_ra)}` : ''}</td>
                       <td>
