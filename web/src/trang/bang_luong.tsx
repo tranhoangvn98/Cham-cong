@@ -286,6 +286,10 @@ function HopThoaiChiTiet(
   const [sua, dat_sua] = useState<Phieu | null>(null);
   const [khoan, dat_khoan] = useState<Phieu | null>(null);
   const [xem_tru, dat_xem_tru] = useState<Phieu | null>(null);
+  // Tach chi tiet mot khoan tu popup "Cac khoan tru" (admin, ky con sua).
+  const [tach_ct, dat_tach_ct] = useState<
+    { phieu_id: string; ma: string; ten: string; ban_dau: DongChiTiet[] } | null
+  >(null);
   const [xem_pc, dat_xem_pc] = useState<Phieu | null>(null);
   const [xem_cong, dat_xem_cong] = useState<Phieu | null>(null);
   const [thuong_kpi, dat_thuong_kpi] = useState(false);
@@ -577,7 +581,25 @@ function HopThoaiChiTiet(
         />
       )}
       {xem_tru !== null && (
-        <HopThoaiKeKhoanTru phieu={xem_tru} khi_dong={() => dat_xem_tru(null)} />
+        <HopThoaiKeKhoanTru
+          phieu={xem_tru}
+          co_the_tach={sua_duoc && la_admin()}
+          khi_tach={(ma, ten, ban_dau) => {
+            dat_tach_ct({ phieu_id: xem_tru.id, ma, ten, ban_dau });
+            dat_xem_tru(null);
+          }}
+          khi_dong={() => dat_xem_tru(null)}
+        />
+      )}
+      {tach_ct !== null && (
+        <HopThoaiChiTietKhoan
+          phieu_id={tach_ct.phieu_id}
+          khoan_ma={tach_ct.ma}
+          ten={tach_ct.ten}
+          ban_dau={tach_ct.ban_dau}
+          khi_dong={() => dat_tach_ct(null)}
+          khi_xong={() => { dat_tach_ct(null); nap_lai(); khi_doi(); }}
+        />
       )}
       {xem_pc !== null && (
         <HopThoaiKePhuCap phieu={xem_pc} khi_dong={() => dat_xem_pc(null)} />
@@ -966,6 +988,14 @@ function HopThoaiKhoan(
             >
               Ghi đè
             </button>
+            {d.cach_tinh === 'nhap_tay' && (
+              <button
+                className="nut-nho" onClick={() => dat_chi_tiet_ma(d.ma)}
+                title="Tách khoản này thành nhiều dòng, mỗi lệnh một lý do + số tiền"
+              >
+                Tách chi tiết
+              </button>
+            )}
           </>
         );
       }
@@ -1215,11 +1245,28 @@ function HopThoaiChiTietKhoan(
  * xem biet con so tong gom nhung gi, khong phai mo man Sua.
  */
 function HopThoaiKeKhoanTru(
-  { phieu, khi_dong }: { phieu: Phieu; khi_dong: () => void },
+  { phieu, co_the_tach = false, khi_tach, khi_dong }:
+  {
+    phieu: Phieu; co_the_tach?: boolean;
+    khi_tach?: (ma: string, ten: string, ban_dau: DongChiTiet[]) => void;
+    khi_dong: () => void;
+  },
 ): ReactNode {
   const cac_tru = phieu.khoan.filter((k) => k.loai === 'tru');
   const tru_khac = Number(phieu.tru_khac);
   const tong = cac_tru.reduce((a, k) => a + Number(k.thanh_tien), 0) + tru_khac;
+
+  // Nut tach/sua chi tiet — chi hien khi admin & ky con sua & khoan nhap tay.
+  const nut_tach = (k: KhoanPhieu): ReactNode => (
+    co_the_tach && k.cach_tinh === 'nhap_tay' && khi_tach !== undefined ? (
+      <button
+        className="nut-nho" onClick={() => khi_tach(k.khoan_ma, k.ten, k.chi_tiet)}
+        title="Tách khoản này thành nhiều dòng, mỗi lệnh một lý do + số tiền"
+      >
+        {k.chi_tiet.length > 0 ? 'Sửa chi tiết' : 'Tách chi tiết'}
+      </button>
+    ) : null
+  );
 
   return (
     <HopThoai tieu_de={`Các khoản trừ — ${phieu.ho_ten}`} khi_dong={khi_dong}>
@@ -1233,10 +1280,11 @@ function HopThoaiKeKhoanTru(
                 // Khoan da tach nhieu lenh: hien tung dong rieng, roi mot dong tong.
                 <Fragment key={k.khoan_ma}>
                   <tr>
-                    <td colSpan={2}>
+                    <td>
                       <strong>{k.ten}</strong>
                       {k.tu_chinh_sach && <span className="nhan-mo"> theo chính sách</span>}
                     </td>
+                    <td className="canh-phai">{nut_tach(k)}</td>
                   </tr>
                   {k.chi_tiet.map((c) => (
                     <tr key={c.id}>
@@ -1258,7 +1306,10 @@ function HopThoaiKeKhoanTru(
                       <div className="mo-ta">{k.ghi_chu}</div>
                     )}
                   </td>
-                  <td className="canh-phai">{tien(k.thanh_tien)} đ</td>
+                  <td className="canh-phai">
+                    {tien(k.thanh_tien)} đ
+                    {nut_tach(k) !== null && <div>{nut_tach(k)}</div>}
+                  </td>
                 </tr>
               )
             ))}
