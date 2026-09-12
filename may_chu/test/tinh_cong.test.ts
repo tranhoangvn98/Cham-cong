@@ -598,3 +598,59 @@ test('lam bu — buoi SANG: vao truoc 12h -> duoc; vao chieu -> khong', () => {
   assert.equal(buoi_lam_bu_da_lam('sang', 'co_mat', 8, null, 0.5), true);
   assert.equal(buoi_lam_bu_da_lam('sang', 'co_mat', 14, null, 0.5), false);
 });
+
+// --- Nua ngay nghi (phep/khong luong) + di lam nua ngay con lai (ap dung toan cong ty) ---
+// Ngay THUONG hai buoi: nua ngay nghi phep + buoi con lai di lam thi buoi lam VAN duoc tinh cong.
+test('nua ngay phep co luong + di lam buoi chieu -> 1.0 (0.5 phep + 0.5 chieu)', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, q(T5, '13:27', '18:40')),
+    nghi_phep: { loai: 'nam', nua_ngay: true },
+  });
+  assert.equal(kq.trang_thai, 'nghi_phep');
+  assert.equal(kq.so_cong, 1);
+});
+
+test('nua ngay phep co luong + KHONG di lam -> giu 0.5', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'nam', nua_ngay: true },
+  });
+  assert.equal(kq.so_cong, 0.5);
+});
+
+test('nghi KHONG luong nua ngay + di lam buoi chieu -> 0.5 (nhat quan, chi tinh buoi lam)', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, q(T5, '13:27', '18:40')),
+    nghi_phep: { loai: 'khong_luong', nua_ngay: true },
+  });
+  assert.equal(kq.trang_thai, 'nghi_khong_luong');
+  assert.equal(kq.so_cong, 0.5);
+});
+
+test('nghi KHONG luong nua ngay + KHONG di lam -> 0 (khong tra du - Loi 5 BC-02)', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'khong_luong', nua_ngay: true },
+  });
+  assert.equal(kq.so_cong, 0);
+});
+
+test('phep ca ngay van 1.0 (fix nua ngay khong dung cham ngay ca ngay)', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'nam', nua_ngay: false },
+  });
+  assert.equal(kq.so_cong, 1);
+});
+
+test('T7 mot buoi (khong gio nghi): nua ngay phep + di lam sang -> giu 0.5, khong cong du', () => {
+  const CA_T7 = {
+    ...CA_HC, gio_ra: '12:00', nghi_tu: null, nghi_den: null,
+    phut_du_cong: 480, cac_ngay_lam: [1, 2, 3, 4, 5, 6],
+  } satisfies CaLam;
+  const kq = tinh_cong_ngay({
+    ...co_ban(T7, CA_T7, q(T7, '08:00', '12:10')),
+    nghi_phep: { loai: 'nam', nua_ngay: true },
+  });
+  assert.equal(kq.so_cong, 0.5);
+});
