@@ -739,9 +739,10 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
 
     const p = await truy_van_mot<{
       ky_luong_id: string; trang_thai: string; ep_du_cong: boolean; mien_phat: boolean;
-      mien_thue: boolean; mien_bh: boolean;
+      mien_thue: boolean; mien_bh: boolean; luong_net: boolean;
     }>(
-      `select p.ky_luong_id, k.trang_thai, p.ep_du_cong, p.mien_phat, p.mien_thue, p.mien_bh
+      `select p.ky_luong_id, k.trang_thai, p.ep_du_cong, p.mien_phat, p.mien_thue, p.mien_bh,
+              p.luong_net
          from phieu_luong p
          join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
       [id],
@@ -771,17 +772,24 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     if (mien_bh !== null && mien_bh !== p.mien_bh && nd.vai_tro !== 'admin') {
       throw new LoiKhongQuyen('Chỉ admin được tích "miễn BHXH/BHYT/BHTN" cho phiếu lương.');
     }
+    // Luong NET: cong ty ganh BHXH cua NLD (van dong du) — quyet dinh ve tien, CHI ADMIN.
+    const luong_net = luan_ly(b, 'luong_net');
+    if (luong_net !== null && luong_net !== p.luong_net && nd.vai_tro !== 'admin') {
+      throw new LoiKhongQuyen('Chỉ admin được tích "lương NET" cho phiếu lương.');
+    }
     await thuc_thi(
       `update phieu_luong set
          thuong = $2, phu_cap_khac = $3, tru_khac = $4,
          ly_do_tru_khac = $5, ghi_chu = $6, ep_du_cong = coalesce($8, ep_du_cong),
          mien_phat = coalesce($9, mien_phat), mien_thue = coalesce($10, mien_thue),
-         mien_bh = coalesce($11, mien_bh), sua_boi = $7, sua_luc = now()
+         mien_bh = coalesce($11, mien_bh), luong_net = coalesce($12, luong_net),
+         sua_boi = $7, sua_luc = now()
        where id = $1`,
       [
         id, so_tien(b, 'thuong'), so_tien(b, 'phu_cap_khac'), so_tien(b, 'tru_khac'),
         chuoi(b, 'ly_do_tru_khac', { toi_da: 500 }),
         chuoi(b, 'ghi_chu', { toi_da: 500 }), nd.sub, ep_du_cong, mien_phat, mien_thue, mien_bh,
+        luong_net,
       ],
     );
 

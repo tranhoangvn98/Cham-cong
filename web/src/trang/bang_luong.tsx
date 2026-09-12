@@ -106,8 +106,10 @@ interface Phieu {
   mien_phat: boolean;
   /** Admin miễn thuế TNCN cho phiếu này (thuế = 0). */
   mien_thue: boolean;
-  /** Admin miễn BHXH/BHYT/BHTN cho phiếu này (căn cứ đóng = 0) — dùng cho lương NET. */
+  /** Admin miễn BHXH/BHYT/BHTN cho phiếu này (căn cứ đóng = 0) — KHÔNG phát sinh BHXH nào. */
   mien_bh: boolean;
+  /** Lương NET: công ty gánh BHXH của NLĐ (vẫn đóng đủ), không trừ vào thực lĩnh. */
+  luong_net: boolean;
   khoan: KhoanPhieu[];
 }
 
@@ -465,7 +467,8 @@ function HopThoaiChiTiet(
                       {p.ep_du_cong && <div className="nhan-canh-bao" title="Được tính đủ ngày công (miễn chấm công)">đủ công</div>}
                       {p.mien_phat && <div className="nhan-canh-bao" title="Được miễn phạt đi muộn/về sớm">miễn phạt</div>}
                       {p.mien_thue && <div className="nhan-canh-bao" title="Miễn thuế TNCN cho phiếu này">miễn thuế</div>}
-                      {p.mien_bh && <div className="nhan-canh-bao" title="Miễn BHXH/BHYT/BHTN cho phiếu này (lương NET)">miễn BH · net</div>}
+                      {p.mien_bh && <div className="nhan-canh-bao" title="Miễn BHXH/BHYT/BHTN cho phiếu này (không phát sinh BHXH)">miễn BH</div>}
+                      {p.luong_net && <div className="nhan-canh-bao" title="Lương NET: công ty gánh BHXH của NLĐ (vẫn đóng đủ), không trừ vào thực lĩnh">lương net</div>}
                     </td>
                     <td className="canh-phai">{tien(p.luong_theo_cong)}</td>
                     <td className="canh-phai">{tien(p.tien_ot)}</td>
@@ -917,6 +920,7 @@ function HopThoaiSuaPhieu(
   const [mien_phat, dat_mien_phat] = useState(phieu.mien_phat);
   const [mien_thue, dat_mien_thue] = useState(phieu.mien_thue);
   const [mien_bh, dat_mien_bh] = useState(phieu.mien_bh);
+  const [luong_net, dat_luong_net] = useState(phieu.luong_net);
   // Luong dong BH: trong = dong theo luong that. Chi hien so khi da khai muc rieng.
   const bh_khai_ban_dau = Number(phieu.luong_dong_bh) !== Number(phieu.luong_co_ban) + Number(phieu.phu_cap)
     ? String(Number(phieu.luong_dong_bh)) : '';
@@ -1023,9 +1027,25 @@ function HopThoaiSuaPhieu(
               onChange={(e) => dat_mien_bh(e.target.checked)}
             />
             <span>
-              <strong>Miễn BHXH/BHYT/BHTN (lương NET)</strong> — không trừ bảo hiểm bắt buộc của
-              người lao động khỏi thực lĩnh cho phiếu này (căn cứ đóng = 0). Tích cho ai được trả
-              <strong> lương net</strong>. <strong>Chỉ admin</strong> được tích.
+              <strong>Miễn BHXH/BHYT/BHTN</strong> — KHÔNG phát sinh bảo hiểm bắt buộc cho phiếu này
+              (căn cứ đóng = 0, công ty cũng không đóng). <strong>Chỉ admin</strong> được tích.
+            </span>
+          </label>
+        </div>
+      )}
+
+      {(admin || phieu.luong_net) && (
+        <div className="hop-luu-y" style={{ margin: '0 0 0.75rem' }}>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <input
+              type="checkbox" checked={luong_net} disabled={!admin}
+              onChange={(e) => dat_luong_net(e.target.checked)}
+            />
+            <span>
+              <strong>Lương NET</strong> — công ty gánh BHXH của người lao động: <strong>không trừ</strong>
+              {' '}phần BH của NLĐ khỏi thực lĩnh, nhưng BHXH <strong>vẫn tính &amp; đóng đủ</strong> và
+              vẫn được giữ trong giảm trừ khi tính thuế TNCN. Khác "Miễn BHXH". <strong>Chỉ admin</strong>
+              {' '}được tích.
             </span>
           </label>
         </div>
@@ -1082,7 +1102,7 @@ function HopThoaiSuaPhieu(
                   ghi_chu,
                   // Chi gui khi la admin — server cung chan, nhung khong gui thi nhan su thuong
                   // sua thuong/tru ma khong vo tinh dong vao hai co nay.
-                  ...(admin ? { ep_du_cong, mien_phat, mien_thue, mien_bh } : {}),
+                  ...(admin ? { ep_du_cong, mien_phat, mien_thue, mien_bh, luong_net } : {}),
                 },
               });
             },

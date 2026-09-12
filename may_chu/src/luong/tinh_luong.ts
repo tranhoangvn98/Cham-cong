@@ -51,6 +51,12 @@ export interface DauVaoPhieu {
    * biet. Mac dinh false = tinh thue theo bieu thue luy tien nhu binh thuong.
    */
   mien_thue?: boolean;
+  /**
+   * Luong NET: mien THU BHXH tu NLD (cong ty ganh phan NLD) — KHONG tru bao_hiem_nld vao thuc
+   * linh, nhung BHXH van tinh day du + van giu trong giam tru khi tinh thue. Mac dinh false.
+   * Khac `dong_bao_hiem = false` (mien_bh): kia lam can cu dong = 0, khong phat sinh BHXH nao.
+   */
+  luong_net?: boolean;
   so_ngay_cong_chuan: number;
   so_ngay_cong_thuc: number;
   phut_ot: number;
@@ -213,7 +219,10 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
   const thue_tncn = d.mien_thue === true ? 0 : thue_luy_tien(thu_nhap_tinh_thue, ts.bac_thue);
 
   // ------------------------------------------------------------ thuc linh
-  const tong_tru = bao_hiem_nld + thue_tncn + d.tru_khac + khoan.tru;
+  // Luong NET: cong ty ganh BHXH cua NLD -> KHONG tru phan NLD vao thuc nhan. Van giu bao_hiem_nld
+  // trong giam_tru_tong (tru truoc thue) va cac dong bhxh_nld/... de bao cao + dong BHXH day du.
+  const bh_tru_thuc_nhan = d.luong_net === true ? 0 : bao_hiem_nld;
+  const tong_tru = bh_tru_thuc_nhan + thue_tncn + d.tru_khac + khoan.tru;
   const thuc_linh = tong_thu_nhap - tong_tru;
 
   const buoc = d.lam_tron_den ?? 0;

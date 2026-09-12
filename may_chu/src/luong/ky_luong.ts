@@ -152,6 +152,8 @@ interface DongNhanVien {
   di_muon_moc_50k: string | null;
   /** Moc tru nua ngay RIENG cua nguoi nay ('HH:MM:SS'). Null = dung moc chung cong ty. */
   di_muon_moc_nua_ngay: string | null;
+  /** Mac dinh luong NET cua ho so — dung SEED cho phieu moi (co that su nam tren phieu). */
+  luong_net: boolean;
 }
 
 /**
@@ -203,7 +205,8 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
             hd.loai                                               as loai_hop_dong,
             coalesce(nlv.lich_nghi_ma, 'vn')                      as lich_nghi_ma,
             nv.di_muon_moc_50k::text                              as di_muon_moc_50k,
-            nv.di_muon_moc_nua_ngay::text                         as di_muon_moc_nua_ngay
+            nv.di_muon_moc_nua_ngay::text                         as di_muon_moc_nua_ngay,
+            nv.luong_net                                          as luong_net
        from nhan_vien nv
        left join ca_lam cl on cl.id = nv.ca_lam_id
        left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
@@ -354,8 +357,10 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       const cu = await khach.query<{
         id: string; thuong: string; phu_cap_khac: string; tru_khac: string;
         ep_du_cong: boolean; mien_phat: boolean; mien_thue: boolean; mien_bh: boolean;
+        luong_net: boolean;
       }>(
-        `select id, thuong, phu_cap_khac, tru_khac, ep_du_cong, mien_phat, mien_thue, mien_bh
+        `select id, thuong, phu_cap_khac, tru_khac, ep_du_cong, mien_phat, mien_thue, mien_bh,
+                luong_net
            from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2`,
         [ky_luong_id, nv.nhan_vien_id],
       );
@@ -375,6 +380,9 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       // Admin tich "mien thue" / "mien BH": bo thue TNCN / mien dong bao hiem cho phieu nay.
       const mien_thue = Boolean(phieu_cu?.mien_thue ?? false);
       const mien_bh = Boolean(phieu_cu?.mien_bh ?? false);
+      // Luong NET: co tren PHIEU la nguon su that (admin tich/bo tich tren bang luong). Phieu
+      // moi (chua co dong cu) lay mac dinh theo ho so nhan_vien.luong_net.
+      const luong_net = phieu_cu !== undefined ? Boolean(phieu_cu.luong_net) : nv.luong_net;
 
       // Phai co ID phieu TRUOC khi ap chinh sach, vi dong khoan tro ve phieu. Chua co thi tao
       // mot dong rong — cac con so duoc ghi o buoc cuoi, va ca vong nay nam trong mot giao
@@ -496,6 +504,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
         luong_dong_bh: nv.luong_dong_bh_ql,
         dong_bao_hiem,
         mien_thue,
+        luong_net,
         so_ngay_cong_chuan: chuan,
         so_ngay_cong_thuc: cong_thuc,
         phut_ot: nv.phut_ot,
@@ -519,7 +528,8 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
            so_nguoi_phu_thuoc = $20, giam_tru_tong = $21, thu_nhap_tinh_thue = $22,
            thue_tncn = $23, tru_khac = $24, tong_tru = $25, thuc_linh = $26,
            luong_ngay = $27, khoan_thu_nhap = $28, khoan_tru = $29, thu_nhap_mien_thue = $30,
-           thuc_linh_lam_tron = $31, loai_hop_dong = $32, luong_dong_bh = $33, tinh_luc = now()
+           thuc_linh_lam_tron = $31, loai_hop_dong = $32, luong_dong_bh = $33,
+           luong_net = $34, tinh_luc = now()
          where id = $1`,
         [
           phieu_id, luong_co_ban, phu_cap,
@@ -532,6 +542,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
           kq.thue_tncn, tru_khac, kq.tong_tru, kq.thuc_linh,
           kq.luong_ngay, kq.khoan_thu_nhap, kq.khoan_tru, kq.thu_nhap_mien_thue,
           kq.thuc_linh_lam_tron, nv.loai_hop_dong, kq.luong_dong_bh,
+          luong_net,
         ],
       );
 
