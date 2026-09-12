@@ -14,7 +14,7 @@ import {
   XuongDanhSach,
 } from '../thanh_phan.tsx';
 
-interface KhoanDanhMuc {
+export interface KhoanDanhMuc {
   ma: string;
   ten: string;
   loai: 'thu_nhap' | 'tru';
@@ -56,25 +56,35 @@ interface ChinhSach {
   nguoi_tao: string | null;
 }
 
-function tien(v: unknown): string {
+export function tien(v: unknown): string {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) : '—';
 }
 
-function ngay(v: string | null): string {
+export function ngay(v: string | null): string {
   if (v === null) return '—';
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
   return m === null ? v : `${m[3]}/${m[2]}/${m[1]}`;
 }
 
 /** Hom nay dang YYYY-MM-DD, dung lam mac dinh cho o ngay. */
-function hom_nay(): string {
+export function hom_nay(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/** Truong toi thieu de mo ta mot muc chinh sach (dung chung ca nhan + khoi). */
+export interface MucChinhSach {
+  cach_tinh: KhoanDanhMuc['cach_tinh'];
+  nguon_so_luong: 'co_dinh' | 'theo_cong';
+  so_luong: string | null;
+  so_tien: string | null;
+  don_gia: string | null;
+  don_gia_danh_muc: string | null;
+}
+
 /** Mot dong chinh sach ra so tien nhu the nao — cau nay phai doc duoc ma khong mo hop thoai. */
-function mo_ta_muc(cs: ChinhSach): ReactNode {
+export function mo_ta_muc(cs: MucChinhSach): ReactNode {
   if (cs.cach_tinh === 'nhap_tay') return <>{tien(cs.so_tien)} đ / tháng</>;
 
   const dg = cs.don_gia ?? cs.don_gia_danh_muc;

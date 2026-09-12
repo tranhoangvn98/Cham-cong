@@ -459,6 +459,170 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
+  // ============================================================ chinh sach phu cap THEO KHOI
+  //
+  // Phu cap mac dinh cua ca mot KHOI (vd ca khoi Van phong huong an trua). Cung mo hinh hieu luc
+  // tu-den nhu ca nhan, chi khac gan theo `khoi_id`. Ky luong gop khoi + ca nhan (ca nhan de khoi
+  // theo tung khoan). HD thoi vu / cong tac vien KHONG huong phu cap khoi (chan o ky_luong.ts).
+
+  async function mo_chinh_sach_khoi(
+    nguoi: string, khoi_id: string, hieu_luc_tu: string, b: Record<string, unknown>,
+  ): Promise<{ id: string }> {
+    const khoan_ma = chuoi_bat_buoc(b, 'khoan_ma', { toi_da: 40 });
+    const dm = await truy_van_mot<{ cach_tinh: string; dang_dung: boolean; ten: string }>(
+      'select cach_tinh, dang_dung, ten from khoan_luong where ma = $1', [khoan_ma],
+    );
+    if (dm === null) throw new LoiDauVao(`Không có khoản mã "${khoan_ma}" trong danh mục.`);
+    if (!dm.dang_dung) {
+      throw new LoiDauVao(`Khoản "${dm.ten}" đã ngừng dùng nên không mở chính sách mới được.`);
+    }
+    const khoi = await truy_van_mot<{ ten: string }>(
+      'select ten from khoi where id = $1', [khoi_id],
+    );
+    if (khoi === null) throw new LoiKhongTim('Không tìm thấy khối.');
+
+    const nguon = trong_tap(b, 'nguon_so_luong', ['co_dinh', 'theo_cong'] as const) ?? 'co_dinh';
+    const so_luong = so_thuc(b, 'so_luong', { min: 0, max: 999 });
+    const so_tien_thang = so_thuc(b, 'so_tien', { min: 0 });
+    if (dm.cach_tinh === 'nhap_tay') {
+      if (so_tien_thang === null || so_tien_thang <= 0) {
+        throw new LoiDauVao(`Khoản "${dm.ten}" gõ thẳng số tiền, nên phải nói số tiền mỗi tháng.`);
+      }
+    } else if (nguon === 'co_dinh' && (so_luong === null || so_luong <= 0)) {
+      throw new LoiDauVao(
+        `Khoản "${dm.ten}" tính theo số lượng. Hãy điền số lượng cố định, `
+        + 'hoặc chọn nguồn "theo công thực tế".',
+      );
+    }
+
+    await thuc_thi(
+      `update chinh_sach_phu_cap_khoi
+          set hieu_luc_den = ($3::date - interval '1 day')::date
+        where khoi_id = $1 and khoan_ma = $2 and hieu_luc_den is null and hieu_luc_tu < $3::date`,
+      [khoi_id, khoan_ma, hieu_luc_tu],
+    );
+    const con_mo = await truy_van_mot<{ hieu_luc_tu: string }>(
+      `select to_char(hieu_luc_tu, 'YYYY-MM-DD') as hieu_luc_tu from chinh_sach_phu_cap_khoi
+        where khoi_id = $1 and khoan_ma = $2 and hieu_luc_den is null`,
+      [khoi_id, khoan_ma],
+    );
+    if (con_mo !== null) {
+      throw new LoiXungDot(
+        `Khối "${khoi.ten}" đã có chính sách "${dm.ten}" hiệu lực từ ${con_mo.hieu_luc_tu} — `
+        + `ngày mới (${hieu_luc_tu}) không sau ngày đó nên không nối tiếp được. `
+        + 'Hãy chọn ngày hiệu lực sau, hoặc đóng chính sách cũ trước.',
+      );
+    }
+
+    const dong = await truy_van_mot<{ id: string }>(
+      `insert into chinh_sach_phu_cap_khoi
+         (khoi_id, khoan_ma, nguon_so_luong, so_luong, so_tien, don_gia,
+          hieu_luc_tu, ly_do, ghi_chu, tao_boi)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id`,
+      [
+        khoi_id, khoan_ma, nguon,
+        dm.cach_tinh === 'nhap_tay' ? null : so_luong,
+        dm.cach_tinh === 'nhap_tay' ? so_tien_thang : null,
+        so_thuc(b, 'don_gia', { min: 0 }),
+        hieu_luc_tu,
+        chuoi(b, 'ly_do', { toi_da: 500 }),
+        chuoi(b, 'ghi_chu', { toi_da: 500 }),
+        nguoi,
+      ],
+    );
+    return dong!;
+  }
+
+  /** Chinh sach phu cap cua tat ca khoi, hoac cua mot khoi neu truyen `khoi_id`. */
+  app.get('/chinh-sach-phu-cap-khoi', { preHandler: can_nhan_su }, async (req) => {
+    const q = than((req as { query?: unknown }).query ?? {});
+    const khoi_id = uuid(q, 'khoi_id');
+    const con_hieu_luc = luan_ly(q, 'con_hieu_luc', true) === true;
+    return truy_van(
+      `select cs.*, kh.ma as khoi_ma, kh.ten as khoi_ten,
+              d.ten as khoan_ten, d.loai, d.cach_tinh, d.chiu_thue, d.canh_bao,
+              d.don_gia as don_gia_danh_muc, d.dang_dung as khoan_dang_dung,
+              u.ten_dang_nhap as nguoi_tao
+         from chinh_sach_phu_cap_khoi cs
+         join khoi kh on kh.id = cs.khoi_id
+         join khoan_luong d on d.ma = cs.khoan_ma
+         left join nguoi_dung u on u.id = cs.tao_boi
+        where ($1::uuid is null or cs.khoi_id = $1)
+          and ($2::boolean is false or cs.hieu_luc_den is null)
+        order by kh.ma, d.thu_tu, cs.hieu_luc_tu desc`,
+      [khoi_id, con_hieu_luc],
+    );
+  });
+
+  /** Gan mot chinh sach cho MOT hoac NHIEU khoi. */
+  app.post('/chinh-sach-phu-cap-khoi/hang-loat', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body);
+    const hieu_luc_tu = ngay_bat_buoc(b, 'hieu_luc_tu');
+    const ds = b['khoi_ids'];
+    if (!Array.isArray(ds) || ds.length === 0) throw new LoiDauVao('Chưa chọn khối nào.');
+    if (ds.length > 50) throw new LoiDauVao('Mỗi lần gán tối đa 50 khối.');
+
+    const ket_qua: { khoi_id: string; id: string }[] = [];
+    for (const raw of ds) {
+      const khoi_id = uuid_bat_buoc({ id: raw }, 'id');
+      const dong = await mo_chinh_sach_khoi(nd.sub, khoi_id, hieu_luc_tu, b);
+      ket_qua.push({ khoi_id, id: dong.id });
+    }
+    await ghi_nhat_ky(nd.sub, 'gan_chinh_sach_khoi_hang_loat', 'chinh_sach_phu_cap_khoi', null,
+      { khoan_ma: b['khoan_ma'], hieu_luc_tu, so_khoi: ket_qua.length }, req.ip);
+    return { ok: true, so_khoi: ket_qua.length, danh_sach: ket_qua };
+  });
+
+  /** Dong mot chinh sach khoi. */
+  app.post('/chinh-sach-phu-cap-khoi/:id/dong', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const den = ngay_bat_buoc(than(req.body), 'hieu_luc_den');
+    const cs = await truy_van_mot<{ hieu_luc_tu: string; hieu_luc_den: string | null }>(
+      `select to_char(hieu_luc_tu, 'YYYY-MM-DD') as hieu_luc_tu,
+              to_char(hieu_luc_den, 'YYYY-MM-DD') as hieu_luc_den
+         from chinh_sach_phu_cap_khoi where id = $1`,
+      [id],
+    );
+    if (cs === null) throw new LoiKhongTim('Không tìm thấy chính sách phụ cấp khối.');
+    if (cs.hieu_luc_den !== null) throw new LoiXungDot('Chính sách này đã đóng rồi.');
+    if (den < cs.hieu_luc_tu) {
+      throw new LoiDauVao(`Ngày kết thúc (${den}) không được trước ngày hiệu lực (${cs.hieu_luc_tu}).`);
+    }
+    await thuc_thi('update chinh_sach_phu_cap_khoi set hieu_luc_den = $2 where id = $1', [id, den]);
+    await ghi_nhat_ky(nd.sub, 'dong_chinh_sach_khoi', 'chinh_sach_phu_cap_khoi', id,
+      { hieu_luc_den: den }, req.ip);
+    return { ok: true };
+  });
+
+  /** Xoa han chinh sach khoi — chi khi CHUA sinh khoan nao cho nguoi trong khoi. */
+  app.delete('/chinh-sach-phu-cap-khoi/:id', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const cs = await truy_van_mot<{ khoi_id: string; khoan_ma: string }>(
+      'select khoi_id, khoan_ma from chinh_sach_phu_cap_khoi where id = $1', [id],
+    );
+    if (cs === null) throw new LoiKhongTim('Không tìm thấy chính sách phụ cấp khối.');
+    const da_dung = await truy_van_mot<{ so: number }>(
+      `select count(*)::int as so
+         from phieu_luong_khoan pk
+         join phieu_luong p on p.id = pk.phieu_luong_id
+         join nhan_vien nv on nv.id = p.nhan_vien_id
+        where nv.khoi_id = $1 and pk.khoan_ma = $2 and pk.tu_chinh_sach = true`,
+      [cs.khoi_id, cs.khoan_ma],
+    );
+    if ((da_dung?.so ?? 0) > 0) {
+      throw new LoiXungDot(
+        'Chính sách khối này đã sinh khoản trên phiếu lương nên không xóa được. '
+        + 'Hãy ĐÓNG nó lại từ một ngày.',
+      );
+    }
+    await thuc_thi('delete from chinh_sach_phu_cap_khoi where id = $1', [id]);
+    await ghi_nhat_ky(nd.sub, 'xoa_chinh_sach_khoi', 'chinh_sach_phu_cap_khoi', id, cs, req.ip);
+    return { ok: true };
+  });
+
   // ============================================================ ky luong
   app.get('/ky-luong', { preHandler: can_nhan_su }, async () =>
     truy_van(
