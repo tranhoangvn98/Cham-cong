@@ -1290,7 +1290,7 @@ function doc_ca_lam(b: Record<string, unknown>): unknown[] {
   return [
     chuoi_bat_buoc(b, 'ten', { toi_da: 80 }),
     gio_vao, gio_ra, nghi_tu, nghi_den,
-    so_nguyen(b, 'dung_sai_muon_phut', { min: 0, max: 240, mac_dinh: 5 }),
+    so_nguyen(b, 'dung_sai_muon_phut', { min: 0, max: 240, mac_dinh: 10 }),
     so_nguyen(b, 'dung_sai_som_phut', { min: 0, max: 240, mac_dinh: 5 }),
     so_nguyen(b, 'nguong_ot_phut', { min: 0, max: 480, mac_dinh: 30 }),
     qua_dem,

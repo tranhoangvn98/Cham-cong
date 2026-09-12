@@ -71,6 +71,25 @@ test('di muon vuot dung sai: chi tinh phan vuot', () => {
   assert.match(kq.ghi_chu ?? '', /Di muon 15 phut/);
 });
 
+// Nguong moi (chu cong ty chot): dung_sai 10 -> ca 08:00 tinh muon TU 08:11:00. Giay truoc do
+// KHONG tinh (so_phut lam tron xuong).
+const CA_HC_10 = { ...CA_HC, dung_sai_muon_phut: 10 } satisfies CaLam;
+
+test('nguong 08:11:00 — 08:10:59 chua tinh muon', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC_10, q(T5, '08:10:59', '17:00')));
+  assert.equal(kq.phut_muon, 0, '08:10:59 van trong dung sai (lam tron xuong = 10 phut)');
+});
+
+test('nguong 08:11:00 — dung 08:11:00 tinh muon 1 phut', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC_10, q(T5, '08:11:00', '17:00')));
+  assert.equal(kq.phut_muon, 1, 'tu 08:11:00 bat dau tinh vi pham');
+});
+
+test('nguong 08:11:00 — 08:06 khong con bi tinh muon', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC_10, q(T5, '08:06', '17:00')));
+  assert.equal(kq.phut_muon, 0, '08:06 nam trong dung sai 10 phut');
+});
+
 test('ve som vuot dung sai: ghi nhan ve som nhung KHONG tru cong (con o buoi chieu)', () => {
   const kq = tinh_cong_ngay(co_ban(T5, CA_HC, q(T5, '08:00', '16:00')));
   assert.equal(kq.phut_ve_som, 55, '60 phut som - 5 phut dung sai');

@@ -49,17 +49,6 @@ function loai_tu_chi_so(chi_so_list: string[] | null): LoaiLan {
   return null;
 }
 
-/** Mot lan co khop loai nay khong. */
-function lan_khop(l: HangLan, loai: LoaiLan): boolean {
-  switch (loai) {
-    case 'muon': return l.phut_muon > 0;
-    case 've_som': return l.phut_ve_som > 0;
-    case 'vang': return l.trang_thai === 'vang';
-    case 'thieu_gio': return l.trang_thai === 'co_mat' && l.phut_lam === 0;
-    default: return false;
-  }
-}
-
 /** Cau mo ta mot lan loi theo loai. */
 function mo_ta_lan(l: HangLan, loai: LoaiLan): string {
   switch (loai) {
@@ -129,21 +118,53 @@ export async function chi_tiet_ky_luat_theo_phieu(
     lan_theo_phieu.set(l.phieu_luong_id, ds);
   }
 
+  // Gom loai vi pham theo tung phieu (giu thu tu tien giam dan tu truy van).
+  const loai_theo_phieu = new Map<string, HangLoai[]>();
   for (const h of loai) {
-    const ten = (h.ten ?? '').trim() || 'Vi phạm';
-    const loai_lan = loai_tu_chi_so(h.chi_so_list);
-    const cac_lan = (lan_theo_phieu.get(h.phieu_luong_id) ?? [])
-      .filter((l) => lan_khop(l, loai_lan))
-      .map((l) => mo_ta_lan(l, loai_lan));
-    const ds = map.get(h.phieu_luong_id) ?? [];
-    ds.push({
-      id: `${h.phieu_luong_id}:${ten}`,
-      ly_do: ten,
-      so_tien: h.tien,
-      thu_tu: ds.length,
-      cac_lan,
+    const ds = loai_theo_phieu.get(h.phieu_luong_id) ?? [];
+    ds.push(h);
+    loai_theo_phieu.set(h.phieu_luong_id, ds);
+  }
+
+  for (const [phieu_id, nhom_loai] of loai_theo_phieu) {
+    // TAT CA lan loi cua nguoi nay trong ky — mo ta theo dung loai cua tung ngay (muon/ve som/
+    // vang/thieu gio), khong phu thuoc chi_so cua ho so. Nho vay ai co loi la co danh sach —
+    // khong con canh "nguoi co chi tiet, nguoi khong".
+    const tat_ca_lan = (lan_theo_phieu.get(phieu_id) ?? []).map((l) => {
+      const lo: LoaiLan = l.phut_muon > 0 ? 'muon'
+        : l.phut_ve_som > 0 ? 've_som'
+          : l.trang_thai === 'vang' ? 'vang'
+            : (l.trang_thai === 'co_mat' && l.phut_lam === 0) ? 'thieu_gio' : null;
+      return { lo, mo_ta: mo_ta_lan(l, lo) };
     });
-    map.set(h.phieu_luong_id, ds);
+
+    const dong: DongLietKe[] = nhom_loai.map((h, i) => ({
+      id: `${phieu_id}:${(h.ten ?? '').trim() || 'Vi phạm'}:${String(i)}`,
+      ly_do: (h.ten ?? '').trim() || 'Vi phạm',
+      so_tien: h.tien,
+      thu_tu: i,
+      cac_lan: [] as string[],
+    }));
+
+    if (dong.length <= 1) {
+      // Mot loai (thuong la loai gop "Di muon, ve som, tu y roi vi tri"): liet ke TAT CA lan.
+      if (dong.length === 1) dong[0]!.cac_lan = tat_ca_lan.map((x) => x.mo_ta);
+    } else {
+      // Nhieu loai: chia lan theo dung loai cua no; lan khong khop loai nao don vao dong dau
+      // (khong bo sot lan nao).
+      const da_gan = new Array<boolean>(tat_ca_lan.length).fill(false);
+      nhom_loai.forEach((h, i) => {
+        const lo = loai_tu_chi_so(h.chi_so_list);
+        const cl: string[] = [];
+        tat_ca_lan.forEach((x, j) => {
+          if (!da_gan[j] && x.lo === lo) { da_gan[j] = true; cl.push(x.mo_ta); }
+        });
+        dong[i]!.cac_lan = cl;
+      });
+      const con_lai = tat_ca_lan.filter((_, j) => !da_gan[j]).map((x) => x.mo_ta);
+      if (con_lai.length > 0) dong[0]!.cac_lan.push(...con_lai);
+    }
+    map.set(phieu_id, dong);
   }
   return map;
 }
