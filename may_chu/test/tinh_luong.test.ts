@@ -148,18 +148,23 @@ test('mien thue TNCN (admin tich): thue = 0, van giu thu nhap tinh thue de doi c
   assert.equal(mien.thuc_linh - thuong.thuc_linh, thuong.thue_tncn);
 });
 
-test('luong net: khong tru BHXH cua NLD vao thuc nhan, cong ty van dong, giu giam tru thue', () => {
+test('luong net: KHONG tinh BH cua NLD (ve 0), khong giam tru BH truoc thue; cong ty van dong NSDLD', () => {
   const thuong = tinh_phieu_luong(CO_BAN, TS);
   const net = tinh_phieu_luong({ ...CO_BAN, luong_net: true }, TS);
   const bao_hiem_nld = thuong.bhxh_nld + thuong.bhyt_nld + thuong.bhtn_nld;
-  // BH van duoc ghi + tru truoc thue -> thue, giam tru, cac dong BH (ca NLD lan cong ty) y het.
-  assert.equal(net.bhxh_nld, thuong.bhxh_nld);
+  assert.ok(bao_hiem_nld > 0, 'ban luong thuong phai co BH de so sanh');
+  // NET (chu cong ty chot): BH cua NLD = 0 het.
+  assert.equal(net.bhxh_nld, 0);
+  assert.equal(net.bhyt_nld, 0);
+  assert.equal(net.bhtn_nld, 0);
+  // Phan cong ty (NSDLD) van tinh binh thuong — nghia vu rieng cua doanh nghiep.
   assert.equal(net.bhxh_nsdld, thuong.bhxh_nsdld);
-  assert.equal(net.giam_tru_tong, thuong.giam_tru_tong);
-  assert.equal(net.thue_tncn, thuong.thue_tncn);
-  // Nhung thuc nhan KHONG bi tru phan BH cua NLD nua (cong ty ganh).
-  assert.equal(net.tong_tru, thuong.tong_tru - bao_hiem_nld);
-  assert.equal(net.thuc_linh, thuong.thuc_linh + bao_hiem_nld);
+  // BH khong con nen khong con la giam tru truoc thue -> thue khong thap hon ban thuong.
+  assert.equal(net.giam_tru_tong, thuong.giam_tru_tong - bao_hiem_nld);
+  assert.ok(net.thue_tncn >= thuong.thue_tncn);
+  // Thuc nhan KHONG bi tru phan BH cua NLD (tong_tru khong con phan BH). Cac khoan tru khac giu.
+  const khac = thuong.tong_tru - bao_hiem_nld - thuong.thue_tncn;
+  assert.equal(net.tong_tru, net.thue_tncn + khac);
 });
 
 test('nguoi phu thuoc lam giam thue, moi nguoi 4.4tr', () => {

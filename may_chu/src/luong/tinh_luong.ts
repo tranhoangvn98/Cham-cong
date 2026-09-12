@@ -194,9 +194,13 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
   const muc_bhxh_bhyt = Math.min(luong_dong_bh, tran_bhxh_bhyt(ts));
   const muc_bhtn = Math.min(luong_dong_bh, tran_bhtn(ts));
 
-  const bhxh_nld = dong(muc_bhxh_bhyt * (ts.ty_le_bhxh_nld / 100));
-  const bhyt_nld = dong(muc_bhxh_bhyt * (ts.ty_le_bhyt_nld / 100));
-  const bhtn_nld = dong(muc_bhtn * (ts.ty_le_bhtn_nld / 100));
+  // Luong NET: KHONG tinh BHXH/BHYT/BHTN cua NLD (chu cong ty chot — cong ty lo het). Phan NLD
+  // ve 0 het, nen cung khong con la khoan giam tru truoc thue. Phan cong ty (nsdld) van tinh
+  // binh thuong vi do la nghia vu rieng cua doanh nghiep.
+  const tinh_bh_nld = d.luong_net !== true;
+  const bhxh_nld = tinh_bh_nld ? dong(muc_bhxh_bhyt * (ts.ty_le_bhxh_nld / 100)) : 0;
+  const bhyt_nld = tinh_bh_nld ? dong(muc_bhxh_bhyt * (ts.ty_le_bhyt_nld / 100)) : 0;
+  const bhtn_nld = tinh_bh_nld ? dong(muc_bhtn * (ts.ty_le_bhtn_nld / 100)) : 0;
 
   const bhxh_nsdld = dong(muc_bhxh_bhyt * (ts.ty_le_bhxh_nsdld / 100));
   const bhyt_nsdld = dong(muc_bhxh_bhyt * (ts.ty_le_bhyt_nsdld / 100));
@@ -219,10 +223,9 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
   const thue_tncn = d.mien_thue === true ? 0 : thue_luy_tien(thu_nhap_tinh_thue, ts.bac_thue);
 
   // ------------------------------------------------------------ thuc linh
-  // Luong NET: cong ty ganh BHXH cua NLD -> KHONG tru phan NLD vao thuc nhan. Van giu bao_hiem_nld
-  // trong giam_tru_tong (tru truoc thue) va cac dong bhxh_nld/... de bao cao + dong BHXH day du.
-  const bh_tru_thuc_nhan = d.luong_net === true ? 0 : bao_hiem_nld;
-  const tong_tru = bh_tru_thuc_nhan + thue_tncn + d.tru_khac + khoan.tru;
+  // Luong NET: BH cua NLD da = 0 (khong tinh) nen bao_hiem_nld = 0 -> khong tru gi vao thuc nhan
+  // va cung khong nam trong giam_tru_tong. Luong GROSS: tru phan BH cua NLD nhu binh thuong.
+  const tong_tru = bao_hiem_nld + thue_tncn + d.tru_khac + khoan.tru;
   const thuc_linh = tong_thu_nhap - tong_tru;
 
   const buoc = d.lam_tron_den ?? 0;
