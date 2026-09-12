@@ -15,6 +15,7 @@ import {
   ban_chot_theo_id, chot_ky, danh_sach_ban_chot, type KetQuaChot,
 } from '../luong/ban_chot.ts';
 import { lech_luong_ky } from '../luong/kiem_lech_luong.ts';
+import { KHOAN_GIAM_THUONG } from '../ky_luat/xu_ly.ts';
 import { bang_luong_xuat } from '../luong/bang_xuat.ts';
 import { xuat_bang_luong_erp } from '../luong/xuat_mau_erp.ts';
 import { gui_phieu_luong_ky } from '../luong/phieu_luong_email.ts';
@@ -133,6 +134,45 @@ async function lay_ky(id: string): Promise<{ id: string; thang: string; trang_th
   );
   if (k === null) throw new LoiKhongTim('Không tìm thấy kỳ lương.');
   return k;
+}
+
+/** Mot dong LIET KE (chi doc) cua khoan giam thuong ky luat. */
+export interface DongLietKe { id: string; ly_do: string; so_tien: string; thu_tu: number }
+
+/**
+ * LIET KE tung lenh giam thuong ky luat cho MOI phieu trong mot ky — CHI DOC, may tu tong hop tu
+ * ho_so_ky_luat da_ap_dung (dung nguoi + dung ky). Gom theo LOAI vi pham -> "Di muon (x3)". Tra
+ * Map(phieu_luong_id -> danh sach dong). Dung cho bang KE tren phieu (khong phai nhap tay).
+ */
+async function lay_chi_tiet_ky_luat_ky(ky_luong_id: string): Promise<Map<string, DongLietKe[]>> {
+  const rows = await truy_van<{ phieu_luong_id: string; ten: string; so_tien: string;
+                                so_lan: number }>(
+    `select p.id as phieu_luong_id, (c->>'ten') as ten,
+            sum((c->>'tien')::numeric)::text as so_tien, count(*)::int as so_lan
+       from phieu_luong p
+       join ky_luong k on k.id = p.ky_luong_id
+       join ho_so_ky_luat h on h.nhan_vien_id = p.nhan_vien_id and h.ky = k.thang
+            and h.trang_thai = 'da_ap_dung'
+       cross join lateral jsonb_array_elements(coalesce(h.chi_tiet, '[]'::jsonb)) as c
+      where p.ky_luong_id = $1
+        and (c->>'tien') is not null and (c->>'tien')::numeric > 0
+      group by p.id, (c->>'ten')
+      order by p.id, sum((c->>'tien')::numeric) desc`,
+    [ky_luong_id],
+  );
+  const map = new Map<string, DongLietKe[]>();
+  for (const r of rows) {
+    const ten = (r.ten ?? '').trim() || 'Vi phạm';
+    const ds = map.get(r.phieu_luong_id) ?? [];
+    ds.push({
+      id: `${r.phieu_luong_id}:${ten}`,
+      ly_do: r.so_lan > 1 ? `${ten} (×${String(r.so_lan)})` : ten,
+      so_tien: r.so_tien,
+      thu_tu: ds.length,
+    });
+    map.set(r.phieu_luong_id, ds);
+  }
+  return map;
 }
 
 export async function tuyen_luong(app: FastifyInstance): Promise<void> {
@@ -487,28 +527,18 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         order by d.loai desc, d.thu_tu, d.ten`,
       [k.id],
     );
-    // Chi tiet tung lenh cua khoan co ghi chi tiet (vd giam thuong ky luat gom nhieu lenh tru):
-    // dinh kem vao dung dong khoan de bang KE hien tung dong rieng, khong gop.
-    const chi_tiet = await truy_van<Record<string, unknown>>(
-      `select ct.phieu_luong_id, ct.khoan_ma, ct.id, ct.ly_do, ct.so_tien, ct.thu_tu
-         from phieu_luong_khoan_ct ct
-         join phieu_luong p on p.id = ct.phieu_luong_id
-        where p.ky_luong_id = $1
-        order by ct.thu_tu, ct.tao_luc`,
-      [k.id],
-    );
-    const ct_theo_khoan = new Map<string, Record<string, unknown>[]>();
-    for (const c of chi_tiet) {
-      const khoa = `${String(c['phieu_luong_id'])}::${String(c['khoan_ma'])}`;
-      const ds = ct_theo_khoan.get(khoa);
-      if (ds === undefined) ct_theo_khoan.set(khoa, [c]); else ds.push(c);
-    }
+    // Chi tiet giam thuong ky luat: LIET KE tung lenh phat may da tong hop (tu ho_so_ky_luat
+    // da_ap_dung), CHI DOC. Gom theo loai vi pham -> "Di muon (x3)". Dinh kem vao dong khoan
+    // 'tru_giam_thuong_kl' de bang KE hien tung dong thay vi mot cuc.
+    const ct_theo_phieu = await lay_chi_tiet_ky_luat_ky(k.id);
 
     const theo_phieu = new Map<string, Record<string, unknown>[]>();
     for (const x of khoan) {
       const id = String(x['phieu_luong_id']);
-      const khoa = `${id}::${String(x['khoan_ma'])}`;
-      const voi_ct = { ...x, chi_tiet: ct_theo_khoan.get(khoa) ?? [] };
+      const voi_ct = {
+        ...x,
+        chi_tiet: x['khoan_ma'] === KHOAN_GIAM_THUONG ? (ct_theo_phieu.get(id) ?? []) : [],
+      };
       const ds = theo_phieu.get(id);
       if (ds === undefined) theo_phieu.set(id, [voi_ct]); else ds.push(voi_ct);
     }
@@ -941,15 +971,9 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
 
     // Chi xoa dong GO TAY. Dong tu chinh sach khong thuoc pham vi tuyen nay — xoa o day thi
     // `tinh_ky_luong` ngay duoi sinh lai, chi ton mot vong ghi.
-    //
-    // BO QUA khoan co CHI TIET (nhieu lenh tru): chung do tuyen chi-tiet quan ly rieng, hop
-    // thoai sua khoan thuong khong gui chung len -> khong duoc xoa nham o day.
     await thuc_thi(
-      `delete from phieu_luong_khoan pk
-        where pk.phieu_luong_id = $1 and pk.tu_chinh_sach = false and pk.khoan_ma <> all($2::text[])
-          and not exists (
-            select 1 from phieu_luong_khoan_ct ct
-             where ct.phieu_luong_id = pk.phieu_luong_id and ct.khoan_ma = pk.khoan_ma)`,
+      `delete from phieu_luong_khoan
+        where phieu_luong_id = $1 and tu_chinh_sach = false and khoan_ma <> all($2::text[])`,
       [id, dong.map((d) => d.ma)],
     );
     for (const d of dong) {
@@ -989,145 +1013,6 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     };
   });
 
-  // ================================================ CHI TIET tung lenh cua mot khoan (nhap tay)
-  //
-  // "Chi tiet tung lenh tru ra, khong de gop": mot khoan `nhap_tay` (vd giam thuong ky luat) co
-  // the gom NHIEU lenh, moi lenh mot ly do + so tien. Bang KE hien tung dong; tong khoan =
-  // sum(so_tien). Dong khoan cha van la MOT dong go tay tren phieu (thanh_tien = tong) — nen
-  // tinh_ky_luong va moi noi khac khong doi. Danh sach rong -> xoa han khoan (ca chi tiet).
-  app.put('/phieu-luong/:id/khoan/:ma/chi-tiet', { preHandler: can_nhan_su }, async (req) => {
-    const nd = nguoi_dung_hien_tai(req);
-    const id = lay_id(req);
-    const ma = chuoi_bat_buoc((req.params as Record<string, unknown>), 'ma', { toi_da: 40 });
-
-    const p = await truy_van_mot<{ ky_luong_id: string; trang_thai: string }>(
-      `select p.ky_luong_id, k.trang_thai from phieu_luong p
-         join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
-      [id],
-    );
-    if (p === null) throw new LoiKhongTim('Không tìm thấy phiếu lương.');
-    if (!SUA_DUOC.has(p.trang_thai)) {
-      throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${p.trang_thai}" nên phiếu đã khóa sửa.`);
-    }
-
-    const dm = await truy_van_mot<{ cach_tinh: string; dang_dung: boolean }>(
-      'select cach_tinh, dang_dung from khoan_luong where ma = $1', [ma],
-    );
-    if (dm === null) throw new LoiDauVao(`Không có khoản mã "${ma}" trong danh mục.`);
-    // Chi khoan nhap_tay moi giu duoc tong qua tinh lai ky — khoan tinh theo cong thuc (so
-    // luong x don gia / nua ngay luong) se bi bo tinh ghi de tong, chi tiet mat y nghia.
-    if (dm.cach_tinh !== 'nhap_tay') {
-      throw new LoiDauVao('Chỉ khoản nhập tay mới tách được thành nhiều dòng chi tiết.');
-    }
-
-    const b = than(req.body);
-    const gui = b['dong'];
-    if (!Array.isArray(gui)) throw new LoiDauVao('Thiếu danh sách "dong".');
-    if (gui.length > 50) throw new LoiDauVao('Một khoản không nhận quá 50 dòng chi tiết.');
-
-    const dong: { ly_do: string; so_tien: number }[] = [];
-    for (const raw of gui) {
-      const c = than(raw);
-      dong.push({
-        ly_do: chuoi_bat_buoc(c, 'ly_do', { toi_da: 300, toi_thieu: 1 }),
-        so_tien: so_tien(c, 'so_tien'),
-      });
-    }
-    const tong = dong.reduce((a, d) => a + d.so_tien, 0);
-
-    await trong_giao_dich(async (khach) => {
-      if (dong.length === 0) {
-        // Khong con lenh nao -> xoa han khoan (chi tiet di theo bang CASCADE).
-        await khach.query(
-          'delete from phieu_luong_khoan where phieu_luong_id = $1 and khoan_ma = $2', [id, ma],
-        );
-        return;
-      }
-      // Dong khoan cha: mot dong go tay (tu_chinh_sach = false), thanh_tien = tong chi tiet.
-      // Ghi chu tom tat de cho nao chi hien dong tong (vd xuat Excel) van doc duoc.
-      const ghi_chu = dong.map((d) => d.ly_do).join('; ');
-      await khach.query(
-        `insert into phieu_luong_khoan
-           (phieu_luong_id, khoan_ma, so_luong, thanh_tien, ghi_chu, tu_chinh_sach)
-         values ($1,$2,null,$3,$4,false)
-         on conflict (phieu_luong_id, khoan_ma) do update set
-           so_luong = null, thanh_tien = excluded.thanh_tien,
-           ghi_chu = excluded.ghi_chu, tu_chinh_sach = false`,
-        [id, ma, tong, ghi_chu.slice(0, 500)],
-      );
-      // Thay toan bo chi tiet cu bang danh sach moi (giu thu tu gui len).
-      await khach.query(
-        'delete from phieu_luong_khoan_ct where phieu_luong_id = $1 and khoan_ma = $2', [id, ma],
-      );
-      for (let i = 0; i < dong.length; i += 1) {
-        await khach.query(
-          `insert into phieu_luong_khoan_ct
-             (phieu_luong_id, khoan_ma, ly_do, so_tien, thu_tu, tao_boi)
-           values ($1,$2,$3,$4,$5,$6)`,
-          [id, ma, dong[i]!.ly_do, dong[i]!.so_tien, i, nd.sub],
-        );
-      }
-    });
-
-    await thuc_thi('update phieu_luong set sua_boi = $2, sua_luc = now() where id = $1',
-      [id, nd.sub]);
-
-    // Tinh lai ca ky de tong khop voi tung dong.
-    const k = await lay_ky(p.ky_luong_id);
-    await tinh_ky_luong(k.id, k.thang);
-    await ghi_nhat_ky(nd.sub, 'sua_khoan_chi_tiet', 'phieu_luong', id,
-      { khoan_ma: ma, so_dong: dong.length, tong }, req.ip);
-
-    return {
-      ok: true,
-      chi_tiet: await truy_van(
-        `select id, ly_do, so_tien, thu_tu from phieu_luong_khoan_ct
-          where phieu_luong_id = $1 and khoan_ma = $2 order by thu_tu, tao_luc`,
-        [id, ma],
-      ),
-    };
-  });
-
-  // GOI Y chi tiet tu HE THONG cho mot khoan. Hien chi khoan giam thuong ky luat co nguon: gom
-  // tung vi pham tu ho_so_ky_luat da_ap_dung cua dung nguoi + dung ky, thanh danh sach {ly_do,
-  // so_tien} de form Tach chi tiet nap san — khong bat nhan su go lai tay nhung gi may da biet.
-  app.get('/phieu-luong/:id/khoan/:ma/goi-y', { preHandler: can_nhan_su }, async (req) => {
-    const id = lay_id(req);
-    const ma = chuoi_bat_buoc((req.params as Record<string, unknown>), 'ma', { toi_da: 40 });
-
-    const p = await truy_van_mot<{ nhan_vien_id: string; thang: string }>(
-      `select p.nhan_vien_id, k.thang from phieu_luong p
-         join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
-      [id],
-    );
-    if (p === null) throw new LoiKhongTim('Không tìm thấy phiếu lương.');
-
-    // Chi khoan giam thuong ky luat moi co nguon he thong. Khoan khac: khong goi y.
-    if (ma !== 'tru_giam_thuong_kl') return { dong: [] };
-
-    // Gom chi_tiet cua cac ho so da_ap_dung (nhung ho so THUC SU thanh tien). Moi vi pham la mot
-    // muc {ten, tien}; gom theo ten (loai vi pham) de "Di muon x3" thay vi ba dong giong nhau.
-    const ho_so = await truy_van<{ chi_tiet: { ten?: string; tien?: number }[] | null }>(
-      `select chi_tiet from ho_so_ky_luat
-        where nhan_vien_id = $1 and ky = $2 and trang_thai = 'da_ap_dung'`,
-      [p.nhan_vien_id, p.thang],
-    );
-    const gom = new Map<string, { so_tien: number; so_lan: number }>();
-    for (const h of ho_so) {
-      for (const c of h.chi_tiet ?? []) {
-        const ten = (c.ten ?? '').trim();
-        const tien = Number(c.tien ?? 0);
-        if (ten === '' || tien <= 0) continue;   // dong nhac nho (0d) khong phai lenh giam tru
-        const cu = gom.get(ten) ?? { so_tien: 0, so_lan: 0 };
-        gom.set(ten, { so_tien: cu.so_tien + tien, so_lan: cu.so_lan + 1 });
-      }
-    }
-    const dong = [...gom.entries()].map(([ten, v]) => ({
-      ly_do: v.so_lan > 1 ? `${ten} (×${String(v.so_lan)})` : ten,
-      so_tien: v.so_tien,
-    }));
-    return { dong };
-  });
 
   /**
    * YC 02 phan B (GD1) — NHAP NHANH THUONG KPI cho ca ky theo tung nhan vien (loc san theo
