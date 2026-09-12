@@ -1,7 +1,7 @@
 // Doc du lieu tu CSDL -> goi quy tac tinh cong -> ghi bang_cong_ngay + su kien ERP.
 import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
-import { cong_ngay, danh_sach_ngay, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
+import { cong_ngay, danh_sach_ngay, ngay_dia_phuong, thu_trong_tuan } from '../tien_ich/thoi_gian.ts';
 import {
   ca_cua_ngay,
   khoang_lay_quet,
@@ -19,6 +19,11 @@ import {
   type KetQuaRaVao,
   type LanQuetCoChieu,
 } from './ra_vao.ts';
+
+/** Thu Bay theo quy uoc `thu_trong_tuan`: 0=CN ... 6=T7. */
+const THU_BAY = 6;
+/** Cong toi da cua mot thu Bay thuong (nua ngay lam = nua cong). Trung HE_SO_T7_NUA_CONG ben luong. */
+const HE_SO_T7 = 0.5;
 
 interface DongNhanVien {
   id: string;
@@ -237,6 +242,20 @@ export async function tinh_lai_ngay(
         ? `+${them} công làm bù`
         : `${kq.ghi_chu}; +${them} công làm bù`;
     }
+  }
+
+  // T7 = NUA NGAY CONG: mot thu Bay thuong (KHONG lam bu) toi da huong he_so_t7 = 0,5 cong.
+  // Truoc day bang_cong luu cong THO theo ca (ca "Hanh chinh" khai T7 08:00-12:00 nguong 210 ->
+  // lam ca sang T7 ra 1,0), khien chi tiet cong hien 1,0 — le voi bang luong (da cap 0,5) va cong
+  // chuan (dem T7 = 0,5). Cap o day de MOT con so `so_cong` dung nghia "cong da huong" o moi noi
+  // (chi tiet cong, KPI, xuat, luong). NGAY BU (buoi_bu > 0) da +0,5 de dat 1,0 nen KHONG cap.
+  if (buoi_bu.length === 0 && thu_trong_tuan(ngay) === THU_BAY && kq.so_cong > HE_SO_T7) {
+    const t7_nua_cong = (await truy_van_mot<{ v: boolean }>(
+      `select coalesce(t7_nua_cong, true) as v from tham_so_luong
+        where hieu_luc_tu <= $1 order by hieu_luc_tu desc limit 1`,
+      [ngay],
+    ))?.v ?? true;
+    if (t7_nua_cong) kq.so_cong = HE_SO_T7;
   }
 
   await trong_giao_dich(async (khach) => {
