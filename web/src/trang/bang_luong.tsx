@@ -618,7 +618,7 @@ function HopThoaiCong(
     || (d.trang_thai === 'co_mat' && Number(d.so_cong) < 1));
 
   return (
-    <HopThoai tieu_de={`Chi tiết công — ${phieu.ho_ten} (${ky_thang})`} khi_dong={khi_dong}>
+    <HopThoai tieu_de={`Chi tiết công — ${phieu.ho_ten} (${ky_thang})`} khi_dong={khi_dong} toan_man>
       {loi !== null && <HopLoi loi={loi} />}
       {dang_tai ? <DangTai /> : (
         <>
@@ -628,7 +628,7 @@ function HopThoaiCong(
             <strong>{bi_tru.length}</strong> ngày bị trừ / thiếu công (bôi đậm bên dưới).
             {phieu.ep_du_cong && ' — Phiếu đang được "tính đủ công".'}
           </div>
-          <div className="vo-bang" style={{ maxHeight: '55vh', overflow: 'auto' }}>
+          <div className="vo-bang" style={{ maxHeight: '72vh', overflow: 'auto' }}>
             <table className="bang-gon">
               <thead><tr>
                 <th>Ngày</th><th>Thứ</th><th>Trạng thái</th>
