@@ -15,7 +15,9 @@ import {
   ban_chot_theo_id, chot_ky, danh_sach_ban_chot, type KetQuaChot,
 } from '../luong/ban_chot.ts';
 import { lech_luong_ky } from '../luong/kiem_lech_luong.ts';
-import { KHOAN_GIAM_THUONG } from '../ky_luat/xu_ly.ts';
+import { KHOAN_GIAM_THUONG, gom_va_xu_ly_thang } from '../ky_luat/xu_ly.ts';
+import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
+import { quet_vi_pham } from '../vi_pham/phat_hien.ts';
 import {
   chi_tiet_ky_luat_theo_phieu, chi_tiet_di_muon_theo_phieu, type DongLietKe,
 } from '../luong/chi_tiet_ky_luat.ts';
@@ -553,9 +555,17 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         + 'Hãy thu hồi về nháp trước.',
       );
     }
+    // TINH LUONG = tinh lai CA CHUOI, mot nut lam het (chu cong ty chot): tinh lai bang cong ->
+    // quet vi pham -> gom ky luat -> tinh luong. Tranh canh sua nguong xong luong khong doi vi
+    // quen chay tay tung buoc. Bang cong tinh KHONG cuong buc (ngay da chot van khoa).
+    const { tu, den } = khoang_thang(k.thang);
+    const so_cong = await tinh_lai_khoang(tu, den);
+    const quet = await quet_vi_pham(k.thang, nd.sub);
+    const gom = await gom_va_xu_ly_thang(k.thang, { tu_dong: false });
     const so = await tinh_ky_luong(k.id, k.thang);
-    await ghi_nhat_ky(nd.sub, 'tinh_ky_luong', 'ky_luong', k.id, { so_phieu: so }, req.ip);
-    return { ok: true, so_phieu: so };
+    await ghi_nhat_ky(nd.sub, 'tinh_ky_luong', 'ky_luong', k.id,
+      { so_phieu: so, so_cong, quet, gom }, req.ip);
+    return { ok: true, so_phieu: so, so_ngay_cong: so_cong, ky_luat: gom };
   });
 
   app.post('/ky-luong/:id/gui-duyet', { preHandler: can_nhan_su }, async (req) => {

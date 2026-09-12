@@ -330,7 +330,9 @@ function HopThoaiChiTiet(
         {sua_duoc && (
           <button
             disabled={hd.dang_chay}
-            onClick={chay(`/api/ky-luong/${k.id}/tinh`, 'Đã tính lại toàn bộ phiếu lương.')}
+            title="Tính lại cả chuỗi: bảng công → vi phạm → kỷ luật → phiếu lương (ngày đã chốt vẫn giữ)."
+            onClick={chay(`/api/ky-luong/${k.id}/tinh`,
+              'Đã tính lại: bảng công, vi phạm, kỷ luật và toàn bộ phiếu lương.')}
           >
             Tính lương
           </button>
