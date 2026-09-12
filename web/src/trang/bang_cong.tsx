@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { goi, la_nhan_su, tai_tep } from '../api.ts';
+import { goi, la_admin, la_nhan_su, tai_tep } from '../api.ts';
 import {
   DangTai, HopLoi, HopTot, HopThoai, NhanNgay, Trong, dung_hanh_dong, dung_nap, gio_ngan,
   ngay_viet, phut_thanh_chu, thang_nay, thu_cua_ngay,
@@ -54,15 +54,19 @@ export function TrangBangCong(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<DongTongHop[]>(url_tong_hop);
   const phong = dung_nap<PhongBan[]>('/api/phong-ban');
 
-  const tinh_lai = async (): Promise<void> => {
+  const tinh_lai = async (bo_qua_chot = false): Promise<void> => {
     const [y, m] = thang.split('-').map(Number) as [number, number];
     const cuoi = new Date(Date.UTC(y, m, 0)).getUTCDate();
     await hd.chay(
       () => goi('/api/bang-cong/tinh-lai', {
         method: 'POST',
-        body: { tu: `${thang}-01`, den: `${thang}-${String(cuoi).padStart(2, '0')}` },
+        body: {
+          tu: `${thang}-01`, den: `${thang}-${String(cuoi).padStart(2, '0')}`, bo_qua_chot,
+        },
       }),
-      'Đã tính lại bảng công cho cả tháng.',
+      bo_qua_chot
+        ? 'Đã tính lại cả tháng (kể cả ngày đã chốt).'
+        : 'Đã tính lại bảng công cho cả tháng.',
     );
     nap_lai();
   };
@@ -101,7 +105,15 @@ export function TrangBangCong(): ReactNode {
               title="Mỗi ngày một dòng. Dùng khi cần đối chiếu một ngày cụ thể.">
               Xuất chi tiết
             </button>
-            <button onClick={tinh_lai} disabled={hd.dang_chay}>Tính lại tháng</button>
+            <button onClick={() => tinh_lai(false)} disabled={hd.dang_chay}>Tính lại tháng</button>
+            {la_admin() && (
+              <button
+                className="nut-phang" onClick={() => tinh_lai(true)} disabled={hd.dang_chay}
+                title="Tính lại cả những ngày đã chốt — dùng khi đổi ngưỡng đi muộn/quy tắc. Kỳ lương đã chốt thì không cho."
+              >
+                Tính lại (kể cả đã chốt)
+              </button>
+            )}
             <button onClick={() => chot(false)} disabled={hd.dang_chay}>Chốt tháng</button>
             <button className="nut-phang" onClick={() => chot(true)} disabled={hd.dang_chay}>
               Mở chốt

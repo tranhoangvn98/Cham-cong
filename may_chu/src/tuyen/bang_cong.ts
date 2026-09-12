@@ -8,7 +8,7 @@ import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { ky_da_chot_luong } from '../luong/ban_chot.ts';
 import { khoang_cua_nguoi } from '../dinh_danh/tra_pin.ts';
 import { nap_lich_pin } from '../dinh_danh/lich_pin_csdl.ts';
-import { LoiXungDot } from '../tien_ich/kiem_tra.ts';
+import { LoiXungDot, LoiKhongQuyen } from '../tien_ich/kiem_tra.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { khoang_thang, ngay_dia_phuong, phut_thanh_chu } from '../tien_ich/thoi_gian.ts';
 import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
@@ -252,12 +252,26 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
 
   // ============================================================ tinh lai bang cong
   app.post('/bang-cong/tinh-lai', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
     const b = than(req.body);
     const { tu, den } = khoang_ngay(b, 92);
     const nhan_vien_id = uuid(b, 'nhan_vien_id');
-    const so = await tinh_lai_khoang(tu, den, nhan_vien_id ?? undefined);
-    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tinh_lai_bang_cong', 'bang_cong_ngay',
-      null, { tu, den, nhan_vien_id, so_ngay: so }, req.ip);
+    // Tinh lai KE CA ngay da chot (vd sau khi doi nguong di muon): ghi de so da khoa. Chi admin,
+    // va chan neu ky luong cua thang do da chot (khong duoc dong toi so da tra luong).
+    const bo_qua_chot = luan_ly(b, 'bo_qua_chot') ?? false;
+    if (bo_qua_chot) {
+      if (nd.vai_tro !== 'admin') {
+        throw new LoiKhongQuyen('Chỉ admin mới tính lại kể cả ngày đã chốt.');
+      }
+      for (const thang of new Set([tu.slice(0, 7), den.slice(0, 7)])) {
+        if (await ky_da_chot_luong(thang)) {
+          throw new LoiXungDot(`Kỳ lương tháng ${thang} đã chốt — không tính lại được.`);
+        }
+      }
+    }
+    const so = await tinh_lai_khoang(tu, den, nhan_vien_id ?? undefined, bo_qua_chot);
+    await ghi_nhat_ky(nd.sub, 'tinh_lai_bang_cong', 'bang_cong_ngay',
+      null, { tu, den, nhan_vien_id, so_ngay: so, bo_qua_chot }, req.ip);
     return { ok: true, so_ngay_da_tinh: so };
   });
 
