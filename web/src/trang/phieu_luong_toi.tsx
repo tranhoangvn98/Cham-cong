@@ -2,7 +2,7 @@
 //
 // Mot bang luong khong giai thich duoc la mot don khieu nai — nen o day hien tung khoan thu
 // nhap va tung khoan tru, khong gop thanh mot con so "phu cap".
-import { useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { goi, gui_tep } from '../api.ts';
 import { lay_muc_tieu_bao, nghe_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import {
@@ -19,6 +19,7 @@ interface KhoanPhieu {
   thanh_tien: string;
   ghi_chu: string | null;
   chiu_thue: boolean;
+  chi_tiet?: { id: string; ly_do: string; so_tien: string; thu_tu: number }[];
 }
 
 interface Phieu {
@@ -241,12 +242,29 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
                 <tr><td>Thuế TNCN</td><td className="phai">{tien(p.thue_tncn)}</td></tr>
               )}
               {khau_tru.map((k) => (
-                <tr key={k.khoan_ma}>
-                  <td>{k.ten}
-                    {k.so_luong !== null && Number(k.so_luong) > 0 &&
-                      <span className="mo-ta"> × {k.so_luong}</span>}</td>
-                  <td className="phai">{tien(k.thanh_tien)}</td>
-                </tr>
+                (k.chi_tiet !== undefined && k.chi_tiet.length > 0) ? (
+                  // Khoan da tach nhieu lenh: hien tung dong rieng roi dong tong.
+                  <Fragment key={k.khoan_ma}>
+                    <tr><td colSpan={2}><strong>{k.ten}</strong></td></tr>
+                    {k.chi_tiet.map((c) => (
+                      <tr key={c.id}>
+                        <td style={{ paddingLeft: 18 }}>— {c.ly_do}</td>
+                        <td className="phai">{tien(c.so_tien)}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td style={{ paddingLeft: 18 }} className="mo-ta">Cộng</td>
+                      <td className="phai"><em>{tien(k.thanh_tien)}</em></td>
+                    </tr>
+                  </Fragment>
+                ) : (
+                  <tr key={k.khoan_ma}>
+                    <td>{k.ten}
+                      {k.so_luong !== null && Number(k.so_luong) > 0 &&
+                        <span className="mo-ta"> × {k.so_luong}</span>}</td>
+                    <td className="phai">{tien(k.thanh_tien)}</td>
+                  </tr>
+                )
               ))}
               {Number(p.tru_khac) > 0 && (
                 <tr><td>Trừ khác</td><td className="phai">{tien(p.tru_khac)}</td></tr>

@@ -487,11 +487,30 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         order by d.loai desc, d.thu_tu, d.ten`,
       [k.id],
     );
+    // Chi tiet tung lenh cua khoan co ghi chi tiet (vd giam thuong ky luat gom nhieu lenh tru):
+    // dinh kem vao dung dong khoan de bang KE hien tung dong rieng, khong gop.
+    const chi_tiet = await truy_van<Record<string, unknown>>(
+      `select ct.phieu_luong_id, ct.khoan_ma, ct.id, ct.ly_do, ct.so_tien, ct.thu_tu
+         from phieu_luong_khoan_ct ct
+         join phieu_luong p on p.id = ct.phieu_luong_id
+        where p.ky_luong_id = $1
+        order by ct.thu_tu, ct.tao_luc`,
+      [k.id],
+    );
+    const ct_theo_khoan = new Map<string, Record<string, unknown>[]>();
+    for (const c of chi_tiet) {
+      const khoa = `${String(c['phieu_luong_id'])}::${String(c['khoan_ma'])}`;
+      const ds = ct_theo_khoan.get(khoa);
+      if (ds === undefined) ct_theo_khoan.set(khoa, [c]); else ds.push(c);
+    }
+
     const theo_phieu = new Map<string, Record<string, unknown>[]>();
     for (const x of khoan) {
       const id = String(x['phieu_luong_id']);
+      const khoa = `${id}::${String(x['khoan_ma'])}`;
+      const voi_ct = { ...x, chi_tiet: ct_theo_khoan.get(khoa) ?? [] };
       const ds = theo_phieu.get(id);
-      if (ds === undefined) theo_phieu.set(id, [x]); else ds.push(x);
+      if (ds === undefined) theo_phieu.set(id, [voi_ct]); else ds.push(voi_ct);
     }
 
     return {
@@ -922,9 +941,15 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
 
     // Chi xoa dong GO TAY. Dong tu chinh sach khong thuoc pham vi tuyen nay — xoa o day thi
     // `tinh_ky_luong` ngay duoi sinh lai, chi ton mot vong ghi.
+    //
+    // BO QUA khoan co CHI TIET (nhieu lenh tru): chung do tuyen chi-tiet quan ly rieng, hop
+    // thoai sua khoan thuong khong gui chung len -> khong duoc xoa nham o day.
     await thuc_thi(
-      `delete from phieu_luong_khoan
-        where phieu_luong_id = $1 and tu_chinh_sach = false and khoan_ma <> all($2::text[])`,
+      `delete from phieu_luong_khoan pk
+        where pk.phieu_luong_id = $1 and pk.tu_chinh_sach = false and pk.khoan_ma <> all($2::text[])
+          and not exists (
+            select 1 from phieu_luong_khoan_ct ct
+             where ct.phieu_luong_id = pk.phieu_luong_id and ct.khoan_ma = pk.khoan_ma)`,
       [id, dong.map((d) => d.ma)],
     );
     for (const d of dong) {
@@ -960,6 +985,105 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
            from phieu_luong_khoan pk join khoan_luong d on d.ma = pk.khoan_ma
           where pk.phieu_luong_id = $1 order by d.loai desc, d.thu_tu, d.ten`,
         [id],
+      ),
+    };
+  });
+
+  // ================================================ CHI TIET tung lenh cua mot khoan (nhap tay)
+  //
+  // "Chi tiet tung lenh tru ra, khong de gop": mot khoan `nhap_tay` (vd giam thuong ky luat) co
+  // the gom NHIEU lenh, moi lenh mot ly do + so tien. Bang KE hien tung dong; tong khoan =
+  // sum(so_tien). Dong khoan cha van la MOT dong go tay tren phieu (thanh_tien = tong) — nen
+  // tinh_ky_luong va moi noi khac khong doi. Danh sach rong -> xoa han khoan (ca chi tiet).
+  app.put('/phieu-luong/:id/khoan/:ma/chi-tiet', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const ma = chuoi_bat_buoc((req.params as Record<string, unknown>), 'ma', { toi_da: 40 });
+
+    const p = await truy_van_mot<{ ky_luong_id: string; trang_thai: string }>(
+      `select p.ky_luong_id, k.trang_thai from phieu_luong p
+         join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
+      [id],
+    );
+    if (p === null) throw new LoiKhongTim('Không tìm thấy phiếu lương.');
+    if (!SUA_DUOC.has(p.trang_thai)) {
+      throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${p.trang_thai}" nên phiếu đã khóa sửa.`);
+    }
+
+    const dm = await truy_van_mot<{ cach_tinh: string; dang_dung: boolean }>(
+      'select cach_tinh, dang_dung from khoan_luong where ma = $1', [ma],
+    );
+    if (dm === null) throw new LoiDauVao(`Không có khoản mã "${ma}" trong danh mục.`);
+    // Chi khoan nhap_tay moi giu duoc tong qua tinh lai ky — khoan tinh theo cong thuc (so
+    // luong x don gia / nua ngay luong) se bi bo tinh ghi de tong, chi tiet mat y nghia.
+    if (dm.cach_tinh !== 'nhap_tay') {
+      throw new LoiDauVao('Chỉ khoản nhập tay mới tách được thành nhiều dòng chi tiết.');
+    }
+
+    const b = than(req.body);
+    const gui = b['dong'];
+    if (!Array.isArray(gui)) throw new LoiDauVao('Thiếu danh sách "dong".');
+    if (gui.length > 50) throw new LoiDauVao('Một khoản không nhận quá 50 dòng chi tiết.');
+
+    const dong: { ly_do: string; so_tien: number }[] = [];
+    for (const raw of gui) {
+      const c = than(raw);
+      dong.push({
+        ly_do: chuoi_bat_buoc(c, 'ly_do', { toi_da: 300, toi_thieu: 1 }),
+        so_tien: so_tien(c, 'so_tien'),
+      });
+    }
+    const tong = dong.reduce((a, d) => a + d.so_tien, 0);
+
+    await trong_giao_dich(async (khach) => {
+      if (dong.length === 0) {
+        // Khong con lenh nao -> xoa han khoan (chi tiet di theo bang CASCADE).
+        await khach.query(
+          'delete from phieu_luong_khoan where phieu_luong_id = $1 and khoan_ma = $2', [id, ma],
+        );
+        return;
+      }
+      // Dong khoan cha: mot dong go tay (tu_chinh_sach = false), thanh_tien = tong chi tiet.
+      // Ghi chu tom tat de cho nao chi hien dong tong (vd xuat Excel) van doc duoc.
+      const ghi_chu = dong.map((d) => d.ly_do).join('; ');
+      await khach.query(
+        `insert into phieu_luong_khoan
+           (phieu_luong_id, khoan_ma, so_luong, thanh_tien, ghi_chu, tu_chinh_sach)
+         values ($1,$2,null,$3,$4,false)
+         on conflict (phieu_luong_id, khoan_ma) do update set
+           so_luong = null, thanh_tien = excluded.thanh_tien,
+           ghi_chu = excluded.ghi_chu, tu_chinh_sach = false`,
+        [id, ma, tong, ghi_chu.slice(0, 500)],
+      );
+      // Thay toan bo chi tiet cu bang danh sach moi (giu thu tu gui len).
+      await khach.query(
+        'delete from phieu_luong_khoan_ct where phieu_luong_id = $1 and khoan_ma = $2', [id, ma],
+      );
+      for (let i = 0; i < dong.length; i += 1) {
+        await khach.query(
+          `insert into phieu_luong_khoan_ct
+             (phieu_luong_id, khoan_ma, ly_do, so_tien, thu_tu, tao_boi)
+           values ($1,$2,$3,$4,$5,$6)`,
+          [id, ma, dong[i]!.ly_do, dong[i]!.so_tien, i, nd.sub],
+        );
+      }
+    });
+
+    await thuc_thi('update phieu_luong set sua_boi = $2, sua_luc = now() where id = $1',
+      [id, nd.sub]);
+
+    // Tinh lai ca ky de tong khop voi tung dong.
+    const k = await lay_ky(p.ky_luong_id);
+    await tinh_ky_luong(k.id, k.thang);
+    await ghi_nhat_ky(nd.sub, 'sua_khoan_chi_tiet', 'phieu_luong', id,
+      { khoan_ma: ma, so_dong: dong.length, tong }, req.ip);
+
+    return {
+      ok: true,
+      chi_tiet: await truy_van(
+        `select id, ly_do, so_tien, thu_tu from phieu_luong_khoan_ct
+          where phieu_luong_id = $1 and khoan_ma = $2 order by thu_tu, tao_luc`,
+        [id, ma],
       ),
     };
   });

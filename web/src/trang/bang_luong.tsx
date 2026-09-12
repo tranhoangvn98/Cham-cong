@@ -5,7 +5,7 @@
 //      He thong gieo san mot bo mac dinh — ke toan PHAI doi chieu truoc khi tra luong.
 //   2. Trang thai ky quyet dinh sua duoc hay khong. Da gui duyet la khoa, de nguoi duyet
 //      khong bi doi so lieu duoi chan.
-import { useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { goi, tai_tep } from '../api.ts';
 import { la_admin } from '../api.ts';
 import {
@@ -65,6 +65,16 @@ interface KhoanPhieu {
   ghi_chu: string | null;
   /** true = máy sinh từ chính sách phụ cấp; false = người gõ tay cho riêng kỳ này. */
   tu_chinh_sach: boolean;
+  /** Các lệnh chi tiết của khoản (nếu tách nhiều dòng). Rỗng = một dòng gộp như cũ. */
+  chi_tiet: DongChiTiet[];
+}
+
+/** Một lệnh chi tiết trong một khoản nhập tay (lý do + số tiền). */
+interface DongChiTiet {
+  id: string;
+  ly_do: string;
+  so_tien: string;
+  thu_tu: number;
 }
 
 interface Phieu {
@@ -866,17 +876,26 @@ function HopThoaiKhoan(
   { phieu: Phieu; khi_dong: () => void; khi_xong: () => void },
 ): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<KhoanDanhMuc[]>('/api/khoan-luong');
+  // Khoan da TACH CHI TIET (nhieu dong) khong gieo vao o nhap so le — no sua qua nut "Chi tiet".
   const [dong, dat_dong] = useState<Record<string, { so_luong: string; so_tien: string }>>(
-    Object.fromEntries(phieu.khoan.filter((k) => !k.tu_chinh_sach).map((k) => [k.khoan_ma, {
-      so_luong: k.so_luong === null ? '' : String(Number(k.so_luong)),
-      so_tien: String(Number(k.thanh_tien)),
-    }])),
+    Object.fromEntries(
+      phieu.khoan.filter((k) => !k.tu_chinh_sach && k.chi_tiet.length === 0).map((k) => [k.khoan_ma, {
+        so_luong: k.so_luong === null ? '' : String(Number(k.so_luong)),
+        so_tien: String(Number(k.thanh_tien)),
+      }]),
+    ),
   );
+  // Khoan dang mo hop thoai "Chi tiet" (tach nhieu dong). null = khong mo.
+  const [chi_tiet_ma, dat_chi_tiet_ma] = useState<string | null>(null);
   const hd = dung_hanh_dong();
 
   /** Dong dang do chinh sach dieu khien (va chua bi ghi de trong phien nay). */
   const theo_chinh_sach = new Map(
     phieu.khoan.filter((k) => k.tu_chinh_sach).map((k) => [k.khoan_ma, k]),
+  );
+  /** Khoan da tach chi tiet (nhieu lenh) — sua qua hop thoai Chi tiet, khong nhap so le. */
+  const co_chi_tiet = new Map(
+    phieu.khoan.filter((k) => k.chi_tiet.length > 0).map((k) => [k.khoan_ma, k]),
   );
 
   if (dang_tai) {
@@ -915,6 +934,17 @@ function HopThoaiKhoan(
   const nhom = (loai: 'thu_nhap' | 'tru'): KhoanDanhMuc[] => tat_ca.filter((d) => d.loai === loai);
 
   const o_nhap = (d: KhoanDanhMuc): ReactNode => {
+    // Khoan da tach nhieu dong chi tiet: khong nhap so le o day — sua qua hop thoai Chi tiet.
+    const ct = co_chi_tiet.get(d.ma);
+    if (ct !== undefined) {
+      return (
+        <>
+          <strong>{tien(ct.thanh_tien)} đ</strong>
+          <div className="mo-ta">{ct.chi_tiet.length} dòng chi tiết</div>
+          <button className="nut-nho" onClick={() => dat_chi_tiet_ma(d.ma)}>Sửa chi tiết</button>
+        </>
+      );
+    }
     const co = dong[d.ma];
     if (co === undefined) {
       const cs = theo_chinh_sach.get(d.ma);
@@ -959,6 +989,14 @@ function HopThoaiKhoan(
           />
         )}
         <button className="nut-phang" onClick={() => bo(d.ma)}>Bỏ</button>
+        {d.cach_tinh === 'nhap_tay' && (
+          <button
+            className="nut-nho" onClick={() => dat_chi_tiet_ma(d.ma)}
+            title="Tách khoản này thành nhiều dòng, mỗi lệnh một lý do + số tiền"
+          >
+            Tách chi tiết
+          </button>
+        )}
       </>
     );
   };
@@ -1046,6 +1084,127 @@ function HopThoaiKhoan(
         </button>
         <button className="nut-phang" onClick={khi_dong}>Hủy</button>
       </div>
+
+      {chi_tiet_ma !== null && (
+        <HopThoaiChiTietKhoan
+          phieu_id={phieu.id}
+          khoan_ma={chi_tiet_ma}
+          ten={tat_ca.find((d) => d.ma === chi_tiet_ma)?.ten ?? chi_tiet_ma}
+          ban_dau={phieu.khoan.find((k) => k.khoan_ma === chi_tiet_ma)?.chi_tiet ?? []}
+          khi_dong={() => dat_chi_tiet_ma(null)}
+          // Luu chi tiet da tinh lai ky — dong ca hop thoai khoan va nap lai bang.
+          khi_xong={() => { dat_chi_tiet_ma(null); khi_xong(); }}
+        />
+      )}
+    </HopThoai>
+  );
+}
+
+/**
+ * Tach MOT khoan nhap tay thanh NHIEU dong chi tiet (moi lenh mot ly do + so tien). Tong khoan
+ * = sum(so_tien) — dong khoan cha tren phieu tu cap nhat theo tong. Danh sach rong = xoa han khoan.
+ */
+function HopThoaiChiTietKhoan(
+  { phieu_id, khoan_ma, ten, ban_dau, khi_dong, khi_xong }:
+  {
+    phieu_id: string; khoan_ma: string; ten: string;
+    ban_dau: DongChiTiet[]; khi_dong: () => void; khi_xong: () => void;
+  },
+): ReactNode {
+  // `k` la khoa on dinh cho React (khong dung chi so mang — them/bo dong se doi chi so). Dem
+  // rieng moi hop thoai la du: khong can toan cuc.
+  const dem = useRef(0);
+  const moi = (ly_do = '', so_tien = ''): { k: number; ly_do: string; so_tien: string } => {
+    dem.current += 1;
+    return { k: dem.current, ly_do, so_tien };
+  };
+  const [dong, dat_dong] = useState<{ k: number; ly_do: string; so_tien: string }[]>(
+    () => (ban_dau.length > 0
+      ? ban_dau.map((c) => moi(c.ly_do, String(Number(c.so_tien))))
+      : [moi()]),
+  );
+  const hd = dung_hanh_dong();
+
+  const dat = (k: number, khoa: 'ly_do' | 'so_tien', v: string): void => {
+    dat_dong((truoc) => truoc.map((d) => (d.k === k ? { ...d, [khoa]: v } : d)));
+  };
+  const them = (): void => dat_dong((truoc) => [...truoc, moi()]);
+  const bo = (k: number): void => dat_dong((truoc) => truoc.filter((d) => d.k !== k));
+
+  // Chi gui len cac dong co ly do — dong trong la nguoi dang go do, khong phai mot lenh that.
+  const co_ich = dong.filter((d) => d.ly_do.trim() !== '');
+  const tong = co_ich.reduce((a, d) => a + (Number(d.so_tien) || 0), 0);
+
+  return (
+    <HopThoai tieu_de={`Chi tiết — ${ten}`} khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <p className="mo-ta">
+        Mỗi lệnh một dòng (lý do + số tiền). Tổng khoản tự cộng theo các dòng. Xoá hết dòng
+        rồi Lưu để bỏ hẳn khoản này.
+      </p>
+      <table className="bang-gon">
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left' }}>Lý do</th>
+            <th style={{ textAlign: 'right', width: 140 }}>Số tiền</th>
+            <th style={{ width: 48 }} />
+          </tr>
+        </thead>
+        <tbody>
+          {dong.map((d, i) => (
+            <tr key={d.k}>
+              <td>
+                <input
+                  type="text" value={d.ly_do} aria-label={`Lý do dòng ${String(i + 1)}`}
+                  placeholder="VD: đi muộn 3 lần / vắng không phép 09/08"
+                  onChange={(e) => dat(d.k, 'ly_do', e.target.value)}
+                />
+              </td>
+              <td className="canh-phai">
+                <input
+                  type="number" min="0" inputMode="numeric" value={d.so_tien}
+                  aria-label={`Số tiền dòng ${String(i + 1)}`}
+                  onChange={(e) => dat(d.k, 'so_tien', e.target.value)}
+                />
+              </td>
+              <td className="canh-phai">
+                <button className="nut-phang" onClick={() => bo(d.k)} aria-label="Bỏ dòng">✕</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="hang-tong">
+            <td><strong>Tổng</strong></td>
+            <td className="canh-phai"><strong>{tien(tong)} đ</strong></td>
+            <td />
+          </tr>
+        </tfoot>
+      </table>
+      <div className="hang-nut">
+        <button className="nut-nho" onClick={them}>+ Thêm dòng</button>
+      </div>
+      <div className="hang-nut">
+        <button
+          disabled={hd.dang_chay}
+          onClick={() => void hd.chay(
+            () => goi(`/api/phieu-luong/${phieu_id}/khoan/${khoan_ma}/chi-tiet`, {
+              method: 'PUT',
+              body: {
+                dong: co_ich.map((d) => ({
+                  ly_do: d.ly_do.trim(), so_tien: Number(d.so_tien) || 0,
+                })),
+              },
+            }),
+            co_ich.length === 0
+              ? 'Đã bỏ khoản và tính lại kỳ lương.'
+              : 'Đã lưu chi tiết và tính lại kỳ lương.',
+          ).then((ok) => { if (ok !== null) khi_xong(); })}
+        >
+          Lưu
+        </button>
+        <button className="nut-phang" onClick={khi_dong}>Hủy</button>
+      </div>
     </HopThoai>
   );
 }
@@ -1070,16 +1229,38 @@ function HopThoaiKeKhoanTru(
         <table className="bang-gon">
           <tbody>
             {cac_tru.map((k) => (
-              <tr key={k.khoan_ma}>
-                <td>
-                  {k.ten}
-                  {k.tu_chinh_sach && <span className="nhan-mo"> theo chính sách</span>}
-                  {k.ghi_chu !== null && k.ghi_chu !== '' && (
-                    <div className="mo-ta">{k.ghi_chu}</div>
-                  )}
-                </td>
-                <td className="canh-phai">{tien(k.thanh_tien)} đ</td>
-              </tr>
+              k.chi_tiet.length > 0 ? (
+                // Khoan da tach nhieu lenh: hien tung dong rieng, roi mot dong tong.
+                <Fragment key={k.khoan_ma}>
+                  <tr>
+                    <td colSpan={2}>
+                      <strong>{k.ten}</strong>
+                      {k.tu_chinh_sach && <span className="nhan-mo"> theo chính sách</span>}
+                    </td>
+                  </tr>
+                  {k.chi_tiet.map((c) => (
+                    <tr key={c.id}>
+                      <td style={{ paddingLeft: 20 }}>— {c.ly_do}</td>
+                      <td className="canh-phai">{tien(c.so_tien)} đ</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td style={{ paddingLeft: 20 }} className="mo-ta">Cộng {k.ten.toLowerCase()}</td>
+                    <td className="canh-phai"><em>{tien(k.thanh_tien)} đ</em></td>
+                  </tr>
+                </Fragment>
+              ) : (
+                <tr key={k.khoan_ma}>
+                  <td>
+                    {k.ten}
+                    {k.tu_chinh_sach && <span className="nhan-mo"> theo chính sách</span>}
+                    {k.ghi_chu !== null && k.ghi_chu !== '' && (
+                      <div className="mo-ta">{k.ghi_chu}</div>
+                    )}
+                  </td>
+                  <td className="canh-phai">{tien(k.thanh_tien)} đ</td>
+                </tr>
+              )
             ))}
             {tru_khac > 0 && (
               <tr>

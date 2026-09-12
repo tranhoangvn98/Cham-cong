@@ -210,6 +210,11 @@ interface KhoanPhieuRa {
   ghi_chu: string | null; chiu_thue: boolean;
 }
 
+interface ChiTietRa {
+  phieu_luong_id: string; khoan_ma: string;
+  id: string; ly_do: string; so_tien: string; thu_tu: number;
+}
+
 /**
  * Phieu luong cua CHINH nhan vien — CHI ky da_duyet / da_tra (khong lo phieu chua chot). Tra ve
  * mang (moi nhat truoc), kem tung khoan thu nhap/tru. `chi_thang` != null thi loc ve 1 thang.
@@ -244,11 +249,30 @@ async function phieu_luong_cua_toi(
       order by kl.loai, kl.ten`,
     [ids],
   );
-  const theo_phieu = new Map<string, Omit<KhoanPhieuRa, 'phieu_luong_id'>[]>();
+  // Chi tiet tung lenh cua khoan da tach (vd giam thuong ky luat) — de nguoi lao dong xem
+  // duoc gom nhung lenh nao, khong phai mot cuc gop.
+  const chi_tiet = await truy_van<ChiTietRa>(
+    `select ct.phieu_luong_id, ct.khoan_ma, ct.id, ct.ly_do, ct.so_tien, ct.thu_tu
+       from phieu_luong_khoan_ct ct
+      where ct.phieu_luong_id = any($1::uuid[])
+      order by ct.thu_tu, ct.tao_luc`,
+    [ids],
+  );
+  const ct_theo_khoan = new Map<string, { id: string; ly_do: string; so_tien: string;
+                                          thu_tu: number }[]>();
+  for (const c of chi_tiet) {
+    const khoa = `${c.phieu_luong_id}::${c.khoan_ma}`;
+    const ds = ct_theo_khoan.get(khoa) ?? [];
+    ds.push({ id: c.id, ly_do: c.ly_do, so_tien: c.so_tien, thu_tu: c.thu_tu });
+    ct_theo_khoan.set(khoa, ds);
+  }
+
+  const theo_phieu = new Map<string, Record<string, unknown>[]>();
   for (const k of khoan) {
     const { phieu_luong_id, ...con } = k;
+    const khoa = `${phieu_luong_id}::${k.khoan_ma}`;
     const ds = theo_phieu.get(phieu_luong_id) ?? [];
-    ds.push(con);
+    ds.push({ ...con, chi_tiet: ct_theo_khoan.get(khoa) ?? [] });
     theo_phieu.set(phieu_luong_id, ds);
   }
   return phieu.map((p) => ({ ...p, khoan: theo_phieu.get(p.id) ?? [] }));
