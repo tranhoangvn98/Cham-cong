@@ -330,26 +330,28 @@ test('nghi phep uu tien cao hon ngay le', () => {
   assert.equal(kq.trang_thai, 'nghi_phep');
 });
 
-test('don giai trinh da duyet ghi de gio vao/ra', () => {
+test('don giai trinh da duyet ghi de gio vao/ra — KHONG danh dau sua tay', () => {
   // Quen quet ra, chi co 1 moc 08:00; giai trinh de xuat ra 17:00
   const kq = tinh_cong_ngay({
     ...co_ban(T5, CA_HC, q(T5, '08:00')),
     giai_trinh: { gio_vao_de_xuat: null, gio_ra_de_xuat: '17:00' },
   });
-  assert.equal(kq.co_dieu_chinh, true);
+  // Don giai trinh da duyet la logic he thong (tai lap duoc), khong phai sua tay.
+  assert.equal(kq.co_dieu_chinh, false);
   assert.equal(kq.phut_lam, 450);
   assert.equal(kq.so_cong, 1);
   assert.match(kq.ghi_chu ?? '', /giai trinh/);
 });
 
-test('giai trinh ca hai moc khi quen quet ca ngay', () => {
+test('giai trinh ca hai moc khi quen quet ca ngay — KHONG danh dau sua tay', () => {
   const kq = tinh_cong_ngay({
     ...co_ban(T5, CA_HC, []),
     giai_trinh: { gio_vao_de_xuat: '08:00', gio_ra_de_xuat: '17:00' },
   });
   assert.equal(kq.trang_thai, 'co_mat');
   assert.equal(kq.phut_lam, 450);
-  assert.equal(kq.co_dieu_chinh, true);
+  assert.equal(kq.co_dieu_chinh, false);
+  assert.match(kq.ghi_chu ?? '', /giai trinh/);
 });
 
 // ---------------------------------------------------------------- ca dem

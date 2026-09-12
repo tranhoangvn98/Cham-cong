@@ -237,21 +237,28 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
   // --- Gio vao/ra hieu luc: uu tien don giai trinh da duyet ---
   let gio_vao: Date | null = dv.quet[0] ?? null;
   let gio_ra: Date | null = dv.quet.length > 0 ? (dv.quet[dv.quet.length - 1] ?? null) : null;
-  let co_dieu_chinh = false;
+  // co_dieu_chinh (badge "sua tay") CHI dat boi viec sua tay truc tiep bang cong (PATCH), khong
+  // phai boi don giai trinh da duyet (do la logic he thong, tai lap duoc). Nen o ham nay luon false.
+  const co_dieu_chinh = false;
   const chu_thich: string[] = [];
 
   if (dv.giai_trinh !== null) {
     const gt = dv.giai_trinh;
+    let ap_giai_trinh = false;
     if (gt.gio_vao_de_xuat !== null) {
       gio_vao = moc_thoi_gian(dv.ngay, gt.gio_vao_de_xuat);
-      co_dieu_chinh = true;
+      ap_giai_trinh = true;
     }
     if (gt.gio_ra_de_xuat !== null) {
       const cong_ngay_ra = ca !== null && ca.qua_dem ? 1 : 0;
       gio_ra = moc_thoi_gian(dv.ngay, gt.gio_ra_de_xuat, cong_ngay_ra);
-      co_dieu_chinh = true;
+      ap_giai_trinh = true;
     }
-    if (co_dieu_chinh) chu_thich.push('Da ap don giai trinh');
+    // Don giai trinh DA DUYET la LOGIC he thong, tai lap duoc khi tinh lai — KHONG phai sua tay.
+    // Giu co_dieu_chinh = false de: (1) khong hien badge "sua tay"; (2) ngay nay VAN tinh lai duoc
+    // (thu-hoi-duyet mo khoa cac ngay co_dieu_chinh=false roi ap lai dung don, idempotent). Chi
+    // viec SUA TAY TRUC TIEP bang cong (PATCH /bang-cong) moi dat co_dieu_chinh = true.
+    if (ap_giai_trinh) chu_thich.push('Da ap don giai trinh');
   }
 
   // Chi co 1 moc (quen quet ra) — khong the tinh so gio lam.
