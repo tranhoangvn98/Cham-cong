@@ -1138,49 +1138,72 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
       <LichThang thang={thang} ngay={du_lieu.ngay} />
 
       <div className="the the-mong">
-        <div className="cn-dau-mong">Chi tiết từng ngày — mới nhất trước</div>
-        {du_lieu.ngay.slice().reverse().map((d) => (
-          <div className="cn-ngay-cong" key={d.ngay}>
-            <div className="cn-ngay-cong-ngay">
-              <span className="cn-ngay-cong-nhan">{thu_cua_ngay(d.ngay)} {d.ngay.slice(8)}</span>
-              <span className="cn-ngay-cong-thang">{d.ngay.slice(5, 7)}/{d.ngay.slice(0, 4)}</span>
-            </div>
-            <div className="cn-ngay-cong-gio">
-              <span>
-                {d.trang_thai === 'nghi_phep' ? '— nghỉ phép'
-                  : d.trang_thai === 'nghi_khong_luong' ? '— nghỉ không lương'
-                    : d.trang_thai === 'lam_bu' ? '— làm bù'
-                    : d.trang_thai === 'vang' ? '— vắng'
-                    : d.trang_thai === 'ngay_le' ? '— ngày lễ'
-                      : d.trang_thai === 'nghi_tuan' ? '— nghỉ tuần'
-                        : d.gio_vao === null
-                          ? `thiếu giờ vào → ${gio_ngan(d.gio_ra)}`
-                          : `${gio_ngan(d.gio_vao)} → ${d.gio_ra === null ? 'thiếu giờ ra' : gio_ngan(d.gio_ra)}`}
-                {(so(d.phut_muon) > 0 || so(d.phut_ve_som) > 0) && (
-                  <span className="mo-ta">
-                    {' · '}
-                    {[so(d.phut_muon) > 0 ? `muộn ${so(d.phut_muon)}′` : null,
-                      so(d.phut_ve_som) > 0 ? `về sớm ${so(d.phut_ve_som)}′` : null]
-                      .filter(Boolean).join(' · ')}
-                  </span>
+        <div className="cn-dau-mong" style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          flexWrap: 'wrap', gap: 6,
+        }}>
+          <span>Chi tiết từng ngày</span>
+          <span style={{ fontSize: 11, fontWeight: 400, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <span><b style={{ color: '#16A34A' }}>●</b> đủ công</span>
+            <span><b style={{ color: '#F59E0B' }}>●</b> muộn/thiếu giờ</span>
+            <span><b style={{ color: '#DC2626' }}>●</b> vắng</span>
+            <span><b style={{ color: '#0EA5E9' }}>●</b> nghỉ phép</span>
+          </span>
+        </div>
+        {du_lieu.ngay.map((d) => {
+          const thieu_gio = d.trang_thai === 'co_mat' && (d.gio_vao === null || d.gio_ra === null);
+          const mau = d.trang_thai === 'vang' ? '#DC2626'
+            : d.trang_thai === 'nghi_phep' ? '#0EA5E9'
+              : d.trang_thai === 'nghi_khong_luong' ? '#F59E0B'
+                : d.trang_thai === 'ngay_le' || d.trang_thai === 'lam_bu' ? '#8B5CF6'
+                  : d.trang_thai === 'nghi_tuan' ? '#CBD5E1'
+                    : thieu_gio || so(d.phut_muon) > 0 ? '#F59E0B'
+                      : '#16A34A';
+          const badge_lop = d.trang_thai === 'vang' ? 'nhan-xau'
+            : d.trang_thai === 'co_mat' ? (so(d.phut_muon) > 0 || thieu_gio ? 'nhan-canh-bao' : 'nhan-tot')
+              : d.trang_thai === 'nghi_phep' ? 'nhan-lanh' : 'nhan-mo';
+          const gio_txt = d.gio_vao === null && d.gio_ra === null ? null
+            : d.gio_vao === null ? `thiếu giờ vào → ${gio_ngan(d.gio_ra)}`
+              : `${gio_ngan(d.gio_vao)} → ${d.gio_ra === null ? 'thiếu giờ ra' : gio_ngan(d.gio_ra)}`;
+          const muon_txt = [so(d.phut_muon) > 0 ? `muộn ${so(d.phut_muon)}′` : null,
+            so(d.phut_ve_som) > 0 ? `về sớm ${so(d.phut_ve_som)}′` : null].filter(Boolean).join(' · ');
+          const la_hom_nay = d.ngay === hom_nay();
+          return (
+            <div key={d.ngay} style={{
+              display: 'flex', alignItems: 'stretch', gap: 10,
+              padding: '9px 4px 9px 10px', marginBottom: 6, borderRadius: 6,
+              borderLeft: `4px solid ${mau}`,
+              background: la_hom_nay ? 'var(--nen-mo, #f1f5f9)' : 'transparent',
+            }}>
+              <div style={{ minWidth: 44, flexShrink: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.15 }}>
+                  {d.ngay.slice(8)}{' '}
+                  <span style={{ fontWeight: 500, fontSize: 12 }}>{thu_cua_ngay(d.ngay)}</span>
+                </div>
+                <div className="mo-ta" style={{ fontSize: 11 }}>{d.ngay.slice(5, 7)}/{d.ngay.slice(0, 4)}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span className={`nhan ${badge_lop}`}>{nhan_ngay_cong(d)}</span>
+                {gio_txt !== null && (
+                  <div style={{ fontSize: 13, marginTop: 3 }}>
+                    {gio_txt}
+                    {muon_txt !== '' && <span className="mo-ta"> · {muon_txt}</span>}
+                  </div>
                 )}
                 {d.ghi_chu !== null && d.ghi_chu !== '' && (
-                  <span className="mo-ta" style={{ display: 'block', marginTop: 2 }}>{d.ghi_chu}</span>
+                  <div className="mo-ta" style={{ fontSize: 12, marginTop: 2 }}>{d.ghi_chu}</div>
                 )}
-              </span>
-              <span className={`nhan ${so(d.phut_muon) > 0 || d.gio_vao === null || d.gio_ra === null
-                ? 'nhan-canh-bao'
-                : d.trang_thai === 'co_mat' ? 'nhan-tot'
-                  : d.trang_thai === 'nghi_phep' ? 'nhan-lanh' : 'nhan-mo'}`}>
-                {nhan_ngay_cong(d)}
-              </span>
+              </div>
+              <div style={{ textAlign: 'right', minWidth: 48, flexShrink: 0 }}>
+                <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{so_viet(d.so_cong)}</div>
+                <div className="mo-ta" style={{ fontSize: 10 }}>công</div>
+                {so(d.phut_lam) > 0 && (
+                  <div className="mo-ta" style={{ fontSize: 11, marginTop: 2 }}>{phut_thanh_chu(so(d.phut_lam))}</div>
+                )}
+              </div>
             </div>
-            <div className="cn-ngay-cong-phai">
-              <span className="cn-ngay-cong-so">{so_viet(d.so_cong)}</span>
-              <span className="cn-ngay-cong-lam">{so(d.phut_lam) > 0 ? phut_thanh_chu(so(d.phut_lam)) : '—'}</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
         <button type="button" className="cn-nut-phang-rong" onClick={() => di_den('don_tu', 'giai')}>
           Thấy sai lệch? Gửi giải trình quên quẹt →
         </button>
