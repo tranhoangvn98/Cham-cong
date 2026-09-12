@@ -10,7 +10,7 @@ process.env['DEVICE_TZ_OFFSET_HOURS'] ??= '7';
 // vi module cau_hinh doc bien moi truong khi nap.
 import type { CaLam, KhoangLamThem } from '../src/cong/quy_tac_tinh_cong.ts';
 
-const { tinh_cong_ngay, khoang_lay_quet, ca_cua_ngay } = await import('../src/cong/quy_tac_tinh_cong.ts');
+const { tinh_cong_ngay, khoang_lay_quet, ca_cua_ngay, buoi_lam_bu_da_lam } = await import('../src/cong/quy_tac_tinh_cong.ts');
 const { moc_thoi_gian } = await import('../src/tien_ich/thoi_gian.ts');
 
 /** Ca hanh chinh 08:00-17:00, nghi trua 12:00-13:30, T2-T6. */
@@ -568,4 +568,33 @@ test('cong tac: NGAY NGHI TUAN thang cong tac', () => {
   });
   assert.equal(kq.trang_thai, 'nghi_tuan');
   assert.equal(kq.so_cong, 0);
+});
+
+// ================================================================ lam bu (YC-03)
+test('lam bu — di lam CHIEU thu Bay (ra >= 13h) -> duoc 0,5 buoi chieu', () => {
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'co_mat', 8, 17, 0.5), true);
+});
+
+test('lam bu — chi lam SANG thu Bay (ra ~12h) -> KHONG duoc buoi chieu', () => {
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'co_mat', 8, 12, 0.5), false);
+});
+
+test('lam bu — nghi PHEP co luong da duyet -> duoc mien (0,5) ca sang lan chieu', () => {
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'nghi_phep', null, null, 0.5), true);
+  assert.equal(buoi_lam_bu_da_lam('sang', 'nghi_phep', null, null, 0.5), true);
+});
+
+test('lam bu — nghi KHONG luong / vang -> KHONG duoc cong buoi bu', () => {
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'nghi_khong_luong', null, null, 0), false);
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'vang', null, null, 0), false);
+});
+
+test('lam bu — co mat CA NGAY (so_cong >= 1) -> ca hai buoi deu duoc', () => {
+  assert.equal(buoi_lam_bu_da_lam('sang', 'co_mat', 8, 18, 1), true);
+  assert.equal(buoi_lam_bu_da_lam('chieu', 'co_mat', 8, 18, 1), true);
+});
+
+test('lam bu — buoi SANG: vao truoc 12h -> duoc; vao chieu -> khong', () => {
+  assert.equal(buoi_lam_bu_da_lam('sang', 'co_mat', 8, null, 0.5), true);
+  assert.equal(buoi_lam_bu_da_lam('sang', 'co_mat', 14, null, 0.5), false);
 });

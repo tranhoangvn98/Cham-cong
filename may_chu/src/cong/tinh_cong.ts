@@ -6,6 +6,7 @@ import {
   ca_cua_ngay,
   khoang_lay_quet,
   tinh_cong_ngay,
+  buoi_lam_bu_da_lam,
   type CaLam,
   type CaTheoThu,
   type KetQuaTinhCong,
@@ -76,37 +77,18 @@ export async function tinh_lai_ngay(
     if (da_chot?.da_chot === true) return null;
   }
 
-  // --- LAM BU: ngay nay la NGAY DUOC NGHI BU? Cong = tong 0,5 moi buoi bu "da lam". ---
-  // Xu ly TRUOC quy tac thuong: ngay nghi bu khong quet the, tinh nhu ngay lam viec se ra 'vang'.
-  // Cac ngay lam bu (vd 22/8, 29/8) phai duoc tinh TRUOC ngay nghi (vd 31/8) — dung khi tinh lai
-  // ca thang theo thu tu tang dan. Luong da chan trung: thu Bay bi cap 0,5 (he_so_t7), phan con
-  // lai cua buoi chieu chay qua ngay nghi bu nay.
+  // --- LAM BU (YC-03): ngay nay la NGAY NGUON duoc nghi? Cong cua no = 0 — da PHAN BO ve cac
+  // BUOI lam bu tren cac ngay_bu (vd 31/8 phan ve chieu T7 22/8 + 29/8). Khong tu cong o day,
+  // khong con nam trong tu so. (Cong duoc kiem tren chinh cac ngay_bu — xem khoi kq ben duoi.)
   const lam_bu = await truy_van_mot<{ id: string }>(
     'select id from ngay_lam_bu where ngay_nghi = $1', [ngay],
   );
   if (lam_bu !== null) {
-    const buoi = await truy_van<{ da_lam: boolean }>(
-      `select
-          (bc.trang_thai = 'nghi_phep'
-           or (bc.trang_thai = 'co_mat' and (
-                bc.so_cong >= 1
-                or (b.buoi = 'chieu' and bc.gio_ra is not null
-                    and extract(hour from bc.gio_ra at time zone 'Asia/Ho_Chi_Minh') >= 13)
-                or (b.buoi = 'sang'  and bc.gio_vao is not null
-                    and extract(hour from bc.gio_vao at time zone 'Asia/Ho_Chi_Minh') < 12)
-           ))) as da_lam
-         from buoi_lam_bu b
-         left join bang_cong_ngay bc
-                on bc.nhan_vien_id = $1 and bc.ngay = b.ngay
-        where b.ngay_lam_bu_id = $2`,
-      [nhan_vien_id, lam_bu.id],
-    );
-    const so_lam = buoi.filter((x) => x.da_lam).length;
     const kq_lb: KetQuaTinhCong = {
       trang_thai: 'lam_bu', gio_vao: null, gio_ra: null,
       phut_lam: 0, phut_muon: 0, phut_ve_som: 0, phut_ot: 0,
-      so_cong: so_lam * 0.5, co_dieu_chinh: false,
-      ghi_chu: `Ngày nghỉ bù — ${so_lam}/${buoi.length} buổi làm bù đã làm`,
+      so_cong: 0, co_dieu_chinh: false,
+      ghi_chu: 'Ngày nghỉ bù — công đã phân bổ về các buổi làm bù (thứ Bảy)',
     };
     await trong_giao_dich(async (khach) => {
       await khach.query(
@@ -215,6 +197,34 @@ export async function tinh_lai_ngay(
     cong_tac,
     lam_them,
   });
+
+  // --- LAM BU (YC-03): ngay nay la NGAY BU (thu Bay duoc chi dinh bu cho mot ngay nguon)?
+  // Cong THEM 0,5 moi buoi lam bu DA LAM tren chinh ngay nay:
+  //   - co mat dung buoi (sang: vao truoc 12h; chieu: ra tu 13h tro di) hoac ca ngay -> 0,5
+  //   - nghi phep CO luong da duyet trum buoi -> 0,5 (mien lam bu)
+  //   - nghi khong luong / vang -> 0
+  // Chan tran 1,0 (nua ngay T7 + buoi bu). Nguon (ngay_nghi) da = 0 o tren.
+  const buoi_bu = await truy_van<{ buoi: string }>(
+    'select buoi from buoi_lam_bu where ngay = $1', [ngay],
+  );
+  if (buoi_bu.length > 0) {
+    const gio_hcm = (d: Date | null): number | null =>
+      d === null ? null : new Date(d.getTime() + 7 * 3_600_000).getUTCHours();
+    const gv = gio_hcm(kq.gio_vao);
+    const gr = gio_hcm(kq.gio_ra);
+    let them = 0;
+    for (const b of buoi_bu) {
+      if (buoi_lam_bu_da_lam(b.buoi as 'sang' | 'chieu', kq.trang_thai, gv, gr, kq.so_cong)) {
+        them += 0.5;
+      }
+    }
+    if (them > 0) {
+      kq.so_cong = Math.min(1, kq.so_cong + them);
+      kq.ghi_chu = kq.ghi_chu === null || kq.ghi_chu === ''
+        ? `+${them} công làm bù`
+        : `${kq.ghi_chu}; +${them} công làm bù`;
+    }
+  }
 
   await trong_giao_dich(async (khach) => {
     await khach.query(

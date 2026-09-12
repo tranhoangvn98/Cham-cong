@@ -230,8 +230,12 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
          -- lam ca chieu thu Bay (so_cong=1) van chi tinh 0,5 vi thu Bay la nua ngay, phan lam them
          -- KHONG doi thanh cong (la lam bu / OT). Nho vay cong thuc KHONG BAO GIO vuot cong chuan.
          -- Dung LEAST (cap), KHONG nhan (nhan se thanh 0,5 x 0,5 = 0,25 — sai). OT khong bi anh huong.
+         -- NGAY BU (YC-03): thu Bay duoc chi dinh lam bu duoc cap 1,0 (nua ngay T7 + buoi bu),
+         -- can bang voi ngay nguon = 0 -> tong cong khong doi, chi dung lai quy gan tung ngay.
          select coalesce(sum(least(so_cong,
-                   case when extract(dow from ngay) = 6 then $3::numeric else 1 end)), 0) as so_cong,
+                   case when exists(select 1 from buoi_lam_bu bl where bl.ngay = bang_cong_ngay.ngay)
+                          then 1
+                        when extract(dow from ngay) = 6 then $3::numeric else 1 end)), 0) as so_cong,
                 coalesce(sum(phut_ot), 0)                                    as phut_ot
            from bang_cong_ngay
           where nhan_vien_id = nv.id and ngay >= $1 and ngay <= $2

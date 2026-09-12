@@ -493,3 +493,24 @@ function phut_cong_theo_ca(vao: Date, ra: Date, ngay: string, ca: CaLam): number
 function gop_chu_thich(ds: string[]): string | null {
   return ds.length === 0 ? null : ds.join('; ');
 }
+
+/**
+ * YC-03 — mot BUOI lam bu tren ngay_bu (thu Bay) co duoc tinh 0,5 cong khong.
+ *
+ * Quy tac (BGD chot): di lam dung buoi -> 0,5; nghi phep CO luong da duyet trum buoi -> 0,5
+ * (mien lam bu); nghi khong luong / vang -> 0. `gio_vao_gio`/`gio_ra_gio` la GIO (0-23) theo
+ * gio Viet Nam (Asia/Ho_Chi_Minh), null neu khong quet.
+ */
+export function buoi_lam_bu_da_lam(
+  buoi: 'sang' | 'chieu',
+  trang_thai: string,
+  gio_vao_gio: number | null,
+  gio_ra_gio: number | null,
+  so_cong: number,
+): boolean {
+  if (trang_thai === 'nghi_phep') return true;
+  if (trang_thai !== 'co_mat') return false;
+  if (so_cong >= 1) return true;
+  if (buoi === 'chieu') return gio_ra_gio !== null && gio_ra_gio >= 13;
+  return gio_vao_gio !== null && gio_vao_gio < 12;
+}
