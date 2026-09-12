@@ -277,6 +277,7 @@ function HopThoaiChiTiet(
   const [khoan, dat_khoan] = useState<Phieu | null>(null);
   const [xem_tru, dat_xem_tru] = useState<Phieu | null>(null);
   const [xem_pc, dat_xem_pc] = useState<Phieu | null>(null);
+  const [xem_cong, dat_xem_cong] = useState<Phieu | null>(null);
   const [thuong_kpi, dat_thuong_kpi] = useState(false);
   const [tab, dat_tab] = useState<'vnd' | 'cny'>('vnd');
   const hd = dung_hanh_dong();
@@ -475,7 +476,10 @@ function HopThoaiChiTiet(
                     </td>
                     <td className="canh-phai">{tien(p.luong_co_ban)}</td>
                     <td className="canh-phai">
-                      {Number(p.so_ngay_cong_thuc)}/{Number(p.so_ngay_cong_chuan)}
+                      <button className="nut-lien-ket" onClick={() => dat_xem_cong(p)}
+                        title="Xem chi tiết công từng ngày — ngày nào bị trừ, lý do gì">
+                        {Number(p.so_ngay_cong_thuc)}/{Number(p.so_ngay_cong_chuan)}
+                      </button>
                       {p.ep_du_cong && <div className="nhan-canh-bao" title="Được tính đủ ngày công (miễn chấm công)">đủ công</div>}
                       {p.mien_phat && <div className="nhan-canh-bao" title="Được miễn phạt đi muộn/về sớm">miễn phạt</div>}
                       {p.mien_thue && <div className="nhan-canh-bao" title="Miễn thuế TNCN cho phiếu này">miễn thuế</div>}
@@ -575,7 +579,96 @@ function HopThoaiChiTiet(
           khi_xong={() => { dat_thuong_kpi(false); nap_lai(); khi_doi(); }}
         />
       )}
+      {xem_cong !== null && (
+        <HopThoaiCong ky_thang={k.thang} phieu={xem_cong} khi_dong={() => dat_xem_cong(null)} />
+      )}
     </KhungToanMan>
+  );
+}
+
+const NHAN_TT_NGAY: Record<string, string> = {
+  vang: 'Vắng', co_mat: 'Có mặt', nghi_phep: 'Nghỉ phép', nghi_khong_luong: 'Nghỉ không lương',
+  ngay_le: 'Ngày lễ', nghi_tuan: 'Nghỉ tuần', cong_tac: 'Công tác', lam_bu: 'Làm bù',
+};
+const THU_VN = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+interface NgayCong {
+  ngay: string; trang_thai: string; gio_vao: string | null; gio_ra: string | null;
+  phut_muon: number | null; phut_ve_som: number | null; phut_ot: number | null;
+  so_cong: string; co_dieu_chinh: boolean; ghi_chu: string | null;
+}
+
+/**
+ * Chi tiet CONG tung ngay cua mot nguoi trong ky: ngay nao bi tru, ly do gi. Doc lai bang cham
+ * cong that (`/bang-cong`) chu khong tu con so tong tren phieu.
+ */
+function HopThoaiCong(
+  { ky_thang, phieu, khi_dong }: { ky_thang: string; phieu: Phieu; khi_dong: () => void },
+): ReactNode {
+  const [nam, thang] = ky_thang.split('-').map(Number);
+  const so_ngay = new Date(nam!, thang!, 0).getDate();
+  const tu = `${ky_thang}-01`;
+  const den = `${ky_thang}-${String(so_ngay).padStart(2, '0')}`;
+  const { du_lieu, dang_tai, loi } = dung_nap<NgayCong[]>(
+    `/api/bang-cong?nhan_vien_id=${phieu.nhan_vien_id}&tu=${tu}&den=${den}`);
+
+  const gio = (s: string | null): string => (s === null ? '' : ngay_gio(s).slice(-5));
+  const ds = du_lieu ?? [];
+  const bi_tru = ds.filter((d) =>
+    d.trang_thai === 'vang' || d.trang_thai === 'nghi_khong_luong'
+    || (d.trang_thai === 'co_mat' && Number(d.so_cong) < 1));
+
+  return (
+    <HopThoai tieu_de={`Chi tiết công — ${phieu.ho_ten} (${ky_thang})`} khi_dong={khi_dong}>
+      {loi !== null && <HopLoi loi={loi} />}
+      {dang_tai ? <DangTai /> : (
+        <>
+          <div className="goi-y" style={{ marginBottom: '0.5rem' }}>
+            Thực tế <strong>{Number(phieu.so_ngay_cong_thuc)}</strong> / chuẩn{' '}
+            <strong>{Number(phieu.so_ngay_cong_chuan)}</strong> công ·{' '}
+            <strong>{bi_tru.length}</strong> ngày bị trừ / thiếu công (bôi đậm bên dưới).
+            {phieu.ep_du_cong && ' — Phiếu đang được "tính đủ công".'}
+          </div>
+          <div className="vo-bang" style={{ maxHeight: '55vh', overflow: 'auto' }}>
+            <table className="bang-gon">
+              <thead><tr>
+                <th>Ngày</th><th>Thứ</th><th>Trạng thái</th>
+                <th className="canh-phai">Công</th><th>Vào–Ra</th><th>Đi muộn / Về sớm</th>
+                <th>Ghi chú / lý do</th>
+              </tr></thead>
+              <tbody>
+                {ds.map((d) => {
+                  const thu = THU_VN[new Date(`${d.ngay}T00:00:00Z`).getUTCDay()];
+                  const tru = d.trang_thai === 'vang' || d.trang_thai === 'nghi_khong_luong'
+                    || (d.trang_thai === 'co_mat' && Number(d.so_cong) < 1);
+                  const muon = Number(d.phut_muon ?? 0);
+                  const ve_som = Number(d.phut_ve_som ?? 0);
+                  return (
+                    <tr key={d.ngay} style={tru ? { fontWeight: 600 } : undefined}>
+                      <td>{d.ngay.slice(8, 10)}/{d.ngay.slice(5, 7)}</td>
+                      <td>{thu}</td>
+                      <td>{NHAN_TT_NGAY[d.trang_thai] ?? d.trang_thai}
+                        {d.co_dieu_chinh && <span className="nhan-canh-bao" title="Có điều chỉnh tay / giải trình">sửa tay</span>}
+                      </td>
+                      <td className="canh-phai">{Number(d.so_cong)}</td>
+                      <td>{gio(d.gio_vao)}{d.gio_ra !== null ? `–${gio(d.gio_ra)}` : ''}</td>
+                      <td>
+                        {muon > 0 && <span>muộn {muon}′ </span>}
+                        {ve_som > 0 && <span>về sớm {ve_som}′</span>}
+                      </td>
+                      <td className="mo-ta">{d.ghi_chu ?? ''}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="goi-y" style={{ marginTop: '0.5rem' }}>
+            Ghi chú: đi muộn / phạt tiền được tính ở bảng lương (cột "Khoản trừ"), không phải ở
+            số công. Số công chỉ phản ánh ngày làm thực tế (nửa ngày, vắng, nghỉ không lương…).
+          </div>
+        </>
+      )}
+    </HopThoai>
   );
 }
 
