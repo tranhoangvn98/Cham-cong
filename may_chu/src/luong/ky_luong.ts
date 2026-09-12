@@ -310,12 +310,21 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
     if (ds_k === undefined) theo_khoi.set(c.khoi_id, [dong]); else ds_k.push(dong);
   }
 
+  // HD thoi vu / cong tac vien KHONG huong phu cap KHOI (chu DN chot: thoi vu "khong co phu cap
+  // gi het"). Van giu phu cap CA NHAN neu HR co khai rieng (la quyet dinh co y). Nho quy tac nay,
+  // moi nguoi HD thoi vu tu dong bi bo phu cap khoi, khong phai de tay tung nguoi moi khi them
+  // phu cap khoi moi.
+  const HD_KHONG_PHU_CAP_KHOI = new Set(['thoi_vu', 'cong_tac_vien']);
+
   // Gop chinh sach khoi + ca nhan cho mot nguoi: ca nhan DE len khoi theo khoan_ma (override
   // mien/doi muc/khoan rieng). Ca nhan muon MIEN mot khoan khoi thi mo dong ca nhan so_tien = 0.
-  const chinh_sach_cua = (nhan_vien_id: string, khoi_id: string | null): DongChinhSach[] =>
+  const chinh_sach_cua = (
+    nhan_vien_id: string, khoi_id: string | null, loai_hop_dong: string | null,
+  ): DongChinhSach[] =>
     gop_chinh_sach(
       theo_nguoi.get(nhan_vien_id) ?? [],
-      khoi_id === null ? [] : (theo_khoi.get(khoi_id) ?? []),
+      khoi_id === null || (loai_hop_dong !== null && HD_KHONG_PHU_CAP_KHOI.has(loai_hop_dong))
+        ? [] : (theo_khoi.get(khoi_id) ?? []),
     );
 
   // ------------------------------------------------------------ ngay di muon cua ca cong ty
@@ -479,7 +488,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       );
 
       const sinh = khoan_tu_chinh_sach(
-        chinh_sach_cua(nv.nhan_vien_id, nv.khoi_id),
+        chinh_sach_cua(nv.nhan_vien_id, nv.khoi_id, nv.loai_hop_dong),
         { so_cong: nv.so_cong },
         go_tay,
       );
