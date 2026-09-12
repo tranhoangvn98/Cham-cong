@@ -69,12 +69,14 @@ interface KhoanPhieu {
   chi_tiet: DongChiTiet[];
 }
 
-/** Một lệnh chi tiết trong một khoản nhập tay (lý do + số tiền). */
+/** Một loại lỗi bị giảm thưởng (lý do + số tiền), kèm từng lần cụ thể có ngày + giờ. */
 interface DongChiTiet {
   id: string;
   ly_do: string;
   so_tien: string;
   thu_tu: number;
+  /** Từng lần lỗi cụ thể, vd "06/08: vào 08:15 (muộn 15′)". */
+  cac_lan?: string[];
 }
 
 interface Phieu {
@@ -1092,10 +1094,19 @@ function HopThoaiKeKhoanTru(
                     </td>
                   </tr>
                   {k.chi_tiet.map((c) => (
-                    <tr key={c.id}>
-                      <td style={{ paddingLeft: 20 }}>— {c.ly_do}</td>
-                      <td className="canh-phai">{tien(c.so_tien)} đ</td>
-                    </tr>
+                    <Fragment key={c.id}>
+                      <tr>
+                        <td style={{ paddingLeft: 20 }}>— {c.ly_do}</td>
+                        <td className="canh-phai">{tien(c.so_tien)} đ</td>
+                      </tr>
+                      {(c.cac_lan ?? []).map((mo_ta, i) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <tr key={`${c.id}:${String(i)}`}>
+                          <td style={{ paddingLeft: 40 }} className="mo-ta">• {mo_ta}</td>
+                          <td />
+                        </tr>
+                      ))}
+                    </Fragment>
                   ))}
                   <tr>
                     <td style={{ paddingLeft: 20 }} className="mo-ta">Cộng {k.ten.toLowerCase()}</td>

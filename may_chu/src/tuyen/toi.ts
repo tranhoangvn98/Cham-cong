@@ -22,6 +22,7 @@ import { don_cua_nhan_vien, huy_don, tao_don } from '../don_tu/nghiep_vu.ts';
 import { tu_dong_quyet_don, TU_NGAY_AP } from '../don_tu/tu_dong_duyet.ts';
 import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
 import { email_nhan_vien_tra_loi } from '../luong/khieu_nai_email.ts';
+import { chi_tiet_ky_luat_theo_phieu } from '../luong/chi_tiet_ky_luat.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, khoang_ngay, luan_ly, ngay_bat_buoc, than, trong_tap, uuid,
   LoiDauVao, LoiKhongQuyen, LoiKhongTim, LoiXungDot,
@@ -244,37 +245,10 @@ async function phieu_luong_cua_toi(
       order by kl.loai, kl.ten`,
     [ids],
   );
-  // LIET KE tung lenh giam thuong ky luat (chi doc) — may tu tong hop tu ho_so_ky_luat da_ap_dung
-  // cua chinh nguoi nay + dung ky, gom theo loai vi pham. De nguoi lao dong biet bi tru vi gi,
-  // khong phai mot cuc gop.
-  const chi_tiet = await truy_van<{ phieu_luong_id: string; ten: string; so_tien: string;
-                                    so_lan: number }>(
-    `select p.id as phieu_luong_id, (c->>'ten') as ten,
-            sum((c->>'tien')::numeric)::text as so_tien, count(*)::int as so_lan
-       from phieu_luong p
-       join ky_luong k on k.id = p.ky_luong_id
-       join ho_so_ky_luat h on h.nhan_vien_id = p.nhan_vien_id and h.ky = k.thang
-            and h.trang_thai = 'da_ap_dung'
-       cross join lateral jsonb_array_elements(coalesce(h.chi_tiet, '[]'::jsonb)) as c
-      where p.id = any($1::uuid[])
-        and (c->>'tien') is not null and (c->>'tien')::numeric > 0
-      group by p.id, (c->>'ten')
-      order by p.id, sum((c->>'tien')::numeric) desc`,
-    [ids],
-  );
-  const ct_theo_phieu = new Map<string, { id: string; ly_do: string; so_tien: string;
-                                          thu_tu: number }[]>();
-  for (const c of chi_tiet) {
-    const ten = (c.ten ?? '').trim() || 'Vi phạm';
-    const ds = ct_theo_phieu.get(c.phieu_luong_id) ?? [];
-    ds.push({
-      id: `${c.phieu_luong_id}:${ten}`,
-      ly_do: c.so_lan > 1 ? `${ten} (×${String(c.so_lan)})` : ten,
-      so_tien: c.so_tien,
-      thu_tu: ds.length,
-    });
-    ct_theo_phieu.set(c.phieu_luong_id, ds);
-  }
+  // LIET KE tung LAN giam thuong ky luat (chi doc) — may tu tong hop tu ho_so_ky_luat da_ap_dung
+  // + bang_cong_ngay cua chinh nguoi nay + dung ky, moi lan co NGAY + GIO. De nguoi lao dong biet
+  // bi tru vi loi nao, ngay gio nao — khong phai mot cuc gop.
+  const ct_theo_phieu = await chi_tiet_ky_luat_theo_phieu(ids);
 
   const theo_phieu = new Map<string, Record<string, unknown>[]>();
   for (const k of khoan) {

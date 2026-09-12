@@ -16,6 +16,7 @@ import {
 } from '../luong/ban_chot.ts';
 import { lech_luong_ky } from '../luong/kiem_lech_luong.ts';
 import { KHOAN_GIAM_THUONG } from '../ky_luat/xu_ly.ts';
+import { chi_tiet_ky_luat_theo_phieu } from '../luong/chi_tiet_ky_luat.ts';
 import { bang_luong_xuat } from '../luong/bang_xuat.ts';
 import { xuat_bang_luong_erp } from '../luong/xuat_mau_erp.ts';
 import { gui_phieu_luong_ky } from '../luong/phieu_luong_email.ts';
@@ -136,44 +137,6 @@ async function lay_ky(id: string): Promise<{ id: string; thang: string; trang_th
   return k;
 }
 
-/** Mot dong LIET KE (chi doc) cua khoan giam thuong ky luat. */
-export interface DongLietKe { id: string; ly_do: string; so_tien: string; thu_tu: number }
-
-/**
- * LIET KE tung lenh giam thuong ky luat cho MOI phieu trong mot ky — CHI DOC, may tu tong hop tu
- * ho_so_ky_luat da_ap_dung (dung nguoi + dung ky). Gom theo LOAI vi pham -> "Di muon (x3)". Tra
- * Map(phieu_luong_id -> danh sach dong). Dung cho bang KE tren phieu (khong phai nhap tay).
- */
-async function lay_chi_tiet_ky_luat_ky(ky_luong_id: string): Promise<Map<string, DongLietKe[]>> {
-  const rows = await truy_van<{ phieu_luong_id: string; ten: string; so_tien: string;
-                                so_lan: number }>(
-    `select p.id as phieu_luong_id, (c->>'ten') as ten,
-            sum((c->>'tien')::numeric)::text as so_tien, count(*)::int as so_lan
-       from phieu_luong p
-       join ky_luong k on k.id = p.ky_luong_id
-       join ho_so_ky_luat h on h.nhan_vien_id = p.nhan_vien_id and h.ky = k.thang
-            and h.trang_thai = 'da_ap_dung'
-       cross join lateral jsonb_array_elements(coalesce(h.chi_tiet, '[]'::jsonb)) as c
-      where p.ky_luong_id = $1
-        and (c->>'tien') is not null and (c->>'tien')::numeric > 0
-      group by p.id, (c->>'ten')
-      order by p.id, sum((c->>'tien')::numeric) desc`,
-    [ky_luong_id],
-  );
-  const map = new Map<string, DongLietKe[]>();
-  for (const r of rows) {
-    const ten = (r.ten ?? '').trim() || 'Vi phạm';
-    const ds = map.get(r.phieu_luong_id) ?? [];
-    ds.push({
-      id: `${r.phieu_luong_id}:${ten}`,
-      ly_do: r.so_lan > 1 ? `${ten} (×${String(r.so_lan)})` : ten,
-      so_tien: r.so_tien,
-      thu_tu: ds.length,
-    });
-    map.set(r.phieu_luong_id, ds);
-  }
-  return map;
-}
 
 export async function tuyen_luong(app: FastifyInstance): Promise<void> {
   // ============================================================ tham so phap ly
@@ -527,10 +490,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         order by d.loai desc, d.thu_tu, d.ten`,
       [k.id],
     );
-    // Chi tiet giam thuong ky luat: LIET KE tung lenh phat may da tong hop (tu ho_so_ky_luat
-    // da_ap_dung), CHI DOC. Gom theo loai vi pham -> "Di muon (x3)". Dinh kem vao dong khoan
-    // 'tru_giam_thuong_kl' de bang KE hien tung dong thay vi mot cuc.
-    const ct_theo_phieu = await lay_chi_tiet_ky_luat_ky(k.id);
+    // Chi tiet giam thuong ky luat: LIET KE tung LAN phat co NGAY + GIO (tu ho_so_ky_luat
+    // da_ap_dung + bang_cong_ngay), CHI DOC. Dinh kem vao dong khoan 'tru_giam_thuong_kl'.
+    const ct_theo_phieu = await chi_tiet_ky_luat_theo_phieu(
+      phieu.map((p) => String(p['id'])),
+    );
 
     const theo_phieu = new Map<string, Record<string, unknown>[]>();
     for (const x of khoan) {

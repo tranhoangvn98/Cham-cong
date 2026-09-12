@@ -19,7 +19,7 @@ interface KhoanPhieu {
   thanh_tien: string;
   ghi_chu: string | null;
   chiu_thue: boolean;
-  chi_tiet?: { id: string; ly_do: string; so_tien: string; thu_tu: number }[];
+  chi_tiet?: { id: string; ly_do: string; so_tien: string; thu_tu: number; cac_lan?: string[] }[];
 }
 
 interface Phieu {
@@ -247,10 +247,19 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
                   <Fragment key={k.khoan_ma}>
                     <tr><td colSpan={2}><strong>{k.ten}</strong></td></tr>
                     {k.chi_tiet.map((c) => (
-                      <tr key={c.id}>
-                        <td style={{ paddingLeft: 18 }}>— {c.ly_do}</td>
-                        <td className="phai">{tien(c.so_tien)}</td>
-                      </tr>
+                      <Fragment key={c.id}>
+                        <tr>
+                          <td style={{ paddingLeft: 18 }}>— {c.ly_do}</td>
+                          <td className="phai">{tien(c.so_tien)}</td>
+                        </tr>
+                        {(c.cac_lan ?? []).map((mo_ta, i) => (
+                          // eslint-disable-next-line react/no-array-index-key
+                          <tr key={`${c.id}:${String(i)}`}>
+                            <td style={{ paddingLeft: 36 }} className="mo-ta">• {mo_ta}</td>
+                            <td />
+                          </tr>
+                        ))}
+                      </Fragment>
                     ))}
                     <tr>
                       <td style={{ paddingLeft: 18 }} className="mo-ta">Cộng</td>
