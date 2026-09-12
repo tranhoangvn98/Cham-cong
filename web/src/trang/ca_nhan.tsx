@@ -1156,6 +1156,17 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
                         : d.gio_vao === null
                           ? `thiếu giờ vào → ${gio_ngan(d.gio_ra)}`
                           : `${gio_ngan(d.gio_vao)} → ${d.gio_ra === null ? 'thiếu giờ ra' : gio_ngan(d.gio_ra)}`}
+                {(so(d.phut_muon) > 0 || so(d.phut_ve_som) > 0) && (
+                  <span className="mo-ta">
+                    {' · '}
+                    {[so(d.phut_muon) > 0 ? `muộn ${so(d.phut_muon)}′` : null,
+                      so(d.phut_ve_som) > 0 ? `về sớm ${so(d.phut_ve_som)}′` : null]
+                      .filter(Boolean).join(' · ')}
+                  </span>
+                )}
+                {d.ghi_chu !== null && d.ghi_chu !== '' && (
+                  <span className="mo-ta" style={{ display: 'block', marginTop: 2 }}>{d.ghi_chu}</span>
+                )}
               </span>
               <span className={`nhan ${so(d.phut_muon) > 0 || d.gio_vao === null || d.gio_ra === null
                 ? 'nhan-canh-bao'

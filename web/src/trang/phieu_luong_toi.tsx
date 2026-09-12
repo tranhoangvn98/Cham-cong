@@ -107,6 +107,12 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
   const p = ds[Math.min(chon, ds.length - 1)]!;
   const thu_nhap = p.khoan.filter((k) => k.loai === 'thu_nhap');
   const khau_tru = p.khoan.filter((k) => k.loai === 'tru');
+  // "Luong theo cong" gop CA luong co ban + phu cap roi nhan ti le cong. Tach ra de nhan vien
+  // THAY RO phan phu cap (chi tiet phu cap), khong chi mot cuc "luong theo cong".
+  const ty_le_cong = Number(p.so_ngay_cong_chuan) > 0
+    ? Number(p.so_ngay_cong_thuc) / Number(p.so_ngay_cong_chuan) : 0;
+  const pc_theo_cong = Math.round((Number(p.phu_cap) || 0) * ty_le_cong);
+  const luong_cb_theo_cong = Math.round(Number(p.luong_theo_cong) || 0) - pc_theo_cong;
   // Cac khoan PHAT (di muon / nua ngay do di muon) — de hien ro "chi tiet phat" cho nguoi bi phat,
   // hoac ghi "da mien phat" khi admin da mien va khong co dong phat nao.
   const co_khoan_phat = khau_tru.some(
@@ -175,10 +181,26 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
         <div className="vo-bang">
           <table>
             <tbody>
-              <tr>
-                <td>Lương theo công</td>
-                <td className="phai">{tien(p.luong_theo_cong)}</td>
-              </tr>
+              {Number(p.phu_cap) > 0 ? (
+                <>
+                  <tr>
+                    <td>Lương cơ bản (theo công)
+                      <span className="mo-ta"> {p.so_ngay_cong_thuc}/{p.so_ngay_cong_chuan} công</span></td>
+                    <td className="phai">{tien(luong_cb_theo_cong)}</td>
+                  </tr>
+                  <tr>
+                    <td>Phụ cấp (theo công)
+                      <span className="mo-ta"> {tien(p.phu_cap)}đ/tháng × {p.so_ngay_cong_thuc}/{p.so_ngay_cong_chuan}</span></td>
+                    <td className="phai">{tien(pc_theo_cong)}</td>
+                  </tr>
+                </>
+              ) : (
+                <tr>
+                  <td>Lương theo công
+                    <span className="mo-ta"> {p.so_ngay_cong_thuc}/{p.so_ngay_cong_chuan} công</span></td>
+                  <td className="phai">{tien(p.luong_theo_cong)}</td>
+                </tr>
+              )}
               {Number(p.tien_ot) > 0 && (
                 <tr>
                   <td>Làm thêm giờ (OT){Number(p.phut_ot) > 0 &&
