@@ -208,7 +208,7 @@ function kq_tu_ngay(b: Record<string, unknown>): string {
 
 interface KhoanPhieuRa {
   phieu_luong_id: string;
-  khoan_ma: string; ten: string; loai: string;
+  khoan_ma: string; ten: string; loai: string; nhom: string | null;
   so_luong: string | null; don_gia: string | null; thanh_tien: string;
   ghi_chu: string | null; chiu_thue: boolean;
 }
@@ -239,7 +239,7 @@ async function phieu_luong_cua_toi(
   if (phieu.length === 0) return [];
   const ids = phieu.map((p) => p.id);
   const khoan = await truy_van<KhoanPhieuRa>(
-    `select pk.phieu_luong_id, pk.khoan_ma, kl.ten, kl.loai,
+    `select pk.phieu_luong_id, pk.khoan_ma, kl.ten, kl.loai, kl.nhom,
             pk.so_luong, pk.don_gia, pk.thanh_tien, pk.ghi_chu, kl.chiu_thue
        from phieu_luong_khoan pk
        join khoan_luong kl on kl.ma = pk.khoan_ma

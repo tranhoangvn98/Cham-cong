@@ -13,6 +13,7 @@ interface Khoan {
   ma: string;
   ten: string;
   loai: 'thu_nhap' | 'tru';
+  nhom: 'phu_cap' | 'thuong' | null;
   cach_tinh: 'nhap_tay' | 'so_luong_x_don_gia' | 'nua_ngay_luong';
   don_gia: string | null;
   chiu_thue: boolean;
@@ -47,7 +48,8 @@ export function TrangDanhMucKhoan(): ReactNode {
         <table className="bang-gon">
           <thead>
             <tr>
-              <th>Tên khoản</th><th>Mã</th><th>Cách tính</th><th className="canh-phai">Đơn giá</th>
+              <th>Tên khoản</th><th>Mã</th><th>Nhóm</th><th>Cách tính</th>
+              <th className="canh-phai">Đơn giá</th>
               <th>Thuế</th><th>Trạng thái</th>{admin && <th />}
             </tr>
           </thead>
@@ -61,6 +63,11 @@ export function TrangDanhMucKhoan(): ReactNode {
                   )}
                 </td>
                 <td className="mo-ta">{k.ma}</td>
+                <td>
+                  {k.loai === 'tru' ? <span className="mo-ta">—</span>
+                    : k.nhom === 'thuong' ? <span className="nhan-canh-bao">Thưởng</span>
+                      : 'Phụ cấp'}
+                </td>
                 <td>{TEN_CACH_TINH[k.cach_tinh]}</td>
                 <td className="canh-phai">{k.don_gia === null ? '—' : `${tien(k.don_gia)} đ`}</td>
                 <td>{k.chiu_thue ? 'Chịu thuế' : <span className="nhan-tot">Miễn thuế</span>}</td>
@@ -123,7 +130,7 @@ function HopThoaiThemKhoan(
   { khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: () => void },
 ): ReactNode {
   const [f, dat_f] = useState({
-    ma: '', ten: '', loai: 'thu_nhap', cach_tinh: 'nhap_tay',
+    ma: '', ten: '', loai: 'thu_nhap', nhom: 'phu_cap', cach_tinh: 'nhap_tay',
     don_gia: '', chiu_thue: true, thu_tu: '100', canh_bao: '',
   });
   const hd = dung_hanh_dong();
@@ -148,6 +155,16 @@ function HopThoaiThemKhoan(
         <option value="thu_nhap">Phụ cấp / thu nhập thêm</option>
         <option value="tru">Khoản trừ</option>
       </select>
+
+      {f.loai === 'thu_nhap' && (
+        <>
+          <label htmlFor="dm-nhom">Nhóm</label>
+          <select id="dm-nhom" value={f.nhom} onChange={dat('nhom')}>
+            <option value="phu_cap">Phụ cấp (ăn trưa, trang điểm, địa điểm…)</option>
+            <option value="thuong">Thưởng (KPI, doanh số, hoa hồng — không tính vào phụ cấp)</option>
+          </select>
+        </>
+      )}
 
       <label htmlFor="dm-ct">Cách tính</label>
       <select id="dm-ct" value={f.cach_tinh} onChange={dat('cach_tinh')}>
@@ -183,7 +200,9 @@ function HopThoaiThemKhoan(
             () => goi('/api/khoan-luong', {
               method: 'POST',
               body: {
-                ma: f.ma, ten: f.ten, loai: f.loai, cach_tinh: f.cach_tinh,
+                ma: f.ma, ten: f.ten, loai: f.loai,
+                nhom: f.loai === 'thu_nhap' ? f.nhom : null,
+                cach_tinh: f.cach_tinh,
                 don_gia: f.don_gia === '' ? null : Number(f.don_gia),
                 chiu_thue: f.chiu_thue, thu_tu: Number(f.thu_tu) || 100,
                 canh_bao: f.canh_bao,
@@ -205,6 +224,7 @@ function HopThoaiSuaKhoan(
 ): ReactNode {
   const [f, dat_f] = useState({
     ten: khoan.ten,
+    nhom: khoan.nhom ?? 'phu_cap',
     don_gia: khoan.don_gia === null ? '' : String(Number(khoan.don_gia)),
     chiu_thue: khoan.chiu_thue,
     thu_tu: String(khoan.thu_tu),
@@ -225,6 +245,16 @@ function HopThoaiSuaKhoan(
 
       <label htmlFor="dms-ten">Tên khoản</label>
       <input id="dms-ten" value={f.ten} onChange={dat('ten')} />
+
+      {khoan.loai === 'thu_nhap' && (
+        <>
+          <label htmlFor="dms-nhom">Nhóm</label>
+          <select id="dms-nhom" value={f.nhom} onChange={dat('nhom')}>
+            <option value="phu_cap">Phụ cấp</option>
+            <option value="thuong">Thưởng (KPI/doanh số/hoa hồng — không tính vào phụ cấp)</option>
+          </select>
+        </>
+      )}
 
       {khoan.cach_tinh === 'so_luong_x_don_gia' && (
         <>
@@ -261,6 +291,7 @@ function HopThoaiSuaKhoan(
               method: 'PATCH',
               body: {
                 ten: f.ten,
+                nhom: khoan.loai === 'thu_nhap' ? f.nhom : null,
                 don_gia: f.don_gia === '' ? null : Number(f.don_gia),
                 chiu_thue: f.chiu_thue, thu_tu: Number(f.thu_tu) || 100,
                 dang_dung: f.dang_dung, canh_bao: f.canh_bao,

@@ -258,14 +258,20 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     );
     if (co !== null) throw new LoiXungDot(`Đã có khoản mã "${ma}".`);
 
+    const loai = trong_tap(b, 'loai', ['thu_nhap', 'tru'] as const, { bat_buoc: true });
+    // `nhom` chi co y nghia voi khoan thu_nhap (phu_cap / thuong). Khoan tru: null.
+    const nhom = loai === 'thu_nhap'
+      ? (trong_tap(b, 'nhom', ['phu_cap', 'thuong'] as const) ?? 'phu_cap')
+      : null;
     await thuc_thi(
-      `insert into khoan_luong (ma, ten, loai, cach_tinh, don_gia, chiu_thue,
+      `insert into khoan_luong (ma, ten, loai, nhom, cach_tinh, don_gia, chiu_thue,
                                 thu_tu, canh_bao, ghi_chu)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       [
         ma,
         chuoi_bat_buoc(b, 'ten', { toi_da: 200 }),
-        trong_tap(b, 'loai', ['thu_nhap', 'tru'] as const, { bat_buoc: true }),
+        loai,
+        nhom,
         cach_tinh,
         don_gia,
         luan_ly(b, 'chiu_thue', true),
@@ -295,10 +301,13 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     );
     if (cu === null) throw new LoiKhongTim('Không tìm thấy khoản lương.');
 
+    // nhom chi doi duoc voi khoan thu_nhap (phu_cap/thuong); null = giu nguyen.
+    const nhom = trong_tap(b, 'nhom', ['phu_cap', 'thuong'] as const);
     await thuc_thi(
       `update khoan_luong set ten = coalesce($2, ten), don_gia = $3,
               chiu_thue = coalesce($4, chiu_thue), thu_tu = coalesce($5, thu_tu),
-              dang_dung = coalesce($6, dang_dung), canh_bao = $7, ghi_chu = $8
+              dang_dung = coalesce($6, dang_dung), canh_bao = $7, ghi_chu = $8,
+              nhom = case when loai = 'thu_nhap' then coalesce($9, nhom) else nhom end
         where ma = $1`,
       [
         ma,
@@ -309,6 +318,7 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         luan_ly(b, 'dang_dung'),
         chuoi(b, 'canh_bao', { toi_da: 1000 }),
         chuoi(b, 'ghi_chu', { toi_da: 1000 }),
+        nhom,
       ],
     );
     await ghi_nhat_ky(nd.sub, 'sua_khoan_luong', 'khoan_luong', ma, b, req.ip);
@@ -650,7 +660,7 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     // Gan cac khoan vao dung phieu cua no. Mot truy van cho ca ky, khong phai mot truy van
     // moi dong: 50 nguoi la 50 vong tuan tu, va so do chi tang.
     const khoan = await truy_van<Record<string, unknown>>(
-      `select pk.*, d.ten, d.loai, d.cach_tinh, d.chiu_thue, d.canh_bao, d.thu_tu
+      `select pk.*, d.ten, d.loai, d.nhom, d.cach_tinh, d.chiu_thue, d.canh_bao, d.thu_tu
          from phieu_luong_khoan pk
          join khoan_luong d on d.ma = pk.khoan_ma
          join phieu_luong p on p.id = pk.phieu_luong_id

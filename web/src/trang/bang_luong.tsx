@@ -56,6 +56,8 @@ interface KhoanPhieu {
   khoan_ma: string;
   ten: string;
   loai: 'thu_nhap' | 'tru';
+  /** Với khoản thu nhập: 'phu_cap' (mặc định) hay 'thuong' (KPI/doanh số/hoa hồng). */
+  nhom: 'phu_cap' | 'thuong' | null;
   cach_tinh: KhoanDanhMuc['cach_tinh'];
   chiu_thue: boolean;
   canh_bao: string | null;
@@ -157,6 +159,20 @@ function tien(v: unknown): string {
   const n = Number(v ?? 0);
   if (!Number.isFinite(n)) return '—';
   return n.toLocaleString('vi-VN', { maximumFractionDigits: 0 });
+}
+
+/** Tong THUONG cua phieu = thuong (quyet dinh) + khoan thu_nhap nhom 'thuong' (KPI...). */
+function tong_thuong(p: Phieu): number {
+  return Number(p.thuong) + p.khoan
+    .filter((k) => k.loai === 'thu_nhap' && k.nhom === 'thuong')
+    .reduce((a, k) => a + Number(k.thanh_tien), 0);
+}
+
+/** Tong PHU CAP cua phieu = phu_cap_khac + khoan thu_nhap KHONG phai 'thuong'. */
+function tong_phu_cap(p: Phieu): number {
+  return Number(p.phu_cap_khac) + p.khoan
+    .filter((k) => k.loai === 'thu_nhap' && k.nhom !== 'thuong')
+    .reduce((a, k) => a + Number(k.thanh_tien), 0);
 }
 
 export function TrangBangLuong(): ReactNode {
@@ -289,6 +305,7 @@ function HopThoaiChiTiet(
   const [khoan, dat_khoan] = useState<Phieu | null>(null);
   const [xem_tru, dat_xem_tru] = useState<Phieu | null>(null);
   const [xem_pc, dat_xem_pc] = useState<Phieu | null>(null);
+  const [xem_thuong, dat_xem_thuong] = useState<Phieu | null>(null);
   const [xem_cong, dat_xem_cong] = useState<Phieu | null>(null);
   const [thuong_kpi, dat_thuong_kpi] = useState(false);
   const [tab, dat_tab] = useState<'vnd' | 'cny'>('vnd');
@@ -479,6 +496,11 @@ function HopThoaiChiTiet(
                 const tru = Number(p.khoan_tru) + Number(p.tru_khac);
                 const lam_tron = Number(p.thuc_linh_lam_tron);
                 const goc = Number(p.thuc_linh);
+                // Tach khoan thu_nhap: 'thuong' (KPI/doanh so/hoa hong) tinh vao cot Thuong;
+                // con lai la phu cap. Tong thu nhap khong doi, chi doi cho hien thi.
+                const kh_thuong = p.khoan.filter((x) => x.loai === 'thu_nhap' && x.nhom === 'thuong');
+                const co_pc = tong_phu_cap(p);
+                const co_thuong = tong_thuong(p);
                 return (
                   <tr key={p.id}>
                     <td>{p.ma_nv}</td>
@@ -502,14 +524,19 @@ function HopThoaiChiTiet(
                     </td>
                     <td className="canh-phai">{tien(p.luong_theo_cong)}</td>
                     <td className="canh-phai">{tien(p.tien_ot)}</td>
-                    <td className="canh-phai">{tien(p.thuong)}</td>
                     <td className="canh-phai">
-                      {Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac) > 0 ? (
+                      {kh_thuong.length > 0 ? (
+                        <button className="nut-lien-ket" onClick={() => dat_xem_thuong(p)}
+                          title="Xem chi tiết thưởng">{tien(co_thuong)}</button>
+                      ) : tien(co_thuong)}
+                    </td>
+                    <td className="canh-phai">
+                      {co_pc > 0 ? (
                         <button className="nut-lien-ket" onClick={() => dat_xem_pc(p)}
                           title="Xem chi tiết phụ cấp">
-                          {tien(Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac))}
+                          {tien(co_pc)}
                         </button>
-                      ) : tien(Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac))}
+                      ) : tien(co_pc)}
                     </td>
                     <td className="canh-phai">{tien(p.tong_thu_nhap)}</td>
                     <td className="canh-phai">
@@ -550,8 +577,8 @@ function HopThoaiChiTiet(
                 <td className="canh-phai mo-ta">—</td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.luong_theo_cong), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.tien_ot), 0))}</strong></td>
-                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.thuong), 0))}</strong></td>
-                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + tong_thuong(p), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + tong_phu_cap(p), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.tong_thu_nhap), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.luong_dong_bh), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.bhxh_nld) + Number(p.bhyt_nld) + Number(p.bhtn_nld), 0))}</strong></td>
@@ -585,6 +612,10 @@ function HopThoaiChiTiet(
       )}
       {xem_pc !== null && (
         <HopThoaiKePhuCap phieu={xem_pc} khi_dong={() => dat_xem_pc(null)} />
+      )}
+      {xem_thuong !== null && (
+        <HopThoaiKePhuCap phieu={xem_thuong} che_do="thuong"
+          khi_dong={() => dat_xem_thuong(null)} />
       )}
       {thuong_kpi && (
         <HopThoaiThuongKpi
@@ -1175,16 +1206,23 @@ function HopThoaiKeKhoanTru(
  * `thu_nhap` tu chinh sach / go tay, cong voi "Phu cap khac" neu co. Mo tu cot Phu cap.
  */
 function HopThoaiKePhuCap(
-  { phieu, khi_dong }: { phieu: Phieu; khi_dong: () => void },
+  { phieu, che_do = 'phu_cap', khi_dong }:
+  { phieu: Phieu; che_do?: 'phu_cap' | 'thuong'; khi_dong: () => void },
 ): ReactNode {
-  const cac_pc = phieu.khoan.filter((k) => k.loai === 'thu_nhap');
-  const pc_khac = Number(phieu.phu_cap_khac);
-  const tong = cac_pc.reduce((a, k) => a + Number(k.thanh_tien), 0) + pc_khac;
+  const la_thuong = che_do === 'thuong';
+  // Thuong = KPI/doanh so/hoa hong (nhom='thuong'); Phu cap = thu nhap con lai.
+  const cac_pc = phieu.khoan.filter((k) => k.loai === 'thu_nhap'
+    && (la_thuong ? k.nhom === 'thuong' : k.nhom !== 'thuong'));
+  // Dong tien le kem theo: phu cap co "Phu cap khac"; thuong co "Thuong (quyet dinh)".
+  const le = la_thuong ? Number(phieu.thuong) : Number(phieu.phu_cap_khac);
+  const ten_le = la_thuong ? 'Thưởng (quyết định)' : 'Phụ cấp khác';
+  const tong = cac_pc.reduce((a, k) => a + Number(k.thanh_tien), 0) + le;
+  const tieu_de = la_thuong ? 'Chi tiết thưởng' : 'Chi tiết phụ cấp';
 
   return (
-    <HopThoai tieu_de={`Chi tiết phụ cấp — ${phieu.ho_ten}`} khi_dong={khi_dong}>
-      {cac_pc.length === 0 && pc_khac === 0 ? (
-        <p className="mo-ta">Phiếu này không có phụ cấp nào.</p>
+    <HopThoai tieu_de={`${tieu_de} — ${phieu.ho_ten}`} khi_dong={khi_dong}>
+      {cac_pc.length === 0 && le === 0 ? (
+        <p className="mo-ta">Phiếu này không có {la_thuong ? 'thưởng' : 'phụ cấp'} nào.</p>
       ) : (
         <table className="bang-gon">
           <tbody>
@@ -1203,23 +1241,25 @@ function HopThoaiKePhuCap(
                 <td className="canh-phai">{tien(k.thanh_tien)} đ</td>
               </tr>
             ))}
-            {pc_khac > 0 && (
+            {le > 0 && (
               <tr>
-                <td>Phụ cấp khác</td>
-                <td className="canh-phai">{tien(pc_khac)} đ</td>
+                <td>{ten_le}</td>
+                <td className="canh-phai">{tien(le)} đ</td>
               </tr>
             )}
           </tbody>
           <tfoot>
             <tr className="hang-tong">
-              <td><strong>Tổng phụ cấp</strong></td>
+              <td><strong>Tổng {la_thuong ? 'thưởng' : 'phụ cấp'}</strong></td>
               <td className="canh-phai"><strong>{tien(tong)} đ</strong></td>
             </tr>
           </tfoot>
         </table>
       )}
       <p className="mo-ta">
-        Phụ cấp theo chính sách tự tính lại mỗi kỳ theo chấm công; muốn sửa bấm nút <strong>Khoản</strong>.
+        {la_thuong
+          ? 'KPI, doanh số, hoa hồng tính vào Thưởng — không phải phụ cấp.'
+          : 'Phụ cấp theo chính sách tự tính lại mỗi kỳ theo chấm công; muốn sửa bấm nút Khoản.'}
       </p>
       <div className="hang-nut">
         <button className="nut-phang" onClick={khi_dong}>Đóng</button>
