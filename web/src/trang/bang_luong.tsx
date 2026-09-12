@@ -73,6 +73,8 @@ interface Phieu {
   ma_nv: string;
   ho_ten: string;
   phong_ban: string | null;
+  khoi_id: string | null;
+  khoi: string | null;
   loai_hop_dong: string | null;
   luong_co_ban: string;
   phu_cap: string;
@@ -275,6 +277,7 @@ function HopThoaiChiTiet(
   const [khoan, dat_khoan] = useState<Phieu | null>(null);
   const [xem_tru, dat_xem_tru] = useState<Phieu | null>(null);
   const [xem_pc, dat_xem_pc] = useState<Phieu | null>(null);
+  const [thuong_kpi, dat_thuong_kpi] = useState(false);
   const [tab, dat_tab] = useState<'vnd' | 'cny'>('vnd');
   const hd = dung_hanh_dong();
 
@@ -345,6 +348,15 @@ function HopThoaiChiTiet(
             title="Gửi phiếu lương cho từng người xác nhận trước khi duyệt. Nhân viên có quyền khiếu nại lương."
           >
             Gửi email xác nhận
+          </button>
+        )}
+        {sua_duoc && la_admin() && k.phieu.length > 0 && (
+          <button
+            className="nut-phang" disabled={hd.dang_chay}
+            onClick={() => dat_thuong_kpi(true)}
+            title="Nhập nhanh thưởng KPI cho nhiều người theo khối/phòng, kèm chứng từ duyệt"
+          >
+            Nhập nhanh thưởng KPI
           </button>
         )}
         {k.trang_thai === 'cho_duyet' && la_admin() && (
@@ -556,7 +568,147 @@ function HopThoaiChiTiet(
       {xem_pc !== null && (
         <HopThoaiKePhuCap phieu={xem_pc} khi_dong={() => dat_xem_pc(null)} />
       )}
+      {thuong_kpi && (
+        <HopThoaiThuongKpi
+          ky_id={k.id} phieu={k.phieu}
+          khi_dong={() => dat_thuong_kpi(false)}
+          khi_xong={() => { dat_thuong_kpi(false); nap_lai(); khi_doi(); }}
+        />
+      )}
     </KhungToanMan>
+  );
+}
+
+/**
+ * YC 02 phan B (GD1) — NHAP NHANH THUONG KPI: chon loai khoan, loc theo khoi/phong, dien so tien
+ * cho tung nguoi, kem CHUNG TU duyet, gui mot lan cho ca ky.
+ */
+const LOAI_THUONG_KPI: readonly { ma: string; ten: string }[] = [
+  { ma: 'thuong_kpi_ca_nhan', ten: 'Thưởng KPI cá nhân' },
+  { ma: 'thuong_kpi_phong', ten: 'Thưởng KPI phòng/khối' },
+  { ma: 'hoa_hong_cskh', ten: 'Hoa hồng CSKH' },
+  { ma: 'pc_doanh_so', ten: 'Doanh số rep ADS' },
+  { ma: 'pc_kpi', ten: 'Thưởng KPI (chung, cũ)' },
+];
+function HopThoaiThuongKpi(
+  { ky_id, phieu, khi_dong, khi_xong }:
+  { ky_id: string; phieu: Phieu[]; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [khoan_ma, dat_khoan_ma] = useState(LOAI_THUONG_KPI[0]!.ma);
+  const [loc_khoi, dat_loc_khoi] = useState('');
+  const [loc_phong, dat_loc_phong] = useState('');
+  const [chung_tu, dat_chung_tu] = useState('');
+  const [ap_chung, dat_ap_chung] = useState('');
+  const [so_tien, dat_so_tien] = useState<Record<string, string>>({});
+  const hd = dung_hanh_dong();
+
+  const cac_khoi = [...new Set(phieu.map((p) => p.khoi).filter((x): x is string => x !== null))].sort();
+  const cac_phong = [...new Set(phieu.map((p) => p.phong_ban).filter((x): x is string => x !== null))].sort();
+  const loc = phieu.filter((p) =>
+    (loc_khoi === '' || p.khoi === loc_khoi) && (loc_phong === '' || p.phong_ban === loc_phong));
+
+  const dat_mot = (id: string, v: string): void => dat_so_tien((cu) => ({ ...cu, [id]: v }));
+  const ap_chung_cho_loc = (): void => {
+    const v = ap_chung.trim();
+    if (v === '') return;
+    dat_so_tien((cu) => {
+      const moi = { ...cu };
+      for (const p of loc) moi[p.nhan_vien_id] = v;
+      return moi;
+    });
+  };
+
+  const gui = async (): Promise<void> => {
+    const dong = Object.entries(so_tien)
+      .filter(([, v]) => v.trim() !== '')
+      .map(([nhan_vien_id, v]) => ({ nhan_vien_id, so_tien: Number(v) }))
+      .filter((d) => Number.isFinite(d.so_tien)); // gui ca 0 de GO khoan neu sua nham
+    if (dong.length === 0) return;
+    const ok = await hd.chay(() => goi(`/api/ky-luong/${ky_id}/thuong-kpi-hang-loat`, {
+      method: 'POST', body: { khoan_ma, chung_tu_mo_ta: chung_tu.trim(), dong },
+    }), 'Đã áp thưởng KPI và tính lại kỳ.');
+    if (ok) khi_xong();
+  };
+
+  const du_chung_tu = chung_tu.trim().length >= 3;
+  const so_da_nhap = loc.filter((p) => (so_tien[p.nhan_vien_id] ?? '').trim() !== '').length;
+  const co_nhap = Object.values(so_tien).some((v) => v.trim() !== '');
+
+  return (
+    <HopThoai tieu_de="Nhập nhanh thưởng KPI" khi_dong={khi_dong}>
+      <HopLoi loi={hd.loi} />
+      <div className="luoi luoi-2">
+        <div className="o-nhap">
+          <label htmlFor="tk-khoan">Loại thưởng</label>
+          <select id="tk-khoan" value={khoan_ma} onChange={(e) => dat_khoan_ma(e.target.value)}>
+            {LOAI_THUONG_KPI.map((l) => <option key={l.ma} value={l.ma}>{l.ten}</option>)}
+          </select>
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="tk-ct">Chứng từ duyệt *</label>
+          <input id="tk-ct" value={chung_tu} onChange={(e) => dat_chung_tu(e.target.value)}
+            placeholder="Số/ngày quyết định duyệt thưởng" />
+        </div>
+      </div>
+      <div className="luoi luoi-2">
+        <div className="o-nhap">
+          <label htmlFor="tk-khoi">Lọc theo khối</label>
+          <select id="tk-khoi" value={loc_khoi} onChange={(e) => dat_loc_khoi(e.target.value)}>
+            <option value="">— Tất cả —</option>
+            {cac_khoi.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="tk-phong">Lọc theo phòng ban</label>
+          <select id="tk-phong" value={loc_phong} onChange={(e) => dat_loc_phong(e.target.value)}>
+            <option value="">— Tất cả —</option>
+            {cac_phong.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="hang-nut" style={{ alignItems: 'flex-end' }}>
+        <div className="o-nhap" style={{ flex: 1 }}>
+          <label htmlFor="tk-chung">Áp chung một mức cho danh sách đang lọc (đ)</label>
+          <input id="tk-chung" type="number" min="0" value={ap_chung}
+            onChange={(e) => dat_ap_chung(e.target.value)} placeholder="Ví dụ 500000" />
+        </div>
+        <button type="button" onClick={ap_chung_cho_loc}>Điền hết</button>
+      </div>
+
+      <div className="goi-y" style={{ margin: '0.5rem 0' }}>
+        {loc.length} người đang lọc · đã nhập tiền cho {so_da_nhap} người. Để trống = không đổi;
+        nhập <strong>0</strong> = gỡ khoản này khỏi phiếu.
+      </div>
+
+      <div className="vo-bang" style={{ maxHeight: '40vh', overflow: 'auto' }}>
+        <table className="bang-gon">
+          <thead><tr><th>Mã NV</th><th>Họ tên</th><th>Phòng</th><th>Khối</th>
+            <th className="canh-phai">Thưởng (đ)</th></tr></thead>
+          <tbody>
+            {loc.map((p) => (
+              <tr key={p.id}>
+                <td>{p.ma_nv}</td><td>{p.ho_ten}</td>
+                <td>{p.phong_ban ?? '—'}</td><td>{p.khoi ?? '—'}</td>
+                <td className="canh-phai">
+                  <input type="number" min="0" style={{ width: '9rem' }}
+                    value={so_tien[p.nhan_vien_id] ?? ''}
+                    onChange={(e) => dat_mot(p.nhan_vien_id, e.target.value)} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="hang-nut" style={{ marginTop: '0.75rem' }}>
+        <button className="nut-chinh" disabled={hd.dang_chay || !du_chung_tu || !co_nhap}
+          onClick={() => void gui()}>
+          {hd.dang_chay ? 'Đang áp…' : 'Áp thưởng & tính lại'}
+        </button>
+        <button type="button" onClick={khi_dong}>Hủy</button>
+        {!du_chung_tu && <span className="mo-ta">Cần nhập chứng từ duyệt (≥ 3 ký tự).</span>}
+      </div>
+    </HopThoai>
   );
 }
 
