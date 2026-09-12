@@ -1153,6 +1153,22 @@ function HopThoaiChiTietKhoan(
       ? ban_dau.map((c) => moi(c.ly_do, String(Number(c.so_tien))))
       : [moi()]),
   );
+  // Chua co chi tiet tay -> hoi HE THONG goi y (vd cac vi pham ky luat cua nguoi nay trong ky):
+  // nap san danh sach de nhan su khoi go lai. `nguon` cho biet da nap tu he thong.
+  const [nguon, dat_nguon] = useState<string | null>(null);
+  useEffect(() => {
+    if (ban_dau.length > 0) return;
+    let huy = false;
+    void goi<{ dong: { ly_do: string; so_tien: number }[] }>(
+      `/api/phieu-luong/${phieu_id}/khoan/${khoan_ma}/goi-y`,
+    ).then((kq) => {
+      if (huy || kq.dong.length === 0) return;
+      dat_dong(kq.dong.map((c) => moi(c.ly_do, String(Number(c.so_tien)))));
+      dat_nguon('Đã nạp từ hồ sơ kỷ luật của hệ thống — kiểm tra rồi sửa nếu cần.');
+    }).catch(() => { /* khong co goi y thi thoi, de trong */ });
+    return () => { huy = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const hd = dung_hanh_dong();
 
   const dat = (k: number, khoa: 'ly_do' | 'so_tien', v: string): void => {
@@ -1172,6 +1188,7 @@ function HopThoaiChiTietKhoan(
         Mỗi lệnh một dòng (lý do + số tiền). Tổng khoản tự cộng theo các dòng. Xoá hết dòng
         rồi Lưu để bỏ hẳn khoản này.
       </p>
+      {nguon !== null && <p className="hop-luu-y">{nguon}</p>}
       <table className="bang-gon">
         <thead>
           <tr>

@@ -1088,6 +1088,47 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     };
   });
 
+  // GOI Y chi tiet tu HE THONG cho mot khoan. Hien chi khoan giam thuong ky luat co nguon: gom
+  // tung vi pham tu ho_so_ky_luat da_ap_dung cua dung nguoi + dung ky, thanh danh sach {ly_do,
+  // so_tien} de form Tach chi tiet nap san — khong bat nhan su go lai tay nhung gi may da biet.
+  app.get('/phieu-luong/:id/khoan/:ma/goi-y', { preHandler: can_nhan_su }, async (req) => {
+    const id = lay_id(req);
+    const ma = chuoi_bat_buoc((req.params as Record<string, unknown>), 'ma', { toi_da: 40 });
+
+    const p = await truy_van_mot<{ nhan_vien_id: string; thang: string }>(
+      `select p.nhan_vien_id, k.thang from phieu_luong p
+         join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
+      [id],
+    );
+    if (p === null) throw new LoiKhongTim('Không tìm thấy phiếu lương.');
+
+    // Chi khoan giam thuong ky luat moi co nguon he thong. Khoan khac: khong goi y.
+    if (ma !== 'tru_giam_thuong_kl') return { dong: [] };
+
+    // Gom chi_tiet cua cac ho so da_ap_dung (nhung ho so THUC SU thanh tien). Moi vi pham la mot
+    // muc {ten, tien}; gom theo ten (loai vi pham) de "Di muon x3" thay vi ba dong giong nhau.
+    const ho_so = await truy_van<{ chi_tiet: { ten?: string; tien?: number }[] | null }>(
+      `select chi_tiet from ho_so_ky_luat
+        where nhan_vien_id = $1 and ky = $2 and trang_thai = 'da_ap_dung'`,
+      [p.nhan_vien_id, p.thang],
+    );
+    const gom = new Map<string, { so_tien: number; so_lan: number }>();
+    for (const h of ho_so) {
+      for (const c of h.chi_tiet ?? []) {
+        const ten = (c.ten ?? '').trim();
+        const tien = Number(c.tien ?? 0);
+        if (ten === '' || tien <= 0) continue;   // dong nhac nho (0d) khong phai lenh giam tru
+        const cu = gom.get(ten) ?? { so_tien: 0, so_lan: 0 };
+        gom.set(ten, { so_tien: cu.so_tien + tien, so_lan: cu.so_lan + 1 });
+      }
+    }
+    const dong = [...gom.entries()].map(([ten, v]) => ({
+      ly_do: v.so_lan > 1 ? `${ten} (×${String(v.so_lan)})` : ten,
+      so_tien: v.so_tien,
+    }));
+    return { dong };
+  });
+
   /**
    * YC 02 phan B (GD1) — NHAP NHANH THUONG KPI cho ca ky theo tung nhan vien (loc san theo
    * khoi/phong o giao dien). Ghi khoan GO TAY vao tung phieu roi tinh lai ky mot lan.
