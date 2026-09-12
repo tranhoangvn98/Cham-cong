@@ -243,28 +243,31 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
               )}
               {khau_tru.map((k) => (
                 (k.chi_tiet !== undefined && k.chi_tiet.length > 0) ? (
-                  // Khoan da tach nhieu lenh: hien tung dong rieng roi dong tong.
+                  // Khoan co liet ke tung lan (ngay + gio) — chi doc. Tong o dong dau.
                   <Fragment key={k.khoan_ma}>
-                    <tr><td colSpan={2}><strong>{k.ten}</strong></td></tr>
+                    <tr>
+                      <td><strong>{k.ten}</strong></td>
+                      <td className="phai"><strong>{tien(k.thanh_tien)}</strong></td>
+                    </tr>
                     {k.chi_tiet.map((c) => (
                       <Fragment key={c.id}>
-                        <tr>
-                          <td style={{ paddingLeft: 18 }}>— {c.ly_do}</td>
-                          <td className="phai">{tien(c.so_tien)}</td>
-                        </tr>
+                        {c.ly_do !== '' && (
+                          <tr>
+                            <td style={{ paddingLeft: 18 }}>— {c.ly_do}</td>
+                            <td className="phai">{tien(c.so_tien)}</td>
+                          </tr>
+                        )}
                         {(c.cac_lan ?? []).map((mo_ta, i) => (
                           // eslint-disable-next-line react/no-array-index-key
                           <tr key={`${c.id}:${String(i)}`}>
-                            <td style={{ paddingLeft: 36 }} className="mo-ta">• {mo_ta}</td>
+                            <td style={{ paddingLeft: c.ly_do !== '' ? 36 : 18 }} className="mo-ta">
+                              • {mo_ta}
+                            </td>
                             <td />
                           </tr>
                         ))}
                       </Fragment>
                     ))}
-                    <tr>
-                      <td style={{ paddingLeft: 18 }} className="mo-ta">Cộng</td>
-                      <td className="phai"><em>{tien(k.thanh_tien)}</em></td>
-                    </tr>
                   </Fragment>
                 ) : (
                   <tr key={k.khoan_ma}>

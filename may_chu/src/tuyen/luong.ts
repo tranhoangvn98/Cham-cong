@@ -16,7 +16,9 @@ import {
 } from '../luong/ban_chot.ts';
 import { lech_luong_ky } from '../luong/kiem_lech_luong.ts';
 import { KHOAN_GIAM_THUONG } from '../ky_luat/xu_ly.ts';
-import { chi_tiet_ky_luat_theo_phieu } from '../luong/chi_tiet_ky_luat.ts';
+import {
+  chi_tiet_ky_luat_theo_phieu, chi_tiet_di_muon_theo_phieu, type DongLietKe,
+} from '../luong/chi_tiet_ky_luat.ts';
 import { bang_luong_xuat } from '../luong/bang_xuat.ts';
 import { xuat_bang_luong_erp } from '../luong/xuat_mau_erp.ts';
 import { gui_phieu_luong_ky } from '../luong/phieu_luong_email.ts';
@@ -490,19 +492,28 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         order by d.loai desc, d.thu_tu, d.ten`,
       [k.id],
     );
-    // Chi tiet giam thuong ky luat: LIET KE tung LAN phat co NGAY + GIO (tu ho_so_ky_luat
-    // da_ap_dung + bang_cong_ngay), CHI DOC. Dinh kem vao dong khoan 'tru_giam_thuong_kl'.
-    const ct_theo_phieu = await chi_tiet_ky_luat_theo_phieu(
-      phieu.map((p) => String(p['id'])),
-    );
+    // Chi tiet tung LAN phat co NGAY + GIO (tu ho_so_ky_luat da_ap_dung + bang_cong_ngay), CHI
+    // DOC. Dinh kem vao dung dong khoan: giam thuong ky luat, phat di muon, tru nua ngay do muon.
+    const ids = phieu.map((p) => String(p['id']));
+    const ct_ky_luat = await chi_tiet_ky_luat_theo_phieu(ids);
+    const ct_di_muon = await chi_tiet_di_muon_theo_phieu(ids);
+    const lan_thanh_dong = (id: string, cac_lan: string[], so_tien: unknown): DongLietKe[] =>
+      (cac_lan.length === 0 ? [] : [{
+        id: `${id}:lan`, ly_do: '', so_tien: String(so_tien ?? '0'), thu_tu: 0, cac_lan,
+      }]);
 
     const theo_phieu = new Map<string, Record<string, unknown>[]>();
     for (const x of khoan) {
       const id = String(x['phieu_luong_id']);
-      const voi_ct = {
-        ...x,
-        chi_tiet: x['khoan_ma'] === KHOAN_GIAM_THUONG ? (ct_theo_phieu.get(id) ?? []) : [],
-      };
+      const ma = x['khoan_ma'];
+      let chi_tiet: DongLietKe[] = [];
+      if (ma === KHOAN_GIAM_THUONG) chi_tiet = ct_ky_luat.get(id) ?? [];
+      else if (ma === 'tru_di_muon') {
+        chi_tiet = lan_thanh_dong(id, ct_di_muon.get(id)?.tang_50k ?? [], x['thanh_tien']);
+      } else if (ma === 'tru_nua_ngay') {
+        chi_tiet = lan_thanh_dong(id, ct_di_muon.get(id)?.tang_nua_ngay ?? [], x['thanh_tien']);
+      }
+      const voi_ct = { ...x, chi_tiet };
       const ds = theo_phieu.get(id);
       if (ds === undefined) theo_phieu.set(id, [voi_ct]); else ds.push(voi_ct);
     }

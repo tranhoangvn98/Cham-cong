@@ -168,3 +168,58 @@ export async function chi_tiet_ky_luat_theo_phieu(
   }
   return map;
 }
+
+export interface ChiTietDiMuon {
+  /** Cac ngay vao trong tang phat 50k [moc_50k, moc_nua_ngay). */
+  tang_50k: string[];
+  /** Cac ngay vao tu moc_nua_ngay tro di (tru nua ngay luong). */
+  tang_nua_ngay: string[];
+}
+
+/**
+ * LIET KE tung ngay di muon bi phat (khoan `tru_di_muon` / `tru_nua_ngay`) — CHI DOC. Phan tang
+ * theo gio vao THUC TE so voi moc phat hieu luc cua tung nguoi (nhan_vien ghi de, khong thi lay
+ * tham so ky). Gio vao lam tron xuong phut (bo giay) — dung ranh gioi 08:11:00 nhu engine phat.
+ */
+export async function chi_tiet_di_muon_theo_phieu(
+  phieu_ids: readonly string[],
+): Promise<Map<string, ChiTietDiMuon>> {
+  const map = new Map<string, ChiTietDiMuon>();
+  if (phieu_ids.length === 0) return map;
+
+  const rows = await truy_van<{
+    phieu_luong_id: string; ngay_txt: string; vao_txt: string;
+    vao_phut: number; moc_50k: number; moc_nua: number;
+  }>(
+    `select p.id as phieu_luong_id,
+            to_char(bcn.ngay, 'DD/MM') as ngay_txt,
+            to_char(bcn.gio_vao at time zone 'Asia/Ho_Chi_Minh', 'HH24:MI') as vao_txt,
+            (extract(hour   from bcn.gio_vao at time zone 'Asia/Ho_Chi_Minh') * 60
+           + extract(minute from bcn.gio_vao at time zone 'Asia/Ho_Chi_Minh'))::int as vao_phut,
+            (extract(hour   from coalesce(nv.di_muon_moc_50k, ts.di_muon_moc_50k)) * 60
+           + extract(minute from coalesce(nv.di_muon_moc_50k, ts.di_muon_moc_50k)))::int as moc_50k,
+            (extract(hour   from coalesce(nv.di_muon_moc_nua_ngay, ts.di_muon_moc_nua_ngay)) * 60
+           + extract(minute from coalesce(nv.di_muon_moc_nua_ngay, ts.di_muon_moc_nua_ngay)))::int
+              as moc_nua
+       from phieu_luong p
+       join ky_luong k on k.id = p.ky_luong_id
+       join nhan_vien nv on nv.id = p.nhan_vien_id
+       left join tham_so_luong ts on ts.id = k.tham_so_id
+       join bang_cong_ngay bcn on bcn.nhan_vien_id = p.nhan_vien_id
+            and to_char(bcn.ngay, 'YYYY-MM') = k.thang
+            and bcn.trang_thai = 'co_mat' and bcn.gio_vao is not null
+      where p.id = any($1::uuid[])
+      order by bcn.ngay`,
+    [[...phieu_ids]],
+  );
+
+  for (const r of rows) {
+    if (r.moc_50k === null || r.vao_phut < r.moc_50k) continue;   // trong dung sai, khong phat
+    const ct = map.get(r.phieu_luong_id) ?? { tang_50k: [], tang_nua_ngay: [] };
+    const cau = `${r.ngay_txt}: vào ${r.vao_txt}`;
+    if (r.moc_nua !== null && r.vao_phut >= r.moc_nua) ct.tang_nua_ngay.push(cau);
+    else ct.tang_50k.push(cau);
+    map.set(r.phieu_luong_id, ct);
+  }
+  return map;
+}

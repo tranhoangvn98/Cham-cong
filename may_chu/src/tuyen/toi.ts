@@ -22,7 +22,9 @@ import { don_cua_nhan_vien, huy_don, tao_don } from '../don_tu/nghiep_vu.ts';
 import { tu_dong_quyet_don, TU_NGAY_AP } from '../don_tu/tu_dong_duyet.ts';
 import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
 import { email_nhan_vien_tra_loi } from '../luong/khieu_nai_email.ts';
-import { chi_tiet_ky_luat_theo_phieu } from '../luong/chi_tiet_ky_luat.ts';
+import {
+  chi_tiet_ky_luat_theo_phieu, chi_tiet_di_muon_theo_phieu, type DongLietKe,
+} from '../luong/chi_tiet_ky_luat.ts';
 import {
   chuoi, chuoi_bat_buoc, gio, khoang_ngay, luan_ly, ngay_bat_buoc, than, trong_tap, uuid,
   LoiDauVao, LoiKhongQuyen, LoiKhongTim, LoiXungDot,
@@ -245,20 +247,28 @@ async function phieu_luong_cua_toi(
       order by kl.loai, kl.ten`,
     [ids],
   );
-  // LIET KE tung LAN giam thuong ky luat (chi doc) — may tu tong hop tu ho_so_ky_luat da_ap_dung
-  // + bang_cong_ngay cua chinh nguoi nay + dung ky, moi lan co NGAY + GIO. De nguoi lao dong biet
-  // bi tru vi loi nao, ngay gio nao — khong phai mot cuc gop.
-  const ct_theo_phieu = await chi_tiet_ky_luat_theo_phieu(ids);
+  // LIET KE tung LAN co NGAY + GIO (chi doc): giam thuong ky luat (tu ho_so_ky_luat da_ap_dung),
+  // phat di muon va tru nua ngay do muon (tu bang_cong_ngay). De nguoi lao dong biet bi tru vi
+  // loi nao, ngay gio nao — khong phai mot cuc gop.
+  const ct_ky_luat = await chi_tiet_ky_luat_theo_phieu(ids);
+  const ct_di_muon = await chi_tiet_di_muon_theo_phieu(ids);
+  const lan_thanh_dong = (id: string, cac_lan: string[], so_tien: string): DongLietKe[] =>
+    (cac_lan.length === 0 ? [] : [{
+      id: `${id}:lan`, ly_do: '', so_tien, thu_tu: 0, cac_lan,
+    }]);
 
   const theo_phieu = new Map<string, Record<string, unknown>[]>();
   for (const k of khoan) {
     const { phieu_luong_id, ...con } = k;
     const ds = theo_phieu.get(phieu_luong_id) ?? [];
-    // Chi khoan giam thuong ky luat moi co danh sach lenh chi tiet.
-    ds.push({
-      ...con,
-      chi_tiet: k.khoan_ma === 'tru_giam_thuong_kl' ? (ct_theo_phieu.get(phieu_luong_id) ?? []) : [],
-    });
+    let chi_tiet: DongLietKe[] = [];
+    if (k.khoan_ma === 'tru_giam_thuong_kl') chi_tiet = ct_ky_luat.get(phieu_luong_id) ?? [];
+    else if (k.khoan_ma === 'tru_di_muon') {
+      chi_tiet = lan_thanh_dong(phieu_luong_id, ct_di_muon.get(phieu_luong_id)?.tang_50k ?? [], k.thanh_tien);
+    } else if (k.khoan_ma === 'tru_nua_ngay') {
+      chi_tiet = lan_thanh_dong(phieu_luong_id, ct_di_muon.get(phieu_luong_id)?.tang_nua_ngay ?? [], k.thanh_tien);
+    }
+    ds.push({ ...con, chi_tiet });
     theo_phieu.set(phieu_luong_id, ds);
   }
   return phieu.map((p) => ({ ...p, khoan: theo_phieu.get(p.id) ?? [] }));

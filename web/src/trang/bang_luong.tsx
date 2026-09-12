@@ -1082,36 +1082,40 @@ function HopThoaiKeKhoanTru(
         <table className="bang-gon">
           <tbody>
             {cac_tru.map((k) => {
-              // Khoan giam thuong ky luat: LIET KE tung lenh phat he thong tong hop (chi doc).
-              const tong_ct = k.chi_tiet.reduce((a, c) => a + Number(c.so_tien), 0);
-              const lech = k.chi_tiet.length > 0 && Math.round(tong_ct) !== Math.round(Number(k.thanh_tien));
+              // Dong con CO ly_do (breakdown ky luat) — de canh bao neu tong lech so dang tru.
+              // Dong "lan" cua di muon co ly_do rong (chi liet ke ngay/gio), khong tinh vao day.
+              const dong_tien = k.chi_tiet.filter((c) => c.ly_do !== '');
+              const tong_ct = dong_tien.reduce((a, c) => a + Number(c.so_tien), 0);
+              const lech = dong_tien.length > 0
+                && Math.round(tong_ct) !== Math.round(Number(k.thanh_tien));
               return k.chi_tiet.length > 0 ? (
                 <Fragment key={k.khoan_ma}>
                   <tr>
-                    <td colSpan={2}>
+                    <td>
                       <strong>{k.ten}</strong>
                       {k.tu_chinh_sach && <span className="nhan-mo"> theo chính sách</span>}
                     </td>
+                    <td className="canh-phai"><strong>{tien(k.thanh_tien)} đ</strong></td>
                   </tr>
                   {k.chi_tiet.map((c) => (
                     <Fragment key={c.id}>
-                      <tr>
-                        <td style={{ paddingLeft: 20 }}>— {c.ly_do}</td>
-                        <td className="canh-phai">{tien(c.so_tien)} đ</td>
-                      </tr>
+                      {c.ly_do !== '' && (
+                        <tr>
+                          <td style={{ paddingLeft: 20 }}>— {c.ly_do}</td>
+                          <td className="canh-phai">{tien(c.so_tien)} đ</td>
+                        </tr>
+                      )}
                       {(c.cac_lan ?? []).map((mo_ta, i) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <tr key={`${c.id}:${String(i)}`}>
-                          <td style={{ paddingLeft: 40 }} className="mo-ta">• {mo_ta}</td>
+                          <td style={{ paddingLeft: c.ly_do !== '' ? 40 : 20 }} className="mo-ta">
+                            • {mo_ta}
+                          </td>
                           <td />
                         </tr>
                       ))}
                     </Fragment>
                   ))}
-                  <tr>
-                    <td style={{ paddingLeft: 20 }} className="mo-ta">Cộng {k.ten.toLowerCase()}</td>
-                    <td className="canh-phai"><em>{tien(k.thanh_tien)} đ</em></td>
-                  </tr>
                   {lech && (
                     <tr>
                       <td colSpan={2} className="hop-luu-y">
