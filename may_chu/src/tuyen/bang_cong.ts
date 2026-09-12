@@ -326,9 +326,22 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
       [id],
     );
     if (moc === null) throw new LoiKhongTim('Không tìm thấy ngày nghỉ bù.');
-    const so = await tinh_lai_khoang(moc.tu, moc.den);
+
+    // Cau hinh lam bu la quyet dinh LICH toan cong ty, nen "Tinh lai" phai ghi de duoc CA cac
+    // ngay dang khoa/sua-tay trong dung khoang lam bu (vd 31/8 tung nhap tay ngay_le) — khong bat
+    // nhan su di mo khoa bang tay. Chan an toan: neu ky luong thang do DA DUYET / DA TRA thi tu
+    // choi, phai thu-hoi-duyet truoc de khong lam lech phieu da chot.
+    const cac_thang = [...new Set([moc.tu.slice(0, 7), moc.den.slice(0, 7)])];
+    for (const thang of cac_thang) {
+      if (await ky_da_chot_luong(thang)) {
+        throw new LoiXungDot(
+          `Kỳ lương tháng ${thang} đã duyệt/đã trả — thu hồi duyệt kỳ đó trước khi áp làm bù.`,
+        );
+      }
+    }
+    const so = await tinh_lai_khoang(moc.tu, moc.den, undefined, true);
     await ghi_nhat_ky(nd.sub, 'tinh_lai_lam_bu', 'ngay_lam_bu', id,
-      { tu: moc.tu, den: moc.den, so_ngay: so }, req.ip);
+      { tu: moc.tu, den: moc.den, so_ngay: so, bo_qua_chot: true }, req.ip);
     return { ok: true, so_ngay_da_tinh: so, tu: moc.tu, den: moc.den };
   });
 

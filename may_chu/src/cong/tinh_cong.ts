@@ -69,14 +69,6 @@ export async function tinh_lai_ngay(
   );
   if (nv === null) return null;
 
-  if (!bo_qua_chot) {
-    const da_chot = await truy_van_mot<{ da_chot: boolean }>(
-      'select da_chot from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
-      [nhan_vien_id, ngay],
-    );
-    if (da_chot?.da_chot === true) return null;
-  }
-
   // --- LAM BU (YC-03): ngay nay la NGAY NGUON duoc nghi? Cong cua no = 0 — da PHAN BO ve cac
   // BUOI lam bu tren cac ngay_bu (vd 31/8 phan ve chieu T7 22/8 + 29/8). Khong tu cong o day,
   // khong con nam trong tu so. (Cong duoc kiem tren chinh cac ngay_bu — xem khoi kq ben duoi.)
@@ -85,6 +77,25 @@ export async function tinh_lai_ngay(
   const lam_bu = nv.lich_nghi_ma === 'vn'
     ? await truy_van_mot<{ id: string }>('select id from ngay_lam_bu where ngay_nghi = $1', [ngay])
     : null;
+  const la_ngay_bu = nv.lich_nghi_ma === 'vn'
+    && (await truy_van_mot<{ co: boolean }>(
+      'select exists(select 1 from buoi_lam_bu where ngay = $1) as co', [ngay]))?.co === true;
+
+  // Cau hinh lam bu la quyet dinh LICH toan cong ty. Khi tinh lai CUONG BUC (bo_qua_chot — chi
+  // endpoint "Tinh lai lam bu" truyen), cho ghi de CA ngay dang khoa / sua-tay — NHUNG chi dung
+  // cac ngay lam bu cua nguoi theo lich VN (nguon nghi bu + cac ngay_bu T7). Ngay thuong va
+  // nguoi theo lich khac (vd Kho TQ) VAN giu khoa: khong bi tinh lai lam mat du lieu tay. Nho vay
+  // ap lam bu bang LOGIC, khong con phai mo khoa bang_cong_ngay bang tay.
+  const cho_ghi_de = bo_qua_chot && (lam_bu !== null || la_ngay_bu);
+
+  if (!cho_ghi_de) {
+    const da_chot = await truy_van_mot<{ da_chot: boolean }>(
+      'select da_chot from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+      [nhan_vien_id, ngay],
+    );
+    if (da_chot?.da_chot === true) return null;
+  }
+
   if (lam_bu !== null) {
     const kq_lb: KetQuaTinhCong = {
       trang_thai: 'lam_bu', gio_vao: null, gio_ra: null,
@@ -103,8 +114,8 @@ export async function tinh_lai_ngay(
            gio_vao = null, gio_ra = null, phut_lam = 0, phut_muon = 0, phut_ve_som = 0,
            phut_ot = 0, so_cong = excluded.so_cong, co_dieu_chinh = false,
            ghi_chu = excluded.ghi_chu, tinh_luc = now()
-         where bang_cong_ngay.da_chot = false`,
-        [nhan_vien_id, ngay, nv.ca_lam_id, kq_lb.so_cong, kq_lb.ghi_chu],
+         where bang_cong_ngay.da_chot = false or $6`,
+        [nhan_vien_id, ngay, nv.ca_lam_id, kq_lb.so_cong, kq_lb.ghi_chu, cho_ghi_de],
       );
       await ghi_su_kien('bang_cong.da_chot', {
         nhan_vien_id, ma_nv: nv.ma_nv, ma_erp: nv.ma_erp, ngay,
@@ -247,11 +258,11 @@ export async function tinh_lai_ngay(
          co_dieu_chinh = excluded.co_dieu_chinh,
          ghi_chu       = excluded.ghi_chu,
          tinh_luc      = now()
-       where bang_cong_ngay.da_chot = false`,
+       where bang_cong_ngay.da_chot = false or $14`,
       [
         nhan_vien_id, ngay, nv.ca_lam_id, kq.trang_thai, kq.gio_vao, kq.gio_ra,
         kq.phut_lam, kq.phut_muon, kq.phut_ve_som, kq.phut_ot, kq.so_cong,
-        kq.co_dieu_chinh, kq.ghi_chu,
+        kq.co_dieu_chinh, kq.ghi_chu, cho_ghi_de,
       ],
     );
 
@@ -336,11 +347,12 @@ async function ghi_ra_vao(
 /** Tinh lai nhieu (nhan vien, ngay). Chay tuan tu de khong lam nghen pool ket noi. */
 export async function tinh_lai_nhieu(
   cap: Iterable<{ nhan_vien_id: string; ngay: string }>,
+  bo_qua_chot = false,
 ): Promise<number> {
   let so = 0;
   for (const c of cap) {
     try {
-      const kq = await tinh_lai_ngay(c.nhan_vien_id, c.ngay);
+      const kq = await tinh_lai_ngay(c.nhan_vien_id, c.ngay, bo_qua_chot);
       if (kq !== null) so++;
     } catch (loi) {
       // Mot nhan vien loi khong duoc lam dung ca lo.
@@ -361,6 +373,7 @@ export async function tinh_lai_khoang(
   tu: string,
   den: string,
   nhan_vien_id?: string,
+  bo_qua_chot = false,
 ): Promise<number> {
   const ds_ngay = danh_sach_ngay(tu, den);
   const nv = nhan_vien_id !== undefined
@@ -369,7 +382,7 @@ export async function tinh_lai_khoang(
 
   const cap: { nhan_vien_id: string; ngay: string }[] = [];
   for (const n of nv) for (const ng of ds_ngay) cap.push({ nhan_vien_id: n.id, ngay: ng });
-  return tinh_lai_nhieu(cap);
+  return tinh_lai_nhieu(cap, bo_qua_chot);
 }
 
 /**
