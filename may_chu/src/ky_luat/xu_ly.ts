@@ -424,6 +424,23 @@ export async function gom_va_xu_ly_thang(
     loai_ma: d.loai_ma, loai_ten: d.loai_ten, muc_tru_tien: Number(d.muc_tru_tien_txt),
   })));
 
+  // Ho so TU DONG cua ky khong con vi pham nao nua (vd doi nguong di muon lam vi pham bien mat)
+  // -> phai HA VE 0, khong de treo tien giam thuong cu. Them "nhom rong" (tong_tien = 0) cho moi
+  // (nguoi, muc do) dang co ho so tu dong ma khong con trong `nhom`. xu_ly_mot_ho_so se ha ho so
+  // do ve nhac_nho va go dong giam thuong. Ho so DA CO NGUOI DUYET van duoc guard giu nguyen.
+  const co_nhom = new Set(nhom.map((n) => `${n.nhan_vien_id}::${n.muc_do}`));
+  const ho_so_tu_dong = await truy_van<{ nhan_vien_id: string; muc_do: MucDo }>(
+    `select nhan_vien_id, muc_do from ho_so_ky_luat
+      where ky = $1 and tu_dong = true and nguoi_duyet is null
+        and trang_thai in ('moi','da_nhac','cho_duyet','da_ap_dung')`,
+    [thang],
+  );
+  for (const h of ho_so_tu_dong) {
+    if (co_nhom.has(`${h.nhan_vien_id}::${h.muc_do}`)) continue;
+    nhom.push({ nhan_vien_id: h.nhan_vien_id, muc_do: h.muc_do, so_vi_pham: 0, tong_tien: 0,
+      chi_tiet: [] });
+  }
+
   const kq: KetQuaGom = {
     so_vi_pham: ds.length, so_ho_so: 0, so_nhac_nho: 0, so_giam_thuong: 0, so_cho_duyet: 0,
     tong_tien: 0,
