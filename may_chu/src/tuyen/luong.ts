@@ -465,10 +465,12 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
   app.get('/ky-luong/:id', { preHandler: can_nhan_su }, async (req) => {
     const k = await lay_ky(lay_id(req));
     const phieu = await truy_van<Record<string, unknown>>(
-      `select p.*, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban
+      `select p.*, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+              nv.khoi_id, kh.ten as khoi
          from phieu_luong p
          join nhan_vien nv on nv.id = p.nhan_vien_id
          left join phong_ban pb on pb.id = nv.phong_ban_id
+         left join khoi kh on kh.id = nv.khoi_id
         where p.ky_luong_id = $1
         order by pb.ten nulls last, nv.ma_nv`,
       [k.id],
@@ -960,6 +962,78 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         [id],
       ),
     };
+  });
+
+  /**
+   * YC 02 phan B (GD1) — NHAP NHANH THUONG KPI cho ca ky theo tung nhan vien (loc san theo
+   * khoi/phong o giao dien). Ghi khoan GO TAY vao tung phieu roi tinh lai ky mot lan.
+   *
+   * Bat buoc CHUNG TU duyet (nhat quan YC 01) va ghi nguoi thao tac. Chi admin. So tien = 0 thi
+   * GO khoan do khoi phieu (de sua nham). Kho da chot (khong con 'nhap') thi khoa.
+   */
+  const KHOAN_THUONG_KPI = [
+    'thuong_kpi_ca_nhan', 'thuong_kpi_phong', 'hoa_hong_cskh', 'pc_doanh_so', 'pc_kpi',
+  ] as const;
+  app.post('/ky-luong/:id/thuong-kpi-hang-loat', { preHandler: can_admin }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const k = await lay_ky(lay_id(req));
+    if (!SUA_DUOC.has(k.trang_thai)) {
+      throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${k.trang_thai}" nên đã khóa sửa.`);
+    }
+    const b = than(req.body);
+    const khoan_ma = trong_tap(b, 'khoan_ma', KHOAN_THUONG_KPI, { bat_buoc: true });
+    // Chung tu duyet bat buoc — thuong thanh tien phai co can cu (YC 01).
+    const chung_tu_mo_ta = chuoi_bat_buoc(b, 'chung_tu_mo_ta', { toi_da: 300, toi_thieu: 3 });
+    const dong = b['dong'];
+    if (!Array.isArray(dong) || dong.length === 0) throw new LoiDauVao('Thiếu danh sách "dong".');
+    if (dong.length > 500) throw new LoiDauVao('Tối đa 500 dòng mỗi lần.');
+
+    const ds: { nhan_vien_id: string; so_tien: number; ghi_chu: string | null }[] = [];
+    for (const raw of dong) {
+      const r = than(raw);
+      const nhan_vien_id = uuid_bat_buoc(r, 'nhan_vien_id');
+      if (ds.some((x) => x.nhan_vien_id === nhan_vien_id)) {
+        throw new LoiDauVao('Một nhân viên xuất hiện hai lần trong danh sách.');
+      }
+      ds.push({
+        nhan_vien_id, so_tien: so_tien(r, 'so_tien'), ghi_chu: chuoi(r, 'ghi_chu', { toi_da: 500 }),
+      });
+    }
+
+    const khong_co_phieu: string[] = [];
+    let so_ap = 0;
+    await trong_giao_dich(async (khach) => {
+      for (const d of ds) {
+        const pl = (await khach.query<{ id: string }>(
+          'select id from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2',
+          [k.id, d.nhan_vien_id],
+        )).rows[0];
+        if (pl === undefined) { khong_co_phieu.push(d.nhan_vien_id); continue; }
+        if (d.so_tien <= 0) {
+          await khach.query(
+            `delete from phieu_luong_khoan
+              where phieu_luong_id = $1 and khoan_ma = $2 and tu_chinh_sach = false`,
+            [pl.id, khoan_ma],
+          );
+        } else {
+          await khach.query(
+            `insert into phieu_luong_khoan
+               (phieu_luong_id, khoan_ma, so_luong, thanh_tien, ghi_chu, tu_chinh_sach)
+             values ($1,$2,null,$3,$4,false)
+             on conflict (phieu_luong_id, khoan_ma) do update set
+               so_luong = null, thanh_tien = excluded.thanh_tien,
+               ghi_chu = excluded.ghi_chu, tu_chinh_sach = false`,
+            [pl.id, khoan_ma, d.so_tien, d.ghi_chu ?? chung_tu_mo_ta],
+          );
+        }
+        so_ap++;
+      }
+    });
+    // Tinh lai ca ky de tong khop tung dong.
+    await tinh_ky_luong(k.id, k.thang);
+    await ghi_nhat_ky(nd.sub, 'thuong_kpi_hang_loat', 'ky_luong', k.id,
+      { khoan_ma, chung_tu_mo_ta, so_ap, so_dong: ds.length, khong_co_phieu }, req.ip);
+    return { ok: true, so_ap, khong_co_phieu };
   });
 
   // ============================================================ phieu luong cua toi
