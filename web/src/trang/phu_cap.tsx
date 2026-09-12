@@ -73,8 +73,15 @@ export function hom_nay(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * Khoan khai theo QUY (500.000/quy) nhung tra deu 3 thang -> ~166.667/thang.
+ * Phai KHOP voi KHOAN_THEO_QUY o may_chu/src/luong/chinh_sach.ts (backend chia 3).
+ */
+const KHOAN_THEO_QUY = new Set(['pc_trang_phuc']);
+
 /** Truong toi thieu de mo ta mot muc chinh sach (dung chung ca nhan + khoi). */
 export interface MucChinhSach {
+  khoan_ma?: string;
   cach_tinh: KhoanDanhMuc['cach_tinh'];
   nguon_so_luong: 'co_dinh' | 'theo_cong';
   so_luong: string | null;
@@ -85,7 +92,15 @@ export interface MucChinhSach {
 
 /** Mot dong chinh sach ra so tien nhu the nao — cau nay phai doc duoc ma khong mo hop thoai. */
 export function mo_ta_muc(cs: MucChinhSach): ReactNode {
-  if (cs.cach_tinh === 'nhap_tay') return <>{tien(cs.so_tien)} đ / tháng</>;
+  if (cs.cach_tinh === 'nhap_tay') {
+    // Khoan theo quy: hien "/ quy" + so tra thuc te moi thang (backend chia 3), tranh
+    // hieu nham la tra ca 500k moi thang.
+    if (cs.khoan_ma !== undefined && KHOAN_THEO_QUY.has(cs.khoan_ma)) {
+      const thang = Math.round(Number(cs.so_tien ?? 0) / 3);
+      return <>{tien(cs.so_tien)} đ / quý <span className="nhan-canh-bao">(≈{tien(thang)} đ/tháng)</span></>;
+    }
+    return <>{tien(cs.so_tien)} đ / tháng</>;
+  }
 
   const dg = cs.don_gia ?? cs.don_gia_danh_muc;
   const rieng = cs.don_gia !== null;
