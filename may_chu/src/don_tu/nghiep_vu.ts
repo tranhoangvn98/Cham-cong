@@ -263,6 +263,13 @@ export interface KetQuaQuyet {
 export async function quyet_don(
   id: string, quyet: 'da_duyet' | 'tu_choi', nguoi_duyet_id: string, ghi_chu: string | null,
 ): Promise<KetQuaQuyet> {
+  // Moi quyet dinh phai co nguoi duyet ro rang. Duyet tu dong (khong co nguoi bam) phai truyen id
+  // tai khoan he thong (id_tai_khoan_he_thong), KHONG duoc de NULL/rong — mot don da_duyet ma
+  // khong biet AI duyet la du lieu khong ro rang (ban dieu hanh chot).
+  if (nguoi_duyet_id === null || nguoi_duyet_id === undefined || nguoi_duyet_id === '') {
+    throw new LoiDauVao('Không thể quyết đơn mà không rõ người duyệt. Duyệt tự động phải gán tài '
+      + 'khoản hệ thống.');
+  }
   const d = await don_theo_id(id);
   if (d === null) throw new LoiKhongTim('Không tìm thấy đơn.');
   if (d.trang_thai !== 'cho_duyet') {

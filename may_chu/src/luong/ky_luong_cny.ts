@@ -52,7 +52,8 @@ export async function tinh_ky_luong_cny(ky_luong_id: string, thang: string): Pro
   const le_cua = (lich: string): Set<string> => le_theo_lich.get(lich) ?? new Set<string>();
 
   // Nhan su che_do_luong = 'tq': muc luong CNY theo quyet_dinh_luong_cny moi nhat co hieu luc;
-  // cong thuc lay tu bang_cong_ngay (thu Bay nhan he_so_t7 nhu VND).
+  // cong thuc = tong so_cong (KHONG nhan he so thu Bay — so_cong da phan anh nua ngay; he so thu
+  // Bay chi cho cong chuan, nhu ben VND).
   const ds = await truy_van<DongNhanVienCny>(
     `select nv.id                                            as nhan_vien_id,
             coalesce(ql.luong_co_ban, 0)::float8                  as luong_co_ban,
@@ -69,14 +70,13 @@ export async function tinh_ky_luong_cny(ky_luong_id: string, thang: string): Pro
           order by hieu_luc_tu desc limit 1
        ) ql on true
        left join lateral (
-         select coalesce(sum(so_cong * case when extract(dow from ngay) = 6
-                                            then $3::numeric else 1 end), 0) as so_cong
+         select coalesce(sum(so_cong), 0) as so_cong
            from bang_cong_ngay
           where nhan_vien_id = nv.id and ngay >= $1 and ngay <= $2
        ) bc on true
       where nv.dang_hoat_dong = true and nv.che_do_luong = 'tq'
       order by nv.ma_nv`,
-    [tu, den, he_so_t7],
+    [tu, den],
   );
 
   await trong_giao_dich(async (khach) => {

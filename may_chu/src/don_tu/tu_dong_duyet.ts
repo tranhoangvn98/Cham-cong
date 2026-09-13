@@ -19,7 +19,10 @@ import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { gui_email, email_bat } from '../su_kien/gui_email.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { ban_don_am_tham } from './ban_don.ts';
-import { so_thang_lam_trong_nam, quy_phep_theo_luat } from './quy_phep_nam.ts';
+import {
+  so_thang_lam_trong_nam, quy_phep_theo_luat, ngay_chot_quy, lay_phep_dau_ky,
+} from './quy_phep_nam.ts';
+import { id_tai_khoan_he_thong } from '../bao_mat/tai_khoan_he_thong.ts';
 import { danh_sach_ngay, ngay_viet } from '../tien_ich/thoi_gian.ts';
 
 /** Tu ngay nay tro di don duoc tu dong duyet (chu cong ty chot). */
@@ -77,19 +80,23 @@ export function quyet_dinh_don(
 
 // ---------------------------------------------------------------- quy con lai
 
-/** So ngay phep nam DA DUYET trong `nam` (khong tinh don `tru_don_id`). Nua ngay = 0.5. */
+/**
+ * So ngay phep nam DA DUYET trong `nam` (khong tinh don `tru_don_id`). Nua ngay = 0.5.
+ * Cong them phep da dung dau ky (chot tay) neu co; khi do CHI dem don tu `tinh_tu_ngay` tro di.
+ */
 async function da_dung_phep(nv_id: string, nam: number, tru_don_id: string): Promise<number> {
-  const dau = `${nam}-01-01`;
+  const dau_ky = await lay_phep_dau_ky(nv_id, nam);
+  const dau = dau_ky?.tinh_tu_ngay ?? `${nam}-01-01`;
   const cuoi = `${nam}-12-31`;
   const dons = await truy_van<{ tu_ngay: string; den_ngay: string; nua_ngay: boolean }>(
     `select to_char(tu_ngay,'YYYY-MM-DD') as tu_ngay, to_char(den_ngay,'YYYY-MM-DD') as den_ngay,
             nua_ngay
        from don_nghi_phep
       where nhan_vien_id = $1 and loai = 'phep_nam' and trang_thai = 'da_duyet'
-        and id <> $4 and tu_ngay <= $3 and den_ngay >= $2`,
+        and id <> $4 and tu_ngay <= $3 and den_ngay >= $2 and tu_ngay >= $2`,
     [nv_id, dau, cuoi, tru_don_id],
   );
-  let s = 0;
+  let s = dau_ky?.so_ngay ?? 0;
   for (const d of dons) {
     const tu = d.tu_ngay > dau ? d.tu_ngay : dau;
     const den = d.den_ngay < cuoi ? d.den_ngay : cuoi;
@@ -109,7 +116,8 @@ export async function con_lai_phep(nv_id: string, don_id: string, nam: number): 
     [nv_id],
   );
   if (nv === null) return 0;
-  const quy = quy_phep_theo_luat(nv.base, so_thang_lam_trong_nam(nv.ngay_vao, nv.ngay_nghi_viec, nam));
+  const quy = quy_phep_theo_luat(
+    nv.base, so_thang_lam_trong_nam(nv.ngay_vao, nv.ngay_nghi_viec, nam, ngay_chot_quy(nam)));
   const da = await da_dung_phep(nv_id, nam, don_id);
   return Math.round((quy - da) * 10) / 10;
 }
@@ -198,12 +206,15 @@ export async function xu_ly_mot_don(don: DonNghi, opts: { email?: boolean } = {}
     ly_do: qd.kieu === 'tu_choi' ? qd.ly_do : undefined,
   };
 
+  // Quyet dinh tu dong phai mang danh tinh he thong ro rang (KHONG de nguoi_duyet_id NULL).
+  const nd_he_thong = await id_tai_khoan_he_thong();
+
   await trong_giao_dich(async (khach) => {
     if (qd.kieu === 'tu_choi') {
       await khach.query(
         `update don_nghi_phep set trang_thai = 'tu_choi', quyet_luc = now(),
-                ghi_chu_duyet = $2 where id = $1 and trang_thai = 'cho_duyet'`,
-        [don.id, `${MARKER} ${qd.ly_do}`],
+                nguoi_duyet_id = $3, ghi_chu_duyet = $2 where id = $1 and trang_thai = 'cho_duyet'`,
+        [don.id, `${MARKER} ${qd.ly_do}`, nd_he_thong],
       );
       return;
     }
@@ -212,23 +223,25 @@ export async function xu_ly_mot_don(don: DonNghi, opts: { email?: boolean } = {}
       // Giu phan phep (rut ngan den giu_den, loai phep_nam), tao don khong luong cho phan vuot.
       await khach.query(
         `update don_nghi_phep set trang_thai = 'da_duyet', loai = 'phep_nam', den_ngay = $2,
-                nua_ngay = false, quyet_luc = now(), ghi_chu_duyet = $3
+                nua_ngay = false, quyet_luc = now(), nguoi_duyet_id = $4, ghi_chu_duyet = $3
           where id = $1 and trang_thai = 'cho_duyet'`,
-        [don.id, qd.giu_den, `${MARKER} Duyệt ${qd.so_phep} ngày phép + ${qd.so_kl} ngày không lương`],
+        [don.id, qd.giu_den, `${MARKER} Duyệt ${qd.so_phep} ngày phép + ${qd.so_kl} ngày không lương`,
+          nd_he_thong],
       );
       await khach.query(
         `insert into don_nghi_phep
-           (nhan_vien_id, loai, tu_ngay, den_ngay, nua_ngay, ly_do, trang_thai, quyet_luc, ghi_chu_duyet)
-         values ($1,'khong_luong',$2,$3,false,$4,'da_duyet', now(), $5)`,
+           (nhan_vien_id, loai, tu_ngay, den_ngay, nua_ngay, ly_do, trang_thai, quyet_luc,
+            nguoi_duyet_id, ghi_chu_duyet)
+         values ($1,'khong_luong',$2,$3,false,$4,'da_duyet', now(), $6, $5)`,
         [don.nhan_vien_id, qd.kl_tu, don.den_ngay,
           don.ly_do ?? `Vượt quỹ phép năm (${NHAN_LOAI[don.loai] ?? don.loai})`,
-          `${MARKER} Phần vượt quỹ phép năm từ đơn gốc`],
+          `${MARKER} Phần vượt quỹ phép năm từ đơn gốc`, nd_he_thong],
       );
     } else {
       await khach.query(
         `update don_nghi_phep set trang_thai = 'da_duyet', loai = $2, quyet_luc = now(),
-                ghi_chu_duyet = $3 where id = $1 and trang_thai = 'cho_duyet'`,
-        [don.id, loai_moi, `${MARKER} Tự động duyệt (${NHAN_LOAI[loai_moi]})`],
+                nguoi_duyet_id = $4, ghi_chu_duyet = $3 where id = $1 and trang_thai = 'cho_duyet'`,
+        [don.id, loai_moi, `${MARKER} Tự động duyệt (${NHAN_LOAI[loai_moi]})`, nd_he_thong],
       );
     }
 

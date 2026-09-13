@@ -635,3 +635,10 @@ export async function tai_anh(lan_quet_id: string): Promise<string> {
   if (!res.ok) throw new LoiApi(res.status, 'Không tải được ảnh.');
   return URL.createObjectURL(await res.blob());
 }
+
+/** Nhu `tai_anh` nhung cho MOT duong dan bat ky (anh khac ngoai selfie, vd anh khieu nai). */
+export async function tai_anh_tu(duong_dan: string): Promise<string> {
+  const res = await fetch_xac_thuc(duong_dan);
+  if (!res.ok) throw new LoiApi(res.status, 'Không tải được ảnh.');
+  return URL.createObjectURL(await res.blob());
+}

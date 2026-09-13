@@ -46,6 +46,17 @@ export interface DauVaoPhieu {
    * thuoc dien dong). Mac dinh true. Mien thi can cu dong = 0 nen moi khoan BH deu = 0.
    */
   dong_bao_hiem?: boolean;
+  /**
+   * Mien thue TNCN cho phieu nay (thue_tncn = 0). Tich thu cong cua admin cho truong hop dac
+   * biet. Mac dinh false = tinh thue theo bieu thue luy tien nhu binh thuong.
+   */
+  mien_thue?: boolean;
+  /**
+   * Luong NET: mien THU BHXH tu NLD (cong ty ganh phan NLD) — KHONG tru bao_hiem_nld vao thuc
+   * linh, nhung BHXH van tinh day du + van giu trong giam tru khi tinh thue. Mac dinh false.
+   * Khac `dong_bao_hiem = false` (mien_bh): kia lam can cu dong = 0, khong phat sinh BHXH nao.
+   */
+  luong_net?: boolean;
   so_ngay_cong_chuan: number;
   so_ngay_cong_thuc: number;
   phut_ot: number;
@@ -183,9 +194,13 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
   const muc_bhxh_bhyt = Math.min(luong_dong_bh, tran_bhxh_bhyt(ts));
   const muc_bhtn = Math.min(luong_dong_bh, tran_bhtn(ts));
 
-  const bhxh_nld = dong(muc_bhxh_bhyt * (ts.ty_le_bhxh_nld / 100));
-  const bhyt_nld = dong(muc_bhxh_bhyt * (ts.ty_le_bhyt_nld / 100));
-  const bhtn_nld = dong(muc_bhtn * (ts.ty_le_bhtn_nld / 100));
+  // Luong NET: KHONG tinh BHXH/BHYT/BHTN cua NLD (chu cong ty chot — cong ty lo het). Phan NLD
+  // ve 0 het, nen cung khong con la khoan giam tru truoc thue. Phan cong ty (nsdld) van tinh
+  // binh thuong vi do la nghia vu rieng cua doanh nghiep.
+  const tinh_bh_nld = d.luong_net !== true;
+  const bhxh_nld = tinh_bh_nld ? dong(muc_bhxh_bhyt * (ts.ty_le_bhxh_nld / 100)) : 0;
+  const bhyt_nld = tinh_bh_nld ? dong(muc_bhxh_bhyt * (ts.ty_le_bhyt_nld / 100)) : 0;
+  const bhtn_nld = tinh_bh_nld ? dong(muc_bhtn * (ts.ty_le_bhtn_nld / 100)) : 0;
 
   const bhxh_nsdld = dong(muc_bhxh_bhyt * (ts.ty_le_bhxh_nsdld / 100));
   const bhyt_nsdld = dong(muc_bhxh_bhyt * (ts.ty_le_bhyt_nsdld / 100));
@@ -204,9 +219,12 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
   // Tinh thue tren ca tien hoan ung la thu thue tren mot khoan khong phai thu nhap.
   const thu_nhap_chiu_thue = Math.max(0, tong_thu_nhap - khoan.thu_nhap_mien_thue);
   const thu_nhap_tinh_thue = Math.max(0, thu_nhap_chiu_thue - giam_tru_tong);
-  const thue_tncn = thue_luy_tien(thu_nhap_tinh_thue, ts.bac_thue);
+  // Admin tich "mien thue TNCN" -> thue = 0 (van giu thu_nhap_tinh_thue de doi chieu).
+  const thue_tncn = d.mien_thue === true ? 0 : thue_luy_tien(thu_nhap_tinh_thue, ts.bac_thue);
 
   // ------------------------------------------------------------ thuc linh
+  // Luong NET: BH cua NLD da = 0 (khong tinh) nen bao_hiem_nld = 0 -> khong tru gi vao thuc nhan
+  // va cung khong nam trong giam_tru_tong. Luong GROSS: tru phan BH cua NLD nhu binh thuong.
   const tong_tru = bao_hiem_nld + thue_tncn + d.tru_khac + khoan.tru;
   const thuc_linh = tong_thu_nhap - tong_tru;
 
