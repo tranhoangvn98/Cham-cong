@@ -37,6 +37,23 @@ interface KyLuong {
   ghi_chu_duyet: string | null;
 }
 
+/** Mot dong lech luong: luong co ban trong phieu khong khop quyet dinh luong hien hanh. */
+interface DongLech {
+  ma_nv: string;
+  ho_ten: string;
+  phieu_base: number;
+  phieu_phu_cap: number;
+  ky_vong_base: number;
+  ky_vong_phu_cap: number;
+  loai_hop_dong: string | null;
+  nguon: 'quyet_dinh' | 'hop_dong' | 'khong_co';
+}
+
+/** Phan hoi cua endpoint quyet: hoac chot xong, hoac bi chan vi lech luong. */
+type PhanHoiQuyet =
+  | { ok: true }
+  | { ok: false; ma_loi: 'LECH_LUONG'; thong_bao: string; lech: DongLech[] };
+
 /** Mot dong trong danh muc khoan (phu cap / khoan tru). */
 interface KhoanDanhMuc {
   ma: string;
@@ -309,6 +326,7 @@ function HopThoaiChiTiet(
   const [xem_cong, dat_xem_cong] = useState<Phieu | null>(null);
   const [thuong_kpi, dat_thuong_kpi] = useState(false);
   const [tab, dat_tab] = useState<'vnd' | 'cny'>('vnd');
+  const [lech, dat_lech] = useState<{ thong_bao: string; ds: DongLech[] } | null>(null);
   const hd = dung_hanh_dong();
 
   if (dang_tai) return <KhungToanMan tieu_de="Kỳ lương" khi_dong={khi_dong}><DangTai /></KhungToanMan>;
@@ -322,6 +340,21 @@ function HopThoaiChiTiet(
   const chay = (duong_dan: string, thong_bao: string) => () => {
     void hd.chay(() => goi(duong_dan, { method: 'POST' }), thong_bao)
       .then(() => { nap_lai(); khi_doi(); });
+  };
+
+  // Duyet ky. Neu bi chan vi LECH LUONG, hien bang lech thay vi bao thanh cong gia.
+  // `bo_qua = true` khi admin da xem lech va van co y chot (ghi nhat ky o may chu).
+  const duyet_ky = (bo_qua: boolean) => {
+    void hd.chay_lay<PhanHoiQuyet>(
+      () => goi(`/api/ky-luong/${k.id}/quyet`,
+        { method: 'POST', body: { quyet_dinh: 'da_duyet', bo_qua_lech: bo_qua } }),
+    ).then((kq) => {
+      if (kq === null) return;                     // loi mang — HopLoi da hien
+      if (kq.ok === false) { dat_lech({ thong_bao: kq.thong_bao, ds: kq.lech }); return; }
+      dat_lech(null);
+      nap_lai();
+      khi_doi();
+    });
   };
 
   return (
@@ -395,11 +428,7 @@ function HopThoaiChiTiet(
           <>
             <button
               disabled={hd.dang_chay}
-              onClick={() => void hd.chay(
-                () => goi(`/api/ky-luong/${k.id}/quyet`,
-                  { method: 'POST', body: { quyet_dinh: 'da_duyet' } }),
-                'Đã duyệt kỳ lương.',
-              ).then(() => { nap_lai(); khi_doi(); })}
+              onClick={() => duyet_ky(false)}
             >
               Duyệt
             </button>
@@ -645,6 +674,66 @@ function HopThoaiChiTiet(
       )}
       {xem_cong !== null && (
         <HopThoaiCong ky_thang={k.thang} phieu={xem_cong} khi_dong={() => dat_xem_cong(null)} />
+      )}
+      {lech !== null && (
+        <HopThoai tieu_de="Chưa duyệt được — lệch lương" rong khi_dong={() => dat_lech(null)}>
+          <div className="hop-luu-y">{lech.thong_bao}</div>
+          <p style={{ margin: '12px 0' }}>
+            Lương cơ bản/phụ cấp trong phiếu không khớp quyết định lương hiện hành —
+            thường do đã sửa mức lương sau khi tính kỳ. Nên bấm <b>Thu hồi &amp; tính lại</b> để
+            phiếu cập nhật đúng số mới, rồi Gửi duyệt lại. Chỉ chọn <b>Vẫn duyệt</b> nếu cố ý
+            chốt theo số trong phiếu.
+          </p>
+          <div className="vo-bang">
+            <table className="bang-gon">
+              <thead>
+                <tr>
+                  <th>Mã NV</th><th>Họ tên</th><th>Loại HĐ</th>
+                  <th className="canh-phai">Cơ bản (phiếu)</th>
+                  <th className="canh-phai">Cơ bản (kỳ vọng)</th>
+                  <th className="canh-phai">Phụ cấp (phiếu → kỳ vọng)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lech.ds.map((d) => (
+                  <tr key={d.ma_nv}>
+                    <td>{d.ma_nv}</td>
+                    <td>{d.ho_ten}</td>
+                    <td>{d.loai_hop_dong ?? '—'}</td>
+                    <td className="canh-phai">{tien(d.phieu_base)}</td>
+                    <td className="canh-phai">{tien(d.ky_vong_base)}</td>
+                    <td className="canh-phai">
+                      {d.phieu_phu_cap === d.ky_vong_phu_cap
+                        ? tien(d.phieu_phu_cap)
+                        : `${tien(d.phieu_phu_cap)} → ${tien(d.ky_vong_phu_cap)}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="hang-nut" style={{ marginTop: 16 }}>
+            <button
+              disabled={hd.dang_chay}
+              onClick={() => void hd.chay(async () => {
+                await goi(`/api/ky-luong/${k.id}/thu-hoi`, { method: 'POST' });
+                await goi(`/api/ky-luong/${k.id}/tinh`, { method: 'POST' });
+              }, 'Đã thu hồi và tính lại. Kiểm tra rồi Gửi duyệt lại.')
+                .then((ok) => { if (ok) { dat_lech(null); nap_lai(); khi_doi(); } })}
+            >
+              Thu hồi &amp; tính lại
+            </button>
+            <button
+              className="nut-phang" disabled={hd.dang_chay}
+              onClick={() => duyet_ky(true)}
+            >
+              Vẫn duyệt (bỏ qua lệch)
+            </button>
+            <button className="nut-phang" disabled={hd.dang_chay} onClick={() => dat_lech(null)}>
+              Đóng
+            </button>
+          </div>
+        </HopThoai>
       )}
     </KhungToanMan>
   );
