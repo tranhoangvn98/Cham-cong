@@ -71,7 +71,7 @@ export async function lech_luong_ky(ky_luong_id: string, thang: string): Promise
        left join lateral (
          select luong_co_ban, loai from hop_dong_lao_dong
           where nhan_vien_id = nv.id and trang_thai = 'hieu_luc'
-            and hieu_luc_tu <= $2 and (hieu_luc_den is null or hieu_luc_den >= $1)
+            and hieu_luc_tu <= $2 and (hieu_luc_den is null or hieu_luc_den >= $3)
           order by hieu_luc_tu desc limit 1
        ) hd on true
       where pl.ky_luong_id = $1

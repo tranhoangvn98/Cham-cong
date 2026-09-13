@@ -2949,6 +2949,16 @@ test('luong: tinh ky -> sinh phieu cho moi nhan vien dang lam viec', async () =>
   assert.ok(chuan >= 18 && chuan <= 23, `ngay cong chuan ${chuan} khong hop ly`);
 });
 
+test('luong: bao cao lech luong chay duoc (khong 500 vi lech tham so uuid/date)', async () => {
+  // Hoi quy: truy van lech_luong_ky tung so hieu_luc_den (date) voi ky_luong_id (uuid) —
+  // Postgres nem "operator does not exist: uuid = date" o luc PHAN TICH, nen ca buoc Duyet
+  // (goi lech_luong_ky truoc khi chot) bi 500. Test nay chi can endpoint tra 200.
+  const r = await goi('GET', `/api/ky-luong/${ky_luong_id}/lech-luong`, { token: token_admin });
+  assert.equal(r.ma, 200);
+  assert.equal(typeof r.body['so_lech'], 'number');
+  assert.ok(Array.isArray(r.body['lech']));
+});
+
 test('luong: sua tay thuong -> tinh lai ca ky, tong khop voi tung dong', async () => {
   const p = await truy_van_mot<{ id: string }>(
     'select id from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2',
