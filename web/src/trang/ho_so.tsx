@@ -1164,6 +1164,8 @@ const KHOI_THONG_TIN: { tieu_de: string; o: { ten: string; nhan: string; kieu?: 
       { ten: 'ma_so_thue', nhan: 'Mã số thuế' },
       { ten: 'ngan_hang', nhan: 'Ngân hàng' },
       { ten: 'so_tai_khoan', nhan: 'Số tài khoản' },
+      { ten: 'don_vi_chi_luong', nhan: 'Đơn vị chi lương' },
+      { ten: 'don_vi_dong_bhxh', nhan: 'Đơn vị đóng BHXH' },
     ],
   },
   {

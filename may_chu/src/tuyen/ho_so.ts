@@ -596,7 +596,7 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
               noi_sinh, dan_toc, quoc_tich, tinh_trang_hon_nhan,
               dia_chi_thuong_tru, dia_chi_hien_tai,
               lien_he_khan_ten, lien_he_khan_quan_he, lien_he_khan_sdt,
-              ma_so_thue, ngan_hang, so_tai_khoan,
+              ma_so_thue, ngan_hang, so_tai_khoan, don_vi_chi_luong, don_vi_dong_bhxh,
               so_bhxh, so_the_bhyt, co_quan_bhxh, noi_kham_chua_benh,
               kham_suc_khoe_ngay, kham_suc_khoe_noi, kham_suc_khoe_ket_luan, cap_nhat_luc
          from ho_so_ca_nhan where nhan_vien_id = $1`,
@@ -645,6 +645,8 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       ma_so_thue: chuoi(b, 'ma_so_thue', { toi_da: 20 }),
       ngan_hang: chuoi(b, 'ngan_hang', { toi_da: 150 }),
       so_tai_khoan: chuoi(b, 'so_tai_khoan', { toi_da: 40 }),
+      don_vi_chi_luong: chuoi(b, 'don_vi_chi_luong', { toi_da: 200 }),
+      don_vi_dong_bhxh: chuoi(b, 'don_vi_dong_bhxh', { toi_da: 200 }),
       so_bhxh: chuoi(b, 'so_bhxh', { toi_da: 20 }),
       so_the_bhyt: chuoi(b, 'so_the_bhyt', { toi_da: 30 }),
       co_quan_bhxh: chuoi(b, 'co_quan_bhxh', { toi_da: 200 }),

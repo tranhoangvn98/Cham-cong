@@ -1329,7 +1329,8 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         truy_van_mot(
           `select cccd_so, cccd_ngay_cap, cccd_noi_cap, ngay_sinh, gioi_tinh, noi_sinh,
                   dan_toc, quoc_tich, tinh_trang_hon_nhan, dia_chi_thuong_tru, dia_chi_hien_tai,
-                  ma_so_thue, ngan_hang, so_tai_khoan, so_bhxh, so_the_bhyt, co_quan_bhxh,
+                  ma_so_thue, ngan_hang, so_tai_khoan, don_vi_chi_luong, don_vi_dong_bhxh,
+                  so_bhxh, so_the_bhyt, co_quan_bhxh,
                   noi_kham_chua_benh, kham_suc_khoe_ngay, kham_suc_khoe_noi, kham_suc_khoe_ket_luan
              from ho_so_ca_nhan where nhan_vien_id = $1`,
           [nv_id],
