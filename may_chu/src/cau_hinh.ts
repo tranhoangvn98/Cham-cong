@@ -389,6 +389,13 @@ export const cau_hinh = {
 
     /** Chu ky gui email nhac loi (ngay) khi o che do 'nhac_nho'. Chu cong ty chot 3 ngay/lan. */
     chu_ky_nhac_ngay: Math.max(1, Math.round(so('KY_LUAT_CHU_KY_NHAC_NGAY', 3))),
+
+    /**
+     * Gio (theo mui gio may cham cong) gui email nhac loi ky luat. Mac dinh 17h chieu — de nguoi
+     * nhan doc vao gio hanh chinh, KHONG bi ke chung me viec cuoi ngay (chay 1h sang de cho may
+     * day het log). 0..23.
+     */
+    gio_nhac: Math.min(23, Math.max(0, Math.round(so('KY_LUAT_GIO_NHAC', 17)))),
   },
 
   /**
