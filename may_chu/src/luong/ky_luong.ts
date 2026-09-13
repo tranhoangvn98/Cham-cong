@@ -429,21 +429,18 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
         ? ts.cs.cong_chuan_thang
         : ngay_cong_chuan(tu, den, nv.cac_ngay_lam, le_cua(nv.lich_nghi_ma), he_so_t7);
 
-      // Muc luong ap dung. Thu viec (BLLD 2019 D.26): 85% luong cung (P1 luong co ban + P2
-      // phu cap). HR nhap luong CHINH THUC mot lan o quyet_dinh_luong; thu viec tu tinh 85%.
-      // Neu hop dong thu viec ghi thang mot muc luong -> coi la GHI DE, dung dung muc do.
+      // Muc luong ap dung. Thu viec (BLLD 2019 D.26): LUON huong 85% luong cung (P1 luong co
+      // ban + P2 phu cap), lay tu quyet_dinh_luong. Chinh sach cong ty: MOI thu viec deu 85%
+      // luong chinh thuc — nen muc chinh thuc phai khai o quyet_dinh_luong. Luong ghi thang tren
+      // hop dong thu viec (neu co) KHONG dung de tinh: truoc day co nhanh "ghi de -> dung as-is"
+      // nhung no lam nguoi thu viec co luong tren hop dong bi huong 100% ngoai y muon -> da bo.
       const official_base = nv.luong_ql ?? nv.luong_hd ?? 0;
       const official_pc = nv.phu_cap_ql;
       let luong_co_ban = official_base;
       let phu_cap = official_pc;
       if (nv.loai_hop_dong === 'thu_viec') {
-        if (nv.luong_hd !== null) {
-          luong_co_ban = nv.luong_hd; // ghi de tuong minh tren hop dong thu viec
-          phu_cap = official_pc;
-        } else {
-          luong_co_ban = Math.round(official_base * ts.cs.ty_le_thu_viec);
-          phu_cap = Math.round(official_pc * ts.cs.ty_le_thu_viec);
-        }
+        luong_co_ban = Math.round(official_base * ts.cs.ty_le_thu_viec);
+        phu_cap = Math.round(official_pc * ts.cs.ty_le_thu_viec);
       }
 
       // Doc lai phan nguoi da sua tay de khong ghi de len.

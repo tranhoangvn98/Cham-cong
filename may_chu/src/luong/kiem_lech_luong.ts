@@ -87,14 +87,10 @@ export async function lech_luong_ky(ky_luong_id: string, thang: string): Promise
     const official_pc = d.phu_cap_ql;
     let ky_vong_base = official_base;
     let ky_vong_pc = official_pc;
+    // Thu viec LUON 85% (khop tinh_ky_luong) — da bo nhanh "dung luong ghi tren hop dong".
     if (d.loai_hop_dong === 'thu_viec') {
-      if (d.luong_hd !== null) {
-        ky_vong_base = d.luong_hd;
-        ky_vong_pc = official_pc;
-      } else {
-        ky_vong_base = Math.round(official_base * ty_le_thu_viec);
-        ky_vong_pc = Math.round(official_pc * ty_le_thu_viec);
-      }
+      ky_vong_base = Math.round(official_base * ty_le_thu_viec);
+      ky_vong_pc = Math.round(official_pc * ty_le_thu_viec);
     }
 
     const lech = Math.abs(d.phieu_base - ky_vong_base) > NGUONG_LECH
