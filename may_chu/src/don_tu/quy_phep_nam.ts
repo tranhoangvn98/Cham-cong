@@ -49,22 +49,39 @@ function so_ngay_giua(tu: string, den: string): number {
 }
 
 /**
+ * Ngay CHOT QUY phep nam cho `nam`: quy phep tinh TICH LUY den ngay nay, KHONG cap truoc cac
+ * thang chua toi. Trong nam hien tai = hom nay; nam da qua = het nam do (31/12). Nho vay nguoi
+ * vao giua nam chi huong phep theo so thang DA THUC LAM, chua lam thang nao thi chua co phep.
+ */
+export function ngay_chot_quy(nam: number, hom_nay?: string): string {
+  const nay = hom_nay ?? new Date().toISOString().slice(0, 10);
+  const cuoi_nam = `${nam}-12-31`;
+  return nay < cuoi_nam ? nay : cuoi_nam;
+}
+
+/**
  * So thang lam viec trong `nam` (1..12). Mot thang duoc tinh neu nhan vien co mat >= 50% so
  * ngay cua thang do (tinh theo ngay lich, xap xi cho muc dich chia quy phep).
+ *
+ * `tinh_den` (YYYY-MM-DD): chi dem den ngay nay — quy phep TICH LUY, khong cap cac thang chua
+ * toi. Bo trong = het nam (dem ca nam, hanh vi cu).
  */
 export function so_thang_lam_trong_nam(
   ngay_vao: string | null, ngay_nghi_viec: string | null, nam: number,
+  tinh_den: string | null = null,
 ): number {
   if (ngay_vao === null || ngay_vao === '') return 12; // khong ro ngay vao -> coi nhu ca nam
+  const chan = tinh_den !== null && tinh_den !== '' ? tinh_den : `${nam}-12-31`;
   let so = 0;
   for (let m = 1; m <= 12; m++) {
     const so_ngay_thang = new Date(Date.UTC(nam, m, 0)).getUTCDate();
     const dau = `${nam}-${d2(m)}-01`;
     const cuoi = `${nam}-${d2(m)}-${d2(so_ngay_thang)}`;
     const bat_dau = ngay_vao > dau ? ngay_vao : dau;
-    const ket_thuc = ngay_nghi_viec !== null && ngay_nghi_viec !== '' && ngay_nghi_viec < cuoi
+    let ket_thuc = ngay_nghi_viec !== null && ngay_nghi_viec !== '' && ngay_nghi_viec < cuoi
       ? ngay_nghi_viec : cuoi;
-    if (bat_dau > ket_thuc) continue; // khong lam ngay nao trong thang
+    if (chan < ket_thuc) ket_thuc = chan; // tich luy: khong dem qua ngay chot quy
+    if (bat_dau > ket_thuc) continue; // khong lam ngay nao trong thang (tinh den chot quy)
     const so_ngay_lam = so_ngay_giua(bat_dau, ket_thuc) + 1;
     if (so_ngay_lam * 2 >= so_ngay_thang) so++;
   }
@@ -254,7 +271,7 @@ export async function ap_quy_phep_nam(
     const ngay_le_nv = le_cua(nv.lich_nghi_ma);
     const la_ngay_lam: LaNgayLam = (ng) => cac.has(thu_trong_tuan(ng)) && !ngay_le_nv.has(ng);
 
-    const so_thang = so_thang_lam_trong_nam(nv.ngay_vao, nv.ngay_nghi_viec, nam);
+    const so_thang = so_thang_lam_trong_nam(nv.ngay_vao, nv.ngay_nghi_viec, nam, ngay_chot_quy(nam));
     const quy = quy_phep_theo_luat(nv.base, so_thang);
     const hanh_dong = phan_bo_phep(dons, quy, nam, la_ngay_lam);
 

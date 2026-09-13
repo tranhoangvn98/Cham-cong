@@ -6,7 +6,7 @@ import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { so_thang_lam_trong_nam, quy_phep_theo_luat, phan_bo_phep } =
+const { so_thang_lam_trong_nam, quy_phep_theo_luat, phan_bo_phep, ngay_chot_quy } =
   await import('../src/don_tu/quy_phep_nam.ts');
 
 test('so_thang_lam_trong_nam: lam ca nam = 12', () => {
@@ -31,6 +31,21 @@ test('so_thang_lam_trong_nam: nghi viec 10/03 -> T1,T2 du; T3 chi 10 ngay (<50%)
 
 test('so_thang_lam_trong_nam: vao nam sau nam xet = 0', () => {
   assert.equal(so_thang_lam_trong_nam('2027-01-01', null, 2026), 0);
+});
+
+// --- Tich luy den ngay chot quy (mo hinh CHAT: khong cap truoc thang chua toi) ---
+test('so_thang_lam_trong_nam: vao 16/03, chot 13/09 -> T3..T8 (T9 moi 13 ngay <50% bo) = 6 thang', () => {
+  // Chuan hoa vi du ERP115: vao 16/03/2026, tinh den 13/09/2026 -> chi dem thang DA lam.
+  assert.equal(so_thang_lam_trong_nam('2026-03-16', null, 2026, '2026-09-13'), 6);
+});
+
+test('so_thang_lam_trong_nam: vao 16/03, KHONG chot (het nam) van = 10 thang (hanh vi cu)', () => {
+  assert.equal(so_thang_lam_trong_nam('2026-03-16', null, 2026), 10);
+});
+
+test('ngay_chot_quy: nam hien tai -> hom nay; nam da qua -> 31/12', () => {
+  assert.equal(ngay_chot_quy(2026, '2026-09-13'), '2026-09-13');
+  assert.equal(ngay_chot_quy(2025, '2026-09-13'), '2025-12-31');
 });
 
 test('quy_phep_theo_luat: base 12, du 12 thang = 12', () => {

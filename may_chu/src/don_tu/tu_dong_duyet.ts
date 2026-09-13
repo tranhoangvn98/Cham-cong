@@ -19,7 +19,7 @@ import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { gui_email, email_bat } from '../su_kien/gui_email.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { ban_don_am_tham } from './ban_don.ts';
-import { so_thang_lam_trong_nam, quy_phep_theo_luat } from './quy_phep_nam.ts';
+import { so_thang_lam_trong_nam, quy_phep_theo_luat, ngay_chot_quy } from './quy_phep_nam.ts';
 import { id_tai_khoan_he_thong } from '../bao_mat/tai_khoan_he_thong.ts';
 import { danh_sach_ngay, ngay_viet } from '../tien_ich/thoi_gian.ts';
 
@@ -110,7 +110,8 @@ export async function con_lai_phep(nv_id: string, don_id: string, nam: number): 
     [nv_id],
   );
   if (nv === null) return 0;
-  const quy = quy_phep_theo_luat(nv.base, so_thang_lam_trong_nam(nv.ngay_vao, nv.ngay_nghi_viec, nam));
+  const quy = quy_phep_theo_luat(
+    nv.base, so_thang_lam_trong_nam(nv.ngay_vao, nv.ngay_nghi_viec, nam, ngay_chot_quy(nam)));
   const da = await da_dung_phep(nv_id, nam, don_id);
   return Math.round((quy - da) * 10) / 10;
 }

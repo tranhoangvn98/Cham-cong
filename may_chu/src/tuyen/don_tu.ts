@@ -8,7 +8,7 @@ import {
   ban_don_am_tham, ban_don_giai_trinh, ban_don_khac, ban_don_nghi_phep,
 } from '../don_tu/ban_don.ts';
 import { MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_don.ts';
-import { so_thang_lam_trong_nam, quy_phep_theo_luat } from '../don_tu/quy_phep_nam.ts';
+import { so_thang_lam_trong_nam, quy_phep_theo_luat, ngay_chot_quy } from '../don_tu/quy_phep_nam.ts';
 import {
   canh_bao_cho_don, dem_cho_duyet, don_cho_nguoi_duyet, don_theo_id, quyet_don,
 } from '../don_tu/nghiep_vu.ts';
@@ -128,7 +128,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     );
 
     const dong = ds.map((r) => {
-      const so_thang = so_thang_lam_trong_nam(r.ngay_vao, r.ngay_nghi_viec, nam);
+      const so_thang = so_thang_lam_trong_nam(r.ngay_vao, r.ngay_nghi_viec, nam, ngay_chot_quy(nam));
       const quy = quy_phep_theo_luat(r.base, so_thang);
       return {
         id: r.id,
