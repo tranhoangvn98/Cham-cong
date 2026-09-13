@@ -8,7 +8,7 @@ import {
   ban_don_am_tham, ban_don_giai_trinh, ban_don_khac, ban_don_nghi_phep,
 } from '../don_tu/ban_don.ts';
 import { MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_don.ts';
-import { so_thang_lam_trong_nam, quy_phep_theo_luat } from '../don_tu/quy_phep_nam.ts';
+import { so_thang_lam_trong_nam, quy_phep_theo_luat, ngay_chot_quy } from '../don_tu/quy_phep_nam.ts';
 import {
   canh_bao_cho_don, dem_cho_duyet, don_cho_nguoi_duyet, don_theo_id, quyet_don,
 } from '../don_tu/nghiep_vu.ts';
@@ -84,33 +84,47 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     const ds = await truy_van<{
       id: string; ma_nv: string; ho_ten: string; phong_ban: string | null;
       ngay_vao: string | null; ngay_nghi_viec: string | null;
-      base: number; da_dung: number; cho_duyet: number;
+      base: number; da_dung: number; cho_duyet: number; phep_dau_ky: number;
     }>(
       `select nv.id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
               to_char(nv.ngay_vao,'YYYY-MM-DD')       as ngay_vao,
               to_char(nv.ngay_nghi_viec,'YYYY-MM-DD') as ngay_nghi_viec,
               coalesce(nv.so_ngay_phep_nam, 12)::float8 as base,
-              coalesce(dp.da_dung, 0)::float8   as da_dung,
-              coalesce(dp.cho_duyet, 0)::float8 as cho_duyet
+              pk.phep_dau_ky + coalesce(dp.da_dung, 0)::float8 as da_dung,
+              coalesce(dp.cho_duyet, 0)::float8 as cho_duyet,
+              pk.phep_dau_ky                    as phep_dau_ky
          from nhan_vien nv
          left join phong_ban pb on pb.id = nv.phong_ban_id
+         left join ca_lam cl on cl.id = nv.ca_lam_id
+         left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
+         -- Phep da dung "chot tay" dau ky (neu khai): tru vao quy; chi dem don tu tinh_tu_ngay tro di.
+         left join phep_da_dung_dau_ky pdk on pdk.nhan_vien_id = nv.id and pdk.nam = $1::int
          left join lateral (
            select
              sum(case when d.trang_thai = 'da_duyet'  then x.w end) as da_dung,
              sum(case when d.trang_thai = 'cho_duyet' then x.w end) as cho_duyet
            from don_nghi_phep d
            cross join lateral (
+             -- Chi dem NGAY LAM VIEC (L4): loai T7/CN theo cac_ngay_lam + ngay le theo lich cua nguoi.
              select (case when d.nua_ngay then 0.5 else 1 end) * count(*)::float8 as w
                from generate_series(
                       greatest(d.tu_ngay, make_date($1::int, 1, 1)),
                       least   (d.den_ngay, make_date($1::int, 12, 31)),
                       interval '1 day') g
+              where extract(dow from g)::int
+                      = any(coalesce(cl.cac_ngay_lam, '{1,2,3,4,5}')::int[])
+                and not exists (
+                  select 1 from ngay_le nl
+                   where nl.ngay = g::date
+                     and nl.lich_ma = coalesce(nlv.lich_nghi_ma, 'vn'))
            ) x
           where d.nhan_vien_id = nv.id and d.loai = 'phep_nam'
             and d.trang_thai in ('da_duyet', 'cho_duyet')
             and d.tu_ngay <= make_date($1::int, 12, 31)
             and d.den_ngay >= make_date($1::int, 1, 1)
-         ) dp on true
+            and d.tu_ngay >= coalesce(pdk.tinh_tu_ngay, make_date($1::int, 1, 1))
+         ) dp on true,
+         lateral (select coalesce(pdk.so_ngay, 0)::float8 as phep_dau_ky) pk
         where nv.dang_hoat_dong = true
           and ($2::boolean is not true
                or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $3))
@@ -119,15 +133,71 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     );
 
     const dong = ds.map((r) => {
-      const so_thang = so_thang_lam_trong_nam(r.ngay_vao, r.ngay_nghi_viec, nam);
+      const so_thang = so_thang_lam_trong_nam(r.ngay_vao, r.ngay_nghi_viec, nam, ngay_chot_quy(nam));
       const quy = quy_phep_theo_luat(r.base, so_thang);
       return {
+        id: r.id,
         ma_nv: r.ma_nv, ho_ten: r.ho_ten, phong_ban: r.phong_ban, ngay_vao: r.ngay_vao,
         so_ngay_phep_nam: r.base, so_thang, quy, da_dung: r.da_dung, cho_duyet: r.cho_duyet,
+        phep_dau_ky: r.phep_dau_ky,
         con_lai: Math.round((quy - r.da_dung) * 10) / 10,
       };
     });
     return { nam, dong };
+  });
+
+  /**
+   * Chi tiet LICH SU TRU PHEP cua MOT nguoi trong nam (nut "Chi tiet" o trang Quan ly phep):
+   * liet ke tung don phep nam (da_duyet = da tru; cho_duyet = chua tru) kem so ngay.
+   */
+  app.get('/nghi-phep/chi-tiet', { preHandler: can_nguoi_duyet }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const q = than(req.query);
+    const nhan_vien_id = uuid(q, 'nhan_vien_id');
+    if (nhan_vien_id === null) throw new LoiDauVao('Thiếu nhân viên cần xem.');
+    const nam_tho = Number(q['nam']);
+    const nam = Number.isInteger(nam_tho) && nam_tho >= 2000 && nam_tho <= 2100
+      ? nam_tho : new Date().getFullYear();
+
+    // Truong phong chi xem duoc nguoi trong phong minh (admin/nhan su xem tat ca).
+    if (!xem_duoc_tat_ca(nd)) {
+      const cung = await truy_van_mot<{ ok: boolean }>(
+        `select true as ok from nhan_vien
+          where id = $1 and phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)`,
+        [nhan_vien_id, nd.nv],
+      );
+      if (cung === null) throw new LoiKhongTim('Không xem được nhân viên ngoài phòng của bạn.');
+    }
+
+    const nguoi = await truy_van_mot<{ ma_nv: string; ho_ten: string }>(
+      'select ma_nv, ho_ten from nhan_vien where id = $1', [nhan_vien_id],
+    );
+    const cac_lan = await truy_van(
+      // so_ngay = NGAY LAM VIEC that su bi tru quy (L4): loai T7/CN + ngay le, khong dem ngay lich.
+      `select d.id, to_char(d.tu_ngay,'YYYY-MM-DD') as tu_ngay,
+              to_char(d.den_ngay,'YYYY-MM-DD') as den_ngay, d.nua_ngay, d.trang_thai, d.ly_do,
+              d.ghi_chu_duyet,
+              to_char(d.tao_luc,'YYYY-MM-DD"T"HH24:MI:SSOF') as tao_luc,
+              (case when d.nua_ngay then 0.5 else (
+                 select count(*)::float8
+                   from generate_series(d.tu_ngay, d.den_ngay, interval '1 day') g
+                  where extract(dow from g)::int
+                          = any(coalesce(cl.cac_ngay_lam, '{1,2,3,4,5}')::int[])
+                    and not exists (
+                      select 1 from ngay_le nl
+                       where nl.ngay = g::date
+                         and nl.lich_ma = coalesce(nlv.lich_nghi_ma, 'vn'))
+              ) end)::float8 as so_ngay
+         from don_nghi_phep d
+         join nhan_vien nv on nv.id = d.nhan_vien_id
+         left join ca_lam cl on cl.id = nv.ca_lam_id
+         left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
+        where d.nhan_vien_id = $1 and d.loai = 'phep_nam'
+          and d.tu_ngay <= make_date($2::int, 12, 31) and d.den_ngay >= make_date($2::int, 1, 1)
+        order by d.tu_ngay desc`,
+      [nhan_vien_id, nam],
+    );
+    return { nam, ma_nv: nguoi?.ma_nv ?? '', ho_ten: nguoi?.ho_ten ?? '', cac_lan };
   });
 
   app.post('/nghi-phep/:id/quyet', { preHandler: can_nguoi_duyet }, async (req) => {

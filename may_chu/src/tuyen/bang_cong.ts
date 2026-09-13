@@ -8,7 +8,7 @@ import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { ky_da_chot_luong } from '../luong/ban_chot.ts';
 import { khoang_cua_nguoi } from '../dinh_danh/tra_pin.ts';
 import { nap_lich_pin } from '../dinh_danh/lich_pin_csdl.ts';
-import { LoiXungDot } from '../tien_ich/kiem_tra.ts';
+import { LoiXungDot, LoiKhongQuyen } from '../tien_ich/kiem_tra.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { khoang_thang, ngay_dia_phuong, phut_thanh_chu } from '../tien_ich/thoi_gian.ts';
 import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
@@ -22,8 +22,11 @@ const NHAN_TRANG_THAI_NGAY: Record<string, string> = {
   vang: 'Vắng',
   co_mat: 'Có mặt',
   nghi_phep: 'Nghỉ phép',
+  nghi_khong_luong: 'Nghỉ không lương',
   ngay_le: 'Ngày lễ',
   nghi_tuan: 'Nghỉ tuần',
+  cong_tac: 'Công tác',
+  lam_bu: 'Làm bù',
 };
 
 /**
@@ -249,13 +252,111 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
 
   // ============================================================ tinh lai bang cong
   app.post('/bang-cong/tinh-lai', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
     const b = than(req.body);
     const { tu, den } = khoang_ngay(b, 92);
     const nhan_vien_id = uuid(b, 'nhan_vien_id');
-    const so = await tinh_lai_khoang(tu, den, nhan_vien_id ?? undefined);
-    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tinh_lai_bang_cong', 'bang_cong_ngay',
-      null, { tu, den, nhan_vien_id, so_ngay: so }, req.ip);
+    // Tinh lai KE CA ngay da chot (vd sau khi doi nguong di muon): ghi de so da khoa. Chi admin,
+    // va chan neu ky luong cua thang do da chot (khong duoc dong toi so da tra luong).
+    const bo_qua_chot = luan_ly(b, 'bo_qua_chot') ?? false;
+    if (bo_qua_chot) {
+      if (nd.vai_tro !== 'admin') {
+        throw new LoiKhongQuyen('Chỉ admin mới tính lại kể cả ngày đã chốt.');
+      }
+      for (const thang of new Set([tu.slice(0, 7), den.slice(0, 7)])) {
+        if (await ky_da_chot_luong(thang)) {
+          throw new LoiXungDot(`Kỳ lương tháng ${thang} đã chốt — không tính lại được.`);
+        }
+      }
+    }
+    const so = await tinh_lai_khoang(tu, den, nhan_vien_id ?? undefined, bo_qua_chot);
+    await ghi_nhat_ky(nd.sub, 'tinh_lai_bang_cong', 'bang_cong_ngay',
+      null, { tu, den, nhan_vien_id, so_ngay: so, bo_qua_chot }, req.ip);
     return { ok: true, so_ngay_da_tinh: so };
+  });
+
+  // ============================================================ LAM BU (ngay nghi bu)
+  /** Danh sach ngay nghi bu + cac buoi lam bu cua no. */
+  app.get('/lam-bu', { preHandler: can_nhan_su }, async () => truy_van(
+    `select lb.id, lb.ngay_nghi, lb.ghi_chu, lb.tao_luc,
+            coalesce((select json_agg(json_build_object('ngay', b.ngay, 'buoi', b.buoi)
+                                      order by b.ngay, b.buoi)
+                        from buoi_lam_bu b where b.ngay_lam_bu_id = lb.id), '[]') as buoi
+       from ngay_lam_bu lb order by lb.ngay_nghi desc`));
+
+  /** Tao ngay nghi bu + cac buoi lam bu (mang {ngay, buoi}). */
+  app.post('/lam-bu', { preHandler: can_nhan_su }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body);
+    const ngay_nghi = ngay_bat_buoc(b, 'ngay_nghi');
+    const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 300 });
+    const buoi_raw = Array.isArray(b['buoi']) ? b['buoi'] as unknown[] : [];
+    if (buoi_raw.length === 0) throw new LoiDauVao('Cần ít nhất một buổi làm bù.');
+    const buoi = buoi_raw.map((x) => {
+      const o = than(x);
+      return { ngay: ngay_bat_buoc(o, 'ngay'), buoi: trong_tap(o, 'buoi', ['sang', 'chieu'] as const, { bat_buoc: true }) as string };
+    });
+
+    const lb = await truy_van_mot<{ id: string }>(
+      `insert into ngay_lam_bu(ngay_nghi, ghi_chu, tao_boi) values ($1,$2,$3)
+       on conflict (ngay_nghi) do update set ghi_chu = excluded.ghi_chu returning id`,
+      [ngay_nghi, ghi_chu, nd.sub],
+    );
+    const lb_id = lb?.id as string;
+    await thuc_thi('delete from buoi_lam_bu where ngay_lam_bu_id = $1', [lb_id]);
+    for (const s of buoi) {
+      await thuc_thi(
+        `insert into buoi_lam_bu(ngay_lam_bu_id, ngay, buoi) values ($1,$2,$3)
+         on conflict (ngay_lam_bu_id, ngay, buoi) do nothing`,
+        [lb_id, s.ngay, s.buoi],
+      );
+    }
+    await ghi_nhat_ky(nd.sub, 'tao_ngay_lam_bu', 'ngay_lam_bu', lb_id,
+      { ngay_nghi, so_buoi: buoi.length }, req.ip);
+    return res.code(201).send({ id: lb_id });
+  });
+
+  /** Xoa ngay nghi bu (kem cac buoi). Sau khi xoa nen tinh lai ngay do de tra ve binh thuong. */
+  app.delete('/lam-bu/:id', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const p = req.params as Record<string, string>;
+    const id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+    const kq = await thuc_thi('delete from ngay_lam_bu where id = $1', [id]);
+    if (kq === 0) throw new LoiKhongTim('Không tìm thấy ngày nghỉ bù.');
+    await ghi_nhat_ky(nd.sub, 'xoa_ngay_lam_bu', 'ngay_lam_bu', id, {}, req.ip);
+    return { ok: true };
+  });
+
+  /** Ap dung: tinh lai cong khoang bao trum (ngay nghi + moi buoi lam bu) cho MOI nhan vien. */
+  app.post('/lam-bu/:id/tinh-lai', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const p = req.params as Record<string, string>;
+    const id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+    const moc = await truy_van_mot<{ tu: string; den: string }>(
+      `select least(lb.ngay_nghi, min(b.ngay))::text as tu,
+              greatest(lb.ngay_nghi, max(b.ngay))::text as den
+         from ngay_lam_bu lb left join buoi_lam_bu b on b.ngay_lam_bu_id = lb.id
+        where lb.id = $1 group by lb.ngay_nghi`,
+      [id],
+    );
+    if (moc === null) throw new LoiKhongTim('Không tìm thấy ngày nghỉ bù.');
+
+    // Cau hinh lam bu la quyet dinh LICH toan cong ty, nen "Tinh lai" phai ghi de duoc CA cac
+    // ngay dang khoa/sua-tay trong dung khoang lam bu (vd 31/8 tung nhap tay ngay_le) — khong bat
+    // nhan su di mo khoa bang tay. Chan an toan: neu ky luong thang do DA DUYET / DA TRA thi tu
+    // choi, phai thu-hoi-duyet truoc de khong lam lech phieu da chot.
+    const cac_thang = [...new Set([moc.tu.slice(0, 7), moc.den.slice(0, 7)])];
+    for (const thang of cac_thang) {
+      if (await ky_da_chot_luong(thang)) {
+        throw new LoiXungDot(
+          `Kỳ lương tháng ${thang} đã duyệt/đã trả — thu hồi duyệt kỳ đó trước khi áp làm bù.`,
+        );
+      }
+    }
+    const so = await tinh_lai_khoang(moc.tu, moc.den, undefined, true);
+    await ghi_nhat_ky(nd.sub, 'tinh_lai_lam_bu', 'ngay_lam_bu', id,
+      { tu: moc.tu, den: moc.den, so_ngay: so, bo_qua_chot: true }, req.ip);
+    return { ok: true, so_ngay_da_tinh: so, tu: moc.tu, den: moc.den };
   });
 
   // ============================================================ sua tay mot ngay cong
@@ -655,6 +756,7 @@ async function xuat_tong_hop_thang(
             count(*) filter (where bc.trang_thai = 'co_mat')::int    as so_ngay_co_mat,
             count(*) filter (where bc.trang_thai = 'vang')::int      as so_ngay_vang,
             count(*) filter (where bc.trang_thai = 'nghi_phep')::int as so_ngay_nghi_phep,
+            count(*) filter (where bc.trang_thai = 'nghi_khong_luong')::int as so_ngay_nghi_khong_luong,
             count(*) filter (where bc.trang_thai = 'ngay_le')::int   as so_ngay_le,
             count(*) filter (where bc.phut_muon > 0)::int            as so_lan_di_muon,
             count(*) filter (where bc.phut_ve_som > 0)::int          as so_lan_ve_som,
@@ -672,14 +774,15 @@ async function xuat_tong_hop_thang(
 
   const tieu_de = [
     'Mã NV', 'Họ tên', 'Phòng ban', 'Ca làm', 'Số công',
-    'Ngày có mặt', 'Ngày vắng', 'Ngày nghỉ phép', 'Ngày lễ',
+    'Ngày có mặt', 'Ngày vắng', 'Ngày nghỉ phép', 'Ngày nghỉ không lương', 'Ngày lễ',
     'Phút làm', 'Giờ làm', 'Phút OT', 'Giờ OT',
     'Số lần đi muộn', 'Tổng phút muộn', 'Số lần về sớm', 'Tổng phút về sớm',
     'Số ngày đã chốt',
   ];
   const hang = dong.map((d) => [
     d['ma_nv'], d['ho_ten'], d['phong_ban'], d['ca_lam'], d['tong_cong'],
-    d['so_ngay_co_mat'], d['so_ngay_vang'], d['so_ngay_nghi_phep'], d['so_ngay_le'],
+    d['so_ngay_co_mat'], d['so_ngay_vang'], d['so_ngay_nghi_phep'],
+    d['so_ngay_nghi_khong_luong'], d['so_ngay_le'],
     d['tong_phut_lam'], phut_thanh_chu(Number(d['tong_phut_lam'])),
     d['tong_phut_ot'], phut_thanh_chu(Number(d['tong_phut_ot'])),
     d['so_lan_di_muon'], d['tong_phut_muon'],

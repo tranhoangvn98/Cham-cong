@@ -11,6 +11,7 @@
 import { Component, useEffect, useState, type ReactNode } from 'react';
 import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, mui_gio_offset_gio } from '../api.ts';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
+import { TrangPhieuLuongToi, TrangKhieuNaiToi } from './phieu_luong_toi.tsx';
 import { TrangVanBan } from './van_ban.tsx';
 import { ChuongBao } from './chuong_bao.tsx';
 
@@ -364,7 +365,7 @@ function chu_dau(ho_ten: string | null): string {
 
 // ==================================================================== trang goc
 
-type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'ca_nhan';
+type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'phep' | 'khieu_nai' | 'ca_nhan';
 type FormMo = 'nghi' | 'giai' | 'khac';
 
 // Ten icon KHONG kem tien to `bt-` (giong MENU o App.tsx) — noi render tu ghep `bt bt-${icon}`.
@@ -375,6 +376,8 @@ const CAC_TAB: { ma: Tab; ten: string; icon: string }[] = [
   { ma: 'bang_cong', ten: 'Bảng công', icon: 'list-details' },
   { ma: 'don_tu', ten: 'Đơn từ', icon: 'file-text' },
   { ma: 'luong', ten: 'Lương', icon: 'receipt-2' },
+  { ma: 'phep', ten: 'Phép', icon: 'calendar-stats' },
+  { ma: 'khieu_nai', ten: 'Khiếu nại', icon: 'alert-triangle' },
   { ma: 'ca_nhan', ten: 'Cá nhân', icon: 'user-check' },
 ];
 
@@ -383,6 +386,8 @@ const TEN_MAN: Record<Exclude<Tab, 'trang_chu'>, [string, string]> = {
   bang_cong: ['Bảng công của tôi', 'Số liệu chấm công theo tháng'],
   don_tu: ['Nghỉ phép & đơn từ', 'Xin nghỉ, giải trình, theo dõi trạng thái duyệt'],
   luong: ['Phiếu lương', 'Cơ sở tính lương của kỳ'],
+  phep: ['Quản lý phép', 'Quỹ phép năm & lịch sử nghỉ của bạn'],
+  khieu_nai: ['Khiếu nại lương', 'Lập & theo dõi khiếu nại phiếu lương, trao đổi với Nhân sự'],
   ca_nhan: ['Cá nhân', 'Hồ sơ, tài liệu, hợp đồng, BHXH, cài đặt'],
 };
 
@@ -468,7 +473,8 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
   // ra route quan tri. Duyet don la viec quan tri -> doi han goc nhin (di_duyet).
   const dieu_huong_bao = (man: string | undefined): void => {
     if (man === 'thong-bao') { dat_tab('trang_chu'); dat_mo_form(null); dat_man_phu('thong_bao'); return; }
-    if (man === 'duyet-don') { di_duyet?.(); return; }
+    if (man === 'khieu-nai-luong') { di_den('khieu_nai'); return; }
+    if (man === 'duyet-don' || man === 'don-tu') { di_duyet?.(); return; }
     if (man === 'ky-luat' || man === 'vi-pham' || man === 'don-cua-toi') { di_den('don_tu'); return; }
     di_den('trang_chu');
   };
@@ -575,6 +581,8 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
                     <ManDonTu hom_nay_nap={hom_nay_nap} mo_form={mo_form} dat_mo_form={dat_mo_form} />
                   )}
                   {tab === 'luong' && <ManLuong />}
+                  {tab === 'phep' && <NoiDungPhep />}
+                  {tab === 'khieu_nai' && <TrangKhieuNaiToi />}
                   {tab === 'ca_nhan' && <ManCaNhan />}
                 </>
               )}
@@ -1057,6 +1065,8 @@ function CanChuY({ ccy, ds_ngay, di_den, di_duyet }: {
 /** Nhan trang thai mot ngay cong trong danh sach chi tiet. */
 function nhan_ngay_cong(d: NgayCongNgay): string {
   if (d.trang_thai === 'nghi_phep') return 'Nghỉ phép';
+  if (d.trang_thai === 'nghi_khong_luong') return 'Nghỉ không lương';
+  if (d.trang_thai === 'lam_bu') return 'Làm bù';
   if (d.trang_thai === 'vang') return 'Vắng';
   if (d.trang_thai === 'ngay_le') return 'Ngày lễ';
   if (d.trang_thai === 'nghi_tuan') return 'Nghỉ tuần';
@@ -1128,36 +1138,72 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
       <LichThang thang={thang} ngay={du_lieu.ngay} />
 
       <div className="the the-mong">
-        <div className="cn-dau-mong">Chi tiết từng ngày — mới nhất trước</div>
-        {du_lieu.ngay.slice().reverse().map((d) => (
-          <div className="cn-ngay-cong" key={d.ngay}>
-            <div className="cn-ngay-cong-ngay">
-              <span className="cn-ngay-cong-nhan">{thu_cua_ngay(d.ngay)} {d.ngay.slice(8)}</span>
-              <span className="cn-ngay-cong-thang">{d.ngay.slice(5, 7)}/{d.ngay.slice(0, 4)}</span>
+        <div className="cn-dau-mong" style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          flexWrap: 'wrap', gap: 6,
+        }}>
+          <span>Chi tiết từng ngày</span>
+          <span style={{ fontSize: 11, fontWeight: 400, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <span><b style={{ color: '#16A34A' }}>●</b> đủ công</span>
+            <span><b style={{ color: '#F59E0B' }}>●</b> muộn/thiếu giờ</span>
+            <span><b style={{ color: '#DC2626' }}>●</b> vắng</span>
+            <span><b style={{ color: '#0EA5E9' }}>●</b> nghỉ phép</span>
+          </span>
+        </div>
+        {du_lieu.ngay.map((d) => {
+          const thieu_gio = d.trang_thai === 'co_mat' && (d.gio_vao === null || d.gio_ra === null);
+          const mau = d.trang_thai === 'vang' ? '#DC2626'
+            : d.trang_thai === 'nghi_phep' ? '#0EA5E9'
+              : d.trang_thai === 'nghi_khong_luong' ? '#F59E0B'
+                : d.trang_thai === 'ngay_le' || d.trang_thai === 'lam_bu' ? '#8B5CF6'
+                  : d.trang_thai === 'nghi_tuan' ? '#CBD5E1'
+                    : thieu_gio || so(d.phut_muon) > 0 ? '#F59E0B'
+                      : '#16A34A';
+          const badge_lop = d.trang_thai === 'vang' ? 'nhan-xau'
+            : d.trang_thai === 'co_mat' ? (so(d.phut_muon) > 0 || thieu_gio ? 'nhan-canh-bao' : 'nhan-tot')
+              : d.trang_thai === 'nghi_phep' ? 'nhan-lanh' : 'nhan-mo';
+          const gio_txt = d.gio_vao === null && d.gio_ra === null ? null
+            : d.gio_vao === null ? `thiếu giờ vào → ${gio_ngan(d.gio_ra)}`
+              : `${gio_ngan(d.gio_vao)} → ${d.gio_ra === null ? 'thiếu giờ ra' : gio_ngan(d.gio_ra)}`;
+          const muon_txt = [so(d.phut_muon) > 0 ? `muộn ${so(d.phut_muon)}′` : null,
+            so(d.phut_ve_som) > 0 ? `về sớm ${so(d.phut_ve_som)}′` : null].filter(Boolean).join(' · ');
+          const la_hom_nay = d.ngay === hom_nay();
+          return (
+            <div key={d.ngay} style={{
+              display: 'flex', alignItems: 'stretch', gap: 10,
+              padding: '9px 4px 9px 10px', marginBottom: 6, borderRadius: 6,
+              borderLeft: `4px solid ${mau}`,
+              background: la_hom_nay ? 'var(--nen-mo, #f1f5f9)' : 'transparent',
+            }}>
+              <div style={{ minWidth: 44, flexShrink: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.15 }}>
+                  {d.ngay.slice(8)}{' '}
+                  <span style={{ fontWeight: 500, fontSize: 12 }}>{thu_cua_ngay(d.ngay)}</span>
+                </div>
+                <div className="mo-ta" style={{ fontSize: 11 }}>{d.ngay.slice(5, 7)}/{d.ngay.slice(0, 4)}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span className={`nhan ${badge_lop}`}>{nhan_ngay_cong(d)}</span>
+                {gio_txt !== null && (
+                  <div style={{ fontSize: 13, marginTop: 3 }}>
+                    {gio_txt}
+                    {muon_txt !== '' && <span className="mo-ta"> · {muon_txt}</span>}
+                  </div>
+                )}
+                {d.ghi_chu !== null && d.ghi_chu !== '' && (
+                  <div className="mo-ta" style={{ fontSize: 12, marginTop: 2 }}>{d.ghi_chu}</div>
+                )}
+              </div>
+              <div style={{ textAlign: 'right', minWidth: 48, flexShrink: 0 }}>
+                <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{so_viet(d.so_cong)}</div>
+                <div className="mo-ta" style={{ fontSize: 10 }}>công</div>
+                {so(d.phut_lam) > 0 && (
+                  <div className="mo-ta" style={{ fontSize: 11, marginTop: 2 }}>{phut_thanh_chu(so(d.phut_lam))}</div>
+                )}
+              </div>
             </div>
-            <div className="cn-ngay-cong-gio">
-              <span>
-                {d.trang_thai === 'nghi_phep' ? '— nghỉ phép'
-                  : d.trang_thai === 'vang' ? '— vắng'
-                    : d.trang_thai === 'ngay_le' ? '— ngày lễ'
-                      : d.trang_thai === 'nghi_tuan' ? '— nghỉ tuần'
-                        : d.gio_vao === null
-                          ? `thiếu giờ vào → ${gio_ngan(d.gio_ra)}`
-                          : `${gio_ngan(d.gio_vao)} → ${d.gio_ra === null ? 'thiếu giờ ra' : gio_ngan(d.gio_ra)}`}
-              </span>
-              <span className={`nhan ${so(d.phut_muon) > 0 || d.gio_vao === null || d.gio_ra === null
-                ? 'nhan-canh-bao'
-                : d.trang_thai === 'co_mat' ? 'nhan-tot'
-                  : d.trang_thai === 'nghi_phep' ? 'nhan-lanh' : 'nhan-mo'}`}>
-                {nhan_ngay_cong(d)}
-              </span>
-            </div>
-            <div className="cn-ngay-cong-phai">
-              <span className="cn-ngay-cong-so">{so_viet(d.so_cong)}</span>
-              <span className="cn-ngay-cong-lam">{so(d.phut_lam) > 0 ? phut_thanh_chu(so(d.phut_lam)) : '—'}</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
         <button type="button" className="cn-nut-phang-rong" onClick={() => di_den('don_tu', 'giai')}>
           Thấy sai lệch? Gửi giải trình quên quẹt →
         </button>
@@ -1813,10 +1859,15 @@ function SheetDonKhac({ loai_don, khi_dong, khi_xong }: {
 // ==================================================================== man luong
 
 function ManLuong(): ReactNode {
-  const [thang, dat_thang] = useState(thang_nay());
+  // Mặc định mở KỲ LƯƠNG MỚI NHẤT ĐÃ CÓ (có kỳ nào hiện kỳ đó), KHÔNG phải tháng lịch hiện tại —
+  // tháng chưa có kỳ mà mở ra "chưa có phiếu" gây hiểu nhầm. Người dùng vẫn bấm ‹ › để xem tháng khác.
+  const phieu = dung_nap<{ thang: string }[]>('/api/toi/phieu-luong');
+  const [thang_chon, dat_thang] = useState<string | null>(null);
+  const ky_moi_nhat = (phieu.du_lieu ?? [])[0]?.thang ?? null;
+  const thang = thang_chon ?? ky_moi_nhat ?? thang_nay();
   const { du_lieu, dang_tai, loi } = dung_nap<LuongToi>(`/api/toi/luong?thang=${thang}`, [thang]);
 
-  if (dang_tai && du_lieu === null) return <XuongDanhSach />;
+  if (phieu.dang_tai || (dang_tai && du_lieu === null)) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
   if (du_lieu === null) return null;
 
@@ -1856,7 +1907,10 @@ function ManLuong(): ReactNode {
         </div>
       )}
       {du_lieu.phieu_luong !== null && (
-        <div className="hop-thong-bao hop-tot">Kỳ này đã có phiếu lương.</div>
+        <>
+          <TrangPhieuLuongToi thang_loc={thang} />
+          <div className="cn-dau-mong" style={{ marginTop: 8 }}>Cơ sở tính lương (chấm công)</div>
+        </>
       )}
 
       <div className="luoi luoi-4">
@@ -2212,6 +2266,82 @@ function NoiDungLuongCN({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
           { nhan: 'Hiệu lực từ', gia_tri: ngay_viet(l.hieu_luc_tu) },
         ]}
     />
+  );
+}
+
+const TEN_LOAI_NGHI: Record<string, string> = {
+  phep_nam: 'Phép năm', khong_luong: 'Không lương', om: 'Nghỉ ốm',
+  thai_san: 'Thai sản', ket_hon: 'Kết hôn', hieu: 'Việc riêng (hiếu)',
+};
+const TEN_TT_NGHI: Record<string, { ten: string; lop: string }> = {
+  cho_duyet: { ten: 'Chờ duyệt', lop: 'nhan-canh-bao' },
+  da_duyet: { ten: 'Đã duyệt', lop: 'nhan-tot' },
+  tu_choi: { ten: 'Từ chối', lop: 'nhan-xau' },
+  da_huy: { ten: 'Đã hủy', lop: 'nhan-mo' },
+};
+
+interface LanNghi {
+  id: string; loai: string; tu_ngay: string; den_ngay: string; nua_ngay: boolean;
+  trang_thai: string; ly_do: string | null; so_ngay: number;
+}
+interface PhepData {
+  nam: string;
+  quy: { quy: number; da_dung: number; con_lai: number; cho_duyet: number };
+  cac_lan: LanNghi[];
+}
+
+/** Quan ly phep nam CUA TOI: quy phep + chi tiet tung lan nghi da dung trong nam. */
+function NoiDungPhep(): ReactNode {
+  const nam_nay = new Date().getFullYear();
+  const [nam, dat_nam] = useState(nam_nay);
+  const { du_lieu, dang_tai, loi } = dung_nap<PhepData>(`/api/toi/phep?nam=${nam}`, [nam]);
+  if (dang_tai && du_lieu === null) return <XuongDanhSach />;
+  if (loi !== null) return <HopLoi loi={loi} />;
+  if (du_lieu === null) return null;
+  const q = du_lieu.quy;
+  const khoang = (x: LanNghi): string => (x.tu_ngay === x.den_ngay
+    ? ngay_viet(x.tu_ngay) : `${ngay_viet(x.tu_ngay)} – ${ngay_viet(x.den_ngay)}`);
+
+  return (
+    <div className="cn-cot-gap">
+      <div className="cn-chon-thang">
+        <button type="button" className="cn-nut-vuong" aria-label="Năm trước"
+          onClick={() => dat_nam(nam - 1)}>‹</button>
+        <span className="cn-chon-thang-ten">Phép năm {nam}</span>
+        <button type="button" className="cn-nut-vuong" aria-label="Năm sau"
+          disabled={nam >= nam_nay} onClick={() => dat_nam(nam + 1)}>›</button>
+      </div>
+
+      <Khoi
+        ten="Quỹ phép năm"
+        phu="Chỉ nghỉ PHÉP NĂM đã duyệt mới trừ vào quỹ. Nghỉ ốm / không lương không trừ phép."
+        dong={[
+          { nhan: 'Tổng quỹ phép', gia_tri: `${so_viet(q.quy)} ngày` },
+          { nhan: 'Đã dùng', gia_tri: `${so_viet(q.da_dung)} ngày` },
+          { nhan: 'Còn lại', gia_tri: `${so_viet(q.con_lai)} ngày`, mau: q.con_lai <= 0 ? 'xau' : 'tot' },
+          { nhan: 'Đang chờ duyệt', gia_tri: `${so_viet(q.cho_duyet)} ngày`, mau: q.cho_duyet > 0 ? 'lanh' : undefined },
+        ]}
+      />
+
+      <div className="the the-mong">
+        <div className="cn-dau-mong">Chi tiết các lần nghỉ (năm {nam})</div>
+        {du_lieu.cac_lan.length === 0 && (
+          <div className="cn-hang-don"><span className="mo-ta">Chưa có lần nghỉ nào trong năm.</span></div>
+        )}
+        {du_lieu.cac_lan.map((x) => (
+          <div className="cn-hang-don" key={x.id}>
+            <div>
+              <strong>{khoang(x)}</strong>
+              <span className="mo-ta"> · {TEN_LOAI_NGHI[x.loai] ?? x.loai} · {so_viet(x.so_ngay)} ngày{x.nua_ngay ? ' (nửa ngày)' : ''}</span>
+              {x.ly_do !== null && x.ly_do !== '' && <div className="mo-ta">{x.ly_do}</div>}
+            </div>
+            <span className={`nhan ${TEN_TT_NGHI[x.trang_thai]?.lop ?? 'nhan-mo'}`}>
+              {TEN_TT_NGHI[x.trang_thai]?.ten ?? x.trang_thai}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

@@ -10,6 +10,7 @@
 import { truy_van_mot } from '../csdl/ket_noi.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { quyet_don } from './nghiep_vu.ts';
+import { id_tai_khoan_he_thong } from '../bao_mat/tai_khoan_he_thong.ts';
 import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { gui_email, email_bat } from '../su_kien/gui_email.ts';
 import { ngay_viet } from '../tien_ich/thoi_gian.ts';
@@ -92,7 +93,7 @@ export async function tu_dong_quyet_di_muon(don_id: string): Promise<KetQuaDiMuo
     ly_do = 'Đã duyệt.';
   }
 
-  await quyet_don(don_id, quyet, null as unknown as string,
+  await quyet_don(don_id, quyet, await id_tai_khoan_he_thong(),
     `[auto] ${quyet === 'da_duyet' ? 'Tự động duyệt đi muộn' : ly_do}`);
 
   const kq: KetQuaDiMuon = { quyet, ly_do, so_da_duyet: d.so_da_duyet, mien: d.mien };
