@@ -316,16 +316,28 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
   // phu cap khoi moi.
   const HD_KHONG_PHU_CAP_KHOI = new Set(['thoi_vu', 'cong_tac_vien']);
 
+  // Phu cap KHONG ap dung theo LOAI HOP DONG (chu DN chot):
+  //   - thu viec: khong phu cap TRANG PHUC.
+  //   - hoc viec / thuc tap: khong TRANG PHUC va khong TRANG DIEM.
+  // Loc ca nguon khoi lan ca nhan (vd HR lo khai trang diem ca nhan cho hoc viec -> van bo).
+  const KHOAN_TRU_THEO_HD: Record<string, ReadonlySet<string>> = {
+    thu_viec: new Set(['pc_trang_phuc']),
+    hoc_viec: new Set(['pc_trang_phuc', 'pc_trang_diem']),
+  };
+
   // Gop chinh sach khoi + ca nhan cho mot nguoi: ca nhan DE len khoi theo khoan_ma (override
   // mien/doi muc/khoan rieng). Ca nhan muon MIEN mot khoan khoi thi mo dong ca nhan so_tien = 0.
   const chinh_sach_cua = (
     nhan_vien_id: string, khoi_id: string | null, loai_hop_dong: string | null,
-  ): DongChinhSach[] =>
-    gop_chinh_sach(
+  ): DongChinhSach[] => {
+    const gop = gop_chinh_sach(
       theo_nguoi.get(nhan_vien_id) ?? [],
       khoi_id === null || (loai_hop_dong !== null && HD_KHONG_PHU_CAP_KHOI.has(loai_hop_dong))
         ? [] : (theo_khoi.get(khoi_id) ?? []),
     );
+    const tru = loai_hop_dong !== null ? KHOAN_TRU_THEO_HD[loai_hop_dong] : undefined;
+    return tru === undefined ? gop : gop.filter((d) => !tru.has(d.khoan_ma));
+  };
 
   // ------------------------------------------------------------ ngay di muon cua ca cong ty
   // Doc mot lan moi ngay co gio vao trong ky, kem co / khong co don di muon da duyet gui truoc
