@@ -410,6 +410,18 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
     muon_theo_nguoi.set(m.nhan_vien_id, ds_m);
   }
 
+  // UNG LUONG DA CHI cua thang: tong theo nguoi. Se thanh khoan tru 'da_tam_ung' (tu_chinh_sach)
+  // trong phieu -> thuc linh da net phan da ung. Chi tinh khoan trang_thai='da_chi' (da giao tien).
+  const ung_theo_nguoi = new Map<string, number>();
+  for (const u of await truy_van<{ nhan_vien_id: string; tong: number }>(
+    `select nhan_vien_id, sum(so_tien)::float8 as tong
+       from ung_luong where thang = $1 and trang_thai = 'da_chi'
+      group by nhan_vien_id`,
+    [thang],
+  )) {
+    ung_theo_nguoi.set(u.nhan_vien_id, u.tong);
+  }
+
   await trong_giao_dich(async (khach) => {
     // Don phieu CU cua nguoi khong con thuoc bang luong VND: chuyen sang che do luong TQ,
     // hoac da nghi. Khong don thi phieu cu ket lai trong ky (vd nhan su Kho TQ da doi sang
@@ -530,6 +542,14 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
         sinh.push({
           khoan_ma: 'tru_nua_ngay', so_luong: muon.so_lan_nua_ngay, don_gia: null, so_tien: 0,
         });
+      }
+
+      // UNG LUONG da chi -> khoan tru 'da_tam_ung' (tu dong). Ton trong neu nguoi da GO TAY
+      // khoan nay: khong ghi de con so ke toan da nhap. Ung doi (them/bot khoan da_chi) roi
+      // tinh lai ky la con so nay tu cap nhat; ung bi go tay thi phai sua tay.
+      const tong_ung = ung_theo_nguoi.get(nv.nhan_vien_id) ?? 0;
+      if (tong_ung > 0 && !go_tay.has('da_tam_ung')) {
+        sinh.push({ khoan_ma: 'da_tam_ung', so_luong: null, don_gia: null, so_tien: tong_ung });
       }
 
       // Chinh sach het hieu luc / bi ghi de thi dong may sinh ra phai BIEN MAT, khong de lai

@@ -161,7 +161,7 @@ before(async () => {
     ho_so_tep, hop_dong_lao_dong, bien_ban_thoa_thuan, quyet_dinh_luong,
     cong_viec, bao_cao, khieu_nai, thiet_bi_cap_phat,
     ho_so_ca_nhan, tai_lieu_nhan_vien, nguoi_phu_thuoc, bhxh_su_kien,
-    ky_luong, phieu_luong,
+    ky_luong, phieu_luong, ung_luong,
     vi_pham, quy_tac_vi_pham, loai_vi_pham, ket_qua_kpi, tong_hop_kpi, ky_kpi,
     nhat_ky_vcontract, hop_dong_dien_tu, dong_bo_erp,
     dia_diem, thiet_bi, nguoi_dung, nhan_vien, ca_lam, phong_ban
@@ -2957,6 +2957,46 @@ test('luong: bao cao lech luong chay duoc (khong 500 vi lech tham so uuid/date)'
   assert.equal(r.ma, 200);
   assert.equal(typeof r.body['so_lech'], 'number');
   assert.ok(Array.isArray(r.body['lech']));
+});
+
+test('ung luong: quy trinh cho_duyet -> da_duyet -> da_chi, chan huy khi da chi', async () => {
+  // Dung thang RIENG (2099-12) khong co ky luong nao trong bo test -> khong dung cham phieu
+  // cua nhan_vien_id o cac bai khac.
+  const tao = await goi('POST', '/api/ung-luong', {
+    token: token_admin,
+    body: { nhan_vien_id, thang: '2099-12', so_tien: 500000, hinh_thuc: 'tien_mat', ly_do: 'Test' },
+  });
+  assert.equal(tao.ma, 201);
+  const id = tao.body['id'] as string;
+
+  const ds = await goi('GET', '/api/ung-luong?thang=2099-12', { token: token_admin });
+  assert.equal(ds.ma, 200);
+  const list = ds.body as unknown as { id: string; trang_thai: string; so_tien: number }[];
+  assert.ok(list.some((u) => u.id === id && u.trang_thai === 'cho_duyet'));
+
+  // Sua khi con cho_duyet.
+  assert.equal((await goi('PATCH', `/api/ung-luong/${id}`, {
+    token: token_admin, body: { so_tien: 600000, hinh_thuc: 'chuyen_khoan' },
+  })).ma, 200);
+
+  // Duyet -> da_duyet.
+  assert.equal((await goi('POST', `/api/ung-luong/${id}/duyet`, { token: token_admin })).ma, 200);
+  // Da duyet roi thi khong sua duoc nua.
+  assert.equal((await goi('PATCH', `/api/ung-luong/${id}`, {
+    token: token_admin, body: { so_tien: 700000 },
+  })).ma, 409);
+
+  // Danh dau da chi -> da_chi.
+  assert.equal((await goi('POST', `/api/ung-luong/${id}/da-chi`, { token: token_admin })).ma, 200);
+  // Da chi tien roi thi khong huy suong duoc.
+  assert.equal((await goi('POST', `/api/ung-luong/${id}/huy`, { token: token_admin })).ma, 409);
+
+  // Mot khoan khac, con cho_duyet -> xoa duoc.
+  const tao2 = await goi('POST', '/api/ung-luong', {
+    token: token_admin, body: { nhan_vien_id, thang: '2099-12', so_tien: 100000 },
+  });
+  assert.equal((await goi('DELETE', `/api/ung-luong/${tao2.body['id'] as string}`,
+    { token: token_admin })).ma, 200);
 });
 
 test('luong: sua tay thuong -> tinh lai ca ky, tong khop voi tung dong', async () => {
