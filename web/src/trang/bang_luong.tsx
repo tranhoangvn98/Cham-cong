@@ -463,6 +463,25 @@ function HopThoaiChiTiet(
         >
           Xuất CSV
         </button>
+        {(k.trang_thai === 'da_duyet' || k.trang_thai === 'da_tra') && la_admin() && (
+          <button
+            className="nut-phang" disabled={hd.dang_chay}
+            onClick={() => void hd.chay(async () => {
+              const kq = await goi<{ danh_sach: { ten: string; so_nguoi: number }[] }>(
+                `/api/ky-luong/${k.id}/lenh-chi/danh-sach`,
+              );
+              // Moi phap nhan chi tra ra mot file rieng (tai khoan nguon khac nhau).
+              for (const dv of kq.danh_sach) {
+                await tai_tep(
+                  `/api/ky-luong/${k.id}/lenh-chi/tep?don_vi=${encodeURIComponent(dv.ten)}`,
+                  `lenh_chi_${dv.ten}_${k.thang}.xlsx`,
+                );
+              }
+            }, 'Đã xuất lệnh chi.')}
+          >
+            Lập Lệnh Chi
+          </button>
+        )}
       </div>
 
       {k.phieu.length === 0 ? (

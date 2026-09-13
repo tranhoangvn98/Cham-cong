@@ -22,6 +22,7 @@ import {
   chi_tiet_ky_luat_theo_phieu, chi_tiet_di_muon_theo_phieu, type DongLietKe,
 } from '../luong/chi_tiet_ky_luat.ts';
 import { bang_luong_xuat } from '../luong/bang_xuat.ts';
+import { danh_sach_don_vi_chi, lenh_chi_xuat } from '../luong/lenh_chi.ts';
 import { xuat_bang_luong_erp } from '../luong/xuat_mau_erp.ts';
 import { gui_phieu_luong_ky } from '../luong/phieu_luong_email.ts';
 import { email_hr_tra_loi, email_hr_xu_ly } from '../luong/khieu_nai_email.ts';
@@ -1511,6 +1512,40 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
   });
 
   /** Xuat bang luong CNY (xlsx). */
+  // ============================================================ lap lenh chi
+  //
+  // Sau khi ky luong DA DUYET, moi phap nhan chi tra (Cong ty Thong Nhat / Tien Phong / ...)
+  // xuat mot file rieng theo mau chuyen khoan ngan hang, vi moi don vi chuyen tu mot tai
+  // khoan nguon khac nhau. Nhan vien duoc gan don vi qua ho_so_ca_nhan.don_vi_chi_luong.
+
+  /** Danh sach cac don vi chi tra co mat trong ky (de tao nut tai tung file). */
+  app.get('/ky-luong/:id/lenh-chi/danh-sach', { preHandler: can_nhan_su }, async (req) => {
+    const k = await lay_ky(lay_id(req));
+    if (k.trang_thai !== 'da_duyet' && k.trang_thai !== 'da_tra') {
+      throw new LoiDauVao('Chỉ lập lệnh chi sau khi kỳ lương đã được duyệt.');
+    }
+    return { danh_sach: await danh_sach_don_vi_chi(k.id) };
+  });
+
+  /** Xuat file lenh chi (xlsx) cho MOT don vi chi tra, theo mau ngan hang. */
+  app.get('/ky-luong/:id/lenh-chi/tep', { preHandler: can_nhan_su }, async (req, res) => {
+    const k = await lay_ky(lay_id(req));
+    if (k.trang_thai !== 'da_duyet' && k.trang_thai !== 'da_tra') {
+      throw new LoiDauVao('Chỉ lập lệnh chi sau khi kỳ lương đã được duyệt.');
+    }
+    const q = than((req as { query?: unknown }).query ?? {});
+    const don_vi = chuoi(q, 'don_vi', { bat_buoc: true, toi_da: 200, nhan: 'Đơn vị chi trả' })!;
+    const tep = await lenh_chi_xuat(k.id, k.thang, don_vi);
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'lap_lenh_chi', 'ky_luong',
+      k.id, { thang: k.thang, don_vi }, req.ip);
+    return res
+      .header('content-type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .header('content-disposition',
+        `attachment; filename="lenh_chi_${k.thang}.xlsx"`)
+      .send(tep);
+  });
+
   app.get('/ky-luong/:id/xuat-xlsx-cny', { preHandler: can_nhan_su }, async (req, res) => {
     const k = await lay_ky(lay_id(req));
     const b = await bang_cny_xuat(k.id);
