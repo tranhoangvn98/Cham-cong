@@ -48,6 +48,25 @@ test('ngay_chot_quy: nam hien tai -> hom nay; nam da qua -> 31/12', () => {
   assert.equal(ngay_chot_quy(2025, '2026-09-13'), '2025-12-31');
 });
 
+test('phan_bo_phep: phep dau ky (chot tay) tieu quy TRUOC -> don sau vuot chuyen khong luong', () => {
+  // Quy 5. Da dung dau ky 4 (chot tay). Don 2 ngay (08/08) -> chi con 1 trong quy, 1 vuot.
+  const kq = phan_bo_phep(
+    [{ id: 'a', tu_ngay: '2026-08-10', den_ngay: '2026-08-11', nua_ngay: false }],
+    5, 2026, () => true, 4,
+  );
+  // 1 ngay dau con quy, ngay 2 vuot -> tach.
+  assert.equal(kq.length, 1);
+  assert.equal(kq[0]?.kieu, 'tach');
+});
+
+test('phan_bo_phep: da dung dau ky >= quy -> don sau chuyen het khong luong', () => {
+  const kq = phan_bo_phep(
+    [{ id: 'a', tu_ngay: '2026-08-10', den_ngay: '2026-08-10', nua_ngay: false }],
+    5, 2026, () => true, 5,
+  );
+  assert.equal(kq[0]?.kieu, 'chuyen');
+});
+
 test('quy_phep_theo_luat: base 12, du 12 thang = 12', () => {
   assert.equal(quy_phep_theo_luat(12, 12), 12);
 });

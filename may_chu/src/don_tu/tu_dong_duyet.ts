@@ -19,7 +19,9 @@ import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { gui_email, email_bat } from '../su_kien/gui_email.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { ban_don_am_tham } from './ban_don.ts';
-import { so_thang_lam_trong_nam, quy_phep_theo_luat, ngay_chot_quy } from './quy_phep_nam.ts';
+import {
+  so_thang_lam_trong_nam, quy_phep_theo_luat, ngay_chot_quy, lay_phep_dau_ky,
+} from './quy_phep_nam.ts';
 import { id_tai_khoan_he_thong } from '../bao_mat/tai_khoan_he_thong.ts';
 import { danh_sach_ngay, ngay_viet } from '../tien_ich/thoi_gian.ts';
 
@@ -78,19 +80,23 @@ export function quyet_dinh_don(
 
 // ---------------------------------------------------------------- quy con lai
 
-/** So ngay phep nam DA DUYET trong `nam` (khong tinh don `tru_don_id`). Nua ngay = 0.5. */
+/**
+ * So ngay phep nam DA DUYET trong `nam` (khong tinh don `tru_don_id`). Nua ngay = 0.5.
+ * Cong them phep da dung dau ky (chot tay) neu co; khi do CHI dem don tu `tinh_tu_ngay` tro di.
+ */
 async function da_dung_phep(nv_id: string, nam: number, tru_don_id: string): Promise<number> {
-  const dau = `${nam}-01-01`;
+  const dau_ky = await lay_phep_dau_ky(nv_id, nam);
+  const dau = dau_ky?.tinh_tu_ngay ?? `${nam}-01-01`;
   const cuoi = `${nam}-12-31`;
   const dons = await truy_van<{ tu_ngay: string; den_ngay: string; nua_ngay: boolean }>(
     `select to_char(tu_ngay,'YYYY-MM-DD') as tu_ngay, to_char(den_ngay,'YYYY-MM-DD') as den_ngay,
             nua_ngay
        from don_nghi_phep
       where nhan_vien_id = $1 and loai = 'phep_nam' and trang_thai = 'da_duyet'
-        and id <> $4 and tu_ngay <= $3 and den_ngay >= $2`,
+        and id <> $4 and tu_ngay <= $3 and den_ngay >= $2 and tu_ngay >= $2`,
     [nv_id, dau, cuoi, tru_don_id],
   );
-  let s = 0;
+  let s = dau_ky?.so_ngay ?? 0;
   for (const d of dons) {
     const tu = d.tu_ngay > dau ? d.tu_ngay : dau;
     const den = d.den_ngay < cuoi ? d.den_ngay : cuoi;

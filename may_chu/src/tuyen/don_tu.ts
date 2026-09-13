@@ -84,18 +84,21 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     const ds = await truy_van<{
       id: string; ma_nv: string; ho_ten: string; phong_ban: string | null;
       ngay_vao: string | null; ngay_nghi_viec: string | null;
-      base: number; da_dung: number; cho_duyet: number;
+      base: number; da_dung: number; cho_duyet: number; phep_dau_ky: number;
     }>(
       `select nv.id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
               to_char(nv.ngay_vao,'YYYY-MM-DD')       as ngay_vao,
               to_char(nv.ngay_nghi_viec,'YYYY-MM-DD') as ngay_nghi_viec,
               coalesce(nv.so_ngay_phep_nam, 12)::float8 as base,
-              coalesce(dp.da_dung, 0)::float8   as da_dung,
-              coalesce(dp.cho_duyet, 0)::float8 as cho_duyet
+              pk.phep_dau_ky + coalesce(dp.da_dung, 0)::float8 as da_dung,
+              coalesce(dp.cho_duyet, 0)::float8 as cho_duyet,
+              pk.phep_dau_ky                    as phep_dau_ky
          from nhan_vien nv
          left join phong_ban pb on pb.id = nv.phong_ban_id
          left join ca_lam cl on cl.id = nv.ca_lam_id
          left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
+         -- Phep da dung "chot tay" dau ky (neu khai): tru vao quy; chi dem don tu tinh_tu_ngay tro di.
+         left join phep_da_dung_dau_ky pdk on pdk.nhan_vien_id = nv.id and pdk.nam = $1::int
          left join lateral (
            select
              sum(case when d.trang_thai = 'da_duyet'  then x.w end) as da_dung,
@@ -119,7 +122,9 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
             and d.trang_thai in ('da_duyet', 'cho_duyet')
             and d.tu_ngay <= make_date($1::int, 12, 31)
             and d.den_ngay >= make_date($1::int, 1, 1)
-         ) dp on true
+            and d.tu_ngay >= coalesce(pdk.tinh_tu_ngay, make_date($1::int, 1, 1))
+         ) dp on true,
+         lateral (select coalesce(pdk.so_ngay, 0)::float8 as phep_dau_ky) pk
         where nv.dang_hoat_dong = true
           and ($2::boolean is not true
                or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $3))
@@ -134,6 +139,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
         id: r.id,
         ma_nv: r.ma_nv, ho_ten: r.ho_ten, phong_ban: r.phong_ban, ngay_vao: r.ngay_vao,
         so_ngay_phep_nam: r.base, so_thang, quy, da_dung: r.da_dung, cho_duyet: r.cho_duyet,
+        phep_dau_ky: r.phep_dau_ky,
         con_lai: Math.round((quy - r.da_dung) * 10) / 10,
       };
     });

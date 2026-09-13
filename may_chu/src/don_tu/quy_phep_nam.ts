@@ -23,7 +23,7 @@
 //
 // Ham `ap_quy_phep_nam` co che do `dry_run` de XEM TRUOC truoc khi ap that.
 import type pg from 'pg';
-import { truy_van, trong_giao_dich } from '../csdl/ket_noi.ts';
+import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { danh_sach_ngay, thu_trong_tuan } from '../tien_ich/thoi_gian.ts';
 import { id_tai_khoan_he_thong } from '../bao_mat/tai_khoan_he_thong.ts';
 
@@ -100,6 +100,24 @@ export interface DonPhep {
   nua_ngay: boolean;
 }
 
+/** Phep nam da dung chot tay dau ky cho mot nguoi trong mot nam. */
+export interface PhepDauKy {
+  /** So ngay phep nam da dung truoc `tinh_tu_ngay` (chot tay, khong tu don). */
+  so_ngay: number;
+  /** Don phep nam tu ngay nay tro di moi dem THEM (don truoc da gop vao `so_ngay`). */
+  tinh_tu_ngay: string;
+}
+
+/** Doc phep da dung dau ky (chot tay) cua (nguoi, nam). null = chua khai -> dem don ca nam. */
+export async function lay_phep_dau_ky(nhan_vien_id: string, nam: number): Promise<PhepDauKy | null> {
+  const r = await truy_van_mot<{ so_ngay: number; tinh_tu_ngay: string }>(
+    `select so_ngay::float8 as so_ngay, to_char(tinh_tu_ngay,'YYYY-MM-DD') as tinh_tu_ngay
+       from phep_da_dung_dau_ky where nhan_vien_id = $1 and nam = $2`,
+    [nhan_vien_id, nam],
+  );
+  return r === null ? null : { so_ngay: r.so_ngay, tinh_tu_ngay: r.tinh_tu_ngay };
+}
+
 export type HanhDong =
   | { don_id: string; kieu: 'giu' }
   | { don_id: string; kieu: 'canh_bao_hai_nam' }
@@ -112,13 +130,15 @@ export type HanhDong =
  */
 export function phan_bo_phep(
   dons: readonly DonPhep[], quy: number, nam: number, la_ngay_lam: LaNgayLam = MOI_NGAY,
+  da_dung_ban_dau = 0,
 ): HanhDong[] {
   const dau_nam = `${nam}-01-01`;
   const cuoi_nam = `${nam}-12-31`;
   const sap = [...dons].sort((a, b) =>
     a.tu_ngay < b.tu_ngay ? -1 : a.tu_ngay > b.tu_ngay ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
-  let da_dung = 0;
+  // Phep da dung dau ky (chot tay) TIEU QUY TRUOC, roi moi den cac don theo thu tu thoi gian.
+  let da_dung = da_dung_ban_dau;
   const kq: HanhDong[] = [];
   for (const d of sap) {
     const trong_nam = d.tu_ngay.slice(0, 4) === String(nam) && d.den_ngay.slice(0, 4) === String(nam);
@@ -258,13 +278,16 @@ export async function ap_quy_phep_nam(
   let so_nguoi_vuot = 0;
 
   for (const nv of nvs) {
+    // Phep da dung dau ky (chot tay): tru truoc vao quy, va chi dem don TU `tinh_tu_ngay` tro di.
+    const dau_ky = await lay_phep_dau_ky(nv.id, nam);
+    const moc_dem_don = dau_ky?.tinh_tu_ngay ?? dau_nam;
     const dons = await truy_van<DonPhep>(
       `select id, to_char(tu_ngay,'YYYY-MM-DD') as tu_ngay,
               to_char(den_ngay,'YYYY-MM-DD') as den_ngay, nua_ngay
          from don_nghi_phep
         where nhan_vien_id = $1 and loai = 'phep_nam' and trang_thai = 'da_duyet'
-          and tu_ngay <= $3 and den_ngay >= $2`,
-      [nv.id, dau_nam, cuoi_nam],
+          and tu_ngay <= $3 and den_ngay >= $2 and tu_ngay >= $4`,
+      [nv.id, dau_nam, cuoi_nam, moc_dem_don],
     );
     // Ngay lam viec cua NGUOI NAY: thu trong `cac_ngay_lam` VA khong phai ngay le cua lich ho theo.
     const cac = new Set(nv.cac_ngay_lam);
@@ -273,7 +296,8 @@ export async function ap_quy_phep_nam(
 
     const so_thang = so_thang_lam_trong_nam(nv.ngay_vao, nv.ngay_nghi_viec, nam, ngay_chot_quy(nam));
     const quy = quy_phep_theo_luat(nv.base, so_thang);
-    const hanh_dong = phan_bo_phep(dons, quy, nam, la_ngay_lam);
+    const da_dung_dau_ky = dau_ky?.so_ngay ?? 0;
+    const hanh_dong = phan_bo_phep(dons, quy, nam, la_ngay_lam, da_dung_dau_ky);
 
     let so_ngay_chuyen = 0;
     let hai_nam = 0;
@@ -295,7 +319,7 @@ export async function ap_quy_phep_nam(
     }
     dong.push({
       ma_nv: nv.ma_nv, ho_ten: nv.ho_ten, so_thang, quy,
-      phep_da_duyet: tong_ngay(dons, nam, la_ngay_lam), so_ngay_chuyen,
+      phep_da_duyet: da_dung_dau_ky + tong_ngay(dons, nam, la_ngay_lam), so_ngay_chuyen,
       hai_nam_can_ra_soat: hai_nam, hanh_dong,
     });
 
