@@ -532,6 +532,7 @@ function HopThoaiChiTiet(
                 <th className="canh-phai">BHXH+YT+TN</th>
                 <th className="canh-phai">Thuế TNCN</th>
                 <th className="canh-phai">Khoản trừ</th>
+                <th className="canh-phai">Ứng lương</th>
                 <th className="canh-phai">Thực lĩnh</th>
                 {sua_duoc && <th />}
               </tr>
@@ -549,6 +550,11 @@ function HopThoaiChiTiet(
                 const kh_thuong = p.khoan.filter((x) => x.loai === 'thu_nhap' && x.nhom === 'thuong');
                 const co_pc = tong_phu_cap(p);
                 const co_thuong = tong_thuong(p);
+                // Ung luong = khoan tru 'da_tam_ung' (tu module Ung luong khi da chi). La MOT
+                // PHAN cua "Khoan tru" — hien rieng de thay ro, thuc linh da net san.
+                const ung = p.khoan
+                  .filter((x) => x.khoan_ma === 'da_tam_ung')
+                  .reduce((a, x) => a + Number(x.thanh_tien), 0);
                 return (
                   <tr key={p.id}>
                     <td>{p.ma_nv}</td>
@@ -602,6 +608,7 @@ function HopThoaiChiTiet(
                         </button>
                       ) : tien(tru)}
                     </td>
+                    <td className="canh-phai">{ung > 0 ? tien(ung) : '—'}</td>
                     <td className="canh-phai">
                       <strong>{tien(lam_tron)}</strong>
                       {lam_tron !== goc && (
@@ -632,6 +639,7 @@ function HopThoaiChiTiet(
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.bhxh_nld) + Number(p.bhyt_nld) + Number(p.bhtn_nld), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.thue_tncn), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.khoan_tru) + Number(p.tru_khac), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + p.khoan.filter((x) => x.khoan_ma === 'da_tam_ung').reduce((b, x) => b + Number(x.thanh_tien), 0), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.thuc_linh_lam_tron), 0))}</strong></td>
                 {sua_duoc && <td />}
               </tr>

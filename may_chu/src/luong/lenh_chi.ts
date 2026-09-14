@@ -42,7 +42,12 @@ export interface DongDonVi {
   tong_tien: number;
 }
 
-/** Cac don vi chi tra co mat trong ky (nhom theo ho_so_ca_nhan.don_vi_chi_luong). */
+/**
+ * Cac don vi chi tra co mat trong ky (nhom theo ho_so_ca_nhan.don_vi_chi_luong).
+ *
+ * CHI dem/cong nguoi con phai chi (thuc_linh_lam_tron > 0). Ai da ung du/qua (thuc linh <= 0)
+ * thi khong ra dong o lenh chi — tien da giao roi, khong chuyen khoan nua.
+ */
 export async function danh_sach_don_vi_chi(ky_id: string): Promise<DongDonVi[]> {
   return truy_van<DongDonVi>(
     `select coalesce(h.don_vi_chi_luong, $2) as ten,
@@ -54,6 +59,7 @@ export async function danh_sach_don_vi_chi(ky_id: string): Promise<DongDonVi[]> 
        left join ho_so_ca_nhan h on h.nhan_vien_id = nv.id
        left join don_vi_chi_tra dv on dv.ten = h.don_vi_chi_luong
       where pl.ky_luong_id = $1
+        and pl.thuc_linh_lam_tron > 0
       group by coalesce(h.don_vi_chi_luong, $2), dv.tai_khoan_nguon
       order by ten`,
     [ky_id, CONG_TY_CHINH],
@@ -76,6 +82,7 @@ export async function lenh_chi_xuat(ky_id: string, thang: string, don_vi: string
        left join ho_so_ca_nhan h on h.nhan_vien_id = nv.id
       where pl.ky_luong_id = $1
         and coalesce(h.don_vi_chi_luong, $3) = $2
+        and pl.thuc_linh_lam_tron > 0
       order by nv.ma_nv`,
     [ky_id, don_vi, CONG_TY_CHINH],
   );

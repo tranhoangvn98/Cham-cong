@@ -25,6 +25,7 @@ import { TrangThamSoLuong } from './trang/tham_so_luong.tsx';
 import { TrangRaVao } from './trang/ra_vao.tsx';
 import { TrangKyLuatViPham } from './trang/ky_luat_vi_pham.tsx';
 import { TrangBangLuong } from './trang/bang_luong.tsx';
+import { TrangUngLuong } from './trang/ung_luong.tsx';
 import { TrangQuanLyPhuCap } from './trang/quan_ly_phu_cap.tsx';
 import { TrangDonCuaToi } from './trang/don_cua_toi.tsx';
 import { TrangKpi } from './trang/kpi.tsx';
@@ -101,6 +102,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/ra-vao', ten: 'Ra/vào', icon: 'clock-exclamation', nhom: 'Chấm công', phu: 'Cảnh báo ra/vào & xử lý', quyen: 'nhan_su' },
   { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Chấm công', phu: 'Tính lương, phiếu từng người', quyen: 'nhan_su' },
   { duong_dan: '/phu-cap', ten: 'Phụ cấp', icon: 'file-certificate', nhom: 'Chấm công', phu: 'Danh mục khoản · theo khối · cá nhân', quyen: 'nhan_su' },
+  { duong_dan: '/ung-luong', ten: 'Ứng lương', icon: 'cash', nhom: 'Chấm công', phu: 'Tạm ứng · duyệt · đã chi', quyen: 'nhan_su' },
 
   // Nhan su & luong: quan tri ho so nguoi lao dong.
   { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Nhân sự & lương', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
@@ -218,6 +220,7 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     case '/nhan-vien': return <TrangNhanVien />;
     case '/bang-luong': return la_nhan_su() ? <TrangBangLuong /> : <KhongCoQuyen />;
     case '/phu-cap': return la_nhan_su() ? <TrangQuanLyPhuCap /> : <KhongCoQuyen />;
+    case '/ung-luong': return la_nhan_su() ? <TrangUngLuong /> : <KhongCoQuyen />;
     case '/ra-vao': return la_nhan_su() ? <TrangRaVao /> : <KhongCoQuyen />;
     case '/ky-luat': return la_quan_tri() ? <TrangKyLuatViPham /> : <KhongCoQuyen />;
     case '/khieu-nai-luong': return la_nhan_su() ? <TrangKhieuNaiLuong /> : <KhongCoQuyen />;
