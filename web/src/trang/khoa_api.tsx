@@ -42,6 +42,7 @@ const PHAM_VI: { ma: string; nhan: string; mo_ta: string }[] = [
   { ma: 'nghi_phep:doc', nhan: 'Nghỉ phép — đọc', mo_ta: 'Đơn nghỉ đã duyệt' },
   { ma: 'ho_so:doc', nhan: 'Hồ sơ — đọc', mo_ta: 'Hồ sơ nhân sự' },
   { ma: 'su_kien:doc', nhan: 'Sự kiện — đọc', mo_ta: 'Dòng sự kiện để đồng bộ' },
+  { ma: 'vi_pham:ghi', nhan: 'Vi phạm — ghi', mo_ta: 'Ghi nhận hồ sơ vi phạm từ hệ thống ngoài (nguồn cskh)' },
 ];
 
 export function TrangKhoaApi(): ReactNode {
