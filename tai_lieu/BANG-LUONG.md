@@ -219,6 +219,64 @@ tiền khác nhau. Ở đây chỉ có **một** cách, và nó là dữ liệu 
 tròn. Phiếu giữ **cả hai**: `thuc_linh` (số gốc, để đối chiếu với từng khoản) và
 `thuc_linh_lam_tron` (số trả thật). 0 = không làm tròn.
 
+## Làm thêm giờ theo loại ngày
+
+Giờ OT được tách theo **loại ngày** rồi nhân hệ số riêng (BLLĐ 2019 Điều 98: ngày thường ít
+nhất 150%, ngày nghỉ hằng tuần ít nhất 200%, ngày lễ ít nhất 300%):
+
+| Loại ngày | Hệ số (mặc định) | Xác định thế nào |
+|---|---|---|
+| Ngày thường | `he_so_ot_ngay_thuong` = 1,5 | ngày làm việc bình thường của ca (kể cả thứ Bảy làm việc) |
+| Chủ nhật | `he_so_ot_nghi_tuan` = 2 | Chủ nhật; nếu trùng ngày lễ thì **lễ thắng** |
+| Ngày lễ | `he_so_ot_ngay_le` = 3 | theo `ngay_le` của **lịch nghỉ nơi làm việc** của chính người đó (vn/tq) |
+
+Ba hệ số nằm trong *Cài đặt → Tham số lương*, sửa theo mốc hiệu lực như mọi tham số khác.
+Phiếu lưu `phut_ot`/`tien_ot` là tổng (xuất Excel/ERP không đổi) và 5 cột breakdown cùng hệ số
+**chụp lại khi tính** — đổi tham số sau không làm đổi cách trình bày phiếu đã trả.
+
+Phiếu lương (web, email, app) hiện 3 dòng OT kèm giờ và hệ số. Trên bảng lương quản trị,
+di chuột vào ô OT để thấy chi tiết 3 mức.
+
+## Thứ Bảy theo khối
+
+Chính sách chung: thứ Bảy là **nửa công** (`tham_so_luong.t7_nua_cong`). Mỗi **khối** có thể
+ghi đè qua `khoi.t7_nua_cong` (null = theo chính sách chung) — áp dụng đồng bộ cho tính công
+(cap công ngày T7) và công chuẩn của kỳ lương.
+
+**Ngoại lệ đã duyệt (17/09/2026): Khối Kho Hà Nội (`kho_hn`) làm ĐỦ ngày thứ Bảy** (1 công)
+và thêm giờ ngày thường **×1,0** (`khoi.he_so_ot_ngay_thuong = 1.00`). Các khối khác giữ
+nguyên. Khi gán nhân viên vào khối kho, kiểm tra ca của họ có thứ Bảy trong `cac_ngay_lam`.
+
+> Khi một khối làm đủ T7, đừng để `cong_chuan_thang` cố định — để 0 để công chuẩn đếm theo
+> lịch + ca của từng người, nếu không các nhóm có công chuẩn khác nhau sẽ bị tính chung.
+
+## Chi tiết khoản trên phiếu (người lao động tự đối chiếu)
+
+- Khoản trừ kỷ luật, trừ đi muộn, trừ nửa ngày **tự sinh chi tiết** từng lần (ngày + giờ) —
+  không ai phải nhập.
+- Khoản **gõ tay** (thưởng, trừ khác…) nhập được **chi tiết từng dòng** (lý do + tiền) trong
+  hộp thoại *Khoản*; tổng các dòng = số tiền của khoản. Nhân viên thấy từng căn cứ trên phiếu
+  (web + app), email giữ gọn tổng.
+- Phiếu hiện thêm: ngày phép còn (quỹ năm), danh sách ngày nghỉ trong tháng, đơn giá × số
+  lượng của khoản, lý do "Trừ khác".
+
+## Ngoại lệ theo nhóm — danh sách đã duyệt
+
+Nguyên tắc rà soát (17/09/2026): mọi quy tắc lương/công áp **chung cho mọi nhóm**; ngoại lệ
+phải được duyệt và ghi ở đây. Danh sách hiện hành:
+
+1. **Khối Trung Quốc** (`che_do_luong='tq'`) — bảng lương CNY riêng, không BHXH/thuế VN.
+2. **Khối Kho Hà Nội** — T7 đủ công + thêm giờ ngày thường ×1,0 (xem mục trên).
+3. **Loại hợp đồng** — thử việc ×85% lương cứng (BLLĐ Đ.26); thử việc + học việc không đóng
+   BHXH bắt buộc (luật); thời vụ/CTV không hưởng phụ cấp khối; thử việc không hưởng PC trang
+   phục, học việc không hưởng PC trang phục + trang điểm (chủ chốt).
+4. **Lịch nghỉ lễ theo nơi làm việc** (VN/TQ) và làm bù chỉ áp lịch VN.
+5. **Cờ từng phiếu** (`mien_phat`, `mien_thue`, `mien_bh`, `luong_net`, `ep_du_cong`) — chỉ
+   admin đổi, có nhật ký.
+6. **Mốc phạt đi muộn riêng theo từng người** (`nhan_vien.di_muon_moc_*`) — khai trong hồ sơ.
+
+Ngoài các mục trên, không có nhánh nhóm nào khác trong bộ tính công/lương.
+
 ---
 
 ## Xuất bảng

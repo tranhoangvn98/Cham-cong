@@ -224,10 +224,14 @@ async function phieu_luong_cua_toi(
   const phieu = await truy_van<{ id: string } & Record<string, unknown>>(
     `select p.id, k.thang, k.trang_thai as trang_thai_ky,
             p.luong_co_ban, p.phu_cap, p.so_ngay_cong_chuan, p.so_ngay_cong_thuc,
-            p.luong_ngay, p.luong_theo_cong, p.phut_ot, p.tien_ot, p.thuong, p.phu_cap_khac,
+            p.luong_ngay, p.luong_theo_cong, p.phut_ot, p.he_so_ot, p.tien_ot,
+            p.phut_ot_nghi_tuan, p.phut_ot_le,
+            p.tien_ot_thuong, p.tien_ot_nghi_tuan, p.tien_ot_le,
+            p.he_so_ot_nghi_tuan, p.he_so_ot_le,
+            p.thuong, p.phu_cap_khac,
             p.tong_thu_nhap, p.muc_dong_bh, p.so_nguoi_phu_thuoc, p.giam_tru_tong,
             p.thu_nhap_tinh_thue, p.bhxh_nld, p.bhyt_nld, p.bhtn_nld, p.thue_tncn,
-            p.tru_khac, p.tong_tru, p.thuc_linh, p.thuc_linh_lam_tron,
+            p.tru_khac, p.ly_do_tru_khac, p.ghi_chu, p.tong_tru, p.thuc_linh, p.thuc_linh_lam_tron,
             p.loai_hop_dong, p.ep_du_cong, p.mien_phat
        from phieu_luong p
        join ky_luong k on k.id = p.ky_luong_id
@@ -257,6 +261,59 @@ async function phieu_luong_cua_toi(
       id: `${id}:lan`, ly_do: '', so_tien, thu_tu: 0, cac_lan,
     }]);
 
+  // Chi tiet GO TAY cua khoan (phieu_luong_khoan_ct): nhan su nhap tung dong co ly do + so tien
+  // (vd thuong doanh so "287 so x 10.000"). Moi khoan co the co nhieu dong; tong luon khop
+  // thanh_tien cua dong khoan cha.
+  const ct_tay = await truy_van<{
+    phieu_luong_id: string; khoan_ma: string; id: string; ly_do: string; so_tien: string; thu_tu: number;
+  }>(
+    `select phieu_luong_id, khoan_ma, id, ly_do, so_tien::text as so_tien, thu_tu
+       from phieu_luong_khoan_ct
+      where phieu_luong_id = any($1::uuid[])
+      order by thu_tu, tao_luc`,
+    [ids],
+  );
+  const ct_tay_theo_phieu = new Map<string, Map<string, DongLietKe[]>>();
+  for (const c of ct_tay) {
+    let m = ct_tay_theo_phieu.get(c.phieu_luong_id);
+    if (m === undefined) { m = new Map(); ct_tay_theo_phieu.set(c.phieu_luong_id, m); }
+    const ds = m.get(c.khoan_ma);
+    const dong: DongLietKe = { id: c.id, ly_do: c.ly_do, so_tien: c.so_tien, thu_tu: c.thu_tu, cac_lan: [] };
+    if (ds === undefined) m.set(c.khoan_ma, [dong]); else ds.push(dong);
+  }
+
+  // Quy phep nam cho TUNG nam xuat hien trong danh sach phieu + danh sach don nghi (phep nam /
+  // khong luong) giao voi khoang thang cua cac phieu.
+  const phep_theo_nam = new Map<string, { quy: number; da_dung: number; con_lai: number; cho_duyet: number }>();
+  for (const nam of new Set(phieu.map((p) => String(p['thang']).slice(0, 4)))) {
+    phep_theo_nam.set(nam, await quy_phep(nv_id, nam, await quy_phep_cua(nv_id)));
+  }
+  const thang_cuoi = String(phieu[0]!['thang']);
+  const thang_dau = String(phieu[phieu.length - 1]!['thang']);
+  const nghi = await truy_van<{
+    tu_ngay: string; den_ngay: string; nua_ngay: boolean; loai: string; trang_thai: string;
+  }>(
+    `select to_char(tu_ngay, 'YYYY-MM-DD') as tu_ngay, to_char(den_ngay, 'YYYY-MM-DD') as den_ngay,
+            nua_ngay, loai, trang_thai
+       from don_nghi_phep
+      where nhan_vien_id = $1
+        and to_char(tu_ngay, 'YYYY-MM') <= $2 and to_char(den_ngay, 'YYYY-MM') >= $3
+        and loai in ('phep_nam', 'khong_luong')
+        and trang_thai in ('da_duyet', 'cho_duyet')
+      order by tu_ngay`,
+    [nv_id, thang_cuoi, thang_dau],
+  );
+  const nghi_thang = (thang: string): Record<string, unknown>[] =>
+    nghi
+      .filter((d) => d.tu_ngay.slice(0, 7) <= thang && d.den_ngay.slice(0, 7) >= thang)
+      .map((d) => ({
+        tu_ngay: d.tu_ngay < `${thang}-01` ? `${thang}-01` : d.tu_ngay,
+        den_ngay: d.den_ngay > `${thang}-31` ? `${thang}-31` : d.den_ngay,
+        nua_ngay: d.nua_ngay,
+        loai: d.loai,
+        trang_thai: d.trang_thai,
+      }));
+
   const theo_phieu = new Map<string, Record<string, unknown>[]>();
   for (const k of khoan) {
     const { phieu_luong_id, ...con } = k;
@@ -267,11 +324,22 @@ async function phieu_luong_cua_toi(
       chi_tiet = lan_thanh_dong(phieu_luong_id, ct_di_muon.get(phieu_luong_id)?.tang_50k ?? [], k.thanh_tien);
     } else if (k.khoan_ma === 'tru_nua_ngay') {
       chi_tiet = lan_thanh_dong(phieu_luong_id, ct_di_muon.get(phieu_luong_id)?.tang_nua_ngay ?? [], k.thanh_tien);
+    } else {
+      chi_tiet = ct_tay_theo_phieu.get(phieu_luong_id)?.get(k.khoan_ma) ?? [];
     }
     ds.push({ ...con, chi_tiet });
     theo_phieu.set(phieu_luong_id, ds);
   }
-  return phieu.map((p) => ({ ...p, khoan: theo_phieu.get(p.id) ?? [] }));
+
+  return phieu.map((p) => {
+    const thang = String(p['thang']);
+    return {
+      ...p,
+      khoan: theo_phieu.get(p.id) ?? [],
+      phep: phep_theo_nam.get(thang.slice(0, 4)) ?? null,
+      nghi: nghi_thang(thang),
+    };
+  });
 }
 
 export async function tuyen_toi(app: FastifyInstance): Promise<void> {
@@ -386,9 +454,11 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       ?? ngay_dia_phuong(new Date()).slice(0, 7);
     const { tu, den } = khoang_thang(thang);
 
-    const [tong, phep] = await Promise.all([
+    const [tong, phep, phieu_thang] = await Promise.all([
       tong_hop_thang(nv_id, thang),
       quy_phep(nv_id, thang.slice(0, 4), await quy_phep_cua(nv_id)),
+      // Phieu luong THAT cua thang (chi khi ky da duyet/da tra). Null neu chua co.
+      phieu_luong_cua_toi(nv_id, thang).then((ds) => ds[0] ?? null),
     ]);
 
     const t = tong as Record<string, unknown>;
@@ -403,14 +473,14 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       phep,
       // Ky cong da chot chua: chua chot thi so lieu con co the doi khi mot lan quet ve muon.
       da_chot: da_chot_het,
-      // Phieu luong THAT cua thang (chi khi ky da duyet/da tra). Null neu chua co.
-      phieu_luong: (await phieu_luong_cua_toi(nv_id, thang))[0] ?? null,
+      phieu_luong: phieu_thang,
       ghi_chu_ot:
         'Số phút OT ở đây là OT máy ghi nhận, chưa qua duyệt. Tiền làm thêm giờ chỉ được '
         + 'trả theo số phút OT đã có đơn duyệt.',
-      ly_do_chua_co_phieu_luong:
-        'Phiếu lương hiển thị sau khi kỳ lương của tháng được nhân sự duyệt. '
-        + 'Dữ liệu chấm công dưới đây là căn cứ để đối chiếu trước khi chốt.',
+      ly_do_chua_co_phieu_luong: phieu_thang === null
+        ? 'Phiếu lương hiển thị sau khi kỳ lương của tháng được nhân sự duyệt. '
+          + 'Dữ liệu chấm công dưới đây là căn cứ để đối chiếu trước khi chốt.'
+        : 'Bạn đã có phiếu lương của tháng này — xem chi tiết từng khoản ở mục Phiếu lương.',
     };
   });
   // Chu y: route GET /toi/phieu-luong (danh sach phieu cua chinh minh) da DANG KY o tuyen_luong

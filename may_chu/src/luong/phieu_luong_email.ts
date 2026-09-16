@@ -46,7 +46,22 @@ export function than_email_phieu(p: Phieu): string {
 
   const hang_thu = [
     hang('Lương theo công', tien(n('luong_theo_cong'))),
-    n('tien_ot') > 0 ? hang(`Làm thêm giờ (${gio_phut(n('phut_ot'))})`, tien(n('tien_ot'))) : '',
+    n('tien_ot') > 0
+      ? hang('LÀM THÊM GIỜ (OT)', tien(n('tien_ot')), true)
+        + (n('tien_ot_thuong') > 0
+          ? hang(
+            `&nbsp;&nbsp;Ngày thường (${gio_phut(Math.max(0, n('phut_ot') - n('phut_ot_nghi_tuan') - n('phut_ot_le')))}, ×${so(p['he_so_ot'])})`,
+            tien(n('tien_ot_thuong')))
+          : '')
+        + (n('tien_ot_nghi_tuan') > 0
+          ? hang(`&nbsp;&nbsp;Chủ nhật (${gio_phut(n('phut_ot_nghi_tuan'))}, ×${so(p['he_so_ot_nghi_tuan'])})`,
+            tien(n('tien_ot_nghi_tuan')))
+          : '')
+        + (n('tien_ot_le') > 0
+          ? hang(`&nbsp;&nbsp;Ngày lễ (${gio_phut(n('phut_ot_le'))}, ×${so(p['he_so_ot_le'])})`,
+            tien(n('tien_ot_le')))
+          : '')
+      : '',
     n('thuong') > 0 ? hang('Thưởng', tien(n('thuong'))) : '',
     ...thu_nhap.map((k) => hang(
       `${k.ten}${k.chiu_thue ? '' : ' <span style="color:#6B7280;font-size:12px">(miễn thuế)</span>'}`
@@ -89,6 +104,8 @@ export function than_email_phieu(p: Phieu): string {
         ${Boolean(p['ep_du_cong']) ? nhan_badge('Đủ công') : ''}${Boolean(p['mien_phat']) ? nhan_badge('Miễn phạt') : ''}
         <br/><b>Lương cơ bản:</b> ${tien(n('luong_co_ban'))} đ &nbsp;·&nbsp;
         <b>Lương/ngày công:</b> ${tien(n('luong_ngay'))} đ
+        ${p['phep_quy'] !== undefined
+          ? `<br/><b>Phép năm còn:</b> ${so(p['phep_con_lai'])}/${so(p['phep_quy'])} ngày` : ''}
       </p>
 
       <h3 style="margin:14px 0 6px;font-size:14px">Thu nhập</h3>
@@ -117,6 +134,38 @@ export function than_email_phieu(p: Phieu): string {
 
 export interface KetQuaGuiPhieu { so_nguoi: number; so_gui: number; so_bo_qua: number }
 
+/**
+ * Quy phep nam CON LAI cua mot nhan vien — trung quy tac voi `toi.ts` (chi tru don phep nam
+ * da duyet, nua ngay tinh 0,5; don vat qua nam cat theo nam dang xet).
+ */
+async function phep_con_lai(
+  nv_id: string, nam: number,
+): Promise<{ quy: number; con_lai: number }> {
+  const nv = await truy_van_mot<{ so_ngay_phep_nam: string | null }>(
+    'select so_ngay_phep_nam from nhan_vien where id = $1',
+    [nv_id],
+  );
+  const quy = Number(nv?.so_ngay_phep_nam ?? 12);
+  const r = await truy_van_mot<{ da_dung: string }>(
+    `with ngay_nghi as (
+       select d.nua_ngay,
+              generate_series(
+                greatest(d.tu_ngay, make_date($2::int, 1, 1)),
+                least(d.den_ngay, make_date($2::int, 12, 31)),
+                interval '1 day'
+              )::date as ngay
+         from don_nghi_phep d
+        where d.nhan_vien_id = $1
+          and d.loai = 'phep_nam'
+          and d.trang_thai = 'da_duyet'
+     )
+     select coalesce(sum(case when nua_ngay then 0.5 else 1 end), 0) as da_dung
+       from ngay_nghi`,
+    [nv_id, nam],
+  );
+  return { quy, con_lai: Math.round((quy - Number(r?.da_dung ?? 0)) * 10) / 10 };
+}
+
 async function tai_phieu(ky_luong_id: string): Promise<Phieu[]> {
   const phieu = await truy_van<Phieu>(
     `select p.*, k.thang, nv.ho_ten, nv.ma_nv, nv.email, pb.ten as phong_ban, nv.chuc_danh
@@ -135,10 +184,25 @@ async function tai_phieu(ky_luong_id: string): Promise<Phieu[]> {
       order by d.loai desc, d.thu_tu, d.ten`,
     [phieu.map((p) => p.id)],
   );
-  return phieu.map((p) => ({
-    ...p,
-    khoan: khoan.filter((x) => String(x.phieu_luong_id) === String(p.id)),
-  }));
+  // Phep con lai theo (nhan vien, nam) — tinh mot lan cho moi cap, gan vao phieu cung nam.
+  const phep_theo_nv_nam = new Map<string, { quy: number; con_lai: number }>();
+  for (const p of phieu) {
+    const nam = Number(String(p['thang']).slice(0, 4));
+    const khoa = `${p['nhan_vien_id']}:${nam}`;
+    if (!phep_theo_nv_nam.has(khoa)) {
+      phep_theo_nv_nam.set(khoa, await phep_con_lai(String(p['nhan_vien_id']), nam));
+    }
+  }
+  return phieu.map((p) => {
+    const nam = Number(String(p['thang']).slice(0, 4));
+    const phep = phep_theo_nv_nam.get(`${p['nhan_vien_id']}:${nam}`);
+    return {
+      ...p,
+      khoan: khoan.filter((x) => String(x.phieu_luong_id) === String(p.id)),
+      phep_quy: phep?.quy,
+      phep_con_lai: phep?.con_lai,
+    };
+  });
 }
 
 /**

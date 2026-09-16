@@ -31,7 +31,23 @@ test('than email: hien thang, ten, thuc nhan, thuong, OT theo phut', () => {
   assert.match(html, /Nguyen Van A/);
   assert.match(html, /9\.650\.000/); // thuc nhan lam tron
   assert.match(html, /Thưởng/);
-  assert.match(html, /Làm thêm giờ \(1h30\)/); // 90 phut
+  assert.match(html, /LÀM THÊM GIỜ \(OT\)/);
+  assert.match(html, /200\.000/);
+});
+
+test('than email: OT tach ba loai ngay kem he so', () => {
+  const html = than_email_phieu(phieu_mau({
+    phut_ot: 240, tien_ot: 738_637,
+    phut_ot_nghi_tuan: 60, phut_ot_le: 60,
+    tien_ot_thuong: 170_455, tien_ot_nghi_tuan: 227_273, tien_ot_le: 340_909,
+    he_so_ot: 1.5, he_so_ot_nghi_tuan: 2, he_so_ot_le: 3,
+  }));
+  assert.match(html, /Ngày thường \(2h, ×1\.5\)/);
+  assert.match(html, /Chủ nhật \(1h, ×2\)/);
+  assert.match(html, /Ngày lễ \(1h, ×3\)/);
+  assert.match(html, /170\.455/);
+  assert.match(html, /227\.273/);
+  assert.match(html, /340\.909/);
 });
 
 test('than email: badge Du cong / Mien phat khi bat', () => {

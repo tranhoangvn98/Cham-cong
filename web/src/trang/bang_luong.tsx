@@ -114,7 +114,16 @@ interface Phieu {
   so_ngay_cong_chuan: string;
   so_ngay_cong_thuc: string;
   luong_theo_cong: string;
+  phut_ot: string;
   tien_ot: string;
+  phut_ot_nghi_tuan: string;
+  phut_ot_le: string;
+  tien_ot_thuong: string;
+  tien_ot_nghi_tuan: string;
+  tien_ot_le: string;
+  he_so_ot: string;
+  he_so_ot_nghi_tuan: string;
+  he_so_ot_le: string;
   thuong: string;
   phu_cap_khac: string;
   khoan_thu_nhap: string;
@@ -176,6 +185,27 @@ function tien(v: unknown): string {
   const n = Number(v ?? 0);
   if (!Number.isFinite(n)) return '—';
   return n.toLocaleString('vi-VN', { maximumFractionDigits: 0 });
+}
+/** Phut OT thanh chuoi 'Xh' / 'XhYY' — trung phieu luong ca nhan. */
+function gio_ot(phut: unknown): string {
+  const p = Number(phut) || 0;
+  return `${Math.floor(p / 60)}h${p % 60 > 0 ? String(p % 60).padStart(2, '0') : ''}`;
+}
+/** Mo ta chi tiet OT 3 muc cho tooltip cot OT tren bang luong. */
+function mo_ta_ot(p: Phieu): string {
+  const phut_thuong = Math.max(0,
+    Number(p.phut_ot) - Number(p.phut_ot_nghi_tuan) - Number(p.phut_ot_le));
+  const phan: string[] = [];
+  if (Number(p.tien_ot_thuong) > 0) {
+    phan.push(`Ngày thường: ${gio_ot(phut_thuong)} ×${p.he_so_ot} = ${tien(p.tien_ot_thuong)}`);
+  }
+  if (Number(p.tien_ot_nghi_tuan) > 0) {
+    phan.push(`Chủ nhật: ${gio_ot(p.phut_ot_nghi_tuan)} ×${p.he_so_ot_nghi_tuan} = ${tien(p.tien_ot_nghi_tuan)}`);
+  }
+  if (Number(p.tien_ot_le) > 0) {
+    phan.push(`Ngày lễ: ${gio_ot(p.phut_ot_le)} ×${p.he_so_ot_le} = ${tien(p.tien_ot_le)}`);
+  }
+  return phan.join(' · ');
 }
 
 /** Tong THUONG cua phieu = thuong (quyet dinh) + khoan thu_nhap nhom 'thuong' (KPI...). */
@@ -577,7 +607,10 @@ function HopThoaiChiTiet(
                       {p.luong_net && <div className="nhan-canh-bao" title="Lương NET: công ty gánh BHXH của NLĐ (vẫn đóng đủ), không trừ vào thực lĩnh">lương net</div>}
                     </td>
                     <td className="canh-phai">{tien(p.luong_theo_cong)}</td>
-                    <td className="canh-phai">{tien(p.tien_ot)}</td>
+                    <td className="canh-phai"
+                      title={Number(p.tien_ot) > 0 ? mo_ta_ot(p) : undefined}>
+                      {tien(p.tien_ot)}
+                    </td>
                     <td className="canh-phai">
                       {kh_thuong.length > 0 ? (
                         <button className="nut-lien-ket" onClick={() => dat_xem_thuong(p)}
@@ -1033,6 +1066,15 @@ function HopThoaiKhoan(
       so_tien: String(Number(k.thanh_tien)),
     }])),
   );
+  // Chi tiet TUNG DONG cua khoan nhap tay (ly do + so tien) — can cu nguoi lao dong se thay.
+  // Tong cac dong = so tien cua khoan (may chu tu dat). Rong = mot dong gop nhu cu.
+  const [ct, dat_ct] = useState<Record<string, { ly_do: string; so_tien: string }[]>>(
+    Object.fromEntries(phieu.khoan
+      .filter((k) => !k.tu_chinh_sach && k.cach_tinh === 'nhap_tay')
+      .map((k) => [k.khoan_ma, k.chi_tiet
+        .filter((c) => c.ly_do !== '')
+        .map((c) => ({ ly_do: c.ly_do, so_tien: String(Number(c.so_tien)) }))])),
+  );
   const hd = dung_hanh_dong();
 
   /** Dong dang do chinh sach dieu khien (va chua bi ghi de trong phien nay). */
@@ -1072,6 +1114,22 @@ function HopThoaiKhoan(
       return sau;
     });
   };
+
+  const dat_ct_dong = (ma: string, i: number, khoa: 'ly_do' | 'so_tien', v: string): void => {
+    dat_ct((truoc) => {
+      const ds = [...(truoc[ma] ?? [])];
+      ds[i] = { ly_do: '', so_tien: '0', ...ds[i], [khoa]: v };
+      return { ...truoc, [ma]: ds };
+    });
+  };
+  const them_ct = (ma: string): void => dat_ct((truoc) => ({
+    ...truoc,
+    [ma]: [...(truoc[ma] ?? []), { ly_do: '', so_tien: '0' }],
+  }));
+  const xoa_ct = (ma: string, i: number): void => dat_ct((truoc) => ({
+    ...truoc,
+    [ma]: (truoc[ma] ?? []).filter((_, j) => j !== i),
+  }));
 
   const nhom = (loai: 'thu_nhap' | 'tru'): KhoanDanhMuc[] => tat_ca.filter((d) => d.loai === loai);
 
@@ -1133,33 +1191,60 @@ function HopThoaiKhoan(
         <table className="bang-gon">
           <tbody>
             {ds.map((d) => (
-              <tr key={d.ma}>
-                <td>
-                  {d.ten}
-                  {!d.chiu_thue && <span className="nhan-tot"> miễn thuế</span>}
-                  {theo_chinh_sach.has(d.ma) && dong[d.ma] === undefined && (
-                    <span className="nhan-mo"> theo chính sách</span>
-                  )}
-                  {theo_chinh_sach.has(d.ma) && dong[d.ma] !== undefined && (
-                    <span className="nhan-canh-bao"> đã ghi đè cho kỳ này</span>
-                  )}
-                  {d.cach_tinh === 'so_luong_x_don_gia' && (
-                    <div className="mo-ta">
-                      Nhập SỐ LƯỢNG — đơn giá {tien(d.don_gia)} đ, máy nhân ra tiền.
-                    </div>
-                  )}
-                  {d.cach_tinh === 'nua_ngay_luong' && (
-                    <div className="mo-ta">
-                      Nhập SỐ LẦN — mỗi lần bằng nửa lương một ngày của chính người này
-                      ({tien(Number(phieu.luong_ngay) / 2)} đ).
-                    </div>
-                  )}
-                  {d.canh_bao !== null && d.canh_bao !== '' && (
-                    <div className="hop-luu-y">{d.canh_bao}</div>
-                  )}
-                </td>
-                <td className="canh-phai">{o_nhap(d)}</td>
-              </tr>
+              <Fragment key={d.ma}>
+                <tr>
+                  <td>
+                    {d.ten}
+                    {!d.chiu_thue && <span className="nhan-tot"> miễn thuế</span>}
+                    {theo_chinh_sach.has(d.ma) && dong[d.ma] === undefined && (
+                      <span className="nhan-mo"> theo chính sách</span>
+                    )}
+                    {theo_chinh_sach.has(d.ma) && dong[d.ma] !== undefined && (
+                      <span className="nhan-canh-bao"> đã ghi đè cho kỳ này</span>
+                    )}
+                    {d.cach_tinh === 'so_luong_x_don_gia' && (
+                      <div className="mo-ta">
+                        Nhập SỐ LƯỢNG — đơn giá {tien(d.don_gia)} đ, máy nhân ra tiền.
+                      </div>
+                    )}
+                    {d.cach_tinh === 'nua_ngay_luong' && (
+                      <div className="mo-ta">
+                        Nhập SỐ LẦN — mỗi lần bằng nửa lương một ngày của chính người này
+                        ({tien(Number(phieu.luong_ngay) / 2)} đ).
+                      </div>
+                    )}
+                    {d.canh_bao !== null && d.canh_bao !== '' && (
+                      <div className="hop-luu-y">{d.canh_bao}</div>
+                    )}
+                  </td>
+                  <td className="canh-phai">{o_nhap(d)}</td>
+                </tr>
+                {dong[d.ma] !== undefined && d.cach_tinh === 'nhap_tay' && (
+                  <tr>
+                    <td colSpan={2} style={{ paddingTop: 0 }}>
+                      <div className="mo-ta">
+                        Chi tiết từng dòng (nhân viên sẽ thấy từng căn cứ). Tổng các dòng = số
+                        tiền của khoản. Để trống = một dòng gộp như cũ.
+                      </div>
+                      {(ct[d.ma] ?? []).map((c, i) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <div key={i} style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                          <input value={c.ly_do} placeholder="Lý do / căn cứ (vd: 287 số × 10.000)"
+                            onChange={(e) => dat_ct_dong(d.ma, i, 'ly_do', e.target.value)} />
+                          <input type="number" min="0" style={{ width: 120 }} value={c.so_tien}
+                            aria-label={`Số tiền dòng chi tiết ${i + 1} của ${d.ten}`}
+                            onChange={(e) => dat_ct_dong(d.ma, i, 'so_tien', e.target.value)} />
+                          <button className="nut-phang" onClick={() => xoa_ct(d.ma, i)}>Xóa</button>
+                        </div>
+                      ))}
+                      <button className="nut-nho" style={{ marginTop: 4 }}
+                        onClick={() => them_ct(d.ma)}>
+                        + Thêm dòng chi tiết
+                      </button>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -1189,8 +1274,8 @@ function HopThoaiKhoan(
       <div className="hang-nut">
         <button
           disabled={hd.dang_chay}
-          onClick={() => void hd.chay(
-            () => goi(`/api/phieu-luong/${phieu.id}/khoan`, {
+          onClick={() => void hd.chay(async () => {
+            await goi(`/api/phieu-luong/${phieu.id}/khoan`, {
               method: 'PUT',
               body: {
                 khoan: Object.entries(dong).map(([ma, v]) => ({
@@ -1199,9 +1284,23 @@ function HopThoaiKhoan(
                   so_tien: Number(v.so_tien) || 0,
                 })),
               },
-            }),
-            'Đã lưu các khoản và tính lại kỳ lương.',
-          ).then((ok) => { if (ok !== null) khi_xong(); })}
+            });
+            // Chi tiet tung dong cho cac khoan NHAP TAY vua luu (rong = bo chi tiet).
+            for (const [ma] of Object.entries(dong)) {
+              const d = tat_ca.find((x) => x.ma === ma);
+              if (d === undefined || d.cach_tinh !== 'nhap_tay') continue;
+              await goi(`/api/phieu-luong/${phieu.id}/khoan/${ma}/chi-tiet`, {
+                method: 'PUT',
+                body: {
+                  dong: (ct[ma] ?? []).map((c) => ({
+                    ly_do: c.ly_do,
+                    so_tien: Number(c.so_tien) || 0,
+                  })),
+                },
+              });
+            }
+          }, 'Đã lưu các khoản và tính lại kỳ lương.')
+            .then((ok) => { if (ok) khi_xong(); })}
         >
           Lưu
         </button>

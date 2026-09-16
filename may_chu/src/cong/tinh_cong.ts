@@ -32,6 +32,8 @@ interface DongNhanVien {
   ca_lam_id: string | null;
   /** Lich nghi le theo noi lam viec (mac dinh 'vn'). */
   lich_nghi_ma: string;
+  /** Ghi de T7 theo khoi: true = nua cong, false = du cong, null = theo tham so chung. */
+  t7_nua_cong_khoi: boolean | null;
 }
 
 async function nap_ca(ca_lam_id: string | null): Promise<CaLam | null> {
@@ -66,9 +68,11 @@ export async function tinh_lai_ngay(
 ): Promise<KetQuaTinhCong | null> {
   const nv = await truy_van_mot<DongNhanVien>(
     `select nv.id, nv.ma_nv, nv.ma_erp, nv.ca_lam_id,
-            coalesce(nlv.lich_nghi_ma, 'vn') as lich_nghi_ma
+            coalesce(nlv.lich_nghi_ma, 'vn') as lich_nghi_ma,
+            kh.t7_nua_cong as t7_nua_cong_khoi
        from nhan_vien nv
        left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
+       left join khoi kh on kh.id = nv.khoi_id
       where nv.id = $1`,
     [nhan_vien_id],
   );
@@ -250,7 +254,9 @@ export async function tinh_lai_ngay(
   // chuan (dem T7 = 0,5). Cap o day de MOT con so `so_cong` dung nghia "cong da huong" o moi noi
   // (chi tiet cong, KPI, xuat, luong). NGAY BU (buoi_bu > 0) da +0,5 de dat 1,0 nen KHONG cap.
   if (buoi_bu.length === 0 && thu_trong_tuan(ngay) === THU_BAY && kq.so_cong > HE_SO_T7) {
-    const t7_nua_cong = (await truy_van_mot<{ v: boolean }>(
+    // T7 nua cong theo KHOI cua nguoi nay (ngoai le kho_hn du cong DA DUYET); null = theo
+    // tham so chung toan cong ty.
+    const t7_nua_cong = nv.t7_nua_cong_khoi ?? (await truy_van_mot<{ v: boolean }>(
       `select coalesce(t7_nua_cong, true) as v from tham_so_luong
         where hieu_luc_tu <= $1 order by hieu_luc_tu desc limit 1`,
       [ngay],

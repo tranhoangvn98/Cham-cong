@@ -106,6 +106,8 @@ services:
       KY_LUAT_CHE_DO: ${KY_LUAT_CHE_DO:-nhac_nho}
       # So ngay giua hai lan nhac ky luat cho cung mot loi (chan >= 1).
       KY_LUAT_CHU_KY_NHAC_NGAY: ${KY_LUAT_CHU_KY_NHAC_NGAY:-3}
+      # Gio (0-23) he thong gui email nhac ky luat hang ngay. Mac dinh 17 = 17h.
+      KY_LUAT_GIO_NHAC: ${KY_LUAT_GIO_NHAC:-17}
       # Day su kien nhan su SANG cong (chieu RA). `CONG_SSO_GOC` o tren la chieu VAO.
       # De trong CONG_SU_KIEN_URL = lay theo CONG_SSO_GOC; chi khai khi hai duong that su
       # phai tro di hai noi. De trong CONG_TOKEN_DICH_VU = tat chieu RA, su kien nam lai

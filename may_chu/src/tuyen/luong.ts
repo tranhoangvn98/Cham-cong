@@ -172,9 +172,10 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
          giam_tru_ban_than, giam_tru_phu_thuoc, can_cu, ghi_chu,
          cong_chuan_thang, lam_tron_den, t7_nua_cong,
          phat_di_muon_bat, di_muon_gio_vao, di_muon_moc_50k, di_muon_muc_50k,
-         di_muon_moc_nua_ngay, di_muon_mien_moi_thang, di_muon_han_don, ty_le_thu_viec
+         di_muon_moc_nua_ngay, di_muon_mien_moi_thang, di_muon_han_don, ty_le_thu_viec,
+         he_so_ot_ngay_thuong, he_so_ot_nghi_tuan, he_so_ot_ngay_le
        ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
-                 $19,$20,$21,$22,$23,$24,$25,$26) returning id`,
+                 $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29) returning id`,
       [
         hieu_luc_tu,
         chuoi_bat_buoc(b, 'ten', { toi_da: 200 }),
@@ -205,6 +206,11 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         so_nguyen(b, 'di_muon_mien_moi_thang', { min: 0, max: 31 }) ?? 3,
         gio(b, 'di_muon_han_don') ?? '07:30:00',
         so_thuc(b, 'ty_le_thu_viec', { min: 0.5, max: 1 }) ?? 0.85,
+        // Ba he so OT theo loai ngay (BLLD 2019 D.98): ngay thuong / CN / le. Khoi co the ghi
+        // de he so ngay thuong (ngoai le da duyet trong bang `khoi`).
+        so_thuc(b, 'he_so_ot_ngay_thuong', { min: 0, max: 10 }) ?? 1.5,
+        so_thuc(b, 'he_so_ot_nghi_tuan', { min: 0, max: 10 }) ?? 2,
+        so_thuc(b, 'he_so_ot_ngay_le', { min: 0, max: 10 }) ?? 3,
       ],
     );
 
@@ -674,6 +680,25 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
     const ids = phieu.map((p) => String(p['id']));
     const ct_ky_luat = await chi_tiet_ky_luat_theo_phieu(ids);
     const ct_di_muon = await chi_tiet_di_muon_theo_phieu(ids);
+    // Chi tiet GO TAY cua khoan nhap tay (phieu_luong_khoan_ct) — nhan su nhap tung dong co
+    // ly do + so tien. Dinh kem vao dung dong khoan cua no.
+    const ct_tay = await truy_van<{
+      phieu_luong_id: string; khoan_ma: string; id: string; ly_do: string; so_tien: string; thu_tu: number;
+    }>(
+      `select phieu_luong_id, khoan_ma, id, ly_do, so_tien::text as so_tien, thu_tu
+         from phieu_luong_khoan_ct
+        where phieu_luong_id = any($1::uuid[])
+        order by thu_tu, tao_luc`,
+      [ids],
+    );
+    const ct_tay_theo_phieu = new Map<string, Map<string, DongLietKe[]>>();
+    for (const c of ct_tay) {
+      let m = ct_tay_theo_phieu.get(c.phieu_luong_id);
+      if (m === undefined) { m = new Map(); ct_tay_theo_phieu.set(c.phieu_luong_id, m); }
+      const ds = m.get(c.khoan_ma);
+      const dong: DongLietKe = { id: c.id, ly_do: c.ly_do, so_tien: c.so_tien, thu_tu: c.thu_tu, cac_lan: [] };
+      if (ds === undefined) m.set(c.khoan_ma, [dong]); else ds.push(dong);
+    }
     const lan_thanh_dong = (id: string, cac_lan: string[], so_tien: unknown): DongLietKe[] =>
       (cac_lan.length === 0 ? [] : [{
         id: `${id}:lan`, ly_do: '', so_tien: String(so_tien ?? '0'), thu_tu: 0, cac_lan,
@@ -689,6 +714,8 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         chi_tiet = lan_thanh_dong(id, ct_di_muon.get(id)?.tang_50k ?? [], x['thanh_tien']);
       } else if (ma === 'tru_nua_ngay') {
         chi_tiet = lan_thanh_dong(id, ct_di_muon.get(id)?.tang_nua_ngay ?? [], x['thanh_tien']);
+      } else {
+        chi_tiet = ct_tay_theo_phieu.get(id)?.get(ma as string) ?? [];
       }
       const voi_ct = { ...x, chi_tiet };
       const ds = theo_phieu.get(id);
@@ -1171,6 +1198,91 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
         [id],
       ),
     };
+  });
+
+
+  /**
+   * CHI TIET TUNG DONG cua mot khoan GO TAY (bang `phieu_luong_khoan_ct`): moi dong co ly do
+   * + so tien, de nguoi lao dong thay can cu (vd thuong doanh so "287 so x 10.000", tru bao
+   * hiem than nhan 1.699.200). Chi ap cho khoan `nhap_tay` ma ke toan da go tren phieu
+   * (tu_chinh_sach = false); cac khoan may sinh (di muon, chinh sach...) da co chi tiet tu
+   * dong rieng, khong ghi de o day.
+   *
+   * Gui danh sach moi la THAY TOAN BO. Rong = bo chi tiet (tro lai mot dong gop). Thanh tien
+   * cua dong khoan cha duoc dat = sum(so_tien) cac dong chi tiet — chi tiet la can cu, tong
+   * la so dan xuat.
+   */
+  app.put('/phieu-luong/:id/khoan/:ma/chi-tiet', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const ma = String((req.params as Record<string, string>)['ma'] ?? '');
+    const b = than(req.body);
+
+    const p = await truy_van_mot<{ ky_luong_id: string; trang_thai: string }>(
+      `select p.ky_luong_id, k.trang_thai from phieu_luong p
+         join ky_luong k on k.id = p.ky_luong_id where p.id = $1`,
+      [id],
+    );
+    if (p === null) throw new LoiKhongTim('Không tìm thấy phiếu lương.');
+    if (!SUA_DUOC.has(p.trang_thai)) {
+      throw new LoiXungDot(`Kỳ lương đang ở trạng thái "${p.trang_thai}" nên phiếu đã khóa sửa.`);
+    }
+
+    const khoan = await truy_van_mot<{ cach_tinh: string; tu_chinh_sach: boolean }>(
+      `select d.cach_tinh, pk.tu_chinh_sach
+         from phieu_luong_khoan pk
+         join khoan_luong d on d.ma = pk.khoan_ma
+        where pk.phieu_luong_id = $1 and pk.khoan_ma = $2`,
+      [id, ma],
+    );
+    if (khoan === null) throw new LoiKhongTim('Không có khoản này trên phiếu.');
+    if (khoan.cach_tinh !== 'nhap_tay') {
+      throw new LoiDauVao(
+        'Chỉ khoản nhập tay mới có chi tiết từng dòng — khoản tính theo công thức đã tự diễn giải số tiền.',
+      );
+    }
+    if (khoan.tu_chinh_sach) {
+      throw new LoiDauVao(
+        'Khoản do chính sách sinh ra không nhập chi tiết tay. Muốn ghi đè thì đưa khoản vào danh sách gõ tay trước.',
+      );
+    }
+
+    const gui = b['dong'];
+    if (!Array.isArray(gui)) throw new LoiDauVao('Thiếu danh sách "dong".');
+    if (gui.length > 100) throw new LoiDauVao('Tối đa 100 dòng chi tiết cho một khoản.');
+
+    const dong: { ly_do: string; so_tien: number }[] = [];
+    let tong = 0;
+    for (const raw of gui) {
+      const d = than(raw);
+      const dong_tien = Math.max(0, so_tien(d, 'so_tien'));
+      dong.push({ ly_do: chuoi_bat_buoc(d, 'ly_do', { toi_da: 300 }), so_tien: dong_tien });
+      tong += dong_tien;
+    }
+
+    await trong_giao_dich(async (khach) => {
+      await khach.query(
+        'delete from phieu_luong_khoan_ct where phieu_luong_id = $1 and khoan_ma = $2',
+        [id, ma],
+      );
+      for (const d of dong) {
+        await khach.query(
+          `insert into phieu_luong_khoan_ct (phieu_luong_id, khoan_ma, ly_do, so_tien, tao_boi)
+           values ($1,$2,$3,$4,$5)`,
+          [id, ma, d.ly_do, d.so_tien, nd.sub],
+        );
+      }
+      await khach.query(
+        'update phieu_luong_khoan set thanh_tien = $3 where phieu_luong_id = $1 and khoan_ma = $2',
+        [id, ma, tong],
+      );
+    });
+
+    const k = await lay_ky(p.ky_luong_id);
+    await tinh_ky_luong(k.id, k.thang);
+    await ghi_nhat_ky(nd.sub, 'sua_chi_tiet_khoan', 'phieu_luong_khoan', id,
+      { khoan_ma: ma, so_dong: dong.length, tong }, req.ip);
+    return { ok: true, so_dong: dong.length, tong };
   });
 
 

@@ -2,6 +2,24 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.92.0] — 2026-09-17
+
+**Làm thêm giờ theo loại ngày · Kho Hà Nội làm đủ thứ Bảy · Phiếu lương chi tiết từng khoản.**
+
+- **OT tách theo loại ngày** (BLLĐ 2019 Đ.98): ngày thường ×1,5 · Chủ nhật ×2 · ngày lễ ×3 —
+  ba hệ số trong *Tham số lương*; ngày lễ ưu tiên hơn Chủ nhật. Phiếu lương (web, email, app)
+  hiện 3 dòng OT kèm giờ và hệ số; `phieu_luong` lưu cột breakdown và hệ số chụp lại khi tính.
+- **Ngoại lệ nhóm đã duyệt** (17/09): Khối Kho Hà Nội làm **đủ ngày thứ Bảy** (1 công, không
+  nửa công) và thêm giờ ngày thường **×1,0** — cấu hình theo khối trong bảng `khoi`, các khối
+  khác giữ nguyên chính sách chung. Tính công (cap công T7) cũng theo khối.
+- **Phiếu lương cá nhân** (web + app): hiện **ngày phép còn**, danh sách ngày nghỉ trong tháng,
+  đơn giá × số lượng của từng khoản, lý do "Trừ khác". Khoản gõ tay khai được **chi tiết từng
+  dòng** (lý do + tiền, bảng `phieu_luong_khoan_ct`) qua nút *Khoản* — nhân viên thấy từng căn
+  cứ thưởng/trừ.
+- Trang *Tham số lương* thêm 3 ô hệ số OT; bảng lương có tooltip chi tiết OT 3 mức.
+- Bổ sung biến `KY_LUAT_GIO_NHAC` vào `docker-compose.yml` và `.env.example` (guard test bắt
+  thiếu từ bản trước).
+
 ## [1.91.0] — 2026-09-04
 
 **Thanh bên góc nhìn Quản trị giờ THUẦN quản trị.**

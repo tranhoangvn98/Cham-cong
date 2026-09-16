@@ -6,6 +6,7 @@ import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { khoang_thang, danh_sach_ngay, thu_trong_tuan } from '../tien_ich/thoi_gian.ts';
 import { OFFSET_MAY_MS, cau_hinh } from '../cau_hinh.ts';
 import { tinh_phieu_luong, type BacThue, type ThamSoLuong } from './tinh_luong.ts';
+import { tach_phut_ot, type NgayOt } from './tach_phut_ot.ts';
 import type { CachTinhKhoan, LoaiKhoan } from './khoan.ts';
 import { khoan_tu_chinh_sach, gop_chinh_sach, type DongChinhSach } from './chinh_sach.ts';
 import { tinh_phat_di_muon, gio_sang_phut, type CauHinhDiMuon } from './phat_di_muon.ts';
@@ -96,6 +97,9 @@ export async function tham_so_cho_thang(thang: string): Promise<
       giam_tru_ban_than: Number(d['giam_tru_ban_than']),
       giam_tru_phu_thuoc: Number(d['giam_tru_phu_thuoc']),
       bac_thue: bac,
+      he_so_ot_ngay_thuong: Number(d['he_so_ot_ngay_thuong'] ?? 1.5),
+      he_so_ot_nghi_tuan: Number(d['he_so_ot_nghi_tuan'] ?? 2),
+      he_so_ot_ngay_le: Number(d['he_so_ot_ngay_le'] ?? 3),
     },
   };
 }
@@ -156,6 +160,10 @@ interface DongNhanVien {
   luong_net: boolean;
   /** Khoi cua nguoi nay (YC 02 phan A) — de ap chinh sach phu cap cap khoi. Null = chua gan. */
   khoi_id: string | null;
+  /** Ghi de T7 theo khoi: true = nua cong, false = du cong, null = theo tham so chung. */
+  t7_nua_cong_khoi: boolean | null;
+  /** Ghi de he so OT ngay thuong theo khoi (ngoai le da duyet). Null = theo tham so chung. */
+  he_so_ot_thuong_khoi: string | null;
 }
 
 /**
@@ -209,10 +217,13 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
             nv.di_muon_moc_50k::text                              as di_muon_moc_50k,
             nv.di_muon_moc_nua_ngay::text                         as di_muon_moc_nua_ngay,
             nv.luong_net                                          as luong_net,
-            nv.khoi_id::text                                      as khoi_id
+            nv.khoi_id::text                                      as khoi_id,
+            kh.t7_nua_cong                                        as t7_nua_cong_khoi,
+            kh.he_so_ot_ngay_thuong::text                         as he_so_ot_thuong_khoi
        from nhan_vien nv
        left join ca_lam cl on cl.id = nv.ca_lam_id
        left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
+       left join khoi kh on kh.id = nv.khoi_id
        left join lateral (
          select luong_co_ban, phu_cap, luong_dong_bh from quyet_dinh_luong
           where nhan_vien_id = nv.id and hieu_luc_tu <= $2
@@ -235,7 +246,11 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
          select coalesce(sum(least(so_cong,
                    case when exists(select 1 from buoi_lam_bu bl where bl.ngay = bang_cong_ngay.ngay)
                           then 1
-                        when extract(dow from ngay) = 6 then $3::numeric else 1 end)), 0) as so_cong,
+                        when extract(dow from ngay) = 6
+                          -- T7: khoi ghi de (null = theo tham so chung $3).
+                          then case when kh.t7_nua_cong is null then $3::numeric
+                                    when kh.t7_nua_cong then 0.5::numeric else 1 end
+                        else 1 end)), 0) as so_cong,
                 coalesce(sum(phut_ot), 0)                                    as phut_ot
            from bang_cong_ngay
           where nhan_vien_id = nv.id and ngay >= $1 and ngay <= $2
@@ -251,6 +266,20 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       order by nv.ma_nv`,
     [tu, den, he_so_t7],
   );
+
+  // Phut OT THEO TUNG NGAY trong ky — de tach thanh ba loai (ngay thuong / CN / le) theo
+  // lich nghi cua tung nguoi. Doc mot lan cho ca cong ty, khong phai mot truy van moi nguoi.
+  const ot_theo_nguoi = new Map<string, NgayOt[]>();
+  for (const r of await truy_van<{ nhan_vien_id: string; ngay: string; phut_ot: number }>(
+    `select nhan_vien_id, to_char(ngay, 'YYYY-MM-DD') as ngay, phut_ot
+       from bang_cong_ngay
+      where ngay >= $1 and ngay <= $2 and phut_ot > 0`,
+    [tu, den],
+  )) {
+    const ds_ot = ot_theo_nguoi.get(r.nhan_vien_id);
+    if (ds_ot === undefined) ot_theo_nguoi.set(r.nhan_vien_id, [{ ngay: r.ngay, phut_ot: r.phut_ot }]);
+    else ds_ot.push({ ngay: r.ngay, phut_ot: r.phut_ot });
+  }
 
   // Chinh sach phu cap con hieu luc trong ky, cua CA cong ty, doc mot lan.
   //
@@ -437,9 +466,11 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
     for (const nv of ds) {
       // Cong chuan CO DINH neu cong ty da khai; khong khai thi dem theo lich that CUA LICH
       // NGHI LE tuong ung noi lam viec (VN/TQ).
+      // He so thu Bay CUA NGUOI NAY: khoi ghi de (ngoai le da duyet) de len tham so chung.
+      const he_so_t7_cua = (nv.t7_nua_cong_khoi ?? ts.cs.t7_nua_cong) ? HE_SO_T7_NUA_CONG : 1;
       const chuan = ts.cs.cong_chuan_thang > 0
         ? ts.cs.cong_chuan_thang
-        : ngay_cong_chuan(tu, den, nv.cac_ngay_lam, le_cua(nv.lich_nghi_ma), he_so_t7);
+        : ngay_cong_chuan(tu, den, nv.cac_ngay_lam, le_cua(nv.lich_nghi_ma), he_so_t7_cua);
 
       // Muc luong ap dung. Thu viec (BLLD 2019 D.26): LUON huong 85% luong cung (P1 luong co
       // ban + P2 phu cap), lay tu quyet_dinh_luong. Chinh sach cong ty: MOI thu viec deu 85%
@@ -608,6 +639,13 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       const dong_bao_hiem = !mien_bh
         && nv.loai_hop_dong !== 'thu_viec' && nv.loai_hop_dong !== 'hoc_viec';
 
+      // OT tach theo LOAI NGAY (thuong / CN / le theo lich cua nguoi nay) + he so ngay thuong
+      // theo khoi (kho_hn = 1.00 — ngoai le da duyet 17/09/2026; con lai theo tham so chung).
+      const ot = tach_phut_ot(ot_theo_nguoi.get(nv.nhan_vien_id) ?? [], le_cua(nv.lich_nghi_ma));
+      const he_so_ot_thuong = nv.he_so_ot_thuong_khoi === null
+        ? (ts.ts.he_so_ot_ngay_thuong ?? 1.5)
+        : Number(nv.he_so_ot_thuong_khoi);
+
       const kq = tinh_phieu_luong({
         luong_co_ban,
         phu_cap,
@@ -618,7 +656,9 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
         so_ngay_cong_chuan: chuan,
         so_ngay_cong_thuc: cong_thuc,
         phut_ot: nv.phut_ot,
-        he_so_ot: 1.5,
+        he_so_ot: he_so_ot_thuong,
+        phut_ot_nghi_tuan: ot.nghi_tuan,
+        phut_ot_le: ot.le,
         thuong,
         phu_cap_khac,
         so_nguoi_phu_thuoc: nv.so_nguoi_phu_thuoc,
@@ -639,11 +679,15 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
            thue_tncn = $23, tru_khac = $24, tong_tru = $25, thuc_linh = $26,
            luong_ngay = $27, khoan_thu_nhap = $28, khoan_tru = $29, thu_nhap_mien_thue = $30,
            thuc_linh_lam_tron = $31, loai_hop_dong = $32, luong_dong_bh = $33,
-           luong_net = $34, tinh_luc = now()
+           luong_net = $34,
+           phut_ot_nghi_tuan = $35, phut_ot_le = $36,
+           tien_ot_thuong = $37, tien_ot_nghi_tuan = $38, tien_ot_le = $39,
+           he_so_ot_nghi_tuan = $40, he_so_ot_le = $41,
+           tinh_luc = now()
          where id = $1`,
         [
           phieu_id, luong_co_ban, phu_cap,
-          chuan, cong_thuc, nv.phut_ot, 1.5,
+          chuan, cong_thuc, nv.phut_ot, he_so_ot_thuong,
           kq.luong_theo_cong, kq.tien_ot, thuong, phu_cap_khac,
           kq.tong_thu_nhap, kq.muc_dong_bh,
           kq.bhxh_nld, kq.bhyt_nld, kq.bhtn_nld,
@@ -653,6 +697,9 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
           kq.luong_ngay, kq.khoan_thu_nhap, kq.khoan_tru, kq.thu_nhap_mien_thue,
           kq.thuc_linh_lam_tron, nv.loai_hop_dong, kq.luong_dong_bh,
           luong_net,
+          ot.nghi_tuan, ot.le,
+          kq.tien_ot_thuong, kq.tien_ot_nghi_tuan, kq.tien_ot_le,
+          ts.ts.he_so_ot_nghi_tuan ?? 2, ts.ts.he_so_ot_ngay_le ?? 3,
         ],
       );
 

@@ -242,6 +242,58 @@ test('lam them gio: tinh theo don gia gio cua thang, nhan he so', () => {
   assert.equal(kq.tong_thu_nhap, 21_704_545);
 });
 
+test('OT tach theo loai ngay: CN x2, le x3, thuong x1.5 — tong la tong 3 phan', () => {
+  // Don gia gio = 113.636,36. 1h moi loai:
+  //   thuong: 113.636,36 x 1,5 = 170.455 (lam tron)
+  //   CN:     113.636,36 x 2   = 227.273
+  //   le:     113.636,36 x 3   = 340.909
+  const kq = tinh_phieu_luong({
+    ...CO_BAN,
+    phut_ot: 180,
+    phut_ot_nghi_tuan: 60,
+    phut_ot_le: 60,
+  }, TS);
+  assert.equal(kq.tien_ot_thuong, 170_455);
+  assert.equal(kq.tien_ot_nghi_tuan, 227_273);
+  assert.equal(kq.tien_ot_le, 340_909);
+  assert.equal(kq.tien_ot, 738_637);
+});
+
+test('khong truyen phan tach thi hanh vi nhu cu — tat ca tinh theo he so ngay thuong', () => {
+  // 2h x 1.5 = 113.636,36 x 2 x 1.5 = 340.909 (lam tron) — bang test cu.
+  const kq = tinh_phieu_luong({ ...CO_BAN, phut_ot: 120 }, TS);
+  assert.equal(kq.tien_ot_thuong, 340_909);
+  assert.equal(kq.tien_ot_nghi_tuan, 0);
+  assert.equal(kq.tien_ot_le, 0);
+  assert.equal(kq.tien_ot, 340_909);
+});
+
+test('he so OT ngay thuong 1.0 (khoi kho da duyet): 1h = don gia gio, khong nhan them', () => {
+  const kq = tinh_phieu_luong({ ...CO_BAN, phut_ot: 60, he_so_ot: 1 }, TS);
+  assert.equal(kq.tien_ot_thuong, 113_636);
+  assert.equal(kq.tien_ot, 113_636);
+});
+
+test('he so rieng cho phan nghi tuan / le cua phieu de len tham so chung', () => {
+  const kq = tinh_phieu_luong({
+    ...CO_BAN,
+    phut_ot: 120,
+    phut_ot_nghi_tuan: 60,
+    phut_ot_le: 60,
+    he_so_ot_nghi_tuan: 2.5,
+    he_so_ot_le: 4,
+  }, TS);
+  // CN: 113.636,36 x 2.5 = 284.091 (lam tron); le: x 4 = 454.545
+  assert.equal(kq.tien_ot_nghi_tuan, 284_091);
+  assert.equal(kq.tien_ot_le, 454_545);
+});
+
+test('tham so luong gieo 3 he so OT — doi he so thi ket qua doi theo, khong hang so trong ma', () => {
+  const kq = tinh_phieu_luong({ ...CO_BAN, phut_ot: 60, phut_ot_le: 60 },
+    { ...TS, he_so_ot_ngay_le: 4 });
+  assert.equal(kq.tien_ot_le, 454_545);
+});
+
 test('thuong va phu cap khac vao thu nhap chiu thue, khong vao muc dong bao hiem', () => {
   const kq = tinh_phieu_luong({ ...CO_BAN, thuong: 5_000_000 }, TS);
   assert.equal(kq.tong_thu_nhap, 25_000_000);

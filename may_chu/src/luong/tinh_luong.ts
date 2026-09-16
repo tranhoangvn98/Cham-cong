@@ -23,6 +23,15 @@ export interface ThamSoLuong {
   giam_tru_ban_than: number;
   giam_tru_phu_thuoc: number;
   bac_thue: BacThue[];
+  /**
+   * He so OT ngay thuong (BLLD 2019 D.98: it nhat 150%). Bo trong = 1.5 de tuong thich
+   * bang `tham_so_luong` cu chua co cot nay. Khoi co the ghi de bang `khoi.he_so_ot_ngay_thuong`.
+   */
+  he_so_ot_ngay_thuong?: number;
+  /** He so OT ngay nghi hang tuan (CN). Bo trong = 2.0. */
+  he_so_ot_nghi_tuan?: number;
+  /** He so OT ngay le/tet. Bo trong = 3.0. */
+  he_so_ot_ngay_le?: number;
 }
 
 export interface BacThue {
@@ -59,8 +68,22 @@ export interface DauVaoPhieu {
   luong_net?: boolean;
   so_ngay_cong_chuan: number;
   so_ngay_cong_thuc: number;
+  /** Tong phut OT cua ky (ca ba loai ngay). */
   phut_ot: number;
+  /** He so OT phan ngay THUONG (ngay lam viec binh thuong cua ca). */
   he_so_ot: number;
+  /**
+   * Phut OT roi vao NGAY NGHI HANG TUAN (Chu nhat) va NGAY LE cua ky. `phut_ot` la tong;
+   * phan ngay thuong = phut_ot - phut_ot_nghi_tuan - phut_ot_le. Bo trong = 0 (hanh vi cu:
+   * toan bo tinh theo he so ngay thuong).
+   */
+  phut_ot_nghi_tuan?: number;
+  phut_ot_le?: number;
+  /**
+   * He so rieng cho phan nghi tuan / le cua phieu nay. Bo trong = lay tu `ThamSoLuong`.
+   */
+  he_so_ot_nghi_tuan?: number;
+  he_so_ot_le?: number;
   thuong: number;
   phu_cap_khac: number;
   so_nguoi_phu_thuoc: number;
@@ -78,7 +101,11 @@ export interface KetQuaPhieu {
   luong_theo_cong: number;
   /** Luong MOT NGAY CONG = (luong co ban + phu cap) / cong chuan. Cac khoan tinh theo no. */
   luong_ngay: number;
+  /** Tong tien OT = tien_ot_thuong + tien_ot_nghi_tuan + tien_ot_le. */
   tien_ot: number;
+  tien_ot_thuong: number;
+  tien_ot_nghi_tuan: number;
+  tien_ot_le: number;
   /** Tong cac khoan thu nhap tu `phieu_luong_khoan`. */
   khoan_thu_nhap: number;
   /** Tong cac khoan tru tu `phieu_luong_khoan`. */
@@ -174,7 +201,18 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
   // Don gia gio OT lay tren luong co ban theo gio cua thang chuan.
   const gio_chuan_thang = d.so_ngay_cong_chuan * 8;
   const don_gia_gio = gio_chuan_thang <= 0 ? 0 : (d.luong_co_ban + d.phu_cap) / gio_chuan_thang;
-  const tien_ot = dong(don_gia_gio * (d.phut_ot / 60) * d.he_so_ot);
+
+  // OT theo LOAI NGAY (BLLD D.98): ngay thuong / nghi tuan (CN) / le. `phut_ot` la tong ba
+  // phan; phan ngay thuong = tong - hai phan kia. Bo trong hai phan = hanh vi cu.
+  const phut_ot_nghi_tuan = Math.max(0, d.phut_ot_nghi_tuan ?? 0);
+  const phut_ot_le = Math.max(0, d.phut_ot_le ?? 0);
+  const phut_ot_thuong = Math.max(0, d.phut_ot - phut_ot_nghi_tuan - phut_ot_le);
+  const tien_ot_thuong = dong(don_gia_gio * (phut_ot_thuong / 60) * d.he_so_ot);
+  const tien_ot_nghi_tuan = dong(don_gia_gio * (phut_ot_nghi_tuan / 60)
+    * (d.he_so_ot_nghi_tuan ?? ts.he_so_ot_nghi_tuan ?? 2));
+  const tien_ot_le = dong(don_gia_gio * (phut_ot_le / 60)
+    * (d.he_so_ot_le ?? ts.he_so_ot_ngay_le ?? 3));
+  const tien_ot = tien_ot_thuong + tien_ot_nghi_tuan + tien_ot_le;
 
   const khoan = tinh_cac_khoan(d.khoan ?? [], luong_ngay);
 
@@ -235,6 +273,9 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
     luong_theo_cong,
     luong_ngay,
     tien_ot,
+    tien_ot_thuong,
+    tien_ot_nghi_tuan,
+    tien_ot_le,
     khoan_thu_nhap: khoan.thu_nhap,
     khoan_tru: khoan.tru,
     thu_nhap_mien_thue: khoan.thu_nhap_mien_thue,
