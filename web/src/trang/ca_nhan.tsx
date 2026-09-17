@@ -9,7 +9,7 @@
 //
 // Chuoi hien thi cho nhan vien viet co dau; ten bien/ham viet khong dau theo quy uoc du an.
 import { Component, useEffect, useState, type ReactNode } from 'react';
-import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, mui_gio_offset_gio } from '../api.ts';
+import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, gui_tep, mui_gio_offset_gio } from '../api.ts';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
 import { TrangPhieuLuongToi, TrangKhieuNaiToi } from './phieu_luong_toi.tsx';
 import { TrangVanBan } from './van_ban.tsx';
@@ -366,7 +366,7 @@ function chu_dau(ho_ten: string | null): string {
 // ==================================================================== trang goc
 
 type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'phep' | 'khieu_nai' | 'ca_nhan';
-type FormMo = 'nghi' | 'giai' | 'khac';
+type FormMo = 'nghi' | 'giai' | 'khac' | 'ot';
 
 // Ten icon KHONG kem tien to `bt-` (giong MENU o App.tsx) — noi render tu ghep `bt bt-${icon}`.
 // De ca tien to o day thi bai kiem thiet_ke/icon.test.mjs (doc `icon: '...'`) hieu nham ten icon
@@ -815,6 +815,13 @@ function HanhDongNhanh({ phep, so_don_cho, di_den }: {
         </span>
         {so_don_cho > 0 && <span className="cn-dem">{so_don_cho}</span>}
       </button>
+      <button type="button" className="cn-nut-hanh-dong cn-nut-thuong" onClick={() => di_den('don_tu', 'ot')}>
+        <i className="bt bt-clock" />
+        <span>
+          <span className="cn-nut-hanh-dong-ten">Đăng ký OT</span>
+          <span className="cn-nut-hanh-dong-phu">Làm thêm giờ — duyệt 2 cấp</span>
+        </span>
+      </button>
     </div>
   );
 }
@@ -1155,6 +1162,7 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
               <span><b style={{ color: '#0EA5E9' }}>●</b> nghỉ phép</span>
             </span>
           </div>
+          <div className="cn-ngay-ds">
           {du_lieu.ngay.map((d) => {
             const thieu_gio = d.trang_thai === 'co_mat' && (d.gio_vao === null || d.gio_ra === null);
             const mau = d.trang_thai === 'vang' ? '#DC2626'
@@ -1209,9 +1217,15 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
               </div>
             );
           })}
-          <button type="button" className="cn-nut-phang-rong" onClick={() => di_den('don_tu', 'giai')}>
-            Thấy sai lệch? Gửi giải trình quên quẹt →
-          </button>
+          </div>
+          <div style={{ display: 'flex', borderTop: '1px solid var(--vien)' }}>
+            <button type="button" className="cn-nut-phang-rong" style={{ flex: 1 }} onClick={() => di_den('don_tu', 'ot')}>
+              Đăng ký làm thêm (OT) →
+            </button>
+            <button type="button" className="cn-nut-phang-rong" style={{ flex: 1 }} onClick={() => di_den('don_tu', 'giai')}>
+              Thấy sai lệch? Gửi giải trình quên quẹt →
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1279,6 +1293,8 @@ type NhomDon = 'nghi_phep' | 'giai_trinh' | 'khac';
 interface DonGop {
   id: string;
   nhom: NhomDon;
+  /** Ma loai don (chi co o nhom `khac`) — dung de nhan dien don lam them gio. */
+  loai: string;
   tieu_de: string;
   chi_tiet: string;
   ly_do: string | null;
@@ -1302,7 +1318,7 @@ function gop_don(nghi: DonNghiPhep[] | null, giai: DonGiaiTrinh[] | null, khac: 
   const ra: DonGop[] = [];
   for (const d of nghi ?? []) {
     ra.push({
-      id: d.id, nhom: 'nghi_phep',
+      id: d.id, nhom: 'nghi_phep', loai: '',
       tieu_de: TEN_TIEU_DE_NGHI[d.loai] ?? d.loai,
       chi_tiet: d.tu_ngay === d.den_ngay
         ? `${ngay_viet(d.tu_ngay)}${d.nua_ngay ? ' · ½ ngày' : ''}`
@@ -1312,7 +1328,7 @@ function gop_don(nghi: DonNghiPhep[] | null, giai: DonGiaiTrinh[] | null, khac: 
   }
   for (const d of giai ?? []) {
     ra.push({
-      id: d.id, nhom: 'giai_trinh',
+      id: d.id, nhom: 'giai_trinh', loai: '',
       tieu_de: 'Giải trình quên quẹt',
       chi_tiet: `${ngay_viet(d.ngay)} · đề xuất ${gio_ngan(d.gio_vao_de_xuat)} – ${gio_ngan(d.gio_ra_de_xuat)}`,
       ly_do: d.ly_do, trang_thai: d.trang_thai, ghi_chu_duyet: d.ghi_chu_duyet,
@@ -1325,7 +1341,7 @@ function gop_don(nghi: DonNghiPhep[] | null, giai: DonGiaiTrinh[] | null, khac: 
         ? `${ngay_viet(d.tu_ngay)} – ${ngay_viet(d.den_ngay)}${d.noi_den !== null ? ` · ${d.noi_den}` : ''}`
         : ngay_viet(d.tu_ngay);
     ra.push({
-      id: d.id, nhom: 'khac', tieu_de: ten_loai_khac(d.loai),
+      id: d.id, nhom: 'khac', loai: d.loai, tieu_de: ten_loai_khac(d.loai),
       chi_tiet: ct, ly_do: d.ly_do, trang_thai: d.trang_thai, ghi_chu_duyet: d.ghi_chu_duyet,
     });
   }
@@ -1388,6 +1404,13 @@ function ManDonTu({ hom_nay_nap, mo_form, dat_mo_form }: {
           <span>
             <span className="cn-nut-hanh-dong-ten">Đơn khác</span>
             <span className="cn-nut-hanh-dong-phu">Làm thêm, đổi ca, công tác, thôi việc</span>
+          </span>
+        </button>
+        <button type="button" className="cn-nut-hanh-dong cn-nut-thuong" onClick={() => dat_mo_form('ot')}>
+          <i className="bt bt-clock" />
+          <span>
+            <span className="cn-nut-hanh-dong-ten">Đăng ký OT</span>
+            <span className="cn-nut-hanh-dong-phu">Làm thêm giờ — duyệt 2 cấp</span>
           </span>
         </button>
       </div>
@@ -1458,6 +1481,9 @@ function ManDonTu({ hom_nay_nap, mo_form, dat_mo_form }: {
           khi_xong={sau_khi_xong}
         />
       )}
+      {mo_form === 'ot' && (
+        <SheetDangKyOt khi_dong={() => dat_mo_form(null)} khi_xong={sau_khi_xong} />
+      )}
     </div>
   );
 }
@@ -1478,6 +1504,7 @@ function buoc_don(d: DonGop): { ten: string; lop: string }[] {
 function TheDon({ d, khi_huy }: { d: DonGop; khi_huy: () => void }): ReactNode {
   const hd = dung_hanh_dong();
   const xac_nhan = dung_xac_nhan();
+  const [mo_kq, dat_mo_kq] = useState(false);
 
   // Don giai trinh KHONG co duong huy tu phia nhan vien (xem may_chu/src/tuyen/toi.ts) —
   // muon rut lai thi nho nhan su xu ly.
@@ -1529,6 +1556,19 @@ function TheDon({ d, khi_huy }: { d: DonGop; khi_huy: () => void }): ReactNode {
         </div>
       )}
 
+      {d.loai === 'lam_them' && d.trang_thai === 'cho_duyet_2' && (
+        <div className="hop-thong-bao hop-tin">
+          Đã duyệt cấp 1 (trưởng phòng) — đang chờ TBKS/Admin duyệt cấp 2.
+          Duyệt xong, bạn nộp kết quả OT bằng ảnh.
+        </div>
+      )}
+
+      {d.loai === 'lam_them' && d.trang_thai === 'da_duyet' && (
+        <button type="button" className="nut nut-nho" onClick={() => dat_mo_kq(true)}>
+          Nộp kết quả OT
+        </button>
+      )}
+
       {d.trang_thai === 'cho_duyet' && d.nhom === 'giai_trinh' && (
         <span className="cn-chu-nho">Đơn giải trình không tự hủy được — nhờ nhân sự xử lý.</span>
       )}
@@ -1541,6 +1581,14 @@ function TheDon({ d, khi_huy }: { d: DonGop; khi_huy: () => void }): ReactNode {
 
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
       {xac_nhan.hop_thoai}
+
+      {mo_kq && (
+        <SheetKetQuaOt
+          don={d}
+          khi_dong={() => dat_mo_kq(false)}
+          khi_xong={() => { dat_mo_kq(false); khi_huy(); }}
+        />
+      )}
     </div>
   );
 }
@@ -1854,6 +1902,175 @@ function SheetDonKhac({ loai_don, khi_dong, khi_xong }: {
           <button type="button" className="nut" onClick={khi_dong}>Hủy</button>
           <button type="button" className="nut nut-chinh" disabled={hd.dang_chay} onClick={() => void gui()}>
             Gửi đơn
+          </button>
+        </div>
+        <HopLoi loi={hd.loi} />
+      </CotForm>
+    </HopThoai>
+  );
+}
+
+/** Dang ky lam them gio (OT) — don loai `lam_them`, duyet hai cap roi nop ket qua bang anh. */
+function SheetDangKyOt({ khi_dong, khi_xong }: {
+  khi_dong: () => void;
+  khi_xong: () => void;
+}): ReactNode {
+  const hd = dung_hanh_dong();
+  const [tu_ngay, dat_tu] = useState(hom_nay());
+  const [gio_bat_dau, dat_gio_bat_dau] = useState('17:30');
+  const [gio_ket_thuc, dat_gio_ket_thuc] = useState('20:00');
+  const [ly_do, dat_ly_do] = useState('');
+
+  const du = gio_bat_dau !== '' && gio_ket_thuc !== '' && gio_ket_thuc > gio_bat_dau;
+
+  const gui = async (): Promise<void> => {
+    const ok = await hd.chay(() => goi('/api/toi/don', {
+      method: 'POST',
+      body: {
+        loai: 'lam_them', tu_ngay, den_ngay: null,
+        gio_bat_dau, gio_ket_thuc, noi_den: null, ly_do,
+      },
+    }), 'Đã gửi đơn làm thêm giờ. Người duyệt sẽ nhận thông báo ngay.');
+    if (ok) khi_xong();
+  };
+
+  return (
+    <HopThoai tieu_de="Đăng ký làm thêm giờ (OT)" khi_dong={khi_dong} rong>
+      <CotForm>
+        <NhanO nhan="NGÀY LÀM THÊM">
+          <input type="date" className="cn-nhap" value={tu_ngay} onChange={(e) => dat_tu(e.target.value)} />
+        </NhanO>
+
+        <div className="cn-hai-o">
+          <NhanO nhan="Từ giờ">
+            <input type="time" className="cn-nhap" value={gio_bat_dau} onChange={(e) => dat_gio_bat_dau(e.target.value)} />
+          </NhanO>
+          <NhanO nhan="Đến giờ">
+            <input type="time" className="cn-nhap" value={gio_ket_thuc} onChange={(e) => dat_gio_ket_thuc(e.target.value)} />
+          </NhanO>
+        </div>
+
+        <NhanO nhan="Lý do">
+          <textarea
+            className="cn-nhap"
+            rows={3}
+            value={ly_do}
+            placeholder="Gấp đơn hàng, chạy máy bù, họp với khách…"
+            onChange={(e) => dat_ly_do(e.target.value)}
+          />
+        </NhanO>
+
+        <div className="hop-thong-bao hop-tin">
+          Đơn OT duyệt qua hai cấp: trưởng phòng rồi TBKS/Admin. Duyệt xong, bạn nộp kết quả
+          bằng ảnh thì OT mới được tính công. Tổng làm thêm không vượt 40 giờ/tháng.
+        </div>
+
+        <div className="cn-form-nut">
+          <button type="button" className="nut" onClick={khi_dong}>Hủy</button>
+          <button
+            type="button"
+            className="nut nut-chinh"
+            disabled={hd.dang_chay || !du || tu_ngay === ''}
+            onClick={() => void gui()}
+          >
+            Gửi đơn
+          </button>
+        </div>
+        <HopLoi loi={hd.loi} />
+      </CotForm>
+    </HopThoai>
+  );
+}
+
+interface KetQuaOtToi {
+  id: string;
+  trang_thai: string;
+  ghi_chu: string | null;
+  ghi_chu_duyet: string | null;
+  tao_luc: string;
+}
+
+/** Nop ket qua OT cua don da duyet: 1-5 anh + ghi chu. */
+function SheetKetQuaOt({ don, khi_dong, khi_xong }: {
+  don: DonGop;
+  khi_dong: () => void;
+  khi_xong: () => void;
+}): ReactNode {
+  const hd = dung_hanh_dong();
+  const { du_lieu, nap_lai } = dung_nap<{ ket_qua: KetQuaOtToi | null }>(
+    `/api/toi/don/${don.id}/ket-qua`);
+  const [anh, dat_anh] = useState<File[]>([]);
+  const [ghi_chu, dat_ghi_chu] = useState('');
+  const kq = du_lieu?.ket_qua ?? null;
+
+  const gui = async (): Promise<void> => {
+    const fd = new FormData();
+    for (const a of anh) fd.append('anh', a);
+    fd.append('ghi_chu', ghi_chu);
+    const ok = await hd.chay(
+      () => gui_tep(`/api/toi/don/${don.id}/ket-qua`, fd),
+      'Đã nộp kết quả OT. TBKS/Admin sẽ duyệt và OT được tính vào bảng công.',
+    );
+    if (ok) {
+      nap_lai();
+      dat_anh([]);
+      dat_ghi_chu('');
+      khi_xong();
+    }
+  };
+
+  return (
+    <HopThoai tieu_de={`Kết quả OT · ${don.chi_tiet}`} khi_dong={khi_dong} rong>
+      <CotForm>
+        {kq === null && (
+          <div className="hop-thong-bao hop-tin">
+            Đơn đã duyệt xong — gửi 1 đến 5 ảnh chụp kết quả làm việc để TBKS duyệt
+            và OT được tính công.
+          </div>
+        )}
+        {kq !== null && kq.trang_thai === 'cho_duyet' && (
+          <div className="hop-thong-bao hop-tin">
+            Kết quả đã nộp — đang chờ TBKS duyệt. Nộp lại sẽ thay thế bản cũ.
+          </div>
+        )}
+        {kq !== null && kq.trang_thai === 'da_duyet' && (
+          <div className="hop-thong-bao hop-tot">Kết quả đã được duyệt — OT đã được tính công.</div>
+        )}
+        {kq !== null && kq.trang_thai === 'tu_choi' && (
+          <div className="hop-thong-bao hop-loi">
+            Kết quả bị từ chối
+            {kq.ghi_chu_duyet !== null && kq.ghi_chu_duyet !== ''
+              ? `: ${kq.ghi_chu_duyet}` : ''}. Bạn có thể nộp lại.
+          </div>
+        )}
+
+        <NhanO nhan="Ảnh kết quả (1–5 ảnh JPG/PNG)">
+          <input
+            type="file"
+            multiple
+            accept="image/jpeg,image/png"
+            onChange={(e) => dat_anh(Array.from(e.target.files ?? []).slice(0, 5))}
+          />
+          {anh.length > 0 && (
+            <span className="cn-chu-nho">
+              Đã chọn {anh.length} ảnh: {anh.map((a) => a.name).join(', ')}
+            </span>
+          )}
+        </NhanO>
+
+        <NhanO nhan="Ghi chú (không bắt buộc)">
+          <textarea className="cn-nhap" rows={2} value={ghi_chu} onChange={(e) => dat_ghi_chu(e.target.value)} />
+        </NhanO>
+
+        <div className="cn-form-nut">
+          <button type="button" className="nut" onClick={khi_dong}>Đóng</button>
+          <button
+            type="button"
+            className="nut nut-chinh"
+            disabled={hd.dang_chay || anh.length === 0}
+            onClick={() => void gui()}
+          >
+            {hd.dang_chay ? 'Đang gửi…' : 'Nộp kết quả'}
           </button>
         </div>
         <HopLoi loi={hd.loi} />

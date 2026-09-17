@@ -1613,6 +1613,16 @@ textarea:focus-visible,
 }
 .cn-bang-cong-luoi > .the { margin-bottom: 0; }
 .cn-bang-cong-luoi .cn-dau-mong { padding: 12px 14px 8px; }
+/* Danh sach ngay chay hai cot ngang de ca thang nam gon mot man hinh. */
+.cn-bang-cong-luoi .cn-ngay-ds {
+  columns: 2;
+  column-gap: 16px;
+  padding: 0 12px 8px;
+}
+.cn-bang-cong-luoi .cn-ngay-ds > div { break-inside: avoid; }
+@media (max-width: 1150px) {
+  .cn-bang-cong-luoi .cn-ngay-ds { columns: 1; }
+}
 @media (min-width: 981px) {
   /* Che do hai cot: o lich thap lai de ca lich ngang tam vai dong chi tiet. */
   .cn-bang-cong-luoi .cn-lich-o { aspect-ratio: auto; min-height: 32px; }
