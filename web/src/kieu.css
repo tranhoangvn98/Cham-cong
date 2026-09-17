@@ -1346,25 +1346,39 @@ textarea:focus-visible,
 
 /* ---------------------------------------------------------------- phieu luong ca nhan */
 .phai { text-align: right; }
-.phieu-luong h3 { margin: 1.25rem 0 0.5rem; }
+.phieu-luong h3 { margin: 0.9rem 0 0.4rem; }
 .phieu-dau {
   display: flex; justify-content: space-between; align-items: flex-start;
-  gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;
 }
-.phieu-dau h2 { margin: 0 0 0.35rem; }
+.phieu-dau h2 { margin: 0 0 0.3rem; }
 .phieu-thuc-linh { text-align: right; }
-.phieu-thuc-linh strong { display: block; font-size: 1.5rem; color: var(--chinh-dam); }
+.phieu-thuc-linh strong { display: block; font-size: 1.25rem; color: var(--chinh-dam); }
 .phieu-cong {
-  display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem;
-  margin: 0.75rem 0; color: var(--chu-mo); font-size: 0.9rem;
+  display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem;
+  margin: 0.5rem 0; color: var(--chu-mo); font-size: 0.9rem;
 }
 .phieu-cong strong { color: var(--chu); }
+/* Thu nhap va khau tru song song de phieu luong nang ngang, bot cuon doc. */
+.phieu-hai-cot {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 2rem; align-items: start;
+}
+.phieu-hai-cot > div { min-width: 0; }
+.phieu-hai-cot h3 { margin-top: 0; }
+.phieu-luong tbody td { padding: 6px 12px; }
+@media (max-width: 760px) {
+  .phieu-hai-cot { grid-template-columns: 1fr; }
+}
 .hang-tong td { border-top: 2px solid var(--vien-dam); }
 .phieu-ket {
   display: flex; justify-content: space-between; align-items: center;
-  margin-top: 1rem; padding-top: 0.75rem; border-top: 2px solid var(--vien-dam);
+  margin-top: 0.75rem; padding-top: 0.5rem; border-top: 2px solid var(--vien-dam);
 }
-.phieu-ket strong { font-size: 1.5rem; color: var(--chinh-dam); }
+.phieu-ket strong { font-size: 1.25rem; color: var(--chinh-dam); }
+/* Kieu cua o khieu nai nam o style inline — class nay chi de bai kiem thiet ke
+   "moi className dung trong web deu co dinh nghia" doi chieu duoc. */
+.phieu-ket-nut {}
 
 /* ---------------------------------------------------------------- khu vực của tôi
    Trang /ca-nhan: giao diện cá nhân theo mẫu thiết kế "Giao diện cá nhân". Chỉ dùng biến
