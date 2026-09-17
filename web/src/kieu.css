@@ -1562,6 +1562,28 @@ textarea:focus-visible,
 .cn-lich-mo { background: var(--nen-mo); color: var(--chu-nhat); }
 .cn-chu-thich { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 
+/* --- bảng công một màn: chọn tháng + 3 số chung hàng; lịch tháng + chi tiết hai cột --- */
+.cn-bang-cong-dau { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; }
+.cn-bang-cong-dau .cn-chon-thang { flex: 0 0 232px; padding: 6px; }
+.cn-bang-cong-dau .cn-nut-vuong { width: 36px; height: 36px; font-size: 16px; }
+.cn-bang-cong-dau .the { flex: 1; min-width: 280px; margin-bottom: 0; }
+.cn-bang-cong-dau .cn-ba-so { align-items: center; gap: 12px; padding: 10px 14px; }
+.cn-bang-cong-dau .cn-ba-so-gia { font-size: 28px; }
+.cn-bang-cong-luoi {
+  display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+  gap: 12px; align-items: start;
+}
+.cn-bang-cong-luoi > .the { margin-bottom: 0; }
+.cn-bang-cong-luoi .cn-dau-mong { padding: 12px 14px 8px; }
+@media (min-width: 981px) {
+  /* Che do hai cot: o lich thap lai de ca lich ngang tam vai dong chi tiet. */
+  .cn-bang-cong-luoi .cn-lich-o { aspect-ratio: auto; min-height: 32px; }
+}
+@media (max-width: 980px) {
+  .cn-bang-cong-luoi { grid-template-columns: 1fr; }
+  .cn-bang-cong-dau .cn-chon-thang { flex: 1 1 232px; }
+}
+
 /* --- danh sách ngày công --- */
 .cn-ngay-cong {
   display: flex; align-items: center; gap: 12px;
