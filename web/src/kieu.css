@@ -1346,17 +1346,18 @@ textarea:focus-visible,
 
 /* ---------------------------------------------------------------- phieu luong ca nhan */
 .phai { text-align: right; }
-.phieu-luong h3 { margin: 0.9rem 0 0.4rem; }
+.phieu-luong { padding: 10px 16px; }
+.phieu-luong h3 { margin: 0.45rem 0 0.25rem; }
 .phieu-dau {
   display: flex; justify-content: space-between; align-items: flex-start;
-  gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 0.4rem;
 }
-.phieu-dau h2 { margin: 0 0 0.3rem; }
+.phieu-dau h2 { margin: 0 0 0.2rem; }
 .phieu-thuc-linh { text-align: right; }
 .phieu-thuc-linh strong { display: block; font-size: 1.25rem; color: var(--chinh-dam); }
 .phieu-cong {
-  display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem;
-  margin: 0.5rem 0; color: var(--chu-mo); font-size: 0.9rem;
+  display: flex; flex-wrap: wrap; gap: 0.35rem 1.2rem;
+  margin: 0.4rem 0; color: var(--chu-mo); font-size: 0.9rem;
 }
 .phieu-cong strong { color: var(--chu); }
 /* Thu nhap va khau tru song song de phieu luong nang ngang, bot cuon doc. */
@@ -1366,10 +1367,33 @@ textarea:focus-visible,
 }
 .phieu-hai-cot > div { min-width: 0; }
 .phieu-hai-cot h3 { margin-top: 0; }
-.phieu-luong tbody td { padding: 6px 12px; }
+.phieu-luong tbody td { padding: 4px 12px; }
 @media (max-width: 760px) {
   .phieu-hai-cot { grid-template-columns: 1fr; }
 }
+/* Chi tiet khoan phat / ngay nghi chay ngang theo chieu rong the, khong keo dai cot. */
+.phieu-lan {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 2px 14px; margin-top: 0.35rem;
+  font-size: 12px; color: var(--chu-nhat);
+}
+.phieu-lan-o { white-space: nowrap; }
+.phieu-lan-ly-do { flex-basis: 100%; color: var(--chu); font-weight: 600; }
+/* Chan phieu: thong tin thue + nut khieu nai tren cung mot dai. */
+.phieu-chan {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 4px 16px; flex-wrap: wrap;
+  margin-top: 0.35rem; padding-top: 0.35rem;
+  border-top: 1px solid var(--vien);
+  font-size: 12px; color: var(--chu-mo);
+}
+.phieu-kn { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.phieu-kn > span { color: var(--xau); font-size: 12px; }
+.phieu-kn-nut {
+  border-color: var(--xau); background: var(--xau); color: #fff;
+  font-weight: 600; padding: 5px 12px; font-size: 12.5px;
+}
+.phieu-kn-nut:hover:not(:disabled) { filter: brightness(0.92); }
 .hang-tong td { border-top: 2px solid var(--vien-dam); }
 .phieu-ket {
   display: flex; justify-content: space-between; align-items: center;
@@ -1596,6 +1620,25 @@ textarea:focus-visible,
 @media (max-width: 980px) {
   .cn-bang-cong-luoi { grid-template-columns: 1fr; }
   .cn-bang-cong-dau .cn-chon-thang { flex: 1 1 232px; }
+}
+
+/* --- man luong: nua duoi xep hai cot kieu dashboard --- */
+.cn-luong-luoi {
+  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 12px; align-items: start;
+}
+.cn-luong-luoi .the, .cn-luong-luoi .hop-thong-bao { margin-bottom: 0; }
+.cn-luong-luoi .cn-cot-gap { gap: 12px; }
+.cn-luong-luoi .cn-hang-don { padding: 8px 16px; }
+.cn-luong-luoi .cn-dau-mong { padding: 10px 16px 6px; }
+.cn-luong-luoi .luoi-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cn-luong-luoi .o-so { padding: 8px 12px; }
+.cn-luong-luoi .o-so-gia-tri { font-size: 22px; }
+.cn-luong-luoi .cn-tieu-de-hang h2 { margin-bottom: 6px; }
+.cn-chon-thang-gon { padding: 6px; }
+.cn-chon-thang-gon .cn-nut-vuong { width: 36px; height: 36px; font-size: 16px; }
+@media (max-width: 900px) {
+  .cn-luong-luoi { grid-template-columns: 1fr; }
 }
 
 /* --- danh sách ngày công --- */

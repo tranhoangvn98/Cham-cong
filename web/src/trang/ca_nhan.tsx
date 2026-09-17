@@ -1884,8 +1884,8 @@ function ManLuong(): ReactNode {
   const ty_le = so_ngay_phai === 0 ? 0 : Math.round((so(t.tong_cong) / so_ngay_phai) * 100);
 
   return (
-    <div className="cn-cot-gap" style={{ marginTop: 16 }}>
-      <div className="cn-chon-thang">
+    <div className="cn-cot-gap" style={{ marginTop: 12 }}>
+      <div className="cn-chon-thang cn-chon-thang-gon">
         <button
           type="button"
           className="cn-nut-vuong"
@@ -1912,69 +1912,74 @@ function ManLuong(): ReactNode {
           {' '}Dưới đây là dữ liệu chấm công sẽ được dùng làm căn cứ — kiểm tra sớm để phát hiện sai lệch trước khi chốt.
         </div>
       )}
-      {du_lieu.phieu_luong !== null && (
-        <>
-          <TrangPhieuLuongToi thang_loc={thang} />
-          <div className="cn-dau-mong" style={{ marginTop: 8 }}>Cơ sở tính lương (chấm công)</div>
-        </>
-      )}
+      {du_lieu.phieu_luong !== null && <TrangPhieuLuongToi thang_loc={thang} />}
 
-      <div className="luoi luoi-4">
-        <OSo nhan="Công thực tế" gia_tri={so_viet(t.tong_cong)} phu={`${so(t.so_ngay_co_du_lieu)} ngày đã có dữ liệu`} />
-        <OSo nhan="Giờ làm" gia_tri={phut_thanh_chu(so(t.tong_phut_lam))} phu="đã trừ giờ nghỉ trưa" />
-        <OSo nhan="OT ghi nhận" gia_tri={phut_thanh_chu(so(t.tong_phut_ot))} phu="chưa duyệt trả thêm" mau="lanh" />
-        <OSo nhan="Vắng" gia_tri={`${so(t.so_ngay_vang)} ngày`} phu="không phép" mau={so(t.so_ngay_vang) > 0 ? 'xau' : undefined} />
-      </div>
-
-      <div className="the">
-        <div className="cn-tieu-de-hang">
-          <h2>Công thực tế / công chuẩn</h2>
-          <span className="cn-phu">{so_viet(t.tong_cong)}/{so_ngay_phai}</span>
-        </div>
-        <div className="cn-thanh">
-          <div className="cn-thanh-day" style={{ width: `${Math.min(100, ty_le)}%` }} />
-        </div>
-      </div>
-
-      <div className="the the-mong">
-        <div className="cn-dau-mong">Chi tiết kỳ tháng {String(thg).padStart(2, '0')}/{nam}</div>
-        {[
-          ['Ngày có mặt', `${so(t.so_ngay_co_mat)}`],
-          ['Nghỉ phép', `${so(t.so_ngay_nghi_phep)}`],
-          ['Ngày lễ', `${so(t.so_ngay_le)}`],
-          ['Đi muộn', `${so(t.so_lan_di_muon)} lần · ${phut_thanh_chu(so(t.tong_phut_muon))}`],
-          ['Về sớm', `${so(t.so_lan_ve_som)} lần · ${phut_thanh_chu(so(t.tong_phut_ve_som))}`],
-        ].map(([ten, gia]) => (
-          <div className="cn-hang-don" key={ten}>
-            <span>{ten}</span>
-            <span className="cn-so">{gia}</span>
-          </div>
-        ))}
-      </div>
-
-      {phep !== null && (
-        <div className="the">
-          <div className="cn-tieu-de-hang">
-            <h2>Quỹ phép năm {thang.slice(0, 4)}</h2>
-            <span className="cn-phu">còn {so_viet(phep.con_lai)}/{so_viet(phep.quy)} ngày</span>
-          </div>
-          <div className="cn-thanh">
-            <div
-              className="cn-thanh-day cn-thanh-lanh"
-              style={{ width: `${phep.quy === 0 ? 0 : Math.max(0, Math.min(100, Math.round((phep.con_lai / phep.quy) * 100)))}%` }}
-            />
-          </div>
-          {phep.cho_duyet > 0 && (
-            <span className="cn-chu-nho">Chưa trừ {so_viet(phep.cho_duyet)} ngày đang chờ duyệt.</span>
+      {/* Phan con lai xep hai cot nhu dashboard de ca man nam gon trong mot khung hinh. */}
+      <div className="cn-luong-luoi">
+        <div className="cn-cot-gap">
+          {du_lieu.phieu_luong !== null && (
+            <div className="cn-dau-mong">Cơ sở tính lương (chấm công)</div>
           )}
-        </div>
-      )}
+          <div className="luoi luoi-4">
+            <OSo nhan="Công thực tế" gia_tri={so_viet(t.tong_cong)} phu={`${so(t.so_ngay_co_du_lieu)} ngày đã có dữ liệu`} />
+            <OSo nhan="Giờ làm" gia_tri={phut_thanh_chu(so(t.tong_phut_lam))} phu="đã trừ giờ nghỉ trưa" />
+            <OSo nhan="OT ghi nhận" gia_tri={phut_thanh_chu(so(t.tong_phut_ot))} phu="chưa duyệt trả thêm" mau="lanh" />
+            <OSo nhan="Vắng" gia_tri={`${so(t.so_ngay_vang)} ngày`} phu="không phép" mau={so(t.so_ngay_vang) > 0 ? 'xau' : undefined} />
+          </div>
 
-      <div className="hop-thong-bao hop-luu-y">
-        {du_lieu.da_chot
-          ? 'Kỳ công này đã chốt — số liệu dưới đây là căn cứ cuối cùng.'
-          : 'Kỳ này chưa chốt. Một lần quẹt về muộn hoặc một đơn được duyệt vẫn có thể làm số liệu thay đổi.'}
-        {' '}{du_lieu.ghi_chu_ot}
+          <div className="the">
+            <div className="cn-tieu-de-hang">
+              <h2>Công thực tế / công chuẩn</h2>
+              <span className="cn-phu">{so_viet(t.tong_cong)}/{so_ngay_phai}</span>
+            </div>
+            <div className="cn-thanh">
+              <div className="cn-thanh-day" style={{ width: `${Math.min(100, ty_le)}%` }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="cn-cot-gap">
+          <div className="the the-mong">
+            <div className="cn-dau-mong">Chi tiết kỳ tháng {String(thg).padStart(2, '0')}/{nam}</div>
+            {[
+              ['Ngày có mặt', `${so(t.so_ngay_co_mat)}`],
+              ['Nghỉ phép', `${so(t.so_ngay_nghi_phep)}`],
+              ['Ngày lễ', `${so(t.so_ngay_le)}`],
+              ['Đi muộn', `${so(t.so_lan_di_muon)} lần · ${phut_thanh_chu(so(t.tong_phut_muon))}`],
+              ['Về sớm', `${so(t.so_lan_ve_som)} lần · ${phut_thanh_chu(so(t.tong_phut_ve_som))}`],
+            ].map(([ten, gia]) => (
+              <div className="cn-hang-don" key={ten}>
+                <span>{ten}</span>
+                <span className="cn-so">{gia}</span>
+              </div>
+            ))}
+          </div>
+
+          {phep !== null && (
+            <div className="the">
+              <div className="cn-tieu-de-hang">
+                <h2>Quỹ phép năm {thang.slice(0, 4)}</h2>
+                <span className="cn-phu">còn {so_viet(phep.con_lai)}/{so_viet(phep.quy)} ngày</span>
+              </div>
+              <div className="cn-thanh">
+                <div
+                  className="cn-thanh-day cn-thanh-lanh"
+                  style={{ width: `${phep.quy === 0 ? 0 : Math.max(0, Math.min(100, Math.round((phep.con_lai / phep.quy) * 100)))}%` }}
+                />
+              </div>
+              {phep.cho_duyet > 0 && (
+                <span className="cn-chu-nho">Chưa trừ {so_viet(phep.cho_duyet)} ngày đang chờ duyệt.</span>
+              )}
+            </div>
+          )}
+
+          <div className="hop-thong-bao hop-luu-y">
+            {du_lieu.da_chot
+              ? 'Kỳ công này đã chốt — số liệu dưới đây là căn cứ cuối cùng.'
+              : 'Kỳ này chưa chốt. Một lần quẹt về muộn hoặc một đơn được duyệt vẫn có thể làm số liệu thay đổi.'}
+            {' '}{du_lieu.ghi_chu_ot}
+          </div>
+        </div>
       </div>
     </div>
   );

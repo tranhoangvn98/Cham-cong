@@ -156,6 +156,10 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
   const co_khoan_phat = khau_tru.some(
     (k) => k.khoan_ma === 'tru_di_muon' || k.khoan_ma === 'tru_nua_ngay',
   );
+  // Cac khoan co liet ke tung lan (ngay + gio) — tach khoi bang hai cot de cot Khau tru
+  // khong bi keo dai; hien ben duoi, chay ngang theo chieu rong the.
+  const chi_tiet_tru = khau_tru.flatMap((k) =>
+    (k.chi_tiet ?? []).map((c) => ({ khoan: k, chi: c })));
 
   return (
     <>
@@ -213,31 +217,28 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
           <span>Công thực tế: <strong>{p.so_ngay_cong_thuc}</strong></span>
           <span>Lương cơ bản: <strong>{tien(p.luong_co_ban)} đ</strong></span>
           <span>Lương/ngày công: <strong>{tien(p.luong_ngay)} đ</strong></span>
+          {p.phep != null && (
+            <>
+              <span>Phép năm còn: <strong>{p.phep.con_lai}/{p.phep.quy}</strong> ngày</span>
+              <span>Đã dùng: <strong>{p.phep.da_dung}</strong>{p.phep.cho_duyet > 0
+                ? ` (+${p.phep.cho_duyet} đang chờ duyệt)` : ''}</span>
+            </>
+          )}
         </div>
-
-        {p.phep != null && (
-          <div className="phieu-cong">
-            <span>Phép năm còn: <strong>{p.phep.con_lai}/{p.phep.quy}</strong> ngày</span>
-            <span>Đã dùng: <strong>{p.phep.da_dung}</strong>{p.phep.cho_duyet > 0
-              ? ` (+${p.phep.cho_duyet} đang chờ duyệt)` : ''}</span>
-          </div>
-        )}
         {(p.nghi ?? []).length > 0 && (
-          <div className="hop-thong-bao" style={{ marginTop: 8, fontSize: 13 }}>
-            <strong>Ngày nghỉ trong tháng</strong>
-            <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-              {p.nghi.map((d, i) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <li key={i}>
-                  {d.tu_ngay === d.den_ngay
-                    ? ngay_ngan(d.tu_ngay)
-                    : `${ngay_ngan(d.tu_ngay)} → ${ngay_ngan(d.den_ngay)}`}
-                  {d.nua_ngay ? ' · nửa ngày' : ''}
-                  {' · '}{d.loai === 'khong_luong' ? 'không lương' : 'phép có lương'}
-                  {d.trang_thai === 'cho_duyet' ? ' (chờ duyệt)' : ''}
-                </li>
-              ))}
-            </ul>
+          <div className="phieu-lan">
+            <strong>Ngày nghỉ trong tháng:</strong>
+            {p.nghi.map((d, i) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <span className="phieu-lan-o" key={i}>
+                {d.tu_ngay === d.den_ngay
+                  ? ngay_ngan(d.tu_ngay)
+                  : `${ngay_ngan(d.tu_ngay)} → ${ngay_ngan(d.den_ngay)}`}
+                {d.nua_ngay ? ' · nửa ngày' : ''}
+                {' · '}{d.loai === 'khong_luong' ? 'không lương' : 'phép có lương'}
+                {d.trang_thai === 'cho_duyet' ? ' (chờ duyệt)' : ''}
+              </span>
+            ))}
           </div>
         )}
 
@@ -336,41 +337,16 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
                   {Number(p.thue_tncn) > 0 && (
                     <tr><td>Thuế TNCN</td><td className="phai">{tien(p.thue_tncn)}</td></tr>
                   )}
-                  {khau_tru.map((k) => (
-                    (k.chi_tiet !== undefined && k.chi_tiet.length > 0) ? (
-                      // Khoan co liet ke tung lan (ngay + gio) — chi doc. Tong o dong dau.
-                      <Fragment key={k.khoan_ma}>
-                        <tr>
-                          <td><strong>{k.ten}</strong>{mo_ta_khoan(k)}</td>
-                          <td className="phai"><strong>{tien(k.thanh_tien)}</strong></td>
-                        </tr>
-                        {k.chi_tiet.map((c) => (
-                          <Fragment key={c.id}>
-                            {c.ly_do !== '' && (
-                              <tr>
-                                <td style={{ paddingLeft: 18 }}>— {c.ly_do}</td>
-                                <td className="phai">{tien(c.so_tien)}</td>
-                              </tr>
-                            )}
-                            {(c.cac_lan ?? []).map((mo_ta, i) => (
-                              // eslint-disable-next-line react/no-array-index-key
-                              <tr key={`${c.id}:${String(i)}`}>
-                                <td style={{ paddingLeft: c.ly_do !== '' ? 36 : 18 }} className="mo-ta">
-                                  • {mo_ta}
-                                </td>
-                                <td />
-                              </tr>
-                            ))}
-                          </Fragment>
-                        ))}
-                      </Fragment>
-                    ) : (
+                  {khau_tru.map((k) => {
+                    const co_ct = k.chi_tiet !== undefined && k.chi_tiet.length > 0;
+                    return (
                       <tr key={k.khoan_ma}>
-                        <td>{k.ten}{mo_ta_khoan(k)}</td>
-                        <td className="phai">{tien(k.thanh_tien)}</td>
+                        <td>{co_ct ? <strong>{k.ten}</strong> : k.ten}{mo_ta_khoan(k)}</td>
+                        <td className="phai">{co_ct
+                          ? <strong>{tien(k.thanh_tien)}</strong> : tien(k.thanh_tien)}</td>
                       </tr>
-                    )
-                  ))}
+                    );
+                  })}
                   {Number(p.tru_khac) > 0 && (
                     <tr>
                       <td>Trừ khác{p.ly_do_tru_khac !== null && p.ly_do_tru_khac !== ''
@@ -391,39 +367,38 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
           </div>
         </div>
 
-        <div className="phieu-ket">
-          <span>Thực nhận (làm tròn)</span>
-          <strong>{tien(p.thuc_linh_lam_tron)} đ</strong>
-        </div>
-
-        <div className="hop-thong-bao" style={{ marginTop: 8, fontSize: 13 }}>
-          <strong>Chi tiết thuế &amp; bảo hiểm</strong>
-          <div className="mo-ta" style={{ marginTop: 4 }}>
-            Mức lương đóng BHXH: <strong>{tien(p.muc_dong_bh)} đ</strong> · Giảm trừ gia cảnh:
-            bản thân + <strong>{p.so_nguoi_phu_thuoc}</strong> người phụ thuộc
-            (tổng {tien(p.giam_tru_tong)} đ) · Thu nhập tính thuế: {tien(p.thu_nhap_tinh_thue)} đ
+        {chi_tiet_tru.length > 0 && (
+          <div className="phieu-lan">
+            {chi_tiet_tru.map(({ khoan, chi }) => (
+              <Fragment key={chi.id}>
+                {chi.ly_do !== '' && (
+                  <span className="phieu-lan-ly-do">— {chi.ly_do} · {tien(chi.so_tien)} đ</span>
+                )}
+                {(chi.cac_lan ?? []).map((mo_ta, i) => (
+                  // eslint-disable-next-line react/no-array-index-key
+                  <span className="phieu-lan-o" key={`${chi.id}:${String(i)}`}>• {mo_ta}</span>
+                ))}
+                {khoan.ghi_chu !== null && khoan.ghi_chu !== '' && (
+                  <span className="phieu-lan-ly-do mo-ta">{khoan.ghi_chu}</span>
+                )}
+              </Fragment>
+            ))}
           </div>
-        </div>
-      </div>
+        )}
 
-      <div
-        className="phieu-ket-nut"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-          border: '1.5px solid #DC2626', background: '#FEF2F2',
-          borderRadius: 8, padding: '8px 12px', marginTop: 8,
-        }}
-      >
-        <span style={{ color: '#B91C1C', fontSize: 13, flex: '1 1 220px' }}>
-          Thấy sai số liệu? Gửi <strong>khiếu nại</strong> để Phòng Nhân sự tiếp nhận và chỉnh sửa.
-        </span>
-        <button
-          className="nut-phang"
-          style={{ borderColor: '#DC2626', color: '#fff', background: '#DC2626', fontWeight: 600 }}
-          onClick={() => dat_mo_kn(true)}
-        >
-          Khiếu nại phiếu lương này
-        </button>
+        <div className="phieu-chan">
+          <span className="mo-ta">
+            Đóng BHXH: <strong>{tien(p.muc_dong_bh)} đ</strong> · Giảm trừ: bản thân +
+            {' '}<strong>{p.so_nguoi_phu_thuoc}</strong> người phụ thuộc
+            (tổng {tien(p.giam_tru_tong)} đ) · Thu nhập tính thuế: {tien(p.thu_nhap_tinh_thue)} đ
+          </span>
+          <span className="phieu-kn">
+            <span>Thấy sai số liệu? Gửi <strong>khiếu nại</strong> để Phòng Nhân sự chỉnh sửa.</span>
+            <button type="button" className="phieu-kn-nut" onClick={() => dat_mo_kn(true)}>
+              Khiếu nại phiếu lương này
+            </button>
+          </span>
+        </div>
       </div>
 
       {(kn.du_lieu ?? []).length > 0 && (
