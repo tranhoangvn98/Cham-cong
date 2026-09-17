@@ -106,6 +106,9 @@ const TEN_NHOM_TEP: Record<string, string> = {
   khieu_nai: 'Khiếu nại',
   thiet_bi: 'Thiết bị',
   tai_lieu: 'Hồ sơ tài liệu',
+  don_tu: 'Bản đơn đã duyệt',
+  ot_tai_lieu: 'Tài liệu đơn OT',
+  ot_ket_qua: 'Ảnh kết quả OT',
   khac: 'Khác',
 };
 

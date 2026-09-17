@@ -170,3 +170,28 @@ export async function tai_khoan_nguoi_duyet(nhan_vien_id: string): Promise<strin
   );
   return dong.map((d) => d.id);
 }
+
+/** Tai khoan duyet OT CAP 1: truong phong cua phong ban cua nhan vien nay. */
+export async function tai_khoan_duyet_ot_cap_1(nhan_vien_id: string): Promise<string[]> {
+  const dong = await truy_van<{ id: string }>(
+    `select nd.id
+       from nguoi_dung nd
+      where nd.dang_hoat_dong = true
+        and nd.nhan_vien_id = (
+          select pb.truong_phong_id from nhan_vien nv
+            join phong_ban pb on pb.id = nv.phong_ban_id
+           where nv.id = $1
+        )`,
+    [nhan_vien_id],
+  );
+  return dong.map((d) => d.id);
+}
+
+/** Tai khoan duyet OT CAP 2 va duyet ket qua OT: TBKS + admin. */
+export async function tai_khoan_duyet_ot_cap_2(): Promise<string[]> {
+  const dong = await truy_van<{ id: string }>(
+    `select id from nguoi_dung
+      where dang_hoat_dong = true and vai_tro in ('tbks', 'admin')`,
+  );
+  return dong.map((d) => d.id);
+}

@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { goi, la_nhan_su, tai_anh } from '../api.ts';
+import { goi, la_admin, la_duyet_ot_cap_2, la_nhan_su, tai_anh, tai_anh_tu, tai_tep } from '../api.ts';
 import {
   DangTai, HopLoi, HopTot, HopThoai, NhanDon, TEN_LOAI_NGHI, Trong,
   dung_hanh_dong, dung_nap, dung_nhap_chu, gio_ngan, khoa_tinh, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
 
-type Tab = 'nghi_phep' | 'giai_trinh' | 'quet_dien_thoai' | 'don_khac' | 'de_xuat';
+type Tab = 'nghi_phep' | 'giai_trinh' | 'quet_dien_thoai' | 'don_khac' | 'de_xuat'
+  | 'ot_cap_2' | 'ket_qua_ot';
 
 interface DeXuatDuyet {
   id: string; ma: string | null; ten_loai: string; tieu_de: string; noi_dung: string;
@@ -38,8 +39,30 @@ interface DonKhac {
   ly_do: string | null;
   trang_thai: string;
   ghi_chu_duyet: string | null;
+  ghi_chu_duyet_2: string | null;
   tao_luc: string;
   nguoi_duyet: string | null;
+  nguoi_duyet_2: string | null;
+}
+
+/** Ket qua OT (anh minh chung) cho tbks/admin duyet. */
+interface DongKetQuaOt {
+  id: string;
+  don_tu_id: string;
+  trang_thai: string;
+  ghi_chu: string | null;
+  ghi_chu_duyet: string | null;
+  tao_luc: string;
+  quyet_luc: string | null;
+  nguoi_duyet: string | null;
+  nhan_vien_id: string;
+  tu_ngay: string;
+  gio_bat_dau: string | null;
+  gio_ket_thuc: string | null;
+  ly_do: string | null;
+  ma_nv: string;
+  ho_ten: string;
+  phong_ban: string | null;
 }
 
 interface DonNghiPhep {
@@ -103,6 +126,12 @@ export function TrangDuyetDon(): ReactNode {
   const de_xuat = dung_nap<{ danh_sach: DeXuatDuyet[] }>(
     `/api/de-xuat/cho-duyet?trang_thai=${chi_cho_duyet ? 'cho_duyet' : 'da_duyet'}`);
   const dem_de_xuat = dung_nap<{ so: number }>('/api/de-xuat/so-cho-duyet');
+  const ot2 = dung_nap<{ danh_sach: DonKhac[] }>(
+    '/api/duyet/don?trang_thai=cho_duyet_2&loai=lam_them');
+  const dem_ot2 = dung_nap<Record<string, number>>('/api/duyet/ot-cap-2/dem');
+  const ket_qua = dung_nap<{ danh_sach: DongKetQuaOt[] }>(
+    `/api/duyet/ot-ket-qua?trang_thai=${chi_cho_duyet ? 'cho_duyet' : 'da_duyet'}`);
+  const dem_ket_qua = dung_nap<{ so: number }>('/api/duyet/ot-ket-qua/dem');
 
   const quyet_de_xuat = async (
     id: string, quyet_dinh: 'da_duyet' | 'tu_choi', ghi_chu?: string,
@@ -137,6 +166,23 @@ export function TrangDuyetDon(): ReactNode {
     quet.nap_lai();
     khac.nap_lai();
     dem_khac.nap_lai();
+    ot2.nap_lai();
+    dem_ot2.nap_lai();
+  };
+
+  const quyet_ket_qua = async (
+    id: string, quyet_dinh: 'da_duyet' | 'tu_choi', ghi_chu?: string,
+  ): Promise<void> => {
+    await hd.chay(
+      () => goi(`/api/duyet/ot-ket-qua/${id}/quyet`, {
+        method: 'POST', body: { quyet_dinh, ghi_chu: ghi_chu ?? null },
+      }),
+      quyet_dinh === 'da_duyet'
+        ? 'Đã duyệt kết quả. Bảng công của ngày làm thêm đã được tính lại.'
+        : 'Đã từ chối kết quả.',
+    );
+    ket_qua.nap_lai();
+    dem_ket_qua.nap_lai();
   };
 
   const dem = (n: number): ReactNode => (n > 0 ? <span className="dem-tab">{n}</span> : null);
@@ -179,7 +225,30 @@ export function TrangDuyetDon(): ReactNode {
         <button className={tab === 'de_xuat' ? 'dang-chon' : ''} onClick={() => dat_tab('de_xuat')}>
           Đề xuất &amp; kiến nghị {dem(dem_de_xuat.du_lieu?.so ?? 0)}
         </button>
+        {la_duyet_ot_cap_2() && (
+          <>
+            <button className={tab === 'ot_cap_2' ? 'dang-chon' : ''} onClick={() => dat_tab('ot_cap_2')}>
+              OT chờ TBKS {dem(Object.values(dem_ot2.du_lieu ?? {}).reduce((a, b) => a + b, 0))}
+            </button>
+            <button className={tab === 'ket_qua_ot' ? 'dang-chon' : ''} onClick={() => dat_tab('ket_qua_ot')}>
+              Kết quả OT {dem(dem_ket_qua.du_lieu?.so ?? 0)}
+            </button>
+          </>
+        )}
       </div>
+
+      {tab === 'ot_cap_2' && (
+        <BangDonKhac
+          nap={ot2}
+          loai_don={loai_don.du_lieu?.danh_sach ?? []}
+          dang_chay={hd.dang_chay}
+          quyet={(id, qd, gc) => quyet('don', id, qd, gc)}
+        />
+      )}
+
+      {tab === 'ket_qua_ot' && (
+        <BangKetQuaOt kq={ket_qua} dang_chay={hd.dang_chay} quyet={quyet_ket_qua} />
+      )}
 
       {tab === 'don_khac' && (
         <BangDonKhac
@@ -653,7 +722,8 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
     let huy = false;
     void (async () => {
       const ra: Record<string, string[]> = {};
-      for (const d of ds.filter((x) => x.trang_thai === 'cho_duyet').slice(0, 30)) {
+      for (const d of ds.filter((x) => x.trang_thai === 'cho_duyet' || x.trang_thai === 'cho_duyet_2')
+        .slice(0, 30)) {
         try {
           const r = await goi<{ canh_bao: string[] }>(`/api/duyet/don/${d.id}/canh-bao`);
           if ((r.canh_bao ?? []).length > 0) ra[d.id] = r.canh_bao;
@@ -736,39 +806,46 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                 </td>
                 <td><NhanDon trang_thai={d.trang_thai} /></td>
                 <td>
-                  {d.trang_thai === 'cho_duyet' ? (
-                    <div className="hang-nut">
-                      <button
-                        className="nut-nho nut-chinh"
-                        disabled={dang_chay}
-                        onClick={() => quyet(d.id, 'da_duyet')}
-                      >
-                        Duyệt
-                      </button>
-                      <button
-                        className="nut-nho nut-nguy"
-                        disabled={dang_chay}
-                        onClick={() => void nc.hoi({
-                          tieu_de: `Từ chối đơn của ${d.ho_ten}`,
-                          nhan: 'Lý do từ chối',
-                          mo_ta: <>
-                            Người gửi <strong>đọc được</strong> lý do này. Để trống cũng được,
-                            nhưng một đơn bị từ chối không có lý do là một câu hỏi quay lại.
-                          </>,
-                          cho_trong: true,
-                          chu_dong_y: 'Từ chối đơn',
-                        }).then((gc) => {
-                          // `null` = nguoi dung huy hop thoai, khong phai "ly do rong".
-                          if (gc === null) return;
-                          quyet(d.id, 'tu_choi', gc === '' ? undefined : gc);
-                        })}
-                      >
-                        Từ chối
-                      </button>
-                    </div>
+                  {d.trang_thai === 'cho_duyet' || d.trang_thai === 'cho_duyet_2' ? (
+                    // Admin khong duyet cap 1 cua OT de giu su tach bach hai cap: mot nguoi
+                    // khong duoc quyet ca hai cap cua cung mot don.
+                    d.loai === 'lam_them' && d.trang_thai === 'cho_duyet' && la_admin() ? (
+                      <span className="mo-ta">Chờ trưởng bộ phận duyệt cấp 1</span>
+                    ) : (
+                      <div className="hang-nut">
+                        <button
+                          className="nut-nho nut-chinh"
+                          disabled={dang_chay}
+                          onClick={() => quyet(d.id, 'da_duyet')}
+                        >
+                          {d.trang_thai === 'cho_duyet_2' ? 'Duyệt cấp 2' : 'Duyệt'}
+                        </button>
+                        <button
+                          className="nut-nho nut-nguy"
+                          disabled={dang_chay}
+                          onClick={() => void nc.hoi({
+                            tieu_de: `Từ chối đơn của ${d.ho_ten}`,
+                            nhan: 'Lý do từ chối',
+                            mo_ta: <>
+                              Người gửi <strong>đọc được</strong> lý do này. Để trống cũng được,
+                              nhưng một đơn bị từ chối không có lý do là một câu hỏi quay lại.
+                            </>,
+                            cho_trong: true,
+                            chu_dong_y: 'Từ chối đơn',
+                          }).then((gc) => {
+                            // `null` = nguoi dung huy hop thoai, khong phai "ly do rong".
+                            if (gc === null) return;
+                            quyet(d.id, 'tu_choi', gc === '' ? undefined : gc);
+                          })}
+                        >
+                          Từ chối
+                        </button>
+                      </div>
+                    )
                   ) : (
                     <span className="mo-ta">
                       {d.nguoi_duyet ?? '—'}
+                      {d.nguoi_duyet_2 !== null && <><br />{d.nguoi_duyet_2} (cấp 2)</>}
                       {d.ghi_chu_duyet !== null && <><br />{d.ghi_chu_duyet}</>}
                     </span>
                   )}
@@ -779,6 +856,156 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
         </table>
       </div>
       {nc.hop_thoai}
+    </>
+  );
+}
+
+// ============================================================ kết quả OT (tbks/admin duyệt)
+
+/** Anh/PDF cua kho ho so phai tai qua fetch co token — the <img> khong gui duoc header. */
+function TepOT({ id, kieu_mime, ten_goc }: { id: string; kieu_mime: string; ten_goc: string }): ReactNode {
+  const [url, dat_url] = useState<string | null>(null);
+  const [loi, dat_loi] = useState(false);
+
+  useEffect(() => {
+    let con_dung = true;
+    let da_tao: string | null = null;
+    if (kieu_mime.startsWith('image/')) {
+      tai_anh_tu(`/api/ho-so/tep/${id}/xem`)
+        .then((u) => {
+          if (con_dung) { da_tao = u; dat_url(u); }
+          else URL.revokeObjectURL(u);
+        })
+        .catch(() => { if (con_dung) dat_loi(true); });
+    }
+    return () => {
+      con_dung = false;
+      if (da_tao !== null) URL.revokeObjectURL(da_tao);
+    };
+  }, [id, kieu_mime]);
+
+  if (loi) return <span className="o-so-phu">không tải được</span>;
+  if (!kieu_mime.startsWith('image/')) {
+    return (
+      <button className="nut-nho nut-phang"
+        onClick={() => void tai_tep(`/api/ho-so/tep/${id}`, ten_goc)}>
+        📄 {ten_goc}
+      </button>
+    );
+  }
+  if (url === null) return <span className="o-so-phu">…</span>;
+  return (
+    <a href={url} target="_blank" rel="noreferrer noopener">
+      <img src={url} alt={ten_goc} width={72} height={72}
+        style={{ objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+    </a>
+  );
+}
+
+/** Toan bo tep cua mot don OT (tai lieu dang ky + anh ket qua) — nap rieng tung don. */
+function TepCuaDonOT({ don_id }: { don_id: string }): ReactNode {
+  const [tep, dat_tep] = useState<
+    { id: string; kieu_mime: string; ten_goc: string; nhom: string }[] | null>(null);
+
+  useEffect(() => {
+    let huy = false;
+    void goi<{ id: string; kieu_mime: string; ten_goc: string; nhom: string }[]>(
+      `/api/duyet/don/${don_id}/tep-ot`,
+    ).then((ds) => { if (!huy) dat_tep(ds); })
+      .catch(() => { /* khong co tep thi thoi */ });
+    return () => { huy = true; };
+  }, [don_id]);
+
+  if (tep === null) return <span className="o-so-phu">…</span>;
+  if (tep.length === 0) return <span className="mo-ta">chưa có tệp</span>;
+  return (
+    <div className="hang-anh" style={{ gap: 6 }}>
+      {tep.map((t) => (
+        <TepOT key={t.id} id={t.id} kieu_mime={t.kieu_mime} ten_goc={t.ten_goc} />
+      ))}
+    </div>
+  );
+}
+
+function BangKetQuaOt({ kq, dang_chay, quyet }: {
+  kq: { du_lieu: { danh_sach: DongKetQuaOt[] } | null; dang_tai: boolean; loi: unknown };
+  dang_chay: boolean;
+  quyet: (id: string, qd: 'da_duyet' | 'tu_choi', gc?: string) => Promise<void>;
+}): ReactNode {
+  const nc = dung_nhap_chu();
+  if (kq.dang_tai) return <DangTai />;
+  if (kq.loi !== null) return <HopLoi loi={kq.loi} />;
+  const ds = kq.du_lieu?.danh_sach ?? [];
+  if (ds.length === 0) return <Trong tieu_de="Không có kết quả OT nào." />;
+
+  return (
+    <>
+      {nc.hop_thoai}
+      <div className="vo-bang">
+        <table>
+          <thead>
+            <tr>
+              <th>Nhân viên</th><th>Ngày OT</th><th>Giờ đăng ký</th><th>Lý do</th>
+              <th>Ảnh / tài liệu</th><th>Trạng thái</th><th />
+            </tr>
+          </thead>
+          <tbody>
+            {ds.map((d) => (
+              <tr key={d.id}>
+                <td>
+                  <strong>{d.ma_nv}</strong> — {d.ho_ten}
+                  {d.phong_ban !== null && <><br /><span className="mo-ta">{d.phong_ban}</span></>}
+                </td>
+                <td className="khong-ngat">{ngay_viet(d.tu_ngay)}</td>
+                <td className="khong-ngat">
+                  {d.gio_bat_dau !== null
+                    ? `${d.gio_bat_dau.slice(0, 5)}–${(d.gio_ket_thuc ?? '').slice(0, 5)}`
+                    : '—'}
+                </td>
+                <td style={{ maxWidth: 240 }}>
+                  {d.ly_do ?? <span className="mo-ta">—</span>}
+                  {d.ghi_chu !== null && d.ghi_chu !== '' && (
+                    <div className="mo-ta">Nộp: {d.ghi_chu}</div>
+                  )}
+                </td>
+                <td><TepCuaDonOT don_id={d.don_tu_id} /></td>
+                <td>
+                  <NhanDon trang_thai={d.trang_thai} />
+                  {d.ghi_chu_duyet !== null && d.ghi_chu_duyet !== '' && (
+                    <div className="mo-ta">{d.ghi_chu_duyet}</div>
+                  )}
+                </td>
+                <td>
+                  {d.trang_thai === 'cho_duyet' ? (
+                    <div className="hang-nut">
+                      <button className="nut-nho nut-chinh" disabled={dang_chay}
+                        onClick={() => void quyet(d.id, 'da_duyet')}>
+                        Duyệt
+                      </button>
+                      <button className="nut-nho nut-nguy" disabled={dang_chay}
+                        onClick={() => void nc.hoi({
+                          tieu_de: `Từ chối kết quả OT của ${d.ho_ten}`,
+                          nhan: 'Lý do từ chối',
+                          mo_ta: <>Người gửi <strong>đọc được</strong> lý do này và được nộp lại.</>,
+                          cho_trong: true,
+                          chu_dong_y: 'Từ chối kết quả',
+                        }).then((gc) => {
+                          if (gc === null) return;
+                          void quyet(d.id, 'tu_choi', gc === '' ? undefined : gc);
+                        })}
+                      >
+                        Từ chối
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="mo-ta">{d.nguoi_duyet ?? '—'}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }

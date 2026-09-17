@@ -221,6 +221,12 @@ tròn. Phiếu giữ **cả hai**: `thuc_linh` (số gốc, để đối chiếu
 
 ## Làm thêm giờ theo loại ngày
 
+**Điều kiện để phút OT vào bảng công rồi vào lương** (kể từ 17/09/2026): đơn `lam_them` phải
+được duyệt **đủ hai cấp** (trưởng bộ phận → TBKS/Admin; phòng chưa gán trưởng phòng thì trình
+thẳng cấp 2) **và** nhân viên phải nộp **kết quả OT bằng ảnh** được TBKS/Admin duyệt.
+`phut_ot` = giao của giờ có mặt thực tế với giờ trong đơn đủ hai cấp, và chỉ được tính từ lúc
+kết quả duyệt (duyệt kết quả tự tính lại bảng công; ngày đã chốt thì không tính lại).
+
 Giờ OT được tách theo **loại ngày** rồi nhân hệ số riêng (BLLĐ 2019 Điều 98: ngày thường ít
 nhất 150%, ngày nghỉ hằng tuần ít nhất 200%, ngày lễ ít nhất 300%):
 

@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { goi } from '../../nguon/api';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { goi, gui_tep_form } from '../../nguon/api';
 import { dung_mau, kieu } from '../../nguon/kieu';
 import {
   Chu, DangTai, Dong, Hop, HopLoi, KyHieu, NhanDon, Nhap, Nut, Trong,
@@ -32,6 +33,8 @@ interface DonKhac {
   ly_do: string | null;
   trang_thai: string;
   ghi_chu_duyet: string | null;
+  ket_qua_trang_thai: string | null;
+  ket_qua_ghi_chu_duyet: string | null;
 }
 
 interface DonNghiPhep {
@@ -82,6 +85,7 @@ export default function ManDonTu(): ReactNode {
   const m = dung_mau();
   const [tab, dat_tab] = useState<Tab>('nghi_phep');
   const [mo_form, dat_mo_form] = useState(false);
+  const [nop_cho, dat_nop_cho] = useState<DonKhac | null>(null);
 
   const nghi = dung_nap<DonNghiPhep[]>('/api/toi/nghi-phep');
   const giai = dung_nap<DonGiaiTrinh[]>('/api/toi/giai-trinh');
@@ -242,12 +246,27 @@ export default function ManDonTu(): ReactNode {
                           Nhân sự: {d.ghi_chu_duyet}
                         </Chu>
                       )}
+                      {d.loai === 'lam_them' && d.ket_qua_trang_thai !== null && (
+                        <Chu co="bo" mau={d.ket_qua_trang_thai === 'da_duyet' ? 'tot' : 'nhat'}>
+                          Kết quả: {TEN_TRANG_THAI_DON[d.ket_qua_trang_thai] ?? d.ket_qua_trang_thai}
+                          {d.ket_qua_ghi_chu_duyet !== null && d.ket_qua_ghi_chu_duyet !== ''
+                            ? ` — ${d.ket_qua_ghi_chu_duyet}` : ''}
+                        </Chu>
+                      )}
                     </View>
                     <View style={{ alignItems: 'flex-end', gap: 6 }}>
                       <NhanDon
                         trang_thai={d.trang_thai}
                         chu={TEN_TRANG_THAI_DON[d.trang_thai] ?? d.trang_thai}
                       />
+                      {d.loai === 'lam_them' && d.trang_thai === 'da_duyet' && (
+                        <Nut
+                          chu="Nộp kết quả"
+                          kieu_nut="chinh"
+                          khi_bam={() => dat_nop_cho(d)}
+                          style={kieu.nut_nho}
+                        />
+                      )}
                       {(d.trang_thai === 'cho_duyet' || d.trang_thai === 'da_duyet') && (
                         <Nut
                           chu="Hủy"
@@ -284,6 +303,14 @@ export default function ManDonTu(): ReactNode {
             khi_xong={() => { dat_mo_form(false); khac.nap_lai(); }}
           />
         )
+      )}
+
+      {nop_cho !== null && (
+        <HopNopKetQua
+          don={nop_cho}
+          khi_dong={() => dat_nop_cho(null)}
+          khi_xong={() => { dat_nop_cho(null); khac.nap_lai(); }}
+        />
       )}
     </View>
   );
@@ -506,12 +533,43 @@ function FormDonKhac({ loai_don, khi_dong, khi_xong }: {
   const [ly_do, dat_ly_do] = useState('');
   const [canh_bao, dat_canh_bao] = useState<string[]>([]);
   const hd = dung_hanh_dong();
+  // Tai lieu dinh kem (tuy chon, chi cho don lam them): chup mot anh tai lieu.
+  const [tai_lieu_uri, dat_tai_lieu_uri] = useState<string | null>(null);
+  const [mo_camera, dat_mo_camera] = useState(false);
+  const [loi_camera, dat_loi_camera] = useState<string | null>(null);
+  const [quyen_camera, xin_quyen_camera] = useCameraPermissions();
+  const camera_tl = useRef<CameraView | null>(null);
 
   const dt = loai_don.find((l) => l.ma === loai);
 
+  const mo_camera_va_chup = async (): Promise<void> => {
+    dat_loi_camera(null);
+    const qc = quyen_camera?.granted === true ? quyen_camera : await xin_quyen_camera();
+    if (qc.granted !== true) {
+      dat_loi_camera(qc.canAskAgain
+        ? 'Cần quyền camera để chụp tài liệu.'
+        : 'Quyền camera đã bị chặn. Vào Cài đặt để bật lại.');
+      return;
+    }
+    dat_mo_camera(true);
+  };
+
+  const chup_tai_lieu = async (): Promise<void> => {
+    if (camera_tl.current === null) return;
+    const a = await camera_tl.current.takePictureAsync({
+      quality: 0.6, imageType: 'jpg', skipProcessing: true, shutterSound: false,
+    });
+    if (a === undefined) {
+      dat_loi_camera('Không chụp được ảnh. Thử lại.');
+      return;
+    }
+    dat_tai_lieu_uri(a.uri);
+    dat_mo_camera(false);
+  };
+
   const gui = async (): Promise<void> => {
     dat_canh_bao([]);
-    const kq = await hd.chay_lay<{ canh_bao?: string[] }>(() => goi('/api/toi/don', {
+    const kq = await hd.chay_lay<{ id: string; canh_bao?: string[] }>(() => goi('/api/toi/don', {
       method: 'POST',
       body: {
         loai,
@@ -524,6 +582,14 @@ function FormDonKhac({ loai_don, khi_dong, khi_xong }: {
       },
     }));
     if (kq === null) return;
+    // Tai lieu dinh kem gui SAU khi co ma don, khong kem theo luon vi don tao bang JSON.
+    if (tai_lieu_uri !== null) {
+      const form = new FormData();
+      form.append('tep', {
+        uri: tai_lieu_uri, name: 'tai-lieu.jpg', type: 'image/jpeg',
+      } as unknown as Blob);
+      await gui_tep_form(`/api/toi/don/${kq.id}/tai-lieu`, form);
+    }
     // Co canh bao thi GIU form mo de nguoi lam don doc — don da duoc tao roi, va dong form ngay
     // nghia la ho khong bao gio thay dong canh bao nao.
     if ((kq.canh_bao ?? []).length > 0) {
@@ -612,6 +678,33 @@ function FormDonKhac({ loai_don, khi_dong, khi_xong }: {
                 tu_dong="off"
                 goi_y_duoi="Phải sau giờ bắt đầu. Làm thêm qua nửa đêm thì làm hai đơn."
               />
+              <View style={{ marginBottom: 12 }}>
+                <Chu co="nho" dam mau="nhat" style={{ marginBottom: 6 }}>
+                  Tài liệu đính kèm (tùy chọn)
+                </Chu>
+                {loi_camera !== null && <HopLoi loi={loi_camera} />}
+                {tai_lieu_uri === null ? (
+                  mo_camera ? (
+                    <>
+                      <CameraView
+                        ref={camera_tl}
+                        style={{ width: '100%', aspectRatio: 3 / 4, borderRadius: 12 }}
+                      />
+                      <View style={[kieu.hang, { gap: 8, marginTop: 8 }]}>
+                        <Nut chu="Chụp" kieu_nut="chinh" khi_bam={() => void chup_tai_lieu()}
+                          style={kieu.nhieu} />
+                        <Nut chu="Đóng" kieu_nut="phang" khi_bam={() => dat_mo_camera(false)}
+                          style={kieu.nhieu} />
+                      </View>
+                    </>
+                  ) : (
+                    <Nut chu="Chụp ảnh tài liệu" kieu_nut="phang"
+                      khi_bam={() => void mo_camera_va_chup()} />
+                  )
+                ) : (
+                  <Hop loai="tot" chu="Đã chụp tài liệu đính kèm. Có thể gửi đơn." />
+                )}
+              </View>
             </>
           )}
 
@@ -651,6 +744,111 @@ function FormDonKhac({ loai_don, khi_dong, khi_xong }: {
               style={kieu.nhieu}
             />
           </View>
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+// ============================================================ nộp kết quả OT bằng ảnh chụp
+//
+// Don lam them sau khi duyet HAI CAP (truong bo phan + TBKS/Admin) thi nhan vien nop ket qua
+// bang anh chup minh chung (toi da 5). TBKS/Admin duyet ket qua thi OT moi vao luong.
+
+function HopNopKetQua({ don, khi_dong, khi_xong }: {
+  don: DonKhac; khi_dong: () => void; khi_xong: () => void;
+}): ReactNode {
+  const m = dung_mau();
+  const hd = dung_hanh_dong();
+  const [anh, dat_anh] = useState<{ uri: string }[]>([]);
+  const [ghi_chu, dat_ghi_chu] = useState('');
+  const [loi_camera, dat_loi_camera] = useState<string | null>(null);
+  const [quyen_camera, xin_quyen_camera] = useCameraPermissions();
+  const camera = useRef<CameraView | null>(null);
+
+  const chup = async (): Promise<void> => {
+    if (anh.length >= 5) return;
+    dat_loi_camera(null);
+    const qc = quyen_camera?.granted === true ? quyen_camera : await xin_quyen_camera();
+    if (qc.granted !== true) {
+      dat_loi_camera(qc.canAskAgain
+        ? 'Cần quyền camera để chụp ảnh minh chứng.'
+        : 'Quyền camera đã bị chặn. Vào Cài đặt để bật lại.');
+      return;
+    }
+    if (camera.current === null) return;
+    const a = await camera.current.takePictureAsync({
+      quality: 0.5, imageType: 'jpg', skipProcessing: true, shutterSound: false,
+    });
+    if (a === undefined) {
+      dat_loi_camera('Không chụp được ảnh. Thử lại.');
+      return;
+    }
+    dat_anh((truoc) => [...truoc, { uri: a.uri }]);
+  };
+
+  const gui = async (): Promise<void> => {
+    if (anh.length === 0) {
+      dat_loi_camera('Chụp ít nhất một ảnh minh chứng đã làm thêm giờ.');
+      return;
+    }
+    const form = new FormData();
+    for (const a of anh) {
+      form.append('anh', {
+        uri: a.uri, name: 'ket-qua-ot.jpg', type: 'image/jpeg',
+      } as unknown as Blob);
+    }
+    form.append('ghi_chu', ghi_chu.trim());
+    const ok = await hd.chay(
+      () => gui_tep_form(`/api/toi/don/${don.id}/ket-qua`, form),
+      'Đã nộp kết quả, chờ TBKS/Admin duyệt.',
+    );
+    if (ok) khi_xong();
+  };
+
+  return (
+    <Modal visible animationType="slide" onRequestClose={khi_dong}>
+      <SafeAreaView style={[kieu.man, { backgroundColor: m.nen }]}>
+        <ScrollView contentContainerStyle={kieu.cuon}>
+          <Chu co="h1">Nộp kết quả làm thêm giờ</Chu>
+          <HopLoi loi={hd.loi} />
+          <Chu co="bo" mau="nhat" style={{ marginBottom: 12 }}>
+            {ngay_viet(don.tu_ngay)}
+            {don.gio_bat_dau !== null && don.gio_ket_thuc !== null
+              && ` · ${don.gio_bat_dau.slice(0, 5)}–${don.gio_ket_thuc.slice(0, 5)}`}
+            {' — chụp ảnh minh chứng đã làm thêm giờ (tối đa 5 ảnh).'}
+          </Chu>
+
+          {loi_camera !== null && <HopLoi loi={loi_camera} />}
+
+          <CameraView ref={camera} style={{ width: '100%', aspectRatio: 3 / 4, borderRadius: 12 }} />
+
+          <View style={[kieu.hang, { gap: 8, marginTop: 8 }]}>
+            <Nut
+              chu={anh.length === 0 ? 'Chụp ảnh' : `Chụp thêm (${anh.length}/5)`}
+              kieu_nut="chinh"
+              khi_bam={() => void chup()}
+              tat={anh.length >= 5}
+              style={kieu.nhieu}
+            />
+          </View>
+
+          <Nhap
+            nhan="Ghi chú (tùy chọn)"
+            gia_tri={ghi_chu}
+            khi_doi={dat_ghi_chu}
+            nhieu_dong
+            goi_y="Đã hoàn thành kiểm kho cuối ngày…"
+          />
+
+          <Nut
+            chu={`Gửi kết quả${anh.length > 0 ? ` (${anh.length} ảnh)` : ''}`}
+            kieu_nut="chinh"
+            khi_bam={() => void gui()}
+            dang_chay={hd.dang_chay}
+            tat={anh.length === 0}
+          />
+          <Nut chu="Hủy" kieu_nut="phang" khi_bam={khi_dong} />
         </ScrollView>
       </SafeAreaView>
     </Modal>

@@ -24,7 +24,8 @@ export function goc_api_tuyet_doi(): string {
 const KHOA_LUU = 'cham_cong_phien';
 
 export type VaiTroNguoiDung =
-  | 'admin' | 'nhan_su' | 'truong_phong_nhan_su' | 'truong_phong' | 'nhan_vien' | 'cho_duyet';
+  | 'admin' | 'nhan_su' | 'truong_phong_nhan_su' | 'truong_phong' | 'nhan_vien' | 'cho_duyet'
+  | 'tbks';
 
 export interface NguoiDung {
   id: string;
@@ -369,9 +370,10 @@ export function la_quan_tri(): boolean {
   return nd?.vai_tro === 'truong_phong' && nd.quyen_quan_tri === true;
 }
 
-/** Nguoi duyet don: nguoi quan tri, hoac truong phong (duyet don cua phong minh). */
+/** Nguoi duyet don: nguoi quan tri, truong phong (duyet don cua phong minh), va tbks. */
 export function la_nguoi_duyet(): boolean {
-  return la_quan_tri() || phien?.nguoi_dung.vai_tro === 'truong_phong';
+  return la_quan_tri() || phien?.nguoi_dung.vai_tro === 'truong_phong'
+    || phien?.nguoi_dung.vai_tro === 'tbks';
 }
 
 /**
@@ -405,6 +407,12 @@ export function vai_tro_hien_tai(): VaiTroNguoiDung | null {
 
 export function la_admin(): boolean {
   return phien?.nguoi_dung.vai_tro === 'admin';
+}
+
+/** Duyet OT cap 2 va duyet ket qua OT. */
+export function la_duyet_ot_cap_2(): boolean {
+  const v = phien?.nguoi_dung.vai_tro;
+  return v === 'tbks' || v === 'admin';
 }
 
 // Nhieu request 401 cung luc chi duoc lam moi MOT lan, neu khong token bi xoay

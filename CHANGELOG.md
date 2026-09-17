@@ -2,6 +2,24 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.93.0] — 2026-09-17
+
+**Quản lý OT hai cấp duyệt · tài liệu đăng ký · nộp kết quả OT bằng ảnh.**
+
+- **Vai trò mới `tbks`** (Trưởng Ban Kiểm Soát): duyệt đơn làm thêm giờ **cấp 2** và duyệt
+  kết quả OT; không xem dữ liệu nhân sự nào khác ngoài hai nhóm tệp OT.
+- **Đơn OT hai cấp**: trưởng bộ phận duyệt cấp 1 (`cho_duyet` → `cho_duyet_2`) rồi TBKS/Admin
+  duyệt cấp 2 (`cho_duyet_2` → `da_duyet`); admin/tbks không duyệt cấp 1 để giữ tách bạch.
+  Phòng chưa gán trưởng phòng thì đơn trình thẳng cấp 2. Các loại đơn khác giữ nguyên một cấp.
+- **Tài liệu đăng ký** (tùy chọn, PDF/ảnh) và **nộp kết quả OT bằng ảnh** (1–5 ảnh JPG/PNG,
+  kiểm magic byte) — trên web và app. Ảnh lưu vào kho hồ sơ nhân sự (nhóm `ot_tai_lieu` /
+  `ot_ket_qua`) với phân quyền đọc theo vai trò.
+- **Chốt tính lương theo kết quả**: `phut_ot` chỉ xuất hiện khi kết quả được TBKS/Admin duyệt
+  (giao với giờ quẹt thật); duyệt kết quả tự tính lại bảng công. Kết quả đã duyệt thì đơn
+  không hủy được; bị từ chối thì nộp lại được.
+- Bản đơn DOCX in đủ hai người duyệt; thông báo đẩy ở từng bước của chuỗi duyệt.
+- Di trú `076_ot_2_cap.sql`: cột duyệt cấp 2 trên `don_tu`, bảng `ket_qua_ot`, vai trò `tbks`.
+
 ## [1.92.0] — 2026-09-17
 
 **Làm thêm giờ theo loại ngày · Kho Hà Nội làm đủ thứ Bảy · Phiếu lương chi tiết từng khoản.**

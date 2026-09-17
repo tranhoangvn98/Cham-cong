@@ -7,7 +7,7 @@ import { la_nguoi_duyet } from '../bao_mat/quyen_ho_so.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { tinh_lai_khoang, tinh_lai_ngay } from '../cong/tinh_cong.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
-import { gui_ngam, tai_khoan_nguoi_duyet } from '../su_kien/thong_bao_day.ts';
+import { gui_ngam, tai_khoan_duyet_ot_cap_1, tai_khoan_duyet_ot_cap_2, tai_khoan_nguoi_duyet } from '../su_kien/thong_bao_day.ts';
 import { do_geofence, type DiaDiem } from '../tien_ich/dia_ly.ts';
 import { doc_anh_selfie, luu_anh_selfie } from '../tien_ich/luu_anh.ts';
 import { doc_tep_ho_so, luu_tep_ho_so, lam_sach_ten, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
@@ -19,6 +19,7 @@ import {
 import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
 import { CAC_LOAI, MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_don.ts';
 import { don_cua_nhan_vien, huy_don, tao_don } from '../don_tu/nghiep_vu.ts';
+import { ket_qua_cua_don, nop_ket_qua } from '../don_tu/ket_qua_ot.ts';
 import { tu_dong_quyet_don, TU_NGAY_AP } from '../don_tu/tu_dong_duyet.ts';
 import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
 import { email_nhan_vien_tra_loi } from '../luong/khieu_nai_email.ts';
@@ -204,6 +205,24 @@ function khoang_ngay_tuy_chon(b: Record<string, unknown>): string | null {
 /** `tu_ngay` da doc o tren; doc lai de dat vao thong bao day. */
 function kq_tu_ngay(b: Record<string, unknown>): string {
   return ngay_bat_buoc(b, 'tu_ngay');
+}
+
+/** Ma nhan vien + ho ten de dat vao duong dan thu muc kho tep. */
+async function ma_va_ten_nhan_vien(
+  nhan_vien_id: string,
+): Promise<{ ma_nv: string; ho_ten: string }> {
+  const d = await truy_van_mot<{ ma_nv: string; ho_ten: string }>(
+    'select ma_nv, ho_ten from nhan_vien where id = $1', [nhan_vien_id]);
+  if (d === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
+  return d;
+}
+
+/** Anh ket qua OT chi nhan JPEG/PNG — kiem MAGIC BYTE, khong tin content-type client gui. */
+function la_anh(d: Buffer): boolean {
+  if (d.length < 12) return false;
+  if (d[0] === 0xff && d[1] === 0xd8 && d[2] === 0xff) return true;
+  return [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+    .every((x, i) => d[i] === x);
 }
 
 interface KhoanPhieuRa {
@@ -1290,8 +1309,15 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       if (r !== null) return res.code(201).send({ ...kq, trang_thai: r.quyet, tu_dong: true });
     }
 
+    // Don OT di theo chuoi rieng: truong bo phan (cap 1) roi TBKS/admin (cap 2). Ban ghi
+    // tao ra da biet no dang cho cap nao roi (`cho_duyet` / `cho_duyet_2`).
+    const nguoi_duyet_ids = loai === 'lam_them'
+      ? (kq.trang_thai === 'cho_duyet_2'
+          ? await tai_khoan_duyet_ot_cap_2()
+          : await tai_khoan_duyet_ot_cap_1(nv_id))
+      : await tai_khoan_nguoi_duyet(nv_id);
     gui_ngam({
-      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      nguoi_dung_ids: nguoi_duyet_ids,
       tieu_de: `${dt.ten} chờ duyệt`,
       noi_dung: `${dt.nhan_tu_ngay}: ${ngay_viet(kq_tu_ngay(b))}`,
       du_lieu: { man: 'duyet-don', loai, don_id: kq.id },
@@ -1307,6 +1333,149 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       await tinh_lai_khoang(kq.tinh_lai.tu_ngay, kq.tinh_lai.den_ngay, nv_id);
     }
     return { ok: true, da_tinh_lai: kq.tinh_lai !== null };
+  });
+
+  // ================================================================ OT: TAI LIEU + KET QUA
+  //
+  // Don lam them co hai loai tep rieng (nhom `ot_tai_lieu` / `ot_ket_qua` trong kho ho so):
+  // tai lieu khi dang ky (tuy chon) va ANH ket qua (bat buoc truoc khi TBKS duyet ket qua).
+  // Phan quyen doc: nguoi lam don, truong phong cua phong do, nhan su cac cap va TBKS.
+
+  /** Ket qua OT cua mot don cua minh (khi chua co ban ghi thi tra null). */
+  app.get('/don/:id/ket-qua', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const kq = await ket_qua_cua_don(lay_id(req));
+    if (kq === null) return { ket_qua: null };
+    if (kq.nhan_vien_id !== nv_id) {
+      throw new LoiKhongTim('Không tìm thấy kết quả OT của đơn này.');
+    }
+    return { ket_qua: kq };
+  });
+
+  /** Dinh kem tai lieu cho don OT cua minh. Tuy chon; PDF/JPG/PNG. */
+  app.post('/don/:id/tai-lieu', {
+    bodyLimit: cau_hinh.tep_toi_da_byte + 1024 * 1024,
+  }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const don_id = lay_id(req);
+
+    const don = await truy_van_mot<{ id: string }>(
+      `select id from don_tu where id = $1 and nhan_vien_id = $2 and loai = 'lam_them'`,
+      [don_id, nv_id],
+    );
+    if (don === null) throw new LoiKhongTim('Không tìm thấy đơn làm thêm giờ của bạn.');
+
+    let ten_goc = 'tep';
+    let du_lieu: Buffer | null = null;
+    for await (const phan of req.parts({ limits: { fileSize: cau_hinh.tep_toi_da_byte, files: 1 } })) {
+      if (phan.type === 'file') {
+        if (phan.fieldname !== 'tep') {
+          await phan.toBuffer(); // van phai doc het, neu khong request treo
+          continue;
+        }
+        ten_goc = lam_sach_ten(phan.filename ?? 'tep');
+        du_lieu = await phan.toBuffer();
+      } else if (typeof phan.value === 'string') {
+        // Truong thuong khong dung den o route nay.
+      }
+    }
+    if (du_lieu === null) throw new LoiDauVao('Thiếu tệp đính kèm.');
+
+    const nv = await ma_va_ten_nhan_vien(nv_id);
+    const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, {
+      ma_nv: nv.ma_nv, ho_ten: nv.ho_ten, nhom: 'ot_tai_lieu',
+      ngay: ngay_dia_phuong(new Date()),
+    });
+    let moi: Record<string, unknown> | null;
+    try {
+      moi = await truy_van_mot(
+        `insert into ho_so_tep(id, nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
+                               kich_thuoc, tai_len_boi)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         returning id, nhom, thuoc_id, ten_goc, kieu_mime, kich_thuoc, tao_luc`,
+        [da_luu.ma_tep, nv_id, 'ot_tai_lieu', don_id, ten_goc, da_luu.ten_luu, da_luu.mime,
+          da_luu.kich_thuoc, nd.sub],
+      );
+    } catch (loi) {
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* loi goc dang duoc nem ra */ });
+      throw loi;
+    }
+    await ghi_nhat_ky(nd.sub, 'ot_tai_lieu_len', 'ho_so_tep', String(moi?.['id'] ?? ''),
+      { don_tu_id: don_id, ten_goc }, req.ip);
+    return res.code(201).send(moi);
+  });
+
+  /** Nop KET QUA OT bang anh (1-5 anh JPEG/PNG), kem ghi chu tuy chon. */
+  app.post('/don/:id/ket-qua', {
+    bodyLimit: cau_hinh.tep_toi_da_byte * 5 + 1024 * 1024,
+  }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const don_id = lay_id(req);
+
+    const truong: Record<string, string> = {};
+    const anh: Buffer[] = [];
+    let ten_goc_dau = 'anh';
+    for await (const phan of req.parts({ limits: { fileSize: cau_hinh.tep_toi_da_byte, files: 5 } })) {
+      if (phan.type === 'file') {
+        if (phan.fieldname !== 'anh') {
+          await phan.toBuffer();
+          continue;
+        }
+        if (anh.length === 0) ten_goc_dau = lam_sach_ten(phan.filename ?? 'anh');
+        anh.push(await phan.toBuffer());
+      } else if (typeof phan.value === 'string') {
+        truong[phan.fieldname] = phan.value;
+      }
+    }
+    if (anh.length === 0) {
+      throw new LoiDauVao('Phải đính kèm ít nhất một ảnh chụp kết quả OT.');
+    }
+    for (const a of anh) {
+      if (!la_anh(a)) throw new LoiDauVao('Ảnh kết quả OT chỉ nhận định dạng JPG hoặc PNG.');
+    }
+
+    // Tao (hoac mo lai sau khi bi tu choi) ban ghi ket qua truoc, roi gan anh vao dung no.
+    const ghi_chu = chuoi(truong, 'ghi_chu', { toi_da: 500 });
+    const kq = await nop_ket_qua(don_id, nv_id, ghi_chu);
+
+    const nv = await ma_va_ten_nhan_vien(nv_id);
+    const tep_moi: unknown[] = [];
+    for (let i = 0; i < anh.length; i++) {
+      const a = anh[i] as Buffer;
+      const ten_goc = i === 0 ? ten_goc_dau : `anh-${i + 1}.jpg`;
+      const da_luu = await luu_tep_ho_so(a, ten_goc, {
+        ma_nv: nv.ma_nv, ho_ten: nv.ho_ten, nhom: 'ot_ket_qua',
+        ngay: ngay_dia_phuong(new Date()),
+      });
+      try {
+        const moi = await truy_van_mot(
+          `insert into ho_so_tep(id, nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
+                                 kich_thuoc, tai_len_boi)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           returning id, ten_goc, kieu_mime, kich_thuoc, tao_luc`,
+          [da_luu.ma_tep, nv_id, 'ot_ket_qua', kq.id, ten_goc, da_luu.ten_luu, da_luu.mime,
+            da_luu.kich_thuoc, nd.sub],
+        );
+        tep_moi.push(moi);
+      } catch (loi) {
+        await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* loi goc dang duoc nem ra */ });
+        throw loi;
+      }
+    }
+
+    await ghi_nhat_ky(nd.sub, 'ot_nop_ket_qua', 'ket_qua_ot', kq.id,
+      { don_tu_id: don_id, so_anh: anh.length }, req.ip);
+
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_duyet_ot_cap_2(),
+      tieu_de: 'Có kết quả OT chờ duyệt',
+      noi_dung: 'Một nhân viên vừa nộp kết quả làm thêm giờ bằng ảnh.',
+      du_lieu: { man: 'duyet-ket-qua-ot', ket_qua_id: kq.id },
+    });
+
+    return res.code(201).send({ id: kq.id, so_anh: anh.length, tep_moi });
   });
 
   // ================================================================ GOC NHIN CA NHAN

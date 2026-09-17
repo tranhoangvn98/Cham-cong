@@ -29,6 +29,7 @@ const VAI_TRO_CAP: { ma: string; ten: string; mo_ta: string }[] = [
   { ma: 'admin', ten: 'Quản trị', mo_ta: 'Toàn quyền, gồm quản lý tài khoản và phân quyền' },
   { ma: 'truong_phong_nhan_su', ten: 'Trưởng phòng nhân sự (TP HR)', mo_ta: 'Như Nhân sự, và là vai trò DUY NHẤT được thay hoặc gỡ tệp đã nạp vào hồ sơ' },
   { ma: 'nhan_su', ten: 'Nhân sự (HR)', mo_ta: 'Quản trị chấm công: nhân viên, ca, thiết bị, bảng công. Nạp tệp mới được, gỡ tệp thì không' },
+  { ma: 'tbks', ten: 'Trưởng ban kiểm soát (TBKS)', mo_ta: 'Duyệt đơn làm thêm giờ cấp 2 và duyệt kết quả OT bằng ảnh' },
   { ma: 'truong_phong', ten: 'Trưởng phòng', mo_ta: 'Duyệt đơn của phòng mình, xem công nhân viên phòng mình' },
   { ma: 'nhan_vien', ten: 'Nhân viên', mo_ta: 'Chỉ xem dữ liệu của chính mình' },
 ];

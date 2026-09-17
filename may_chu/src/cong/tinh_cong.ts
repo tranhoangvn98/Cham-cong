@@ -184,17 +184,25 @@ export async function tinh_lai_ngay(
 
   // Don LAM THEM DA DUYET trum ngay nay. Khong co don thi OT = 0 du o lai bao lau.
   //
+  // MOI (17/09/2026): don OT duyet hai cap moi duoc DANG KY; chi khi KET QUA OT (anh chup
+  // minh chung) duoc tbks/admin duyet thi phut OT moi duoc tinh. `exists` duoi day la moc
+  // chot do — mot don da_duyet ma chua nop ket qua, hoac ket qua chua duyet, thi OT = 0.
+  //
   // `to_char(...,'HH24:MI')` chu khong de kieu `time` tra ve nguyen: `quy_tac_tinh_cong` la
   // ham thuan va nhan chuoi 'HH:MM' o moi cho khac (gio ca, gio nghi, gio giai trinh). Tra ve
   // mot kieu khac chi cho rieng cho nay la mot cho de lech.
   const lam_them = await truy_van<KhoangLamThem>(
-    `select to_char(gio_bat_dau, 'HH24:MI')  as gio_bat_dau,
-            to_char(gio_ket_thuc, 'HH24:MI') as gio_ket_thuc
-       from don_tu
-      where nhan_vien_id = $1 and loai = 'lam_them' and trang_thai = 'da_duyet'
-        and tu_ngay <= $2 and coalesce(den_ngay, tu_ngay) >= $2
-        and gio_bat_dau is not null and gio_ket_thuc is not null
-      order by gio_bat_dau`,
+    `select to_char(d.gio_bat_dau, 'HH24:MI')  as gio_bat_dau,
+            to_char(d.gio_ket_thuc, 'HH24:MI') as gio_ket_thuc
+       from don_tu d
+      where d.nhan_vien_id = $1 and d.loai = 'lam_them' and d.trang_thai = 'da_duyet'
+        and d.tu_ngay <= $2 and coalesce(d.den_ngay, d.tu_ngay) >= $2
+        and d.gio_bat_dau is not null and d.gio_ket_thuc is not null
+        and exists (
+          select 1 from ket_qua_ot k
+           where k.don_tu_id = d.id and k.trang_thai = 'da_duyet'
+        )
+      order by d.gio_bat_dau`,
     [nhan_vien_id, ngay],
   );
 

@@ -363,6 +363,7 @@ export function NhanNgay({ trang_thai }: { trang_thai: string }): ReactNode {
 
 const NHAN_DON: Record<string, { chu: string; lop: string }> = {
   cho_duyet: { chu: 'Chờ duyệt', lop: 'nhan-canh-bao' },
+  cho_duyet_2: { chu: 'Chờ TBKS/Admin', lop: 'nhan-canh-bao' },
   da_duyet: { chu: 'Đã duyệt', lop: 'nhan-tot' },
   tu_choi: { chu: 'Từ chối', lop: 'nhan-xau' },
   da_huy: { chu: 'Đã hủy', lop: 'nhan-mo' },
@@ -390,6 +391,7 @@ export const TEN_VAI_TRO: Record<string, string> = {
   truong_phong_nhan_su: 'TP nhân sự',
   nhan_vien: 'Nhân viên',
   cho_duyet: 'Chờ phân quyền',
+  tbks: 'Trưởng ban kiểm soát',
 };
 
 export const TEN_NGUON: Record<string, string> = {

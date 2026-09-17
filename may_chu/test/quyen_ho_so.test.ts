@@ -14,6 +14,7 @@ const ADMIN = { vai_tro: 'admin', nv: 'a' };
 const NHAN_SU = { vai_tro: 'nhan_su', nv: 'b' };
 const TRUONG_PHONG = { vai_tro: 'truong_phong', nv: 'tp' };
 const NHAN_VIEN = { vai_tro: 'nhan_vien', nv: 'nv' };
+const TBKS = { vai_tro: 'tbks', nv: null };
 
 const CAP_DUOI = { la_chinh_minh: false, la_cap_tren: true };
 const CHINH_MINH = { la_chinh_minh: true, la_cap_tren: false };
@@ -42,6 +43,26 @@ test('truong phong khong duoc doc luong, hop dong, bien ban cua cap duoi', () =>
 test('truong phong doc duoc cong viec, bao cao, thiet bi cua cap duoi', () => {
   for (const nhom of ['cong_viec', 'bao_cao', 'thiet_bi'] as NhomHoSo[]) {
     assert.equal(doc_duoc(TRUONG_PHONG, nhom, CAP_DUOI), true, `${nhom} phai xem duoc`);
+  }
+});
+
+test('truong phong doc duoc tai lieu va anh ket qua OT cua cap duoi', () => {
+  // Cap 1 duyet don OT thi phai xem duoc tai lieu dang ky va anh ket qua cua don do.
+  assert.equal(doc_duoc(TRUONG_PHONG, 'ot_tai_lieu', CAP_DUOI), true);
+  assert.equal(doc_duoc(TRUONG_PHONG, 'ot_ket_qua', CAP_DUOI), true);
+});
+
+test('tbks doc duoc tai lieu va anh ket qua OT cua BAT KY ai', () => {
+  assert.equal(doc_duoc(TBKS, 'ot_tai_lieu', NGUOI_LA), true);
+  assert.equal(doc_duoc(TBKS, 'ot_ket_qua', NGUOI_LA), true);
+  assert.equal(doc_duoc(TBKS, 'ot_tai_lieu', CHINH_MINH), true);
+});
+
+test('tbks KHONG doc duoc nhom nao khac cua nguoi khac', () => {
+  // TBKS chi la nguoi kiem soat luong OT, khong phai nhan su: khong xem ho so nhan su.
+  for (const nhom of CAC_NHOM) {
+    if (nhom === 'ot_tai_lieu' || nhom === 'ot_ket_qua') continue;
+    assert.equal(doc_duoc(TBKS, nhom, NGUOI_LA), false, `${nhom} phai bi chan`);
   }
 });
 

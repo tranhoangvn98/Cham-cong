@@ -237,6 +237,8 @@ const TEN_NHOM_KHAC: Record<string, string> = {
   thong_tin: 'thông tin cá nhân',
   tai_lieu: 'hồ sơ tài liệu',
   don_tu: 'bản đơn đã duyệt',
+  ot_tai_lieu: 'tài liệu đơn OT',
+  ot_ket_qua: 'ảnh kết quả OT',
 };
 
 /** Chuan hoa dia chi MAC ve dang aa:bb:cc:dd:ee:ff; chan chuoi rac. */

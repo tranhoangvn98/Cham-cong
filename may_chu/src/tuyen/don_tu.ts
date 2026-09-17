@@ -2,7 +2,9 @@
 // Nhan vien tao don o /api/toi/*; day la phia NGUOI DUYET (nhan su / truong phong).
 import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
-import { can_nguoi_duyet, nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
+import { can_nguoi_duyet, can_nguoi_duyet_hoac_tbks, can_duyet_ot_cap_2,
+  nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
+import { la_quan_tri, la_tbks } from '../bao_mat/quyen_ho_so.ts';
 import { tinh_lai_ngay, tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import {
   ban_don_am_tham, ban_don_giai_trinh, ban_don_khac, ban_don_nghi_phep,
@@ -10,10 +12,16 @@ import {
 import { MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_don.ts';
 import { so_thang_lam_trong_nam, quy_phep_theo_luat, ngay_chot_quy } from '../don_tu/quy_phep_nam.ts';
 import {
-  canh_bao_cho_don, dem_cho_duyet, don_cho_nguoi_duyet, don_theo_id, quyet_don,
+  canh_bao_cho_don, dem_cho_duyet, dem_cho_duyet_cap_2, don_cho_nguoi_duyet, don_theo_id,
+  quyet_don,
 } from '../don_tu/nghiep_vu.ts';
+import {
+  dem_ket_qua_cho_duyet, ket_qua_cho_tbks, quyet_ket_qua,
+} from '../don_tu/ket_qua_ot.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
-import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
+import {
+  gui_ngam, tai_khoan_cua_nhan_vien, tai_khoan_duyet_ot_cap_2,
+} from '../su_kien/thong_bao_day.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { ngay_dia_phuong, ngay_viet } from '../tien_ich/thoi_gian.ts';
 import {
@@ -434,33 +442,51 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
   // khong phai hoc bon man hinh.
 
   /** Dem don dang cho duyet, theo loai. Cho o dem tren giao dien. */
-  app.get('/don/dem', { preHandler: can_nguoi_duyet }, async (req) => {
+  app.get('/don/dem', { preHandler: can_nguoi_duyet_hoac_tbks }, async (req) => {
     const nd = nguoi_dung_hien_tai(req);
+    // TBKS dem don OT cho duyet CAP 2, khong dem don nao khac.
+    if (nd.vai_tro === 'tbks') return dem_cho_duyet_cap_2();
     return dem_cho_duyet(xem_duoc_tat_ca(nd) ? null : nd.nv);
   });
 
+  /** So don lam them dang cho duyet cap 2 — cho tbks/admin. */
+  app.get('/ot-cap-2/dem', { preHandler: can_duyet_ot_cap_2 }, async () =>
+    dem_cho_duyet_cap_2());
+
   /** Danh sach don theo trang thai va loai. */
-  app.get('/don', { preHandler: can_nguoi_duyet }, async (req) => {
+  app.get('/don', { preHandler: can_nguoi_duyet_hoac_tbks }, async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     const q = than(req.query);
-    const trang_thai = trong_tap(q, 'trang_thai',
-      ['cho_duyet', 'da_duyet', 'tu_choi', 'da_huy'] as const,
+    let trang_thai = trong_tap(q, 'trang_thai',
+      ['cho_duyet', 'cho_duyet_2', 'da_duyet', 'tu_choi', 'da_huy'] as const,
       { mac_dinh: 'cho_duyet' }) as string;
-    const loai = trong_tap(q, 'loai', MA_LOAI_DON, {}) as MaLoaiDon | null;
+    let loai = trong_tap(q, 'loai', MA_LOAI_DON, {}) as MaLoaiDon | null;
+
+    // TBKS chi thay don lam them o cap 2 (va lich su da quyet). Giu de o day de pham vi cua
+    // tbks khong bao gio lo ra don cua loai khac hay cap 1 cua phong nao.
+    if (nd.vai_tro === 'tbks') {
+      loai = 'lam_them';
+      if (trang_thai === 'cho_duyet') trang_thai = 'cho_duyet_2';
+    }
 
     return {
       danh_sach: await don_cho_nguoi_duyet(
-        trang_thai, loai, xem_duoc_tat_ca(nd) ? null : nd.nv),
+        trang_thai, loai,
+        (xem_duoc_tat_ca(nd) || nd.vai_tro === 'tbks') ? null : nd.nv),
     };
   });
 
   /**
    * Duyet hoac tu choi.
    *
+   * Don lam them di qua HAI CAP: cap 1 (truong bo phan) dua don sang `cho_duyet_2`; cap 2
+   * (tbks/admin) moi chot `da_duyet`. Cac loai khac giu nguyen mot cap nhu truoc.
+   *
    * Duyet xong thi: (1) tinh lai bang cong neu la don cong tac, (2) sinh ban don DOCX vao kho
-   * ho so. Thu tu do la co y — ban don ghi lai trang thai SAU khi moi thu da xong.
+   * ho so khi don CHOT `da_duyet`. Thu tu do la co y — ban don ghi lai trang thai SAU khi moi
+   * thu da xong.
    */
-  app.post('/don/:id/quyet', { preHandler: can_nguoi_duyet }, async (req) => {
+  app.post('/don/:id/quyet', { preHandler: can_nguoi_duyet_hoac_tbks }, async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     const id = lay_id(req);
     const b = than(req.body);
@@ -470,31 +496,145 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
 
     const truoc = await don_theo_id(id);
     if (truoc === null) throw new LoiKhongTim('Không tìm thấy đơn.');
-    await bat_buoc_trong_pham_vi(nd, truoc.nhan_vien_id);
 
-    const kq = await quyet_don(id, quyet, nd.sub, ghi_chu);
+    const la_cap_2 = truoc.trang_thai === 'cho_duyet_2';
+    if (la_cap_2) {
+      // Cap 2 chi danh cho tbks/admin. Nhan su va truong phong khong thay duoc buoc nay.
+      if (!la_tbks(nd.vai_tro) && !la_quan_tri(nd.vai_tro)) {
+        throw new LoiKhongTim('Không tìm thấy đơn thuộc phạm vi của bạn.');
+      }
+    } else if (truoc.loai === 'lam_them') {
+      // Cap 1 cua OT la viec cua TRUONG BO PHAN. Admin/tbks khong duyet cap 1 de giu su
+      // tach bach: mot nguoi khong duoc quyet ca hai cap cua cung mot don.
+      if (la_quan_tri(nd.vai_tro) || la_tbks(nd.vai_tro)) {
+        throw new LoiDauVao(
+          'Đơn làm thêm giờ đang ở bước duyệt cấp 1 — trưởng bộ phận duyệt trước, sau đó mới đến TBKS/Admin.');
+      }
+      await bat_buoc_trong_pham_vi(nd, truoc.nhan_vien_id);
+    } else {
+      await bat_buoc_trong_pham_vi(nd, truoc.nhan_vien_id);
+    }
+
+    const kq = await quyet_don(id, quyet, nd.sub, ghi_chu, la_cap_2 ? 2 : 1);
 
     let so_ngay_da_tinh_lai = 0;
-    if (kq.tinh_lai !== null && quyet === 'da_duyet') {
+    if (kq.tinh_lai !== null && kq.trang_thai === 'da_duyet') {
       so_ngay_da_tinh_lai = await tinh_lai_khoang(
         kq.tinh_lai.tu_ngay, kq.tinh_lai.den_ngay, truoc.nhan_vien_id);
     }
 
-    if (quyet === 'da_duyet') await ban_don_am_tham('khac', id);
+    if (kq.trang_thai === 'da_duyet') await ban_don_am_tham('khac', id);
 
-    await ghi_nhat_ky(nd.sub, `don_${kq.loai}_${quyet}`, 'don_tu', id, { ghi_chu }, req.ip);
+    await ghi_nhat_ky(nd.sub, `don_${kq.loai}_${quyet}_cap_${la_cap_2 ? '2' : '1'}`,
+      'don_tu', id, { ghi_chu }, req.ip);
 
     const dt = dac_ta(kq.loai);
+    const nguoi_lam_don = await tai_khoan_cua_nhan_vien(truoc.nhan_vien_id);
+    if (truoc.loai === 'lam_them' && kq.trang_thai === 'cho_duyet_2') {
+      // Truong phong vua chuyen don len cap 2 -> bao cho tbks/admin.
+      gui_ngam({
+        nguoi_dung_ids: await tai_khoan_duyet_ot_cap_2(),
+        tieu_de: 'Có đơn làm thêm giờ chờ duyệt cấp 2',
+        noi_dung: `${truoc.ho_ten} (${truoc.ma_nv}) — ${dt.nhan_tu_ngay}: ${ngay_viet(truoc.tu_ngay)}`,
+        du_lieu: { man: 'duyet-ot', loai: kq.loai, don_id: id },
+      });
+    } else {
+      gui_ngam({
+        nguoi_dung_ids: nguoi_lam_don,
+        tieu_de: quyet === 'da_duyet'
+          ? (truoc.loai === 'lam_them' ? `${dt.ten} đã được duyệt — hãy nộp kết quả` : `${dt.ten} đã được duyệt`)
+          : `${dt.ten} bị từ chối`,
+        noi_dung: ghi_chu === null || ghi_chu === ''
+          ? `${dt.nhan_tu_ngay}: ${ngay_viet(truoc.tu_ngay)}`
+          : `${dt.nhan_tu_ngay}: ${ngay_viet(truoc.tu_ngay)} — ${ghi_chu}`,
+        du_lieu: { man: 'don-tu', loai: kq.loai, don_id: id, quyet_dinh: quyet },
+      });
+    }
+
+    return { ok: true, so_ngay_da_tinh_lai, trang_thai: kq.trang_thai };
+  });
+
+  // ================================================================ KET QUA OT (tbks/admin)
+
+  /** Danh sach ket qua OT cho duyet (tbks/admin). */
+  app.get('/ot-ket-qua', { preHandler: can_duyet_ot_cap_2 }, async (req) => {
+    const q = than(req.query);
+    const trang_thai = trong_tap(q, 'trang_thai',
+      ['cho_duyet', 'da_duyet', 'tu_choi'] as const,
+      { mac_dinh: 'cho_duyet' }) as string;
+    return { danh_sach: await ket_qua_cho_tbks(trang_thai) };
+  });
+
+  /** So ket qua OT dang cho duyet. */
+  app.get('/ot-ket-qua/dem', { preHandler: can_duyet_ot_cap_2 }, async () => ({
+    so: await dem_ket_qua_cho_duyet(),
+  }));
+
+  /** Tat ca tep cua mot don OT (tai lieu dang ky + anh ket qua) — cho nguoi duyet xem. */
+  app.get('/don/:id/tep-ot', { preHandler: can_duyet_ot_cap_2 }, async (req) => {
+    const id = lay_id(req);
+    const don = await don_theo_id(id);
+    if (don === null || don.loai !== 'lam_them') {
+      throw new LoiKhongTim('Không tìm thấy đơn làm thêm giờ.');
+    }
+    return truy_van(
+      `select t.id, t.nhom, t.thuoc_id, t.ten_goc, t.kieu_mime, t.kich_thuoc, t.tao_luc
+         from ho_so_tep t
+        where t.nhom in ('ot_tai_lieu', 'ot_ket_qua')
+          and (t.thuoc_id = $1
+               or t.thuoc_id in (select k.id from ket_qua_ot k where k.don_tu_id = $1))
+        order by t.nhom, t.tao_luc`,
+      [id],
+    );
+  });
+
+  /**
+   * Duyet hoac tu choi ket qua OT. DA DUYET moi tinh lai bang cong cua ngay OT — luc do
+   * phut OT moi vao duoc bang cong roi di vao luong. Ngay da chot thi khong tinh lai duoc.
+   */
+  app.post('/ot-ket-qua/:id/quyet', { preHandler: can_duyet_ot_cap_2 }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const b = than(req.body);
+    const quyet = trong_tap(b, 'quyet_dinh', ['da_duyet', 'tu_choi'] as const,
+      { bat_buoc: true }) as 'da_duyet' | 'tu_choi';
+    const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
+
+    const truoc = await truy_van_mot<{ nhan_vien_id: string; tu_ngay: string }>(
+      `select d.nhan_vien_id, to_char(d.tu_ngay, 'YYYY-MM-DD') as tu_ngay
+         from ket_qua_ot k join don_tu d on d.id = k.don_tu_id where k.id = $1`,
+      [id],
+    );
+    if (truoc === null) throw new LoiKhongTim('Không tìm thấy kết quả OT.');
+
+    const kq = await quyet_ket_qua(id, quyet, nd.sub, ghi_chu);
+
+    let da_tinh_lai = false;
+    if (kq !== null) {
+      da_tinh_lai = await tinh_lai_ngay(kq.nhan_vien_id, kq.tu_ngay) !== null;
+    }
+
+    await ghi_nhat_ky(nd.sub, `ot_ket_qua_${quyet}`, 'ket_qua_ot', id, { ghi_chu }, req.ip);
+
+    const nguoi_lam_don = await tai_khoan_cua_nhan_vien(truoc.nhan_vien_id);
     gui_ngam({
-      nguoi_dung_ids: await tai_khoan_cua_nhan_vien(truoc.nhan_vien_id),
-      tieu_de: quyet === 'da_duyet' ? `${dt.ten} đã được duyệt` : `${dt.ten} bị từ chối`,
+      nguoi_dung_ids: nguoi_lam_don,
+      tieu_de: quyet === 'da_duyet'
+        ? 'Kết quả OT đã được duyệt'
+        : 'Kết quả OT bị từ chối',
       noi_dung: ghi_chu === null || ghi_chu === ''
-        ? `${dt.nhan_tu_ngay}: ${ngay_viet(truoc.tu_ngay)}`
-        : `${dt.nhan_tu_ngay}: ${ngay_viet(truoc.tu_ngay)} — ${ghi_chu}`,
-      du_lieu: { man: 'don-tu', loai: kq.loai, don_id: id, quyet_dinh: quyet },
+        ? `Ngày ${ngay_viet(truoc.tu_ngay)}`
+        : `Ngày ${ngay_viet(truoc.tu_ngay)} — ${ghi_chu}`,
+      du_lieu: { man: 'don-tu', loai: 'lam_them', ket_qua_id: id, quyet_dinh: quyet },
     });
 
-    return { ok: true, so_ngay_da_tinh_lai };
+    return {
+      ok: true,
+      da_tinh_lai,
+      loi_chot: kq !== null && !da_tinh_lai
+        ? 'Ngày làm thêm đã chốt bảng công nên không tính lại được. Liên hệ nhân sự nếu cần điều chỉnh.'
+        : null,
+    };
   });
 
   /** Canh bao phap ly cua mot don — de nguoi duyet doc TRUOC khi bam duyet. */

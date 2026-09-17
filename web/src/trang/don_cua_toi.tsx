@@ -1,7 +1,7 @@
 // Trang NHAN VIEN tu phuc vu: xin nghi phep cac loai, giai trinh cham cong (quen quet), va giai
 // trinh vi pham cua minh. Dung cac endpoint /api/toi/* (cung API app dien thoai dung).
 import { useState, type ReactNode } from 'react';
-import { goi } from '../api.ts';
+import { goi, gui_tep } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, hom_nay,
 } from '../thanh_phan.tsx';
@@ -12,6 +12,7 @@ const TEN_NGHI: Record<string, string> = {
 };
 const NHAN_TT: Record<string, { ten: string; lop: string }> = {
   cho_duyet: { ten: 'Chờ duyệt', lop: 'nhan-canh-bao' },
+  cho_duyet_2: { ten: 'Chờ TBKS/Admin', lop: 'nhan-canh-bao' },
   da_duyet: { ten: 'Đã duyệt', lop: 'nhan-tot' },
   tu_choi: { ten: 'Từ chối', lop: 'nhan-xau' },
   da_huy: { ten: 'Đã hủy', lop: 'nhan-mo' },
@@ -171,10 +172,13 @@ interface DonKhac {
   id: string; loai: string; tu_ngay: string; den_ngay: string | null;
   gio_bat_dau: string | null; gio_ket_thuc: string | null; noi_den: string | null;
   ly_do: string | null; trang_thai: string;
+  ket_qua_trang_thai: string | null;
+  ket_qua_ghi_chu_duyet: string | null;
 }
 
 function TabDonKhac(): ReactNode {
   const [mo, dat_mo] = useState(false);
+  const [nop_ket_qua_cho, dat_nop] = useState<DonKhac | null>(null);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<{ danh_sach: DonKhac[] }>('/api/toi/don');
   const hd = dung_hanh_dong();
   const ds = du_lieu?.danh_sach ?? [];
@@ -205,16 +209,75 @@ function TabDonKhac(): ReactNode {
                     {d.noi_den !== null ? ` · ${d.noi_den}` : ''}
                   </td>
                   <td>{d.ly_do ?? '—'}</td>
-                  <td><Nhan tt={d.trang_thai} /></td>
-                  <td>{d.trang_thai === 'cho_duyet'
-                    ? <button className="nut-nho nut-phang" onClick={() => huy(d.id)}>Hủy</button> : null}</td>
+                  <td className="khong-ngat">
+                    <Nhan tt={d.trang_thai} />
+                    {d.loai === 'lam_them' && d.ket_qua_trang_thai !== null && (
+                      <div className="mo-ta">
+                        Kết quả: {NHAN_TT[d.ket_qua_trang_thai]?.ten ?? d.ket_qua_trang_thai}
+                        {d.ket_qua_ghi_chu_duyet !== null && d.ket_qua_ghi_chu_duyet !== ''
+                          ? ` — ${d.ket_qua_ghi_chu_duyet}` : ''}
+                      </div>
+                    )}
+                  </td>
+                  <td className="canh-phai">
+                    {d.loai === 'lam_them' && d.trang_thai === 'da_duyet' && (
+                      <button className="nut-nho nut-chinh" onClick={() => dat_nop(d)}>
+                        Nộp kết quả
+                      </button>
+                    )}
+                    {d.trang_thai === 'cho_duyet'
+                      ? <button className="nut-nho nut-phang" onClick={() => huy(d.id)}>Hủy</button> : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table></div></div>
         )}
       {mo && <FormDonKhac khi_dong={() => dat_mo(false)} khi_xong={() => { dat_mo(false); nap_lai(); }} />}
+      {nop_ket_qua_cho !== null && (
+        <FormNopKetQua don={nop_ket_qua_cho}
+          khi_dong={() => dat_nop(null)}
+          khi_xong={() => { dat_nop(null); nap_lai(); }} />
+      )}
     </>
+  );
+}
+
+/** Nop ket qua OT bang anh (1-5 anh JPG/PNG) sau khi don da duoc duyet hai cap. */
+function FormNopKetQua({ don, khi_dong, khi_xong }: {
+  don: DonKhac; khi_dong: () => void; khi_xong: () => void;
+}): ReactNode {
+  const [tep, dat_tep] = useState<File[]>([]);
+  const [ghi_chu, dat_ghi_chu] = useState('');
+  const hd = dung_hanh_dong();
+  return (
+    <HopThoai tieu_de="Nộp kết quả làm thêm giờ" khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <div className="mo-ta">
+        {ngay_v(don.tu_ngay)} {don.gio_bat_dau !== null
+          ? `· ${don.gio_bat_dau.slice(0, 5)}–${(don.gio_ket_thuc ?? '').slice(0, 5)}` : ''}
+        {' '}— đính kèm ảnh chụp minh chứng đã làm thêm giờ (tối đa 5 ảnh).
+      </div>
+      <label htmlFor="kq-tep">Ảnh kết quả (JPG/PNG)</label>
+      <input id="kq-tep" type="file" accept="image/jpeg,image/png" multiple
+        onChange={(e) => dat_tep(Array.from(e.target.files ?? []))} />
+      {tep.length > 0 && <div className="mo-ta">Đã chọn {tep.length} ảnh.</div>}
+      <label htmlFor="kq-gc">Ghi chú (tùy chọn)</label>
+      <input id="kq-gc" value={ghi_chu} onChange={(e) => dat_ghi_chu(e.target.value)}
+        placeholder="vd: đã hoàn thành kiểm kho cuối ngày" />
+      <div className="hang-nut">
+        <button className="nut-chinh" disabled={hd.dang_chay}
+          onClick={() => void hd.chay(async () => {
+            const form = new FormData();
+            for (const t of tep) form.append('anh', t);
+            form.append('ghi_chu', ghi_chu);
+            await gui_tep(`/api/toi/don/${don.id}/ket-qua`, form);
+          }, 'Đã nộp kết quả, chờ TBKS/Admin duyệt.').then((ok) => { if (ok) khi_xong(); })}>
+          {hd.dang_chay ? 'Đang gửi…' : 'Gửi kết quả'}
+        </button>
+        <button className="nut-phang" onClick={khi_dong}>Đóng</button>
+      </div>
+    </HopThoai>
   );
 }
 
@@ -227,10 +290,34 @@ function FormDonKhac({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
   const [gio_vao, dat_gio_vao] = useState('08:20');
   const [noi_den, dat_noi_den] = useState('');
   const [ly_do, dat_ly_do] = useState('');
+  const [tep, dat_tep] = useState<File | null>(null);
   const hd = dung_hanh_dong();
   const spec = LOAI_DON_KHAC.find((l) => l.ma === loai) ?? LOAI_DON_KHAC[0]!;
   const nhan_ngay = loai === 'thoi_viec' ? 'Ngày làm việc cuối'
     : loai === 'di_muon' ? 'Ngày đi muộn' : 'Từ ngày';
+
+  const gui_don = async (): Promise<void> => {
+    const kq = await hd.chay_lay<{ id: string }>(() => goi('/api/toi/don', {
+      method: 'POST',
+      body: {
+        loai,
+        tu_ngay: tu,
+        den_ngay: spec.khoang ? den : null,
+        gio_bat_dau: spec.gio ? gio_bd : loai === 'di_muon' ? gio_vao : null,
+        gio_ket_thuc: spec.gio ? gio_kt : null,
+        noi_den: loai === 'cong_tac' ? noi_den : null,
+        ly_do,
+      },
+    }), 'Đã gửi đơn.');
+    if (kq === null) return;
+    // Tai lieu dinh kem (tuy chon, chi cho don lam them) gui sau khi co id don.
+    if (tep !== null) {
+      const form = new FormData();
+      form.append('tep', tep);
+      await gui_tep(`/api/toi/don/${kq.id}/tai-lieu`, form);
+    }
+    khi_xong();
+  };
 
   return (
     <HopThoai tieu_de="Tạo đơn" khi_dong={khi_dong}>
@@ -275,20 +362,15 @@ function FormDonKhac({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
       <label htmlFor="dk-ld">Lý do</label>
       <input id="dk-ld" value={ly_do} onChange={(e) => dat_ly_do(e.target.value)}
         placeholder={loai === 'thoi_viec' ? 'Lý do xin thôi việc' : 'vd: hoàn thành đơn hàng gấp'} />
+      {loai === 'lam_them' && (
+        <>
+          <label htmlFor="dk-tep">Tài liệu đính kèm (tùy chọn)</label>
+          <input id="dk-tep" type="file" accept=".pdf,.jpg,.jpeg,.png"
+            onChange={(e) => dat_tep(e.target.files?.[0] ?? null)} />
+        </>
+      )}
       <div className="hang-nut">
-        <button className="nut-chinh" disabled={hd.dang_chay}
-          onClick={() => void hd.chay(() => goi('/api/toi/don', {
-            method: 'POST',
-            body: {
-              loai,
-              tu_ngay: tu,
-              den_ngay: spec.khoang ? den : null,
-              gio_bat_dau: spec.gio ? gio_bd : loai === 'di_muon' ? gio_vao : null,
-              gio_ket_thuc: spec.gio ? gio_kt : null,
-              noi_den: loai === 'cong_tac' ? noi_den : null,
-              ly_do,
-            },
-          }), 'Đã gửi đơn.').then((ok) => { if (ok) khi_xong(); })}>
+        <button className="nut-chinh" disabled={hd.dang_chay} onClick={() => void gui_don()}>
           {hd.dang_chay ? 'Đang gửi…' : 'Gửi đơn'}
         </button>
         <button className="nut-phang" onClick={khi_dong}>Hủy</button>

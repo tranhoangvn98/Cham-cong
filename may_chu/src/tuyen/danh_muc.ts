@@ -29,7 +29,7 @@ import { lich_cua_may } from '../ra_vao/khoa_cua.ts';
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
 // KHONG duoc dung khi tao tai khoan moi bang tay (xem POST /nguoi-dung).
 const VAI_TRO = ['admin', 'nhan_su', 'truong_phong', 'truong_phong_nhan_su',
-  'nhan_vien', 'cho_duyet'] as const;
+  'nhan_vien', 'cho_duyet', 'tbks'] as const;
 
 /**
  * Vai tro DOI phai gan voi mot ho so nhan vien.
@@ -44,7 +44,7 @@ function can_ho_so(v: string | null): boolean {
   return (VAI_TRO_CAN_HO_SO as readonly string[]).includes(v ?? '');
 }
 const VAI_TRO_TAO_MOI = ['admin', 'nhan_su', 'truong_phong', 'truong_phong_nhan_su',
-  'nhan_vien'] as const;
+  'nhan_vien', 'tbks'] as const;
 
 export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   // =====================================================================  PHONG BAN
