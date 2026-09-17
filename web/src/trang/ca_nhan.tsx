@@ -1920,17 +1920,26 @@ function SheetDangKyOt({ khi_dong, khi_xong }: {
   const [gio_bat_dau, dat_gio_bat_dau] = useState('17:30');
   const [gio_ket_thuc, dat_gio_ket_thuc] = useState('20:00');
   const [ly_do, dat_ly_do] = useState('');
+  const [tep, dat_tep] = useState<File | null>(null);
 
   const du = gio_bat_dau !== '' && gio_ket_thuc !== '' && gio_ket_thuc > gio_bat_dau;
 
   const gui = async (): Promise<void> => {
-    const ok = await hd.chay(() => goi('/api/toi/don', {
-      method: 'POST',
-      body: {
-        loai: 'lam_them', tu_ngay, den_ngay: null,
-        gio_bat_dau, gio_ket_thuc, noi_den: null, ly_do,
-      },
-    }), 'Đã gửi đơn làm thêm giờ. Người duyệt sẽ nhận thông báo ngay.');
+    const ok = await hd.chay(async () => {
+      // Tao don truoc de lay id, roi moi tai tep kem len (route tai-lieu can id don).
+      const don = await goi<{ id: string }>('/api/toi/don', {
+        method: 'POST',
+        body: {
+          loai: 'lam_them', tu_ngay, den_ngay: null,
+          gio_bat_dau, gio_ket_thuc, noi_den: null, ly_do,
+        },
+      });
+      if (tep !== null) {
+        const fd = new FormData();
+        fd.append('tep', tep);
+        await gui_tep(`/api/toi/don/${don.id}/tai-lieu`, fd);
+      }
+    }, 'Đã gửi đơn làm thêm giờ. Người duyệt sẽ nhận thông báo ngay.');
     if (ok) khi_xong();
   };
 
@@ -1958,6 +1967,15 @@ function SheetDangKyOt({ khi_dong, khi_xong }: {
             placeholder="Gấp đơn hàng, chạy máy bù, họp với khách…"
             onChange={(e) => dat_ly_do(e.target.value)}
           />
+        </NhanO>
+
+        <NhanO nhan="Tài liệu đính kèm (không bắt buộc — 1 tệp PDF/JPG/PNG)">
+          <input
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+            onChange={(e) => dat_tep(e.target.files?.[0] ?? null)}
+          />
+          {tep !== null && <span className="cn-chu-nho">Đã chọn: {tep.name}</span>}
         </NhanO>
 
         <div className="hop-thong-bao hop-tin">
