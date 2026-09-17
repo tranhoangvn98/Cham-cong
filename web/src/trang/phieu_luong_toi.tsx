@@ -215,14 +215,14 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
           <span>Lương/ngày công: <strong>{tien(p.luong_ngay)} đ</strong></span>
         </div>
 
-        {p.phep !== null && (
+        {p.phep != null && (
           <div className="phieu-cong">
             <span>Phép năm còn: <strong>{p.phep.con_lai}/{p.phep.quy}</strong> ngày</span>
             <span>Đã dùng: <strong>{p.phep.da_dung}</strong>{p.phep.cho_duyet > 0
               ? ` (+${p.phep.cho_duyet} đang chờ duyệt)` : ''}</span>
           </div>
         )}
-        {p.nghi.length > 0 && (
+        {(p.nghi ?? []).length > 0 && (
           <div className="hop-thong-bao" style={{ marginTop: 8, fontSize: 13 }}>
             <strong>Ngày nghỉ trong tháng</strong>
             <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>

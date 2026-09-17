@@ -3630,6 +3630,12 @@ test('luong: admin duyet -> nhan vien thay duoc phieu cua CHINH MINH', async () 
   assert.equal(ds.length, 1);
   assert.equal(ds[0]!['thang'], NGAY.slice(0, 7));
   assert.ok(Number(ds[0]!['thuc_linh']) > 0);
+  // Web hien phieu kem quy phep nam (p.phep.con_lai) va danh sach ngay nghi — thieu thi
+  // man "Phieu luong" trang ca nhan do loi Cannot read properties of undefined.
+  const phep = ds[0]!['phep'] as { con_lai: number } | null | undefined;
+  assert.notEqual(phep, undefined, 'phieu phai kem quy phep nam (truong phep)');
+  if (phep != null) assert.equal(typeof phep.con_lai, 'number');
+  assert.ok(Array.isArray(ds[0]!['nghi']), 'phieu phai kem danh sach ngay nghi (truong nghi)');
 });
 
 test('luong: nhan vien khong thay phieu cua nguoi khac', async () => {

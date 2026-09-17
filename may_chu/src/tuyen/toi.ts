@@ -218,11 +218,11 @@ interface KhoanPhieuRa {
  * mang (moi nhat truoc), kem tung khoan thu nhap/tru. `chi_thang` != null thi loc ve 1 thang.
  * Dung chung cho ca man "Phieu luong" (mang) va man "Luong" ca nhan (lay phan tu dau).
  */
-async function phieu_luong_cua_toi(
+export async function phieu_luong_cua_toi(
   nv_id: string, chi_thang: string | null,
 ): Promise<Record<string, unknown>[]> {
   const phieu = await truy_van<{ id: string } & Record<string, unknown>>(
-    `select p.id, k.thang, k.trang_thai as trang_thai_ky,
+    `select p.id, p.nhan_vien_id, k.thang, k.trang_thai as trang_thai_ky,
             p.luong_co_ban, p.phu_cap, p.so_ngay_cong_chuan, p.so_ngay_cong_thuc,
             p.luong_ngay, p.luong_theo_cong, p.phut_ot, p.he_so_ot, p.tien_ot,
             p.phut_ot_nghi_tuan, p.phut_ot_le,

@@ -28,6 +28,7 @@ import { gui_phieu_luong_ky } from '../luong/phieu_luong_email.ts';
 import { email_hr_tra_loi, email_hr_xu_ly } from '../luong/khieu_nai_email.ts';
 import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { ghi_nhan_am_tham } from '../sharepoint/dong_bo.ts';
+import { phieu_luong_cua_toi } from './toi.ts';
 import { khoang_thang } from '../tien_ich/thoi_gian.ts';
 import { ghi_xlsx } from '../tien_ich/ghi_xlsx.ts';
 import {
@@ -1362,34 +1363,12 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
   //
   // Nhan vien chi thay phieu cua CHINH MINH, va chi khi ky da duoc duyet: so lieu dang
   // nhap co the con sai, bay ra roi sua lai la nguon khieu nai.
+  // Dung chung ham voi man "Luong" ca nhan (phieu_luong_cua_toi) — web can phep + nghi
+  // kem moi phieu, route nay tuy nen phai tra dung hinh dang do, khong duoc tra p.* khong du.
   app.get('/toi/phieu-luong', { preHandler: can_dang_nhap }, async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     if (nd.nv === null) return [];
-    const phieu = await truy_van<Record<string, unknown>>(
-      `select p.*, k.thang, k.trang_thai as trang_thai_ky
-         from phieu_luong p
-         join ky_luong k on k.id = p.ky_luong_id
-        where p.nhan_vien_id = $1 and k.trang_thai in ('da_duyet','da_tra')
-        order by k.thang desc limit 24`,
-      [nd.nv],
-    );
-    if (phieu.length === 0) return [];
-
-    // Nguoi lao dong phai doc duoc TUNG khoan cua minh, khong phai mot con so "phu cap" gop.
-    // Mot bang luong khong giai thich duoc la mot don khieu nai.
-    const khoan = await truy_van<Record<string, unknown>>(
-      `select pk.phieu_luong_id, pk.khoan_ma, pk.so_luong, pk.don_gia, pk.thanh_tien,
-              pk.ghi_chu, d.ten, d.loai, d.chiu_thue
-         from phieu_luong_khoan pk
-         join khoan_luong d on d.ma = pk.khoan_ma
-        where pk.phieu_luong_id = any($1::uuid[])
-        order by d.loai desc, d.thu_tu, d.ten`,
-      [phieu.map((p) => String(p['id']))],
-    );
-    return phieu.map((p) => ({
-      ...p,
-      khoan: khoan.filter((x) => String(x['phieu_luong_id']) === String(p['id'])),
-    }));
+    return phieu_luong_cua_toi(nd.nv, null);
   });
 
   // ============================================================ KHIEU NAI PHIEU LUONG (quan ly)
