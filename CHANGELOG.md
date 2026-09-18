@@ -2,6 +2,20 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.93.1] — 2026-09-19
+
+**Trang Tổng quan vừa một màn hình.**
+
+- Toàn bộ khối trên Tổng quan xếp lại thành lưới thay vì dải dọc: màn rộng hiển thị hàng
+  thống kê hôm nay ngang hết chiều ngang + 3 cột (điểm nóng ra/vào, biểu đồ 7 ngày, đi muộn,
+  của tôi, việc của nhân sự, hệ thống); màn trung bình 2 cột; màn hẹp vẫn xếp dọc như cũ.
+- Gọn các thẻ, ô số, bảng để vừa một màn hình, không cần cuộn lên xuống; nếu dữ liệu đột
+  biến (hàng chục người đi muộn) thì cuộn trong vùng nội dung, không đẩy dài cả trang.
+- Bảng "Đi muộn hôm nay" hiện tối đa 7 người kèm đường dẫn xem bảng công; bảng "Người bị
+  cảnh báo nhiều nhất tháng" hiện top 5 (danh sách đầy đủ vẫn ở tab Ra/vào).
+
+Theo [SemVer](https://semver.org/lang/vi/).
+
 ## [1.93.0] — 2026-09-17
 
 **Quản lý OT hai cấp duyệt · tài liệu đăng ký · nộp kết quả OT bằng ảnh.**
