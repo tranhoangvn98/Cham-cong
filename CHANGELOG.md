@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.93.2] — 2026-09-19
+
+**Vẽ lại trang Tổng quan — gọn, cân đối, chỉ giữ thông tin cần hành động.**
+
+- Bỏ khỏi Tổng quan: khối "Của tôi" (đã có góc nhìn Cá nhân riêng), bảng máy chấm công và
+  ghi chú đồng bộ ERP (đã có trang Máy chấm công / Cài đặt), bảng con "Hợp đồng cần xử lý"
+  (giữ con số + liên kết sang trang Hợp đồng), hai ô "Về sớm" và "Ra ngoài giờ làm" (đã có
+  ở tab Ra/vào). Khối Hệ thống giờ chỉ hiện các cảnh báo cần xử lý: PIN lệch, máy mất kết
+  nối, chưa khai báo máy.
+- Sắp xếp lại thành 3 cột cân đối: trái "Điểm nóng ra/vào" + cảnh báo hệ thống, giữa
+  "7 ngày gần nhất" + "Đi muộn hôm nay" + "Đang chờ duyệt", phải "Việc của nhân sự".
+- Hàng "Toàn công ty — hôm nay" còn 7 số liệu cốt lõi, ô số to hơn hẳn các khối còn lại;
+  các ô số toàn trang dùng chung một nhịp khoảng cách.
 ## [1.93.1] — 2026-09-19
 
 **Trang Tổng quan vừa một màn hình.**

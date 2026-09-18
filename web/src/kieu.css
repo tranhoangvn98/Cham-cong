@@ -247,22 +247,24 @@ blockquote {
 
 /* ---------------------------------------------------------------- bang dieu khien (tong quan)
    Trang Tong quan cua NHAN SU: gom toan bo noi dung vao MOT MAN HINH — khong phai cuon doc.
-   Man rong: hang thong ke ngang het chieu ngang + 3 cot khoi ben duoi. Man trung binh: 2
-   cot. Man hep: xep doc nhu truoc. Moi khoi boc trong `.bd-khoi` de gan vao o luoi theo ten. */
+   Man rong: hang thong ke ngang + 3 cot. Man trung binh: 2 cot. Man hep: xep doc nhu truoc.
+   Moi khoi boc trong `.bd-khoi` de gan vao o luoi theo ten. */
 .noi-dung:has(> .bang-dieu-khien) { max-width: 2040px; }
-.noi-dung:has(> .bang-dieu-khien) .dau-trang { margin-bottom: 4px; }
+.noi-dung:has(> .bang-dieu-khien) .dau-trang { margin-bottom: 8px; }
 
 /* Giu vung tong quan dung bang chieu cao man hinh. Neu du lieu dot bien (hang chu di muon)
    thi cuon TRONG vung noi dung thay vi day dai ca trang. */
 .than:has(> .noi-dung > .bang-dieu-khien) { height: 100vh; height: 100dvh; overflow: hidden; }
-.than:has(> .noi-dung > .bang-dieu-khien) .noi-dung { padding: 12px 22px;
+.than:has(> .noi-dung > .bang-dieu-khien) .noi-dung {
+  padding: 12px 22px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
 }
+.than:has(> .noi-dung > .bang-dieu-khien) .dau-app { padding: 8px 22px; }
 
-.bang-dieu-khien { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
-.bang-dieu-khien .the { margin-bottom: 0; padding: 7px 10px; }
+.bang-dieu-khien { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+.bang-dieu-khien .the { margin-bottom: 0; padding: 12px 14px; }
 .bd-khoi { min-width: 0; }
 
 /* Dau mot khoi: tieu de trai, nut/hanh dong phai. Xuong dong gon o man hep. */
@@ -272,57 +274,52 @@ blockquote {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .dau-khoi h2 { margin: 0; }
 
-/* Gom khoi: the mong hon, o so thap hon, bang chu nho hon, khoang cach hep lai. */
-.bang-dieu-khien .the h2 { font-size: 14px; margin: 0 0 6px; }
-.bang-dieu-khien .the h3 { font-size: 12px; margin: 8px 0 4px; }
-.bang-dieu-khien .dau-khoi { margin-bottom: 6px; }
-.bang-dieu-khien .o-so { padding: 7px 9px; }
-.bang-dieu-khien .o-so-gia-tri { font-size: 18px; margin-top: 1px; }
-.bang-dieu-khien .o-so-nhan,
-.bang-dieu-khien .o-so-phu { font-size: 11px; }
-.bang-dieu-khien .luoi { gap: 6px; }
-.bang-dieu-khien .luoi-2 { align-items: start; }
-.bang-dieu-khien table { font-size: 12px; }
-.bang-dieu-khien thead th { padding: 4px 8px; }
-.bang-dieu-khien tbody td { padding: 4px 8px; }
-.bang-dieu-khien .bang-gon tbody td { padding: 3px 8px 3px 0; }
-.bang-dieu-khien .chu-giai { margin-top: 6px; }
-.bang-dieu-khien .bieu-do { height: 72px; }
-.bang-dieu-khien .bd-xem-them { padding: 6px 12px 10px; }
-.bd-hethong .o-so-phu { font-size: 10.5px; margin-top: 1px; }
-.bd-ngay .o-so { padding: 5px 8px; }
-.bd-ngay .o-so-gia-tri { font-size: 16px; margin-top: 0; }
-.bd-ngay .o-so-nhan { font-size: 10.5px; }
-.bd-ngay .o-so-phu { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bd-nong .o-so, .bd-toi .o-so, .bd-viens .o-so { padding: 4px 6px; }
-.bd-nong .o-so-gia-tri, .bd-toi .o-so-gia-tri, .bd-viens .o-so-gia-tri { font-size: 15px; }
-.bd-nong .o-so-nhan, .bd-toi .o-so-nhan, .bd-viens .o-so-nhan { font-size: 10px; }
-.bd-nong .o-so-phu, .bd-toi .o-so-phu, .bd-viens .o-so-phu { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bang-dieu-khien .trong { padding: 8px 12px; }
-.bang-dieu-khien .hop-thong-bao { padding: 6px 10px; font-size: 12px; margin-bottom: 8px; }
-.bd-hethong table { font-size: 11px; }
-.bd-hethong tbody td { padding: 2px 8px; }
-.bd-nong .bang-gon tbody td { padding: 2px 8px 2px 0; }
-.than:has(> .noi-dung > .bang-dieu-khien) .dau-app { padding: 8px 22px; }
+/* Nhip chung trong bang dieu khien: chu nho gon, o so dong nhat, bang mong. */
+.bang-dieu-khien .the h2 { font-size: 15px; margin: 0 0 10px; }
+.bang-dieu-khien .the h3 { font-size: 12.5px; margin: 8px 0 4px; }
+.bang-dieu-khien .o-so { padding: 10px 12px; }
+.bang-dieu-khien .o-so-gia-tri { font-size: 18px; margin-top: 2px; }
+.bang-dieu-khien .o-so-nhan { font-size: 11.5px; }
+.bang-dieu-khien .o-so-phu {
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bang-dieu-khien .luoi { gap: 8px; }
+.bang-dieu-khien table { font-size: 12.5px; }
+.bang-dieu-khien thead th { padding: 5px 10px; }
+.bang-dieu-khien tbody td { padding: 5px 10px; }
+.bang-dieu-khien .bang-gon tbody td { padding: 3px 10px 3px 0; }
+.bang-dieu-khien .chu-giai { margin-top: 8px; }
+.bang-dieu-khien .bieu-do { height: 110px; }
+.bang-dieu-khien .bd-xem-them { padding: 6px 14px 10px; }
+.bang-dieu-khien .trong { padding: 12px; }
+.bang-dieu-khien .hop-thong-bao { padding: 8px 12px; font-size: 12.5px; margin-bottom: 0; }
+.bang-dieu-khien .hop-thong-bao + .hop-thong-bao { margin-top: 8px; }
 
-/* Cot phu hep: bai so va ho so con so xep 2 cot de tranh thanh chuoi dai doc. */
+/* Hang thong ke hom nay: o so lon hon cac khoi con lai — day la hang dau tien nhan su nhin. */
+.bd-ngay .o-so-gia-tri { font-size: 22px; }
+.bd-ngay .o-so-nhan { font-size: 11.5px; }
+.bd-ngay .o-so-phu { font-size: 10.5px; }
+
+/* Bai so diem nong: mot hang ngang. Viec nhan su: hai cot. */
 .bd-nong .luoi { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.bd-toi .luoi,
 .bd-viens .luoi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-/* Man rong: 3 cot. Hang thong ke hom nay xep ngang MOT hang (9 o). */
+/* Man rong: 3 cot can doi — diem nong trai, xu huong giua, viec can lam phai. */
 @media (min-width: 1500px) {
-  .than:has(> .noi-dung > .bang-dieu-khien) { padding: 12px 32px 12px; }
+  .than:has(> .noi-dung > .bang-dieu-khien) { padding: 12px 32px 16px; }
   .bang-dieu-khien {
     display: grid;
-    grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr) minmax(0, 0.94fr);
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.95fr);
     grid-template-areas:
       'ngay     ngay     ngay'
-      'nong     bieudo   toi'
+      'nong     bieudo   viens'
       'nong     dimuon   viens'
       'hethong  choduyet viens';
     align-items: start;
@@ -332,12 +329,9 @@ blockquote {
   .bd-bieudo { grid-area: bieudo; }
   .bd-dimuon { grid-area: dimuon; }
   .bd-choduyet { grid-area: choduyet; }
-  .bd-toi { grid-area: toi; }
   .bd-viens { grid-area: viens; }
   .bd-hethong { grid-area: hethong; }
-  .bd-ngay .luoi { grid-template-columns: repeat(9, minmax(0, 1fr)); }
-
-
+  .bd-ngay .luoi { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 
 /* Man trung binh: 2 cot. */
@@ -350,9 +344,8 @@ blockquote {
       'ngay     ngay'
       'nong     bieudo'
       'nong     dimuon'
-      'toi      viens'
-      'toi      hethong'
-      'choduyet choduyet';
+      'viens    choduyet'
+      'viens    hethong';
     align-items: start;
   }
   .bd-ngay { grid-area: ngay; }
@@ -360,11 +353,11 @@ blockquote {
   .bd-bieudo { grid-area: bieudo; }
   .bd-dimuon { grid-area: dimuon; }
   .bd-choduyet { grid-area: choduyet; }
-  .bd-toi { grid-area: toi; }
   .bd-viens { grid-area: viens; }
   .bd-hethong { grid-area: hethong; }
   .bd-ngay .luoi { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
 
 .o-so {
   background: var(--nen-the);
