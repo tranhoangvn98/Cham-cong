@@ -250,7 +250,7 @@ blockquote {
    Man rong: hang thong ke ngang het chieu ngang + 3 cot khoi ben duoi. Man trung binh: 2
    cot. Man hep: xep doc nhu truoc. Moi khoi boc trong `.bd-khoi` de gan vao o luoi theo ten. */
 .noi-dung:has(> .bang-dieu-khien) { max-width: 2040px; }
-.noi-dung:has(> .bang-dieu-khien) .dau-trang { margin-bottom: 8px; }
+.noi-dung:has(> .bang-dieu-khien) .dau-trang { margin-bottom: 4px; }
 
 /* Giu vung tong quan dung bang chieu cao man hinh. Neu du lieu dot bien (hang chu di muon)
    thi cuon TRONG vung noi dung thay vi day dai ca trang. */
@@ -261,7 +261,7 @@ blockquote {
   overflow-y: auto;
 }
 
-.bang-dieu-khien { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.bang-dieu-khien { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 .bang-dieu-khien .the { margin-bottom: 0; padding: 7px 10px; }
 .bd-khoi { min-width: 0; }
 
