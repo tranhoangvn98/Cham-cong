@@ -291,21 +291,21 @@ blockquote {
 .bang-dieu-khien tbody td { padding: 4px 8px; }
 .bang-dieu-khien .bang-gon tbody td { padding: 3px 8px 3px 0; }
 .bang-dieu-khien .chu-giai { margin-top: 6px; }
-.bang-dieu-khien .bieu-do { height: 92px; }
+.bang-dieu-khien .bieu-do { height: 84px; }
 .bang-dieu-khien .bd-xem-them { padding: 6px 12px 10px; }
 .bd-hethong .o-so-phu { font-size: 10.5px; margin-top: 1px; }
 .bd-ngay .o-so { padding: 5px 8px; }
 .bd-ngay .o-so-gia-tri { font-size: 16px; margin-top: 0; }
 .bd-ngay .o-so-nhan { font-size: 10.5px; }
 .bd-ngay .o-so-phu { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bd-toi .o-so, .bd-viens .o-so { padding: 5px 8px; }
-.bd-toi .o-so-gia-tri, .bd-viens .o-so-gia-tri { font-size: 16px; }
-.bd-toi .o-so-nhan, .bd-viens .o-so-nhan { font-size: 10.5px; }
-.bd-toi .o-so-phu, .bd-viens .o-so-phu { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-nong .o-so, .bd-toi .o-so, .bd-viens .o-so { padding: 4px 6px; }
+.bd-nong .o-so-gia-tri, .bd-toi .o-so-gia-tri, .bd-viens .o-so-gia-tri { font-size: 15px; }
+.bd-nong .o-so-nhan, .bd-toi .o-so-nhan, .bd-viens .o-so-nhan { font-size: 10px; }
+.bd-nong .o-so-phu, .bd-toi .o-so-phu, .bd-viens .o-so-phu { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bang-dieu-khien .trong { padding: 10px 12px; }
 .bang-dieu-khien .hop-thong-bao { padding: 6px 10px; font-size: 12px; margin-bottom: 8px; }
-.bd-hethong table { font-size: 11.5px; }
-.bd-hethong tbody td { padding: 3px 8px; }
+.bd-hethong table { font-size: 11px; }
+.bd-hethong tbody td { padding: 2px 8px; }
 .bd-nong .bang-gon tbody td { padding: 2px 8px 2px 0; }
 .than:has(> .noi-dung > .bang-dieu-khien) .dau-app { padding: 8px 22px; }
 
