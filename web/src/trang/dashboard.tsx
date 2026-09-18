@@ -427,7 +427,7 @@ function TongQuanNgay(
         <OSoBam nhan="Tổng nhân viên" gia_tri={t.tong_nhan_vien} loai="tong" ngay={ngay} />
         {rv !== null && (
           <OSo nhan="Đang trong văn phòng" gia_tri={rv.dang_trong} mau="lanh"
-            phu="chưa quẹt ra tính tới lúc này" />
+            phu="chưa quẹt ra" />
         )}
         <OSoBam nhan="Có mặt" gia_tri={t.co_mat} mau="tot" loai="co_mat" ngay={ngay} />
         <OSoBam nhan="Đi muộn" gia_tri={t.di_muon}
@@ -445,7 +445,7 @@ function TongQuanNgay(
               ? `tổng ${phut_thanh_chu(rv.tong_phut_ra_ngoai)}`
               : 'không ai ra ngoài'} />
         )}
-        <OSoBam nhan="Chưa quẹt ra" gia_tri={t.chua_quet_ra} phu="còn trong giờ hoặc quên quẹt"
+        <OSoBam nhan="Chưa quẹt ra" gia_tri={t.chua_quet_ra} phu="trong giờ hoặc quên quẹt"
           loai="chua_quet_ra" ngay={ngay} />
       </div>
     </div>
@@ -581,7 +581,7 @@ function DiemNongRaVao({ rv }: { rv: RaVaoHR }): ReactNode {
               </thead>
               <tbody>
                 {/* Tong quan chi diem danh top 5 — danh sach day du nam o tab /ra-vao. */}
-                {rv.top_nguoi.slice(0, 5).map((n) => (
+                {rv.top_nguoi.slice(0, 4).map((n) => (
                   <tr key={n.nhan_vien_id}>
                     <td className="so">{n.ma_nv}</td>
                     <td><LienKet den={`/nhan-vien/${n.nhan_vien_id}`}>{n.ho_ten}</LienKet></td>
@@ -624,7 +624,7 @@ function KhoiNhanSu({ ns }: { ns: ViecNhanSu }): ReactNode {
             <OSo
               nhan="Hợp đồng ĐÃ hết hạn"
               gia_tri={ns.hop_dong_het_han}
-              phu="quá 30 ngày là tự thành không xác định thời hạn"
+              phu="quá 30 ngày thành không xác định thời hạn"
               mau="xau"
             />
           )}
@@ -640,7 +640,7 @@ function KhoiNhanSu({ ns }: { ns: ViecNhanSu }): ReactNode {
             <OSo
               nhan="Chưa gán PIN máy"
               gia_tri={ns.chua_gan_pin}
-              phu="những người này KHÔNG chấm công được"
+              phu="không chấm công được"
               mau="xau"
             />
           )}
@@ -648,7 +648,7 @@ function KhoiNhanSu({ ns }: { ns: ViecNhanSu }): ReactNode {
             <OSo
               nhan="Chưa có email"
               gia_tri={ns.thieu_email}
-              phu="không đăng nhập Microsoft được"
+              phu="không đăng nhập Microsoft"
               mau="canh_bao"
             />
           )}
@@ -664,7 +664,7 @@ function KhoiNhanSu({ ns }: { ns: ViecNhanSu }): ReactNode {
             <OSo
               nhan="Hồ sơ thiếu giấy tờ"
               gia_tri={ns.thieu_tai_lieu}
-              phu="người còn thiếu tài liệu bắt buộc"
+              phu="thiếu tài liệu bắt buộc"
               mau="canh_bao"
             />
           )}
@@ -809,7 +809,7 @@ function BangDiMuon(
   const ds_hien = gioi_han < ds.length ? ds.slice(0, gioi_han) : ds;
   return (
     <div className="the the-mong">
-      <div style={{ padding: '12px 14px 0' }}>
+      <div style={{ padding: '10px 12px 0' }}>
         <h2>{tieu_de}</h2>
       </div>
       {ds.length === 0 ? (
