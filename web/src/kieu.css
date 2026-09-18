@@ -262,7 +262,7 @@ blockquote {
 }
 
 .bang-dieu-khien { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
-.bang-dieu-khien .the { margin-bottom: 0; padding: 8px 12px; }
+.bang-dieu-khien .the { margin-bottom: 0; padding: 7px 10px; }
 .bd-khoi { min-width: 0; }
 
 /* Dau mot khoi: tieu de trai, nut/hanh dong phai. Xuong dong gon o man hep. */
@@ -291,7 +291,7 @@ blockquote {
 .bang-dieu-khien tbody td { padding: 4px 8px; }
 .bang-dieu-khien .bang-gon tbody td { padding: 3px 8px 3px 0; }
 .bang-dieu-khien .chu-giai { margin-top: 6px; }
-.bang-dieu-khien .bieu-do { height: 84px; }
+.bang-dieu-khien .bieu-do { height: 72px; }
 .bang-dieu-khien .bd-xem-them { padding: 6px 12px 10px; }
 .bd-hethong .o-so-phu { font-size: 10.5px; margin-top: 1px; }
 .bd-ngay .o-so { padding: 5px 8px; }
@@ -302,7 +302,7 @@ blockquote {
 .bd-nong .o-so-gia-tri, .bd-toi .o-so-gia-tri, .bd-viens .o-so-gia-tri { font-size: 15px; }
 .bd-nong .o-so-nhan, .bd-toi .o-so-nhan, .bd-viens .o-so-nhan { font-size: 10px; }
 .bd-nong .o-so-phu, .bd-toi .o-so-phu, .bd-viens .o-so-phu { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bang-dieu-khien .trong { padding: 10px 12px; }
+.bang-dieu-khien .trong { padding: 8px 12px; }
 .bang-dieu-khien .hop-thong-bao { padding: 6px 10px; font-size: 12px; margin-bottom: 8px; }
 .bd-hethong table { font-size: 11px; }
 .bd-hethong tbody td { padding: 2px 8px; }
@@ -316,7 +316,7 @@ blockquote {
 
 /* Man rong: 3 cot. Hang thong ke hom nay xep ngang MOT hang (9 o). */
 @media (min-width: 1500px) {
-  .than:has(> .noi-dung > .bang-dieu-khien) { padding: 12px 32px 16px; }
+  .than:has(> .noi-dung > .bang-dieu-khien) { padding: 12px 32px 12px; }
   .bang-dieu-khien {
     display: grid;
     grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr) minmax(0, 0.94fr);
