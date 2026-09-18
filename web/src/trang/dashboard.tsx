@@ -721,8 +721,7 @@ function KhoiHeThong({ ht }: { ht: HeThong }): ReactNode {
     <>
       {ht.pin_lech > 0 && (
         <div className="hop-thong-bao hop-loi">
-          <strong>⚠ {ht.pin_lech} PIN trong máy bị lệch / trùng người.</strong> Có người được enroll
-          trên máy dưới PIN đang thuộc nhân viên khác trong hệ thống — lượt quẹt sẽ bị gán nhầm.
+          <strong>⚠ {ht.pin_lech} PIN trong máy bị lệch / trùng người.</strong> Lượt quẹt sẽ bị gán nhầm.
           Vào <LienKet den="/cai-dat/thiet-bi">Máy chấm công</LienKet> → “Đối chiếu user máy” để xử lý.
         </div>
       )}
