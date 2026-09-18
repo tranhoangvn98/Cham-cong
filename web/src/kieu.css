@@ -261,8 +261,8 @@ blockquote {
   overflow-y: auto;
 }
 
-.bang-dieu-khien { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
-.bang-dieu-khien .the { margin-bottom: 0; padding: 10px 12px; }
+.bang-dieu-khien { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.bang-dieu-khien .the { margin-bottom: 0; padding: 8px 12px; }
 .bd-khoi { min-width: 0; }
 
 /* Dau mot khoi: tieu de trai, nut/hanh dong phai. Xuong dong gon o man hep. */
@@ -294,6 +294,20 @@ blockquote {
 .bang-dieu-khien .bieu-do { height: 110px; }
 .bang-dieu-khien .bd-xem-them { padding: 6px 12px 10px; }
 .bd-hethong .o-so-phu { font-size: 10.5px; margin-top: 1px; }
+.bd-ngay .o-so { padding: 5px 8px; }
+.bd-ngay .o-so-gia-tri { font-size: 16px; margin-top: 0; }
+.bd-ngay .o-so-nhan { font-size: 10.5px; }
+.bd-ngay .o-so-phu { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-toi .o-so { padding: 5px 8px; }
+.bd-toi .o-so-gia-tri { font-size: 16px; }
+.bd-toi .o-so-nhan { font-size: 10.5px; }
+.bd-toi .o-so-phu { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bang-dieu-khien .trong { padding: 10px 12px; }
+.bang-dieu-khien .hop-thong-bao { padding: 6px 10px; font-size: 12px; margin-bottom: 8px; }
+.bd-hethong table { font-size: 11.5px; }
+.bd-hethong tbody td { padding: 3px 8px; }
+.bd-nong .bang-gon tbody td { padding: 2px 8px 2px 0; }
+.than:has(> .noi-dung > .bang-dieu-khien) .dau-app { padding: 8px 22px; }
 
 /* Cot phu hep: bai so va ho so con so xep 2 cot de tranh thanh chuoi dai doc. */
 .bd-nong .luoi { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -322,6 +336,8 @@ blockquote {
   .bd-viens { grid-area: viens; }
   .bd-hethong { grid-area: hethong; }
   .bd-ngay .luoi { grid-template-columns: repeat(9, minmax(0, 1fr)); }
+  .bd-ngay .the { display: flex; align-items: center; gap: 14px; }
+  .bd-ngay .the h2 { flex: 0 0 auto; margin: 0; }
 }
 
 /* Man trung binh: 2 cot. */

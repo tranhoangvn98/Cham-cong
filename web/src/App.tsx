@@ -513,7 +513,7 @@ function BoCuc(): ReactNode {
             Huong dan ve o DAY, mot cho cho ca 20 trang. Chen vao tung trang thi som muon co
             trang quen, va cai quen do khong bao gio do test.
           */}
-          <KhungHuongDan key={duong_dan} duong_dan={duong_dan} />
+          {duong_dan !== '/' && <KhungHuongDan key={duong_dan} duong_dan={duong_dan} />}
           <CungCapTieuDe dat={dat_tieu_de_trang}>
             <NoiDung duong_dan={duong_dan} ca_nhan={gn === 'ca_nhan'} />
           </CungCapTieuDe>
