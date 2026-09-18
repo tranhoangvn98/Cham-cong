@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.93.3] — 2026-09-19
+
+**Tổng quan: lấp đầy khoảng trắng, ba cột giãn đều hết chiều cao màn hình.**
+
+- Lưới Tổng quan giờ căng đầy vùng nội dung: hai hàng giữa chia đều khoảng còn lại, ba cột
+  kết thúc thẳng hàng ở cùng một mép dưới — hết khoảng trắng thừa.
+- Khoảng trống phân bố vào trong thẻ: biểu đồ 7 ngày cao theo cột, danh sách Việc của nhân
+  sự dàn đều các dòng, trạng thái rỗng căn giữa, bảng cảnh báo đặt sát đáy thẻ.
+
 ## [1.93.2] — 2026-09-19
 
 **Vẽ lại trang Tổng quan — gọn, cân đối, chỉ giữ thông tin cần hành động.**
