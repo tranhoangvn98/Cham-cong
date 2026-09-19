@@ -50,6 +50,10 @@ https://{$TEN_MIEN} {
 
 	# May chu MCP cho tro ly AI (Claude Desktop / Copilot / Foundry). KHONG kiem tra mat
 	# khau o day: MCP tu xac thuc bang khoa API ck_ + pham vi + IP cho phep o tang ung dung.
+	# Hai handle vi `*` cua Caddy khong khop duong khong co hậu tố (bare /mcp).
+	handle /mcp {
+		reverse_proxy mcp:3100
+	}
 	handle /mcp/* {
 		reverse_proxy mcp:3100
 	}
