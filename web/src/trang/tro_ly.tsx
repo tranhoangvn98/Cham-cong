@@ -39,8 +39,6 @@ interface DapTroLy {
   y_dinh: string;
   goi_y: string[];
   hanh_dong?: HanhDong;
-  /** Khi co: chuyen trang den duong dan nay (may chu da kiem trong danh sach trang). */
-  den?: string;
   /** Khi co: de xuat mo trang — hien nut, nguoi dung bam moi chuyen. */
   mo_de_xuat?: { nhan: string; den: string };
 }
@@ -146,11 +144,6 @@ export function TroLyCaNhan(): ReactNode {
       dat_goi_y(d.goi_y);
       if (d.hanh_dong !== undefined) dat_hanh_dong(d.hanh_dong);
       dat_mo_de_xuat(d.mo_de_xuat ?? null);
-      // Bot mo trang giup: chuyen den dung cho nguoi dung yeu cau roi dong khung tro ly.
-      if (typeof d.den === 'string' && d.den !== '') {
-        const den = d.den;
-        window.setTimeout(() => { di_toi(den); dat_mo(false); }, 400);
-      }
     } catch {
       dat_dong((ds) => [...ds, { ai: 'bot', chu: 'Xin lỗi, mình chưa trả lời được lúc này.' }]);
     } finally {

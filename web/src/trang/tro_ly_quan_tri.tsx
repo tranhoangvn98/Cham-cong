@@ -25,8 +25,6 @@ interface DapTroLyQT {
   tra_loi: string;
   y_dinh: string;
   goi_y: string[];
-  /** Khi co: chuyen trang den duong dan nay (may chu da kiem trong danh sach trang). */
-  den?: string;
   /** Khi co: de xuat mo trang — hien nut, nguoi dung bam moi chuyen. */
   mo_de_xuat?: { nhan: string; den: string };
 }
@@ -112,11 +110,6 @@ export function TroLyQuanTri(): ReactNode {
       dat_dong((ds) => [...ds, { ai: 'bot', chu: d.tra_loi }]);
       dat_goi_y(d.goi_y);
       dat_mo_de_xuat(d.mo_de_xuat ?? null);
-      // Bot mo trang giup: chuyen den dung cho nguoi dung yeu cau roi dong khung tro ly.
-      if (typeof d.den === 'string' && d.den !== '') {
-        const den = d.den;
-        window.setTimeout(() => { di_toi(den); dat_mo(false); }, 400);
-      }
     } catch (loi) {
       const chu = loi instanceof LoiApi ? loi.message : 'Không kết nối được máy chủ.';
       // 5xx thuong la may chu dang ban hoac vua khoi dong lai — bao than thien.

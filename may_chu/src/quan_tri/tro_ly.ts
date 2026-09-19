@@ -31,8 +31,6 @@ export interface TraLoiTroLyQT {
   tra_loi: string;
   y_dinh: string;
   goi_y: string[];
-  /** Khi co: giao dien chuyen den trang nay (duong dan noi bo da duoc danh sach trang kiem). */
-  den?: string;
   /** Khi co: de xuat mo mot trang — giao dien hien nut, nguoi dung bam moi chuyen. */
   mo_de_xuat?: { nhan: string; den: string };
 }
@@ -210,9 +208,9 @@ function tra_loi_mo_trang_qt(cau: string): TraLoiTroLyQT {
     };
   }
   return {
-    tra_loi: `Được, mình mở trang **${muc.ten}** cho bạn nhé.`,
+    tra_loi: `Được, bạn bấm nút **Mở trang ${muc.ten}** bên dưới là vào ngay nhé.`,
     y_dinh: 'mo_trang',
-    den: muc.duong,
+    mo_de_xuat: { nhan: `Mở trang ${muc.ten}`, den: muc.duong },
     goi_y: [],
   };
 }

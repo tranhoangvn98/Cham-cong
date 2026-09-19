@@ -61,8 +61,6 @@ export interface TraLoiTroLy {
   goi_y: string[];
   /** Khi co: giao dien hien the xac nhan, nhan vien tu bam moi gui. */
   hanh_dong?: HanhDongChoXacNhan;
-  /** Khi co: giao dien chuyen den trang nay (duong dan noi bo da duoc danh sach trang kiem). */
-  den?: string;
   /** Khi co: de xuat mo mot trang — giao dien hien nut, nguoi dung bam moi chuyen. */
   mo_de_xuat?: { nhan: string; den: string };
 }
@@ -468,7 +466,7 @@ async function tra_loi_noi_bo(
       tra_loi: 'Phiếu lương chi tiết bạn xem ở mục **Phiếu lương**. Mình có thể giúp về '
         + 'công, phép, đi muộn — những thứ ảnh hưởng tới lương.',
       y_dinh: 'luong',
-      mo_de_xuat: { nhan: 'Mở Phiếu lương của tôi', den: '/phieu-luong-toi' },
+      mo_de_xuat: { nhan: 'Mở Phiếu lương của tôi', den: '/ca-nhan/luong' },
       goi_y: ['Công tháng này của tôi thế nào?', 'Tháng này tôi đi muộn mấy lần?'],
     };
     case 'di_muon': return tra_loi_di_muon(nv_id);
@@ -785,7 +783,7 @@ async function tra_loi_don_cho(nv_id: string): Promise<TraLoiTroLy> {
   return {
     tra_loi: llm ?? tra_loi_dinh,
     y_dinh: 'don_cho',
-    mo_de_xuat: { nhan: 'Mở Đơn của tôi', den: '/don-cua-toi' },
+    mo_de_xuat: { nhan: 'Mở Đơn của tôi', den: '/ca-nhan/don-tu' },
     goi_y: ['Tôi muốn xin nghỉ phép'],
   };
 }
@@ -825,9 +823,9 @@ export function tra_loi_mo_trang(cau_goc: string, vai_tro: string): TraLoiTroLy 
   if (muc.khoa === 'ung luong') {
     if (la_vai_tro_nhan_su(vai_tro)) {
       return {
-        tra_loi: 'Được, mình mở **Ứng lương** cho bạn nhé.',
+        tra_loi: 'Được, bạn bấm nút **Mở Ứng lương** bên dưới là vào ngay nhé.',
         y_dinh: 'mo_trang',
-        den: '/ung-luong',
+        mo_de_xuat: { nhan: 'Mở Ứng lương', den: '/ung-luong' },
         goi_y: [],
       };
     }
@@ -846,9 +844,9 @@ export function tra_loi_mo_trang(cau_goc: string, vai_tro: string): TraLoiTroLy 
     };
   }
   return {
-    tra_loi: `Được, mình mở **${muc.ten}** cho bạn nhé.`,
+    tra_loi: `Được, bạn bấm nút **Mở ${muc.ten}** bên dưới là vào ngay nhé.`,
     y_dinh: 'mo_trang',
-    den: muc.duong,
+    mo_de_xuat: { nhan: `Mở ${muc.ten}`, den: muc.duong },
     goi_y: [],
   };
 }
@@ -992,7 +990,7 @@ export async function tra_loi_noi_quy(cau: string): Promise<TraLoiTroLy> {
     tra_loi: `Theo Nội quy lao động của công ty:\n${dong_tra_loi}\n\n`
       + 'Bạn xem toàn văn ở tab **Văn bản** (mục Nội quy).',
     y_dinh: 'noi_quy',
-    mo_de_xuat: { nhan: 'Mở Nội quy (Văn bản)', den: '/van-ban' },
+    mo_de_xuat: { nhan: 'Mở Nội quy (Văn bản)', den: '/ca-nhan/van-ban' },
     goi_y: ['Đi muộn bị xử lý thế nào?', 'Tôi muốn giải trình quên chấm công'],
   };
 }
@@ -1022,7 +1020,7 @@ export async function tra_loi_thong_bao(cau: string): Promise<TraLoiTroLy> {
   return {
     tra_loi: `Các thông báo gần đây:\n${danh_sach}\n\nChi tiết bạn xem ở mục **Thông báo**.`,
     y_dinh: 'thong_bao',
-    mo_de_xuat: { nhan: 'Mở Thông báo', den: '/thong-bao' },
+    mo_de_xuat: { nhan: 'Mở Thông báo', den: '/ca-nhan/thong-bao' },
     goi_y: ['Có thông báo gì mới nhất?'],
   };
 }
@@ -1062,7 +1060,7 @@ export async function tra_loi_van_ban(cau: string): Promise<TraLoiTroLy> {
     tra_loi: `Các văn bản công ty khớp câu hỏi:\n${danh_sach}\n\n`
       + 'Bạn mở tab **Văn bản** để đọc hoặc tải tệp.',
     y_dinh: 'van_ban',
-    mo_de_xuat: { nhan: 'Mở Văn bản công ty', den: '/van-ban' },
+    mo_de_xuat: { nhan: 'Mở Văn bản công ty', den: '/ca-nhan/van-ban' },
     goi_y: ['Đi muộn bị xử lý thế nào?'],
   };
 }

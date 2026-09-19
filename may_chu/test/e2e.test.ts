@@ -8647,13 +8647,14 @@ test('tro ly quan tri: nhan vien bi chan, nhan su hoi duoc va luu lich su rieng'
   const ds = ls.body as unknown as Record<string, unknown>[];
   assert.ok(ds.length > 0 && ds[0]?.['y_dinh'] === 'di_muon', 'phai luu luot hoi quan tri');
 
-  // Bot quan tri mo trang giup: tra duong dan dieu huong da kiem.
+  // Bot quan tri de xuat nut mo trang giup: duong dan dieu huong da kiem.
   const m = await goi('GET',
     '/api/quan-tri/tro-ly?hoi=' + encodeURIComponent('mở trang ứng lương'),
     { token: token_admin });
   assert.equal(m.ma, 200, m.tho);
   assert.equal(m.body['y_dinh'], 'mo_trang');
-  assert.equal(m.body['den'], '/ung-luong');
+  const mo_qt = m.body['mo_de_xuat'] as Record<string, unknown>;
+  assert.equal(mo_qt?.['den'], '/ung-luong');
 
   const xoa = await goi('DELETE', '/api/quan-tri/tro-ly/lich-su', { token: token_admin });
   assert.equal(xoa.ma, 200, xoa.tho);

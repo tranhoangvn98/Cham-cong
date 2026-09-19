@@ -180,17 +180,17 @@ test('buoi_trong_ngay: chao dung buoi theo mui gio may cham cong', () => {
 });
 
 test('tra_loi_mo_trang: ung luong chi mo cho nhan su/quan tri, nhan vien thi huong dan', () => {
-  // Nhan su/quan tri mo duoc trang ung luong ngay ca tu tro ly ca nhan.
+  // Nhan su/quan tri duoc DE XUAT nut mo trang ung luong ngay ca tu tro ly ca nhan.
   const hr = tra_loi_mo_trang('mở cho cái ứng lương', 'nhan_su');
   assert.equal(hr.y_dinh, 'mo_trang');
-  assert.equal(hr.den, '/ung-luong');
-  assert.equal(tra_loi_mo_trang('mở chỗ ứng lương', 'admin').den, '/ung-luong');
-  // Nhan vien thuong khong co trang de mo — tra loi huong dan, khong tra den.
+  assert.equal(hr.mo_de_xuat?.den, '/ung-luong');
+  assert.equal(tra_loi_mo_trang('mở chỗ ứng lương', 'admin').mo_de_xuat?.den, '/ung-luong');
+  // Nhan vien thuong khong co trang de mo — tra loi huong dan, khong co nut.
   const nv = tra_loi_mo_trang('mở cho cái ứng lương', 'nhan_vien');
-  assert.equal(nv.den, undefined);
+  assert.equal(nv.mo_de_xuat, undefined);
   assert.match(nv.tra_loi, /nhân sự/);
-  // Trang thuong thi mo cho moi nguoi.
-  assert.equal(tra_loi_mo_trang('mở đơn của tôi', 'nhan_vien').den, '/ca-nhan/don-tu');
+  // Trang thuong thi de xuat nut mo cho moi nguoi.
+  assert.equal(tra_loi_mo_trang('mở đơn của tôi', 'nhan_vien').mo_de_xuat?.den, '/ca-nhan/don-tu');
 });
 test('tra_loi_ung_luong: bat duoc tu khoa thi de xuat mo trang cho nhan su', () => {
   // Nhan su/quan tri: tra loi kem nut de xuat mo trang ung luong.

@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.99.8] — 2026-09-20
+
+**Sửa lỗi: trợ lý tự nhảy màn hình — giờ chỉ mở khi người dùng bấm nút đề xuất.**
+
+- Bỏ hẳn việc tự chuyển trang: mọi yêu cầu "mở..." đều trả về **nút đề xuất "Mở …"**,
+  người dùng bấm mới chuyển — không còn cảnh đang chat bị đẩy sang màn hình khác.
+- Cập nhật đường dẫn theo vỏ cá nhân mới (1.99.6): Đơn của tôi `/ca-nhan/don-tu`,
+  Phiếu lương `/ca-nhan/luong`, Hồ sơ `/ca-nhan/ca-nhan`, Thông báo/Văn bản `/ca-nhan/...`.
+
 ## [1.99.7] — 2026-09-20
 
 **Trợ lý tự đề xuất mở trang khi bắt được từ khóa.**
