@@ -60,6 +60,8 @@ export interface TraLoiTroLy {
   goi_y: string[];
   /** Khi co: giao dien hien the xac nhan, nhan vien tu bam moi gui. */
   hanh_dong?: HanhDongChoXacNhan;
+  /** Khi co: giao dien chuyen den trang nay (duong dan noi bo da duoc danh sach trang kiem). */
+  den?: string;
 }
 
 const GOI_Y = [
@@ -327,7 +329,7 @@ export function phan_tich_de_xuat(cau_goc: string): { tieu_de: string; noi_dung:
 // ==================================================================== nhan dang y dinh
 
 export type YDinh =
-  | 'chao' | 'hoi_tham' | 'giai_trinh' | 'huy_don' | 'de_xuat' | 'xin_nghi_phep'
+  | 'chao' | 'hoi_tham' | 'mo_trang' | 'giai_trinh' | 'huy_don' | 'de_xuat' | 'xin_nghi_phep'
   | 'noi_quy' | 'thong_bao' | 'van_ban' | 'luong' | 'di_muon'
   | 'cong_thang' | 'nghi_le' | 'ca_lam' | 'don_cho' | 'phep' | 'khong_ro'
   | 'dang_ky_ot' | 'doi_ca' | 'cong_tac' | 'nghi_viec' | 'xin_di_muon'
@@ -342,6 +344,10 @@ export type YDinh =
 export function nhan_dang_y_dinh(cau_goc: string): YDinh {
   const cau = chuan(cau_goc);
   if (cau.trim() === '') return 'chao';
+  // MO TRANG truoc tat ca: "mo cho ung luong" la yeu cau dieu huong, khong phai hoi ve ung
+  // luong. Chi bat tu "mo" hoac cum "di toi/dua toi/cho toi vao/cho toi den" — tranh "den"
+  // trong "tu 18:00 den 20:00".
+  if (/\bmo\b/.test(cau) || co(cau, 'di toi', 'dua toi', 'cho toi vao', 'cho toi den', 'mo cho toi', 'mo giup')) return 'mo_trang';
   if (co(cau, 'giai trinh', 'quen quet', 'quen cham', 'quen bam', 'khong quet', 'khong bam')) return 'giai_trinh';
   if (co(cau, 'huy don', 'huy nghi', 'huy de xuat', 'bo don', 'huy dơn', 'rut don')) return 'huy_don';
   // Hoi MAU DON / bieu mau la tim van ban, khong phai muon lam don: "mau don xin nghi".
@@ -432,6 +438,7 @@ async function tra_loi_noi_bo(nv_id: string, cau_hoi_goc: string): Promise<TraLo
   switch (y_dinh) {
     case 'chao': return tra_loi_chao(nv_id, hom_nay);
     case 'hoi_tham': return tra_loi_hoi_tham(cau);
+    case 'mo_trang': return tra_loi_mo_trang(cau);
     case 'khieu_nai_luong': return tra_loi_khieu_nai_luong(nv_id, cau_hoi_goc, cau);
     case 'khieu_nai_ky_luat': return tra_loi_khieu_nai_ky_luat(nv_id, cau_hoi_goc, cau);
     case 'nghi_viec': return tra_loi_nghi_viec(nv_id, cau_hoi_goc, cau, hom_nay);
@@ -764,6 +771,49 @@ async function tra_loi_don_cho(nv_id: string): Promise<TraLoiTroLy> {
 }
 
 // ==================================================================== chao hoi, tham hoi
+
+/**
+ * Ban do trang cho yeu cau "mo ...": CHI nhung duong dan co trong danh sach nay duoc tra
+ * cho giao dien — khong bao gio cho nguoi dung (hay AI) nem mot duong dan tuy y.
+ */
+const BAN_DO_TRANG: { khoa: string; ten: string; duong: string | null }[] = [
+  { khoa: 'khu vuc cua toi', ten: 'Khu vực của tôi', duong: '/ca-nhan' },
+  { khoa: 'don cua toi', ten: 'Đơn của tôi', duong: '/don-cua-toi' },
+  { khoa: 'phieu luong', ten: 'Phiếu lương', duong: '/phieu-luong-toi' },
+  { khoa: 'ho so cua toi', ten: 'Hồ sơ của tôi', duong: '/ho-so-toi' },
+  { khoa: 'ho so', ten: 'Hồ sơ của tôi', duong: '/ho-so-toi' },
+  { khoa: 'thong bao', ten: 'Thông báo', duong: '/thong-bao' },
+  { khoa: 'van ban', ten: 'Văn bản công ty', duong: '/van-ban' },
+  { khoa: 'tong quan', ten: 'Tổng quan', duong: '/' },
+  { khoa: 'ung luong', ten: 'Ứng lương', duong: null }, // chua mo tu phuc vu
+];
+
+/** Tra loi yeu cau "mo cho ...": tra duong dan (da kiem) de giao dien chuyen trang. */
+function tra_loi_mo_trang(cau: string): TraLoiTroLy {
+  const muc = BAN_DO_TRANG.find((m) => cau.includes(m.khoa));
+  if (muc === undefined) {
+    return {
+      tra_loi: 'Mình mở giúp được các mục: **Khu vực của tôi, Đơn của tôi, Phiếu lương, Hồ sơ '
+        + 'của tôi, Thông báo, Văn bản công ty, Tổng quan**. Bạn muốn mở mục nào?',
+      y_dinh: 'mo_trang',
+      goi_y: ['Mở đơn của tôi', 'Mở phiếu lương', 'Mở hồ sơ của tôi'],
+    };
+  }
+  if (muc.duong === null) {
+    return {
+      tra_loi: 'Ứng lương hiện chưa mở tự phục vụ trên hệ thống. Bạn gửi đề nghị tới bộ phận '
+        + 'nhân sự nhé — nhân sự sẽ tạo khoản ứng và theo dõi duyệt/chi cho bạn.',
+      y_dinh: 'mo_trang',
+      goi_y: ['Công tháng này của tôi thế nào?', 'Tôi có đơn nào đang chờ duyệt không?'],
+    };
+  }
+  return {
+    tra_loi: `Được, mình mở **${muc.ten}** cho bạn nhé.`,
+    y_dinh: 'mo_trang',
+    den: muc.duong,
+    goi_y: [],
+  };
+}
 
 /** Gio hien tai theo mui gio cua may cham cong (0-23). */
 function gio_hien_tai(): number {

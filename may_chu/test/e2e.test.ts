@@ -8605,6 +8605,22 @@ test('tro ly: luu lich su theo nhan vien, doc lai va xoa duoc', async () => {
   assert.equal((sau.body as unknown as unknown[]).length, 0, 'sau xoa phai rong');
 });
 
+test('tro ly: "mo cho..." tra duong dan dieu huong dung, ung luong khong co trang tu phuc vu', async () => {
+  const r = await goi('GET',
+    '/api/toi/tro-ly?hoi=' + encodeURIComponent('mở đơn của tôi'),
+    { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['y_dinh'], 'mo_trang');
+  assert.equal(r.body['den'], '/don-cua-toi');
+  // Ung luong chua mo tu phuc vu: tra loi huong dan, KHONG tra den (khong co trang de mo).
+  const u = await goi('GET',
+    '/api/toi/tro-ly?hoi=' + encodeURIComponent('mở chỗ ứng lương'),
+    { token: token_nhan_vien });
+  assert.equal(u.ma, 200);
+  assert.equal(u.body['den'], undefined);
+  assert.match(String(u.body['tra_loi']), /nhân sự/);
+});
+
 // ============================================================ TRO LY QUAN TRI
 //
 // Bot cho nhan su/quan tri: chi can_nhan_su vao duoc; du lieu dung theo quyen nguoi hoi.
@@ -8630,6 +8646,15 @@ test('tro ly quan tri: nhan vien bi chan, nhan su hoi duoc va luu lich su rieng'
   assert.equal(ls.ma, 200, ls.tho);
   const ds = ls.body as unknown as Record<string, unknown>[];
   assert.ok(ds.length > 0 && ds[0]?.['y_dinh'] === 'di_muon', 'phai luu luot hoi quan tri');
+
+  // Bot quan tri mo trang giup: tra duong dan dieu huong da kiem.
+  const m = await goi('GET',
+    '/api/quan-tri/tro-ly?hoi=' + encodeURIComponent('mở trang ứng lương'),
+    { token: token_admin });
+  assert.equal(m.ma, 200, m.tho);
+  assert.equal(m.body['y_dinh'], 'mo_trang');
+  assert.equal(m.body['den'], '/ung-luong');
+
   const xoa = await goi('DELETE', '/api/quan-tri/tro-ly/lich-su', { token: token_admin });
   assert.equal(xoa.ma, 200, xoa.tho);
   const sau = await goi('GET', '/api/quan-tri/tro-ly/lich-su', { token: token_admin });

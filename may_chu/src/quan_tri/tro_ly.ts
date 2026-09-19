@@ -31,10 +31,12 @@ export interface TraLoiTroLyQT {
   tra_loi: string;
   y_dinh: string;
   goi_y: string[];
+  /** Khi co: giao dien chuyen den trang nay (duong dan noi bo da duoc danh sach trang kiem). */
+  den?: string;
 }
 
 export type YDinhQT =
-  | 'chao' | 'hoi_tham' | 'tong_quan' | 'di_muon' | 'vang' | 'chua_quet' | 'don_cho'
+  | 'chao' | 'hoi_tham' | 'mo_trang' | 'tong_quan' | 'di_muon' | 'vang' | 'chua_quet' | 'don_cho'
   | 'nhan_vien' | 'may_cham' | 'noi_quy' | 'van_ban' | 'thong_bao' | 'khong_ro';
 
 const GOI_Y_QT = [
@@ -56,6 +58,9 @@ function co(cau: string, ...tu: string[]): boolean {
 export function nhan_dang_y_dinh_qt(cau_goc: string): YDinhQT {
   const cau = chuan(cau_goc);
   if (cau.trim() === '') return 'chao';
+  // MO TRANG truoc tat ca: "mo trang ung luong" la yeu cau dieu huong, khong phai cau hoi
+  // du lieu. Chi bat tu "mo" hoac cum ro — tranh "den" trong "tu 18:00 den 20:00".
+  if (/\bmo\b/.test(cau) || co(cau, 'di toi', 'dua toi', 'cho toi vao', 'cho toi den', 'mo cho toi', 'mo giup')) return 'mo_trang';
   if (co(cau, 'noi quy', 'vi pham', 'ky luat', 'che tai', 'bi phat', 'xu ly khi', 'sai pham')) return 'noi_quy';
   // Hoi hanh vi + che tai cung la cau hoi noi quy: "di muon bi xu ly the nao" khong phai
   // cau hoi so lieu hom nay.
@@ -157,6 +162,52 @@ async function tro_chuyen_qt(
 }
 
 // ==================================================================== tra loi
+
+/**
+ * Ban do trang cho yeu cau "mo ...": CHI nhung duong dan trong danh sach nay duoc tra cho
+ * giao dien — khong bao gio cho nguoi dung (hay AI) nem mot duong dan tuy y.
+ */
+const BAN_DO_TRANG_QT: { khoa: string; ten: string; duong: string }[] = [
+  { khoa: 'ung luong', ten: 'Ứng lương', duong: '/ung-luong' },
+  { khoa: 'duyet don', ten: 'Duyệt đơn', duong: '/duyet-don' },
+  { khoa: 'may cham', ten: 'Thiết bị chấm công', duong: '/cai-dat/thiet-bi' },
+  { khoa: 'thiet bi', ten: 'Thiết bị chấm công', duong: '/cai-dat/thiet-bi' },
+  { khoa: 'nhan vien', ten: 'Nhân viên', duong: '/nhan-vien' },
+  { khoa: 'quan ly phep', ten: 'Quản lý phép', duong: '/quan-ly-phep' },
+  { khoa: 'khieu nai luong', ten: 'Khiếu nại lương', duong: '/khieu-nai-luong' },
+  { khoa: 'bang cong', ten: 'Bảng công', duong: '/bang-cong' },
+  { khoa: 'bang luong', ten: 'Bảng lương', duong: '/bang-luong' },
+  { khoa: 'phu cap', ten: 'Phụ cấp', duong: '/phu-cap' },
+  { khoa: 'lan quet', ten: 'Lần quét', duong: '/lan-quet' },
+  { khoa: 'ra vao', ten: 'Ra/vào', duong: '/ra-vao' },
+  { khoa: 'ky luat', ten: 'Kỷ luật & vi phạm', duong: '/ky-luat' },
+  { khoa: 'hop dong', ten: 'Hợp đồng', duong: '/hop-dong' },
+  { khoa: 'thong bao', ten: 'Thông báo', duong: '/thong-bao' },
+  { khoa: 'van ban', ten: 'Văn bản công ty', duong: '/van-ban' },
+  { khoa: 'kpi', ten: 'KPI', duong: '/kpi' },
+  { khoa: 'cai dat', ten: 'Cài đặt', duong: '/cai-dat' },
+  { khoa: 'tong quan', ten: 'Tổng quan', duong: '/' },
+];
+
+/** Tra loi yeu cau "mo trang ...": tra duong dan (da kiem) de giao dien chuyen trang. */
+function tra_loi_mo_trang_qt(cau: string): TraLoiTroLyQT {
+  const muc = BAN_DO_TRANG_QT.find((m) => cau.includes(m.khoa));
+  if (muc === undefined) {
+    return {
+      tra_loi: 'Mình mở giúp được các trang: **Ứng lương, Duyệt đơn, Nhân viên, Bảng công, '
+        + 'Bảng lương, Phụ cấp, Lần quét, Ra/vào, Kỷ luật, Hợp đồng, Thiết bị chấm công, '
+        + 'KPI, Cài đặt, Tổng quan**. Bạn muốn mở trang nào?',
+      y_dinh: 'mo_trang',
+      goi_y: ['Mở trang ứng lương', 'Mở trang duyệt đơn', 'Mở trang nhân viên'],
+    };
+  }
+  return {
+    tra_loi: `Được, mình mở trang **${muc.ten}** cho bạn nhé.`,
+    y_dinh: 'mo_trang',
+    den: muc.duong,
+    goi_y: [],
+  };
+}
 
 async function tra_loi_tong_quan(nd: NguoiHoiQuanTri, hom_nay: string): Promise<TraLoiTroLyQT> {
   const d = await dashboard_cho({ vai_tro: nd.vai_tro, nv: nd.nv }, hom_nay);
@@ -443,6 +494,7 @@ export async function tra_loi_tro_ly_quan_tri(
   switch (y_dinh) {
     case 'chao': kq = await tra_loi_chao_qt(nd); break;
     case 'hoi_tham': kq = tra_loi_hoi_tham_qt(cau); break;
+    case 'mo_trang': kq = tra_loi_mo_trang_qt(cau); break;
     case 'tong_quan': kq = await tra_loi_tong_quan(nd, hom_nay); break;
     case 'di_muon': kq = await tra_loi_di_muon(nd, hom_nay); break;
     case 'vang': kq = await tra_loi_vang(hom_nay); break;

@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.99.1] — 2026-09-20
+
+**Trợ lý mở trang giúp khi được yêu cầu.**
+
+- Nói "mở đơn của tôi", "mở trang ứng lương", "đưa tôi tới bảng công"… là trợ lý trả lời
+  và **tự chuyển tới đúng trang** (danh sách trắng do mã nguồn quản — không có đường dẫn tùy
+  ý từ AI hay người dùng). Trang không có quyền (nhân viên mở ứng lương) thì trả lời hướng
+  dẫn thay vì điều hướng.
+
 ## [1.99.0] — 2026-09-20
 
 **Trợ lý giống người hơn: nhịp đang gõ, chào theo thứ, thăm hỏi cảm xúc, chủ động nhắc việc.**

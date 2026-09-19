@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { goi, LoiApi } from '../api.ts';
 import { khoa_tinh } from '../thanh_phan.tsx';
+import { dung_tuyen } from '../dinh_tuyen.tsx';
 
 /** Icon chat SVG — net sach, khong phu thuoc emoji cua he dieu hanh. */
 function IconChat(): ReactNode {
@@ -37,6 +38,8 @@ interface DapTroLy {
   y_dinh: string;
   goi_y: string[];
   hanh_dong?: HanhDong;
+  /** Khi co: chuyen trang den duong dan nay (may chu da kiem trong danh sach trang). */
+  den?: string;
 }
 
 interface Dong {
@@ -85,6 +88,7 @@ interface LuotLichSu {
 }
 
 export function TroLyCaNhan(): ReactNode {
+  const { di_toi } = dung_tuyen();
   const [mo, dat_mo] = useState(false);
   const [dong, dat_dong] = useState<Dong[]>([]);
   const [goi_y, dat_goi_y] = useState<string[]>([]);
@@ -136,6 +140,11 @@ export function TroLyCaNhan(): ReactNode {
       dat_dong((ds) => [...ds, { ai: 'bot', chu: d.tra_loi }]);
       dat_goi_y(d.goi_y);
       if (d.hanh_dong !== undefined) dat_hanh_dong(d.hanh_dong);
+      // Bot mo trang giup: chuyen den dung cho nguoi dung yeu cau roi dong khung tro ly.
+      if (typeof d.den === 'string' && d.den !== '') {
+        const den = d.den;
+        window.setTimeout(() => { di_toi(den); dat_mo(false); }, 400);
+      }
     } catch {
       dat_dong((ds) => [...ds, { ai: 'bot', chu: 'Xin lỗi, mình chưa trả lời được lúc này.' }]);
     } finally {
