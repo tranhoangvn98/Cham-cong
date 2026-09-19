@@ -1560,7 +1560,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
 
   // ================================================================ GOC NHIN CA NHAN
   //
-  // Dashboard ca nhan, thong bao (BGD), van ban cong ty, ho so cua toi, tro ly du lieu. TAT CA
+  // Dashboard ca nhan, thong bao (BGD), van ban cong ty, ho so cua toi, tro ly nhan su. TAT CA
   // chi dung du lieu cua CHINH nguoi dang nhap — nhan vien thuong khong bao gio thay dashboard
   // toan cong ty hay du lieu nguoi khac (NĐ 13/2023).
 
@@ -1907,7 +1907,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       .send(du_lieu);
   });
 
-  /** Tro ly du lieu ca nhan: hoi bang tieng Viet, tra loi tu du lieu cua chinh minh. */
+  /** Tro ly nhan su: hoi bang tieng Viet, tra loi tu du lieu cua chinh minh. */
   app.get('/tro-ly', async (req) => {
     const nv_id = nhan_vien_cua_toi(req);
     const q = req.query as Record<string, unknown>;

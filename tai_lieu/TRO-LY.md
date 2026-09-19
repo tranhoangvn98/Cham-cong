@@ -1,10 +1,18 @@
-# Trợ lý dữ liệu (chatbot) cho nhân viên
+# Trợ lý nhân sự (chatbot) cho nhân viên
 
 Nút tròn góc phải dưới ở **góc nhìn Cá nhân** mở trợ lý. Hỏi bằng tiếng Việt thường, trợ lý
-trả lời từ dữ liệu của chính người hỏi và tri thức công ty — **không gửi dữ liệu ra dịch vụ
-AI bên ngoài** (tuân thủ NĐ 13/2023 về bảo vệ dữ liệu cá nhân).
+ trả lời từ dữ liệu của chính người hỏi và tri thức công ty — **không gửi dữ liệu ra dịch vụ
+ AI bên ngoài** (tuân thủ NĐ 13/2023 về bảo vệ dữ liệu cá nhân).
 
 ## Trợ lý làm được gì
+
+**Chào hỏi, hỏi thăm như người thật**
+
+- Chào theo buổi (sáng/trưa/chiều/tối) neo theo **múi giờ máy chấm công** — mở widget là
+  chào đúng buổi chứ không phải câu khuôn mẫu.
+- Cảm ơn, tạm biệt, hỏi thăm sức khỏe, hỏi tên, "ăn cơm chưa"… đều có lời đáp riêng,
+  không rơi vào câu "mình chưa hiểu". Câu nào kèm cả việc cần làm ("chào, tôi còn bao
+  nhiêu phép") thì ưu tiên trả lời việc trước.
 
 **Tra cứu dữ liệu của chính mình**
 

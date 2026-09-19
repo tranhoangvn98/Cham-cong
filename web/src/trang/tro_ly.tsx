@@ -1,4 +1,4 @@
-// Widget tro ly du lieu ca nhan — nut noi goc phai duoi, chi hien o goc nhin Ca nhan.
+// Widget tro ly nhan su — nut noi goc phai duoi, chi hien o goc nhin Ca nhan.
 // Hoi bang tieng Viet, tra loi tu du lieu cua chinh minh (/api/toi/tro-ly). Khong loi du lieu
 // ra dich vu ngoai.
 //
@@ -167,9 +167,9 @@ export function TroLyCaNhan(): ReactNode {
   }
 
   return createPortal(
-    <div className="troly-panel" role="dialog" aria-label="Trợ lý dữ liệu">
+    <div className="troly-panel" role="dialog" aria-label="Trợ lý nhân sự">
       <div className="troly-dau">
-        <b>Trợ lý dữ liệu</b>
+        <b>Trợ lý nhân sự</b>
         <button className="nut-phang" onClick={() => dat_mo(false)} aria-label="Đóng">✕</button>
       </div>
       <div className="troly-than" ref={cuon}>

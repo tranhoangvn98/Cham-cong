@@ -1,4 +1,5 @@
-// Tro ly du lieu ca nhan — chatbot tra loi tu CHINH du lieu cua nguoi hoi.
+// Tro ly nhan su — chatbot tra loi tu CHINH du lieu cua nguoi hoi, chao hoi tu nhien nhu
+// nguoi that.
 //
 // HAI TANG, TACH RO VI TRI:
 //   1. SU THAT = truy van SQL. Moi con so (phep, cong, di muon, che tai noi quy, don cho
@@ -21,7 +22,7 @@
 import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
 import { bo_dau } from '../tien_ich/ten_tep.ts';
 import {
-  cong_ngay, khoang_thang, ngay_dia_phuong, ngay_viet,
+  cong_ngay, gio_dia_phuong, khoang_thang, ngay_dia_phuong, ngay_viet,
 } from '../tien_ich/thoi_gian.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { goi_deepseek } from '../ai/deepseek.ts';
@@ -147,6 +148,18 @@ export function ngay_hop_le(ngay: string): boolean {
   const d = new Date(`${ngay}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return false;
   return d.toISOString().slice(0, 10) === ngay;
+}
+
+/**
+ * Buoi trong ngay theo gio (0-23) cua MUI GIO MAY CHAM CONG — de chao hoi dung buoi.
+ * 0-4 gio (dem khuya) tinh la "toi". Ham thuan de kiem.
+ */
+export function buoi_trong_ngay(gio: number): 'sang' | 'trua' | 'chieu' | 'toi' {
+  if (gio < 5) return 'toi';
+  if (gio < 11) return 'sang';
+  if (gio < 14) return 'trua';
+  if (gio < 18) return 'chieu';
+  return 'toi';
 }
 
 /** Ket qua phan tich khoang nghi: tu/den/nua ngay. */
@@ -314,7 +327,7 @@ export function phan_tich_de_xuat(cau_goc: string): { tieu_de: string; noi_dung:
 // ==================================================================== nhan dang y dinh
 
 export type YDinh =
-  | 'chao' | 'giai_trinh' | 'huy_don' | 'de_xuat' | 'xin_nghi_phep'
+  | 'chao' | 'hoi_tham' | 'giai_trinh' | 'huy_don' | 'de_xuat' | 'xin_nghi_phep'
   | 'noi_quy' | 'thong_bao' | 'van_ban' | 'luong' | 'di_muon'
   | 'cong_thang' | 'nghi_le' | 'ca_lam' | 'don_cho' | 'phep' | 'khong_ro'
   | 'dang_ky_ot' | 'doi_ca' | 'cong_tac' | 'nghi_viec' | 'xin_di_muon'
@@ -367,6 +380,11 @@ export function nhan_dang_y_dinh(cau_goc: string): YDinh {
   if (co(cau, 'ca lam', 'gio lam', 'gio vao', 'gio ra', 'ca cua toi', 'lam viec luc')) return 'ca_lam';
   if (co(cau, 'don', 'cho duyet', 'dang cho', 'xin nghi')) return 'don_cho';
   if (co(cau, 'phep', 'nghi phep', 'ngay nghi', 'con bao nhieu ngay')) return 'phep';
+  // Chao hoi + tham hoi dat CUOI: "chao, toi con bao nhieu ngay phep" thi y dinh phep thang
+  // (viec can lam truoc loi chao). "hi" khop theo tu nguyen de khong bam phai "nghi".
+  if (/\bhi\b|\bhey\b/.test(cau) || co(cau, 'chao', 'hello', 'alo', 'a lo')) return 'chao';
+  if (co(cau, 'cam on', 'thanks', 'tam biet', 'bye', 'ngu ngon', 'khoe khong', 'khoe ko',
+    'an com', 'an gi', 'hom nay the nao', 'ban la ai', 'ban ten gi', 'may ten gi')) return 'hoi_tham';
   return 'khong_ro';
 }
 
@@ -398,15 +416,8 @@ export async function tra_loi_tro_ly(nv_id: string, cau_hoi_goc: string): Promis
   const y_dinh = nhan_dang_y_dinh(cau);
 
   switch (y_dinh) {
-    case 'chao':
-      return {
-        tra_loi: 'Chào bạn! Mình là trợ lý dữ liệu. Bạn hỏi phép, công, lương, đi muộn, ca làm, '
-          + 'nội quy — mình tra ngay từ dữ liệu của bạn. Mình còn điền sẵn đơn **OT, đổi ca, '
-          + 'công tác, xin đi muộn, khiếu nại** giúp bạn, và **chính bạn** bấm nút xác nhận '
-          + 'thì mới gửi đi.',
-        y_dinh: 'chao',
-        goi_y: GOI_Y,
-      };
+    case 'chao': return tra_loi_chao();
+    case 'hoi_tham': return tra_loi_hoi_tham(cau);
     case 'khieu_nai_luong': return tra_loi_khieu_nai_luong(nv_id, cau_hoi_goc, cau);
     case 'khieu_nai_ky_luat': return tra_loi_khieu_nai_ky_luat(nv_id, cau_hoi_goc, cau);
     case 'nghi_viec': return tra_loi_nghi_viec(nv_id, cau_hoi_goc, cau, hom_nay);
@@ -670,6 +681,59 @@ async function tra_loi_don_cho(nv_id: string): Promise<TraLoiTroLy> {
     tra_loi: llm ?? tra_loi_dinh,
     y_dinh: 'don_cho', goi_y: ['Tôi muốn xin nghỉ phép'],
   };
+}
+
+// ==================================================================== chao hoi, tham hoi
+
+/** Gio hien tai theo mui gio cua may cham cong (0-23). */
+function gio_hien_tai(): number {
+  return Number(gio_dia_phuong(new Date()).slice(0, 2));
+}
+
+/**
+ * Chao theo buoi trong ngay (mui gio may cham cong) — giong nguoi that mo cua hoi, khong
+ * phai may tra loi khuon. Ke them ngan nhung viec tro ly lam duoc de nguoi dung biet hoi gi.
+ */
+function tra_loi_chao(): TraLoiTroLy {
+  const buoi = buoi_trong_ngay(gio_hien_tai());
+  const dau = buoi === 'sang' ? 'Chào buổi sáng'
+    : buoi === 'trua' ? 'Chào buổi trưa'
+      : buoi === 'chieu' ? 'Chào buổi chiều' : 'Chào buổi tối';
+  const loi = `${dau}! Mình là **trợ lý nhân sự** của bạn. Hôm nay bạn cần mình giúp gì — `
+    + 'tra phép, công, lương, hay điền đơn OT, xin nghỉ, đổi ca? Mình chỉ điền sẵn đơn, '
+    + '**chính bạn** bấm xác nhận thì đơn mới gửi nhé.';
+  return { tra_loi: loi, y_dinh: 'chao', goi_y: GOI_Y };
+}
+
+/**
+ * Phan hoi cac cau xa giao nhu nguoi that: cam on, tam biet, hoi tham suc khoe, hoi ten —
+ * deu co loi rieng thay vi roi vao "minh chua hieu".
+ */
+function tra_loi_hoi_tham(cau: string): TraLoiTroLy {
+  const buoi = buoi_trong_ngay(gio_hien_tai());
+  let loi: string;
+  if (co(cau, 'cam on', 'thanks')) {
+    loi = 'Không có gì đâu! Cần gì cứ nhắn mình — phép, công, đơn từ, mình đều giúp được.';
+  } else if (co(cau, 'tam biet', 'bye', 'ngu ngon')) {
+    loi = 'Tạm biệt bạn nhé! Khi nào cần tra cứu hay làm đơn cứ quay lại, mình luôn ở đây.';
+  } else if (co(cau, 'khoe khong', 'khoe ko')) {
+    loi = 'Mình luôn khỏe và sẵn sàng ạ! Còn bạn hôm nay thế nào? Cần mình tra công, phép '
+      + 'hay điền đơn gì không?';
+  } else if (co(cau, 'an com', 'an gi')) {
+    loi = buoi === 'sang'
+      ? 'Cảm ơn bạn đã hỏi thăm! Mình không ăn sáng nhưng luôn sẵn sàng giúp việc. Bạn nhớ '
+        + 'ăn sáng đầy đủ để làm việc có sức nhé!'
+      : 'Cảm ơn bạn đã hỏi thăm! Mình không ăn uống nhưng luôn sẵn sàng giúp việc. Bạn nhớ '
+        + 'ăn uống đầy đủ để giữ sức nhé!';
+  } else if (co(cau, 'ban la ai', 'ban ten gi', 'may ten gi')) {
+    loi = 'Mình là **trợ lý nhân sự** của phân hệ Chấm công. Mình tra số liệu của chính bạn '
+      + '(phép, công, lương, đi muộn…) và điền sẵn đơn — còn việc gửi hay không là do bạn '
+      + 'bấm nút.';
+  } else {
+    loi = `Chào bạn! Hôm nay ${buoi === 'sang' ? 'buổi sáng' : buoi === 'trua' ? 'buổi trưa' : buoi === 'chieu' ? 'buổi chiều' : 'buổi tối'} thế nào? `
+      + 'Cần mình tra công, phép hay điền đơn gì không?';
+  }
+  return { tra_loi: loi, y_dinh: 'hoi_tham', goi_y: GOI_Y };
 }
 
 // ==================================================================== tra cuu tri thuc cong ty

@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 const {
   chuan, nhan_dang_y_dinh, phan_tich_ngay, phan_tich_khoang_nghi,
   phan_tich_loai_nghi, phan_tich_giai_trinh, phan_tich_de_xuat, tu_khoa, ngay_hop_le,
-  phan_tich_gio, phan_tich_noi_den, phan_tich_noi_dung_khieu_nai,
+  phan_tich_gio, phan_tich_noi_den, phan_tich_noi_dung_khieu_nai, buoi_trong_ngay,
 } = await import('../src/ca_nhan/tro_ly.ts');
 
 const HOM_NAY = '2026-09-19';
@@ -142,6 +142,30 @@ test('nhan_dang_y_dinh: y dinh cu khong bi lan', () => {
   assert.equal(nhan_dang_y_dinh('ca làm của tôi'), 'ca_lam');
   // "ot" khop theo tu nguyen, khong bam phai chu khac.
   assert.notEqual(nhan_dang_y_dinh('thời tiết rất tốt'), 'dang_ky_ot');
+});
+
+test('nhan_dang_y_dinh: chao hoi va tham hoi nhu nguoi that', () => {
+  assert.equal(nhan_dang_y_dinh('chào bạn'), 'chao');
+  assert.equal(nhan_dang_y_dinh('hi'), 'chao');
+  assert.equal(nhan_dang_y_dinh('alo'), 'chao');
+  assert.equal(nhan_dang_y_dinh('cảm ơn nhé'), 'hoi_tham');
+  assert.equal(nhan_dang_y_dinh('tạm biệt'), 'hoi_tham');
+  assert.equal(nhan_dang_y_dinh('bạn khỏe không'), 'hoi_tham');
+  assert.equal(nhan_dang_y_dinh('ăn cơm chưa'), 'hoi_tham');
+  assert.equal(nhan_dang_y_dinh('bạn là ai'), 'hoi_tham');
+  // "hi" khop theo tu nguyen: cau chua "nghi" khong bi nham thanh chao.
+  assert.notEqual(nhan_dang_y_dinh('xin nghỉ phép ngày mai'), 'chao');
+  // Chao kem viec can lam: y dinh viec thang.
+  assert.equal(nhan_dang_y_dinh('chào, tôi còn bao nhiêu ngày phép'), 'phep');
+});
+
+test('buoi_trong_ngay: chao dung buoi theo mui gio may cham cong', () => {
+  assert.equal(buoi_trong_ngay(0), 'toi');
+  assert.equal(buoi_trong_ngay(7), 'sang');
+  assert.equal(buoi_trong_ngay(11), 'trua');
+  assert.equal(buoi_trong_ngay(14), 'chieu');
+  assert.equal(buoi_trong_ngay(18), 'toi');
+  assert.equal(buoi_trong_ngay(23), 'toi');
 });
 
 test('phan_tich_gio: doc gio OT tu cau noi', () => {
