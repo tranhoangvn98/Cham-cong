@@ -27,7 +27,6 @@ import { TrangKyLuatViPham } from './trang/ky_luat_vi_pham.tsx';
 import { TrangBangLuong } from './trang/bang_luong.tsx';
 import { TrangUngLuong } from './trang/ung_luong.tsx';
 import { TrangQuanLyPhuCap } from './trang/quan_ly_phu_cap.tsx';
-import { TrangDonCuaToi } from './trang/don_cua_toi.tsx';
 import { TrangKpi } from './trang/kpi.tsx';
 import { TrangDongBoErp } from './trang/dong_bo_erp.tsx';
 import { TrangHoSo } from './trang/ho_so.tsx';
@@ -38,8 +37,6 @@ import { TrangHopDong } from './trang/hop_dong.tsx';
 import { TrangDashboardCaNhan } from './trang/dashboard_ca_nhan.tsx';
 import { TrangCaNhan } from './trang/ca_nhan.tsx';
 import { TrangThongBaoCaNhan } from './trang/thong_bao_ca_nhan.tsx';
-import { TrangHoSoToi } from './trang/ho_so_toi.tsx';
-import { TrangPhieuLuongToi } from './trang/phieu_luong_toi.tsx';
 import { TrangVanBan } from './trang/van_ban.tsx';
 import { TroLyCaNhan } from './trang/tro_ly.tsx';
 import { TroLyQuanTri } from './trang/tro_ly_quan_tri.tsx';
@@ -89,13 +86,9 @@ const MENU: MucMenu[] = [
   // lai loi vao giao dien ca nhan (chi_ca_nhan -> an o goc nhin Quan tri).
   { duong_dan: '/ca-nhan', ten: 'Khu vực của tôi', icon: 'circle-check', nhom: '', phu: 'Chấm công, đơn từ và hồ sơ của bạn', ca_nhan: true, chi_ca_nhan: true },
 
-  // Cua toi: viec tu phuc vu cua chinh nguoi dang nhap. `chi_ca_nhan` -> AN o thanh ben Quan tri
-  // (da co day du trong "Khu vuc cua toi"), chi hien o goc nhin Ca nhan.
-  { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: 'Của tôi', phu: 'Xin nghỉ phép, giải trình', ca_nhan: true, chi_ca_nhan: true },
-  { duong_dan: '/phieu-luong-toi', ten: 'Phiếu lương', icon: 'download', nhom: 'Của tôi', phu: 'Phiếu lương hàng tháng của bạn', ca_nhan: true, chi_ca_nhan: true },
-  { duong_dan: '/ho-so-toi', ten: 'Hồ sơ của tôi', icon: 'user-check', nhom: 'Của tôi', phu: 'Thông tin & liên hệ cá nhân', ca_nhan: true, chi_ca_nhan: true },
-  { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: 'Của tôi', phu: 'Thông báo từ BGĐ & nhân sự', ca_nhan: true, chi_ca_nhan: true },
-  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: 'Của tôi', phu: 'Nội quy, biểu mẫu, chính sách', ca_nhan: true, chi_ca_nhan: true },
+  // Cua toi da GOM HET vao "Khu vuc cua toi" (mot vo ca nhan duy nhat) — thanh ben khong lap
+  // lai cac muc nay nua. Duong dan cu /don-cua-toi, /phieu-luong-toi, /ho-so-toi van song
+  // (bookmark, lien ket ngoai) va chuyen huong vao DUNG TAB trong Khu vuc (xem CHUYEN_HUONG).
 
   // Cham cong: log may + tong hop cong + canh bao ra/vao.
   { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: 'Chấm công', phu: 'Log đồng bộ từ máy ADMS', quyen: 'nhan_su' },
@@ -159,6 +152,9 @@ const MENU_CAI_DAT: MucMenu[] = [
  * `/tham-so-luong`, da dan `/thiet-bi` vao mot ghi chu noi bo, va tai lieu trong repo con nhac
  * ten cu. Tra 404 cho ho la mot loi ta tu gay ra, nen duong cu chuyen huong sang duong moi
  * (thay the trong lich su, de nut Lui khong ket giua hai duong).
+ *
+ * Cac trang ca nhan DOC LAP cu cung nam o day: tu khi gom ve "Khu vuc cua toi", chung chuyen
+ * huong vao dung tab ben trong vo ca nhan (vi du /phieu-luong-toi -> /ca-nhan/luong).
  */
 const CHUYEN_HUONG: Record<string, string> = {
   '/thiet-bi': '/cai-dat/thiet-bi',
@@ -172,6 +168,9 @@ const CHUYEN_HUONG: Record<string, string> = {
   '/dong-bo-erp': '/cai-dat/dong-bo-erp',
   '/kho-tep': '/cai-dat/kho-tep',
   '/ma-dinh-danh': '/cai-dat/ma-dinh-danh',
+  '/don-cua-toi': '/ca-nhan/don-tu',
+  '/phieu-luong-toi': '/ca-nhan/luong',
+  '/ho-so-toi': '/ca-nhan/ca-nhan',
 };
 
 function duoc_xem(m: MucMenu): boolean {
@@ -216,9 +215,6 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     case '/van-ban': return <TrangVanBan tab={ca_nhan ? 'thong_bao' : 'ban_hanh'} chi_doc={ca_nhan} />;
     case '/van-ban/ban-hanh': return <TrangVanBan tab="ban_hanh" chi_doc={ca_nhan} />;
     case '/van-ban/tai-lieu': return <TrangVanBan tab="tai_lieu" chi_doc={ca_nhan} />;
-    case '/ho-so-toi': return <TrangHoSoToi />;
-    case '/phieu-luong-toi': return <TrangPhieuLuongToi />;
-    case '/don-cua-toi': return <TrangDonCuaToi />;
     case '/bang-cong': return <TrangBangCong />;
     case '/lan-quet': return <TrangLanQuet />;
     case '/duyet-don': return <TrangDuyetDon />;
@@ -372,7 +368,8 @@ function BoCuc(): ReactNode {
   // Trang "Khu vuc cua toi" chiem TOAN MAN HINH bang vo rieng cua mau thiet ke (thanh ben
   // toi + 5 tab + tab duoi tren man hep). O goc nhin Ca nhan, Trang chu CHINH LA trang nay —
   // khong con vo chung co thanh ben quan tri. Nguoi co quyen quan tri co nut quay lai.
-  if (duong_dan === '/ca-nhan' || (gn === 'ca_nhan' && duong_dan === '/')) {
+  // Duong dan con `/ca-nhan/...` mo dung tab tuong ung (tro ly, chuong bao, lien ket ngoai).
+  if (duong_dan.startsWith('/ca-nhan') || (gn === 'ca_nhan' && duong_dan === '/')) {
     return (
       <>
         <PopupThongBao />

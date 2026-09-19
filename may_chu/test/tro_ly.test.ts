@@ -190,7 +190,7 @@ test('tra_loi_mo_trang: ung luong chi mo cho nhan su/quan tri, nhan vien thi huo
   assert.equal(nv.den, undefined);
   assert.match(nv.tra_loi, /nhân sự/);
   // Trang thuong thi mo cho moi nguoi.
-  assert.equal(tra_loi_mo_trang('mở đơn của tôi', 'nhan_vien').den, '/don-cua-toi');
+  assert.equal(tra_loi_mo_trang('mở đơn của tôi', 'nhan_vien').den, '/ca-nhan/don-tu');
 });
 
 test('phan_tich_gio: doc gio OT tu cau noi', () => {

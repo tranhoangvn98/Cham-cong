@@ -176,7 +176,11 @@ test('duong dan cu chuyen huong toi duong moi CO THAT', () => {
   assert.ok(cap.length >= 8, `chi doc duoc ${cap.length} chuyen huong — regex hong?`);
 
   const co = new Set(duong_trong_bang('MENU_CAI_DAT'));
-  const hong = cap.filter(([, moi]) => !co.has(moi)).map(([cu, moi]) => `${cu} -> ${moi}`);
+  // Khu vuc cua toi chiem TOAN MAN HINH theo tien to `/ca-nhan/...` ngay trong BoCuc (khong di
+  // qua switch NoiDung) — vi du /ca-nhan/luong. Day la diem den hop le cua chuyen huong.
+  const hong = cap
+    .filter(([, moi]) => !co.has(moi) && !moi.startsWith('/ca-nhan'))
+    .map(([cu, moi]) => `${cu} -> ${moi}`);
   assert.deepEqual(hong, [], `Chuyen huong tro toi duong khong ton tai:\n${hong.join('\n')}`);
 
   // Va duong CU khong duoc trung voi mot muc menu dang dung: neu trung thi hieu ung chuyen

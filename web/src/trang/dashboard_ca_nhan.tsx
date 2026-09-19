@@ -86,10 +86,10 @@ export function TrangDashboardCaNhan(): ReactNode {
             <h2>Lối tắt</h2>
           </div>
           <div className="canhan-tat">
-            <LienKet den="/don-cua-toi" lop="canhan-tat-o">Xin nghỉ / giải trình</LienKet>
-            <LienKet den="/van-ban" lop="canhan-tat-o">Thông báo công ty</LienKet>
-            <LienKet den="/van-ban/tai-lieu" lop="canhan-tat-o">Tài liệu công ty</LienKet>
-            <LienKet den="/ho-so-toi" lop="canhan-tat-o">Hồ sơ của tôi</LienKet>
+            <LienKet den="/ca-nhan/don-tu" lop="canhan-tat-o">Xin nghỉ / giải trình</LienKet>
+            <LienKet den="/ca-nhan/thong-bao" lop="canhan-tat-o">Thông báo công ty</LienKet>
+            <LienKet den="/ca-nhan/van-ban" lop="canhan-tat-o">Tài liệu công ty</LienKet>
+            <LienKet den="/ca-nhan/ca-nhan" lop="canhan-tat-o">Hồ sơ của tôi</LienKet>
           </div>
         </div>
       </div>

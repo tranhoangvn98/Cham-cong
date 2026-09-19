@@ -51,25 +51,13 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       { chu: 'Trang chủ: xem giờ vào/ra hôm nay, công tháng, phép còn lại và các lần quẹt.' },
       { chu: 'Bảng công: xem lịch tháng và từng ngày. Thấy sai lệch thì bấm gửi giải trình quên quẹt.' },
       { chu: 'Đơn từ: xin nghỉ phép, gửi giải trình hoặc làm đơn khác; hủy được đơn khi còn chờ duyệt.' },
-      { chu: 'Lương: kiểm tra công, giờ làm và OT ghi nhận trước khi kế toán chốt phiếu lương.' },
-      { chu: 'Cá nhân: kiểm tra hồ sơ, hợp đồng, BHXH và tài liệu còn thiếu.' },
+      { chu: 'Lương: xem phiếu lương từng kỳ, đối chiếu từng khoản thu/trừ, tải PDF. Thấy sai thì bấm Khiếu nại ngay trong phiếu.' },
+      { chu: 'Cá nhân: kiểm tra hồ sơ, hợp đồng, BHXH và tài liệu còn thiếu; tự cập nhật liên hệ.' },
     ],
     luu_y: [
       'Tài khoản phải được nhân sự gắn với hồ sơ nhân viên thì các màn này mới có dữ liệu.',
       'OT hiển thị ở đây là giờ máy đo được, chưa qua duyệt — chỉ OT có đơn duyệt mới được trả thêm.',
-    ],
-  },
-  {
-    duong_dan: '/don-cua-toi',
-    tom_tat: 'Tự nộp đơn xin nghỉ phép và giải trình (chấm công, vi phạm) — theo dõi trạng thái tại đây.',
-    buoc: [
-      { chu: 'Tab "Nghỉ phép": chọn loại nghỉ, khoảng ngày (hoặc nửa ngày), lý do rồi gửi. Đơn còn chờ duyệt thì hủy được.' },
-      { chu: 'Tab "Giải trình chấm công": khi quên quẹt thẻ, đề xuất giờ vào/ra đúng để nhân sự đối chiếu.' },
-      { chu: 'Tab "Vi phạm của tôi": xem vi phạm ghi nhận với mình và gửi giải trình — quyền tự bào chữa theo BLLĐ Điều 122.' },
-    ],
-    luu_y: [
-      'Đơn gửi tới quản lý / nhân sự duyệt. Duyệt đơn nghỉ phép làm bảng công ngày đó tự đổi, không phải tính tay.',
-      'Khoảng ngày đã chốt bảng công thì không tự nộp đơn được nữa — liên hệ nhân sự.',
+      'Phiếu lương chỉ hiện cho kỳ đã duyệt/trả; mỗi khoản đều ghi rõ để đối chiếu.',
     ],
   },
   {
@@ -85,29 +73,6 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     luu_y: [
       'Số ký hiệu chỉ được cấp ở bước Ban hành và là vĩnh viễn — hủy sau này chỉ ghi sổ, không cấp lại số đó.',
       'Email gửi từ hộp thư chung của công ty; máy chủ chưa khai báo hộp thư thì hiện trạng thái "Chưa gửi được" và vẫn có nút gửi lại.',
-    ],
-  },
-  {
-    duong_dan: '/ho-so-toi',
-    tom_tat: 'Hồ sơ cá nhân của bạn: thông tin công việc (chỉ xem) và liên hệ (tự cập nhật).',
-    buoc: [
-      { chu: 'Xem phòng ban, chức danh, ca làm, PIN máy, quỹ phép của mình.' },
-      { chu: 'Bấm Sửa ở ô Liên hệ để tự cập nhật số điện thoại và email.' },
-    ],
-    luu_y: [
-      'Thông tin công việc (chức danh, phòng, ca) do nhân sự quản lý — cần đổi thì liên hệ nhân sự.',
-    ],
-  },
-  {
-    duong_dan: '/phieu-luong-toi',
-    tom_tat: 'Phiếu lương hàng tháng của bạn — từng khoản thu nhập và khấu trừ, đối chiếu được.',
-    buoc: [
-      { chu: 'Chọn kỳ lương ở ô trên để xem phiếu của tháng đó (chỉ hiện kỳ đã duyệt/trả).' },
-      { chu: 'Xem chi tiết: lương theo công, phụ cấp, OT, BHXH/BHYT/BHTN, thuế, các khoản trừ.' },
-      { chu: 'Bấm "In phiếu" để in hoặc lưu PDF.' },
-    ],
-    luu_y: [
-      'Thấy sai thì gửi giải trình ở mục Đơn của tôi hoặc liên hệ nhân sự — mỗi khoản đều ghi rõ để đối chiếu.',
     ],
   },
   {

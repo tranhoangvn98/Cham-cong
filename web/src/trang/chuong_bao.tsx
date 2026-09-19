@@ -30,10 +30,10 @@ const DUONG_THEO_MAN: Record<string, string> = {
   'khieu-nai-luong': '/khieu-nai-luong',
   'ra-vao': '/ra-vao',
   'thong-bao': '/thong-bao',
-  'ky-luat': '/don-cua-toi',
-  'vi-pham': '/don-cua-toi',
-  'don-cua-toi': '/don-cua-toi',
-  'ho_so': '/ho-so-toi',
+  'ky-luat': '/ca-nhan/don-tu',
+  'vi-pham': '/ca-nhan/don-tu',
+  'don-cua-toi': '/ca-nhan/don-tu',
+  'ho_so': '/ca-nhan/ca-nhan',
 };
 
 function IconChuong(): ReactNode {

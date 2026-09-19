@@ -14,6 +14,7 @@ import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
 import { TrangPhieuLuongToi, TrangKhieuNaiToi } from './phieu_luong_toi.tsx';
 import { TrangVanBan } from './van_ban.tsx';
 import { ChuongBao } from './chuong_bao.tsx';
+import { dung_tuyen } from '../dinh_tuyen.tsx';
 
 /**
  * Ranh gioi loi: mot man con vo (throw khi render) thi CHI man do bao loi, khong lam trang
@@ -381,6 +382,31 @@ const CAC_TAB: { ma: Tab; ten: string; icon: string }[] = [
   { ma: 'ca_nhan', ten: 'Cá nhân', icon: 'user-check' },
 ];
 
+/**
+ * Duong dan <-> tab. Khu vuc cua toi la vo ca nhan DUY NHAT: tro ly, chuong bao va lien ket
+ * noi khac deu mo DUNG TAB bang duong dan con (`/ca-nhan/luong`), thay vi trang doc lap cu.
+ * Nho vay nut Lui/Tien cua trinh duyet chay dung va URL co the bookmark duoc.
+ */
+const DUONG_TAB: Record<string, Tab> = {
+  '/ca-nhan': 'trang_chu',
+  '/ca-nhan/bang-cong': 'bang_cong',
+  '/ca-nhan/don-tu': 'don_tu',
+  '/ca-nhan/luong': 'luong',
+  '/ca-nhan/phep': 'phep',
+  '/ca-nhan/khieu-nai': 'khieu_nai',
+  '/ca-nhan/ca-nhan': 'ca_nhan',
+};
+
+const TAB_DUONG: Record<Tab, string> = {
+  trang_chu: '/ca-nhan',
+  bang_cong: '/ca-nhan/bang-cong',
+  don_tu: '/ca-nhan/don-tu',
+  luong: '/ca-nhan/luong',
+  phep: '/ca-nhan/phep',
+  khieu_nai: '/ca-nhan/khieu-nai',
+  ca_nhan: '/ca-nhan/ca-nhan',
+};
+
 /** Tieu de + phu de cua cac man con, theo mau thiet ke. Trang chu tinh rieng vi co ten. */
 const TEN_MAN: Record<Exclude<Tab, 'trang_chu'>, [string, string]> = {
   bang_cong: ['Bảng công của tôi', 'Số liệu chấm công theo tháng'],
@@ -434,12 +460,15 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
    *  viec ca nhan, nen doi han sang vo quan tri thay vi lien ket nua voi nua kia. */
   di_duyet?: () => void;
 }): ReactNode {
-  const [tab, dat_tab] = useState<Tab>('trang_chu');
+  const { duong_dan, di_toi } = dung_tuyen();
+  // Tab ban dau doc tu duong dan that (tro ly mo `/ca-nhan/luong` thi vao thang tab Luong).
+  const [tab, dat_tab] = useState<Tab>(() => DUONG_TAB[duong_dan] ?? 'trang_chu');
   const [mo_form, dat_mo_form] = useState<FormMo | null>(null);
   // Man PHU nam ngoai 5 tab chinh (Thong bao, Van ban cong ty): mo ngay TRONG vo ca nhan chu
   // khong dieu huong ra route rieng — dieu huong ra se roi ve vo quan tri cu ("quay lai giao
   // dien cu"). null = dang xem mot trong 5 tab.
-  const [man_phu, dat_man_phu] = useState<'thong_bao' | 'van_ban' | null>(null);
+  const [man_phu, dat_man_phu] = useState<'thong_bao' | 'van_ban' | null>(
+    duong_dan === '/ca-nhan/thong-bao' ? 'thong_bao' : duong_dan === '/ca-nhan/van-ban' ? 'van_ban' : null);
   const hep = dung_hep();
   const hom_nay_nap = dung_nap<HomNay>('/api/toi/hom-nay');
   const thong_bao_nap = dung_nap<ThongBaoToi[]>('/api/toi/thong-bao');
@@ -457,26 +486,42 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
 
   // Chuyen man ben trong trang + mo form neu can. Dung callback chu khong phai duong dan vi
   // bo dinh tuyen cua app khong mang theo chuoi truy van. Luon dong man phu khi ve 5 tab.
-  const di_den = (t: Tab, mo: FormMo | null = null): void => {
+  // URL thay bang `replace` de mot phien mo bao nhieu tab cung khong day lich su nut Lui.
+  const vao_tab = (t: Tab, mo: FormMo | null = null): void => {
     dat_tab(t);
     dat_mo_form(mo);
     dat_man_phu(null);
+    di_toi(TAB_DUONG[t], true);
   };
 
-  const chon_tab = (t: Tab): void => {
-    dat_tab(t);
+  const vao_man_phu = (m: 'thong_bao' | 'van_ban'): void => {
+    dat_tab('trang_chu');
     dat_mo_form(null);
-    dat_man_phu(null);
+    dat_man_phu(m);
+    di_toi(m === 'thong_bao' ? '/ca-nhan/thong-bao' : '/ca-nhan/van-ban', true);
   };
+
+  // Dong bo khi duong dan thay doi TU NGOAI (tro ly, chuong bao, nut Lui/Tien cua trinh duyet).
+  useEffect(() => {
+    if (duong_dan === '/') { vao_tab('trang_chu'); return; }
+    if (duong_dan === '/ca-nhan/thong-bao') { vao_man_phu('thong_bao'); return; }
+    if (duong_dan === '/ca-nhan/van-ban') { vao_man_phu('van_ban'); return; }
+    const t = DUONG_TAB[duong_dan];
+    if (t !== undefined) vao_tab(t);
+  }, [duong_dan]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const di_den = (t: Tab, mo: FormMo | null = null): void => vao_tab(t, mo);
+
+  const chon_tab = (t: Tab): void => vao_tab(t);
 
   // Bam mot bao trong chuong: dieu huong NGAY TRONG vo ca nhan theo `man` cua bao, khong nhay
   // ra route quan tri. Duyet don la viec quan tri -> doi han goc nhin (di_duyet).
   const dieu_huong_bao = (man: string | undefined): void => {
-    if (man === 'thong-bao') { dat_tab('trang_chu'); dat_mo_form(null); dat_man_phu('thong_bao'); return; }
-    if (man === 'khieu-nai-luong') { di_den('khieu_nai'); return; }
+    if (man === 'thong-bao') { vao_man_phu('thong_bao'); return; }
+    if (man === 'khieu-nai-luong') { vao_tab('khieu_nai'); return; }
     if (man === 'duyet-don' || man === 'don-tu') { di_duyet?.(); return; }
-    if (man === 'ky-luat' || man === 'vi-pham' || man === 'don-cua-toi') { di_den('don_tu'); return; }
-    di_den('trang_chu');
+    if (man === 'ky-luat' || man === 'vi-pham' || man === 'don-cua-toi') { vao_tab('don_tu'); return; }
+    vao_tab('trang_chu');
   };
 
   return (
@@ -512,7 +557,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
             <button
               type="button"
               className={man_phu === 'thong_bao' ? 'cn-ben-phu-lien-ket cn-ben-phu-chon' : 'cn-ben-phu-lien-ket'}
-              onClick={() => dat_man_phu('thong_bao')}
+              onClick={() => vao_man_phu('thong_bao')}
             >
               <i className="bt bt-star" aria-hidden="true" />
               <span>Thông báo</span>
@@ -521,7 +566,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
             <button
               type="button"
               className={man_phu === 'van_ban' ? 'cn-ben-phu-lien-ket cn-ben-phu-chon' : 'cn-ben-phu-lien-ket'}
-              onClick={() => dat_man_phu('van_ban')}
+              onClick={() => vao_man_phu('van_ban')}
             >
               <i className="bt bt-file-text" aria-hidden="true" />
               <span>Văn bản công ty</span>
@@ -554,7 +599,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
               type="button"
               className="cn-dau-lui"
               aria-label={man_phu !== null ? 'Về màn trước' : 'Về Trang chủ'}
-              onClick={() => (man_phu !== null ? dat_man_phu(null) : chon_tab('trang_chu'))}
+              onClick={() => vao_tab('trang_chu')}
             >
               ‹
             </button>

@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.99.6] — 2026-09-20
+
+**Gộp giao diện cá nhân về một vỏ duy nhất: "Khu vực của tôi".**
+
+- Bỏ nhóm "CỦA TÔI" (Đơn của tôi, Phiếu lương, Hồ sơ của tôi, Thông báo, Văn bản) khỏi thanh
+  bên — nội dung cá nhân trước đây nằm song song hai chỗ (trang độc lập + tab trong Khu vực).
+- Mỗi tab giờ có đường dẫn riêng: `/ca-nhan/luong`, `/ca-nhan/don-tu`, `/ca-nhan/ca-nhan`,
+  `/ca-nhan/phep`, `/ca-nhan/khieu-nai`, `/ca-nhan/thong-bao`, `/ca-nhan/van-ban` — bấm tab
+  thì địa chỉ đổi theo, nút Lui/Tiến của trình duyệt và bookmark chạy đúng.
+- Trợ lý, chuông thông báo và lối tắt mở thẳng đúng tab; đường dẫn cũ `/don-cua-toi`,
+  `/phieu-luong-toi`, `/ho-so-toi` tự chuyển hướng, không hỏng bookmark.
+- Xóa 2 trang đã thành mã chết: `don_cua_toi.tsx`, `ho_so_toi.tsx`.
+
 ## [1.99.5] — 2026-09-20
 
 **Tin nhắn trợ lý gõ ra dần dần + gợi ý có lợi cho người lao động.**

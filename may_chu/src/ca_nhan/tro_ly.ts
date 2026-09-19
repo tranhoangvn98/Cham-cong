@@ -792,12 +792,12 @@ async function tra_loi_don_cho(nv_id: string): Promise<TraLoiTroLy> {
  */
 const BAN_DO_TRANG: { khoa: string; ten: string; duong: string | null }[] = [
   { khoa: 'khu vuc cua toi', ten: 'Khu vực của tôi', duong: '/ca-nhan' },
-  { khoa: 'don cua toi', ten: 'Đơn của tôi', duong: '/don-cua-toi' },
-  { khoa: 'phieu luong', ten: 'Phiếu lương', duong: '/phieu-luong-toi' },
-  { khoa: 'ho so cua toi', ten: 'Hồ sơ của tôi', duong: '/ho-so-toi' },
-  { khoa: 'ho so', ten: 'Hồ sơ của tôi', duong: '/ho-so-toi' },
-  { khoa: 'thong bao', ten: 'Thông báo', duong: '/thong-bao' },
-  { khoa: 'van ban', ten: 'Văn bản công ty', duong: '/van-ban' },
+  { khoa: 'don cua toi', ten: 'Đơn của tôi', duong: '/ca-nhan/don-tu' },
+  { khoa: 'phieu luong', ten: 'Phiếu lương', duong: '/ca-nhan/luong' },
+  { khoa: 'ho so cua toi', ten: 'Hồ sơ của tôi', duong: '/ca-nhan/ca-nhan' },
+  { khoa: 'ho so', ten: 'Hồ sơ của tôi', duong: '/ca-nhan/ca-nhan' },
+  { khoa: 'thong bao', ten: 'Thông báo', duong: '/ca-nhan/thong-bao' },
+  { khoa: 'van ban', ten: 'Văn bản công ty', duong: '/ca-nhan/van-ban' },
   { khoa: 'tong quan', ten: 'Tổng quan', duong: '/' },
   { khoa: 'ung luong', ten: 'Ứng lương', duong: null }, // chua mo tu phuc vu
 ];
