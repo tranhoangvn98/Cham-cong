@@ -153,6 +153,8 @@ test('nhan_dang_y_dinh: chao hoi va tham hoi nhu nguoi that', () => {
   assert.equal(nhan_dang_y_dinh('bạn khỏe không'), 'hoi_tham');
   assert.equal(nhan_dang_y_dinh('ăn cơm chưa'), 'hoi_tham');
   assert.equal(nhan_dang_y_dinh('bạn là ai'), 'hoi_tham');
+  assert.equal(nhan_dang_y_dinh('mệt quá'), 'hoi_tham');
+  assert.equal(nhan_dang_y_dinh('hôm nay chán quá'), 'hoi_tham');
   // "hi" khop theo tu nguyen: cau chua "nghi" khong bi nham thanh chao.
   assert.notEqual(nhan_dang_y_dinh('xin nghỉ phép ngày mai'), 'chao');
   // Chao kem viec can lam: y dinh viec thang.

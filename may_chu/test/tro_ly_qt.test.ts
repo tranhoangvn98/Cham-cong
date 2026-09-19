@@ -27,6 +27,8 @@ test('nhan_dang_y_dinh_qt: chao hoi, tham hoi va khong ro', () => {
   assert.equal(nhan_dang_y_dinh_qt(''), 'chao');
   assert.equal(nhan_dang_y_dinh_qt('chào bạn'), 'chao');
   assert.equal(nhan_dang_y_dinh_qt('cảm ơn nhé'), 'hoi_tham');
+  assert.equal(nhan_dang_y_dinh_qt('mệt quá'), 'hoi_tham');
+  assert.equal(nhan_dang_y_dinh_qt('chán quá đi'), 'hoi_tham');
   // "hi" khop theo tu nguyen, khong bam phai "nghi".
   assert.notEqual(nhan_dang_y_dinh_qt('xin nghỉ phép ngày mai'), 'chao');
 });

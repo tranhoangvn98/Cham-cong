@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.99.0] — 2026-09-20
+
+**Trợ lý giống người hơn: nhịp đang gõ, chào theo thứ, thăm hỏi cảm xúc, chủ động nhắc việc.**
+
+- Giao diện chờ một nhịp "đang gõ" ngắn ngẫu nhiên trước khi hiện câu trả lời — không còn
+  cảm giác máy trả lời tức thì.
+- Chào thêm câu theo thứ trong tuần (đầu tuần, sắp cuối tuần, cuối tuần, chủ nhật) và chủ
+  động nhắc việc: nhân viên chưa quẹt vào hôm nay, quản trị đang có đơn chờ duyệt.
+- Thăm hỏi cảm xúc: "mệt quá", "căng thẳng", "chán quá", "buồn" đều có lời động viên
+  riêng ở cả hai trợ lý.
+
 ## [1.98.1] — 2026-09-20
 
 **Sửa lỗi: lịch sử trợ lý đôi khi chưa kịp lưu trước khi người dùng đọc lại.**

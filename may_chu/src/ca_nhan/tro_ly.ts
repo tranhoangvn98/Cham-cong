@@ -22,7 +22,7 @@
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { bo_dau } from '../tien_ich/ten_tep.ts';
 import {
-  cong_ngay, gio_dia_phuong, khoang_thang, ngay_dia_phuong, ngay_viet,
+  cong_ngay, gio_dia_phuong, khoang_thang, ngay_dia_phuong, ngay_viet, thu_trong_tuan,
 } from '../tien_ich/thoi_gian.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { goi_deepseek } from '../ai/deepseek.ts';
@@ -384,7 +384,8 @@ export function nhan_dang_y_dinh(cau_goc: string): YDinh {
   // (viec can lam truoc loi chao). "hi" khop theo tu nguyen de khong bam phai "nghi".
   if (/\bhi\b|\bhey\b/.test(cau) || co(cau, 'chao', 'hello', 'alo', 'a lo')) return 'chao';
   if (co(cau, 'cam on', 'thanks', 'tam biet', 'bye', 'ngu ngon', 'khoe khong', 'khoe ko',
-    'an com', 'an gi', 'hom nay the nao', 'ban la ai', 'ban ten gi', 'may ten gi')) return 'hoi_tham';
+    'an com', 'an gi', 'hom nay the nao', 'ban la ai', 'ban ten gi', 'may ten gi',
+    'met', 'stress', 'ap luc', 'chan', 'buon')) return 'hoi_tham';
   return 'khong_ro';
 }
 
@@ -429,7 +430,7 @@ async function tra_loi_noi_bo(nv_id: string, cau_hoi_goc: string): Promise<TraLo
   const y_dinh = nhan_dang_y_dinh(cau);
 
   switch (y_dinh) {
-    case 'chao': return tra_loi_chao(nv_id);
+    case 'chao': return tra_loi_chao(nv_id, hom_nay);
     case 'hoi_tham': return tra_loi_hoi_tham(cau);
     case 'khieu_nai_luong': return tra_loi_khieu_nai_luong(nv_id, cau_hoi_goc, cau);
     case 'khieu_nai_ky_luat': return tra_loi_khieu_nai_ky_luat(nv_id, cau_hoi_goc, cau);
@@ -774,7 +775,7 @@ function gio_hien_tai(): number {
  * phai may tra loi khuon. Goi dung TEN nguoi hoi va nhac lai chu de lan truoc (trong 7 ngay)
  * de to ve hieu tung nhan su. Ke them ngan nhung viec tro ly lam duoc de nguoi dung biet hoi gi.
  */
-async function tra_loi_chao(nv_id: string): Promise<TraLoiTroLy> {
+async function tra_loi_chao(nv_id: string, hom_nay: string): Promise<TraLoiTroLy> {
   const buoi = buoi_trong_ngay(gio_hien_tai());
   const dau = buoi === 'sang' ? 'Chào buổi sáng'
     : buoi === 'trua' ? 'Chào buổi trưa'
@@ -797,9 +798,27 @@ async function tra_loi_chao(nv_id: string): Promise<TraLoiTroLy> {
     if (nhan !== undefined) nhac = ` Lần trước bạn hỏi về **${nhan}** — cần mình tra tiếp không?`;
   }
 
+  // Giong nguoi that: them cau theo thu trong tuan + nho nhac neu hom nay chua quet vao.
+  const thu = thu_trong_tuan(hom_nay);
+  const theo_thu = thu === 1 ? ' Chúc bạn tuần mới tràn đầy năng lượng!'
+    : thu === 5 ? ' Cuối tuần sắp tới, cố lên nhé!'
+      : thu === 6 ? ' Chúc bạn cuối tuần vui vẻ!'
+        : thu === 0 ? ' Chúc bạn ngày chủ nhật thư giãn!' : '';
+  let quet = '';
+  if (thu >= 1 && thu <= 6) {
+    const b = await truy_van_mot<{ gio_vao: string | null }>(
+      `select gio_vao::text as gio_vao from bang_cong_ngay
+        where nhan_vien_id = $1 and ngay = $2`,
+      [nv_id, hom_nay],
+    );
+    if (b === null || b.gio_vao === null) {
+      quet = ' À, hôm nay bạn chưa quẹt vào — nhớ quẹt nhé!';
+    }
+  }
+
   const loi = `${dau}, ${xung}! Mình là **trợ lý nhân sự** của bạn. Hôm nay bạn cần mình giúp gì — `
     + 'tra phép, công, lương, hay điền đơn OT, xin nghỉ, đổi ca? Mình chỉ điền sẵn đơn, '
-    + '**chính bạn** bấm xác nhận thì đơn mới gửi nhé.' + nhac;
+    + '**chính bạn** bấm xác nhận thì đơn mới gửi nhé.' + nhac + theo_thu + quet;
   return { tra_loi: loi, y_dinh: 'chao', goi_y: GOI_Y };
 }
 
@@ -823,6 +842,12 @@ function tra_loi_hoi_tham(cau: string): TraLoiTroLy {
         + 'ăn sáng đầy đủ để làm việc có sức nhé!'
       : 'Cảm ơn bạn đã hỏi thăm! Mình không ăn uống nhưng luôn sẵn sàng giúp việc. Bạn nhớ '
         + 'ăn uống đầy đủ để giữ sức nhé!';
+  } else if (co(cau, 'met', 'stress', 'ap luc')) {
+    loi = 'Bạn làm việc vất vả rồi. Nhớ nghỉ ngơi, ăn uống đầy đủ nhé! Cần mình tra công, '
+      + 'phép hay điền đơn giúp gì không?';
+  } else if (co(cau, 'chan', 'buon')) {
+    loi = 'Đừng buồn nhé, mọi chuyện rồi sẽ ổn thôi. Nếu cần mình giúp việc gì trong chấm '
+      + 'công, cứ nói mình nhé!';
   } else if (co(cau, 'ban la ai', 'ban ten gi', 'may ten gi')) {
     loi = 'Mình là **trợ lý nhân sự** của phân hệ Chấm công. Mình tra số liệu của chính bạn '
       + '(phép, công, lương, đi muộn…) và điền sẵn đơn — còn việc gửi hay không là do bạn '

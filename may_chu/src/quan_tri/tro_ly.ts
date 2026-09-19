@@ -13,7 +13,7 @@ import { cau_hinh } from '../cau_hinh.ts';
 import { goi_deepseek } from '../ai/deepseek.ts';
 import { dashboard_cho } from '../dashboard/theo_vai_tro.ts';
 import {
-  gio_dia_phuong, ngay_dia_phuong, ngay_viet,
+  gio_dia_phuong, ngay_dia_phuong, ngay_viet, thu_trong_tuan,
 } from '../tien_ich/thoi_gian.ts';
 import {
   buoi_trong_ngay, chuan, tra_loi_noi_quy, tra_loi_thong_bao, tra_loi_van_ban,
@@ -74,7 +74,8 @@ export function nhan_dang_y_dinh_qt(cau_goc: string): YDinhQT {
   if (co(cau, 'tong quan', 'tinh hinh', 'tong ket')
     || (co(cau, 'hom nay', 'thoi diem nay') && co(cau, 'the nao', 'ra sao', 'bao nhieu nguoi', 'so lieu'))) return 'tong_quan';
   if (/\bhi\b|\bhey\b/.test(cau) || co(cau, 'chao', 'hello', 'alo', 'a lo')) return 'chao';
-  if (co(cau, 'cam on', 'thanks', 'tam biet', 'bye', 'khoe khong', 'an com', 'ban la ai')) return 'hoi_tham';
+  if (co(cau, 'cam on', 'thanks', 'tam biet', 'bye', 'khoe khong', 'an com', 'ban la ai',
+    'met', 'stress', 'ap luc', 'chan', 'buon')) return 'hoi_tham';
   return 'khong_ro';
 }
 
@@ -376,9 +377,29 @@ async function tra_loi_chao_qt(nd: NguoiHoiQuanTri): Promise<TraLoiTroLyQT> {
     if (nhan !== undefined) nhac = ` Lần trước bạn hỏi về **${nhan}** — cần mình tra tiếp không?`;
   }
 
+  // Giong nguoi that: cau theo thu trong tuan + nho nhac neu dang co don cho duyet.
+  const thu = thu_trong_tuan(ngay_dia_phuong(new Date()));
+  const theo_thu = thu === 1 ? ' Chúc bạn tuần mới tràn đầy năng lượng!'
+    : thu === 5 ? ' Cuối tuần sắp tới, cố lên nhé!'
+      : thu === 6 ? ' Chúc bạn cuối tuần vui vẻ!'
+        : thu === 0 ? ' Chúc bạn ngày chủ nhật thư giãn!' : '';
+  let don = '';
+  if (thu >= 1 && thu <= 6) {
+    const d = await truy_van_mot<{ so: number }>(
+      `select (
+         (select count(*) from don_nghi_phep  where trang_thai = 'cho_duyet')
+       + (select count(*) from don_giai_trinh where trang_thai = 'cho_duyet')
+       + (select count(*) from don_tu where trang_thai in ('cho_duyet','cho_duyet_2'))
+       + (select count(*) from de_xuat where trang_thai = 'cho_duyet')
+       )::int as so`,
+    );
+    if (d !== null && d.so > 0) don = ` Hiện đang có **${d.so} đơn** chờ duyệt.`;
+  }
+
   return {
     tra_loi: `${dau}, ${ten}! Mình là **trợ lý quản trị**. Hỏi mình về tổng quan hôm nay, đi `
-      + 'muộn, vắng, chưa quẹt, đơn chờ duyệt, nhân viên, máy chấm công hay nội quy nhé.' + nhac,
+      + 'muộn, vắng, chưa quẹt, đơn chờ duyệt, nhân viên, máy chấm công hay nội quy nhé.'
+      + nhac + theo_thu + don,
     y_dinh: 'chao',
     goi_y: GOI_Y_QT,
   };
@@ -395,6 +416,11 @@ function tra_loi_hoi_tham_qt(cau: string): TraLoiTroLyQT {
   } else if (co(cau, 'an com')) {
     loi = 'Cảm ơn bạn đã hỏi thăm! Mình không ăn uống nhưng luôn sẵn sàng giúp việc — bạn nhớ '
       + 'ăn uống đầy đủ nhé!';
+  } else if (co(cau, 'met', 'stress', 'ap luc')) {
+    loi = 'Bạn làm việc vất vả rồi. Nhớ nghỉ ngơi, ăn uống đầy đủ nhé! Cần mình tra số liệu gì '
+      + 'giúp không?';
+  } else if (co(cau, 'chan', 'buon')) {
+    loi = 'Đừng buồn nhé, mọi chuyện rồi sẽ ổn thôi. Cần mình tra số liệu gì không?';
   } else {
     loi = 'Mình là **trợ lý quản trị** của phân hệ Chấm công — tra số liệu quản trị giúp bạn: '
       + 'tổng quan hôm nay, đi muộn, vắng, đơn chờ duyệt, nhân viên, máy chấm công.';

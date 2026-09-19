@@ -131,6 +131,8 @@ export function TroLyCaNhan(): ReactNode {
     dat_dang_hoi(true);
     try {
       const d = await goi<DapTroLy>(`/api/toi/tro-ly?hoi=${encodeURIComponent(c)}`);
+      // Nhip "dang go" ngan ngau nhien — nhu nguoi that dang go phim, khong tra loi lap tuc.
+      await new Promise((x) => setTimeout(x, 450 + Math.random() * 600));
       dat_dong((ds) => [...ds, { ai: 'bot', chu: d.tra_loi }]);
       dat_goi_y(d.goi_y);
       if (d.hanh_dong !== undefined) dat_hanh_dong(d.hanh_dong);
