@@ -482,7 +482,7 @@ async function tra_loi_noi_quy(cau: string): Promise<TraLoiTroLy> {
 
   // In NGUYEN VAN che tai — khong dien giai lai noi quy da ban hanh.
   const dong_tra_loi = dau.map((d) => {
-    const can_cu = d.can_cu === '' ? '' : ` *(Căn cứ: ${d.can_cu})*`;
+    const can_cu = d.can_cu === '' ? '' : ` (Căn cứ: ${d.can_cu})`;
     return `• **${d.ten}** — ${d.che_tai}${can_cu}`;
   }).join('\n');
   return {
@@ -511,7 +511,7 @@ async function tra_loi_thong_bao(cau: string): Promise<TraLoiTroLy> {
   }
   const danh_sach = khop.map((d) => {
     const ngay = ngay_viet(ngay_dia_phuong(new Date(d.tao_luc)));
-    const muc = d.muc_do === 'thuong' ? '' : ` *(mức ${d.muc_do})*`;
+    const muc = d.muc_do === 'thuong' ? '' : ` (mức ${d.muc_do})`;
     return `• ${ngay}: **${d.tieu_de}**${muc}`;
   }).join('\n');
   return {
@@ -548,7 +548,7 @@ async function tra_loi_van_ban(cau: string): Promise<TraLoiTroLy> {
     };
   }
   const danh_sach = dau.map((d) =>
-    `• **${d.tieu_de}** *(mục ${NHAN_DANH_MUC[d.danh_muc] ?? d.danh_muc})*`,
+    `• **${d.tieu_de}** (mục ${NHAN_DANH_MUC[d.danh_muc] ?? d.danh_muc})`,
   ).join('\n');
   return {
     tra_loi: `Các văn bản công ty khớp câu hỏi:\n${danh_sach}\n\n`
