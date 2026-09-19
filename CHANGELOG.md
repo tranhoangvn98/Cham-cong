@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.94.3] — 2026-09-19
+
+**Chuông báo: tab "Chưa xem" + việc lâu chưa xử lý xếp lên đầu, tab trơn không số đếm.**
+
+- Chuông có ba tab trơn: "Tất cả", "Chưa xem" (chỉ thông báo chưa đọc), "Chờ duyệt" (đã xem
+  nhưng việc còn chờ xử lý) — bỏ số đếm trên tab theo yêu cầu.
+- Sắp xếp lại danh sách: việc còn phải xử lý lên trên hết, trong đó việc **lâu chưa xử lý
+  nhất lên đầu**; phần đã xử lý / thuần tin xếp mới nhất trước.
+
 ## [1.94.2] — 2026-09-19
 
 **MCP server cho toàn phân hệ + trợ lý tra cứu nội quy và điền sẵn đơn.**
