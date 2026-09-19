@@ -1582,7 +1582,7 @@ textarea:focus-visible,
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; border-bottom: 1px solid var(--vien);
 }
-/* Hai tab loc: Tat ca / Cho duyet (da xem nhung chua duoc xu ly). */
+/* Ba tab loc: Tat ca / Chua xem / Cho duyet — tab tran, khong gan so dem. */
 .chuong-tabs {
   display: flex; gap: 2px;
   padding: 4px 8px 0; border-bottom: 1px solid var(--vien);
