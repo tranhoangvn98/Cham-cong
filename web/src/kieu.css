@@ -2463,3 +2463,24 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   .pl-co-so-luoi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pl-cot { grid-template-columns: 1fr; }
 }
+
+/* Phieu luong NHUNG trong Khu vuc cua toi: mot man hinh, khong cuon */
+.cn-than:has(.pl-vo) { height: 100dvh; min-height: 0; overflow: hidden; }
+.cn-than:has(.pl-vo) .cn-noi-dung { overflow: hidden; display: flex; flex-direction: column; }
+.cn-than:has(.pl-vo) .cn-noi-dung > .cn-cot-gap {
+  flex: 1; min-height: 0; display: flex; flex-direction: column; margin-top: 8px;
+}
+.cn-than .pl-vo { flex: 1; min-height: 0; }
+.cn-than .pl-cot { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cn-than .pl-the { padding: 10px 12px; }
+.cn-than .pl-dong { padding: 5px 2px; }
+.cn-than .pl-hero { gap: 8px; }
+.cn-than .pl-hero-chinh, .cn-than .pl-o { padding: 10px 12px; gap: 3px; }
+.cn-than .pl-tien-lon { font-size: 1.6rem; }
+.cn-than .pl-co-so-luoi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 980px) {
+  .cn-than:has(.pl-vo) { height: auto; overflow: visible; }
+  .cn-than:has(.pl-vo) .cn-noi-dung { overflow: auto; display: block; }
+  .cn-than .pl-cot { grid-template-columns: 1fr; }
+  .cn-than .pl-hero { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

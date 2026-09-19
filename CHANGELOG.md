@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.97.6] — 2026-09-20
+
+**Tab Lương trong Khu vực của tôi: gọn một màn hình, không thanh cuộn.**
+
+- Khi đã có phiếu lương, ẩn các khối chấm công trùng lặp phía dưới (cơ sở tính lương, công
+  thực tế/công chuẩn, chi tiết kỳ, quỹ phép) — mọi thứ đã nằm trong phiếu dashboard 4 cột.
+- Phiếu lương nhúng giờ ép vừa khung hình: 4 cột ngang một hàng, gọn gàng, không cần cuộn
+  (màn hẹp <980px vẫn xếp dọc và cho cuộn).
+
 ## [1.97.5] — 2026-09-20
 
 **Phiếu lương: bố cục thành dashboard 1 màn hình, bỏ hết thanh cuộn bên trong; xóa giao diện cũ.**

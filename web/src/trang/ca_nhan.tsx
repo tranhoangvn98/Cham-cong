@@ -2149,6 +2149,8 @@ function ManLuong(): ReactNode {
       )}
       {du_lieu.phieu_luong !== null && <TrangPhieuLuongToi thang_loc={thang} />}
 
+      {du_lieu.phieu_luong === null && (
+        <>
       {/* Phan con lai xep hai cot nhu dashboard de ca man nam gon trong mot khung hinh. */}
       <div className="cn-luong-luoi">
         <div className="cn-cot-gap">
@@ -2216,6 +2218,17 @@ function ManLuong(): ReactNode {
           </div>
         </div>
       </div>
+          </>
+        )}
+
+      {du_lieu.phieu_luong !== null && (
+        <div className="hop-thong-bao hop-luu-y">
+          {du_lieu.da_chot
+            ? 'Kỳ công này đã chốt — số liệu trên phiếu là căn cứ cuối cùng.'
+            : 'Kỳ này chưa chốt — số liệu trên phiếu vẫn có thể thay đổi.'}
+          {' '}{du_lieu.ghi_chu_ot}
+        </div>
+      )}
     </div>
   );
 }
