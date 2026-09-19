@@ -10,7 +10,7 @@ const {
   chuan, nhan_dang_y_dinh, phan_tich_ngay, phan_tich_khoang_nghi,
   phan_tich_loai_nghi, phan_tich_giai_trinh, phan_tich_de_xuat, tu_khoa, ngay_hop_le,
   phan_tich_gio, phan_tich_noi_den, phan_tich_noi_dung_khieu_nai, buoi_trong_ngay,
-  tra_loi_mo_trang,
+  tra_loi_mo_trang, tra_loi_ung_luong,
 } = await import('../src/ca_nhan/tro_ly.ts');
 
 const HOM_NAY = '2026-09-19';
@@ -192,7 +192,16 @@ test('tra_loi_mo_trang: ung luong chi mo cho nhan su/quan tri, nhan vien thi huo
   // Trang thuong thi mo cho moi nguoi.
   assert.equal(tra_loi_mo_trang('mở đơn của tôi', 'nhan_vien').den, '/ca-nhan/don-tu');
 });
-
+test('tra_loi_ung_luong: bat duoc tu khoa thi de xuat mo trang cho nhan su', () => {
+  // Nhan su/quan tri: tra loi kem nut de xuat mo trang ung luong.
+  const hr = tra_loi_ung_luong('nhan_su');
+  assert.equal(hr.mo_de_xuat?.den, '/ung-luong');
+  assert.equal(tra_loi_ung_luong('admin').mo_de_xuat?.den, '/ung-luong');
+  // Nhan vien thuong: chi huong dan, khong co nut mo.
+  const nv = tra_loi_ung_luong('nhan_vien');
+  assert.equal(nv.mo_de_xuat, undefined);
+  assert.match(nv.tra_loi, /nhân sự/);
+});
 test('phan_tich_gio: doc gio OT tu cau noi', () => {
   assert.deepEqual(phan_tich_gio('đăng ký OT từ 18:00 đến 20:00'),
     { bat_dau: '18:00', ket_thuc: '20:00' });

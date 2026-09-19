@@ -1535,6 +1535,15 @@ textarea:focus-visible,
   background: var(--nen); color: var(--chinh-dam); font-size: 13px; cursor: pointer;
 }
 .troly-chip:hover { background: var(--nhan-nen); }
+/* Nut de xuat mo trang: noi bat hon chip goi y thuong. */
+.troly-mo-de-xuat { margin-top: 4px; }
+.troly-chip-mo {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 999px; border: 1px solid var(--chinh-dam);
+  background: var(--chinh-dam); color: var(--tren-chinh);
+  font-size: 13px; cursor: pointer;
+}
+.troly-chip-mo:hover { filter: brightness(1.06); }
 /* Dau dong dang muc trong tra loi (• ...) — dam dau dong, khong phai la bullet tu do. */
 .troly-gach { margin-top: 3px; }
 .troly-gach:first-child { margin-top: 0; }

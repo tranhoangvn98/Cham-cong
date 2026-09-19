@@ -27,6 +27,8 @@ interface DapTroLyQT {
   goi_y: string[];
   /** Khi co: chuyen trang den duong dan nay (may chu da kiem trong danh sach trang). */
   den?: string;
+  /** Khi co: de xuat mo trang — hien nut, nguoi dung bam moi chuyen. */
+  mo_de_xuat?: { nhan: string; den: string };
 }
 
 interface Dong {
@@ -66,6 +68,7 @@ export function TroLyQuanTri(): ReactNode {
   const [goi_y, dat_goi_y] = useState<string[]>([]);
   const [nhap, dat_nhap] = useState('');
   const [dang_hoi, dat_dang_hoi] = useState(false);
+  const [mo_de_xuat, dat_mo_de_xuat] = useState<{ nhan: string; den: string } | null>(null);
   const cuon = useRef<HTMLDivElement>(null);
 
   // Mo lan dau: nap lich su tu may chu; chua co lich su nao thi chao lai tu dau.
@@ -100,6 +103,7 @@ export function TroLyQuanTri(): ReactNode {
     if (c === '' || dang_hoi) return;
     dat_dong((ds) => [...ds, { ai: 'toi', chu: c }]);
     dat_nhap('');
+    dat_mo_de_xuat(null);
     dat_dang_hoi(true);
     try {
       const d = await goi<DapTroLyQT>(`/api/quan-tri/tro-ly?hoi=${encodeURIComponent(c)}`);
@@ -107,6 +111,7 @@ export function TroLyQuanTri(): ReactNode {
       await new Promise((x) => setTimeout(x, 450 + Math.random() * 600));
       dat_dong((ds) => [...ds, { ai: 'bot', chu: d.tra_loi }]);
       dat_goi_y(d.goi_y);
+      dat_mo_de_xuat(d.mo_de_xuat ?? null);
       // Bot mo trang giup: chuyen den dung cho nguoi dung yeu cau roi dong khung tro ly.
       if (typeof d.den === 'string' && d.den !== '') {
         const den = d.den;
@@ -114,7 +119,10 @@ export function TroLyQuanTri(): ReactNode {
       }
     } catch (loi) {
       const chu = loi instanceof LoiApi ? loi.message : 'Không kết nối được máy chủ.';
-      dat_dong((ds) => [...ds, { ai: 'bot', chu: `Xin lỗi, mình chưa trả lời được lúc này: ${chu}` }]);
+      // 5xx thuong la may chu dang ban hoac vua khoi dong lai — bao than thien.
+      const loi_than = /50\d|Lỗi 50\d/.test(chu)
+        ? 'Máy chủ đang bận hoặc vừa khởi động lại — bạn bấm lại sau ít phút nhé.' : chu;
+      dat_dong((ds) => [...ds, { ai: 'bot', chu: `Xin lỗi, mình chưa trả lời được lúc này: ${loi_than}` }]);
     } finally {
       dat_dang_hoi(false);
     }
@@ -127,6 +135,7 @@ export function TroLyQuanTri(): ReactNode {
     });
     dat_dong([]);
     dat_goi_y([]);
+    dat_mo_de_xuat(null);
   };
 
   if (!mo) {
@@ -159,6 +168,15 @@ export function TroLyQuanTri(): ReactNode {
         {dang_hoi && (
           <div className="troly-tn troly-tn-bot" aria-label="Đang trả lời">
             <span className="troly-ba-cham"><i /><i /><i /></span>
+          </div>
+        )}
+        {mo_de_xuat !== null && !dang_hoi && (
+          <div className="troly-mo-de-xuat">
+            <button className="troly-chip-mo"
+              onClick={() => { const den = mo_de_xuat.den; di_toi(den); dat_mo(false); }}
+              aria-label={mo_de_xuat.nhan}>
+              {mo_de_xuat.nhan} <span aria-hidden="true">→</span>
+            </button>
           </div>
         )}
         {goi_y.length > 0 && !dang_hoi && (

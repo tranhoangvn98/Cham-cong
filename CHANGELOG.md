@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.99.7] — 2026-09-20
+
+**Trợ lý tự đề xuất mở trang khi bắt được từ khóa.**
+
+- Khi nhận ra chủ đề có trang tương ứng (ứng lương, phiếu lương, đơn của tôi, nội quy, văn
+  bản, thông báo; bên quản trị thêm tổng quan, duyệt đơn, lần quét, thiết bị, nhân viên),
+  trợ lý hiện **nút "Mở …"** ngay dưới câu trả lời — bấm là tới thẳng chỗ đó, không cần
+  nói lại "mở giúp". Trang không có quyền vẫn chỉ hướng dẫn, không hiện nút.
+- Lỗi 5xx khi gửi đơn (ví dụ đúng lúc máy chủ vừa khởi động lại) giờ báo thân thiện thay
+  vì hiện mã lỗi khô khan.
+
 ## [1.99.6] — 2026-09-20
 
 **Gộp giao diện cá nhân về một vỏ duy nhất: "Khu vực của tôi".**

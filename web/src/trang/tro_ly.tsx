@@ -41,6 +41,8 @@ interface DapTroLy {
   hanh_dong?: HanhDong;
   /** Khi co: chuyen trang den duong dan nay (may chu da kiem trong danh sach trang). */
   den?: string;
+  /** Khi co: de xuat mo trang — hien nut, nguoi dung bam moi chuyen. */
+  mo_de_xuat?: { nhan: string; den: string };
 }
 
 interface Dong {
@@ -97,6 +99,7 @@ export function TroLyCaNhan(): ReactNode {
   const [dang_hoi, dat_dang_hoi] = useState(false);
   const [hanh_dong, dat_hanh_dong] = useState<HanhDong | null>(null);
   const [dang_gui, dat_dang_gui] = useState(false);
+  const [mo_de_xuat, dat_mo_de_xuat] = useState<{ nhan: string; den: string } | null>(null);
   const cuon = useRef<HTMLDivElement>(null);
 
   // Mo lan dau: nap lich su tu may chu; chua co lich su nao thi moi chao lai tu dau.
@@ -133,6 +136,7 @@ export function TroLyCaNhan(): ReactNode {
     dat_dong((ds) => [...ds, { ai: 'toi', chu: c }]);
     dat_nhap('');
     dat_hanh_dong(null);
+    dat_mo_de_xuat(null);
     dat_dang_hoi(true);
     try {
       const d = await goi<DapTroLy>(`/api/toi/tro-ly?hoi=${encodeURIComponent(c)}`);
@@ -141,6 +145,7 @@ export function TroLyCaNhan(): ReactNode {
       dat_dong((ds) => [...ds, { ai: 'bot', chu: d.tra_loi }]);
       dat_goi_y(d.goi_y);
       if (d.hanh_dong !== undefined) dat_hanh_dong(d.hanh_dong);
+      dat_mo_de_xuat(d.mo_de_xuat ?? null);
       // Bot mo trang giup: chuyen den dung cho nguoi dung yeu cau roi dong khung tro ly.
       if (typeof d.den === 'string' && d.den !== '') {
         const den = d.den;
@@ -179,7 +184,10 @@ export function TroLyCaNhan(): ReactNode {
         `Bạn xem trạng thái ở tab "Đơn của tôi".${them}` }]);
     } catch (loi) {
       const chu = loi instanceof LoiApi ? loi.message : 'Không kết nối được máy chủ.';
-      dat_dong((ds) => [...ds, { ai: 'bot', chu: `Chưa gửi được: ${chu}` }]);
+      // 5xx thuong la may chu dang ban hoac vua khoi dong lai sau khi cap nhat — bao than thien.
+      const loi_than = /50\d|Lỗi 50\d/.test(chu)
+        ? 'Máy chủ đang bận hoặc vừa khởi động lại — bạn bấm lại sau ít phút nhé.' : chu;
+      dat_dong((ds) => [...ds, { ai: 'bot', chu: `Chưa gửi được: ${loi_than}` }]);
     } finally {
       dat_dang_gui(false);
     }
@@ -201,6 +209,7 @@ export function TroLyCaNhan(): ReactNode {
     dat_dong([]);
     dat_hanh_dong(null);
     dat_goi_y([]);
+    dat_mo_de_xuat(null);
   };
 
   // Render qua PORTAL ra document.body: nut noi khong nam trong khung nao cua trang, nen
@@ -254,6 +263,15 @@ export function TroLyCaNhan(): ReactNode {
                 {hanh_dong.bo}
               </button>
             </div>
+          </div>
+        )}
+        {mo_de_xuat !== null && !dang_hoi && (
+          <div className="troly-mo-de-xuat">
+            <button className="troly-chip-mo"
+              onClick={() => { const den = mo_de_xuat.den; di_toi(den); dat_mo(false); }}
+              aria-label={mo_de_xuat.nhan}>
+              {mo_de_xuat.nhan} <span aria-hidden="true">→</span>
+            </button>
           </div>
         )}
         {goi_y.length > 0 && !dang_hoi && hanh_dong === null && (

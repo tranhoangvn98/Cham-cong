@@ -33,6 +33,8 @@ export interface TraLoiTroLyQT {
   goi_y: string[];
   /** Khi co: giao dien chuyen den trang nay (duong dan noi bo da duoc danh sach trang kiem). */
   den?: string;
+  /** Khi co: de xuat mo mot trang — giao dien hien nut, nguoi dung bam moi chuyen. */
+  mo_de_xuat?: { nhan: string; den: string };
 }
 
 export type YDinhQT =
@@ -252,6 +254,7 @@ async function tra_loi_tong_quan(nd: NguoiHoiQuanTri, hom_nay: string): Promise<
   return {
     tra_loi: dong.join('\n'),
     y_dinh: 'tong_quan',
+    mo_de_xuat: { nhan: 'Mở trang Tổng quan', den: '/' },
     goi_y: ['Hôm nay bao nhiêu người đi muộn?', 'Bao nhiêu đơn chờ duyệt?', 'Máy chấm công có lỗi không?'],
   };
 }
@@ -267,6 +270,7 @@ async function tra_loi_di_muon(nd: NguoiHoiQuanTri, hom_nay: string): Promise<Tr
   return {
     tra_loi: `Hôm nay **${ds.length} người** đi muộn:\n${danh_sach}`,
     y_dinh: 'di_muon',
+    mo_de_xuat: { nhan: 'Mở Tổng quan', den: '/' },
     goi_y: ['Ai vắng hôm nay?', 'Ai chưa quẹt hôm nay?'],
   };
 }
@@ -288,6 +292,7 @@ async function tra_loi_vang(hom_nay: string): Promise<TraLoiTroLyQT> {
   return {
     tra_loi: `Hôm nay **${ds.length} người** vắng${ds.length === 10 ? ' (liệt kê 10 người đầu)' : ''}:\n${danh_sach}`,
     y_dinh: 'vang',
+    mo_de_xuat: { nhan: 'Mở Tổng quan', den: '/' },
     goi_y: ['Hôm nay bao nhiêu người đi muộn?', 'Ai chưa quẹt hôm nay?'],
   };
 }
@@ -310,6 +315,7 @@ async function tra_loi_chua_quet(hom_nay: string): Promise<TraLoiTroLyQT> {
   return {
     tra_loi: `Hôm nay **${ds.length} người** quẹt chưa đủ${ds.length === 10 ? ' (liệt kê 10 người đầu)' : ''}:\n${danh_sach}`,
     y_dinh: 'chua_quet',
+    mo_de_xuat: { nhan: 'Mở Lần quét', den: '/lan-quet' },
     goi_y: ['Hôm nay bao nhiêu người đi muộn?', 'Ai vắng hôm nay?'],
   };
 }
@@ -333,6 +339,7 @@ async function tra_loi_don_cho(): Promise<TraLoiTroLyQT> {
       + `• Đơn tự phục vụ (OT, đổi ca…): **${x.don_tu}**\n• Quét mobile: **${x.quet_mobile}**\n`
       + `• Đề xuất: **${x.de_xuat}**\n• Khiếu nại lương: **${x.khieu_nai_luong}**`,
     y_dinh: 'don_cho',
+    mo_de_xuat: { nhan: 'Mở Duyệt đơn', den: '/duyet-don' },
     goi_y: ['Tổng quan hôm nay thế nào?', 'Hôm nay bao nhiêu người đi muộn?'],
   };
 }
@@ -351,8 +358,10 @@ async function tra_loi_nhan_vien(cau: string, hom_nay: string): Promise<TraLoiTr
   if (khop.length === 0) {
     return {
       tra_loi: 'Mình chưa tìm thấy nhân viên nào khớp tên. Bạn thử nói rõ họ tên, ví dụ '
-        + '**"Nguyễn Văn An công tháng này thế nào"**.',
-      y_dinh: 'nhan_vien', goi_y: GOI_Y_QT,
+        + '**"Nguyễn Văn An công tháng này thế nào"** — hoặc mở trang Nhân viên để tìm.',
+      y_dinh: 'nhan_vien',
+      mo_de_xuat: { nhan: 'Mở trang Nhân viên', den: '/nhan-vien' },
+      goi_y: GOI_Y_QT,
     };
   }
   if (khop.length > 1) {
@@ -390,6 +399,7 @@ async function tra_loi_nhan_vien(cau: string, hom_nay: string): Promise<TraLoiTr
       + `• Đi muộn tháng: **${t?.ngay_di_muon ?? 0} lần** (${t?.phut_muon ?? 0} phút)\n`
       + `• Phép năm: **${t?.phep_nam ?? '0'} ngày**\n• Trạng thái: ${t?.dang_hoat_dong === true ? 'đang làm' : 'đã nghỉ'}`,
     y_dinh: 'nhan_vien',
+    mo_de_xuat: { nhan: 'Mở trang Nhân viên', den: '/nhan-vien' },
     goi_y: ['Tổng quan hôm nay thế nào?', 'Hôm nay bao nhiêu người đi muộn?'],
   };
 }
@@ -412,6 +422,7 @@ async function tra_loi_may_cham(nd: NguoiHoiQuanTri, hom_nay: string): Promise<T
   return {
     tra_loi: `${danh_sach}\nPIN lệch trong máy: **${ht.pin_lech}**.`,
     y_dinh: 'may_cham',
+    mo_de_xuat: { nhan: 'Mở Thiết bị chấm công', den: '/cai-dat/thiet-bi' },
     goi_y: ['Tổng quan hôm nay thế nào?'],
   };
 }
@@ -510,17 +521,29 @@ export async function tra_loi_tro_ly_quan_tri(
     case 'may_cham': kq = await tra_loi_may_cham(nd, hom_nay); break;
     case 'noi_quy': {
       const r = await tra_loi_noi_quy(cau);
-      kq = { tra_loi: r.tra_loi, y_dinh: 'noi_quy', goi_y: r.goi_y };
+      kq = {
+        tra_loi: r.tra_loi, y_dinh: 'noi_quy',
+        mo_de_xuat: { nhan: 'Mở Nội quy (Văn bản)', den: '/van-ban' },
+        goi_y: r.goi_y,
+      };
       break;
     }
     case 'van_ban': {
       const r = await tra_loi_van_ban(cau);
-      kq = { tra_loi: r.tra_loi, y_dinh: 'van_ban', goi_y: r.goi_y };
+      kq = {
+        tra_loi: r.tra_loi, y_dinh: 'van_ban',
+        mo_de_xuat: { nhan: 'Mở Văn bản công ty', den: '/van-ban' },
+        goi_y: r.goi_y,
+      };
       break;
     }
     case 'thong_bao': {
       const r = await tra_loi_thong_bao(cau);
-      kq = { tra_loi: r.tra_loi, y_dinh: 'thong_bao', goi_y: r.goi_y };
+      kq = {
+        tra_loi: r.tra_loi, y_dinh: 'thong_bao',
+        mo_de_xuat: { nhan: 'Mở Thông báo', den: '/thong-bao' },
+        goi_y: r.goi_y,
+      };
       break;
     }
     case 'khong_ro': {

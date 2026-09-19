@@ -63,6 +63,8 @@ export interface TraLoiTroLy {
   hanh_dong?: HanhDongChoXacNhan;
   /** Khi co: giao dien chuyen den trang nay (duong dan noi bo da duoc danh sach trang kiem). */
   den?: string;
+  /** Khi co: de xuat mo mot trang — giao dien hien nut, nguoi dung bam moi chuyen. */
+  mo_de_xuat?: { nhan: string; den: string };
 }
 
 const GOI_Y = [
@@ -454,7 +456,7 @@ async function tra_loi_noi_bo(
     case 'cong_tac': return tra_loi_cong_tac(nv_id, cau_hoi_goc, cau, hom_nay);
     case 'xin_di_muon': return tra_loi_xin_di_muon(nv_id, cau_hoi_goc, cau, hom_nay);
     case 'xin_ve_som': return tra_loi_xin_ve_som();
-    case 'ung_luong': return tra_loi_ung_luong();
+    case 'ung_luong': return tra_loi_ung_luong(vai_tro);
     case 'giai_trinh': return tra_loi_giai_trinh(nv_id, cau_hoi_goc, cau, hom_nay);
     case 'huy_don': return tra_loi_huy_don(nv_id, cau);
     case 'de_xuat': return tra_loi_de_xuat(nv_id, cau_hoi_goc, cau);
@@ -463,9 +465,11 @@ async function tra_loi_noi_bo(
     case 'thong_bao': return tra_loi_thong_bao(cau);
     case 'van_ban': return tra_loi_van_ban(cau);
     case 'luong': return {
-      tra_loi: 'Phiếu lương chi tiết bạn xem ở tab **Lương** để bảo mật. Mình có thể giúp về '
+      tra_loi: 'Phiếu lương chi tiết bạn xem ở mục **Phiếu lương**. Mình có thể giúp về '
         + 'công, phép, đi muộn — những thứ ảnh hưởng tới lương.',
-      y_dinh: 'luong', goi_y: ['Công tháng này của tôi thế nào?', 'Tháng này tôi đi muộn mấy lần?'],
+      y_dinh: 'luong',
+      mo_de_xuat: { nhan: 'Mở Phiếu lương của tôi', den: '/phieu-luong-toi' },
+      goi_y: ['Công tháng này của tôi thế nào?', 'Tháng này tôi đi muộn mấy lần?'],
     };
     case 'di_muon': return tra_loi_di_muon(nv_id);
     case 'cong_thang': return tra_loi_cong_thang(nv_id);
@@ -780,7 +784,9 @@ async function tra_loi_don_cho(nv_id: string): Promise<TraLoiTroLy> {
   const llm = await viet_tu_nhien('don_cho', { so_don_cho_duyet: so });
   return {
     tra_loi: llm ?? tra_loi_dinh,
-    y_dinh: 'don_cho', goi_y: ['Tôi muốn xin nghỉ phép'],
+    y_dinh: 'don_cho',
+    mo_de_xuat: { nhan: 'Mở Đơn của tôi', den: '/don-cua-toi' },
+    goi_y: ['Tôi muốn xin nghỉ phép'],
   };
 }
 
@@ -986,6 +992,7 @@ export async function tra_loi_noi_quy(cau: string): Promise<TraLoiTroLy> {
     tra_loi: `Theo Nội quy lao động của công ty:\n${dong_tra_loi}\n\n`
       + 'Bạn xem toàn văn ở tab **Văn bản** (mục Nội quy).',
     y_dinh: 'noi_quy',
+    mo_de_xuat: { nhan: 'Mở Nội quy (Văn bản)', den: '/van-ban' },
     goi_y: ['Đi muộn bị xử lý thế nào?', 'Tôi muốn giải trình quên chấm công'],
   };
 }
@@ -1014,7 +1021,9 @@ export async function tra_loi_thong_bao(cau: string): Promise<TraLoiTroLy> {
   }).join('\n');
   return {
     tra_loi: `Các thông báo gần đây:\n${danh_sach}\n\nChi tiết bạn xem ở mục **Thông báo**.`,
-    y_dinh: 'thong_bao', goi_y: ['Có thông báo gì mới nhất?'],
+    y_dinh: 'thong_bao',
+    mo_de_xuat: { nhan: 'Mở Thông báo', den: '/thong-bao' },
+    goi_y: ['Có thông báo gì mới nhất?'],
   };
 }
 
@@ -1052,7 +1061,9 @@ export async function tra_loi_van_ban(cau: string): Promise<TraLoiTroLy> {
   return {
     tra_loi: `Các văn bản công ty khớp câu hỏi:\n${danh_sach}\n\n`
       + 'Bạn mở tab **Văn bản** để đọc hoặc tải tệp.',
-    y_dinh: 'van_ban', goi_y: ['Đi muộn bị xử lý thế nào?'],
+    y_dinh: 'van_ban',
+    mo_de_xuat: { nhan: 'Mở Văn bản công ty', den: '/van-ban' },
+    goi_y: ['Đi muộn bị xử lý thế nào?'],
   };
 }
 
@@ -1805,8 +1816,18 @@ async function tra_loi_khieu_nai_ky_luat(
   };
 }
 
-/** Ung luong CHUA mo tu phuc vu (route chi danh cho nhan su/quan tri) — huong dan dung cho. */
-function tra_loi_ung_luong(): TraLoiTroLy {
+/** Ung luong CHUA mo tu phuc vu (route chi danh cho nhan su/quan tri) — huong dan dung cho,
+ * rieng nhan su/quan tri thi DE XUAT MO NGAY trang ung luong. */
+export function tra_loi_ung_luong(vai_tro: string): TraLoiTroLy {
+  if (la_vai_tro_nhan_su(vai_tro)) {
+    return {
+      tra_loi: 'Bạn có quyền quản trị ứng lương. Mình có thể mở trang **Ứng lương** ngay bên '
+        + 'dưới để bạn tạo và duyệt khoản ứng.',
+      y_dinh: 'ung_luong',
+      mo_de_xuat: { nhan: 'Mở trang Ứng lương', den: '/ung-luong' },
+      goi_y: ['Tổng quan hôm nay thế nào?'],
+    };
+  }
   return {
     tra_loi: 'Ứng lương hiện chưa mở tự phục vụ trên hệ thống. Bạn gửi đề nghị tới bộ phận '
       + 'nhân sự nhé — nhân sự sẽ tạo khoản ứng và theo dõi duyệt/chi cho bạn.',
