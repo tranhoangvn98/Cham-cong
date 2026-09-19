@@ -191,7 +191,7 @@ function TabSapHetHan(): ReactNode {
               {kq.danh_sach.map((hd) => (
                 <tr key={hd.id}>
                   <td>
-                    <a href={`/nhan-vien/${hd.nhan_vien_id}`}>
+                    <a href={`/nhan-vien/${hd.nhan_vien_id}`} className="lk-nhan-vien">
                       <strong>{hd.ma_nv}</strong> — {hd.ho_ten}
                     </a>
                   </td>
@@ -287,7 +287,7 @@ function TabTim(): ReactNode {
                   {ds.map((hd) => (
                     <tr key={hd.id}>
                       <td>
-                        <a href={`/nhan-vien/${hd.nhan_vien_id}`}>
+                        <a href={`/nhan-vien/${hd.nhan_vien_id}`} className="lk-nhan-vien">
                           <strong>{hd.ma_nv}</strong> — {hd.ho_ten}
                         </a>
                       </td>

@@ -1,0 +1,28 @@
+{
+  "loai": "thong_bao",
+  "pham_vi": "toan_cong_ty",
+  "quan_he": "noi_bo",
+  "co_quan_ban_hanh": "CÔNG TY TNHH TRẦN HOÀNG VIỆT NAM",
+  "dia_danh": "Lạng Sơn",
+  "ngay": "2026-09-07",
+  "ten_loai": "THÔNG BÁO",
+  "trich_yeu": "Về việc đổi phần mềm chấm công",
+  "kinh_gui": [],
+  "can_cu": [],
+  "dieu": [],
+  "noi_dung": [
+    "Nhằm nâng cao hiệu quả quản lý giờ giấc lao động, Công ty triển khai phần mềm chấm công mới. Toàn thể cán bộ, nhân viên truy cập vào đường dẫn trên hệ thống để gửi đơn từ: tăng ca, đi công tác, nghỉ phép và các loại đơn khác.",
+    "Kể từ ngày ban hành thông báo này, việc ra vào văn phòng phải quét vân tay đầy đủ: vào quét mặt vào, ra quét mặt ra. Khi đi ra ngoài gặp khách hàng, nhân viên phải lập lệnh trên hệ thống trước khi rời văn phòng.",
+    "Đề nghị toàn thể cán bộ, nhân viên nghiêm túc thực hiện, tránh tình trạng vào cùng nhau không quét và quét hộ lẫn nhau. Nhân sự có nhiều địa điểm làm việc vẫn chấm công bình thường do các máy chấm công được liên thông dữ liệu."
+  ],
+  "nguoi_ky": "Trần Đức Hoàng",
+  "chuc_vu_nguoi_ky": "GIÁM ĐỐC",
+  "noi_nhan": [
+    "Toàn thể cán bộ, nhân viên",
+    "Lưu: Hành chính nhân sự"
+  ],
+  "so_ky_hieu": null,
+  "du_thao": true,
+  "nhan_vien_id": null,
+  "phong_ban_id": null
+}

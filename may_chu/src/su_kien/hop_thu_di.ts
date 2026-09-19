@@ -5,6 +5,7 @@ import type { PoolClient } from 'pg';
 import { createHmac } from 'node:crypto';
 import { cau_hinh } from '../cau_hinh.ts';
 import { pool, truy_van, thuc_thi } from '../csdl/ket_noi.ts';
+import { chan_dang_nhap_va_rut_giay_phep } from '../nhan_su/ms365.ts';
 
 /**
  * Su kien gui sang ERP. Than tu do — ERP doc theo hop dong rieng cua no.
@@ -29,11 +30,22 @@ export type LoaiSuKienCong =
   | 'nhan_su.nghi_viec'
   | 'nhan_su.quay_lai';
 
-export type LoaiSuKien = LoaiSuKienErp | LoaiSuKienCong;
+/**
+ * Su kien nghi vu cho Microsoft Graph (offboarding khi nghi viec). `du_lieu` BAT BUOC co
+ * `upn` (email/UPN cua tai khoan Entra) va `ma_nv` de truy vet.
+ */
+export type LoaiSuKienMs365 = 'ms365.nghi_viec';
+
+export type LoaiSuKien = LoaiSuKienErp | LoaiSuKienCong | LoaiSuKienMs365;
 
 /** Su kien nao di sang cong thay vi sang ERP. */
 function di_sang_cong(loai: string): boolean {
   return loai.startsWith('nhan_su.');
+}
+
+/** Su kien nao di sang Microsoft Graph thay vi sang ERP / cong. */
+function di_sang_ms365(loai: string): boolean {
+  return loai.startsWith('ms365.');
 }
 
 /** Ghi su kien vao outbox. Dung `khach` de nam trong cung transaction voi du lieu goc. */
@@ -57,16 +69,19 @@ interface DongOutbox {
 
 /** Co dich nao duoc cau hinh chua. Chua thi khong can nhan viec ra khoi bang. */
 function co_dich(): boolean {
-  return cau_hinh.erp.webhook_url !== '' || cau_hinh.cong_su_kien.goc !== '';
+  return cau_hinh.erp.webhook_url !== ''
+    || cau_hinh.cong_su_kien.goc !== ''
+    || cau_hinh.ms365_nghi_viec.bat;
 }
 
 /**
  * Day toi da `so_luong` su kien chua gui. Tra ve so su kien gui thanh cong.
  *
- * HAI DICH, MOT HOP THU. Su kien `nhan_su.*` di sang cong dinh danh; con lai di sang ERP.
- * Dich la thuoc tinh cua LOAI su kien, khong phai cua co che gui — nen phep chon dich nam
- * trong `gui_mot`, con phan nhan viec / thu lai / backoff dung chung. Tach thanh hai bang la
- * hai ban sao cua cung mot doan logic kho nhat o day.
+ * BA DICH, MOT HOP THU. Su kien `nhan_su.*` di sang cong dinh danh; `ms365.*` di sang
+ * Microsoft Graph; con lai di sang ERP. Dich la thuoc tinh cua LOAI su kien, khong phai
+ * cua co che gui — nen phep chon dich nam trong `gui_mot`, con phan nhan viec / thu lai /
+ * backoff dung chung. Tach thanh nhieu bang la nhieu ban sao cua cung mot doan logic kho
+ * nhat o day.
  *
  * Chua cau hinh dich NAO thi khong lam gi: su kien nam lai trong bang, khong mat. Bat len luc
  * nao thi chung di luc do.
@@ -120,8 +135,20 @@ export async function day_hop_thu_di(so_luong = 50): Promise<number> {
 }
 
 async function gui_mot(d: DongOutbox): Promise<void> {
+  if (di_sang_ms365(d.loai_su_kien)) return gui_sang_ms365(d);
   if (di_sang_cong(d.loai_su_kien)) return gui_sang_cong(d);
   return gui_sang_erp(d);
+}
+
+/**
+ * Day mot su kien offboarding sang Microsoft Graph: chan dang nhap, thu hoi phien va rut
+ * toan bo giay phep cua tai khoan Entra.
+ */
+async function gui_sang_ms365(d: DongOutbox): Promise<void> {
+  const upn = typeof d.du_lieu['upn'] === 'string' ? d.du_lieu['upn'].trim() : '';
+  if (upn === '') throw new Error(`su kien ${d.id} thieu upn`);
+  if (!upn.includes('@')) throw new Error(`su kien ${d.id} upn sai dang: ${upn}`);
+  await chan_dang_nhap_va_rut_giay_phep(upn);
 }
 
 /**

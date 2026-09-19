@@ -2,6 +2,27 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.94.1] — 2026-09-19
+
+**Hệ văn bản AI (soạn thảo theo NĐ30 bằng AI) + Quy trình nghỉ việc tự động.**
+
+- **Văn bản AI**: soạn thông báo / quyết định / công văn theo Nghị định 30 bằng AI (DeepSeek),
+  kiểm tra thể thức qua bộ cổng gate, dựng tệp DOCX (Python sidecar), trình ký và ban hành
+  với số ký hiệu tự cấp; gửi email kèm DOCX qua Microsoft Graph (fail-soft, có gửi lại).
+- **Quy trình nghỉ việc tự động**: khi ban hành "Quyết định nghỉ việc" (loại Quyết định,
+  phạm vi Cá nhân + ngày nghỉ việc), tệp quyết định tự gắn vào hồ sơ nhân viên (mục
+  "Quyết định nghỉ việc", đồng bộ SharePoint). Đến ngày nghỉ việc, lịch chạy đêm tự động:
+  khóa tài khoản + thu hồi phiên; báo cổng phân quyền chặn đăng nhập và chuyển trạng thái;
+  gửi Microsoft Graph chặn đăng nhập (`accountEnabled = false`), thu hồi phiên và rút toàn bộ
+  giấy phép (bật bằng `MS365_NGHI_VIEC_BAT=1`). Sự kiện đi qua hộp thư đi `hop_thu_di` — có
+  retry, không mất khi cổng/Microsoft đang chết. Nút "Cho nghỉ việc" thủ công dùng chung
+  nghiệp vụ và nay có thêm bước chặn Microsoft.
+- Chuông báo: tab **"Chờ duyệt"** gom các thông báo đã xem nhưng việc vẫn còn chờ xử lý
+  (kèm số đếm) — không bị chìm giữa danh sách khi có nhiều tin.
+- Tên nhân viên dạng liên kết mở hồ sơ chuyển sang màu **xanh lá đậm** (token `--tot`) để
+  phân biệt với liên kết xanh dương thông thường.
+- Tài liệu mới: `tai_lieu/NGHI-VIEC.md`; cập nhật `tai_lieu/DANG-NHAP-MICROSOFT.md`.
+
 ## [1.94.0] — 2026-09-19
 
 **MCP server cho toàn phân hệ + trợ lý tra cứu nội quy và điền sẵn đơn.**
@@ -82,8 +103,6 @@ Theo [SemVer](https://semver.org/lang/vi/).
   biến (hàng chục người đi muộn) thì cuộn trong vùng nội dung, không đẩy dài cả trang.
 - Bảng "Đi muộn hôm nay" hiện tối đa 7 người kèm đường dẫn xem bảng công; bảng "Người bị
   cảnh báo nhiều nhất tháng" hiện top 5 (danh sách đầy đủ vẫn ở tab Ra/vào).
-
-Theo [SemVer](https://semver.org/lang/vi/).
 
 ## [1.93.0] — 2026-09-17
 
