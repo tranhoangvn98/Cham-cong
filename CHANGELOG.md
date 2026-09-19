@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.94.6] — 2026-09-19
+
+**Soạn văn bản AI: tự mở xem trước ngay sau khi tạo bản nháp.**
+
+- Bấm "Tạo bản nháp" xong, chi tiết văn bản tự mở; trong lúc AI còn soạn, cửa sổ tự làm mới
+  vài giây một lần, soạn xong là **tự bật chế độ xem trước toàn màn hình** — không phải dò
+  dòng trong bảng rồi bấm "Chi tiết" + "Xem trước văn bản" như trước.
+- Mở "Chi tiết" của bất kỳ bản nháp nào cũng hiện xem trước ngay khi đã có văn bản.
+
 ## [1.94.5] — 2026-09-19
 
 **Popup soạn văn bản AI: bố cục lại thành các nhóm rõ ràng.**

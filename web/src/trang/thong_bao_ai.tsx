@@ -102,7 +102,7 @@ interface PhongBanGon { id: string; ten: string; }
 // ==================================================================== form tao
 function FormTao(
   { khi_xong, mac_dinh }:
-  { khi_xong: () => void; mac_dinh?: { nhan_vien_id: string } | null },
+  { khi_xong: (id_moi: string | null) => void; mac_dinh?: { nhan_vien_id: string } | null },
 ): ReactNode {
   const [mo, dat_mo] = useState(false);
   const [loai, dat_loai] = useState<KieuVanBan>('thong_bao');
@@ -172,13 +172,13 @@ function FormTao(
       than['dieu'] = dieu.split('\n').map((s) => s.trim()).filter((s) => s !== '');
       than['noi_dung'] = noi_dung.split(/\n\s*\n/).map((s) => s.trim()).filter((s) => s !== '');
     }
-    const ok = await hd.chay(
-      () => goi('/api/thong-bao/ai/nhap', { method: 'POST', body: than }),
+    const kq = await hd.chay_lay<NhapAI>(
+      () => goi<NhapAI>('/api/thong-bao/ai/nhap', { method: 'POST', body: than }),
       'Đã tạo bản nháp. Hệ thống đang soạn văn bản…',
     );
-    if (ok) {
+    if (kq !== null) {
       dat_tho(''); dat_trich_yeu(''); dat_kinh_gui(''); dat_can_cu(''); dat_dieu('');
-      dat_noi_dung(''); dat_la_qd(false); dat_ngay_nghi(''); dat_mo(false); khi_xong();
+      dat_noi_dung(''); dat_la_qd(false); dat_ngay_nghi(''); dat_mo(false); khi_xong(kq.id);
     }
   };
 
@@ -489,7 +489,7 @@ function KetQuaGateBang({ kq }: { kq: KetQuaGate[] }): ReactNode {
 }
 
 function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () => void; khi_xong: () => void }): ReactNode {
-  const { du_lieu: d, dang_tai, loi } = dung_nap<ChiTietNhap>(`/api/thong-bao/ai/${id}`, [id]);
+  const { du_lieu: d, dang_tai, loi, nap_lai } = dung_nap<ChiTietNhap>(`/api/thong-bao/ai/${id}`, [id]);
   const hd = dung_hanh_dong();
   const [dang_sua, dat_dang_sua] = useState(false);
   const [xem_truoc, dat_xem_truoc] = useState(false);
@@ -505,7 +505,8 @@ function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () => void;
 
   useEffect(() => {
     const s = d?.spec_json;
-    dat_xem_truoc(false);
+    // Co van ban la tu mo che do xem truoc (toan man hinh) — khong can bam nut.
+    dat_xem_truoc(s !== null && s !== undefined);
     dat_xem_docx(false);
     dat_loi_docx(null);
     if (s === null || s === undefined) return;
@@ -515,6 +516,15 @@ function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () => void;
     dat_t_dieu(s.dieu.join('\n'));
     dat_t_noi_dung(s.noi_dung.join('\n\n'));
   }, [d]);
+
+  // Tu lam moi trong luc AI con dang soan: khi soan xong spec xuat hien, ben tren tu mo
+  // che do xem truoc. Mo nguoi dung mo chi tiet NGAY SAU KHI TAO ban nhap.
+  useEffect(() => {
+    if (d === null || d === undefined || d.trang_thai !== 'dang_soan') return;
+    const hen = setInterval(() => { nap_lai(); }, 3000);
+    return () => clearInterval(hen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [d?.trang_thai]);
 
   /** Xem docx ngay tren web — render bang docx-preview vao the chua. */
   const mo_docx = async (): Promise<void> => {
@@ -807,7 +817,7 @@ export function TabVanBanBanHanh(): ReactNode {
 
   return (
     <div>
-      <FormTao khi_xong={nap_lai} mac_dinh={mac_dinh} />
+      <FormTao khi_xong={(id_moi) => { nap_lai(); if (id_moi !== null) dat_xem(id_moi); }} mac_dinh={mac_dinh} />
       {xem !== null && <ChiTiet id={xem} khi_dong={() => dat_xem(null)} khi_xong={nap_lai} />}
       {ds.length === 0
         ? <Trong tieu_de="Chưa có văn bản AI" mo_ta="Tạo bản nháp đầu tiên bằng nút phía trên." />
