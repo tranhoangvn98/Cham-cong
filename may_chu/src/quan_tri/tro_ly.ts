@@ -455,7 +455,7 @@ export async function tra_loi_tro_ly_quan_tri(
   }
 
   if (cau_hoi_goc.trim() !== '') {
-    void luu_hoi_thoai_qt(nd.sub, cau_hoi_goc, kq.tra_loi, kq.y_dinh);
+    await luu_hoi_thoai_qt(nd.sub, cau_hoi_goc, kq.tra_loi, kq.y_dinh);
   }
   return kq;
 }

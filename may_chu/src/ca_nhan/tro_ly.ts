@@ -418,7 +418,7 @@ export async function tra_loi_tro_ly(nv_id: string, cau_hoi_goc: string): Promis
   // Luu lai de lan sau tro ly nho nguoi hoi (ngoai canh hoi tiep). Cau rong (mo widget chao)
   // thi khong luu — tranh nhet loi chao vao lich su. Loi luu khong duoc lam hong cau tra loi.
   if (cau_hoi_goc.trim() !== '') {
-    void luu_hoi_thoai(nv_id, cau_hoi_goc, kq.tra_loi, kq.y_dinh, kq.hanh_dong !== undefined);
+    await luu_hoi_thoai(nv_id, cau_hoi_goc, kq.tra_loi, kq.y_dinh, kq.hanh_dong !== undefined);
   }
   return kq;
 }
