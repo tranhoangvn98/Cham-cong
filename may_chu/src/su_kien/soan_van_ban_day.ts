@@ -157,6 +157,15 @@ async function ghi_ket_qua(
 
 async function xu_ly_mot(d: DongNhapAi, ghi_log: (s: string, ...t: unknown[]) => void): Promise<void> {
   try {
+    // Chot chan dau vao: thieu cau hinh the thuc thi bao loi ro cho nguoi soan, khong
+    // tieu mot lan goi AI roi moi sap o buoc dung docx.
+    if (cau_hinh.van_ban.co_quan_ban_hanh.trim() === '' || cau_hinh.van_ban.dia_danh.trim() === '') {
+      await ghi_ket_qua(d.id, 'loi', null,
+        gate_loi('Chưa cấu hình tên cơ quan ban hành (CO_QUAN_BAN_HANH) và địa danh '
+          + '(DIA_DANH_VAN_BAN) trên máy chủ — liên hệ quản trị.'), 0, null, null, null);
+      ghi_log(`[vb-ai] ${d.ma} thieu cau hinh CO_QUAN_BAN_HANH / DIA_DANH_VAN_BAN`);
+      return;
+    }
     // ---------------------------------------------------------- che do tu_soan (khong AI)
     if (d.che_do === 'tu_soan') {
       const loi_spec = kiem_tra_spec(d.spec_json);

@@ -2,7 +2,7 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
-## [1.94.8] — 2026-09-19
+## [1.94.9] — 2026-09-19
 
 **Trợ lý biết trò chuyện: AI hiểu câu + viết lời tự nhiên, giao diện thêm hiệu ứng mượt.**
 
@@ -13,6 +13,10 @@ Theo [SemVer](https://semver.org/lang/vi/).
   lời có sẵn. Chế tài nội quy vẫn giữ nguyên văn, payload xác nhận vẫn do code tính.
 - Widget thêm hiệu ứng: tin nhắn và thẻ xác nhận trượt vào nhẹ, ba chấm nhún khi đang trả
   lời, nút/chip phản hồi khi bấm, cuộn mượt — tự tắt khi trình duyệt giảm chuyển động.
+
+## [1.94.8] — 2026-09-19
+
+**Sửa lỗi: báo rõ khi chưa cấu hình tên cơ quan ban hành / địa danh.**
 
 ## [1.94.7] — 2026-09-19
 
