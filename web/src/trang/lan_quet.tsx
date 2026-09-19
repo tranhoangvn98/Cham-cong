@@ -1,4 +1,7 @@
 // Nhat ky quet tho: nguon su that de doi chieu khi co tranh chap bang cong.
+//
+// Bo cuc MOT MAN HINH (khong cuon trang): dau trang + bo loc + luoi 2 cot — trai the "PIN chua
+// gan" (top 5 + xem tat ca), phai bang log cuon NOI BO trong the. Man hep xep doc.
 import { useState, type ReactNode } from 'react';
 import { goi, la_nhan_su, tai_tep } from '../api.ts';
 import {
@@ -43,6 +46,8 @@ interface ChuaMap {
 }
 
 const MOI_TRANG = 200;
+/** The PIN chua gan chi hien 5 dong mac dinh — ban danh sach day phai bam "Xem tat ca". */
+const PIN_TOI_DA_GON = 5;
 
 export function TrangLanQuet(): ReactNode {
   const [tu, dat_tu] = useState(hom_nay());
@@ -52,6 +57,7 @@ export function TrangLanQuet(): ReactNode {
   const [nguon, dat_nguon] = useState('');
   const [trang_thai_duyet, dat_trang_thai_duyet] = useState('');
   const [so_dong, dat_so_dong] = useState(MOI_TRANG);
+  const [mo_pin, dat_mo_pin] = useState(false);
   const [gan_lai_pin, dat_gan_lai_pin] = useState<GanLai | null>(null);
   const [dang_nhap_tep, dat_dang_nhap_tep] = useState(false);
   const [serial_nhap, dat_serial_nhap] = useState('');
@@ -87,8 +93,11 @@ export function TrangLanQuet(): ReactNode {
     );
   };
 
+  const tat_ca_pin = chua_map.du_lieu ?? [];
+  const pin_hien = mo_pin ? tat_ca_pin : tat_ca_pin.slice(0, PIN_TOI_DA_GON);
+
   return (
-    <>
+    <div className="lq-vo">
       <div className="dau-trang">
         <div>
           <p className="mo-ta">
@@ -99,51 +108,6 @@ export function TrangLanQuet(): ReactNode {
           <button onClick={() => dat_dang_nhap_tep(true)}>Nhập lịch sử từ file</button>
         )}
       </div>
-
-      {la_nhan_su() && (chua_map.du_lieu ?? []).length > 0 && (
-        <div className="the">
-          <h2 style={{ color: 'var(--canh-bao)' }}>PIN chưa gán cho nhân viên nào</h2>
-          <p className="mo-ta">
-            Máy đã ghi nhận những PIN này nhưng hệ thống không biết là ai, nên công không được tính.
-            Hãy khai PIN cho nhân viên rồi bấm "Gán lại" để tính bù các ngày đã qua.
-          </p>
-          <div className="vo-bang">
-            <table>
-              <thead>
-                <tr>
-                  <th>PIN</th>
-                  <th>Máy</th>
-                  <th className="canh-phai">Số lần</th>
-                  <th>Lần đầu</th>
-                  <th>Lần cuối</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(chua_map.du_lieu ?? []).map((c) => (
-                  <tr key={`${c.pin_may}|${c.thiet_bi_serial ?? ''}`}>
-                    <td className="so"><strong>{c.pin_may}</strong></td>
-                    <td className="so chu-nho">{c.thiet_bi_serial ?? '—'}</td>
-                    <td className="canh-phai so">{c.so_lan}</td>
-                    <td className="khong-ngat chu-nho">{ngay_gio(c.lan_dau)}</td>
-                    <td className="khong-ngat chu-nho">{ngay_gio(c.lan_cuoi)}</td>
-                    <td>
-                      <button
-                        className="nut-nho"
-                        onClick={() => dat_gan_lai_pin({
-                          pin: c.pin_may, serial: c.thiet_bi_serial ?? null,
-                        })}
-                      >
-                        Gán lại
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       <div className="bo-loc">
         <div className="o-nhap">
@@ -221,73 +185,128 @@ export function TrangLanQuet(): ReactNode {
       <HopLoi loi={hd.loi} />
       <HopTot chu={hd.tot} />
 
-      <div className="the the-mong">
-        {dang_tai ? <DangTai /> : (du_lieu ?? []).length === 0 ? (
-          <Trong
-            tieu_de="Không có lần quẹt nào trong khoảng này"
-            mo_ta="Nếu máy đang kết nối mà vẫn trống, kiểm tra serial máy đã khai đúng chưa."
-          />
-        ) : (
-          <div className="vo-bang">
-            <table>
-              <thead>
-                <tr>
-                  <th>Thời điểm</th>
-                  <th>Nhân viên</th>
-                  <th>PIN</th>
-                  <th>Loại</th>
-                  <th>Xác thực</th>
-                  <th>Nguồn</th>
-                  <th>Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(du_lieu ?? []).map((q) => (
-                  <tr key={q.id}>
-                    <td className="khong-ngat so">{ngay_gio(q.thoi_diem)}</td>
-                    <td>
-                      {q.ho_ten ?? <span className="nhan nhan-xau">chưa map</span>}
-                      {q.ma_nv !== null && <div className="o-so-phu">{q.ma_nv}</div>}
-                    </td>
-                    <td className="so">{q.pin_may ?? '—'}</td>
-                    <td className="khong-ngat">{q.nhan_trang_thai}</td>
-                    <td className="khong-ngat chu-nho">{q.nhan_xac_thuc}</td>
-                    <td className="chu-nho">
-                      {TEN_NGUON[q.nguon] ?? q.nguon}
-                      {q.thiet_bi !== null && <div className="o-so-phu">{q.thiet_bi}</div>}
-                      {q.dia_diem !== null && (
-                        <div className="o-so-phu">
-                          {q.dia_diem}
-                          {q.khoang_cach_m === null ? '' : ` · ${q.khoang_cach_m}m`}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <NhanDon trang_thai={q.trang_thai_duyet} />
-                      {q.ghi_chu !== null && (
-                        <div className="o-so-phu" style={{ maxWidth: 180 }}>{q.ghi_chu}</div>
-                      )}
-                    </td>
+      <div className="lq-luoi">
+        {la_nhan_su() && tat_ca_pin.length > 0 && (
+          <div className="lq-pin the">
+            <div className="lq-pin-dau">
+              <h2 style={{ color: 'var(--canh-bao)' }}>PIN chưa gán cho nhân viên nào</h2>
+              {tat_ca_pin.length > PIN_TOI_DA_GON && (
+                <button type="button" className="nut-nho nut-phang"
+                  onClick={() => dat_mo_pin(!mo_pin)}>
+                  {mo_pin ? 'Thu gọn' : `Xem tất cả ${tat_ca_pin.length}`}
+                </button>
+              )}
+            </div>
+            <p className="mo-ta">
+              Máy đã ghi nhận những PIN này nhưng hệ thống không biết là ai, nên công không được
+              tính. Hãy khai PIN cho nhân viên rồi bấm "Gán lại" để tính bù các ngày đã qua.
+            </p>
+            <div className="vo-bang">
+              <table className="bang-gon">
+                <thead>
+                  <tr>
+                    <th>PIN</th>
+                    <th>Máy</th>
+                    <th className="canh-phai">Số lần</th>
+                    <th>Lần đầu</th>
+                    <th>Lần cuối</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {pin_hien.map((c) => (
+                    <tr key={`${c.pin_may}|${c.thiet_bi_serial ?? ''}`}>
+                      <td className="so"><strong>{c.pin_may}</strong></td>
+                      <td className="so chu-nho">{c.thiet_bi_serial ?? '—'}</td>
+                      <td className="canh-phai so">{c.so_lan}</td>
+                      <td className="khong-ngat chu-nho">{ngay_gio(c.lan_dau)}</td>
+                      <td className="khong-ngat chu-nho">{ngay_gio(c.lan_cuoi)}</td>
+                      <td>
+                        <button
+                          className="nut-nho"
+                          onClick={() => dat_gan_lai_pin({
+                            pin: c.pin_may, serial: c.thiet_bi_serial ?? null,
+                          })}
+                        >
+                          Gán lại
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
-      </div>
 
-      {(du_lieu ?? []).length > 0 && (
-        <div className="hang-nut" style={{ justifyContent: 'center', marginBottom: 16 }}>
-          <span className="mo-ta">Đang hiện {(du_lieu ?? []).length} dòng</span>
-          {/* Day du MOI_TRANG dong nghia la con nua — chua chac, nhung dung mot truy van
-              dem rieng cho mot bang co the rat lon thi khong dang. */}
-          {(du_lieu ?? []).length >= so_dong && (
-            <button type="button" onClick={() => dat_so_dong(so_dong + MOI_TRANG)}>
-              Xem thêm {MOI_TRANG} dòng
-            </button>
+        <div className="lq-log the the-mong">
+          {dang_tai ? <DangTai /> : (du_lieu ?? []).length === 0 ? (
+            <Trong
+              tieu_de="Không có lần quẹt nào trong khoảng này"
+              mo_ta="Nếu máy đang kết nối mà vẫn trống, kiểm tra serial máy đã khai đúng chưa."
+            />
+          ) : (
+            <div className="vo-bang">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Thời điểm</th>
+                    <th>Nhân viên</th>
+                    <th>PIN</th>
+                    <th>Loại</th>
+                    <th>Xác thực</th>
+                    <th>Nguồn</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(du_lieu ?? []).map((q) => (
+                    <tr key={q.id}>
+                      <td className="khong-ngat so">{ngay_gio(q.thoi_diem)}</td>
+                      <td>
+                        {q.ho_ten ?? <span className="nhan nhan-xau">chưa map</span>}
+                        {q.ma_nv !== null && <div className="o-so-phu">{q.ma_nv}</div>}
+                      </td>
+                      <td className="so">{q.pin_may ?? '—'}</td>
+                      <td className="khong-ngat">{q.nhan_trang_thai}</td>
+                      <td className="khong-ngat chu-nho">{q.nhan_xac_thuc}</td>
+                      <td className="chu-nho">
+                        {TEN_NGUON[q.nguon] ?? q.nguon}
+                        {q.thiet_bi !== null && <div className="o-so-phu">{q.thiet_bi}</div>}
+                        {q.dia_diem !== null && (
+                          <div className="o-so-phu">
+                            {q.dia_diem}
+                            {q.khoang_cach_m === null ? '' : ` · ${q.khoang_cach_m}m`}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <NhanDon trang_thai={q.trang_thai_duyet} />
+                        {q.ghi_chu !== null && (
+                          <div className="o-so-phu" style={{ maxWidth: 180 }}>{q.ghi_chu}</div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {(du_lieu ?? []).length > 0 && (
+            <div className="lq-log-chan">
+              <span className="mo-ta">Đang hiện {(du_lieu ?? []).length} dòng</span>
+              {/* Day du MOI_TRANG dong nghia la con nua — chua chac, nhung dung mot truy van
+                  dem rieng cho mot bang co the rat lon thi khong dang. */}
+              {(du_lieu ?? []).length >= so_dong && (
+                <button type="button" className="nut-nho"
+                  onClick={() => dat_so_dong(so_dong + MOI_TRANG)}>
+                  Xem thêm {MOI_TRANG} dòng
+                </button>
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       {dang_nhap_tep && (
         <HopThoaiNhap
@@ -341,7 +360,7 @@ export function TrangLanQuet(): ReactNode {
           }}
         />
       )}
-    </>
+    </div>
   );
 }
 

@@ -17,6 +17,10 @@ import {
   cong_ngay, khoang_thang, ngay_dia_phuong, ngay_viet, thu_trong_tuan,
 } from '../tien_ich/thoi_gian.ts';
 import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
+import {
+  con_xu_ly, doi_tuong_truy, thong_bao_cong_ty_id, type DoiTuongTruy,
+  NHAN_TRANG_THAI as NHAN_TRANG_THAI_BAO,
+} from './trang_thai_bao.ts';
 import { CAC_LOAI, MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_don.ts';
 import { don_cua_nhan_vien, huy_don, tao_don } from '../don_tu/nghiep_vu.ts';
 import { ket_qua_cua_don, nop_ket_qua } from '../don_tu/ket_qua_ot.ts';
@@ -53,6 +57,82 @@ async function ten_nhan_vien(nhan_vien_id: string): Promise<string> {
 
 /** Khoang cach toi thieu giua hai lan cham cong bang dien thoai (giay). */
 const GIAN_CACH_TOI_THIEU_GIAY = 60;
+
+/** Mot dong thong bao rieng. `trang_thai`/`nhan_trang_thai`/`con_xu_ly` suy live luc tra ve. */
+interface BaoThongBao {
+  id: string;
+  tieu_de: string;
+  noi_dung: string;
+  du_lieu: unknown;
+  da_doc: boolean;
+  doc_luc: string | null;
+  tao_luc: string;
+  trang_thai: string | null;
+  nhan_trang_thai: string | null;
+  con_xu_ly: boolean;
+}
+
+/**
+ * Suy trang thai xu ly LIVE cho tung thong bao: don/khieu nai/vi pham tra theo trang thai
+ * cua ban ghi hien tai; thong bao cong ty "can giai trinh" tra cho_giai_trinh/da_xu_ly theo
+ * nguoi doc; thuần tin (hop dong het han, nhac nho) de null. Mot truy van cho moi bang
+ * (id = any(...)), khong phai mot truy van cho moi dong.
+ */
+async function gan_trang_thai_bao(ds: BaoThongBao[], nv: string | null): Promise<void> {
+  const theo_bang = new Map<string, string[]>();
+  const doi_tuong: (DoiTuongTruy | null)[] = [];
+  const tb_ids: string[] = [];
+  for (const b of ds) {
+    const dt = doi_tuong_truy(b.du_lieu);
+    doi_tuong.push(dt);
+    if (dt !== null) {
+      const mang = theo_bang.get(dt.bang) ?? [];
+      mang.push(dt.id);
+      theo_bang.set(dt.bang, mang);
+    } else {
+      const t = thong_bao_cong_ty_id(b.du_lieu);
+      if (t !== null) tb_ids.push(t);
+    }
+  }
+
+  const bang_trang_thai = new Map<string, Map<string, string>>();
+  for (const [bang, ids] of theo_bang) {
+    const dong = await truy_van<{ id: string; trang_thai: string }>(
+      `select id, trang_thai from ${bang} where id = any($1::uuid[])`, [ids],
+    );
+    bang_trang_thai.set(bang, new Map(dong.map((d) => [d.id, d.trang_thai])));
+  }
+
+  const tb_trang_thai = new Map<string, string>();
+  if (tb_ids.length > 0 && nv !== null) {
+    const dong = await truy_van<{ id: string; trang_thai: string | null }>(
+      `select tb.id,
+              case when tb.can_giai_trinh and dd.giai_trinh is null then 'cho_giai_trinh'
+                   when tb.can_giai_trinh then 'da_xu_ly' end as trang_thai
+         from thong_bao tb
+         left join thong_bao_da_doc dd on dd.thong_bao_id = tb.id and dd.nhan_vien_id = $2::uuid
+        where tb.id = any($1::uuid[])`,
+      [tb_ids, nv],
+    );
+    for (const d of dong) if (d.trang_thai !== null) tb_trang_thai.set(d.id, d.trang_thai);
+  }
+
+  ds.forEach((b, i) => {
+    const dt = doi_tuong[i] ?? null;
+    let trang_thai: string | null = null;
+    if (dt !== null) {
+      trang_thai = bang_trang_thai.get(dt.bang)?.get(dt.id) ?? null;
+    } else {
+      const t = thong_bao_cong_ty_id(b.du_lieu);
+      if (t !== null) trang_thai = tb_trang_thai.get(t) ?? null;
+    }
+    b.trang_thai = trang_thai;
+    b.nhan_trang_thai = trang_thai === null
+      ? null
+      : (NHAN_TRANG_THAI_BAO[trang_thai] ?? trang_thai);
+    b.con_xu_ly = con_xu_ly(trang_thai);
+  });
+}
 
 /**
  * Tong hop cong mot thang. Dung cho ca /hom-nay (4 chi so o Trang chu), /bang-cong
@@ -1788,12 +1868,12 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
   });
 
   // ---------------------------------------------------------------- chuong bao (notification)
-  /** Thong bao rieng cua CHINH tai khoan nay + so chua doc. */
+  /** Thong bao rieng cua CHINH tai khoan nay + so chua doc + trang thai xu ly live. */
   app.get('/bao', async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     const [danh_sach, dem] = await Promise.all([
-      truy_van(
-        `select id, tieu_de, noi_dung, du_lieu, da_doc, tao_luc
+      truy_van<BaoThongBao>(
+        `select id, tieu_de, noi_dung, du_lieu, da_doc, doc_luc, tao_luc
            from thong_bao_rieng where nguoi_dung_id = $1
           order by da_doc, tao_luc desc limit 50`,
         [nd.sub],
@@ -1803,24 +1883,29 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         [nd.sub],
       ),
     ]);
+    await gan_trang_thai_bao(danh_sach, nd.nv);
     return { danh_sach, so_chua_doc: dem?.so ?? 0 };
   });
 
-  /** Danh dau mot thong bao da doc. */
+  /** Danh dau mot thong bao da doc (ghi doc_luc lan dau tien). */
   app.post('/bao/:id/doc', async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     await thuc_thi(
-      'update thong_bao_rieng set da_doc = true where id = $1 and nguoi_dung_id = $2',
+      `update thong_bao_rieng
+          set da_doc = true, doc_luc = coalesce(doc_luc, now())
+        where id = $1 and nguoi_dung_id = $2`,
       [lay_id(req), nd.sub],
     );
     return { ok: true };
   });
 
-  /** Danh dau TAT CA da doc. */
+  /** Danh dau TAT CA da doc (ghi doc_luc cho tung dong chua doc). */
   app.post('/bao/doc-het', async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     await thuc_thi(
-      'update thong_bao_rieng set da_doc = true where nguoi_dung_id = $1 and da_doc = false',
+      `update thong_bao_rieng
+          set da_doc = true, doc_luc = coalesce(doc_luc, now())
+        where nguoi_dung_id = $1 and da_doc = false`,
       [nd.sub],
     );
     return { ok: true };

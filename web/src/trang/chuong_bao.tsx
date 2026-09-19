@@ -13,12 +13,19 @@ interface Bao {
   // Ngoai `man` (di toi dau), thong bao con kem id ban ghi de mo dung khieu nai / don cu the.
   du_lieu: { man?: string; khieu_nai_id?: string; don_id?: string } | null;
   da_doc: boolean;
+  doc_luc: string | null;
+  // May chu suy live tu nghiep vu: null = thuần tin, chi co nhan Da xem / Chua xem.
+  trang_thai: string | null;
+  nhan_trang_thai: string | null;
+  con_xu_ly: boolean;
   tao_luc: string;
 }
 
 /** man (trong du_lieu) -> duong dan trong web. Khong khop thi ve trang chu. */
 const DUONG_THEO_MAN: Record<string, string> = {
   'duyet-don': '/duyet-don',
+  'duyet-ot': '/duyet-don',
+  'duyet-ket-qua-ot': '/duyet-don',
   'don-tu': '/duyet-don',
   'khieu-nai-luong': '/khieu-nai-luong',
   'ra-vao': '/ra-vao',
@@ -26,6 +33,7 @@ const DUONG_THEO_MAN: Record<string, string> = {
   'ky-luat': '/don-cua-toi',
   'vi-pham': '/don-cua-toi',
   'don-cua-toi': '/don-cua-toi',
+  'ho_so': '/ho-so-toi',
 };
 
 function IconChuong(): ReactNode {
@@ -117,6 +125,20 @@ export function ChuongBao({ dieu_huong }: {
                   onClick={() => bam(b)}>
                   <div className="chuong-tieu-de">{b.tieu_de}</div>
                   {b.noi_dung !== '' && <div className="chuong-noi-dung">{b.noi_dung}</div>}
+                  <div className="chuong-meta">
+                    {b.da_doc ? (
+                      <span className="nhan nhan-mo">
+                        Đã xem{b.doc_luc !== null ? ` · ${ngay_gio(b.doc_luc)}` : ''}
+                      </span>
+                    ) : (
+                      <span className="nhan nhan-lanh">Chưa xem</span>
+                    )}
+                    {b.nhan_trang_thai !== null && (
+                      <span className={`nhan ${b.con_xu_ly ? 'nhan-canh-bao' : 'nhan-mo'}`}>
+                        {b.nhan_trang_thai}
+                      </span>
+                    )}
+                  </div>
                   <div className="chuong-gio">{ngay_gio(b.tao_luc)}</div>
                 </button>
               ))}
