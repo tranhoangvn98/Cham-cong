@@ -17,6 +17,7 @@ import { tuyen_ung_luong } from './tuyen/ung_luong.ts';
 import { tuyen_vcontract } from './tuyen/vcontract.ts';
 import { tuyen_vi_pham } from './tuyen/vi_pham.ts';
 import { tuyen_ra_vao } from './tuyen/ra_vao.ts';
+import { tuyen_quan_tri } from './tuyen/quan_tri.ts';
 import { tuyen_ky_luat } from './tuyen/ky_luat.ts';
 import { tuyen_kpi } from './tuyen/kpi.ts';
 import { tuyen_dong_bo_erp } from './tuyen/dong_bo_erp.ts';
@@ -185,6 +186,7 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   await app.register(tuyen_dong_bo_erp, { prefix: '/api' });
   await app.register(tuyen_don_tu, { prefix: '/api/duyet' });
   await app.register(tuyen_toi, { prefix: '/api/toi' });
+  await app.register(tuyen_quan_tri, { prefix: '/api/quan-tri' });
   // API cho he thong ngoai. Prefix rieng + xac thuc bang khoa API, xem tuyen/tich_hop.ts.
   await app.register(tuyen_tich_hop, { prefix: '/api/v1' });
   // Duong vContract goi nguoc ve. NGOAI lop dang nhap — tu bao ve bang token rieng.

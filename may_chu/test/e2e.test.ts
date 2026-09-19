@@ -8604,3 +8604,34 @@ test('tro ly: luu lich su theo nhan vien, doc lai va xoa duoc', async () => {
   const sau = await goi('GET', '/api/toi/tro-ly/lich-su', { token: token_nhan_vien });
   assert.equal((sau.body as unknown as unknown[]).length, 0, 'sau xoa phai rong');
 });
+
+// ============================================================ TRO LY QUAN TRI
+//
+// Bot cho nhan su/quan tri: chi can_nhan_su vao duoc; du lieu dung theo quyen nguoi hoi.
+// Lich su luu theo nguoi dung (bang rieng tro_ly_qt_hoi_thoai).
+
+test('tro ly quan tri: nhan vien bi chan, nhan su hoi duoc va luu lich su rieng', async () => {
+  // Nhan vien thuong khong vao duoc bot quan tri.
+  const c = await goi('GET',
+    '/api/quan-tri/tro-ly?hoi=' + encodeURIComponent('tổng quan hôm nay'),
+    { token: token_nhan_vien });
+  assert.ok(c.ma >= 400, `nhan vien phai bi chan, duoc ${String(c.ma)}`);
+
+  // Admin (thuoc can_nhan_su) hoi duoc va tra dung y dinh.
+  const r = await goi('GET',
+    '/api/quan-tri/tro-ly?hoi=' + encodeURIComponent('hôm nay bao nhiêu người đi muộn'),
+    { token: token_admin });
+  assert.equal(r.ma, 200, r.tho);
+  assert.equal(r.body['y_dinh'], 'di_muon');
+  assert.match(String(r.body['tra_loi']), /đi muộn/);
+
+  // Lich su quan tri luu theo nguoi dung, doc lai va xoa duoc.
+  const ls = await goi('GET', '/api/quan-tri/tro-ly/lich-su', { token: token_admin });
+  assert.equal(ls.ma, 200, ls.tho);
+  const ds = ls.body as unknown as Record<string, unknown>[];
+  assert.ok(ds.length > 0 && ds[0]?.['y_dinh'] === 'di_muon', 'phai luu luot hoi quan tri');
+  const xoa = await goi('DELETE', '/api/quan-tri/tro-ly/lich-su', { token: token_admin });
+  assert.equal(xoa.ma, 200, xoa.tho);
+  const sau = await goi('GET', '/api/quan-tri/tro-ly/lich-su', { token: token_admin });
+  assert.equal((sau.body as unknown as unknown[]).length, 0, 'sau xoa phai rong');
+});

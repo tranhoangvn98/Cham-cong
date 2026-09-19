@@ -2,6 +2,20 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.98.0] — 2026-09-20
+
+**Thêm trợ lý quản trị cho góc nhìn Quản trị.**
+
+- Widget "**Trợ lý quản trị**" (nút nổi gốc phải dưới ở giao diện Quản trị) chỉ hiện với
+  nhân sự/quản trị; nhân viên thường bị chặn ở cả giao diện lẫn API.
+- Tra cứu theo quyền: tổng quan hôm nay (có mặt/đi muộn/vắng/nghỉ phép/chưa quẹt + việc
+  nhân sự cần xử lý), ai đi muộn/vắng/chưa quẹt hôm nay, đơn chờ duyệt đủ loại, tìm nhân
+  viên theo tên (công tháng, phép, phòng ban, ca), máy chấm công (chỉ quản trị), và chung
+  một nguồn nội quy/văn bản/thông báo với trợ lý cá nhân.
+- Lịch sử lưu theo tài khoản (bảng riêng `tro_ly_qt_hoi_thoai`, di trú 082), chào theo buổi
+  gọi đúng tên và nhắc chủ đề lần trước, AI chỉ nhận vài lượt gần nhất của chính người hỏi.
+  Xem `tai_lieu/TRO-LY-QUAN-TRI.md`.
+
 ## [1.97.6] — 2026-09-20
 
 **Tab Lương trong Khu vực của tôi: gọn một màn hình, không thanh cuộn.**

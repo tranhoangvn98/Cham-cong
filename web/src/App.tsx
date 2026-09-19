@@ -42,6 +42,7 @@ import { TrangHoSoToi } from './trang/ho_so_toi.tsx';
 import { TrangPhieuLuongToi } from './trang/phieu_luong_toi.tsx';
 import { TrangVanBan } from './trang/van_ban.tsx';
 import { TroLyCaNhan } from './trang/tro_ly.tsx';
+import { TroLyQuanTri } from './trang/tro_ly_quan_tri.tsx';
 import { ChuongBao } from './trang/chuong_bao.tsx';
 import { PopupThongBao } from './trang/popup_thong_bao.tsx';
 
@@ -525,6 +526,7 @@ function BoCuc(): ReactNode {
           </CungCapTieuDe>
         </div>
         {gn === 'ca_nhan' && <TroLyCaNhan />}
+        {gn === 'quan_tri' && la_nhan_su() && <TroLyQuanTri />}
       </main>
     </div>
   );

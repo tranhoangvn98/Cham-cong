@@ -836,8 +836,9 @@ function tra_loi_hoi_tham(cau: string): TraLoiTroLy {
 
 // ==================================================================== tra cuu tri thuc cong ty
 
-/** Tim trong loai_vi_pham theo tu khoa — cham diem tren ten (3) + che tai (1) + can cu (1). */
-async function tra_loi_noi_quy(cau: string): Promise<TraLoiTroLy> {
+/** Tim trong loai_vi_pham theo tu khoa — cham diem tren ten (3) + che tai (1) + can cu (1).
+ * Xuat de bot quan tri dung lai (cung mot nguon tri thuc noi quy). */
+export async function tra_loi_noi_quy(cau: string): Promise<TraLoiTroLy> {
   const khoa = tu_khoa(cau);
   const dong = await truy_van<{
     ten: string; chi_tiet_che_tai: string | null; can_cu: string | null;
@@ -882,7 +883,8 @@ async function tra_loi_noi_quy(cau: string): Promise<TraLoiTroLy> {
   };
 }
 
-async function tra_loi_thong_bao(cau: string): Promise<TraLoiTroLy> {
+/** Xuat de bot quan tri dung lai (cung mot nguon thong bao). */
+export async function tra_loi_thong_bao(cau: string): Promise<TraLoiTroLy> {
   const khoa = tu_khoa(cau);
   const dong = await truy_van<{ tieu_de: string; muc_do: string; tao_luc: Date }>(
     `select tieu_de, muc_do, tao_luc from thong_bao where da_go = false
@@ -909,7 +911,8 @@ async function tra_loi_thong_bao(cau: string): Promise<TraLoiTroLy> {
   };
 }
 
-async function tra_loi_van_ban(cau: string): Promise<TraLoiTroLy> {
+/** Xuat de bot quan tri dung lai (cung mot nguon van ban). */
+export async function tra_loi_van_ban(cau: string): Promise<TraLoiTroLy> {
   const khoa = tu_khoa(cau);
   const dong = await truy_van<{
     tieu_de: string; danh_muc: string; mo_ta: string | null;
