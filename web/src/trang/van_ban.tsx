@@ -218,7 +218,7 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
 }
 
 /** Kho tep noi quy / bieu mau / chinh sach — noi dung cu cua trang Van ban cong ty. */
-function TabTaiLieu(): ReactNode {
+function TabTaiLieu({ chi_doc = false }: { chi_doc?: boolean }): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<VanBan[]>('/api/toi/van-ban');
   const hd = dung_hanh_dong();
   const hr = la_nhan_su();
@@ -235,7 +235,7 @@ function TabTaiLieu(): ReactNode {
   return (
     <div>
       <HopLoi loi={hd.loi} />
-      {hr && <SoanVanBan khi_xong={nap_lai} />}
+      {hr && !chi_doc && <SoanVanBan khi_xong={nap_lai} />}
       {ds.length === 0
         ? <Trong tieu_de="Chưa có văn bản" mo_ta="Nhân sự sẽ đăng thông báo, nội quy, biểu mẫu tại đây." />
         : nhom.map((dm, i) => (
@@ -330,8 +330,12 @@ function DsVanBanBanHanh(): ReactNode {
 /**
  * Trang "Van ban cong ty" — 3 tab. Nhan su thay them bang soan AI trong tab "Van ban ban
  * hanh"; nhan vien thuong chi thay danh sach van ban da phat hanh.
+ *
+ * `chi_doc`: trang ca nhan luon chi doc — khong co soan AI, khong soan/ban hanh tai lieu
+ * (viec do nam o goc nhin Quan tri).
  */
-export function TrangVanBan({ tab = 'thong_bao' }: { tab?: TabVanBan }): ReactNode {
+export function TrangVanBan({ tab = 'thong_bao', chi_doc = false }:
+  { tab?: TabVanBan; chi_doc?: boolean }): ReactNode {
   const hr = la_nhan_su();
   const tab_dung: TabVanBan = CAC_TAB.some((t) => t.ma === tab) ? tab : 'thong_bao';
 
@@ -339,9 +343,9 @@ export function TrangVanBan({ tab = 'thong_bao' }: { tab?: TabVanBan }): ReactNo
   if (tab_dung === 'thong_bao') {
     noi_dung = <TrangThongBaoCaNhan />;
   } else if (tab_dung === 'ban_hanh') {
-    noi_dung = hr ? <TabVanBanBanHanh /> : <DsVanBanBanHanh />;
+    noi_dung = hr && !chi_doc ? <TabVanBanBanHanh /> : <DsVanBanBanHanh />;
   } else {
-    noi_dung = <TabTaiLieu />;
+    noi_dung = <TabTaiLieu chi_doc={chi_doc} />;
   }
 
   return (

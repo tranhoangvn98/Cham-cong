@@ -329,6 +329,13 @@ function FormTao(
         <button onClick={() => { void gui(); }} disabled={hd.dang_chay || !can_gui}>
           {hd.dang_chay ? 'Đang gửi…' : 'Tạo bản nháp'}
         </button>
+        {!can_gui && !hd.dang_chay && (
+          <span className="mo-ta">
+            {che_do === 'ai'
+              ? 'Nội dung thô cần ít nhất 3 ký tự mới tạo được bản nháp.'
+              : 'Trích yếu và nội dung mỗi ô cần ít nhất 3 ký tự.'}
+          </span>
+        )}
         <button className="nut-phang" onClick={() => dat_mo(false)}>Hủy</button>
       </div>
     </HopThoai>

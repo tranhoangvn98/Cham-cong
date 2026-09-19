@@ -2,6 +2,16 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.95.2] — 2026-09-20
+
+**Văn bản công ty: soạn ở góc nhìn Quản trị, trang cá nhân chỉ đọc; báo rõ khi nút "Tạo bản nháp" bị khóa.**
+
+- Mục "Văn bản công ty" giờ hiện bên Quản trị (cạnh "Thông báo", nhóm Nhân sự & lương) và mở
+  thẳng tab "Văn bản ban hành" — nơi soạn bằng AI. Trang cá nhân ("Khu vực của tôi") chỉ còn
+  đọc: ẩn nút soạn AI và soạn/ban hành tài liệu, chỉ xem văn bản đã phát hành.
+- Form soạn: khi nội dung chưa đủ 3 ký tự, hiện dòng giải thích cạnh nút "Tạo bản nháp" —
+  trước đây nút bị vô hiệu âm thầm nên bấm không có phản hồi gì.
+
 ## [1.95.1] — 2026-09-20
 
 **Sửa lỗi: phân biệt "xin nghỉ việc/nghỉ làm" với "xin thôi việc".**

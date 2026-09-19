@@ -112,6 +112,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Nhân sự & lương', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
   { duong_dan: '/khieu-nai-luong', ten: 'Khiếu nại lương', icon: 'receipt-2', nhom: 'Nhân sự & lương', phu: 'Khiếu nại phiếu lương của nhân viên', quyen: 'nhan_su' },
   { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: 'Nhân sự & lương', phu: 'Đăng thông báo / gửi email / popup toàn công ty', quyen: 'nhan_su' },
+  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: 'Nhân sự & lương', phu: 'Soạn bằng AI, ban hành, tài liệu công ty', quyen: 'nhan_su' },
   { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Nhân sự & lương', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
 
   { duong_dan: '/cai-dat', ten: 'Cài đặt', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp', quyen: 'nhan_su' },
@@ -209,9 +210,11 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     case '/ca-nhan': return <TrangCaNhan />;
     case '/': return ca_nhan ? <TrangDashboardCaNhan /> : <TrangDashboard />;
     case '/thong-bao': return <TrangThongBaoCaNhan />;
-    case '/van-ban': return <TrangVanBan tab="thong_bao" />;
-    case '/van-ban/ban-hanh': return <TrangVanBan tab="ban_hanh" />;
-    case '/van-ban/tai-lieu': return <TrangVanBan tab="tai_lieu" />;
+    // Goc nhin Quan tri vao tab "Van ban ban hanh" (noi soan AI); goc nhin Ca nhan chi doc
+    // va vao tab "Thong bao" (danh sach thong bao da nhan).
+    case '/van-ban': return <TrangVanBan tab={ca_nhan ? 'thong_bao' : 'ban_hanh'} chi_doc={ca_nhan} />;
+    case '/van-ban/ban-hanh': return <TrangVanBan tab="ban_hanh" chi_doc={ca_nhan} />;
+    case '/van-ban/tai-lieu': return <TrangVanBan tab="tai_lieu" chi_doc={ca_nhan} />;
     case '/ho-so-toi': return <TrangHoSoToi />;
     case '/phieu-luong-toi': return <TrangPhieuLuongToi />;
     case '/don-cua-toi': return <TrangDonCuaToi />;

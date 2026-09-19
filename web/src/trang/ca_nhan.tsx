@@ -572,7 +572,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
           <div className="cn-noi-dung-trong">
             <RanhGioiLoi key={man_phu ?? tab}>
               {man_phu === 'thong_bao' && <TrangThongBaoCaNhan />}
-              {man_phu === 'van_ban' && <TrangVanBan />}
+              {man_phu === 'van_ban' && <TrangVanBan chi_doc />}
               {man_phu === null && (
                 <>
                   {tab === 'trang_chu' && <ManTrangChu hom_nay_nap={hom_nay_nap} di_den={di_den} di_duyet={di_duyet} />}
