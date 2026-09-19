@@ -94,6 +94,23 @@ test('doc_attlog: tu choi ngay khong ton tai', () => {
   assert.equal(so_dong_loi, 1);
 });
 
+test('doc_attlog: lan quet giua dem (00:00 -> gio offset) khong bi vut', () => {
+  // May +07 quet luc 00:21 ngay 08 -> UTC lui ve 17:21 ngay 07. Truoc day kiem tra ngay
+  // SAU khi tru offset nen UTC co ngay 07 != 08 va dong bi vut nhu "ngay vo ly" — ca dem
+  // khong ai cham cong duoc. Loi that da gap khi test e2e chay qua nua dem gio may.
+  const { ban_ghi, so_dong_loi } = doc_attlog('1001\t2026-09-08 00:21:00\t0\t15\t0\n');
+  assert.equal(so_dong_loi, 0);
+  assert.equal(ban_ghi.length, 1);
+  assert.equal(ban_ghi[0]!.thoi_diem.toISOString(), '2026-09-07T17:21:00.000Z');
+});
+
+test('doc_attlog: lan quet dung luc nua dem (00:00:00) van duoc ghi', () => {
+  const { ban_ghi, so_dong_loi } = doc_attlog('1001\t2026-09-08 00:00:00\t0\t15\t0\n');
+  assert.equal(so_dong_loi, 0);
+  assert.equal(ban_ghi.length, 1);
+  assert.equal(ban_ghi[0]!.thoi_diem.toISOString(), '2026-09-07T17:00:00.000Z');
+});
+
 test('doc_attlog: tu choi gio khong hop le', () => {
   const { ban_ghi } = doc_attlog('1001\t2026-08-06 25:00:00\t0\t1\t0');
   assert.equal(ban_ghi.length, 0);

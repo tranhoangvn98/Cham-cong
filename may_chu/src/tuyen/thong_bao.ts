@@ -8,6 +8,7 @@ import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { gui_ngam } from '../su_kien/thong_bao_day.ts';
+import { gui_email_thong_bao } from '../su_kien/gui_email_thong_bao.ts';
 import { gui_email, email_bat } from '../su_kien/gui_email.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
@@ -15,7 +16,7 @@ import { luu_van_ban_cong_ty, lam_sach_ten, xoa_tep_ho_so } from '../tien_ich/lu
 import { cau_hinh } from '../cau_hinh.ts';
 import {
   chuoi, chuoi_bat_buoc, luan_ly, ngay, than, trong_tap, uuid,
-  LoiDauVao, LoiKhongTim,
+  LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
 
 const MUC_DO = ['thuong', 'quan_trong', 'khan'] as const;
@@ -127,11 +128,16 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
   /** Danh sach thong bao + so nguoi da doc / da giai trinh. */
   app.get('/thong-bao', { preHandler: can_nhan_su }, async () => truy_van(
     `select tb.id, tb.ma, tb.tieu_de, tb.noi_dung, tb.muc_do, tb.can_giai_trinh, tb.pham_vi,
-            tb.phong_ban_id, pb.ten as phong_ban, tb.tao_luc, tb.het_han, tb.da_go,
+            tb.phong_ban_id, pb.ten as phong_ban,
+            nv.ho_ten as nhan_vien, (tb.ten_luu is not null) as co_tep,
+            tb.tao_luc, tb.het_han, tb.da_go,
+            tb.da_gui_email, tb.gui_email_luc, tb.gui_email_loi,
             (select count(*) from thong_bao_da_doc dd where dd.thong_bao_id = tb.id)::int as so_da_doc,
             (select count(*) from thong_bao_da_doc dd
               where dd.thong_bao_id = tb.id and dd.giai_trinh is not null)::int as so_giai_trinh
-       from thong_bao tb left join phong_ban pb on pb.id = tb.phong_ban_id
+       from thong_bao tb
+       left join phong_ban pb on pb.id = tb.phong_ban_id
+       left join nhan_vien nv on nv.id = tb.nhan_vien_id
       order by tb.tao_luc desc limit 300`));
 
   /** Tao thong bao moi. */
@@ -199,6 +205,17 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
     const noi_dung = chuoi(b, 'noi_dung', { toi_da: 8000 }) ?? '';
     const muc_do = trong_tap(b, 'muc_do', MUC_DO, { bat_buoc: false }) ?? 'thuong';
     return { html: than_email_thong_bao(tieu_de, noi_dung, muc_do) };
+  });
+
+  /** Gui (lai) email cho mot thong bao — dung khi lan tu dong bi loi hoac chua khai cau hinh. */
+  app.post('/thong-bao/:id/gui-email', { preHandler: can_nhan_su }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id_param(req);
+    const kq = await gui_email_thong_bao(id);
+    await ghi_nhat_ky(nd.sub, 'gui_email_thong_bao', 'thong_bao', id,
+      { ok: kq.ok, so_nhan: kq.so_nhan ?? null }, req.ip);
+    if (!kq.ok) throw new LoiXungDot(kq.ly_do ?? 'Không gửi được email.');
+    return res.send({ ok: true, so_nhan: kq.so_nhan ?? 0 });
   });
 
   /** Sua thong bao: go xuong hoac dat lai han. */

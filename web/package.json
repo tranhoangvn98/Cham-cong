@@ -11,6 +11,7 @@
     "kiem_tra_kieu": "tsc -b --noEmit"
   },
   "dependencies": {
+    "docx-preview": "^0.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

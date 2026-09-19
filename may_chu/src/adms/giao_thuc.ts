@@ -68,18 +68,23 @@ function doc_thoi_diem(gia_tri: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(s);
   if (m !== null) {
     const [, nam, thang, ngay, gio, phut, giay] = m as unknown as string[];
-    // Dung Date.UTC roi tru offset: coi chuoi la gio dia phuong cua MAY,
-    // khong phu thuoc mui gio cua may chu chay Node.
-    const utc_ms = Date.UTC(
-      Number(nam), Number(thang) - 1, Number(ngay),
-      Number(gio), Number(phut), Number(giay ?? '0'),
-    ) - OFFSET_MAY_MS;
-    const d = new Date(utc_ms);
-    // Chan ngay vo ly (vd 2025-02-31 -> troi sang thang 3) va gio > 23:59
+    // Chan gia tri ngoai vung truoc (gio > 23:59, thang 13...)
     if (Number(thang) < 1 || Number(thang) > 12) return null;
     if (Number(gio) > 23 || Number(phut) > 59) return null;
-    if (d.getUTCDate() !== Number(ngay)) return null;
-    return d;
+
+    // Dung Date.UTC roi tru offset: coi chuoi la gio dia phuong cua MAY,
+    // khong phu thuoc mui gio cua may chu chay Node.
+    //
+    // Kiem ngay vo ly (vd 2025-02-31 -> troi sang thang 3) theo KHUNG NGAY CUA MAY,
+    // TRUOC khi tru offset. Truoc day kiem SAU khi tru offset nen lan quet trong khoang
+    // 00:00 -> OFFSET giua dem co ngay UTC lui ve hom truoc va bi vut di nham (may +07
+    // quet luc 00:30 bi xem la "ngay vo ly"). Ca dem khong co cham cong nao duoc ghi.
+    const moc_may_ms = Date.UTC(
+      Number(nam), Number(thang) - 1, Number(ngay),
+      Number(gio), Number(phut), Number(giay ?? '0'),
+    );
+    if (new Date(moc_may_ms).getUTCDate() !== Number(ngay)) return null;
+    return new Date(moc_may_ms - OFFSET_MAY_MS);
   }
 
   // Dang epoch giay

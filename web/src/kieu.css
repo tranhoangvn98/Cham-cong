@@ -19,6 +19,10 @@ body {
 a { color: var(--chinh-dam); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+/* Ten nhan vien la lien ket mo ho so: xanh la dam (--tot) de phan biet voi lien ket
+   thuong dang dung xanh duong (--chinh-dam). Gach chan khi re chuot nhu moi lien ket. */
+.lk-nhan-vien { color: var(--tot); }
+
 h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
 h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
 h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
@@ -239,6 +243,111 @@ blockquote {
   margin-bottom: 16px;
 }
 .the-mong { padding: 0; overflow: hidden; }
+
+/* ---------------------------------------------------------------- xem truoc van ban
+   Khuon van ban ND30 tren web — chi dung token, khong mau cung. Giong cach trinh bay
+   cua build_vbhc.py de nguoi duyet hinh dung ban in truoc khi tai docx. */
+.xem-truoc-van-ban {
+  font-family: var(--chu-viet);
+  color: var(--chu);
+  line-height: 1.5;
+  font-size: 14px;
+}
+.xem-truoc-van-ban p { margin: 0 0 6px; }
+.xem-truoc-van-ban .xvt-in-dam { font-weight: 700; }
+/* ND30: ten co quan ben TRAI + quoc hieu ben PHAI — cung mot dai (giong mau ND30). */
+.xem-truoc-van-ban .xvt-dau-thu {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 16px; margin-bottom: 12px;
+}
+.xem-truoc-van-ban .xvt-quoc-hieu {
+  text-align: right; flex-shrink: 0; max-width: 55%;
+}
+.xem-truoc-van-ban .xvt-quoc-hieu > div:first-child {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.4px;
+}
+.xem-truoc-van-ban .xvt-quoc-hieu > div:last-child {
+  font-size: 13px; margin-top: 2px;
+}
+.xem-truoc-van-ban .xvt-tieu-ngu {
+  font-weight: 700; text-decoration: underline;
+}
+.xem-truoc-van-ban .xvt-co-quan {
+  font-weight: 700; text-decoration: underline;
+  margin-bottom: 0; text-align: left; max-width: 45%;
+}
+.xem-truoc-van-ban .xvt-dong-dau {
+  display: flex; justify-content: space-between; gap: 16px; margin-bottom: 18px;
+}
+.xem-truoc-van-ban .xvt-ngay { text-align: right; }
+.xem-truoc-van-ban .xvt-du-thao {
+  border: 1px solid var(--canh-bao); color: var(--canh-bao);
+  border-radius: var(--tron); padding: 1px 8px; font-weight: 700; letter-spacing: 1px;
+}
+.xem-truoc-van-ban .xvt-tua { text-align: center; margin-bottom: 14px; }
+.xem-truoc-van-ban .xvt-tua > div:first-child { font-size: 17px; margin-bottom: 4px; }
+.xem-truoc-van-ban .xvt-tua > div:last-child { font-size: 15px; }
+.xem-truoc-van-ban .xvt-kinh-gui { margin-bottom: 10px; }
+.xem-truoc-van-ban .xvt-khoi { margin-bottom: 10px; }
+.xem-truoc-van-ban .xvt-ky {
+  display: flex; justify-content: flex-end; gap: 16px; margin-top: 22px;
+}
+/* "Noi nhan" co thi nam trai (day ra bang margin auto); khong co thi khoi ky van LECH PHAI. */
+.xem-truoc-van-ban .xvt-noi-nhan { font-size: 13px; margin-right: auto; }
+/* ND30: chuc vu + ho ten nguoi ky nam LECH PHAI, khong can giua. */
+.xem-truoc-van-ban .xvt-nguoi-ky { text-align: right; font-size: 13px; }
+.xem-truoc-van-ban .xvt-nguoi-ky > div { margin-bottom: 2px; }
+/* Hai cot dau thu (mau THVN): ten co quan ben TRAI + quoc hieu ben PHAI. */
+.xem-truoc-van-ban .xvt-cot-trai { flex: 0 0 42%; min-width: 0; }
+.xem-truoc-van-ban .xvt-cot-phai { flex: 1; text-align: right; min-width: 0; }
+.xem-truoc-van-ban .xvt-gach-cot-trai,
+.xem-truoc-van-ban .xvt-gach-cot-phai { border-bottom: 1px solid var(--chu); margin: 6px 0; }
+.xem-truoc-van-ban .xvt-gach-cot-trai { width: 80%; }
+.xem-truoc-van-ban .xvt-gach-cot-phai { width: 100%; }
+.xem-truoc-van-ban .xvt-so { font-size: 13px; margin-top: 4px; }
+/* D-09: trich yeu cong van sat trai, khong dam. */
+.xem-truoc-van-ban .xvt-tua-cv { margin-bottom: 14px; }
+/* B-14: duong ke duoi trich yeu, rong ~40%, can giua. */
+.xem-truoc-van-ban .xvt-gach-tua {
+  width: 40%; margin: 6px auto 0; border-bottom: 1px solid var(--chu);
+}
+.xem-truoc-van-ban .xvt-kinh-gui-dong { padding-left: 0.75cm; }
+/* D-11: can cu in nghieng. */
+.xem-truoc-van-ban .xvt-can-cu { font-style: italic; }
+/* Dong "QUYẾT ĐỊNH:" dung rieng: dam + can giua, giong ban docx. */
+.xem-truoc-van-ban .xvt-quyet-dinh { text-align: center; font-weight: 700; }
+
+/* Khung render docx online (docx-preview) — gioi han chieu cao, cuon trong modal. */
+.o-xem-docx {
+  max-height: 70vh;
+  overflow: auto;
+  padding: 20px 24px;
+  background: var(--nen-the);
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+}
+.o-xem-docx .docx-wrapper { background: var(--nen-the); }
+.o-xem-docx .docx-wrapper > section.docx {
+  box-shadow: none; border: 1px solid var(--vien); border-radius: var(--tron);
+  margin: 0 auto; background: var(--nen-the); color: var(--chu);
+}
+
+/* Bo cuc 2 cot cua chi tiet van ban AI: TRAI = van ban, PHAI = thong tin + nut.
+   Dung cung hop thoai toan man nen ca hai cot co cho tho. */
+.vbai-2-cot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+  margin-top: 4px;
+}
+.vbai-cot-van { min-width: 0; }
+.vbai-cot-van .the { margin-bottom: 0; }
+.vbai-cot-thong-tin { min-width: 0; }
+/* Man hep: xep doc lai — van ban tren, thong tin duoi. */
+@media (max-width: 980px) {
+  .vbai-2-cot { grid-template-columns: 1fr; }
+}
 
 .luoi { display: grid; gap: 12px; }
 .luoi-4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
@@ -633,6 +742,20 @@ input[type="checkbox"] {
 }
 .hang-tab button:hover { background: var(--nen-mo); }
 .hang-tab button.dang-chon { color: var(--chinh-dam); border-bottom-color: var(--chinh); }
+/* Lien ket tab (trang Van ban cong ty dung duong dan con thay nut) — cung hinh dang nut. */
+.hang-tab a {
+  display: inline-block;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 9px 14px;
+  color: var(--chu-nhat);
+  font-weight: 500;
+  text-decoration: none;
+}
+.hang-tab a:hover { background: var(--nen-mo); }
+.hang-tab a.dang-chon { color: var(--chinh-dam); border-bottom-color: var(--chinh); }
 
 .dem-tab {
   background: var(--xau);
@@ -1459,6 +1582,18 @@ textarea:focus-visible,
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; border-bottom: 1px solid var(--vien);
 }
+/* Hai tab loc: Tat ca / Cho duyet (da xem nhung chua duoc xu ly). */
+.chuong-tabs {
+  display: flex; gap: 2px;
+  padding: 4px 8px 0; border-bottom: 1px solid var(--vien);
+}
+.chuong-tab {
+  border: none; background: none; border-bottom: 2px solid transparent;
+  padding: 8px 10px; color: var(--chu-nhat); font-weight: 500;
+  font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.chuong-tab:hover { background: var(--nen-mo); }
+.chuong-tab.dang-chon { color: var(--chinh-dam); border-bottom-color: var(--chinh); }
 .chuong-ds { max-height: min(60vh, 460px); overflow-y: auto; }
 .chuong-trong { padding: 24px 14px; text-align: center; color: var(--chu-mo); font-size: 13px; }
 .chuong-muc {

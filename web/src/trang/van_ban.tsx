@@ -1,13 +1,28 @@
-// Van ban cong ty: SOAN THAO + BAN HANH (khong chi la kho tep).
+// Van ban cong ty — dau moi duy nhat cho:
+//   tab "Thong bao"        — thong bao BGD/HR (loc nhanh toan cong ty), doc + giai trinh.
+//   tab "Van ban ban hanh" — van ban co so hieu da phat hanh; nhan su soan AI o day.
+//   tab "Tai lieu cong ty" — kho tep noi quy, bieu mau, chinh sach + HR soan & ban hanh
+//                           văn bản thủ công (không cần AI, có số hiệu VB- tự cấp).
 //
-// HR soan noi dung ngay tren he thong (khong bat buoc dinh kem tep), co so hieu tu dong,
-// nguoi ban hanh, loai van ban. Khi dang co the GUI: thong bao he thong (vao chuong bao +
-// theo doi da doc) va/hoac email; PHAM VI ca nhan / phong ban / toan cong ty.
+// Mot duong dan con cho moi tab (bookmark / nut Lui chay duoc): /van-ban, /van-ban/ban-hanh,
+// /van-ban/tai-lieu. Khong con trang "Van ban AI" hay "Thong bao" dung rieng.
 import { useRef, useState, type ReactNode } from 'react';
 import {
-  DangTai, HopLoi, HopTot, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_viet,
+  DangTai, HopLoi, HopTot, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_gio,
+  ngay_viet,
 } from '../thanh_phan.tsx';
+import { LienKet } from '../dinh_tuyen.tsx';
 import { gui_tep, la_nhan_su, tai_tep } from '../api.ts';
+import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
+import { TabVanBanBanHanh } from './thong_bao_ai.tsx';
+
+export type TabVanBan = 'thong_bao' | 'ban_hanh' | 'tai_lieu';
+
+const CAC_TAB: { ma: TabVanBan; ten: string; den: string }[] = [
+  { ma: 'thong_bao', ten: 'Thông báo', den: '/van-ban' },
+  { ma: 'ban_hanh', ten: 'Văn bản ban hành', den: '/van-ban/ban-hanh' },
+  { ma: 'tai_lieu', ten: 'Tài liệu công ty', den: '/van-ban/tai-lieu' },
+];
 
 interface VanBan {
   id: string;
@@ -23,6 +38,17 @@ interface VanBan {
   co_tep: boolean;
 }
 
+interface VanBanBanHanh {
+  id: string;
+  ma: string;
+  tieu_de: string;
+  muc_do: string;
+  tao_luc: string;
+  so_ky_hieu: string | null;
+  loai: 'thong_bao' | 'quyet_dinh' | 'cong_van';
+  co_tep: boolean;
+}
+
 interface PhongBan { id: string; ten: string }
 interface NhanVienGon { id: string; ma_nv: string; ho_ten: string }
 
@@ -34,13 +60,19 @@ const NHAN_DANH_MUC: Record<string, string> = {
 };
 const DANH_MUC_THU_TU = Object.keys(NHAN_DANH_MUC);
 
+const NHAN_LOAI: Record<string, string> = {
+  thong_bao: 'Thông báo', quyet_dinh: 'Quyết định', cong_van: 'Công văn',
+};
+
 function co_MB(byte: number | null): string {
   if (byte === null || byte === 0) return '';
   const kb = byte / 1024;
   return kb < 1024 ? `${Math.round(kb)} KB` : `${(kb / 1024).toFixed(1)} MB`;
 }
 
-/** HR: soan va ban hanh van ban. */
+// ==================================================================== tab tai lieu cong ty
+
+/** HR: soan va ban hanh van ban thu cong (khong can AI, so hieu VB- tu cap). */
 function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
   const [mo, dat_mo] = useState(false);
   const [tieu_de, dat_tieu_de] = useState('');
@@ -185,7 +217,8 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
   );
 }
 
-export function TrangVanBan(): ReactNode {
+/** Kho tep noi quy / bieu mau / chinh sach — noi dung cu cua trang Van ban cong ty. */
+function TabTaiLieu(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<VanBan[]>('/api/toi/van-ban');
   const hd = dung_hanh_dong();
   const hr = la_nhan_su();
@@ -200,14 +233,9 @@ export function TrangVanBan(): ReactNode {
   };
 
   return (
-    <div className="canhan">
-      <div className="canhan-hero">
-        <div className="canhan-hero-chao">Văn bản công ty</div>
-        <div className="canhan-hero-phu">Thông báo, quyết định, nội quy, biểu mẫu — của công ty.</div>
-      </div>
+    <div>
       <HopLoi loi={hd.loi} />
       {hr && <SoanVanBan khi_xong={nap_lai} />}
-
       {ds.length === 0
         ? <Trong tieu_de="Chưa có văn bản" mo_ta="Nhân sự sẽ đăng thông báo, nội quy, biểu mẫu tại đây." />
         : nhom.map((dm, i) => (
@@ -240,6 +268,99 @@ export function TrangVanBan(): ReactNode {
             </ul>
           </div>
         ))}
+    </div>
+  );
+}
+
+// ==================================================================== tab van ban ban hanh
+
+/** Nhan vien thuong: danh sach van ban DA PHAT HANH co so ky hieu trong pham vi cua minh. */
+function DsVanBanBanHanh(): ReactNode {
+  const { du_lieu, dang_tai, loi } = dung_nap<VanBanBanHanh[]>('/api/toi/van-ban-ban-hanh');
+  const hd = dung_hanh_dong();
+
+  if (dang_tai) return <DangTai />;
+  if (loi !== null) return <HopLoi loi={loi} />;
+  const ds = du_lieu ?? [];
+
+  if (ds.length === 0) {
+    return <Trong tieu_de="Chưa có văn bản ban hành"
+      mo_ta="Văn bản có số ký hiệu phát hành cho bạn sẽ hiện ở đây." />;
+  }
+  return (
+    <div>
+      <HopLoi loi={hd.loi} />
+      <table className="bang-gon">
+        <thead>
+          <tr>
+            <th>Số ký hiệu</th><th>Loại</th><th>Trích yếu</th><th>Phát hành</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {ds.map((v, i) => (
+            <tr key={khoa_tinh(v.id, i)}>
+              <td><b>{v.so_ky_hieu ?? '—'}</b></td>
+              <td>{NHAN_LOAI[v.loai] ?? v.loai}</td>
+              <td>{v.tieu_de}</td>
+              <td>{ngay_gio(v.tao_luc)}</td>
+              <td>
+                {v.co_tep && (
+                  <button className="nut-nho nut-phang"
+                    onClick={() => {
+                      void hd.chay(() => tai_tep(
+                        `/api/toi/thong-bao/${v.id}/tai`,
+                        `${v.so_ky_hieu?.replaceAll('/', '-') ?? v.ma}.docx`,
+                      ));
+                    }}
+                    disabled={hd.dang_chay}>
+                    Tải DOCX
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ==================================================================== trang tong hop
+
+/**
+ * Trang "Van ban cong ty" — 3 tab. Nhan su thay them bang soan AI trong tab "Van ban ban
+ * hanh"; nhan vien thuong chi thay danh sach van ban da phat hanh.
+ */
+export function TrangVanBan({ tab = 'thong_bao' }: { tab?: TabVanBan }): ReactNode {
+  const hr = la_nhan_su();
+  const tab_dung: TabVanBan = CAC_TAB.some((t) => t.ma === tab) ? tab : 'thong_bao';
+
+  let noi_dung: ReactNode;
+  if (tab_dung === 'thong_bao') {
+    noi_dung = <TrangThongBaoCaNhan />;
+  } else if (tab_dung === 'ban_hanh') {
+    noi_dung = hr ? <TabVanBanBanHanh /> : <DsVanBanBanHanh />;
+  } else {
+    noi_dung = <TabTaiLieu />;
+  }
+
+  return (
+    <div className="canhan">
+      <div className="canhan-hero">
+        <div className="canhan-hero-chao">Văn bản công ty</div>
+        <div className="canhan-hero-phu">
+          Thông báo, văn bản ban hành có số hiệu và tài liệu công ty — một nơi duy nhất.
+        </div>
+      </div>
+      <div className="hang-tab" role="tablist" aria-label="Các mục văn bản công ty">
+        {CAC_TAB.map((t) => (
+          <LienKet key={t.ma} den={t.den}
+            lop={tab_dung === t.ma ? 'dang-chon' : ''}>
+            {t.ten}
+          </LienKet>
+        ))}
+      </div>
+      {noi_dung}
     </div>
   );
 }

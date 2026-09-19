@@ -208,7 +208,7 @@ function HopThoaiDanhSach(
                     {ds.map((d) => (
                       <tr key={d.nhan_vien_id}>
                         <td className="so">{d.ma_nv}</td>
-                        <td><LienKet den={`/nhan-vien/${d.nhan_vien_id}`}>{d.ho_ten}</LienKet></td>
+                        <td><LienKet den={`/nhan-vien/${d.nhan_vien_id}`} lop="lk-nhan-vien">{d.ho_ten}</LienKet></td>
                         <td>{d.phong_ban ?? '—'}</td>
                         <td className="khong-ngat">
                           {d.trang_thai === null
@@ -302,7 +302,6 @@ export function TrangDashboard(): ReactNode {
           <div className="bd-khoi bd-choduyet">
             <ChoDuyet ct={du_lieu.cong_ty} />
           </div>
-
 
           {du_lieu.nhan_su !== null && (
             <div className="bd-khoi bd-viens">
@@ -567,11 +566,11 @@ function DiemNongRaVao({ rv }: { rv: RaVaoHR }): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {/* Tong quan chi diem danh top 5 — danh sach day du nam o tab /ra-vao. */}
+                {/* Tong quan chi diem danh top — danh sach day du nam o tab /ra-vao. */}
                 {rv.top_nguoi.slice(0, 4).map((n) => (
                   <tr key={n.nhan_vien_id}>
                     <td className="so">{n.ma_nv}</td>
-                    <td><LienKet den={`/nhan-vien/${n.nhan_vien_id}`}>{n.ho_ten}</LienKet></td>
+                    <td><LienKet den={`/nhan-vien/${n.nhan_vien_id}`} lop="lk-nhan-vien">{n.ho_ten}</LienKet></td>
                     <td>{n.phong_ban ?? '—'}</td>
                     <td className="canh-phai so">{n.so_canh_bao}</td>
                     <td className="canh-phai so">
