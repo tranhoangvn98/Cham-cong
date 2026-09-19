@@ -10,6 +10,7 @@ const {
   chuan, nhan_dang_y_dinh, phan_tich_ngay, phan_tich_khoang_nghi,
   phan_tich_loai_nghi, phan_tich_giai_trinh, phan_tich_de_xuat, tu_khoa, ngay_hop_le,
   phan_tich_gio, phan_tich_noi_den, phan_tich_noi_dung_khieu_nai, buoi_trong_ngay,
+  tra_loi_mo_trang,
 } = await import('../src/ca_nhan/tro_ly.ts');
 
 const HOM_NAY = '2026-09-19';
@@ -173,6 +174,20 @@ test('buoi_trong_ngay: chao dung buoi theo mui gio may cham cong', () => {
   assert.equal(buoi_trong_ngay(14), 'chieu');
   assert.equal(buoi_trong_ngay(18), 'toi');
   assert.equal(buoi_trong_ngay(23), 'toi');
+});
+
+test('tra_loi_mo_trang: ung luong chi mo cho nhan su/quan tri, nhan vien thi huong dan', () => {
+  // Nhan su/quan tri mo duoc trang ung luong ngay ca tu tro ly ca nhan.
+  const hr = tra_loi_mo_trang('mở cho cái ứng lương', 'nhan_su');
+  assert.equal(hr.y_dinh, 'mo_trang');
+  assert.equal(hr.den, '/ung-luong');
+  assert.equal(tra_loi_mo_trang('mở chỗ ứng lương', 'admin').den, '/ung-luong');
+  // Nhan vien thuong khong co trang de mo — tra loi huong dan, khong tra den.
+  const nv = tra_loi_mo_trang('mở cho cái ứng lương', 'nhan_vien');
+  assert.equal(nv.den, undefined);
+  assert.match(nv.tra_loi, /nhân sự/);
+  // Trang thuong thi mo cho moi nguoi.
+  assert.equal(tra_loi_mo_trang('mở đơn của tôi', 'nhan_vien').den, '/don-cua-toi');
 });
 
 test('phan_tich_gio: doc gio OT tu cau noi', () => {

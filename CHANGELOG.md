@@ -2,6 +2,13 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.99.3] — 2026-09-20
+
+**Sửa lỗi: nhân sự/quản trị nói "mở cho cái ứng lương" với trợ lý cá nhân không mở được trang.**
+
+- Trợ lý cá nhân giờ kiểm tra vai trò: tài khoản nhân sự/quản trị mở thẳng trang Ứng lương;
+  nhân viên thường vẫn nhận lời hướng dẫn liên hệ nhân sự.
+
 ## [1.99.2] — 2026-09-20
 
 **Trợ lý trò chuyện ngoài lề trong giới hạn.**

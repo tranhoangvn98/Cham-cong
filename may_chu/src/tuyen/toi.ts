@@ -1948,10 +1948,11 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
 
   /** Tro ly nhan su: hoi bang tieng Viet, tra loi tu du lieu cua chinh minh. */
   app.get('/tro-ly', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
     const nv_id = nhan_vien_cua_toi(req);
     const q = req.query as Record<string, unknown>;
     const cau_hoi = typeof q['hoi'] === 'string' ? q['hoi'] : '';
-    return tra_loi_tro_ly(nv_id, cau_hoi);
+    return tra_loi_tro_ly(nv_id, cau_hoi, nd.vai_tro);
   });
 
   /**

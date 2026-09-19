@@ -25,6 +25,12 @@ Nút tròn góc phải dưới ở **góc nhìn Cá nhân** mở trợ lý. Hỏ
 - Lịch sử là dữ liệu cá nhân: chỉ chủ dữ liệu đọc/xóa được của mình; thẻ xác nhận đơn
   **không** được lưu — tránh gửi nhầm đơn cũ sau khi tải lại trang.
 
+**Mở trang giúp khi được yêu cầu**
+
+- "Mở đơn của tôi", "mở phiếu lương", "mở hồ sơ của tôi"… trợ lý **tự chuyển tới đúng trang**
+  (chỉ những đường dẫn trong danh sách trắng của mã nguồn). Trang nghiệp vụ nhân sự như
+  Ứng lương chỉ mở cho tài khoản **nhân sự/quản trị** — nhân viên thường nhận lời hướng dẫn.
+
 **Tra cứu dữ liệu của chính mình**
 
 - Phép năm: còn bao nhiêu ngày, đã dùng bao nhiêu.

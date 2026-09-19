@@ -26,6 +26,7 @@ import {
 } from '../tien_ich/thoi_gian.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { goi_deepseek } from '../ai/deepseek.ts';
+import { la_vai_tro_nhan_su } from '../bao_mat/quyen_ho_so.ts';
 
 /** Cung tap loai nghi voi route POST /api/toi/nghi-phep (toi.ts). Khong import tu do de tranh vong import. */
 export const LOAI_NGHI = [
@@ -420,8 +421,10 @@ const NHAN_DANH_MUC: Record<string, string> = {
  * Lich su duoc LUU LAI DAI theo nhan vien (bang tro_ly_hoi_thoai) ngay sau khi tra loi —
  * dung de tro ly hieu cau noi tiep va chao lai dung chu de lan truoc.
  */
-export async function tra_loi_tro_ly(nv_id: string, cau_hoi_goc: string): Promise<TraLoiTroLy> {
-  const kq = await tra_loi_noi_bo(nv_id, cau_hoi_goc);
+export async function tra_loi_tro_ly(
+  nv_id: string, cau_hoi_goc: string, vai_tro = '',
+): Promise<TraLoiTroLy> {
+  const kq = await tra_loi_noi_bo(nv_id, cau_hoi_goc, vai_tro);
   // Luu lai de lan sau tro ly nho nguoi hoi (ngoai canh hoi tiep). Cau rong (mo widget chao)
   // thi khong luu — tranh nhet loi chao vao lich su. Loi luu khong duoc lam hong cau tra loi.
   if (cau_hoi_goc.trim() !== '') {
@@ -430,7 +433,9 @@ export async function tra_loi_tro_ly(nv_id: string, cau_hoi_goc: string): Promis
   return kq;
 }
 
-async function tra_loi_noi_bo(nv_id: string, cau_hoi_goc: string): Promise<TraLoiTroLy> {
+async function tra_loi_noi_bo(
+  nv_id: string, cau_hoi_goc: string, vai_tro = '',
+): Promise<TraLoiTroLy> {
   const cau = chuan(cau_hoi_goc.trim());
   const hom_nay = ngay_dia_phuong(new Date());
   const y_dinh = nhan_dang_y_dinh(cau);
@@ -438,7 +443,7 @@ async function tra_loi_noi_bo(nv_id: string, cau_hoi_goc: string): Promise<TraLo
   switch (y_dinh) {
     case 'chao': return tra_loi_chao(nv_id, hom_nay);
     case 'hoi_tham': return tra_loi_hoi_tham(cau);
-    case 'mo_trang': return tra_loi_mo_trang(cau);
+    case 'mo_trang': return tra_loi_mo_trang(cau, vai_tro);
     case 'khieu_nai_luong': return tra_loi_khieu_nai_luong(nv_id, cau_hoi_goc, cau);
     case 'khieu_nai_ky_luat': return tra_loi_khieu_nai_ky_luat(nv_id, cau_hoi_goc, cau);
     case 'nghi_viec': return tra_loi_nghi_viec(nv_id, cau_hoi_goc, cau, hom_nay);
@@ -794,7 +799,7 @@ const BAN_DO_TRANG: { khoa: string; ten: string; duong: string | null }[] = [
 ];
 
 /** Tra loi yeu cau "mo cho ...": tra duong dan (da kiem) de giao dien chuyen trang. */
-function tra_loi_mo_trang(cau: string): TraLoiTroLy {
+export function tra_loi_mo_trang(cau: string, vai_tro: string): TraLoiTroLy {
   const muc = BAN_DO_TRANG.find((m) => cau.includes(m.khoa));
   if (muc === undefined) {
     return {
@@ -804,12 +809,29 @@ function tra_loi_mo_trang(cau: string): TraLoiTroLy {
       goi_y: ['Mở đơn của tôi', 'Mở phiếu lương', 'Mở hồ sơ của tôi'],
     };
   }
-  if (muc.duong === null) {
+  // Ung luong la trang NGHIEP VU NHAN SU: tai khoan nhan su/quan tri mo duoc ngay ca khi
+  // dang dung tro ly ca nhan; nhan vien thuong thi huong dan lien he nhan su.
+  if (muc.khoa === 'ung luong') {
+    if (la_vai_tro_nhan_su(vai_tro)) {
+      return {
+        tra_loi: 'Được, mình mở **Ứng lương** cho bạn nhé.',
+        y_dinh: 'mo_trang',
+        den: '/ung-luong',
+        goi_y: [],
+      };
+    }
     return {
       tra_loi: 'Ứng lương hiện chưa mở tự phục vụ trên hệ thống. Bạn gửi đề nghị tới bộ phận '
         + 'nhân sự nhé — nhân sự sẽ tạo khoản ứng và theo dõi duyệt/chi cho bạn.',
       y_dinh: 'mo_trang',
       goi_y: ['Công tháng này của tôi thế nào?', 'Tôi có đơn nào đang chờ duyệt không?'],
+    };
+  }
+  if (muc.duong === null) {
+    return {
+      tra_loi: 'Mình chưa mở được mục này, bạn liên hệ nhân sự nhé.',
+      y_dinh: 'mo_trang',
+      goi_y: ['Mở đơn của tôi', 'Mở phiếu lương'],
     };
   }
   return {
