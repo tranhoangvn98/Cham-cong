@@ -7,7 +7,7 @@ import { goi, gui_tep } from '../api.ts';
 import { lay_muc_tieu_bao, nghe_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import {
   AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap,
-  ngay_gio, type TinNhanKN,
+  khoa_tinh, ngay_gio, type TinNhanKN,
 } from '../thanh_phan.tsx';
 
 interface KhoanPhieu {
@@ -306,8 +306,7 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
         </div>
 
         <div className="pl-cot">
-          <div className="pl-cot-trai">
-            <section className="pl-the" aria-label="Thu nhập">
+          <section className="pl-the" aria-label="Thu nhập">
               <h3>Thu nhập</h3>
             {Number(p.phu_cap) > 0 ? (
               <>
@@ -436,7 +435,13 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
             {chi_tiet_tru.length > 0 && (
               <div className="pl-muon">
                 <strong>Các lần đi muộn về sớm</strong>
-                <p>{chi_tiet_tru.flatMap(({ chi }) => chi.cac_lan ?? []).join('  ')}</p>
+                <div className="pl-muon-chip">
+                  {chi_tiet_tru.flatMap(({ chi }) => chi.cac_lan ?? []).map((mo_ta, i) => (
+                    <span className="pl-chip-muon" key={khoa_tinh(mo_ta, i)}>
+                      {mo_ta.replace(/: (vào|ra) /, ' ')}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
             <div className="pl-dong pl-dong-tong pl-tong-do">
@@ -445,44 +450,7 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
             </div>
           </section>
 
-            <section className="pl-the" aria-label="Cơ sở tính lương (chấm công)">
-              <h3>Cơ sở tính lương (chấm công)</h3>
-              {cc !== null ? (
-                <>
-                  <div className="pl-co-so-luoi">
-                    <div className="pl-co-so-o">
-                      <span>Công thực tế</span>
-                      <strong>{cc.so_ngay_co_mat}</strong>
-                      <span className="mo-ta">{cc.so_ngay_co_mat} ngày có dữ liệu</span>
-                    </div>
-                    <div className="pl-co-so-o">
-                      <span>Giờ công</span>
-                      <strong>{gio_phut(cc.tong_phut_lam)}</strong>
-                      <span className="mo-ta">đã trừ giờ nghỉ trưa</span>
-                    </div>
-                    <div className="pl-co-so-o">
-                      <span>OT ghi nhận</span>
-                      <strong>{Number(p.phut_ot) > 0 ? gio_ot(p.phut_ot) : '—'}</strong>
-                      <span className="mo-ta">đã duyệt từ trên</span>
-                    </div>
-                    <div className="pl-co-so-o">
-                      <span>Vắng</span>
-                      <strong>{cc.so_ngay_vang}</strong>
-                      <span className="mo-ta">không phép</span>
-                    </div>
-                  </div>
-                  <span className="mo-ta" style={{ paddingTop: 4 }}>
-                    Tổng: {cc.tong_ngay_du_lieu} ngày có dữ liệu
-                  </span>
-                </>
-              ) : (
-                <span className="mo-ta">Chưa có dữ liệu chấm công của kỳ này.</span>
-              )}
-            </section>
-          </div>
-
-          <div className="pl-cot-phai">
-            <section className="pl-the" aria-label="Căn cứ tính lương">
+          <section className="pl-the" aria-label="Căn cứ tính lương">
               <h3>Căn cứ tính lương</h3>
               <div className="pl-dong">
                 <span className="pl-dong-ten">Công chuẩn</span>
@@ -526,6 +494,42 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
                   <span className="mo-ta">Đã dùng {p.phep.da_dung} ngày{p.phep.cho_duyet > 0
                     ? ` · ${p.phep.cho_duyet} đang chờ duyệt` : ''}</span>
                 </div>
+              )}
+          </section>
+
+          <div className="pl-cot-phai">
+            <section className="pl-the" aria-label="Cơ sở tính lương (chấm công)">
+              <h3>Cơ sở tính lương (chấm công)</h3>
+              {cc !== null ? (
+                <>
+                  <div className="pl-co-so-luoi">
+                    <div className="pl-co-so-o">
+                      <span>Công thực tế</span>
+                      <strong>{cc.so_ngay_co_mat}</strong>
+                      <span className="mo-ta">{cc.so_ngay_co_mat} ngày có dữ liệu</span>
+                    </div>
+                    <div className="pl-co-so-o">
+                      <span>Giờ công</span>
+                      <strong>{gio_phut(cc.tong_phut_lam)}</strong>
+                      <span className="mo-ta">đã trừ giờ nghỉ trưa</span>
+                    </div>
+                    <div className="pl-co-so-o">
+                      <span>OT ghi nhận</span>
+                      <strong>{Number(p.phut_ot) > 0 ? gio_ot(p.phut_ot) : '—'}</strong>
+                      <span className="mo-ta">đã duyệt từ trên</span>
+                    </div>
+                    <div className="pl-co-so-o">
+                      <span>Vắng</span>
+                      <strong>{cc.so_ngay_vang}</strong>
+                      <span className="mo-ta">không phép</span>
+                    </div>
+                  </div>
+                  <span className="mo-ta" style={{ paddingTop: 4 }}>
+                    Tổng: {cc.tong_ngay_du_lieu} ngày có dữ liệu
+                  </span>
+                </>
+              ) : (
+                <span className="mo-ta">Chưa có dữ liệu chấm công của kỳ này.</span>
               )}
             </section>
 

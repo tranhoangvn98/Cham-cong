@@ -2,6 +2,16 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.97.5] — 2026-09-20
+
+**Phiếu lương: bố cục thành dashboard 1 màn hình, bỏ hết thanh cuộn bên trong; xóa giao diện cũ.**
+
+- Bốn cột ngang một hàng: Thu nhập · Khấu trừ · Căn cứ tính lương (+ phép năm) · Cơ sở chấm
+  công + Chi tiết kỳ (+ nút Khiếu nại) — không còn thanh cuộn trong từng thẻ, toàn bộ gọn
+  trong một màn hình (màn hẹp tự xếp 2 cột rồi 1 cột).
+- Danh sách các lần đi muộn/về sớm hiển thị dạng chip gọn thay vì đoạn dài.
+- Xóa sạch CSS bố cục phiếu lương cũ (` .phieu-*`) và các lớp `.pl-*` không còn dùng.
+
 ## [1.97.4] — 2026-09-20
 
 **Phiếu lương: chỉnh cho khớp mẫu tham khảo.**
