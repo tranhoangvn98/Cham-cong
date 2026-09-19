@@ -799,7 +799,8 @@ const BAN_DO_TRANG: { khoa: string; ten: string; duong: string | null }[] = [
 ];
 
 /** Tra loi yeu cau "mo cho ...": tra duong dan (da kiem) de giao dien chuyen trang. */
-export function tra_loi_mo_trang(cau: string, vai_tro: string): TraLoiTroLy {
+export function tra_loi_mo_trang(cau_goc: string, vai_tro: string): TraLoiTroLy {
+  const cau = chuan(cau_goc);
   const muc = BAN_DO_TRANG.find((m) => cau.includes(m.khoa));
   if (muc === undefined) {
     return {
