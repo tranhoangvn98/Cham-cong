@@ -58,6 +58,7 @@ export function ChuongBao({ dieu_huong }: {
   const [mo, dat_mo] = useState(false);
   const [ds, dat_ds] = useState<Bao[]>([]);
   const [so, dat_so] = useState(0);
+  const [tab, dat_tab] = useState<'tat_ca' | 'chua_xem'>('tat_ca');
   const vo = useRef<HTMLDivElement>(null);
 
   const nap = (): void => {
@@ -103,6 +104,15 @@ export function ChuongBao({ dieu_huong }: {
     void goi('/api/toi/bao/doc-het', { method: 'POST', body: {} }).then(nap).catch(() => {});
   };
 
+  // Sap xep: viec CON PHAI XU LY len dau, trong do cai LAU CHUA XU LY nhat len tren cung;
+  // phan con lai (da xu ly / thuần tin) xep moi nhat truoc.
+  const sap = [...ds].sort((a, b) => {
+    if (a.con_xu_ly !== b.con_xu_ly) return a.con_xu_ly ? -1 : 1;
+    if (a.con_xu_ly) return a.tao_luc < b.tao_luc ? -1 : 1;
+    return a.tao_luc > b.tao_luc ? -1 : 1;
+  });
+  const hien = tab === 'chua_xem' ? sap.filter((b) => !b.da_doc) : sap;
+
   return (
     <div className="chuong-vo" ref={vo}>
       <button className="nut-tron" onClick={() => { if (!mo) nap(); dat_mo(!mo); }}
@@ -116,10 +126,20 @@ export function ChuongBao({ dieu_huong }: {
             <b>Thông báo</b>
             {so > 0 && <button className="nut-nho nut-phang" onClick={doc_het}>Đánh dấu đã đọc</button>}
           </div>
+          <div className="chuong-tab" role="tablist" aria-label="Lọc thông báo">
+            <button type="button" role="tab" aria-selected={tab === 'tat_ca'}
+              className={tab === 'tat_ca' ? 'dang-chon' : ''}
+              onClick={() => dat_tab('tat_ca')}>Tất cả</button>
+            <button type="button" role="tab" aria-selected={tab === 'chua_xem'}
+              className={tab === 'chua_xem' ? 'dang-chon' : ''}
+              onClick={() => dat_tab('chua_xem')}>Chưa xem</button>
+          </div>
           <div className="chuong-ds">
-            {ds.length === 0
-              ? <div className="chuong-trong">Chưa có thông báo nào.</div>
-              : ds.map((b, i) => (
+            {hien.length === 0
+              ? <div className="chuong-trong">
+                {tab === 'chua_xem' ? 'Không còn thông báo chưa xem.' : 'Chưa có thông báo nào.'}
+              </div>
+              : hien.map((b, i) => (
                 <button key={khoa_tinh(b.id, i)}
                   className={b.da_doc ? 'chuong-muc' : 'chuong-muc chuong-moi'}
                   onClick={() => bam(b)}>

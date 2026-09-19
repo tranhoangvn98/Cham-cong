@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.93.6] — 2026-09-19
+
+**Chuông báo: tab "Chưa xem" + việc lâu chưa xử lý xếp lên đầu.**
+
+- Chuông thêm hai tab trơn (không gắn số đếm): "Tất cả" và "Chưa xem" — tab Chưa xem chỉ liệt kê
+  thông báo chưa đọc.
+- Sắp xếp lại danh sách: việc còn phải xử lý lên trên hết, trong đó việc **lâu chưa xử lý nhất
+  lên đầu**; phần đã xử lý / thuần tin xếp mới nhất trước.
+
 ## [1.93.5] — 2026-09-19
 
 **Chuông báo: nhãn Đã xem/Chưa xem + trạng thái đã xử lý/chưa xử lý. Trang Log máy gọn về một màn hình.**

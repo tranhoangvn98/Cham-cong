@@ -1433,6 +1433,25 @@ textarea:focus-visible,
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; border-bottom: 1px solid var(--vien);
 }
+/* Tab loc TAT CA / CHUA XEM — tab tran, khong gan so dem. */
+.chuong-tab {
+  display: flex;
+  gap: 4px;
+  padding: 4px 14px 0;
+  border-bottom: 1px solid var(--vien);
+}
+.chuong-tab button {
+  border: 0;
+  background: none;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  padding: 7px 10px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--chu-nhat);
+}
+.chuong-tab button:hover { background: var(--nen-mo); }
+.chuong-tab button.dang-chon { color: var(--chinh-dam); border-bottom-color: var(--chinh); }
 .chuong-ds { max-height: min(60vh, 460px); overflow-y: auto; }
 .chuong-trong { padding: 24px 14px; text-align: center; color: var(--chu-mo); font-size: 13px; }
 .chuong-muc {
