@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.94.7] — 2026-09-19
+
+**Sửa lỗi: bản nháp AI kẹt vĩnh viễn ở "Đang soạn".**
+
+- Worker soạn văn bản hỏng câu SQL nhận việc từ hàng đợi: hai cột `la_qd_nghi_viec` và
+  `ngay_nghi_viec` bị dính sai chỗ (sau dấu đóng ngoặc của subquery, trước `returning`) nên
+  mọi vòng quét đều báo `syntax error` và không bản nháp nào được soạn xong. Đã sửa, hai cột
+  này giờ nằm đúng trong danh sách `returning`.
+
 ## [1.94.6] — 2026-09-19
 
 **Soạn văn bản AI: tự mở xem trước ngay sau khi tạo bản nháp.**

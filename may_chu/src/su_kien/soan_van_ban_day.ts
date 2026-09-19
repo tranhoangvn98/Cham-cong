@@ -66,11 +66,11 @@ async function nhan_mot_viec(): Promise<DongNhapAi | null> {
          order by tao_luc
          for update skip locked
          limit 1
-      )la_qd_nghi_viec,
-                ngay_nghi_viec::text as ngay_nghi_viec,
-                
+      )
       returning id, ma, loai, pham_vi, quan_he, phong_ban_id, nhan_vien_id, muc_dich,
-                muc_do, can_giai_trinh, het_han, noi_dung_tho, che_do, spec_json, nguoi_tao`,
+                muc_do, can_giai_trinh, het_han, la_qd_nghi_viec,
+                ngay_nghi_viec::text as ngay_nghi_viec,
+                noi_dung_tho, che_do, spec_json, nguoi_tao`,
   );
 }
 
