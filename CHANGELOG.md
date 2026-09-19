@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.94.4] — 2026-09-19
+
+**Hồ sơ nhân viên: nút "Quyết định nghỉ việc" mở sẵn form soạn AI.**
+
+- Đầu trang hồ sơ nhân viên (nhân sự, người còn hoạt động) có nút **"Quyết định nghỉ việc"**;
+  bấm vào chuyển sang Văn bản ban hành và mở sẵn form soạn AI với Loại = Quyết định, Phạm vi =
+  Cá nhân, người nhận = đúng nhân viên đó và checkbox "Đây là quyết định nghỉ việc" đã chọn —
+  chỉ còn nhập ngày nghỉ và nội dung. Đến ngày nghỉ hệ thống tự khóa tài khoản + chặn Microsoft.
+
 ## [1.94.3] — 2026-09-19
 
 **Chuông báo: tab "Chưa xem" + việc lâu chưa xử lý xếp lên đầu, tab trơn không số đếm.**
