@@ -97,6 +97,9 @@ services:
       MS_MAIL_CLIENT_ID: ${MS_MAIL_CLIENT_ID:-}
       MS_MAIL_CLIENT_SECRET: ${MS_MAIL_CLIENT_SECRET:-}
       MS_MAIL_NGUOI_GUI: ${MS_MAIL_NGUOI_GUI:-}
+      # Nghi viec tu dong: chan dang nhap + rut giay phep Microsoft khi nghi viec.
+      # 1 = bat; 0 (mac dinh) = su kien nam lai trong hop_thu_di cho. Xem tai_lieu/NGHI-VIEC.md.
+      MS365_NGHI_VIEC_BAT: ${MS365_NGHI_VIEC_BAT:-0}
       # Ten & dia chi cong ty in tren dau bang luong xuat Excel (mau ERP). De trong = bo trong.
       CONG_TY_TEN: ${CONG_TY_TEN:-}
       CONG_TY_DIA_CHI: ${CONG_TY_DIA_CHI:-}
