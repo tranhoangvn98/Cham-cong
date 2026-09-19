@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.99.2] — 2026-09-20
+
+**Trợ lý trò chuyện ngoài lề trong giới hạn.**
+
+- Câu ngoài lề lành mạnh (hỏi thăm, khuyên chung, vui đùa nhẹ) được AI trò chuyện tự nhiên
+  1-3 câu rồi gợi lại công việc thay vì từ chối khô khan; thông tin thực tế cần cập nhật
+  (thời tiết, tin tức) thì nói thật không tra được. Không bàn chính trị/tôn giáo/nội dung
+  người lớn, không bịa số liệu — áp dụng cho cả trợ lý cá nhân và quản trị.
+
 ## [1.99.1] — 2026-09-20
 
 **Trợ lý mở trang giúp khi được yêu cầu.**

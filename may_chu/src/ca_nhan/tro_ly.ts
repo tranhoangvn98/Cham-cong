@@ -590,7 +590,8 @@ async function tro_chuyen_llm(
   { tra_loi: string; goi_y: string[] } | null
 > {
   const kq = await hoi_llm_json('tro-chuyen',
-    'Ban la tro ly cua phan he Cham cong, hoi bang tieng Viet. Nguoi dung hoi: '
+    'Ban la tro ly cua phan he Cham cong, hoi bang tieng Viet, noi chuyen nhu dong nghiep than. '
+    + 'Nguoi dung hoi: '
     + JSON.stringify(cau_hoi_goc)
     + '\n\nCac luot tro chuyen gan nhat cua CUNG nguoi hoi (de hieu cau noi tiep, khong bịa):\n'
     + (boi_canh === '' ? '(khong co)' : boi_canh)
@@ -599,9 +600,13 @@ async function tro_chuyen_llm(
     + 'dang ky OT/lam them gio (can ngay + tu gio den gio), xin doi ca, dang ky di cong tac, '
     + 'xin di muon, khieu nai phieu luong, khieu nai ky luat. '
     + 'Neu cau hoi trong pham vi: tra loi ngan gon, than thien va huong ho hoi lai cu the '
-    + '(vi du kem ngay dang 25/09, gio dang 18:00 den 20:00). Neu NGOAI pham vi: noi ro minh '
-    + 'chi lo viec cham cong. '
-    + 'KHONG bịa so lieu, khong hua viec minh khong lam duoc. '
+    + '(vi du kem ngay dang 25/09, gio dang 18:00 den 20:00). '
+    + 'Neu cau NGOAI pham vi: duoc tro chuyen tu nhien 1-3 cau neu do la chuyen phiem lanh manh '
+    + '(hoi tham, loi khuyen chung, vui dua nhe) roi nhe nhang goi lai viec cham cong. Neu hoi '
+    + 'thong tin thuc te can cap nhat (du bao thoi tiet, tin tuc, gia ca...): noi that la minh '
+    + 'khong tra duoc thong tin thuc te va goi y ho xem nguon chinh thuc. '
+    + 'KHONG bịa so lieu cong ty, khong ban chinh tri/ton giao/noi dung nguoi lon, khong hua '
+    + 'viec ngoai pham vi. '
     + 'Tra ve DUY NHAT doi tuong JSON dang {"tra_loi": "...", "goi_y": ["cau goi y 1", "cau goi y 2"]} '
     + 'toi da 3 goi y, noi dung goi y nhu cach nguoi dung nen hoi.');
   if (kq === null) return null;

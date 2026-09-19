@@ -28,6 +28,8 @@ bao giờ lấy thừa quyền rồi giấu ở giao diện.
 
 - Chào theo buổi (múi giờ máy chấm công), gọi đúng tên, nhắc lại chủ đề lần trước (trong
   7 ngày); cảm ơn/tạm biệt/hỏi thăm có lời đáp riêng.
+- Câu ngoài lề: AI trò chuyện tự nhiên trong giới hạn (chuyện phiếm lành mạnh), nói thật
+  khi không tra được thông tin thực tế (thời tiết, tin tức) — không bịa số liệu.
 - Lịch sử lưu **lâu dài theo tài khoản** ở bảng riêng `tro_ly_qt_hoi_thoai` — tách khỏi
   lịch sử trợ lý cá nhân, hai kênh không lẫn vào nhau. Nút **Xóa** xóa toàn bộ của chính
   mình. AI chỉ nhận câu hỏi + tối đa 4 lượt gần nhất của **chính người hỏi**.

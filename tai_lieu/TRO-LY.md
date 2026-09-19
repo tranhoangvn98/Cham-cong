@@ -87,6 +87,10 @@ Trợ lý dùng chung khóa `DEEPSEEK_API_KEY` của phân hệ (đã dùng cho 
 - **Hiểu câu ngoài luật**: câu hỏi không khớp luật từ khóa được AI trò chuyện và gợi ý cách
   hỏi lại — không tự bịa số liệu. Khi cần hiểu câu nối tiếp ("ngày đó"), AI chỉ nhận thêm
   tối đa 4 lượt hỏi/đáp gần nhất của **chính người hỏi**, không bao giờ lịch sử người khác.
+- **Trò chuyện ngoài lề trong giới hạn**: chuyện phiếm lành mạnh (hỏi thăm, khuyên chung,
+  vui đùa nhẹ) được trò chuyện tự nhiên 1-3 câu rồi gợi lại việc chấm công. Thông tin thực
+  tế cần cập nhật (thời tiết, tin tức, giá cả…) thì **nói thật không tra được** và gợi ý
+  nguồn chính thống. Không bàn chính trị/tôn giáo/nội dung người lớn, không bịa số liệu.
 - **Trích ngày xin nghỉ** từ câu nói tự nhiên khi bộ phân tích không tìm thấy; kết quả được
   kiểm lại bằng hàm thuần `ngay_hop_le` trước khi dùng (dùng chung cho nghỉ phép, OT, đổi
   ca, công tác, đi muộn).
