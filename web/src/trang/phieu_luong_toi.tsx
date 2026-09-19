@@ -163,7 +163,7 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
   // Ti le cho thanh "dong tien": doan thu nhap va doan khau tru trong tong.
   const tong_so = Number(p.tong_thu_nhap) + Number(p.tong_tru);
   const ty_le_thu = tong_so > 0 ? Math.round((Number(p.tong_thu_nhap) / tong_so) * 100) : 0;
-  const ty_le_tru = 100 - ty_le_thu;
+  const ty_le_tru = tong_so > 0 ? 100 - ty_le_thu : 0;
 
   return (
     <>
@@ -239,8 +239,8 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
               : null}
           </div>
           <div className="pl-dt-giai">
-            <span><i className="pl-dot pl-dot-thu" aria-hidden="true" /> Thu nhập {tien(p.tong_thu_nhap)} đ ({ty_le_thu}%)</span>
-            <span><i className="pl-dot pl-dot-tru" aria-hidden="true" /> Khấu trừ {tien(p.tong_tru)} đ ({ty_le_tru}%)</span>
+            <span><i className="pl-dot pl-dot-thu" aria-hidden="true" /> Thu nhập {tien(p.tong_thu_nhap)} đ{tong_so > 0 ? ` (${ty_le_thu}%)` : ''}</span>
+            <span><i className="pl-dot pl-dot-tru" aria-hidden="true" /> Khấu trừ {tien(p.tong_tru)} đ{tong_so > 0 ? ` (${ty_le_tru}%)` : ''}</span>
             <strong>Thực nhận = {tien(p.thuc_linh_lam_tron)} đ</strong>
           </div>
         </div>

@@ -2,6 +2,12 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.97.2] — 2026-09-20
+
+**Sửa lỗi: thanh dòng tiền hiện "Khấu trừ 100%" khi phiếu chưa có số liệu.**
+
+- Khi tổng thu nhập + khấu trừ = 0 thì ẩn tỷ lệ % trên thanh dòng tiền (trước ghi nhầm 0%/100%).
+
 ## [1.97.1] — 2026-09-20
 
 **Phiếu lương: bố cục hoàn toàn mới — bảng điều khiển 1 màn hình.**
