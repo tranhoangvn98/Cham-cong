@@ -2,6 +2,14 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.94.5] — 2026-09-19
+
+**Popup soạn văn bản AI: bố cục lại thành các nhóm rõ ràng.**
+
+- Form "Soạn văn bản mới" xếp thành các nhóm có tiêu đề: Thông tin cơ bản (lưới 4 cột),
+  Người nhận (phòng ban / nhân viên), Quyết định nghỉ việc, Chế độ soạn (lưới 4 cột) và
+  Nội dung — hết cảnh các ô dính liền nhau khó phân biệt; màn hẹp tự xếp 1 cột.
+
 ## [1.94.4] — 2026-09-19
 
 **Hồ sơ nhân viên: nút "Quyết định nghỉ việc" mở sẵn form soạn AI.**

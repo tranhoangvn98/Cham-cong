@@ -1441,6 +1441,26 @@ textarea:focus-visible,
 .truong textarea { resize: vertical; }
 .truong-hang { display: flex; align-items: center; gap: 8px; }
 
+/* -------- popup soan van ban AI: nhom theo muc dich, luoi 4 cot -------- */
+.soan-nhom { margin-top: 14px; }
+.soan-nhom:first-child { margin-top: 0; }
+.soan-tieu-de {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--chu-mo);
+  margin-bottom: 8px;
+}
+.soan-hang { display: grid; gap: 10px; align-items: end; }
+.soan-hang-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.soan-hang-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Checkbox trong luoi can ngang voi o nhap (khong co nhan tren). */
+.soan-hang > .truong-hang { align-self: center; padding-bottom: 7px; }
+@media (max-width: 640px) {
+  .soan-hang-4, .soan-hang-2 { grid-template-columns: 1fr; }
+}
+
 /* -------- thong bao -------- */
 .tb-danh-sach { display: flex; flex-direction: column; gap: var(--khoang-vua); }
 .tb-the { margin-bottom: 0; }

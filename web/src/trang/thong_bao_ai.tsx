@@ -198,116 +198,133 @@ function FormTao(
     <HopThoai tieu_de="Soạn văn bản mới" khi_dong={() => dat_mo(false)} rong>
       <HopLoi loi={loi_vao ?? hd.loi} />
       <HopTot chu={hd.tot} />
-      <div className="tb-dang-hang">
-        <label className="truong"><span>Loại văn bản</span>
-          <select value={loai} onChange={(e) => dat_lo(e.target.value, dat_loai)}>
-            <option value="thong_bao">Thông báo</option>
-            <option value="quyet_dinh">Quyết định</option>
-            <option value="cong_van">Công văn</option>
-          </select>
-        </label>
-        <label className="truong"><span>Phạm vi nhận</span>
-          <select value={pham_vi} onChange={(e) => dat_pham_vi(e.target.value as PhamVi)}>
-            <option value="toan_cong_ty">Toàn công ty</option>
-            <option value="phong_ban">Phòng ban</option>
-            <option value="ca_nhan">Cá nhân</option>
-          </select>
-        </label>
-        <label className="truong"><span>Quan hệ</span>
-          <select value={quan_he} onChange={(e) => dat_quan_he(e.target.value as 'noi_bo' | 'doi_ngoai')}>
-            <option value="noi_bo">Nội bộ</option>
-            <option value="doi_ngoai">Đối ngoại</option>
-          </select>
-        </label>
-        <label className="truong"><span>Mục đích</span>
-          <select value={muc_dich} onChange={(e) => dat_muc_dich(e.target.value)}>
-            {Object.entries(NHAN_MUC_DICH).map(([m, ten]) => (
-              <option key={m} value={m}>{ten}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {pham_vi === 'phong_ban' && (
-        <label className="truong"><span>Phòng ban nhận</span>
-          <select value={phong_ban_id} onChange={(e) => dat_phong_ban_id(e.target.value)}>
-            <option value="">— Chọn phòng ban —</option>
-            {(pb.du_lieu ?? []).map((p) => <option key={p.id} value={p.id}>{p.ten}</option>)}
-          </select>
-        </label>
-      )}
-      {pham_vi === 'ca_nhan' && (
-        <label className="truong"><span>Nhân viên nhận</span>
-          <select value={nhan_vien_id} onChange={(e) => dat_nhan_vien_id(e.target.value)}>
-            <option value="">— Chọn nhân viên —</option>
-            {(nv.du_lieu ?? []).map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.ho_ten}{n.phong_ban !== null ? ` — ${n.phong_ban}` : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {loai === 'quyet_dinh' && pham_vi === 'ca_nhan' && (
-        <div className="tb-dang-hang" style={{ marginTop: 8 }}>
-          <label className="truong-hang">
-            <input type="checkbox" checked={la_qd}
-              onChange={(e) => { dat_la_qd(e.target.checked); if (!e.target.checked) dat_ngay_nghi(''); }} />
-            <span>Đây là quyết định nghỉ việc</span>
+      <div className="soan-nhom">
+        <div className="soan-tieu-de">Thông tin cơ bản</div>
+        <div className="soan-hang soan-hang-4">
+          <label className="truong"><span>Loại văn bản</span>
+            <select value={loai} onChange={(e) => dat_lo(e.target.value, dat_loai)}>
+              <option value="thong_bao">Thông báo</option>
+              <option value="quyet_dinh">Quyết định</option>
+              <option value="cong_van">Công văn</option>
+            </select>
           </label>
-          {la_qd && (
-            <label className="truong"><span>Ngày nghỉ việc (tài khoản tự khóa sau ngày này)</span>
-              <input type="date" value={ngay_nghi} onChange={(e) => dat_ngay_nghi(e.target.value)} />
+          <label className="truong"><span>Phạm vi nhận</span>
+            <select value={pham_vi} onChange={(e) => dat_pham_vi(e.target.value as PhamVi)}>
+              <option value="toan_cong_ty">Toàn công ty</option>
+              <option value="phong_ban">Phòng ban</option>
+              <option value="ca_nhan">Cá nhân</option>
+            </select>
+          </label>
+          <label className="truong"><span>Quan hệ</span>
+            <select value={quan_he} onChange={(e) => dat_quan_he(e.target.value as 'noi_bo' | 'doi_ngoai')}>
+              <option value="noi_bo">Nội bộ</option>
+              <option value="doi_ngoai">Đối ngoại</option>
+            </select>
+          </label>
+          <label className="truong"><span>Mục đích</span>
+            <select value={muc_dich} onChange={(e) => dat_muc_dich(e.target.value)}>
+              {Object.entries(NHAN_MUC_DICH).map(([m, ten]) => (
+                <option key={m} value={m}>{ten}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+      {(pham_vi === 'phong_ban' || pham_vi === 'ca_nhan') && (
+        <div className="soan-nhom">
+          <div className="soan-tieu-de">Người nhận</div>
+          {pham_vi === 'phong_ban' && (
+            <label className="truong"><span>Phòng ban nhận</span>
+              <select value={phong_ban_id} onChange={(e) => dat_phong_ban_id(e.target.value)}>
+                <option value="">— Chọn phòng ban —</option>
+                {(pb.du_lieu ?? []).map((p) => <option key={p.id} value={p.id}>{p.ten}</option>)}
+              </select>
+            </label>
+          )}
+          {pham_vi === 'ca_nhan' && (
+            <label className="truong"><span>Nhân viên nhận</span>
+              <select value={nhan_vien_id} onChange={(e) => dat_nhan_vien_id(e.target.value)}>
+                <option value="">— Chọn nhân viên —</option>
+                {(nv.du_lieu ?? []).map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.ho_ten}{n.phong_ban !== null ? ` — ${n.phong_ban}` : ''}
+                  </option>
+                ))}
+              </select>
             </label>
           )}
         </div>
       )}
-      <div className="tb-dang-hang">
-        <label className="truong"><span>Chế độ</span>
-          <select value={che_do} onChange={(e) => dat_che_do(e.target.value as 'ai' | 'tu_soan')}>
-            <option value="ai">AI soạn (nhập ý vắn tắt)</option>
-            <option value="tu_soan">Tự soạn (không dùng AI)</option>
-          </select>
-        </label>
-        <label className="truong"><span>Mức độ</span>
-          <select value={muc_do} onChange={(e) => dat_muc_do(e.target.value as typeof muc_do)}>
-            <option value="thuong">Thường</option>
-            <option value="quan_trong">Quan trọng</option>
-            <option value="khan">Khẩn</option>
-          </select>
-        </label>
-        <label className="truong-hang">
-          <input type="checkbox" checked={can_gt} onChange={(e) => dat_can_gt(e.target.checked)} />
-          <span>Bắt buộc giải trình</span>
-        </label>
-        <label className="truong"><span>Hiệu lực đến (bỏ trống = không)</span>
-          <input type="date" value={het_han} onChange={(e) => dat_het_han(e.target.value)} />
-        </label>
-      </div>
-      {che_do === 'ai' ? (
-        <label className="truong"><span>Nội dung thô (gạch đầu dòng cũng được)</span>
-          <textarea rows={5} value={tho} onChange={(e) => dat_tho(e.target.value)}
-            placeholder={'Ví dụ: Nghỉ lễ 2/9, đi làm bù sáng thứ 7\nĐổi phần mềm chấm công, ra vào phải quét vân tay…'} />
-        </label>
-      ) : (
-        <>
-          <label className="truong"><span>Trích yếu (công văn bắt đầu "V/v", thông báo/quyết định "Về việc")</span>
-            <input value={trich_yeu} onChange={(e) => dat_trich_yeu(e.target.value)} /></label>
-          {loai === 'cong_van' && (
-            <label className="truong"><span>Kính gửi (nhiều nơi cách nhau dấu phẩy)</span>
-              <input value={kinh_gui} onChange={(e) => dat_kinh_gui(e.target.value)} /></label>
-          )}
-          {loai === 'quyet_dinh' && (
-            <>
-              <label className="truong"><span>Căn cứ (mỗi dòng một căn cứ)</span>
-                <textarea rows={2} value={can_cu} onChange={(e) => dat_can_cu(e.target.value)} /></label>
-              <label className="truong"><span>Nội dung các Điều (mỗi dòng một Điều)</span>
-                <textarea rows={4} value={dieu} onChange={(e) => dat_dieu(e.target.value)} /></label>
-            </>
-          )}
-          <label className="truong"><span>Nội dung (mỗi đoạn cách nhau một dòng trống)</span>
-            <textarea rows={5} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
-        </>
+      {loai === 'quyet_dinh' && pham_vi === 'ca_nhan' && (
+        <div className="soan-nhom">
+          <div className="soan-tieu-de">Quyết định nghỉ việc</div>
+          <div className="soan-hang soan-hang-2">
+            <label className="truong-hang">
+              <input type="checkbox" checked={la_qd}
+                onChange={(e) => { dat_la_qd(e.target.checked); if (!e.target.checked) dat_ngay_nghi(''); }} />
+              <span>Đây là quyết định nghỉ việc</span>
+            </label>
+            {la_qd && (
+              <label className="truong"><span>Ngày nghỉ việc (tài khoản tự khóa sau ngày này)</span>
+                <input type="date" value={ngay_nghi} onChange={(e) => dat_ngay_nghi(e.target.value)} />
+              </label>
+            )}
+          </div>
+        </div>
       )}
+      <div className="soan-nhom">
+        <div className="soan-tieu-de">Chế độ soạn</div>
+        <div className="soan-hang soan-hang-4">
+          <label className="truong"><span>Chế độ</span>
+            <select value={che_do} onChange={(e) => dat_che_do(e.target.value as 'ai' | 'tu_soan')}>
+              <option value="ai">AI soạn (nhập ý vắn tắt)</option>
+              <option value="tu_soan">Tự soạn (không dùng AI)</option>
+            </select>
+          </label>
+          <label className="truong"><span>Mức độ</span>
+            <select value={muc_do} onChange={(e) => dat_muc_do(e.target.value as typeof muc_do)}>
+              <option value="thuong">Thường</option>
+              <option value="quan_trong">Quan trọng</option>
+              <option value="khan">Khẩn</option>
+            </select>
+          </label>
+          <label className="truong-hang">
+            <input type="checkbox" checked={can_gt} onChange={(e) => dat_can_gt(e.target.checked)} />
+            <span>Bắt buộc giải trình</span>
+          </label>
+          <label className="truong"><span>Hiệu lực đến (bỏ trống = không)</span>
+            <input type="date" value={het_han} onChange={(e) => dat_het_han(e.target.value)} />
+          </label>
+        </div>
+      </div>
+      <div className="soan-nhom">
+        <div className="soan-tieu-de">Nội dung</div>
+        {che_do === 'ai' ? (
+          <label className="truong"><span>Nội dung thô (gạch đầu dòng cũng được)</span>
+            <textarea rows={5} value={tho} onChange={(e) => dat_tho(e.target.value)}
+              placeholder={'Ví dụ: Nghỉ lễ 2/9, đi làm bù sáng thứ 7\nĐổi phần mềm chấm công, ra vào phải quét vân tay…'} />
+          </label>
+        ) : (
+          <>
+            <label className="truong"><span>Trích yếu (công văn bắt đầu "V/v", thông báo/quyết định "Về việc")</span>
+              <input value={trich_yeu} onChange={(e) => dat_trich_yeu(e.target.value)} /></label>
+            {loai === 'cong_van' && (
+              <label className="truong"><span>Kính gửi (nhiều nơi cách nhau dấu phẩy)</span>
+                <input value={kinh_gui} onChange={(e) => dat_kinh_gui(e.target.value)} /></label>
+            )}
+            {loai === 'quyet_dinh' && (
+              <>
+                <label className="truong"><span>Căn cứ (mỗi dòng một căn cứ)</span>
+                  <textarea rows={2} value={can_cu} onChange={(e) => dat_can_cu(e.target.value)} /></label>
+                <label className="truong"><span>Nội dung các Điều (mỗi dòng một Điều)</span>
+                  <textarea rows={4} value={dieu} onChange={(e) => dat_dieu(e.target.value)} /></label>
+              </>
+            )}
+            <label className="truong"><span>Nội dung (mỗi đoạn cách nhau một dòng trống)</span>
+              <textarea rows={5} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
+          </>
+        )}
+      </div>
       <div className="hang-nut">
         <button onClick={() => { void gui(); }} disabled={hd.dang_chay || !can_gui}>
           {hd.dang_chay ? 'Đang gửi…' : 'Tạo bản nháp'}
