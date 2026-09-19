@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.93.4] — 2026-09-19
+
+**Ứng lương: một màn hình, không cuộn + chọn tháng/ngày bằng tiếng Việt.**
+
+- Trang Ứng lương gọn về một màn hình: bảng log cuộn nội bộ trong thẻ, không kéo dài cả trang.
+- Modal tạo/sửa khoản ứng bố cục lại thành lưới 2 cột (danh sách nhân viên có ô tìm kiếm +
+  các ô nhập bên phải), không còn thanh cuộn của modal.
+- Ô chọn tháng hiện "Tháng 09 / Năm 2026" và ngày ứng nhập dạng dd/mm/yyyy — không còn phụ
+  thuộc ngôn ngữ trình duyệt ("September 2026", "09/19/2026").
+- Thêm `ChonThang` dùng chung trong `thanh_phan.tsx` để các trang khác dùng lại.
+
 ## [1.93.3] — 2026-09-19
 
 **Tổng quan: lấp đầy khoảng trắng, ba cột giãn đều hết chiều cao màn hình.**

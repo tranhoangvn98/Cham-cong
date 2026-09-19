@@ -120,6 +120,19 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/ung-luong',
+    tom_tat: 'Tạm ứng lương: tạo khoản, duyệt, đánh dấu đã chi — khoản đã chi tự trừ vào phiếu lương.',
+    buoc: [
+      { chu: 'Bấm "Tạo khoản ứng": chọn nhân viên, tháng lương áp dụng, số tiền, ngày ứng và hình thức chi.', vai_tro: NHAN_SU },
+      { chu: 'Khoản mới ở trạng thái Chờ duyệt — bấm Duyệt, rồi bấm Đánh dấu đã chi khi đã đưa tiền.', vai_tro: NHAN_SU },
+      { chu: 'Lọc theo tháng và trạng thái để kiểm tra tổng đã chi của tháng.' },
+    ],
+    luu_y: [
+      'Chỉ khoản "Đã chi" mới trừ vào phiếu lương — sau khi đánh dấu đã chi phải vào Bảng lương → Tính lương để khoản trừ xuất hiện.',
+      'Người ứng đủ/quá lương (thực lĩnh ≤ 0) không ra dòng khi Lập Lệnh Chi — kiểm tra kỹ trước khi chốt lệnh chi.',
+    ],
+  },
+  {
     duong_dan: '/lan-quet',
     tom_tat: 'Nhật ký thô từ máy chấm công — nguồn sự thật của mọi con số công.',
     buoc: [

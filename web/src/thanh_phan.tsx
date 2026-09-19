@@ -80,6 +80,37 @@ export function thang_nay(): string {
   return hom_nay().slice(0, 7);
 }
 
+/**
+ * Chon thang 'YYYY-MM' bang hai o select TIENG VIET.
+ *
+ * `input type="month"` hien ten thang theo NGON NGU TRINH DUYET ("September 2026") va khong
+ * thong nhat giua cac may. Hai o select nay hien "Tháng 09" / "Năm 2026" o moi trinh duyet.
+ */
+export function ChonThang(
+  { gia_tri, doi }: { gia_tri: string; doi: (v: string) => void },
+): ReactNode {
+  const [nam, thg] = gia_tri.split('-');
+  const nam_hien_tai = Number(thang_nay().slice(0, 4));
+  const nam_bat_dau = nam_hien_tai - 5;
+  const cac_nam = Array.from({ length: 7 }, (_, i) => nam_bat_dau + i);
+  return (
+    <span className="chon-thang">
+      <select aria-label="Tháng" value={thg ?? ''}
+        onChange={(e) => doi(`${nam ?? String(nam_hien_tai)}-${e.target.value}`)}>
+        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((t) => (
+          <option key={t} value={t}>Tháng {t}</option>
+        ))}
+      </select>
+      <select aria-label="Năm" value={nam ?? String(nam_hien_tai)}
+        onChange={(e) => doi(`${e.target.value}-${thg ?? '01'}`)}>
+        {cac_nam.map((n) => (
+          <option key={String(n)} value={String(n)}>Năm {String(n)}</option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
 // ============================================================ trang thai tai
 export function DangTai({ chu = 'Đang tải…' }: { chu?: string }): ReactNode {
   return <div className="dang-tai">{chu}</div>;
