@@ -213,6 +213,7 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
       const nhan = await ben_nhan({
         id: '', ma: '', loai, pham_vi, quan_he, phong_ban_id, nhan_vien_id,
         muc_dich, muc_do, can_giai_trinh, het_han: null, noi_dung_tho: '',
+        la_qd_nghi_viec, ngay_nghi_viec,
         che_do, spec_json: null, nguoi_tao: nd.sub,
       });
       const spec = ghep_spec({

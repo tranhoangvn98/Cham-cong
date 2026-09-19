@@ -159,15 +159,18 @@ export async function nghi_viec_den_han(
       ghi_log(`[lich] nghi viec ${d.ma}: thieu nhan vien, danh dau da chay va bo qua`);
       continue;
     }
+    // Chot bien cuc bo de TypeScript giu duoc thu hep (nhan_vien_id khac null) ben trong
+    // callback cua giao dich — thu hep thuoc tinh khong lan vao closure.
+    const nhan_vien_id = d.nhan_vien_id;
     try {
       const kq = await trong_giao_dich(async (khach) => {
         // Da cho nghi bang tay truoc do (nut thu cong): khong lam lai, tran bao cong phan
         // quyen hai lan cho cung mot nguoi.
         const nv = (await khach.query<{ dang_hoat_dong: boolean }>(
-          'select dang_hoat_dong from nhan_vien where id = $1', [d.nhan_vien_id])).rows[0];
+          'select dang_hoat_dong from nhan_vien where id = $1', [nhan_vien_id])).rows[0];
         if (nv === undefined) return { loai: 'thieu_nhan_vien' as const };
         if (!nv.dang_hoat_dong) return { loai: 'da_chay_truoc' as const };
-        const ket_qua = await cho_nghi_viec(khach, d.nhan_vien_id, d.ngay_nghi_viec);
+        const ket_qua = await cho_nghi_viec(khach, nhan_vien_id, d.ngay_nghi_viec);
         return ket_qua === null
           ? { loai: 'thieu_nhan_vien' as const }
           : { loai: 'da_chay' as const, ma_nv: ket_qua.ma_nv, upn: ket_qua.upn };

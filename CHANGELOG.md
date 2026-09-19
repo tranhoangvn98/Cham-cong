@@ -17,6 +17,8 @@ Theo [SemVer](https://semver.org/lang/vi/).
   giấy phép (bật bằng `MS365_NGHI_VIEC_BAT=1`). Sự kiện đi qua hộp thư đi `hop_thu_di` — có
   retry, không mất khi cổng/Microsoft đang chết. Nút "Cho nghỉ việc" thủ công dùng chung
   nghiệp vụ và nay có thêm bước chặn Microsoft.
+- Chuông báo: tab **"Chờ duyệt"** gom các thông báo đã xem nhưng việc vẫn còn chờ xử lý
+  (kèm số đếm) — không bị chìm giữa danh sách khi có nhiều tin.
 - Tên nhân viên dạng liên kết mở hồ sơ chuyển sang màu **xanh lá đậm** (token `--tot`) để
   phân biệt với liên kết xanh dương thông thường.
 - Tài liệu mới: `tai_lieu/NGHI-VIEC.md`; cập nhật `tai_lieu/DANG-NHAP-MICROSOFT.md`.

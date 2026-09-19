@@ -1556,6 +1556,18 @@ textarea:focus-visible,
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; border-bottom: 1px solid var(--vien);
 }
+/* Hai tab loc: Tat ca / Cho duyet (da xem nhung chua duoc xu ly). */
+.chuong-tabs {
+  display: flex; gap: 2px;
+  padding: 4px 8px 0; border-bottom: 1px solid var(--vien);
+}
+.chuong-tab {
+  border: none; background: none; border-bottom: 2px solid transparent;
+  padding: 8px 10px; color: var(--chu-nhat); font-weight: 500;
+  font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.chuong-tab:hover { background: var(--nen-mo); }
+.chuong-tab.dang-chon { color: var(--chinh-dam); border-bottom-color: var(--chinh); }
 .chuong-ds { max-height: min(60vh, 460px); overflow-y: auto; }
 .chuong-trong { padding: 24px 14px; text-align: center; color: var(--chu-mo); font-size: 13px; }
 .chuong-muc {
