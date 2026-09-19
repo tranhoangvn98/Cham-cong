@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.97.4] — 2026-09-20
+
+**Phiếu lương: chỉnh cho khớp mẫu tham khảo.**
+
+- Nhãn các thẻ tổng hợp viết hoa; thẻ Thực nhận đưa trạng thái "Đã duyệt" xuống dưới số
+  (chấm xanh), huy hiệu loại hợp đồng/đủ công/miễn phạt để hàng dưới cùng.
+- Bỏ "đ" ở giá trị thẻ Tổng thu nhập/Tổng khấu trừ; ô chuyển kỳ và dòng nhân viên hiển thị
+  dạng "08/2026"; bỏ mã NV trong tiêu đề.
+
 ## [1.97.3] — 2026-09-20
 
 **Phiếu lương: bố cục theo mẫu tham khảo — đầu trang tên nhân viên + chuyển kỳ, 5 thẻ tổng hợp, 2 cột.**

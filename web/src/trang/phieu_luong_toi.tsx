@@ -238,15 +238,14 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
           <div className="pl-dau-tua">
             <h2>Phiếu lương</h2>
             <span className="mo-ta">
-              Nhân viên: <strong>{p.ho_ten}</strong>
-              {p.ma_nv !== null ? ` (${p.ma_nv})` : ''} — Kỳ {thang_viet(p.thang)}
+              Nhân viên: <strong>{p.ho_ten}</strong> — Kỳ tháng {p.thang.slice(5, 7)}/{p.thang.slice(0, 4)}
             </span>
           </div>
           <div className="pl-dau-nut">
             <div className="pl-thang" role="group" aria-label="Chuyển kỳ lương">
               <button type="button" className="pl-mui" aria-label="Kỳ trước"
                 disabled={chon >= ds.length - 1} onClick={() => dat_chon(chon + 1)}>‹</button>
-              <strong>{thang_viet(p.thang)}</strong>
+              <strong>{p.thang.slice(5, 7)}/{p.thang.slice(0, 4)}</strong>
               <button type="button" className="pl-mui" aria-label="Kỳ sau"
                 disabled={chon <= 0} onClick={() => dat_chon(chon - 1)}>›</button>
             </div>
@@ -259,26 +258,31 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
       <div className="pl-vo">
         <div className="pl-hero">
           <div className="pl-hero-chinh">
-            <span className="pl-hero-nhan">
-              <span className="nhan nhan-tot">{TRANG_THAI[p.trang_thai_ky] ?? p.trang_thai_ky}</span>
-              {p.loai_hop_dong !== null && (
-                <span className="nhan nhan-mo">{LOAI_HD[p.loai_hop_dong] ?? p.loai_hop_dong}</span>
-              )}
-              {p.ep_du_cong && <span className="nhan nhan-canh-bao">Đủ công</span>}
-              {p.mien_phat && <span className="nhan nhan-canh-bao">Miễn phạt</span>}
-            </span>
             <span className="pl-o-nhan">Thực nhận</span>
             <strong className="pl-tien-lon">{tien(p.thuc_linh_lam_tron)}<em>đ</em></strong>
-            <span className="mo-ta">đã làm tròn từ {tien(p.thuc_linh)} đ</span>
+            <span className="pl-duyet">
+              <i className="pl-duyet-o" aria-hidden="true" />
+              {TRANG_THAI[p.trang_thai_ky] ?? p.trang_thai_ky}
+              {' · '}đã làm tròn từ {tien(p.thuc_linh)} đ
+            </span>
+            {(p.loai_hop_dong !== null || p.ep_du_cong || p.mien_phat) && (
+              <span className="pl-hero-nhan">
+                {p.loai_hop_dong !== null && (
+                  <span className="nhan nhan-mo">{LOAI_HD[p.loai_hop_dong] ?? p.loai_hop_dong}</span>
+                )}
+                {p.ep_du_cong && <span className="nhan nhan-canh-bao">Đủ công</span>}
+                {p.mien_phat && <span className="nhan nhan-canh-bao">Miễn phạt</span>}
+              </span>
+            )}
           </div>
           <div className="pl-o">
             <span className="pl-o-nhan">Tổng thu nhập</span>
-            <strong className="pl-xanh">{tien(p.tong_thu_nhap)} đ</strong>
+            <strong className="pl-xanh">{tien(p.tong_thu_nhap)}</strong>
             <span className="mo-ta">{so_thu} khoản</span>
           </div>
           <div className="pl-o">
             <span className="pl-o-nhan">Tổng khấu trừ</span>
-            <strong className="pl-do">-{tien(p.tong_tru)} đ</strong>
+            <strong className="pl-do">-{tien(p.tong_tru)}</strong>
             <span className="mo-ta">{so_tru} khoản</span>
           </div>
           <div className="pl-o">
@@ -525,8 +529,8 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
               )}
             </section>
 
-            <section className="pl-the" aria-label={`Chi tiết kỳ ${thang_viet(p.thang)}`}>
-              <h3>Chi tiết kỳ {thang_viet(p.thang)}</h3>
+            <section className="pl-the" aria-label={`Chi tiết kỳ tháng ${p.thang.slice(5, 7)}/${p.thang.slice(0, 4)}`}>
+              <h3>Chi tiết kỳ tháng {p.thang.slice(5, 7)}/{p.thang.slice(0, 4)}</h3>
               {cc !== null ? (
                 <>
                   <div className="pl-dong">

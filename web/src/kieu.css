@@ -2535,6 +2535,13 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   margin-top: auto; border-top: 1px solid var(--vien); padding-top: 10px;
   display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
 }
+/* Giong mau: nhan cac the tong hop VIET HOA + trang thai duyet xanh o duoi so thuc nhan */
+.pl-o-nhan { text-transform: uppercase; letter-spacing: 0.05em; }
+.pl-duyet { color: var(--tot); font-size: 13px; display: inline-flex; align-items: center; }
+.pl-duyet-o {
+  width: 8px; height: 8px; border-radius: 999px; background: var(--tot);
+  display: inline-block; margin-right: 6px;
+}
 @media (max-width: 980px) {
   .pl-hero { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pl-co-so-luoi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
