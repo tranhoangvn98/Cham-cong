@@ -29,6 +29,23 @@ Trợ lý điền sẵn payload cho các việc sau và hiện **thẻ chờ xá
 - Đơn giải trình quên quẹt (`/api/toi/giai-trinh`) — đề xuất giờ theo ca của người hỏi.
 - Đề xuất / kiến nghị (`/api/toi/de-xuat`).
 - Hủy đơn đang chờ duyệt (`/api/toi/nghi-phep/:id/huy`, `/don/:id/huy`, `/de-xuat/:id/huy`).
+- **Đăng ký OT / làm thêm giờ** (`/api/toi/don`, loại `lam_them`) — hiểu ngày + giờ bắt
+  đầu/kết thúc ("từ 18:00 đến 20:00", "6 giờ tối đến 8 giờ tối"). Đơn đi qua hai cấp
+  duyệt (trưởng bộ phận rồi TBKS) theo chuỗi sẵn có.
+- **Đơn xin đi muộn** (`/api/toi/don`, loại `di_muon`) — ngày + giờ dự kiến có mặt + lý do.
+- **Đơn xin đổi ca** (`/api/toi/don`, loại `doi_ca`) — khoảng ngày + ca đề nghị (nói kèm
+  tên ca, trợ lý đối chiếu danh mục ca làm việc), giữ ca hiện tại từ hồ sơ.
+- **Đơn xin đi công tác** (`/api/toi/don`, loại `cong_tac`) — khoảng ngày + nơi đến + nội
+  dung công tác; chặn khoảng ngày đã chốt bảng công.
+- **Đơn xin thôi việc** (`/api/toi/don`, loại `thoi_viec`) — ngày làm việc cuối cùng + lý
+  do; máy chủ trả kèm cảnh báo pháp lý (số ngày báo trước theo BLLĐ) và giao diện hiển thị
+  nguyên văn sau khi gửi.
+- **Khiếu nại phiếu lương** (`/api/toi/khieu-nai-luong`) — tự lấy phiếu lương đã duyệt mới
+  nhất của người hỏi, chỉ cần nội dung khiếu nại.
+- **Khiếu nại kỷ luật** (`/api/toi/khieu-nai`) — liệt kê hồ sơ kỷ luật của chính người hỏi,
+  nói kèm mã hồ sơ là điền sẵn.
+- **Ứng lương**: chưa mở tự phục vụ (route chỉ cho nhân sự/quản trị) — trợ lý hướng dẫn
+  liên hệ nhân sự thay vì hứa điền đơn.
 
 ## Nguyên tắc "nhân sự tự xác nhận"
 
@@ -50,7 +67,8 @@ Trợ lý dùng chung khóa `DEEPSEEK_API_KEY` của phân hệ (đã dùng cho 
 - **Hiểu câu ngoài luật**: câu hỏi không khớp luật từ khóa được AI trò chuyện và gợi ý cách
   hỏi lại — không tự bịa số liệu.
 - **Trích ngày xin nghỉ** từ câu nói tự nhiên khi bộ phân tích không tìm thấy; kết quả được
-  kiểm lại bằng hàm thuần `ngay_hop_le` trước khi dùng.
+  kiểm lại bằng hàm thuần `ngay_hop_le` trước khi dùng (dùng chung cho nghỉ phép, OT, đổi
+  ca, công tác, đi muộn).
 - **Viết lại câu trả lời** cho các số liệu cá nhân (phép, công, đi muộn, ca, đơn chờ duyệt)
   từ bối cảnh **tối thiểu** — chỉ con số, không tên/email/ID (NĐ 13/2023). Lỗi mạng hay hết
   khóa thì trợ lý tự rơi về lời có sẵn, không bao giờ chết vì AI.

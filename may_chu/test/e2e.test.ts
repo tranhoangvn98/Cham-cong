@@ -8530,3 +8530,45 @@ test('tro ly: huy don thay don cho duyet va dien san the huy', async () => {
     assert.match(String(r.body['tra_loi']), /không có đơn|nói rõ/);
   }
 });
+
+test('tro ly: dang ky OT dien san don lam them, xac nhan tao duoc don', async () => {
+  const truoc = await goi('GET', '/api/toi/don?loai=lam_them', { token: token_nhan_vien });
+  const so_truoc = (truoc.body as Record<string, unknown>)['danh_sach'] as unknown[];
+  assert.ok(Array.isArray(so_truoc), 'phai co danh_sach don lam them');
+  const r = await goi('GET',
+    '/api/toi/tro-ly?hoi=' + encodeURIComponent(
+      `đăng ký OT ngày ${NGAY_TL_VIET} từ 18:00 đến 20:00 vì chạy đơn hàng`),
+    { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+  const hd = r.body['hanh_dong'] as Record<string, unknown>;
+  assert.ok(hd !== undefined, 'phai co hanh dong cho xac nhan');
+  assert.equal(hd['loai'], 'tao_don_lam_them');
+  assert.equal(hd['duong_dan'], '/api/toi/don');
+  const dl = hd['du_lieu'] as Record<string, unknown>;
+  assert.equal(dl['loai'], 'lam_them');
+  assert.equal(dl['tu_ngay'], NGAY_TL);
+  assert.equal(dl['gio_bat_dau'], '18:00');
+  assert.equal(dl['gio_ket_thuc'], '20:00');
+  assert.match(String(dl['ly_do']), /chạy đơn hàng/);
+  // Chi dien san: so don trong CSDL khong doi.
+  const giua = await goi('GET', '/api/toi/don?loai=lam_them', { token: token_nhan_vien });
+  assert.equal(((giua.body as Record<string, unknown>)['danh_sach'] as unknown[]).length,
+    so_truoc.length, 'tro ly khong duoc tu tao don OT');
+  // Nhan vien bam xac nhan -> POST route that -> don duoc tao.
+  const g = await goi('POST', hd['duong_dan'] as string,
+    { token: token_nhan_vien, body: dl });
+  assert.equal(g.ma, 201, JSON.stringify(g.body));
+  const sau = await goi('GET', '/api/toi/don?loai=lam_them', { token: token_nhan_vien });
+  assert.equal(((sau.body as Record<string, unknown>)['danh_sach'] as unknown[]).length,
+    so_truoc.length + 1, 'sau xac nhan phai co them mot don OT');
+});
+
+test('tro ly: dang ky OT thieu gio thi hoi bo sung, khong dien san', async () => {
+  const r = await goi('GET',
+    '/api/toi/tro-ly?hoi=' + encodeURIComponent(`đăng ký OT ngày ${NGAY_TL_2_VIET}`),
+    { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['y_dinh'], 'dang_ky_ot');
+  assert.equal(r.body['hanh_dong'], undefined, 'thieu gio thi phai hoi bo sung');
+  assert.match(String(r.body['tra_loi']), /mấy giờ/);
+});

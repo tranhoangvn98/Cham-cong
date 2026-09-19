@@ -35,7 +35,9 @@ export type LoaiNghi = (typeof LOAI_NGHI)[number];
 
 /** Hanh dong tro ly da dien san, CHO nhan vien bam xac nhan. Chua co gi duoc gui di. */
 export interface HanhDongChoXacNhan {
-  loai: 'tao_don_nghi_phep' | 'tao_giai_trinh' | 'tao_de_xuat' | 'huy_don';
+  loai: 'tao_don_nghi_phep' | 'tao_giai_trinh' | 'tao_de_xuat' | 'huy_don'
+    | 'tao_don_lam_them' | 'tao_don_doi_ca' | 'tao_don_cong_tac' | 'tao_don_thoi_viec'
+    | 'tao_don_di_muon' | 'tao_khieu_nai_luong' | 'tao_khieu_nai_ky_luat';
   tieu_de: string;
   /** Cac dong chi tiet hien cho nguoi dung xem truoc khi bam Xac nhan. */
   chi_tiet: string[];
@@ -61,9 +63,11 @@ export interface TraLoiTroLy {
 
 const GOI_Y = [
   'Tôi còn bao nhiêu ngày phép?',
+  'Đăng ký OT giúp tôi',
   'Công tháng này của tôi thế nào?',
   'Tháng này tôi đi muộn mấy lần?',
   'Đi muộn bị xử lý thế nào?',
+  'Tôi muốn xin đổi ca',
   'Sắp tới có nghỉ lễ gì không?',
   'Tôi có đơn nào đang chờ duyệt không?',
 ];
@@ -206,6 +210,75 @@ export function phan_tich_ly_do(cau_goc: string): string | null {
   return ly_do === '' ? null : ly_do.slice(0, 500);
 }
 
+/** Hai moc gio doc duoc tu cau noi, dang HH:MM (24 gio). */
+export interface MocGio {
+  bat_dau: string | null;
+  ket_thuc: string | null;
+}
+
+/**
+ * Doc gio tu cau noi: hieu "18:00", "18h", "18 gio", va buoi trong ngay dung TRUOC hoac ngay
+ * SAU moc ("6 gio toi" = 18:00, "2 gio chieu" = 14:00). Lay toi da HAI moc theo thu tu xuat
+ * hien: moc dau la bat dau, moc sau la ket thuc. Gio vo ly (25:99) bi bo qua.
+ */
+export function phan_tich_gio(cau: string): MocGio {
+  const c = chuan(cau);
+  const mau: { vt: number; h: number; p: number }[] = [];
+  for (const m of c.matchAll(/(\d{1,2}):(\d{2})/g)) {
+    mau.push({ vt: m.index, h: Number(m[1]), p: Number(m[2]) });
+  }
+  for (const m of c.matchAll(/(\d{1,2})\s*(?:h\b|gio\b)/g)) {
+    if (mau.some((g) => g.vt === m.index)) continue;
+    mau.push({ vt: m.index, h: Number(m[1]), p: 0 });
+  }
+  mau.sort((a, b) => a.vt - b.vt);
+  const moc = mau.slice(0, 2).map((g) => {
+    let h = g.h;
+    // Buoi dung TRUOC moc ("8 gio toi") hoac ngay SAU moc ("6 gio toi") — uu tien truoc.
+    const truoc = [...c.slice(0, g.vt).matchAll(/\b(sang|chieu|toi|dem)\b/g)].pop()?.[1] ?? null;
+    const sau = c.slice(g.vt, g.vt + 25).match(/\b(sang|chieu|toi|dem)\b/)?.[1] ?? null;
+    const buoi = truoc ?? sau;
+    if ((buoi === 'toi' || buoi === 'dem' || buoi === 'chieu') && h < 12) h += 12;
+    if (h > 23 || g.p > 59) return null;
+    return `${String(h).padStart(2, '0')}:${String(g.p).padStart(2, '0')}`;
+  }).filter((g): g is string => g !== null);
+  return { bat_dau: moc[0] ?? null, ket_thuc: moc[1] ?? null };
+}
+
+/**
+ * Doc noi den tu cau di cong tac ("di cong tac Ha Noi tu 26/09", "di Can Tho"). Cat o cac
+ * tu danh dau thoi gian/ly do. Rong thi tra null (route nhan null duoc).
+ *
+ * LUU Y: \b cua JS khong hieu chu Viet co dau — phai dung lookaround nhu da tung gap.
+ */
+export function phan_tich_noi_den(cau_goc: string): string | null {
+  const m = cau_goc.match(
+    /(?<![A-Za-z0-9À-ỹ])đi\s+(.+?)(?=\s+(?:công tác|từ|đến|ngày|vào|về|vì|để|trong)(?![A-Za-z0-9À-ỹ])|$)/iu,
+  );
+  if (m === null) return null;
+  const noi = m[1]!.trim().replace(/^công tác\s*/iu, '').replace(/^tại\s*/iu, '')
+    .replace(/[,.]+$/, '');
+  if (noi === '') return null;
+  return noi.slice(0, 100);
+}
+
+/**
+ * Boc noi dung khieu nai tu cau goc: bo phan mo dau ("toi muon gui khieu nai phieu luong"),
+ * uu tien phan sau "vi ...". Tra null khi con lai qua ngan (route doi toi thieu 5 ky tu).
+ */
+export function phan_tich_noi_dung_khieu_nai(cau_goc: string): string | null {
+  const t = cau_goc.trim()
+    .replace(/^(?:toi|tôi|minh|mình)\s+(?:muon|muốn|can|cần|la|là)\s+/iu, '')
+    .replace(/^(?:gui|gửi)\s+/iu, '')
+    .replace(/^(?:khieu nai|khiếu nại)\s+(?:ve|về)?\s*/iu, '')
+    .replace(/^(?:(?:phieu|phiếu)\s*)?(?:luong|lương|ky luat|kỷ luật|ho so|hồ sơ|quyet dinh|quyết định)?\s*[:.\-]?\s*/iu, '');
+  const ly = phan_tich_ly_do(t);
+  if (ly !== null) return ly;
+  const kq = t.trim().replace(/^(?:vì|vi|do)\s+/iu, '').trim();
+  if (kq.length < 5) return null;
+  return kq.slice(0, 2000);
+}
+
 /** Ket qua phan tich giai trinh quen quet. */
 export interface GiaiTrinh {
   ngay: string | null;
@@ -243,7 +316,9 @@ export function phan_tich_de_xuat(cau_goc: string): { tieu_de: string; noi_dung:
 export type YDinh =
   | 'chao' | 'giai_trinh' | 'huy_don' | 'de_xuat' | 'xin_nghi_phep'
   | 'noi_quy' | 'thong_bao' | 'van_ban' | 'luong' | 'di_muon'
-  | 'cong_thang' | 'nghi_le' | 'ca_lam' | 'don_cho' | 'phep' | 'khong_ro';
+  | 'cong_thang' | 'nghi_le' | 'ca_lam' | 'don_cho' | 'phep' | 'khong_ro'
+  | 'dang_ky_ot' | 'doi_ca' | 'cong_tac' | 'nghi_viec' | 'xin_di_muon'
+  | 'khieu_nai_luong' | 'khieu_nai_ky_luat' | 'ung_luong';
 
 /**
  * Nhan dang y dinh bang tu khoa (khong dau). THU TU CO Y: y dinh hep truoc y dinh rong —
@@ -259,8 +334,24 @@ export function nhan_dang_y_dinh(cau_goc: string): YDinh {
   // Hoi MAU DON / bieu mau la tim van ban, khong phai muon lam don: "mau don xin nghi".
   // Phai kiem TRUOC de xuat/xin nghi vi "bieu mau de xuat" chua ca "de xuat".
   if (co(cau, 'mau don', 'bieu mau', 'mau nghi')) return 'van_ban';
+  // Khieu nai truoc moi thu: "khieu nai ky luat" chua "ky luat" (noi_quy) va
+  // "khieu nai luong" chua "luong" — tach dung loai ngay tu dau.
+  if (co(cau, 'khieu nai')) {
+    return co(cau, 'luong', 'phieu luong') ? 'khieu_nai_luong' : 'khieu_nai_ky_luat';
+  }
+  // Nghi viec truoc xin_nghi_phep ("xin nghi viec" chua "xin nghi"). Chua nghi viec
+  // hieu/tang che ra — do la loai NGHI PHEP che do, khong phai thoi viec.
+  if (!co(cau, 'hieu', 'tang gia', 'tang che')
+    && co(cau, 'thoi viec', 'nghi viec', 'bo viec', 'cham dut', 'nop don thoi')) return 'nghi_viec';
   if (co(cau, 'de xuat', 'kien nghi', 'gop y', 'góp y')) return 'de_xuat';
   if (co(cau, 'xin nghi', 'xin phep', 'xin om', 'nghi om', 'muon nghi', 'dang ky nghi', 'nghi phep ngay')) return 'xin_nghi_phep';
+  // Cac don tu phuc vu chu dong — dat truoc cac y dinh rong cung tu ("cong tac" chua
+  // "cong", "doi ca" chua "ca"). "ot" khop theo tu nguyen de khong bam phai "tot".
+  if (/\bot\b/.test(cau) || co(cau, 'lam them', 'tang ca', 'them gio')) return 'dang_ky_ot';
+  if (co(cau, 'doi ca', 'chuyen ca')) return 'doi_ca';
+  if (co(cau, 'cong tac')) return 'cong_tac';
+  if (co(cau, 'xin di muon', 'dang ky di muon', 'bao di muon', 'xin den tre', 'dang ky den tre')) return 'xin_di_muon';
+  if (co(cau, 'ung luong', 'tam ung', 'ung truoc')) return 'ung_luong';
   if (co(cau, 'noi quy', 'vi pham', 'ky luat', 'che tai', 'bi phat', 'giam thuong', 'xu ly khi', 'sai pham')) return 'noi_quy';
   // Hoi hanh vi + che tai cung la cau hoi noi quy: "di muon bi xu ly the nao" khong phai
   // cau hoi so lieu ca nhan.
@@ -308,12 +399,21 @@ export async function tra_loi_tro_ly(nv_id: string, cau_hoi_goc: string): Promis
   switch (y_dinh) {
     case 'chao':
       return {
-        tra_loi: 'Chào bạn! Mình là trợ lý dữ liệu. Bạn hỏi về phép, công, lương, đi muộn, '
-          + 'nghỉ lễ, ca làm việc, nội quy công ty — mình tra ngay từ dữ liệu của bạn. '
-          + 'Mình cũng điền sẵn đơn giúp bạn, và **chính bạn** bấm nút xác nhận thì đơn mới gửi.',
+        tra_loi: 'Chào bạn! Mình là trợ lý dữ liệu. Bạn hỏi phép, công, lương, đi muộn, ca làm, '
+          + 'nội quy — mình tra ngay từ dữ liệu của bạn. Mình còn điền sẵn đơn **OT, đổi ca, '
+          + 'công tác, xin đi muộn, khiếu nại** giúp bạn, và **chính bạn** bấm nút xác nhận '
+          + 'thì mới gửi đi.',
         y_dinh: 'chao',
         goi_y: GOI_Y,
       };
+    case 'khieu_nai_luong': return tra_loi_khieu_nai_luong(nv_id, cau_hoi_goc, cau);
+    case 'khieu_nai_ky_luat': return tra_loi_khieu_nai_ky_luat(nv_id, cau_hoi_goc, cau);
+    case 'nghi_viec': return tra_loi_nghi_viec(nv_id, cau_hoi_goc, cau, hom_nay);
+    case 'dang_ky_ot': return tra_loi_dang_ky_ot(nv_id, cau_hoi_goc, cau, hom_nay);
+    case 'doi_ca': return tra_loi_doi_ca(nv_id, cau_hoi_goc, cau, hom_nay);
+    case 'cong_tac': return tra_loi_cong_tac(nv_id, cau_hoi_goc, cau, hom_nay);
+    case 'xin_di_muon': return tra_loi_xin_di_muon(nv_id, cau_hoi_goc, cau, hom_nay);
+    case 'ung_luong': return tra_loi_ung_luong();
     case 'giai_trinh': return tra_loi_giai_trinh(nv_id, cau_hoi_goc, cau, hom_nay);
     case 'huy_don': return tra_loi_huy_don(nv_id, cau);
     case 'de_xuat': return tra_loi_de_xuat(nv_id, cau_hoi_goc, cau);
@@ -340,8 +440,8 @@ export async function tra_loi_tro_ly(nv_id: string, cau_hoi_goc: string): Promis
   if (llm !== null) return { tra_loi: llm.tra_loi, y_dinh: 'llm', goi_y: llm.goi_y };
 
   return {
-    tra_loi: 'Mình chưa hiểu câu hỏi. Bạn thử hỏi về **phép, công, đi muộn, nghỉ lễ, ca làm '
-      + 'việc, nội quy** hoặc **đơn chờ duyệt** nhé.',
+    tra_loi: 'Mình chưa hiểu câu hỏi. Bạn thử hỏi về **phép, công, đi muộn, ca làm, nội quy**, '
+      + 'hoặc nhờ mình điền đơn **OT, đổi ca, công tác, xin đi muộn** nhé.',
     y_dinh: 'khong_ro',
     goi_y: GOI_Y,
   };
@@ -401,9 +501,12 @@ async function tro_chuyen_llm(cau_hoi_goc: string): Promise<
     'Ban la tro ly cua phan he Cham cong, hoi bang tieng Viet. Nguoi dung hoi: '
     + JSON.stringify(cau_hoi_goc)
     + '\n\nBan chi ho tro: phep nam (con bao nhieu ngay), cong thang, di muon, nghi le, ca lam, '
-    + 'don cho duyet, noi quy/che tai, xin nghi phep, giai trinh quen quet, de xuat. '
+    + 'don cho duyet, noi quy/che tai, xin nghi phep, giai trinh quen quet, de xuat, '
+    + 'dang ky OT/lam them gio (can ngay + tu gio den gio), xin doi ca, dang ky di cong tac, '
+    + 'xin di muon, khieu nai phieu luong, khieu nai ky luat. '
     + 'Neu cau hoi trong pham vi: tra loi ngan gon, than thien va huong ho hoi lai cu the '
-    + '(vi du kem ngay dang 25/09). Neu NGOAI pham vi: noi ro minh chi lo viec cham cong. '
+    + '(vi du kem ngay dang 25/09, gio dang 18:00 den 20:00). Neu NGOAI pham vi: noi ro minh '
+    + 'chi lo viec cham cong. '
     + 'KHONG bịa so lieu, khong hua viec minh khong lam duoc. '
     + 'Tra ve DUY NHAT doi tuong JSON dang {"tra_loi": "...", "goi_y": ["cau goi y 1", "cau goi y 2"]} '
     + 'toi da 3 goi y, noi dung goi y nhu cach nguoi dung nen hoi.');
@@ -993,5 +1096,437 @@ async function tra_loi_huy_don(nv_id: string, cau: string): Promise<TraLoiTroLy>
       nhan: 'Hủy đơn',
       bo: 'Giữ lại',
     },
+  };
+}
+
+// ================================================================ hanh dong don tu (OT, doi ca, cong tac, thoi viec, di muon)
+
+/** Kiem don_tu cung loai cua nguoi hoi dang cho/da duyet trum ngay — tranh de route nem loi. */
+async function don_tu_trung_ngay(
+  nv_id: string, loai: string, tu: string, den: string,
+): Promise<boolean> {
+  const trung = await truy_van_mot<{ id: string }>(
+    `select id from don_tu
+      where nhan_vien_id = $1 and loai = $2
+        and trang_thai in ('cho_duyet','cho_duyet_2','da_duyet')
+        and tu_ngay <= $4 and coalesce(den_ngay, tu_ngay) >= $3 limit 1`,
+    [nv_id, loai, tu, den],
+  );
+  return trung !== null;
+}
+
+async function tra_loi_dang_ky_ot(
+  nv_id: string, cau_goc: string, cau: string, hom_nay: string,
+): Promise<TraLoiTroLy> {
+  let ngay = phan_tich_ngay(cau, hom_nay);
+  if (ngay === null) {
+    const llm = await phan_tich_khoang_llm(cau_goc, hom_nay);
+    if (llm !== null) ngay = llm.tu;
+  }
+  if (ngay === null) {
+    return {
+      tra_loi: 'OT vào ngày nào? Ví dụ: **"đăng ký OT ngày 25/09 từ 18:00 đến 20:00"**.',
+      y_dinh: 'dang_ky_ot',
+      goi_y: ['Đăng ký OT ngày mai từ 18:00 đến 20:00'],
+    };
+  }
+  if (ngay < hom_nay) {
+    return {
+      tra_loi: `Ngày ${ngay_viet(ngay)} đã qua — OT chỉ đăng ký cho hôm nay hoặc ngày sắp tới.`,
+      y_dinh: 'dang_ky_ot', goi_y: GOI_Y,
+    };
+  }
+  const gio = phan_tich_gio(cau);
+  if (gio.bat_dau === null || gio.ket_thuc === null) {
+    return {
+      tra_loi: 'Làm thêm từ mấy giờ đến mấy giờ? Ví dụ: **"đăng ký OT ngày 25/09 từ 18:00 '
+        + 'đến 20:00"**.',
+      y_dinh: 'dang_ky_ot',
+      goi_y: [`Đăng ký OT ngày ${ngay_viet(ngay)} từ 18:00 đến 20:00`],
+    };
+  }
+  if (gio.ket_thuc <= gio.bat_dau) {
+    return {
+      tra_loi: 'Giờ kết thúc phải sau giờ bắt đầu. Bạn kiểm tra lại nhé (ví dụ từ 18:00 '
+        + 'đến 20:00).',
+      y_dinh: 'dang_ky_ot', goi_y: GOI_Y,
+    };
+  }
+  if (await don_tu_trung_ngay(nv_id, 'lam_them', ngay, ngay)) {
+    return {
+      tra_loi: `Bạn đã có đơn làm thêm giờ ngày ${ngay_viet(ngay)} đang chờ duyệt hoặc đã duyệt.`,
+      y_dinh: 'dang_ky_ot', goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    };
+  }
+  const ly_do = phan_tich_ly_do(cau_goc);
+  return {
+    tra_loi: 'Mình đã điền sẵn đơn làm thêm giờ bên dưới. Bấm **Gửi đơn OT** để nộp — chỉ '
+      + 'gửi khi **chính bạn xác nhận**.',
+    y_dinh: 'dang_ky_ot',
+    goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    hanh_dong: {
+      loai: 'tao_don_lam_them',
+      tieu_de: 'Đơn xin làm thêm giờ',
+      chi_tiet: [
+        `Ngày làm thêm: ${ngay_viet(ngay)}`,
+        `Từ giờ: ${gio.bat_dau}`,
+        `Đến giờ: ${gio.ket_thuc}`,
+        ...(ly_do === null ? [] : [`Lý do: ${ly_do}`]),
+      ],
+      duong_dan: '/api/toi/don',
+      phuong_thuc: 'POST',
+      du_lieu: {
+        loai: 'lam_them', tu_ngay: ngay,
+        gio_bat_dau: gio.bat_dau, gio_ket_thuc: gio.ket_thuc, ly_do,
+      },
+      nhan: 'Gửi đơn OT',
+      bo: 'Bỏ',
+    },
+  };
+}
+
+async function tra_loi_xin_di_muon(
+  nv_id: string, cau_goc: string, cau: string, hom_nay: string,
+): Promise<TraLoiTroLy> {
+  let ngay = phan_tich_ngay(cau, hom_nay);
+  if (ngay === null) {
+    const llm = await phan_tich_khoang_llm(cau_goc, hom_nay);
+    if (llm !== null) ngay = llm.tu;
+  }
+  if (ngay === null) {
+    return {
+      tra_loi: 'Bạn xin đi muộn ngày nào? Ví dụ: **"xin đi muộn ngày mai 15 phút"** hoặc '
+        + '**"xin đi muộn ngày 25/09 đến 8:30"**.',
+      y_dinh: 'xin_di_muon',
+      goi_y: ['Xin đi muộn ngày mai 15 phút'],
+    };
+  }
+  if (ngay < hom_nay) {
+    return {
+      tra_loi: `Ngày ${ngay_viet(ngay)} đã qua. Đơn đi muộn cần gửi trước giờ vào ca cùng ngày `
+        + 'để làm căn cứ miễn phạt — ngày cũ bạn liên hệ nhân sự nhé.',
+      y_dinh: 'xin_di_muon', goi_y: GOI_Y,
+    };
+  }
+  if (await don_tu_trung_ngay(nv_id, 'di_muon', ngay, ngay)) {
+    return {
+      tra_loi: `Bạn đã có đơn xin đi muộn ngày ${ngay_viet(ngay)} đang chờ duyệt hoặc đã duyệt.`,
+      y_dinh: 'xin_di_muon', goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    };
+  }
+  const gio_den = phan_tich_gio(cau).bat_dau;
+  const ly_do = phan_tich_ly_do(cau_goc);
+  return {
+    tra_loi: 'Mình đã điền sẵn đơn xin đi muộn bên dưới. Bấm **Gửi đơn đi muộn** để nộp — '
+      + 'chỉ gửi khi **chính bạn xác nhận**.',
+    y_dinh: 'xin_di_muon',
+    goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    hanh_dong: {
+      loai: 'tao_don_di_muon',
+      tieu_de: 'Đơn xin đi muộn',
+      chi_tiet: [
+        `Ngày đi muộn: ${ngay_viet(ngay)}`,
+        `Giờ dự kiến có mặt: ${gio_den ?? 'chưa rõ (bổ sung ở tab Đơn của tôi)'}`,
+        ...(ly_do === null ? [] : [`Lý do: ${ly_do}`]),
+      ],
+      duong_dan: '/api/toi/don',
+      phuong_thuc: 'POST',
+      du_lieu: { loai: 'di_muon', tu_ngay: ngay, gio_bat_dau: gio_den, ly_do },
+      nhan: 'Gửi đơn đi muộn',
+      bo: 'Bỏ',
+    },
+  };
+}
+
+async function tra_loi_doi_ca(
+  nv_id: string, cau_goc: string, cau: string, hom_nay: string,
+): Promise<TraLoiTroLy> {
+  let khoang = phan_tich_khoang_nghi(cau, hom_nay);
+  if (khoang === null) {
+    khoang = await phan_tich_khoang_llm(cau_goc, hom_nay);
+  }
+  if (khoang === null) {
+    return {
+      tra_loi: 'Bạn muốn đổi ca từ ngày nào? Ví dụ: **"xin đổi ca từ 26/09 sang ca tối"**.',
+      y_dinh: 'doi_ca',
+      goi_y: ['Xin đổi ca sang ca tối từ ngày mai'],
+    };
+  }
+
+  const cac_ca = await truy_van<{ id: string; ten: string }>(
+    'select id, ten from ca_lam order by ten',
+  );
+  if (cac_ca.length === 0) {
+    return {
+      tra_loi: 'Hệ thống chưa khai ca làm việc nào. Liên hệ nhân sự để mở danh mục ca.',
+      y_dinh: 'doi_ca', goi_y: GOI_Y,
+    };
+  }
+  const ca_moi = cac_ca.find((c) => cau.includes(chuan(c.ten))) ?? null;
+  if (ca_moi === null) {
+    const ten_ca = cac_ca.map((c) => `• ${c.ten}`).join('\n');
+    return {
+      tra_loi: `Bạn muốn đổi sang ca nào? Nói kèm tên ca, ví dụ **"xin đổi ca sang ${cac_ca[0]!.ten}"**.\n\nCác ca hiện có:\n${ten_ca}`,
+      y_dinh: 'doi_ca', goi_y: GOI_Y,
+    };
+  }
+
+  const hien_tai = await truy_van_mot<{ ca_id: string | null; ten: string | null }>(
+    `select nv.ca_lam_id as ca_id, cl.ten as ten
+       from nhan_vien nv left join ca_lam cl on cl.id = nv.ca_lam_id where nv.id = $1`,
+    [nv_id],
+  );
+
+  const tu = khoang.tu;
+  const den = khoang.den;
+  if (await don_tu_trung_ngay(nv_id, 'doi_ca', tu, den)) {
+    return {
+      tra_loi: 'Bạn đã có đơn xin đổi ca trùm khoảng ngày này (đang chờ duyệt hoặc đã duyệt).',
+      y_dinh: 'doi_ca', goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    };
+  }
+
+  const khoang_viet = tu === den ? ngay_viet(tu) : `${ngay_viet(tu)} – ${ngay_viet(den)}`;
+  const ly_do = phan_tich_ly_do(cau_goc);
+  return {
+    tra_loi: 'Mình đã điền sẵn đơn xin đổi ca bên dưới. Bấm **Gửi đơn đổi ca** để nộp — chỉ '
+      + 'gửi khi **chính bạn xác nhận**.',
+    y_dinh: 'doi_ca',
+    goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    hanh_dong: {
+      loai: 'tao_don_doi_ca',
+      tieu_de: 'Đơn xin đổi ca',
+      chi_tiet: [
+        `Từ ngày: ${khoang_viet}`,
+        `Ca hiện tại: ${hien_tai?.ten ?? 'chưa gán'}`,
+        `Ca đề nghị: ${ca_moi.ten}`,
+        ...(ly_do === null ? [] : [`Lý do: ${ly_do}`]),
+      ],
+      duong_dan: '/api/toi/don',
+      phuong_thuc: 'POST',
+      du_lieu: {
+        loai: 'doi_ca', tu_ngay: tu, den_ngay: den,
+        ca_hien_tai_id: hien_tai?.ca_id ?? null, ca_moi_id: ca_moi.id, ly_do,
+      },
+      nhan: 'Gửi đơn đổi ca',
+      bo: 'Bỏ',
+    },
+  };
+}
+
+async function tra_loi_cong_tac(
+  nv_id: string, cau_goc: string, cau: string, hom_nay: string,
+): Promise<TraLoiTroLy> {
+  let khoang = phan_tich_khoang_nghi(cau, hom_nay);
+  if (khoang === null) {
+    khoang = await phan_tich_khoang_llm(cau_goc, hom_nay);
+  }
+  if (khoang === null) {
+    return {
+      tra_loi: 'Bạn đi công tác từ ngày nào đến ngày nào? Ví dụ: **"đi công tác Hà Nội từ '
+        + '26/09 đến 27/09"**.',
+      y_dinh: 'cong_tac',
+      goi_y: ['Đi công tác từ ngày mai'],
+    };
+  }
+  const tu = khoang.tu;
+  const den = khoang.den;
+
+  // Giong route POST /don: cong tac doi trang thai ngay cong nen khong trum ngay da chot.
+  const da_chot = await truy_van_mot<{ co: boolean }>(
+    `select true as co from bang_cong_ngay
+      where nhan_vien_id = $1 and ngay >= $2 and ngay <= $3 and da_chot = true limit 1`,
+    [nv_id, tu, den],
+  );
+  if (da_chot !== null) {
+    return {
+      tra_loi: 'Khoảng ngày này đã **chốt bảng công**, đơn công tác không đổi được số công '
+        + 'nữa. Vui lòng liên hệ nhân sự.',
+      y_dinh: 'cong_tac', goi_y: GOI_Y,
+    };
+  }
+  if (await don_tu_trung_ngay(nv_id, 'cong_tac', tu, den)) {
+    return {
+      tra_loi: 'Bạn đã có đơn công tác trùm khoảng ngày này (đang chờ duyệt hoặc đã duyệt).',
+      y_dinh: 'cong_tac', goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    };
+  }
+
+  const noi_den = phan_tich_noi_den(cau_goc);
+  const ly_do = phan_tich_ly_do(cau_goc);
+  const khoang_viet = tu === den ? ngay_viet(tu) : `${ngay_viet(tu)} – ${ngay_viet(den)}`;
+  return {
+    tra_loi: 'Mình đã điền sẵn đơn xin đi công tác bên dưới. Bấm **Gửi đơn công tác** để nộp '
+      + '— chỉ gửi khi **chính bạn xác nhận**.',
+    y_dinh: 'cong_tac',
+    goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    hanh_dong: {
+      loai: 'tao_don_cong_tac',
+      tieu_de: 'Đơn xin đi công tác',
+      chi_tiet: [
+        `Từ ngày: ${khoang_viet}`,
+        ...(noi_den === null ? [] : [`Nơi đến: ${noi_den}`]),
+        ...(ly_do === null ? [] : [`Nội dung công tác: ${ly_do}`]),
+      ],
+      duong_dan: '/api/toi/don',
+      phuong_thuc: 'POST',
+      du_lieu: { loai: 'cong_tac', tu_ngay: tu, den_ngay: den, noi_den, ly_do },
+      nhan: 'Gửi đơn công tác',
+      bo: 'Bỏ',
+    },
+  };
+}
+
+async function tra_loi_nghi_viec(
+  nv_id: string, cau_goc: string, cau: string, hom_nay: string,
+): Promise<TraLoiTroLy> {
+  const ngay = phan_tich_ngay(cau, hom_nay);
+  if (ngay === null) {
+    return {
+      tra_loi: 'Ngày làm việc cuối cùng bạn muốn là ngày nào? Ví dụ: **"xin nghỉ việc, ngày '
+        + 'làm việc cuối 25/10"**.',
+      y_dinh: 'nghi_viec',
+      goi_y: GOI_Y,
+    };
+  }
+  const trung = await truy_van_mot<{ id: string }>(
+    `select id from don_tu where nhan_vien_id = $1 and loai = 'thoi_viec'
+       and trang_thai in ('cho_duyet','cho_duyet_2','da_duyet') limit 1`,
+    [nv_id],
+  );
+  if (trung !== null) {
+    return {
+      tra_loi: 'Bạn đã có đơn xin thôi việc đang chờ duyệt hoặc đã duyệt. Liên hệ nhân sự '
+        + 'nếu cần điều chỉnh.',
+      y_dinh: 'nghi_viec', goi_y: GOI_Y,
+    };
+  }
+  const ly_do = phan_tich_ly_do(cau_goc);
+  return {
+    tra_loi: 'Thôi việc là quyết định quan trọng — mình điền sẵn đơn bên dưới để bạn xem lại. '
+      + 'Bấm **Gửi đơn thôi việc** chỉ khi **chính bạn chắc chắn**.',
+    y_dinh: 'nghi_viec',
+    goi_y: GOI_Y,
+    hanh_dong: {
+      loai: 'tao_don_thoi_viec',
+      tieu_de: 'Đơn xin thôi việc',
+      chi_tiet: [
+        `Ngày làm việc cuối cùng: ${ngay_viet(ngay)}`,
+        ...(ly_do === null ? [] : [`Lý do: ${ly_do}`]),
+      ],
+      duong_dan: '/api/toi/don',
+      phuong_thuc: 'POST',
+      du_lieu: { loai: 'thoi_viec', tu_ngay: ngay, ly_do },
+      nhan: 'Gửi đơn thôi việc',
+      bo: 'Bỏ',
+    },
+  };
+}
+
+// ================================================================ hanh dong khieu nai
+
+async function tra_loi_khieu_nai_luong(
+  nv_id: string, cau_goc: string, _cau: string,
+): Promise<TraLoiTroLy> {
+  const phieu = await truy_van_mot<{ id: string; thang: string }>(
+    `select p.id, k.thang from phieu_luong p
+       join ky_luong k on k.id = p.ky_luong_id
+      where p.nhan_vien_id = $1 and k.trang_thai in ('da_duyet','da_tra')
+      order by k.thang desc limit 1`,
+    [nv_id],
+  );
+  if (phieu === null) {
+    return {
+      tra_loi: 'Bạn chưa có phiếu lương nào được duyệt để khiếu nại. Khi có phiếu lương đã '
+        + 'chốt, nói **"khiếu nại phiếu lương vì ..."** là mình điền giúp.',
+      y_dinh: 'khieu_nai_luong', goi_y: GOI_Y,
+    };
+  }
+  const noi_dung = phan_tich_noi_dung_khieu_nai(cau_goc);
+  if (noi_dung === null) {
+    return {
+      tra_loi: `Được, mình sẽ điền khiếu nại cho phiếu lương **tháng ${phieu.thang}**. Bạn cho `
+        + 'mình nội dung nhé, ví dụ: **"khiếu nại phiếu lương vì thiếu phụ cấp đi lại"**.',
+      y_dinh: 'khieu_nai_luong',
+      goi_y: ['Khiếu nại phiếu lương vì thiếu phụ cấp đi lại'],
+    };
+  }
+  return {
+    tra_loi: 'Mình đã điền sẵn khiếu nại phiếu lương bên dưới. Bấm **Gửi khiếu nại** để nộp '
+      + '— chỉ gửi khi **chính bạn xác nhận**.',
+    y_dinh: 'khieu_nai_luong',
+    goi_y: ['Khiếu nại của tôi xử lý tới đâu rồi?'],
+    hanh_dong: {
+      loai: 'tao_khieu_nai_luong',
+      tieu_de: `Khiếu nại phiếu lương tháng ${phieu.thang}`,
+      chi_tiet: [`Nội dung: ${noi_dung}`],
+      duong_dan: '/api/toi/khieu-nai-luong',
+      phuong_thuc: 'POST',
+      du_lieu: { phieu_luong_id: phieu.id, noi_dung },
+      nhan: 'Gửi khiếu nại',
+      bo: 'Bỏ',
+    },
+  };
+}
+
+async function tra_loi_khieu_nai_ky_luat(
+  nv_id: string, cau_goc: string, cau: string,
+): Promise<TraLoiTroLy> {
+  const ho_so = await truy_van<{ id: string; ma: string; ky: string; hinh_thuc: string | null }>(
+    `select h.id, h.ma, h.ky, h.hinh_thuc from ho_so_ky_luat h
+      where h.nhan_vien_id = $1 and h.trang_thai <> 'bac_bo'
+      order by h.ky desc limit 20`,
+    [nv_id],
+  );
+  if (ho_so.length === 0) {
+    return {
+      tra_loi: 'Bạn chưa có hồ sơ kỷ luật hoặc vi phạm nào trong hệ thống để khiếu nại.',
+      y_dinh: 'khieu_nai_ky_luat', goi_y: GOI_Y,
+    };
+  }
+  let chon = ho_so.find((h) => cau.includes(chuan(h.ma))) ?? null;
+  if (chon === null && ho_so.length === 1) chon = ho_so[0]!;
+  if (chon === null) {
+    const danh_sach = ho_so.map((h) =>
+      `• ${h.ma} — kỳ ${h.ky}${h.hinh_thuc === null ? '' : ` (${h.hinh_thuc})`}`).join('\n');
+    return {
+      tra_loi: `Bạn muốn khiếu nại hồ sơ nào? Nói kèm mã hồ sơ nhé:\n${danh_sach}`,
+      y_dinh: 'khieu_nai_ky_luat', goi_y: GOI_Y,
+    };
+  }
+  const noi_dung = phan_tich_noi_dung_khieu_nai(cau_goc);
+  if (noi_dung === null) {
+    return {
+      tra_loi: `Được, khiếu nại hồ sơ **${chon.ma}**. Bạn cho mình nội dung khiếu nại nhé, ví `
+        + 'dụ: **"khiếu nại ' + `${chon.ma} vì mức xử lý chưa đúng quy định"**.`,
+      y_dinh: 'khieu_nai_ky_luat',
+      goi_y: [`Khiếu nại ${chon.ma} vì mức xử lý chưa đúng quy định`],
+    };
+  }
+  return {
+    tra_loi: 'Mình đã điền sẵn khiếu nại bên dưới (quyền khiếu nại theo BLLĐ Điều 131). Bấm '
+      + '**Gửi khiếu nại** để nộp — chỉ gửi khi **chính bạn xác nhận**.',
+    y_dinh: 'khieu_nai_ky_luat',
+    goi_y: ['Khiếu nại của tôi xử lý tới đâu rồi?'],
+    hanh_dong: {
+      loai: 'tao_khieu_nai_ky_luat',
+      tieu_de: `Khiếu nại hồ sơ ${chon.ma}`,
+      chi_tiet: [`Nội dung: ${noi_dung}`],
+      duong_dan: '/api/toi/khieu-nai',
+      phuong_thuc: 'POST',
+      du_lieu: { ho_so_ky_luat_id: chon.id, loai: 'khieu_nai', noi_dung },
+      nhan: 'Gửi khiếu nại',
+      bo: 'Bỏ',
+    },
+  };
+}
+
+/** Ung luong CHUA mo tu phuc vu (route chi danh cho nhan su/quan tri) — huong dan dung cho. */
+function tra_loi_ung_luong(): TraLoiTroLy {
+  return {
+    tra_loi: 'Ứng lương hiện chưa mở tự phục vụ trên hệ thống. Bạn gửi đề nghị tới bộ phận '
+      + 'nhân sự nhé — nhân sự sẽ tạo khoản ứng và theo dõi duyệt/chi cho bạn.',
+    y_dinh: 'ung_luong',
+    goi_y: ['Công tháng này của tôi thế nào?', 'Tôi có đơn nào đang chờ duyệt không?'],
   };
 }

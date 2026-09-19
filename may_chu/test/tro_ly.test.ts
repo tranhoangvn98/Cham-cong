@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 const {
   chuan, nhan_dang_y_dinh, phan_tich_ngay, phan_tich_khoang_nghi,
   phan_tich_loai_nghi, phan_tich_giai_trinh, phan_tich_de_xuat, tu_khoa, ngay_hop_le,
+  phan_tich_gio, phan_tich_noi_den, phan_tich_noi_dung_khieu_nai,
 } = await import('../src/ca_nhan/tro_ly.ts');
 
 const HOM_NAY = '2026-09-19';
@@ -113,4 +114,59 @@ test('tu_khoa: bo tu dung, giu tu co nghia, khong trung lap', () => {
 test('nhan_dang_y_dinh: hoi mau don la tim van ban, khong phai lam don', () => {
   assert.equal(nhan_dang_y_dinh('mẫu đơn xin nghỉ phép ở đâu'), 'van_ban');
   assert.equal(nhan_dang_y_dinh('có biểu mẫu đề xuất nào không'), 'van_ban');
+});
+
+test('nhan_dang_y_dinh: cac tac vu ca nhan moi', () => {
+  assert.equal(nhan_dang_y_dinh('đăng kí OT cho tôi'), 'dang_ky_ot');
+  assert.equal(nhan_dang_y_dinh('đăng ký OT ngày 25/09 từ 18:00 đến 20:00'), 'dang_ky_ot');
+  assert.equal(nhan_dang_y_dinh('tôi muốn làm thêm giờ'), 'dang_ky_ot');
+  assert.equal(nhan_dang_y_dinh('tôi muốn xin đổi ca'), 'doi_ca');
+  assert.equal(nhan_dang_y_dinh('xin đi muộn ngày mai'), 'xin_di_muon');
+  assert.equal(nhan_dang_y_dinh('tôi đi công tác từ 26/09 đến 27/09'), 'cong_tac');
+  assert.equal(nhan_dang_y_dinh('tôi muốn nghỉ việc'), 'nghi_viec');
+  assert.equal(nhan_dang_y_dinh('khiếu nại phiếu lương vì thiếu phụ cấp'), 'khieu_nai_luong');
+  assert.equal(nhan_dang_y_dinh('khiếu nại kỷ luật'), 'khieu_nai_ky_luat');
+  assert.equal(nhan_dang_y_dinh('ứng lương thế nào'), 'ung_luong');
+  // Nghi viec hieu la NGHI CHE DO, khong phai thoi viec.
+  assert.notEqual(nhan_dang_y_dinh('nghỉ việc hiếu'), 'nghi_viec');
+});
+
+test('nhan_dang_y_dinh: y dinh cu khong bi lan', () => {
+  assert.equal(nhan_dang_y_dinh('tháng này tôi đi muộn mấy lần'), 'di_muon');
+  assert.equal(nhan_dang_y_dinh('xin nghỉ phép ngày 25/09'), 'xin_nghi_phep');
+  assert.equal(nhan_dang_y_dinh('công tháng này của tôi thế nào'), 'cong_thang');
+  assert.equal(nhan_dang_y_dinh('ca làm của tôi'), 'ca_lam');
+  // "ot" khop theo tu nguyen, khong bam phai chu khac.
+  assert.notEqual(nhan_dang_y_dinh('thời tiết rất tốt'), 'dang_ky_ot');
+});
+
+test('phan_tich_gio: doc gio OT tu cau noi', () => {
+  assert.deepEqual(phan_tich_gio('đăng ký OT từ 18:00 đến 20:00'),
+    { bat_dau: '18:00', ket_thuc: '20:00' });
+  assert.deepEqual(phan_tich_gio('từ 18h đến 20h'), { bat_dau: '18:00', ket_thuc: '20:00' });
+  assert.deepEqual(phan_tich_gio('làm thêm 2 giờ'), { bat_dau: '02:00', ket_thuc: null });
+  assert.deepEqual(phan_tich_gio('6 giờ tối đến 8 giờ tối'),
+    { bat_dau: '18:00', ket_thuc: '20:00' });
+  assert.deepEqual(phan_tich_gio('từ 2 giờ chiều đến 4 giờ chiều'),
+    { bat_dau: '14:00', ket_thuc: '16:00' });
+  // Gio vo ly bi bo qua; khong co gio thi ca hai null.
+  assert.equal(phan_tich_gio('ngày 25/09').bat_dau, null);
+  assert.equal(phan_tich_gio('từ 25:99').bat_dau, null);
+});
+
+test('phan_tich_noi_den: boc noi den cua don cong tac', () => {
+  assert.equal(phan_tich_noi_den('đi công tác Hà Nội từ 26/09 đến 27/09'), 'Hà Nội');
+  assert.equal(phan_tich_noi_den('đi công tác từ 26/09'), null);
+  assert.equal(phan_tich_noi_den('đi Cần Thơ vì ký hợp đồng'), 'Cần Thơ');
+  assert.equal(phan_tich_noi_den('xin nghỉ phép'), null);
+});
+
+test('phan_tich_noi_dung_khieu_nai: boc noi dung, uu tien phan sau "vi"', () => {
+  assert.equal(phan_tich_noi_dung_khieu_nai('khiếu nại phiếu lương vì thiếu phụ cấp đi lại'),
+    'thiếu phụ cấp đi lại');
+  assert.equal(phan_tich_noi_dung_khieu_nai('tôi muốn khiếu nại kỷ luật vì mức phạt chưa đúng'),
+    'mức phạt chưa đúng');
+  assert.equal(phan_tich_noi_dung_khieu_nai('khiếu nại phiếu lương tháng này: thiếu công'),
+    'tháng này: thiếu công');
+  assert.equal(phan_tich_noi_dung_khieu_nai('khiếu nại phiếu lương'), null);
 });

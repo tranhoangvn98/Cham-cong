@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.95.0] — 2026-09-20
+
+**Trợ lý phủ đủ các tác vụ cá nhân: OT, đổi ca, công tác, thôi việc, đi muộn, khiếu nại.**
+
+- Điền sẵn đơn cho cả 5 loại đơn tự phục vụ: đăng ký OT/làm thêm giờ (hiểu "từ 18:00 đến
+  20:00", "6 giờ tối đến 8 giờ tối"), xin đi muộn, xin đổi ca (đối chiếu danh mục ca),
+  đi công tác (nơi đến + chặn ngày chốt công), xin thôi việc (ngày làm việc cuối + cảnh
+  báo pháp lý hiện nguyên văn sau khi gửi).
+- Khiếu nại phiếu lương: tự lấy phiếu đã duyệt mới nhất của người hỏi; khiếu nại kỷ luật:
+  liệt kê hồ sơ của chính họ, nói kèm mã là điền sẵn. Ứng lương chưa mở tự phục vụ nên
+  trợ lý hướng dẫn liên hệ nhân sự thay vì hứa điền đơn.
+- Bộ phân tích thuần mới (có test): `phan_tich_gio` (mốc giờ + buổi sáng/chiều/tối/đêm),
+  `phan_tich_noi_den`, `phan_tich_noi_dung_khieu_nai`; AI trích ngày dùng chung cho cả
+  nghỉ phép lẫn các đơn mới. Thẻ xác nhận giờ hiển thị cảnh báo pháp lý trả về từ máy chủ.
+
 ## [1.94.10] — 2026-09-19
 
 **Sửa lỗi: hộp thoại chi tiết không tự làm mới sau khi bấm "Viết lại bằng AI".**

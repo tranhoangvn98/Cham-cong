@@ -125,10 +125,19 @@ export function TroLyCaNhan(): ReactNode {
     }
     dat_dang_gui(true);
     try {
-      await goi<unknown>(hd.duong_dan, { method: hd.phuong_thuc, body: hd.du_lieu });
+      // May chu co the tra kem canh bao phap ly (vd don thoi viec thieu so ngay bao truoc
+      // theo BLLD) — hien nguyen van, khong cat.
+      const kq = await goi<{ canh_bao?: unknown }>(hd.duong_dan,
+        { method: hd.phuong_thuc, body: hd.du_lieu });
       dat_hanh_dong(null);
+      let them = '';
+      const cb = kq?.['canh_bao'];
+      if (Array.isArray(cb)) {
+        const dong_cb = cb.filter((x): x is string => typeof x === 'string' && x.trim() !== '');
+        if (dong_cb.length > 0) them = `\n\nLưu ý:\n• ${dong_cb.join('\n• ')}`;
+      }
       dat_dong((ds) => [...ds, { ai: 'bot', chu: `Đã gửi thành công: ${hd.tieu_de}. ` +
-        'Bạn xem trạng thái ở tab "Đơn của tôi".' }]);
+        `Bạn xem trạng thái ở tab "Đơn của tôi".${them}` }]);
     } catch (loi) {
       const chu = loi instanceof LoiApi ? loi.message : 'Không kết nối được máy chủ.';
       dat_dong((ds) => [...ds, { ai: 'bot', chu: `Chưa gửi được: ${chu}` }]);
@@ -204,7 +213,7 @@ export function TroLyCaNhan(): ReactNode {
       </div>
       <form className="troly-hang" onSubmit={(e) => { e.preventDefault(); void hoi(nhap); }}>
         <input value={nhap} onChange={(e) => dat_nhap(e.target.value)}
-          placeholder="Hỏi về phép, công, nội quy…" aria-label="Câu hỏi" />
+          placeholder="Hỏi phép, công, OT, đổi ca, nội quy…" aria-label="Câu hỏi" />
         <button type="submit" disabled={dang_hoi || nhap.trim() === ''}>Gửi</button>
       </form>
     </div>,
