@@ -2,6 +2,20 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.93.5] — 2026-09-19
+
+**Chuông báo: nhãn Đã xem/Chưa xem + trạng thái đã xử lý/chưa xử lý. Trang Log máy gọn về một màn hình.**
+
+- Chuông báo hiện rõ trên từng mục: "Chưa xem" / "Đã xem · giờ", kèm nhãn trạng thái xử lý suy
+  live từ nghiệp vụ — "Chờ duyệt", "Đã duyệt", "Đã từ chối", "Chờ giải trình"… (màu cam khi
+  còn phải hành động, xám khi xong). Thông báo thuần tin (hợp đồng hết hạn, nhắc ra/vào) chỉ có
+  nhãn xem.
+- Máy chủ ghi `doc_luc` khi đánh dấu đã đọc (migration 077) và trả trạng thái xử lý theo đúng
+  bản ghi hiện tại — đơn vừa duyệt xong là chuông đổi nhãn ngay, không phải cập nhật ở từng
+  route quyết định (tránh lệch). Kèm test đơn vị cho bản đồ trạng thái.
+- Trang Log đồng bộ từ máy ADMS gọn về một màn hình: bảng log cuộn nội bộ trong thẻ, thẻ
+  "PIN chưa gán" hiện 5 dòng đầu kèm nút "Xem tất cả N"; màn hẹp xếp dọc như cũ.
+
 ## [1.93.4] — 2026-09-19
 
 **Ứng lương: một màn hình, không cuộn + chọn tháng/ngày bằng tiếng Việt.**
