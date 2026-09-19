@@ -25,7 +25,8 @@ AI bên ngoài** (tuân thủ NĐ 13/2023 về bảo vệ dữ liệu cá nhân)
 Trợ lý điền sẵn payload cho các việc sau và hiện **thẻ chờ xác nhận**:
 
 - Đơn nghỉ phép (`/api/toi/nghi-phep`) — hiểu "ngày mai", "25/09", khoảng ngày, nửa ngày,
-  và loại nghỉ (ốm, không lương, hiếu, cưới, thai sản).
+  và loại nghỉ (ốm, không lương, hiếu, cưới, thai sản). "Xin nghỉ việc", "xin nghỉ làm"
+  cũng hiểu là xin nghỉ một buổi/ngày — chỉ "xin **thôi** việc" mới là đơn thôi việc.
 - Đơn giải trình quên quẹt (`/api/toi/giai-trinh`) — đề xuất giờ theo ca của người hỏi.
 - Đề xuất / kiến nghị (`/api/toi/de-xuat`).
 - Hủy đơn đang chờ duyệt (`/api/toi/nghi-phep/:id/huy`, `/don/:id/huy`, `/de-xuat/:id/huy`).

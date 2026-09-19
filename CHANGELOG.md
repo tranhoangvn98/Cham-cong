@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.95.1] — 2026-09-20
+
+**Sửa lỗi: phân biệt "xin nghỉ việc/nghỉ làm" với "xin thôi việc".**
+
+- "Xin nghỉ việc", "nghỉ làm" giờ hiểu đúng là xin nghỉ phép (một buổi/một ngày) và điền
+  sẵn đơn nghỉ như bình thường; trước đây bị nhận nhầm thành đơn thôi việc.
+- Chỉ các từ "thôi việc", "nộp đơn thôi việc", "chấm dứt hợp đồng" mới mở đơn thôi việc.
+  "Nghỉ việc hiếu/tang chế" vẫn là nghỉ chế độ.
+
 ## [1.95.0] — 2026-09-20
 
 **Trợ lý phủ đủ các tác vụ cá nhân: OT, đổi ca, công tác, thôi việc, đi muộn, khiếu nại.**

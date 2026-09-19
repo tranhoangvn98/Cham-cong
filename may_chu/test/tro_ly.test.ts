@@ -123,12 +123,16 @@ test('nhan_dang_y_dinh: cac tac vu ca nhan moi', () => {
   assert.equal(nhan_dang_y_dinh('tôi muốn xin đổi ca'), 'doi_ca');
   assert.equal(nhan_dang_y_dinh('xin đi muộn ngày mai'), 'xin_di_muon');
   assert.equal(nhan_dang_y_dinh('tôi đi công tác từ 26/09 đến 27/09'), 'cong_tac');
-  assert.equal(nhan_dang_y_dinh('tôi muốn nghỉ việc'), 'nghi_viec');
+  // "nghi viec"/"nghi lam" la xin nghi phep (mot buoi/ngay) — CHI "thoi viec" moi la thoi viec.
+  assert.equal(nhan_dang_y_dinh('tôi muốn nghỉ việc'), 'xin_nghi_phep');
+  assert.equal(nhan_dang_y_dinh('xin nghỉ làm ngày mai'), 'xin_nghi_phep');
+  assert.equal(nhan_dang_y_dinh('tôi muốn xin thôi việc'), 'nghi_viec');
+  assert.equal(nhan_dang_y_dinh('nộp đơn thôi việc ngày 25/10'), 'nghi_viec');
   assert.equal(nhan_dang_y_dinh('khiếu nại phiếu lương vì thiếu phụ cấp'), 'khieu_nai_luong');
   assert.equal(nhan_dang_y_dinh('khiếu nại kỷ luật'), 'khieu_nai_ky_luat');
   assert.equal(nhan_dang_y_dinh('ứng lương thế nào'), 'ung_luong');
   // Nghi viec hieu la NGHI CHE DO, khong phai thoi viec.
-  assert.notEqual(nhan_dang_y_dinh('nghỉ việc hiếu'), 'nghi_viec');
+  assert.equal(nhan_dang_y_dinh('nghỉ việc hiếu'), 'xin_nghi_phep');
 });
 
 test('nhan_dang_y_dinh: y dinh cu khong bi lan', () => {

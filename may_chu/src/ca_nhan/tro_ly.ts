@@ -339,12 +339,13 @@ export function nhan_dang_y_dinh(cau_goc: string): YDinh {
   if (co(cau, 'khieu nai')) {
     return co(cau, 'luong', 'phieu luong') ? 'khieu_nai_luong' : 'khieu_nai_ky_luat';
   }
-  // Nghi viec truoc xin_nghi_phep ("xin nghi viec" chua "xin nghi"). Chua nghi viec
-  // hieu/tang che ra — do la loai NGHI PHEP che do, khong phai thoi viec.
+  // THOI VIEC truoc xin_nghi_phep. CHI tu "thoi viec"/"cham dut"/"nop don thoi" moi la
+  // thoi viec — "xin nghi viec"/"nghi lam" la xin nghi PHEP (mot buoi/mot ngay), khong
+  // phai nghi han. Chua nghi viec hieu/tang che ra — do la loai NGHI PHEP che do.
   if (!co(cau, 'hieu', 'tang gia', 'tang che')
-    && co(cau, 'thoi viec', 'nghi viec', 'bo viec', 'cham dut', 'nop don thoi')) return 'nghi_viec';
+    && co(cau, 'thoi viec', 'cham dut', 'nop don thoi')) return 'nghi_viec';
   if (co(cau, 'de xuat', 'kien nghi', 'gop y', 'góp y')) return 'de_xuat';
-  if (co(cau, 'xin nghi', 'xin phep', 'xin om', 'nghi om', 'muon nghi', 'dang ky nghi', 'nghi phep ngay')) return 'xin_nghi_phep';
+  if (co(cau, 'xin nghi', 'xin phep', 'xin om', 'nghi om', 'muon nghi', 'dang ky nghi', 'nghi phep ngay', 'nghi lam', 'nghi viec')) return 'xin_nghi_phep';
   // Cac don tu phuc vu chu dong — dat truoc cac y dinh rong cung tu ("cong tac" chua
   // "cong", "doi ca" chua "ca"). "ot" khop theo tu nguyen de khong bam phai "tot".
   if (/\bot\b/.test(cau) || co(cau, 'lam them', 'tang ca', 'them gio')) return 'dang_ky_ot';
