@@ -275,7 +275,7 @@ function AiDaDoc({ tb, khi_dong }: { tb: ThongBao; khi_dong: () => void }): Reac
  * Tab "Thong bao" trong trang Van ban cong ty. Loc nhanh "Toan cong ty" mac dinh —
  * tat ca thong bao (ke ca phong ban / ca nhan) van doc duoc khi chon "Tat ca".
  */
-export function TabThongBao(): ReactNode {
+export function TrangThongBaoCaNhan(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<ThongBao[]>('/api/toi/thong-bao');
   const [xem_doc, dat_xem_doc] = useState<ThongBao | null>(null);
   const [loc, dat_loc] = useState<'toan_cong_ty' | 'tat_ca'>('toan_cong_ty');

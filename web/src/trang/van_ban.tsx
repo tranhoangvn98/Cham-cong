@@ -13,7 +13,7 @@ import {
 } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
 import { gui_tep, la_nhan_su, tai_tep } from '../api.ts';
-import { TabThongBao } from './thong_bao_ca_nhan.tsx';
+import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
 import { TabVanBanBanHanh } from './thong_bao_ai.tsx';
 
 export type TabVanBan = 'thong_bao' | 'ban_hanh' | 'tai_lieu';
@@ -337,7 +337,7 @@ export function TrangVanBan({ tab = 'thong_bao' }: { tab?: TabVanBan }): ReactNo
 
   let noi_dung: ReactNode;
   if (tab_dung === 'thong_bao') {
-    noi_dung = <TabThongBao />;
+    noi_dung = <TrangThongBaoCaNhan />;
   } else if (tab_dung === 'ban_hanh') {
     noi_dung = hr ? <TabVanBanBanHanh /> : <DsVanBanBanHanh />;
   } else {
