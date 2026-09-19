@@ -92,8 +92,8 @@ export function TroLyCaNhan(): ReactNode {
   }, [mo, dong.length]);
 
   useEffect(() => {
-    cuon.current?.scrollTo({ top: cuon.current.scrollHeight });
-  }, [dong, hanh_dong]);
+    cuon.current?.scrollTo({ top: cuon.current.scrollHeight, behavior: 'smooth' });
+  }, [dong, hanh_dong, dang_hoi]);
 
   const hoi = async (cau: string): Promise<void> => {
     const c = cau.trim();
@@ -169,7 +169,11 @@ export function TroLyCaNhan(): ReactNode {
             {noi_dung(d.chu)}
           </div>
         ))}
-        {dang_hoi && <div className="troly-tn troly-tn-bot mo-ta">Đang tra…</div>}
+        {dang_hoi && (
+          <div className="troly-tn troly-tn-bot" aria-label="Đang trả lời">
+            <span className="troly-ba-cham"><i /><i /><i /></span>
+          </div>
+        )}
         {hanh_dong !== null && !dang_hoi && (
           <div className="troly-hd" role="group" aria-label="Chờ xác nhận">
             <div className="troly-hd-b">{hanh_dong.tieu_de}</div>

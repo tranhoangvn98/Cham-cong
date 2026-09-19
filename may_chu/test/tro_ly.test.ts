@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 
 const {
   chuan, nhan_dang_y_dinh, phan_tich_ngay, phan_tich_khoang_nghi,
-  phan_tich_loai_nghi, phan_tich_giai_trinh, phan_tich_de_xuat, tu_khoa,
+  phan_tich_loai_nghi, phan_tich_giai_trinh, phan_tich_de_xuat, tu_khoa, ngay_hop_le,
 } = await import('../src/ca_nhan/tro_ly.ts');
 
 const HOM_NAY = '2026-09-19';
@@ -92,6 +92,14 @@ test('phan_tich_de_xuat: boc tien to, giu tieu de va noi dung', () => {
   const kq = phan_tich_de_xuat('Đề xuất: mua thêm ghế cho văn phòng');
   assert.equal(kq?.tieu_de, 'mua thêm ghế cho văn phòng');
   assert.equal(phan_tich_de_xuat('ok'), null);
+});
+
+test('ngay_hop_le: ngay AI trich ra phai duoc kiem lai', () => {
+  assert.equal(ngay_hop_le('2026-09-25'), true);
+  assert.equal(ngay_hop_le('2026-02-29'), false);
+  assert.equal(ngay_hop_le('2026-13-01'), false);
+  assert.equal(ngay_hop_le('25/09/2026'), false);
+  assert.equal(ngay_hop_le(''), false);
 });
 
 test('tu_khoa: bo tu dung, giu tu co nghia, khong trung lap', () => {

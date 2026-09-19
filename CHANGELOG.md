@@ -2,6 +2,18 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.94.8] — 2026-09-19
+
+**Trợ lý biết trò chuyện: AI hiểu câu + viết lời tự nhiên, giao diện thêm hiệu ứng mượt.**
+
+- Trợ lý dùng chung khóa DeepSeek của phân hệ: câu hỏi ngoài luật được AI trò chuyện và gợi
+  ý hỏi lại; xin nghỉ nói tự nhiên mà không rõ ngày thì AI trích ngày (được kiểm lại bằng
+  hàm thuần trước khi dùng); các câu số liệu cá nhân được AI viết lại giọng tự nhiên từ bối
+  cảnh tối thiểu (chỉ con số, không danh tính — NĐ 13/2023). Lỗi mạng/hết khóa thì rơi về
+  lời có sẵn. Chế tài nội quy vẫn giữ nguyên văn, payload xác nhận vẫn do code tính.
+- Widget thêm hiệu ứng: tin nhắn và thẻ xác nhận trượt vào nhẹ, ba chấm nhún khi đang trả
+  lời, nút/chip phản hồi khi bấm, cuộn mượt — tự tắt khi trình duyệt giảm chuyển động.
+
 ## [1.94.7] — 2026-09-19
 
 **Sửa lỗi: bản nháp AI kẹt vĩnh viễn ở "Đang soạn".**

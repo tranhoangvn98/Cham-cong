@@ -1560,6 +1560,45 @@ textarea:focus-visible,
   font: inherit; font-size: 13px; cursor: pointer;
 }
 .troly-hd-bo:hover:not(:disabled) { background: var(--nen-mo); }
+/* ---------------------------------------------------------------- hieu ung tro ly
+   Nhe va nhanh — khong lam troi viec go phim. Tat han khi nguoi dung giam chuyen dong. */
+@keyframes troly-vao {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes troly-no {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+.troly-tn { animation: troly-vao 0.22s ease-out both; }
+.troly-hd { animation: troly-vao 0.24s ease-out both; }
+.troly-goi-y { animation: troly-vao 0.28s ease-out both; }
+.troly-nut { animation: troly-no 0.22s ease-out both; }
+.troly-panel { animation: troly-no 0.18s ease-out both; transform-origin: bottom right; }
+/* Ba cham "dang tra loi" — nhay theo nhịp. */
+.troly-ba-cham { display: inline-flex; gap: 4px; align-items: center; padding: 4px 2px; }
+.troly-ba-cham i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--chu-mo); opacity: 0.45;
+  animation: troly-nhay 1s infinite ease-in-out;
+}
+.troly-ba-cham i:nth-child(2) { animation-delay: 0.15s; }
+.troly-ba-cham i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes troly-nhay {
+  0%, 60%, 100% { transform: none; opacity: 0.45; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+/* Nut va chip phan hoi cham nhe khi bam. */
+.troly-hd-xac-nhan { transition: filter 0.15s ease, transform 0.1s ease; }
+.troly-hd-xac-nhan:active { transform: scale(0.97); }
+.troly-chip { transition: background 0.15s ease, transform 0.1s ease; }
+.troly-chip:hover { transform: translateY(-1px); }
+.troly-hang button[type="submit"]:hover:not(:disabled) { filter: brightness(1.05); }
+@media (prefers-reduced-motion: reduce) {
+  .troly-tn, .troly-hd, .troly-goi-y, .troly-nut, .troly-panel, .troly-ba-cham i {
+    animation: none;
+  }
+}
 .troly-hang { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--vien); }
 .troly-hang input { flex: 1; padding: 9px 11px; border: 1px solid var(--vien-dam); border-radius: var(--tron-nho); background: var(--nen); color: var(--chu); font: inherit; }
 

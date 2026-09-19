@@ -42,12 +42,20 @@ Trợ lý điền sẵn payload cho các việc sau và hiện **thẻ chờ xá
 Vì vậy không có đường nào để AI (hoặc người khác mượn tài khoản) tự ý tạo/hủy đơn thay
 nhân viên mà nhân viên không nhìn thấy và không bấm nút.
 
-## Chính sách LLM
+## Chính sách AI (DeepSeek)
 
-Mặc định trợ lý chạy **thuần luật từ khóa** (không tốn phí, không lộ dữ liệu). Hook `hoi_llm`
-trong `may_chu/src/ca_nhan/tro_ly.ts` để sẵn cho ngày công ty muốn bật LLM (DeepSeek) cho
-câu hỏi ngoài luật — khi đó phải duyệt chính sách NĐ 13 và chỉ gửi dữ liệu tối thiểu, đã
-ẩn danh.
+Trợ lý dùng chung khóa `DEEPSEEK_API_KEY` của phân hệ (đã dùng cho soạn văn bản). AI chỉ
+đảm nhận **giọng nói và hiểu câu**, không phải nguồn sự thật:
+
+- **Hiểu câu ngoài luật**: câu hỏi không khớp luật từ khóa được AI trò chuyện và gợi ý cách
+  hỏi lại — không tự bịa số liệu.
+- **Trích ngày xin nghỉ** từ câu nói tự nhiên khi bộ phân tích không tìm thấy; kết quả được
+  kiểm lại bằng hàm thuần `ngay_hop_le` trước khi dùng.
+- **Viết lại câu trả lời** cho các số liệu cá nhân (phép, công, đi muộn, ca, đơn chờ duyệt)
+  từ bối cảnh **tối thiểu** — chỉ con số, không tên/email/ID (NĐ 13/2023). Lỗi mạng hay hết
+  khóa thì trợ lý tự rơi về lời có sẵn, không bao giờ chết vì AI.
+- **Không cho AI**: diễn giải chế tài nội quy (giữ nguyên văn), sửa payload hành động, chạm
+  hồ sơ cá nhân. Chưa khai `DEEPSEEK_API_KEY` = trợ lý chạy thuần luật như trước.
 
 ## Thêm luật / sửa luật
 
