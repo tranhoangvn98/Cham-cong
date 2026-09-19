@@ -48,6 +48,12 @@ https://{$TEN_MIEN} {
 		reverse_proxy may_chu:8080
 	}
 
+	# May chu MCP cho tro ly AI (Claude Desktop / Copilot / Foundry). KHONG kiem tra mat
+	# khau o day: MCP tu xac thuc bang khoa API ck_ + pham vi + IP cho phep o tang ung dung.
+	handle /mcp/* {
+		reverse_proxy mcp:3100
+	}
+
 	handle {
 		reverse_proxy web:80
 	}

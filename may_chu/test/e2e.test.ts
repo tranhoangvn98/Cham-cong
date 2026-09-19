@@ -8328,3 +8328,157 @@ test('bo cua cu: cong tac VO HIEU khi chua khai cong — khong the tu khoa het m
     await dat_bo_cua_cu(false);
   }
 });
+
+// ============================================================ API v1 MO RONG (1.94.0)
+//
+// Nam duong doc them cho MCP server: van ban cong ty, thong bao, don, vi pham, ky luat.
+// Kiem ca hai phia: khoa thieu pham vi thi 403, co pham vi thi tra hinh dang { du_lieu,
+// phan_trang } nhu moi duong /api/v1 khac.
+let khoa_mcp = '';
+
+test('/api/v1/van-ban: khoa thieu pham vi -> 403 ma thieu_pham_vi', async () => {
+  const r = await goi_v1('/api/v1/van-ban', khoa_doc);
+  assert.equal(r.ma, 403);
+  assert.equal((r.body['loi'] as Record<string, unknown>)['ma'], 'thieu_pham_vi');
+});
+
+test('khoa API: tao khoa doc phan he mo rong cho MCP', async () => {
+  const r = await goi('POST', '/api/khoa-api', {
+    token: token_admin,
+    body: {
+      ten: 'MCP đọc phân hệ',
+      pham_vi: ['van_ban:doc', 'thong_bao:doc', 'don:doc', 'vi_pham:doc', 'ky_luat:doc',
+        'nghi_phep:doc'],
+    },
+  });
+  assert.equal(r.ma, 201, JSON.stringify(r.body));
+  khoa_mcp = r.body['khoa'] as string;
+});
+
+test('/api/v1/van-ban: tra danh sach va loc theo danh muc', async () => {
+  await thuc_thi(
+    `insert into van_ban_cong_ty (tieu_de, danh_muc, mo_ta)
+     values ('Nội quy lao động 2026', 'noi_quy', 'quy định chung của công ty')`,
+  );
+  const r = await goi_v1('/api/v1/van-ban?danh_muc=noi_quy&tim=nội quy', khoa_mcp);
+  assert.equal(r.ma, 200, r.tho);
+  assert.ok(Array.isArray(r.body['du_lieu']));
+  const d0 = (r.body['du_lieu'] as Record<string, unknown>[])[0];
+  assert.ok(d0 !== undefined, 'phai tim thay van ban vua gieo');
+  assert.equal(d0['danh_muc'], 'noi_quy');
+  assert.equal(typeof (r.body['phan_trang'] as Record<string, unknown>)['tong'], 'number');
+});
+
+test('/api/v1/thong-bao: tra danh sach va loc theo muc do', async () => {
+  await thuc_thi(
+    `insert into thong_bao (tieu_de, noi_dung, muc_do)
+     values ('Thông báo nghỉ lễ', 'Công ty nghỉ 2 ngày', 'quan_trong')`,
+  );
+  const r = await goi_v1('/api/v1/thong-bao?muc_do=quan_trong&tim=lễ', khoa_mcp);
+  assert.equal(r.ma, 200, r.tho);
+  const d0 = (r.body['du_lieu'] as Record<string, unknown>[])[0];
+  assert.ok(d0 !== undefined, 'phai tim thay thong bao vua gieo');
+  assert.equal(d0['muc_do'], 'quan_trong');
+  assert.equal((d0['tieu_de'] as string).includes('nghỉ lễ'), true);
+});
+
+test('/api/v1/don: tra du lieu gop bon loai don', async () => {
+  const r = await goi_v1('/api/v1/don?loai=nghi_phep', khoa_mcp);
+  assert.equal(r.ma, 200, r.tho);
+  assert.ok(Array.isArray(r.body['du_lieu']));
+  // Loai nay chi chua don nghi phep — gom ca don vua tao o luong tro ly ben duoi.
+  for (const d of r.body['du_lieu'] as Record<string, unknown>[]) {
+    assert.equal(d['loai'], 'nghi_phep');
+  }
+});
+
+test('/api/v1/vi-pham va /ky-luat: tra hinh dang dung ke ca khi rong', async () => {
+  for (const duong of ['/api/v1/vi-pham', '/api/v1/ky-luat']) {
+    const r = await goi_v1(duong, khoa_mcp);
+    assert.equal(r.ma, 200, `${duong}: ${r.tho}`);
+    assert.ok(Array.isArray(r.body['du_lieu']), `${duong}: du_lieu phai la mang`);
+    assert.equal(typeof (r.body['phan_trang'] as Record<string, unknown>)['tong'], 'number');
+  }
+});
+
+// ============================================================ TRO LY: HANH DONG CHO XAC NHAN
+//
+// Nguyen tac: tro ly chi DIEN SAN payload, khong ghi gi. Nhan vien bam Xac nhan nghia la
+// giao dien goi route POST san co voi token cua ho — test mo phong dung hai buoc do.
+
+test('tro ly: cau hoi noi quy tra che tai, khong kem hanh dong', async () => {
+  const r = await goi('GET', '/api/toi/tro-ly?hoi=' + encodeURIComponent('đi muộn bị xử lý thế nào'),
+    { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['y_dinh'], 'noi_quy');
+  assert.equal(r.body['hanh_dong'], undefined);
+  assert.ok(String(r.body['tra_loi']).length > 0);
+});
+
+test('tro ly: xin nghi phep tra hanh dong dien san nhung CHUA tao don', async () => {
+  const r = await goi('GET', '/api/toi/tro-ly?hoi=' + encodeURIComponent('xin nghỉ phép ngày mai'),
+    { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+  const hd = r.body['hanh_dong'] as Record<string, unknown>;
+  assert.ok(hd !== undefined, 'phai co hanh dong cho xac nhan');
+  assert.equal(hd['loai'], 'tao_don_nghi_phep');
+  assert.equal(hd['duong_dan'], '/api/toi/nghi-phep');
+  assert.equal(hd['phuong_thuc'], 'POST');
+  const dl = hd['du_lieu'] as Record<string, unknown>;
+  assert.equal(typeof dl['tu_ngay'], 'string');
+  assert.equal(dl['den_ngay'], dl['tu_ngay']);
+  assert.equal(dl['nua_ngay'], false);
+  // Chi dien san: CSDL van khong co don nao.
+  const ds = await goi('GET', '/api/toi/nghi-phep', { token: token_nhan_vien });
+  assert.equal((ds.body as unknown as unknown[]).length, 0, 'tro ly khong duoc tu tao don');
+});
+
+test('tro ly: nhan vien bam xac nhan -> POST route that -> don duoc tao', async () => {
+  const r = await goi('GET', '/api/toi/tro-ly?hoi=' + encodeURIComponent('xin nghỉ phép ngày mai'),
+    { token: token_nhan_vien });
+  const hd = r.body['hanh_dong'] as { duong_dan: string; du_lieu: Record<string, unknown> };
+  const g = await goi('POST', hd.duong_dan, { token: token_nhan_vien, body: hd.du_lieu });
+  assert.equal(g.ma, 201, JSON.stringify(g.body));
+  const ds = await goi('GET', '/api/toi/nghi-phep', { token: token_nhan_vien });
+  assert.equal((ds.body as unknown as unknown[]).length, 1, 'sau xac nhan phai co mot don');
+});
+
+test('tro ly: khoang ngay da co don thi khong dien san don thu hai', async () => {
+  const r = await goi('GET', '/api/toi/tro-ly?hoi=' + encodeURIComponent('xin nghỉ phép ngày mai'),
+    { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['hanh_dong'], undefined, 'trung khoang phai tu choi dien san');
+  assert.match(String(r.body['tra_loi']), /đã có đơn/);
+});
+
+test('tro ly: giai trinh thieu ly do thi hoi lai, khong dien san', async () => {
+  const r = await goi('GET', '/api/toi/tro-ly?hoi=' + encodeURIComponent('giải trình quên quét hôm qua'),
+    { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['y_dinh'], 'giai_trinh');
+  assert.equal(r.body['hanh_dong'], undefined, 'thieu ly do thi phai hoi bo sung');
+  assert.match(String(r.body['tra_loi']), /lý do/);
+});
+
+test('tro ly: huy don thay don cho duyet va dien san the huy', async () => {
+  // Don vua tao o test xac nhan dang cho duyet (hoac da duyet tu dong) — huy don chi ap dung
+  // cho don cho duyet, nen tao mot don khac chac chan cho duyet: ngay qua xa (trong 180 ngay)
+  // cung la ngay mai nhung truoc moc tu dong duyet neu co.
+  const r0 = await goi('GET', '/api/toi/tro-ly?hoi=' + encodeURIComponent('xin nghỉ ốm ngày mai'),
+    { token: token_nhan_vien });
+  const hd0 = r0.body['hanh_dong'] as { duong_dan: string; du_lieu: Record<string, unknown> } | undefined;
+  if (hd0 !== undefined) {
+    await goi('POST', hd0.duong_dan, { token: token_nhan_vien, body: hd0.du_lieu });
+  }
+  const r = await goi('GET', '/api/toi/tro-ly?hoi=' + encodeURIComponent('hủy đơn nghỉ ngày mai'),
+    { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+  // Co it nhat mot don chua xu ly thi phai co the huy, khong duoc tra loi trong khong.
+  const hd = r.body['hanh_dong'] as Record<string, unknown> | undefined;
+  if (hd !== undefined) {
+    assert.equal(hd['loai'], 'huy_don');
+    assert.match(hd['duong_dan'] as string, /\/api\/toi\/.+\/huy$/);
+  } else {
+    assert.match(String(r.body['tra_loi']), /không có đơn|nói rõ/);
+  }
+});

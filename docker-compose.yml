@@ -171,13 +171,29 @@ services:
     ports:
       - "${CONG_WEB:-8081}:80"
 
+  # ---------------------------------------------------------------- MCP server
+  # May chu MCP cho tro ly AI ben ngoai (Claude, Copilot, Foundry). Boc REST API /api/v1
+  # cua may_chu bang khoa API ck_ — khong giu du lieu, khong can volume. KHONG mo cong ra
+  # ngoai: chi cong_vao (Caddy) di vao duong /mcp. Xem tai_lieu/MCP.md.
+  mcp:
+    build:
+      context: .
+      dockerfile: mcp/Dockerfile
+    restart: unless-stopped
+    depends_on: [may_chu]
+    environment:
+      CHAM_CONG_GOC: http://may_chu:8080
+      CHAM_CONG_KHOA: ${MCP_KHOA_API:-}
+      MCP_TRANSPORT: http
+      MCP_PORT: 3100
+
   # ---------------------------------------------------------------- cong vao (tuy chon)
   # Chi chay khi .env co COMPOSE_PROFILES=ten_mien. Xem tai_lieu/TEN-MIEN.md.
   cong_vao:
     image: caddy:2-alpine
     profiles: ["ten_mien"]
     restart: unless-stopped
-    depends_on: [may_chu, web]
+    depends_on: [may_chu, web, mcp]
     environment:
       # KHONG dung cu phap ${VAR:?...}: compose noi suy TOAN BO tep truoc khi loc profile,
       # nen bien thieu se lam hong ca `docker compose up` cua ban trien khai khong dung

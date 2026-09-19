@@ -1,0 +1,27 @@
+{
+  "name": "@cham-cong/mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server cho phan he Cham cong — boc REST API /api/v1 (xac thuc bang khoa ck_)",
+  "main": "dist/may_chu_mcp.js",
+  "bin": {
+    "cham-cong-mcp": "dist/may_chu_mcp.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/may_chu_mcp.js",
+    "test": "node --experimental-strip-types --test test/cong_cu.test.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2"
+  }
+}

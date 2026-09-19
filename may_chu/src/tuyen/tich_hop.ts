@@ -214,6 +214,11 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
         { name: 'LanQuet', description: 'Lần quẹt — log thô từ máy chấm công' },
         { name: 'NghiPhep', description: 'Nghỉ phép — đơn đã duyệt' },
         { name: 'SuKien', description: 'Sự kiện — dòng sự kiện để đồng bộ tăng dần' },
+        { name: 'ViPham', description: 'Vi phạm — bản ghi vi phạm nội quy và ghi nhận từ hệ thống ngoài' },
+        { name: 'DonTu', description: 'Đơn từ — đơn nghỉ, giải trình, đơn tự do và đề xuất' },
+        { name: 'KyLuat', description: 'Kỷ luật — hồ sơ kỷ luật theo tháng' },
+        { name: 'VanBan', description: 'Văn bản công ty — nội quy, biểu mẫu, chính sách' },
+        { name: 'ThongBao', description: 'Thông báo nội bộ — thông báo chung của công ty' },
       ],
     },
   });
@@ -647,6 +652,309 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
       return { du_lieu: { id: cu!.id, da_ghi_truoc: true } };
     }
     return res.code(201).send({ du_lieu: { id: dong.id, da_ghi_truoc: false } });
+  });
+
+  // ------------------------------------------------------------ van ban cong ty
+  app.get('/van-ban', {
+    schema: mo_ta('VanBan', 'layVanBanCongTy', 'Văn bản công ty',
+      'Văn bản đã ban hành trong phân hệ: nội quy, biểu mẫu, chính sách, hướng dẫn. Chỉ trả văn bản chưa gỡ (`da_go = false`). Không kèm nội dung tệp — tệp lấy qua webapp.',
+      ['van_ban:doc'],
+      { querystring: { ...PHAN_TRANG_CHUNG,
+        tim: 'Tìm theo tiêu đề hoặc mô tả.',
+        danh_muc: 'Lọc theo danh mục: noi_quy, bieu_mau, chinh_sach, huong_dan, khac.' } }),
+    preHandler: can_khoa_api('van_ban:doc'),
+  }, async (req) => {
+    const q = req.query as Record<string, unknown>;
+    const { gioi_han, bo_qua } = phan_trang(q, 50, 200);
+    const tim = chuoi(q, 'tim', { toi_da: 100 });
+    const danh_muc = chuoi(q, 'danh_muc', { toi_da: 30 });
+
+    const dieu_kien = ['vb.da_go = false'];
+    const tham_so: unknown[] = [];
+    if (tim !== null) {
+      tham_so.push(`%${tim}%`);
+      dieu_kien.push(`(vb.tieu_de ilike $${tham_so.length} or vb.mo_ta ilike $${tham_so.length})`);
+    }
+    if (danh_muc !== null) {
+      tham_so.push(danh_muc);
+      dieu_kien.push(`vb.danh_muc = $${tham_so.length}`);
+    }
+    const where = `where ${dieu_kien.join(' and ')}`;
+
+    const dem = await truy_van_mot<{ tong: number }>(
+      `select count(*)::int as tong from van_ban_cong_ty vb ${where}`, tham_so,
+    );
+    const dong = await truy_van(
+      `select vb.ma, vb.tieu_de, vb.danh_muc, vb.mo_ta, vb.tao_luc,
+              (vb.ten_luu is not null) as co_tep
+         from van_ban_cong_ty vb
+         ${where}
+        order by vb.tao_luc desc
+        limit $${tham_so.length + 1} offset $${tham_so.length + 2}`,
+      [...tham_so, gioi_han, bo_qua],
+    );
+    return goi_ra(dong, { gioi_han, bo_qua, tong: dem?.tong ?? 0 });
+  });
+
+  // ------------------------------------------------------------ thong bao noi bo
+  app.get('/thong-bao', {
+    schema: mo_ta('ThongBao', 'layThongBao', 'Thông báo nội bộ',
+      'Thông báo chung của công ty còn hiệu lực (`da_go = false`). Không kèm nội dung đầy đủ — chi tiết xem trên webapp.',
+      ['thong_bao:doc'],
+      { querystring: { ...PHAN_TRANG_CHUNG,
+        tim: 'Tìm theo tiêu đề.',
+        muc_do: 'Lọc theo mức: thuong, quan_trong, khan.',
+        tu: 'Chỉ lấy thông báo tạo từ ngày này (YYYY-MM-DD).',
+        den: 'Chỉ lấy thông báo tạo đến ngày này (YYYY-MM-DD).' } }),
+    preHandler: can_khoa_api('thong_bao:doc'),
+  }, async (req) => {
+    const q = req.query as Record<string, unknown>;
+    const { gioi_han, bo_qua } = phan_trang(q, 50, 200);
+    const tim = chuoi(q, 'tim', { toi_da: 100 });
+    const muc_do = chuoi(q, 'muc_do', { toi_da: 30 });
+    const tu = chuoi(q, 'tu', { toi_da: 10 });
+    const den = chuoi(q, 'den', { toi_da: 10 });
+
+    const dieu_kien = ['tb.da_go = false'];
+    const tham_so: unknown[] = [];
+    if (tim !== null) {
+      tham_so.push(`%${tim}%`);
+      dieu_kien.push(`tb.tieu_de ilike $${tham_so.length}`);
+    }
+    if (muc_do !== null) {
+      tham_so.push(muc_do);
+      dieu_kien.push(`tb.muc_do = $${tham_so.length}`);
+    }
+    if (tu !== null) {
+      tham_so.push(tu);
+      dieu_kien.push(`tb.tao_luc >= $${tham_so.length}::date`);
+    }
+    if (den !== null) {
+      tham_so.push(den);
+      dieu_kien.push(`tb.tao_luc < $${tham_so.length}::date + 1`);
+    }
+    const where = `where ${dieu_kien.join(' and ')}`;
+
+    const dem = await truy_van_mot<{ tong: number }>(
+      `select count(*)::int as tong from thong_bao tb ${where}`, tham_so,
+    );
+    const dong = await truy_van(
+      `select tb.ma, tb.tieu_de, tb.muc_do, tb.pham_vi, tb.tao_luc, tb.can_giai_trinh
+         from thong_bao tb
+         ${where}
+        order by tb.tao_luc desc
+        limit $${tham_so.length + 1} offset $${tham_so.length + 2}`,
+      [...tham_so, gioi_han, bo_qua],
+    );
+    return goi_ra(dong, { gioi_han, bo_qua, tong: dem?.tong ?? 0 });
+  });
+
+  // ------------------------------------------------------------ don tu (nhieu bang)
+  //
+  // Mot bo loc chung cho bon bang don: nghi phep, giai trinh, don tu do, de xuat. Ngay cua
+  // de xuat tinh tu luc tao va cong offset mui gio may cham cong (ngay tao tinh theo mui gio
+  // cua he thong cham cong, khong phai mui gio may chu).
+  app.get('/don', {
+    schema: mo_ta('DonTu', 'layDonTu', 'Đơn từ của nhân viên',
+      'Gộp bốn loại đơn: nghỉ phép, giải trình quên quẹt, đơn tự do (làm thêm, đổi ca, công tác, thôi việc, đi muộn) và đề xuất. Lọc theo loại, trạng thái, nhân viên và khoảng ngày của đơn.',
+      ['don:doc'],
+      { querystring: { ...PHAN_TRANG_CHUNG,
+        loai: 'Lọc loại: nghi_phep, giai_trinh, don_tu, de_xuat. Trống = tất cả.',
+        trang_thai: 'Lọc trạng thái, ví dụ cho_duyet, da_duyet. Trống = tất cả.',
+        ma_nv: 'Lọc theo một nhân viên.',
+        tu: 'Chỉ lấy đơn có ngày từ (YYYY-MM-DD).',
+        den: 'Chỉ lấy đơn có ngày đến (YYYY-MM-DD).' } }),
+    preHandler: can_khoa_api('don:doc'),
+  }, async (req) => {
+    const q = req.query as Record<string, unknown>;
+    const { gioi_han, bo_qua } = phan_trang(q, 200, 1000);
+    const loai = chuoi(q, 'loai', { toi_da: 30 });
+    const trang_thai = chuoi(q, 'trang_thai', { toi_da: 30 });
+    const ma_nv = chuoi(q, 'ma_nv', { toi_da: 64 });
+    const tu = chuoi(q, 'tu', { toi_da: 10 });
+    const den = chuoi(q, 'den', { toi_da: 10 });
+
+    // Offset tinh ngay tao de xuat — tham so dau tien cua ca cau truy van.
+    const lech_gio = Number(cau_hinh.device_tz_offset_hours);
+    const dieu_kien: string[] = [];
+    const tham_so: unknown[] = [lech_gio];
+    if (loai !== null) {
+      tham_so.push(loai);
+      dieu_kien.push(`t.loai = $${tham_so.length}`);
+    }
+    if (trang_thai !== null) {
+      tham_so.push(trang_thai);
+      dieu_kien.push(`t.trang_thai = $${tham_so.length}`);
+    }
+    if (ma_nv !== null) {
+      tham_so.push(ma_nv);
+      dieu_kien.push(`lower(t.ma_nv) = lower($${tham_so.length})`);
+    }
+    if (tu !== null) {
+      tham_so.push(tu);
+      dieu_kien.push(`t.ngay >= $${tham_so.length}`);
+    }
+    if (den !== null) {
+      tham_so.push(den);
+      dieu_kien.push(`t.ngay <= $${tham_so.length}`);
+    }
+    const where = dieu_kien.length > 0 ? `where ${dieu_kien.join(' and ')}` : '';
+
+    const dem = await truy_van_mot<{ tong: number }>(
+      `with gop as (
+         select nv.ma_nv, nv.ho_ten, 'nghi_phep' as loai,
+                to_char(d.tu_ngay, 'YYYY-MM-DD') as ngay, d.trang_thai, d.ly_do
+           from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id
+         union all
+         select nv.ma_nv, nv.ho_ten, 'giai_trinh' as loai,
+                to_char(gt.ngay, 'YYYY-MM-DD') as ngay, gt.trang_thai, gt.ly_do
+           from don_giai_trinh gt join nhan_vien nv on nv.id = gt.nhan_vien_id
+         union all
+         select nv.ma_nv, nv.ho_ten, 'don_tu' as loai,
+                to_char(dt.tu_ngay, 'YYYY-MM-DD') as ngay, dt.trang_thai, dt.ly_do
+           from don_tu dt join nhan_vien nv on nv.id = dt.nhan_vien_id
+         union all
+         select nv.ma_nv, nv.ho_ten, 'de_xuat' as loai,
+                to_char(dx.tao_luc + make_interval(hours => $1::int), 'YYYY-MM-DD') as ngay,
+                dx.trang_thai, dx.tieu_de as ly_do
+           from de_xuat dx join nhan_vien nv on nv.id = dx.nhan_vien_id
+       )
+       select count(*)::int as tong from gop t ${where}`,
+      tham_so,
+    );
+    const dong = await truy_van(
+      `with gop as (
+         select nv.ma_nv, nv.ho_ten, 'nghi_phep' as loai,
+                to_char(d.tu_ngay, 'YYYY-MM-DD') as ngay, d.trang_thai, d.ly_do
+           from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id
+         union all
+         select nv.ma_nv, nv.ho_ten, 'giai_trinh' as loai,
+                to_char(gt.ngay, 'YYYY-MM-DD') as ngay, gt.trang_thai, gt.ly_do
+           from don_giai_trinh gt join nhan_vien nv on nv.id = gt.nhan_vien_id
+         union all
+         select nv.ma_nv, nv.ho_ten, 'don_tu' as loai,
+                to_char(dt.tu_ngay, 'YYYY-MM-DD') as ngay, dt.trang_thai, dt.ly_do
+           from don_tu dt join nhan_vien nv on nv.id = dt.nhan_vien_id
+         union all
+         select nv.ma_nv, nv.ho_ten, 'de_xuat' as loai,
+                to_char(dx.tao_luc + make_interval(hours => $1::int), 'YYYY-MM-DD') as ngay,
+                dx.trang_thai, dx.tieu_de as ly_do
+           from de_xuat dx join nhan_vien nv on nv.id = dx.nhan_vien_id
+       )
+       select * from gop t
+         ${where}
+        order by t.ngay desc, t.ma_nv
+        limit $${tham_so.length + 1} offset $${tham_so.length + 2}`,
+      [...tham_so, gioi_han, bo_qua],
+    );
+    return goi_ra(dong, { gioi_han, bo_qua, tong: dem?.tong ?? 0 });
+  });
+
+  // ------------------------------------------------------------ vi pham
+  app.get('/vi-pham', {
+    schema: mo_ta('ViPham', 'layViPham', 'Bản ghi vi phạm',
+      'Bản ghi vi phạm nội quy (do người ghi, quy tắc tự phát hiện, hoặc hệ thống ngoài đẩy sang). Chỉ đọc — ghi qua đường POST /vi-pham với phạm vi `vi_pham:ghi`.',
+      ['vi_pham:doc'],
+      { querystring: { ...PHAN_TRANG_CHUNG,
+        ma_nv: 'Lọc theo một nhân viên.',
+        tu: 'Ngày vi phạm từ (YYYY-MM-DD).',
+        den: 'Ngày vi phạm đến (YYYY-MM-DD).',
+        trang_thai: 'Lọc trạng thái: moi, cho_giai_trinh, da_xac_nhan, bac_bo, da_xu_ly.' } }),
+    preHandler: can_khoa_api('vi_pham:doc'),
+  }, async (req) => {
+    const q = req.query as Record<string, unknown>;
+    const { gioi_han, bo_qua } = phan_trang(q, 200, 1000);
+    const ma_nv = chuoi(q, 'ma_nv', { toi_da: 64 });
+    const tu = chuoi(q, 'tu', { toi_da: 10 });
+    const den = chuoi(q, 'den', { toi_da: 10 });
+    const trang_thai = chuoi(q, 'trang_thai', { toi_da: 30 });
+
+    const dieu_kien: string[] = [];
+    const tham_so: unknown[] = [];
+    if (ma_nv !== null) {
+      tham_so.push(ma_nv);
+      dieu_kien.push(`lower(nv.ma_nv) = lower($${tham_so.length})`);
+    }
+    if (tu !== null) {
+      tham_so.push(tu);
+      dieu_kien.push(`vp.ngay >= $${tham_so.length}::date`);
+    }
+    if (den !== null) {
+      tham_so.push(den);
+      dieu_kien.push(`vp.ngay <= $${tham_so.length}::date`);
+    }
+    if (trang_thai !== null) {
+      tham_so.push(trang_thai);
+      dieu_kien.push(`vp.trang_thai = $${tham_so.length}`);
+    }
+    const where = dieu_kien.length > 0 ? `where ${dieu_kien.join(' and ')}` : '';
+
+    const dem = await truy_van_mot<{ tong: number }>(
+      `select count(*)::int as tong from vi_pham vp
+         join nhan_vien nv on nv.id = vp.nhan_vien_id ${where}`, tham_so,
+    );
+    const dong = await truy_van(
+      `select nv.ma_nv, nv.ho_ten, lv.ma as loai_ma, lv.ten as loai_ten,
+              vp.ngay, vp.ky, vp.mo_ta, vp.trang_thai, vp.nguon, vp.ky_luat, vp.lien_ket
+         from vi_pham vp
+         join nhan_vien nv on nv.id = vp.nhan_vien_id
+         left join loai_vi_pham lv on lv.id = vp.loai_vi_pham_id
+         ${where}
+        order by vp.ngay desc, nv.ma_nv
+        limit $${tham_so.length + 1} offset $${tham_so.length + 2}`,
+      [...tham_so, gioi_han, bo_qua],
+    );
+    return goi_ra(dong, { gioi_han, bo_qua, tong: dem?.tong ?? 0 });
+  });
+
+  // ------------------------------------------------------------ ho so ky luat
+  app.get('/ky-luat', {
+    schema: mo_ta('KyLuat', 'layHoSoKyLuat', 'Hồ sơ kỷ luật',
+      'Hồ sơ kỷ luật theo tháng (`ky` dạng YYYY-MM). Kèm mức độ, số vi phạm gộp, mức giảm thưởng P3 và trạng thái xử lý.',
+      ['ky_luat:doc'],
+      { querystring: { ...PHAN_TRANG_CHUNG,
+        ma_nv: 'Lọc theo một nhân viên.',
+        ky: 'Lọc theo tháng, dạng YYYY-MM.',
+        trang_thai: 'Lọc trạng thái: moi, da_nhac, cho_duyet, da_ap_dung, bac_bo, huy.' } }),
+    preHandler: can_khoa_api('ky_luat:doc'),
+  }, async (req) => {
+    const q = req.query as Record<string, unknown>;
+    const { gioi_han, bo_qua } = phan_trang(q, 200, 1000);
+    const ma_nv = chuoi(q, 'ma_nv', { toi_da: 64 });
+    const ky = chuoi(q, 'ky', { toi_da: 7 });
+    const trang_thai = chuoi(q, 'trang_thai', { toi_da: 30 });
+
+    const dieu_kien: string[] = [];
+    const tham_so: unknown[] = [];
+    if (ma_nv !== null) {
+      tham_so.push(ma_nv);
+      dieu_kien.push(`lower(nv.ma_nv) = lower($${tham_so.length})`);
+    }
+    if (ky !== null) {
+      tham_so.push(ky);
+      dieu_kien.push(`h.ky = $${tham_so.length}`);
+    }
+    if (trang_thai !== null) {
+      tham_so.push(trang_thai);
+      dieu_kien.push(`h.trang_thai = $${tham_so.length}`);
+    }
+    const where = dieu_kien.length > 0 ? `where ${dieu_kien.join(' and ')}` : '';
+
+    const dem = await truy_van_mot<{ tong: number }>(
+      `select count(*)::int as tong from ho_so_ky_luat h
+         join nhan_vien nv on nv.id = h.nhan_vien_id ${where}`, tham_so,
+    );
+    const dong = await truy_van(
+      `select nv.ma_nv, nv.ho_ten, h.ma, h.ky, h.muc_do, h.so_vi_pham,
+              h.tong_tien, h.hinh_thuc, h.trang_thai, h.cap_nhat_luc
+         from ho_so_ky_luat h
+         join nhan_vien nv on nv.id = h.nhan_vien_id
+         ${where}
+        order by h.ky desc, nv.ma_nv
+        limit $${tham_so.length + 1} offset $${tham_so.length + 2}`,
+      [...tham_so, gioi_han, bo_qua],
+    );
+    return goi_ra(dong, { gioi_han, bo_qua, tong: dem?.tong ?? 0 });
   });
 
   // Duong dan la trong /api/v1 cung phai tra JSON dung hinh dang, khong phai trang 404 la.

@@ -28,6 +28,11 @@ export const PHAM_VI = [
   'ho_so:doc',
   'su_kien:doc',
   'vi_pham:ghi',
+  'vi_pham:doc',
+  'ky_luat:doc',
+  'don:doc',
+  'van_ban:doc',
+  'thong_bao:doc',
 ] as const;
 
 export type PhamVi = (typeof PHAM_VI)[number];

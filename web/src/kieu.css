@@ -1390,6 +1390,32 @@ textarea:focus-visible,
   background: var(--nen); color: var(--chinh-dam); font-size: 13px; cursor: pointer;
 }
 .troly-chip:hover { background: var(--nhan-nen); }
+/* Dau dong dang muc trong tra loi (• ...) — dam dau dong, khong phai la bullet tu do. */
+.troly-gach { margin-top: 3px; }
+.troly-gach:first-child { margin-top: 0; }
+/* The hanh dong cho xac nhan: tro ly dien san, nhan vien bam moi gui. */
+.troly-hd {
+  align-self: flex-start; max-width: 85%;
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 10px 12px; background: var(--nen);
+  border: 1px solid var(--chinh-dam); border-radius: var(--tron-nho);
+}
+.troly-hd-b { font-weight: 600; font-size: 13.5px; color: var(--chu); }
+.troly-hd-dong { font-size: 12.5px; color: var(--chu-mo); }
+.troly-hd-nut { display: flex; gap: 8px; margin-top: 5px; }
+.troly-hd-xac-nhan {
+  padding: 7px 14px; border: 0; border-radius: var(--tron-nho);
+  background: var(--chinh-dam); color: var(--tren-chinh);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.troly-hd-xac-nhan:hover:not(:disabled) { filter: brightness(1.06); }
+.troly-hd-xac-nhan:disabled { opacity: 0.6; cursor: default; }
+.troly-hd-bo {
+  padding: 7px 14px; border: 1px solid var(--vien-dam); border-radius: var(--tron-nho);
+  background: transparent; color: var(--chu);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.troly-hd-bo:hover:not(:disabled) { background: var(--nen-mo); }
 .troly-hang { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--vien); }
 .troly-hang input { flex: 1; padding: 9px 11px; border: 1px solid var(--vien-dam); border-radius: var(--tron-nho); background: var(--nen); color: var(--chu); font: inherit; }
 

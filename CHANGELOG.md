@@ -2,6 +2,28 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.94.0] — 2026-09-19
+
+**MCP server cho toàn phân hệ + trợ lý tra cứu nội quy và điền sẵn đơn.**
+
+- Gói `mcp/` mới: máy chủ MCP (Model Context Protocol) bọc REST API `/api/v1` bằng khóa API
+  `ck_` — 15 công cụ cho trợ lý AI ngoài (Claude Desktop, VS Code Copilot, Foundry), chạy
+  được cả hai kiểu `stdio` (cục bộ) và Streamable HTTP (VPS qua Caddy ở `/mcp`). Không chứa
+  logic nghiệp vụ, mọi lần gọi đều vào nhật ký API. Xem `tai_lieu/MCP.md`.
+- API tích hợp `/api/v1` thêm 5 đường đọc + 5 phạm vi khóa: `/van-ban` (`van_ban:doc`),
+  `/thong-bao` (`thong_bao:doc`), `/don` (`don:doc`, gộp 4 loại đơn), `/vi-pham`
+  (`vi_pham:doc`), `/ky-luat` (`ky_luat:doc`).
+- Trợ lý dữ liệu thêm **tra cứu yêu cầu của công ty**: hỏi hành vi thì trả nguyên văn chế
+  tài + căn cứ điều của Nội quy (bảng `loai_vi_pham`), tìm văn bản công ty (`van_ban_cong_ty`)
+  và thông báo nội bộ (`thong_bao`) bằng từ khóa.
+- Trợ lý thêm **hành động chờ xác nhận**: điền sẵn đơn nghỉ phép (hiểu "ngày mai", "25/09",
+  khoảng ngày, nửa ngày, loại nghỉ), giải trình quên quẹt, đề xuất/kiến nghị, và hủy đơn
+  chờ duyệt. Trợ lý **chỉ tính payload, không ghi CSDL** — đơn chỉ gửi khi chính nhân sự
+  bấm nút xác nhận trên thẻ trong hội thoại, lúc đó trình duyệt của họ gọi route POST có
+  sẵn với token của họ. Xem `tai_lieu/TRO-LY.md`.
+- Widget trợ lý web hiển thị thẻ xác nhận + danh sách đầu dòng, kiểu từ token thiết kế.
+- Thêm 12 test đơn vị cho bộ phân tích câu hỏi của trợ lý (`test/tro_ly.test.ts`).
+
 ## [1.93.4] — 2026-09-19
 
 **Ứng lương: một màn hình, không cuộn + chọn tháng/ngày bằng tiếng Việt.**
