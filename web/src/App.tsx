@@ -382,6 +382,7 @@ function BoCuc(): ReactNode {
           di_toi('/duyet-don');
         }}
         />
+        <TroLyCaNhan />
       </>
     );
   }
