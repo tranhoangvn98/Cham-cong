@@ -2,6 +2,13 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.99.9] — 2026-09-20
+
+**Sửa lỗi: test e2e trợ lý kiểm tra theo dạng trả lời mới.**
+
+- Test "mở cho..." giờ khẳng định đường dẫn nằm trong `mo_de_xuat.den` (dạng 1.99.8),
+  và nhân viên thường hỏi ứng lương thì không có `mo_de_xuat`.
+
 ## [1.99.8] — 2026-09-20
 
 **Sửa lỗi: trợ lý tự nhảy màn hình — giờ chỉ mở khi người dùng bấm nút đề xuất.**

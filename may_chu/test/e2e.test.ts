@@ -8611,13 +8611,14 @@ test('tro ly: "mo cho..." tra duong dan dieu huong dung, ung luong khong co tran
     { token: token_nhan_vien });
   assert.equal(r.ma, 200);
   assert.equal(r.body['y_dinh'], 'mo_trang');
-  assert.equal(r.body['den'], '/ca-nhan/don-tu');
-  // Ung luong chua mo tu phuc vu: tra loi huong dan, KHONG tra den (khong co trang de mo).
+  const mo_cn = r.body['mo_de_xuat'] as Record<string, unknown>;
+  assert.equal(mo_cn?.['den'], '/ca-nhan/don-tu');
+  // Ung luong chua mo tu phuc vu: tra loi huong dan, KHONG tra nut mo (khong co trang de mo).
   const u = await goi('GET',
     '/api/toi/tro-ly?hoi=' + encodeURIComponent('mở chỗ ứng lương'),
     { token: token_nhan_vien });
   assert.equal(u.ma, 200);
-  assert.equal(u.body['den'], undefined);
+  assert.equal(u.body['mo_de_xuat'], undefined);
   assert.match(String(u.body['tra_loi']), /nhân sự/);
 });
 
