@@ -1523,6 +1523,7 @@ textarea:focus-visible,
   padding: 12px 14px; color: var(--tren-chinh);
   background: linear-gradient(135deg, var(--chinh), var(--chinh-dam));
 }
+.troly-dau > span { display: inline-flex; align-items: center; gap: 4px; }
 .troly-dau .nut-phang { color: #fff; }
 .troly-than { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .troly-tn { max-width: 85%; padding: 9px 12px; border-radius: 14px; font-size: 14px; line-height: 1.45; white-space: normal; }

@@ -8572,3 +8572,35 @@ test('tro ly: dang ky OT thieu gio thi hoi bo sung, khong dien san', async () =>
   assert.equal(r.body['hanh_dong'], undefined, 'thieu gio thi phai hoi bo sung');
   assert.match(String(r.body['tra_loi']), /mấy giờ/);
 });
+
+test('tro ly: luu lich su theo nhan vien, doc lai va xoa duoc', async () => {
+  const r = await goi('GET',
+    '/api/toi/tro-ly?hoi=' + encodeURIComponent('đi muộn bị xử lý thế nào'),
+    { token: token_nhan_vien });
+  assert.equal(r.ma, 200);
+  assert.equal(r.body['y_dinh'], 'noi_quy');
+  // May chu phai da luu luot hoi/dap nay vao lich su cua nhan vien.
+  const ls = await goi('GET', '/api/toi/tro-ly/lich-su', { token: token_nhan_vien });
+  assert.equal(ls.ma, 200, ls.tho);
+  const ds = ls.body as unknown as Record<string, unknown>[];
+  assert.ok(Array.isArray(ds) && ds.length > 0, 'phai co lich su vua luu');
+  assert.equal(ds[0]?.['y_dinh'], 'noi_quy');
+  assert.equal(typeof ds[0]?.['cau_hoi'], 'string');
+  assert.equal(typeof ds[0]?.['tra_loi'], 'string');
+  // Tai khoan khac KHONG doc duoc lich su cua nhan vien nay.
+  if (token_admin !== '') {
+    const lk = await goi('GET', '/api/toi/tro-ly/lich-su', { token: token_admin });
+    if (lk.ma === 200) {
+      const dk = lk.body as unknown as unknown[];
+      const co_cua_nguoi_khac = dk.some((d) =>
+        typeof (d as Record<string, unknown>)['cau_hoi'] === 'string'
+        && (d as Record<string, unknown>)['cau_hoi'] === 'đi muộn bị xử lý thế nào');
+      assert.equal(co_cua_nguoi_khac, false, 'khong duoc lo lich su nguoi khac');
+    }
+  }
+  // Xoa lich su cua chinh minh.
+  const xoa = await goi('DELETE', '/api/toi/tro-ly/lich-su', { token: token_nhan_vien });
+  assert.equal(xoa.ma, 200, xoa.tho);
+  const sau = await goi('GET', '/api/toi/tro-ly/lich-su', { token: token_nhan_vien });
+  assert.equal((sau.body as unknown as unknown[]).length, 0, 'sau xoa phai rong');
+});

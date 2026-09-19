@@ -19,7 +19,7 @@
 //     trinh, de xuat, huy don) nhung KHONG ghi gi vao CSDL. Khi nhan vien bam "Xac nhan" o
 //     giao dien, TRINH DUYET cua ho moi goi route POST san co voi token cua chinh ho. Tro ly
 //     khong bao gio tu thuc thi thay doi du lieu — do la nguyen tac bat di bat dich.
-import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
+import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { bo_dau } from '../tien_ich/ten_tep.ts';
 import {
   cong_ngay, gio_dia_phuong, khoang_thang, ngay_dia_phuong, ngay_viet,
@@ -409,14 +409,27 @@ const NHAN_DANH_MUC: Record<string, string> = {
  *
  * Nhan dang y dinh bang tu khoa (khong dau) — du cho cac cau thuong gap. Cau khong khop y dinh
  * nao: thu LLM (neu bat), khong thi tra ve loi moi kem goi y.
+ *
+ * Lich su duoc LUU LAI DAI theo nhan vien (bang tro_ly_hoi_thoai) ngay sau khi tra loi —
+ * dung de tro ly hieu cau noi tiep va chao lai dung chu de lan truoc.
  */
 export async function tra_loi_tro_ly(nv_id: string, cau_hoi_goc: string): Promise<TraLoiTroLy> {
+  const kq = await tra_loi_noi_bo(nv_id, cau_hoi_goc);
+  // Luu lai de lan sau tro ly nho nguoi hoi (ngoai canh hoi tiep). Cau rong (mo widget chao)
+  // thi khong luu — tranh nhet loi chao vao lich su. Loi luu khong duoc lam hong cau tra loi.
+  if (cau_hoi_goc.trim() !== '') {
+    void luu_hoi_thoai(nv_id, cau_hoi_goc, kq.tra_loi, kq.y_dinh, kq.hanh_dong !== undefined);
+  }
+  return kq;
+}
+
+async function tra_loi_noi_bo(nv_id: string, cau_hoi_goc: string): Promise<TraLoiTroLy> {
   const cau = chuan(cau_hoi_goc.trim());
   const hom_nay = ngay_dia_phuong(new Date());
   const y_dinh = nhan_dang_y_dinh(cau);
 
   switch (y_dinh) {
-    case 'chao': return tra_loi_chao();
+    case 'chao': return tra_loi_chao(nv_id);
     case 'hoi_tham': return tra_loi_hoi_tham(cau);
     case 'khieu_nai_luong': return tra_loi_khieu_nai_luong(nv_id, cau_hoi_goc, cau);
     case 'khieu_nai_ky_luat': return tra_loi_khieu_nai_ky_luat(nv_id, cau_hoi_goc, cau);
@@ -448,7 +461,7 @@ export async function tra_loi_tro_ly(nv_id: string, cau_hoi_goc: string): Promis
   }
 
   // ---- KHONG KHOP: tro chuyen bang AI (neu bat), khong thi loi moi ----
-  const llm = await tro_chuyen_llm(cau_hoi_goc);
+  const llm = await tro_chuyen_llm(cau_hoi_goc, await lich_su_boi_canh(nv_id));
   if (llm !== null) return { tra_loi: llm.tra_loi, y_dinh: 'llm', goi_y: llm.goi_y };
 
   return {
@@ -458,6 +471,63 @@ export async function tra_loi_tro_ly(nv_id: string, cau_hoi_goc: string): Promis
     goi_y: GOI_Y,
   };
 }
+
+// ==================================================================== lich su hoi thoai
+//
+// Moi luot hoi/dap duoc luu vao bang tro_ly_hoi_thoai theo TUNG NHAN VIEN (lau dai, theo
+// yeu cau). Dung vao hai viec: (1) lam ngu canh cho AI hieu cau noi tiep; (2) chao lai dung
+// chu de lan truoc. Chi nhan vien do doc duoc lich su cua minh.
+
+const SO_LICH_SU_NGU_CANH = 4;
+/** Ngoai khoang thoi gian nay thi khong nhac lai chu de cu trong loi chao. */
+const TUOI_NHAC_CHU_DE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Luu mot luot hoi/dap. Loi luu chi ghi nhat ky, khong duoc lam hong cau tra loi. */
+async function luu_hoi_thoai(
+  nv_id: string, cau_hoi: string, tra_loi: string, y_dinh: string, co_hanh_dong: boolean,
+): Promise<void> {
+  try {
+    await thuc_thi(
+      `insert into tro_ly_hoi_thoai (nhan_vien_id, cau_hoi, tra_loi, y_dinh, co_hanh_dong)
+       values ($1,$2,$3,$4,$5)`,
+      [nv_id, cau_hoi, tra_loi, y_dinh, co_hanh_dong],
+    );
+  } catch (loi) {
+    console.error('[tro-ly:lich-su] loi luu hoi thoai: ' + (loi as Error).message);
+  }
+}
+
+/** Lich su gan nhat cua CHINH nguoi hoi, tra ve dung thu tu cu truoc moi sau. */
+async function lich_su_gan_day(nv_id: string): Promise<{ cau_hoi: string; tra_loi: string }[]> {
+  try {
+    const ds = await truy_van<{ cau_hoi: string; tra_loi: string }>(
+      `select cau_hoi, tra_loi from tro_ly_hoi_thoai
+        where nhan_vien_id = $1 order by tao_luc desc limit $2`,
+      [nv_id, SO_LICH_SU_NGU_CANH],
+    );
+    return ds.reverse();
+  } catch {
+    return [];
+  }
+}
+
+/** Bien lich su thanh doan chu ngan lam ngu canh cho LLM. Rong = ''. */
+async function lich_su_boi_canh(nv_id: string): Promise<string> {
+  const ds = await lich_su_gan_day(nv_id);
+  if (ds.length === 0) return '';
+  return ds.map((d) => `Nguoi hoi: ${d.cau_hoi}\nTro ly: ${d.tra_loi}`).join('\n');
+}
+
+/** Ten hien thi de nhac lai chu de lan truoc (chi cac y dinh nghiep vu, bo chao/hoi tham). */
+const NHAN_Y_DINH_CHAO: Partial<Record<YDinh, string>> = {
+  phep: 'phép năm', cong_thang: 'công tháng', di_muon: 'đi muộn', nghi_le: 'nghỉ lễ',
+  ca_lam: 'ca làm việc', luong: 'lương', don_cho: 'đơn chờ duyệt',
+  xin_nghi_phep: 'xin nghỉ phép', giai_trinh: 'giải trình quên quét', de_xuat: 'đề xuất',
+  dang_ky_ot: 'đăng ký OT', doi_ca: 'đổi ca', cong_tac: 'công tác',
+  xin_di_muon: 'xin đi muộn', nghi_viec: 'thôi việc', noi_quy: 'nội quy',
+  thong_bao: 'thông báo', van_ban: 'văn bản', khieu_nai_luong: 'khiếu nại lương',
+  khieu_nai_ky_luat: 'khiếu nại kỷ luật',
+};
 
 // ==================================================================== LLM (DeepSeek)
 //
@@ -506,12 +576,16 @@ async function viet_tu_nhien(y_dinh: string, boi_canh: unknown): Promise<string 
 /**
  * Tro chuyen cho cau ngoai luat: huong dan, hoi ro, nhung KHONG tu bịa so lieu.
  */
-async function tro_chuyen_llm(cau_hoi_goc: string): Promise<
+async function tro_chuyen_llm(
+  cau_hoi_goc: string, boi_canh = '',
+): Promise<
   { tra_loi: string; goi_y: string[] } | null
 > {
   const kq = await hoi_llm_json('tro-chuyen',
     'Ban la tro ly cua phan he Cham cong, hoi bang tieng Viet. Nguoi dung hoi: '
     + JSON.stringify(cau_hoi_goc)
+    + '\n\nCac luot tro chuyen gan nhat cua CUNG nguoi hoi (de hieu cau noi tiep, khong bịa):\n'
+    + (boi_canh === '' ? '(khong co)' : boi_canh)
     + '\n\nBan chi ho tro: phep nam (con bao nhieu ngay), cong thang, di muon, nghi le, ca lam, '
     + 'don cho duyet, noi quy/che tai, xin nghi phep, giai trinh quen quet, de xuat, '
     + 'dang ky OT/lam them gio (can ngay + tu gio den gio), xin doi ca, dang ky di cong tac, '
@@ -536,14 +610,19 @@ async function tro_chuyen_llm(cau_hoi_goc: string): Promise<
  * Neu bo phan tich tu khoa khong thay ngay, nho AI trich ngay xin nghi tu cau noi. Ket qua
  * duoc KIEU LAI bang ham thuan (ngay_hop_le) truoc khi dung — AI khong duoc phep bịa ngay.
  */
-async function phan_tich_khoang_llm(cau_goc: string, hom_nay: string): Promise<KhoangNghi | null> {
+async function phan_tich_khoang_llm(
+  cau_goc: string, hom_nay: string, boi_canh = '',
+): Promise<KhoangNghi | null> {
   const kq = await hoi_llm_json('ngay-nghi',
     'Trich khoang ngay nghi tu cau sau (hom nay la ' + hom_nay + '): '
     + JSON.stringify(cau_goc)
+    + '\n\nCac luot tro chuyen gan nhat cua cung nguoi hoi (dung de hieu cau noi tiep nhu '
+    + '"ngay do", "hom do", "nhu cau tren" — lay ngay tu do khi cau KHONG co ngay cu the):\n'
+    + (boi_canh === '' ? '(khong co)' : boi_canh)
     + '\n\nTra ve DUY NHAT doi tuong JSON dang '
     + '{"tu_ngay": "YYYY-MM-DD", "den_ngay": "YYYY-MM-DD", "nua_ngay": false}. '
     + 'Mot ngay thi den_ngay = tu_ngay. "ngay mai" = ' + cong_ngay(hom_nay, 1)
-    + '. Neu cau KHONG co ngay nao thi tra {"tu_ngay": null}.');
+    + '. Neu cau KHONG co ngay nao (ke ca noi tiep) thi tra {"tu_ngay": null}.');
   if (kq === null) return null;
   const tu = kq['tu_ngay'];
   const den = kq['den_ngay'] ?? tu;
@@ -692,16 +771,35 @@ function gio_hien_tai(): number {
 
 /**
  * Chao theo buoi trong ngay (mui gio may cham cong) — giong nguoi that mo cua hoi, khong
- * phai may tra loi khuon. Ke them ngan nhung viec tro ly lam duoc de nguoi dung biet hoi gi.
+ * phai may tra loi khuon. Goi dung TEN nguoi hoi va nhac lai chu de lan truoc (trong 7 ngay)
+ * de to ve hieu tung nhan su. Ke them ngan nhung viec tro ly lam duoc de nguoi dung biet hoi gi.
  */
-function tra_loi_chao(): TraLoiTroLy {
+async function tra_loi_chao(nv_id: string): Promise<TraLoiTroLy> {
   const buoi = buoi_trong_ngay(gio_hien_tai());
   const dau = buoi === 'sang' ? 'Chào buổi sáng'
     : buoi === 'trua' ? 'Chào buổi trưa'
       : buoi === 'chieu' ? 'Chào buổi chiều' : 'Chào buổi tối';
-  const loi = `${dau}! Mình là **trợ lý nhân sự** của bạn. Hôm nay bạn cần mình giúp gì — `
+
+  const nv = await truy_van_mot<{ ho_ten: string | null }>(
+    'select ho_ten from nhan_vien where id = $1', [nv_id],
+  );
+  const phan_ten = nv?.ho_ten?.trim().split(/\s+/) ?? [];
+  const xung = phan_ten.length > 0 ? phan_ten[phan_ten.length - 1]! : 'bạn';
+
+  let nhac = '';
+  const gan_nhat = await truy_van_mot<{ cau_hoi: string; y_dinh: string; tao_luc: Date }>(
+    `select cau_hoi, y_dinh, tao_luc from tro_ly_hoi_thoai
+      where nhan_vien_id = $1 order by tao_luc desc limit 1`,
+    [nv_id],
+  );
+  if (gan_nhat !== null && Date.now() - new Date(gan_nhat.tao_luc).getTime() < TUOI_NHAC_CHU_DE_MS) {
+    const nhan = NHAN_Y_DINH_CHAO[gan_nhat.y_dinh as YDinh];
+    if (nhan !== undefined) nhac = ` Lần trước bạn hỏi về **${nhan}** — cần mình tra tiếp không?`;
+  }
+
+  const loi = `${dau}, ${xung}! Mình là **trợ lý nhân sự** của bạn. Hôm nay bạn cần mình giúp gì — `
     + 'tra phép, công, lương, hay điền đơn OT, xin nghỉ, đổi ca? Mình chỉ điền sẵn đơn, '
-    + '**chính bạn** bấm xác nhận thì đơn mới gửi nhé.';
+    + '**chính bạn** bấm xác nhận thì đơn mới gửi nhé.' + nhac;
   return { tra_loi: loi, y_dinh: 'chao', goi_y: GOI_Y };
 }
 
@@ -862,10 +960,10 @@ async function tra_loi_xin_nghi(
   nv_id: string, cau_goc: string, cau: string, hom_nay: string,
 ): Promise<TraLoiTroLy> {
   // Luat tu khoa truoc; cau noi tu nhien khong khop luat thi nho AI trich ngay (da kiem lai
-  // bang ham thuan truoc khi dung).
+  // bang ham thuan truoc khi dung), kem vai luot gan nhat de hieu "ngay do".
   let khoang = phan_tich_khoang_nghi(cau, hom_nay);
   if (khoang === null) {
-    khoang = await phan_tich_khoang_llm(cau_goc, hom_nay);
+    khoang = await phan_tich_khoang_llm(cau_goc, hom_nay, await lich_su_boi_canh(nv_id));
   }
   if (khoang === null) {
     return {
@@ -1185,7 +1283,7 @@ async function tra_loi_dang_ky_ot(
 ): Promise<TraLoiTroLy> {
   let ngay = phan_tich_ngay(cau, hom_nay);
   if (ngay === null) {
-    const llm = await phan_tich_khoang_llm(cau_goc, hom_nay);
+    const llm = await phan_tich_khoang_llm(cau_goc, hom_nay, await lich_su_boi_canh(nv_id));
     if (llm !== null) ngay = llm.tu;
   }
   if (ngay === null) {
@@ -1255,7 +1353,7 @@ async function tra_loi_xin_di_muon(
 ): Promise<TraLoiTroLy> {
   let ngay = phan_tich_ngay(cau, hom_nay);
   if (ngay === null) {
-    const llm = await phan_tich_khoang_llm(cau_goc, hom_nay);
+    const llm = await phan_tich_khoang_llm(cau_goc, hom_nay, await lich_su_boi_canh(nv_id));
     if (llm !== null) ngay = llm.tu;
   }
   if (ngay === null) {
@@ -1308,7 +1406,7 @@ async function tra_loi_doi_ca(
 ): Promise<TraLoiTroLy> {
   let khoang = phan_tich_khoang_nghi(cau, hom_nay);
   if (khoang === null) {
-    khoang = await phan_tich_khoang_llm(cau_goc, hom_nay);
+    khoang = await phan_tich_khoang_llm(cau_goc, hom_nay, await lich_su_boi_canh(nv_id));
   }
   if (khoang === null) {
     return {
@@ -1384,7 +1482,7 @@ async function tra_loi_cong_tac(
 ): Promise<TraLoiTroLy> {
   let khoang = phan_tich_khoang_nghi(cau, hom_nay);
   if (khoang === null) {
-    khoang = await phan_tich_khoang_llm(cau_goc, hom_nay);
+    khoang = await phan_tich_khoang_llm(cau_goc, hom_nay, await lich_su_boi_canh(nv_id));
   }
   if (khoang === null) {
     return {

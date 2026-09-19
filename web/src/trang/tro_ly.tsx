@@ -71,6 +71,19 @@ function duong_an_toan(hd: HanhDong): boolean {
   return hd.phuong_thuc === 'POST' && hd.duong_dan.startsWith('/api/toi/');
 }
 
+// ================================================================ lich su hoi thoai
+//
+// Lich su duoc may chu LUU LAU DAI theo tung nhan su (bang tro_ly_hoi_thoai) — mo trang o
+// may nao cung thay lich su cua minh, tro ly dung no de hieu cau noi tiep va chao lai dung
+// chu de lan truoc. Chi nhan su do doc duoc lich su cua minh; nut "Xoa" goi DELETE de xoa
+// toan bo cua chinh minh. The xac nhan (chua du lieu don) KHONG bao gio duoc dua vao lich su.
+
+/** Mot luot trong lich su tra ve tu may chu. */
+interface LuotLichSu {
+  cau_hoi: string;
+  tra_loi: string;
+}
+
 export function TroLyCaNhan(): ReactNode {
   const [mo, dat_mo] = useState(false);
   const [dong, dat_dong] = useState<Dong[]>([]);
@@ -81,14 +94,28 @@ export function TroLyCaNhan(): ReactNode {
   const [dang_gui, dat_dang_gui] = useState(false);
   const cuon = useRef<HTMLDivElement>(null);
 
-  // Mo lan dau: lay loi chao + goi y.
+  // Mo lan dau: nap lich su tu may chu; chua co lich su nao thi moi chao lai tu dau.
   useEffect(() => {
     if (!mo || dong.length > 0) return;
-    void goi<DapTroLy>('/api/toi/tro-ly').then((d) => {
-      dat_dong([{ ai: 'bot', chu: d.tra_loi }]);
-      dat_goi_y(d.goi_y);
-      if (d.hanh_dong !== undefined) dat_hanh_dong(d.hanh_dong);
-    }).catch(() => { /* im lang — tro ly khong chay khong duoc chan viec khac */ });
+    void (async () => {
+      const cu = await goi<LuotLichSu[]>('/api/toi/tro-ly/lich-su')
+        .catch(() => [] as LuotLichSu[]);
+      if (Array.isArray(cu) && cu.length > 0) {
+        const dong_cu: Dong[] = [];
+        for (const d of [...cu].reverse()) {
+          dong_cu.push({ ai: 'toi', chu: d.cau_hoi });
+          dong_cu.push({ ai: 'bot', chu: d.tra_loi });
+        }
+        dat_dong(dong_cu);
+        return;
+      }
+      const d = await goi<DapTroLy>('/api/toi/tro-ly').catch(() => null);
+      if (d !== null) {
+        dat_dong([{ ai: 'bot', chu: d.tra_loi }]);
+        dat_goi_y(d.goi_y);
+        if (d.hanh_dong !== undefined) dat_hanh_dong(d.hanh_dong);
+      }
+    })();
   }, [mo, dong.length]);
 
   useEffect(() => {
@@ -154,6 +181,16 @@ export function TroLyCaNhan(): ReactNode {
     }
   };
 
+  /** Xoa toan bo lich su cua chinh minh tren may chu; cau hoi tiep theo se chao lai tu dau. */
+  const xoa_lich_su = (): void => {
+    void goi('/api/toi/tro-ly/lich-su', { method: 'DELETE' }).catch(() => {
+      /* khong xoa duoc thi de trang thai nhu cu, nguoi dung thu lai */
+    });
+    dat_dong([]);
+    dat_hanh_dong(null);
+    dat_goi_y([]);
+  };
+
   // Render qua PORTAL ra document.body: nut noi khong nam trong khung nao cua trang, nen
   // `position:fixed` luon bam MAN HINH — khong the bi mot khung cha cat mat (dieu se xay ra
   // neu mot to tien co transform/overflow). Bam chac cho nut noi luon tron day o goc phai.
@@ -170,7 +207,11 @@ export function TroLyCaNhan(): ReactNode {
     <div className="troly-panel" role="dialog" aria-label="Trợ lý nhân sự">
       <div className="troly-dau">
         <b>Trợ lý nhân sự</b>
-        <button className="nut-phang" onClick={() => dat_mo(false)} aria-label="Đóng">✕</button>
+        <span>
+          <button className="nut-phang" onClick={xoa_lich_su} aria-label="Xóa lịch sử"
+            title="Xóa toàn bộ lịch sử hội thoại của bạn">Xóa</button>
+          <button className="nut-phang" onClick={() => dat_mo(false)} aria-label="Đóng">✕</button>
+        </span>
       </div>
       <div className="troly-than" ref={cuon}>
         {dong.map((d, i) => (

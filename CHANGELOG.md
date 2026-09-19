@@ -2,6 +2,29 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.97.0] — 2026-09-20
+
+**Trợ lý lưu lịch sử lâu dài theo từng nhân sự và hiểu từng người hơn.**
+
+- Bảng `tro_ly_hoi_thoai` (di trú 081) lưu mọi lượt hỏi/đáp theo từng nhân viên; mở widget ở
+  máy nào cũng thấy lịch sử của mình (`GET /api/toi/tro-ly/lich-su`), nút **Xóa** xóa toàn bộ
+  của chính mình (`DELETE`).
+- Trợ lý dùng tối đa 4 lượt gần nhất của chính người hỏi làm ngữ cảnh để hiểu câu nối tiếp
+  ("ngày đó", "như lần trước") khi nhờ AI trích ngày/trò chuyện; lời chào gọi đúng tên và
+  nhắc lại chủ đề lần trước (trong 7 ngày).
+- Lịch sử là dữ liệu cá nhân: chỉ chủ dữ liệu đọc/xóa được của mình; AI chỉ nhận vài lượt
+  của chính người đó (nêu rõ trong TRO-LY.md).
+
+## [1.96.0] — 2026-09-20
+
+**Trợ lý nhân sự: chào hỏi, hỏi thăm như người thật.**
+
+- Đổi tên widget từ "Trợ lý dữ liệu" thành "**Trợ lý nhân sự**" (tiêu đề, lời giới thiệu,
+  tài liệu).
+- Chào theo buổi (sáng/trưa/chiều/tối) neo theo múi giờ máy chấm công; cảm ơn, tạm biệt,
+  hỏi thăm sức khỏe, "ăn cơm chưa", hỏi tên đều có lời đáp riêng. Câu vừa chào vừa nhờ việc
+  thì ưu tiên giải quyết việc. Hàm thuần `buoi_trong_ngay` + test.
+
 ## [1.95.2] — 2026-09-20
 
 **Văn bản công ty: soạn ở góc nhìn Quản trị, trang cá nhân chỉ đọc; báo rõ khi nút "Tạo bản nháp" bị khóa.**

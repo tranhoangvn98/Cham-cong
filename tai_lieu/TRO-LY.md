@@ -14,6 +14,17 @@ Nút tròn góc phải dưới ở **góc nhìn Cá nhân** mở trợ lý. Hỏ
   không rơi vào câu "mình chưa hiểu". Câu nào kèm cả việc cần làm ("chào, tôi còn bao
   nhiêu phép") thì ưu tiên trả lời việc trước.
 
+**Ghi nhớ lịch sử theo từng nhân sự**
+
+- Mọi lượt hỏi/đáp được lưu **lâu dài** vào bảng `tro_ly_hoi_thoai` theo từng nhân viên —
+  mở ở máy nào cũng thấy lịch sử của mình; nút **Xóa** ở đầu khung xóa toàn bộ của chính
+  mình (`DELETE /api/toi/tro-ly/lich-su`).
+- Trợ lý dùng **tối đa 4 lượt gần nhất của chính người hỏi** làm ngữ cảnh để hiểu câu nối
+  tiếp ("ngày đó", "như lần trước"); lời chào gọi đúng tên và nhắc lại chủ đề lần trước
+  (trong 7 ngày) — để hiểu từng nhân sự hơn.
+- Lịch sử là dữ liệu cá nhân: chỉ chủ dữ liệu đọc/xóa được của mình; thẻ xác nhận đơn
+  **không** được lưu — tránh gửi nhầm đơn cũ sau khi tải lại trang.
+
 **Tra cứu dữ liệu của chính mình**
 
 - Phép năm: còn bao nhiêu ngày, đã dùng bao nhiêu.
@@ -74,7 +85,8 @@ Trợ lý dùng chung khóa `DEEPSEEK_API_KEY` của phân hệ (đã dùng cho 
 đảm nhận **giọng nói và hiểu câu**, không phải nguồn sự thật:
 
 - **Hiểu câu ngoài luật**: câu hỏi không khớp luật từ khóa được AI trò chuyện và gợi ý cách
-  hỏi lại — không tự bịa số liệu.
+  hỏi lại — không tự bịa số liệu. Khi cần hiểu câu nối tiếp ("ngày đó"), AI chỉ nhận thêm
+  tối đa 4 lượt hỏi/đáp gần nhất của **chính người hỏi**, không bao giờ lịch sử người khác.
 - **Trích ngày xin nghỉ** từ câu nói tự nhiên khi bộ phân tích không tìm thấy; kết quả được
   kiểm lại bằng hàm thuần `ngay_hop_le` trước khi dùng (dùng chung cho nghỉ phép, OT, đổi
   ca, công tác, đi muộn).

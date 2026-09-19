@@ -1915,6 +1915,26 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     return tra_loi_tro_ly(nv_id, cau_hoi);
   });
 
+  /**
+   * Lich su hoi thoai tro ly cua CHINH minh — moi nhat truoc, toi da 100 luot. Du lieu ca
+   * nhan: chi chu du lieu doc duoc cua minh (khong lo lich su nguoi khac).
+   */
+  app.get('/tro-ly/lich-su', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select cau_hoi, tra_loi, y_dinh, tao_luc from tro_ly_hoi_thoai
+        where nhan_vien_id = $1 order by tao_luc desc limit 100`,
+      [nv_id],
+    );
+  });
+
+  /** Xoa toan bo lich su tro ly cua CHINH minh — quyen cua chu du lieu. */
+  app.delete('/tro-ly/lich-su', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    await thuc_thi('delete from tro_ly_hoi_thoai where nhan_vien_id = $1', [nv_id]);
+    return { ok: true };
+  });
+
   // ---------------------------------------------------------------- chuong bao (notification)
   /** Thong bao rieng cua CHINH tai khoan nay + so chua doc + trang thai xu ly live. */
   app.get('/bao', async (req) => {
