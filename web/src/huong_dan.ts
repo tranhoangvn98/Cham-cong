@@ -111,6 +111,19 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/ung-luong',
+    tom_tat: 'Tạm ứng lương: tạo khoản, duyệt, đánh dấu đã chi — khoản đã chi tự trừ vào phiếu lương.',
+    buoc: [
+      { chu: 'Bấm "Tạo khoản ứng": chọn nhân viên, tháng lương áp dụng, số tiền, ngày ứng và hình thức chi.', vai_tro: NHAN_SU },
+      { chu: 'Khoản mới ở trạng thái Chờ duyệt — bấm Duyệt, rồi bấm Đánh dấu đã chi khi đã đưa tiền.', vai_tro: NHAN_SU },
+      { chu: 'Lọc theo tháng và trạng thái để kiểm tra tổng đã chi của tháng.' },
+    ],
+    luu_y: [
+      'Chỉ khoản "Đã chi" mới trừ vào phiếu lương — sau khi đánh dấu đã chi phải vào Bảng lương → Tính lương để khoản trừ xuất hiện.',
+      'Người ứng đủ/quá lương (thực lĩnh ≤ 0) không ra dòng khi Lập Lệnh Chi — kiểm tra kỹ trước khi chốt lệnh chi.',
+    ],
+  },
+  {
     duong_dan: '/lan-quet',
     tom_tat: 'Nhật ký thô từ máy chấm công — nguồn sự thật của mọi con số công.',
     buoc: [
@@ -169,6 +182,32 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       'Trưởng phòng chỉ thấy và duyệt đơn của phòng mình. Đây là ràng buộc ở máy chủ, không phải bộ lọc giao diện.',
       'Cảnh báo vượt 40 giờ làm thêm/tháng (BLLĐ Điều 107) và cảnh báo báo trước dưới mức Điều 35.1 là CẢNH BÁO, không chặn — một số trường hợp hợp pháp vẫn vượt. Đọc rồi quyết.',
       'Duyệt đơn nghỉ phép/công tác làm bảng công ngày đó đổi ngay, không cần tính lại tay.',
+    ],
+  },
+  {
+    duong_dan: '/quan-ly-phep',
+    tom_tat: 'Tổng hợp ngày phép năm của từng người: quỹ theo Luật (chia theo tháng làm), đã nghỉ, chờ duyệt, còn lại.',
+    buoc: [
+      { chu: 'Chọn năm cần xem ở bộ lọc.' },
+      { chu: 'Đối chiếu cột Còn lại; số âm nghĩa là đã nghỉ vượt quỹ phép năm.' },
+      { chu: 'Bấm "Sang trang duyệt đơn" để xử lý đơn phép còn chờ.', vai_tro: ['admin', 'nhan_su', 'truong_phong_nhan_su', 'truong_phong'] },
+    ],
+    luu_y: [
+      'Quỹ phép tính theo Điều 113 BLLĐ: chia theo số tháng làm trong năm, làm tròn 0,5 ngày. Người làm đủ 12 tháng hưởng nguyên quỹ.',
+      'Trưởng phòng chỉ thấy nhân viên phòng mình. Cột Chờ duyệt chưa trừ vào Còn lại.',
+    ],
+  },
+  {
+    duong_dan: '/khieu-nai-luong',
+    tom_tat: 'Khiếu nại của nhân viên về phiếu lương đã duyệt/đã trả: tiếp nhận, đối chiếu, phản hồi.',
+    buoc: [
+      { chu: 'Lọc theo Mới / Đang xem xét để thấy việc cần xử lý.' },
+      { chu: 'Mở khiếu nại, đọc nội dung và đối chiếu với phiếu lương của nhân viên.', vai_tro: NHAN_SU },
+      { chu: 'Chấp nhận hoặc từ chối kèm phản hồi; nếu đúng thì mở lại kỳ lương và sửa tay.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Chấp nhận khiếu nại KHÔNG tự sửa lương. Muốn sửa số liệu: mở lại kỳ ở "Lương & phụ cấp", sửa rồi duyệt lại.',
+      'Nhân viên gửi khiếu nại từ mục "Phiếu lương" của họ. Mỗi phiếu chỉ có một khiếu nại đang mở.',
     ],
   },
   {

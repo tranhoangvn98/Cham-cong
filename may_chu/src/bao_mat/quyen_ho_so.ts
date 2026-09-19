@@ -17,11 +17,14 @@ export type NhomHoSo =
   | 'tai_lieu'       // checklist ho so bat buoc theo HCNS
   | 'nguoi_phu_thuoc'
   | 'bhxh'
-  | 'don_tu';         // ban don DA DUYET, do he thong sinh ra — xem don_tu/ban_don.ts
+  | 'don_tu'         // ban don DA DUYET, do he thong sinh ra — xem don_tu/ban_don.ts
+  | 'ot_tai_lieu'    // tai lieu dinh kem khi DANG KY don OT (tuy chon)
+  | 'ot_ket_qua';    // anh chup ket qua OT, nhom theo bang ket_qua_ot
 
 export const CAC_NHOM: readonly NhomHoSo[] = [
   'thong_tin', 'tai_lieu', 'hop_dong', 'bien_ban', 'luong',
   'nguoi_phu_thuoc', 'bhxh', 'cong_viec', 'bao_cao', 'khieu_nai', 'thiet_bi', 'don_tu',
+  'ot_tai_lieu', 'ot_ket_qua',
 ] as const;
 
 export interface NguoiXem {
@@ -59,6 +62,11 @@ export function la_vai_tro_nhan_su(vai_tro: string): boolean {
 /** Duyet duoc don tu: nhan su cac cap, va truong phong (voi phong cua minh). */
 export function la_nguoi_duyet(vai_tro: string): boolean {
   return la_vai_tro_nhan_su(vai_tro) || vai_tro === 'truong_phong';
+}
+
+/** Truong Ban Kiem Soat: duyet OT cap 2 va duyet ket qua OT. */
+export function la_tbks(vai_tro: string): boolean {
+  return vai_tro === 'tbks';
 }
 
 /**
@@ -116,6 +124,8 @@ export const LY_DO_KHONG_THAY_XOA_DUOC =
  *   thiet_bi    | co            | co                      | co         | khong
  *   thong_tin   | co            | co NHUNG DA CHE         | co         | khong
  *   don_tu      | co            | co                      | co         | khong
+ *   ot_tai_lieu | co            | co                      | co         | khong (tbks: co)
+ *   ot_ket_qua  | co            | co                      | co         | khong (tbks: co)
  *
  * Hai o dang chu y:
  *
@@ -128,6 +138,9 @@ export const LY_DO_KHONG_THAY_XOA_DUOC =
 export function doc_duoc(nd: NguoiXem, nhom: NhomHoSo, bc: BoiCanh): boolean {
   if (la_nhan_su(nd)) return true;
   if (bc.la_chinh_minh) return true;
+  // tbks doc duoc HAI NHOM TEP CUA LUONG OT cua bat ky ai — do la tai lieu ho phai tham
+  // dinh khi duyet cap 2 va duyet ket qua. Con lai thi khong thay gi ca.
+  if (nd.vai_tro === 'tbks' && (nhom === 'ot_tai_lieu' || nhom === 'ot_ket_qua')) return true;
   if (nd.vai_tro === 'truong_phong' && bc.la_cap_tren) {
     // `thong_tin` doc duoc nhung o dang DA CHE (xem bao_mat/che_du_lieu.ts): truong phong
     // can lien he khan cap cua cap duoi khi co su co, con so CCCD / so tai khoan / ket
@@ -135,8 +148,11 @@ export function doc_duoc(nd: NguoiXem, nhom: NhomHoSo, bc: BoiCanh): boolean {
     // moi nguoi doc duoc deu la nguoi duoc xem ban day du.
     // `don_tu`: truong phong DUYET don cua cap duoi, nen phai doc lai duoc ban don minh da
     // duyet. Do la ban ghi cua chinh quyet dinh cua ho.
+    // `ot_tai_lieu` / `ot_ket_qua`: cap 1 duyet don OT thi phai xem duoc tai lieu va ket
+    // qua cua don do.
     return nhom === 'cong_viec' || nhom === 'bao_cao' || nhom === 'thiet_bi'
-      || nhom === 'thong_tin' || nhom === 'don_tu';
+      || nhom === 'thong_tin' || nhom === 'don_tu'
+      || nhom === 'ot_tai_lieu' || nhom === 'ot_ket_qua';
   }
   return false;
 }

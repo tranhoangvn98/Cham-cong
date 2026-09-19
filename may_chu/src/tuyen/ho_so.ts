@@ -109,7 +109,8 @@ const DAC_TA: DacTaNhom[] = [
   },
   {
     nhom: 'luong', duong: 'luong', bang: 'quyet_dinh_luong', ten: 'quyết định lương',
-    cot: `id, hieu_luc_tu, luong_co_ban, phu_cap, hinh_thuc, so_quyet_dinh, ly_do, ghi_chu, tao_luc`,
+    cot: `id, hieu_luc_tu, luong_co_ban, phu_cap, hinh_thuc, so_quyet_dinh, ly_do, ghi_chu,
+          nguoi_duyet_id, chung_tu_mo_ta, chung_tu_tep_id, tao_luc`,
     sap_xep: 'hieu_luc_tu desc',
     truong: {
       hieu_luc_tu: (b) => ngay_bat_buoc(b, 'hieu_luc_tu'),
@@ -119,6 +120,10 @@ const DAC_TA: DacTaNhom[] = [
       so_quyet_dinh: (b) => chuoi(b, 'so_quyet_dinh', { toi_da: 60 }),
       ly_do: (b) => chuoi(b, 'ly_do', { toi_da: 500 }),
       ghi_chu: (b) => chuoi(b, 'ghi_chu', { toi_da: 2000 }),
+      // YC-1: bat buoc CHUNG TU duyet (chan cung khi TAO). nguoi_duyet_id dat o server
+      // (them_nguoi_thao_tac). Sua muc tien co chan rieng o handler patch ben duoi.
+      chung_tu_mo_ta: (b) => chuoi_bat_buoc(b, 'chung_tu_mo_ta', { toi_da: 300, toi_thieu: 3 }),
+      chung_tu_tep_id: (b) => uuid(b, 'chung_tu_tep_id'),
     },
   },
   {
@@ -232,6 +237,8 @@ const TEN_NHOM_KHAC: Record<string, string> = {
   thong_tin: 'thông tin cá nhân',
   tai_lieu: 'hồ sơ tài liệu',
   don_tu: 'bản đơn đã duyệt',
+  ot_tai_lieu: 'tài liệu đơn OT',
+  ot_ket_qua: 'ảnh kết quả OT',
 };
 
 /** Chuan hoa dia chi MAC ve dang aa:bb:cc:dd:ee:ff; chan chuoi rac. */
@@ -495,6 +502,13 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       bat_buoc_sua(nd, dac.nhom, bc, dac.ten);
 
       const b = than(req.body);
+      // YC-1: sua muc luong (tien / mock hieu luc) phai kem nguoi duyet + chung tu. Nang luong
+      // dung la them ban ghi moi; day chi cho sua co chung tu.
+      if (dac.bang === 'quyet_dinh_luong'
+          && ['luong_co_ban', 'phu_cap', 'hinh_thuc', 'hieu_luc_tu'].some((k) => Object.hasOwn(b, k))
+          && (chuoi(b, 'chung_tu_mo_ta') ?? '').trim().length < 3) {
+        throw new LoiDauVao('Sửa mức lương phải kèm mô tả chứng từ duyệt (YC-1).');
+      }
       const gioi_han = chi_duoc_sua_o(nd, dac.nhom, bc);
       const dat: string[] = [];
       const gia_tri: unknown[] = [];
@@ -584,7 +598,7 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
               noi_sinh, dan_toc, quoc_tich, tinh_trang_hon_nhan,
               dia_chi_thuong_tru, dia_chi_hien_tai,
               lien_he_khan_ten, lien_he_khan_quan_he, lien_he_khan_sdt,
-              ma_so_thue, ngan_hang, so_tai_khoan,
+              ma_so_thue, ngan_hang, so_tai_khoan, don_vi_chi_luong, don_vi_dong_bhxh,
               so_bhxh, so_the_bhyt, co_quan_bhxh, noi_kham_chua_benh,
               kham_suc_khoe_ngay, kham_suc_khoe_noi, kham_suc_khoe_ket_luan, cap_nhat_luc
          from ho_so_ca_nhan where nhan_vien_id = $1`,
@@ -633,6 +647,8 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       ma_so_thue: chuoi(b, 'ma_so_thue', { toi_da: 20 }),
       ngan_hang: chuoi(b, 'ngan_hang', { toi_da: 150 }),
       so_tai_khoan: chuoi(b, 'so_tai_khoan', { toi_da: 40 }),
+      don_vi_chi_luong: chuoi(b, 'don_vi_chi_luong', { toi_da: 200 }),
+      don_vi_dong_bhxh: chuoi(b, 'don_vi_dong_bhxh', { toi_da: 200 }),
       so_bhxh: chuoi(b, 'so_bhxh', { toi_da: 20 }),
       so_the_bhyt: chuoi(b, 'so_the_bhyt', { toi_da: 30 }),
       co_quan_bhxh: chuoi(b, 'co_quan_bhxh', { toi_da: 200 }),
@@ -1326,6 +1342,11 @@ function them_nguoi_thao_tac(
   gia_tri: unknown[],
   nguoi_dung_id: string,
 ): void {
-  if (dac.bang === 'quyet_dinh_luong') { cot.push('tao_boi'); gia_tri.push(nguoi_dung_id); }
+  if (dac.bang === 'quyet_dinh_luong') {
+    // tao_boi = nguoi nhap; nguoi_duyet_id = nguoi chiu trach nhiem duyet (mac dinh = nguoi
+    // dang nhap, YC-1). Chung tu duyet do form nhap (chung_tu_mo_ta, bat buoc).
+    cot.push('tao_boi', 'nguoi_duyet_id');
+    gia_tri.push(nguoi_dung_id, nguoi_dung_id);
+  }
   if (dac.bang === 'cong_viec') { cot.push('giao_boi'); gia_tri.push(nguoi_dung_id); }
 }

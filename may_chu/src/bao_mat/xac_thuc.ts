@@ -149,6 +149,13 @@ export const can_nhan_su = can_vai_tro('admin', 'nhan_su', 'truong_phong_nhan_su
 export const can_nguoi_duyet = can_vai_tro('admin', 'nhan_su', 'truong_phong_nhan_su',
   'truong_phong');
 
+/** Nhu `can_nguoi_duyet` cong them tbks — tbks chi dung cho don lam them cap 2. */
+export const can_nguoi_duyet_hoac_tbks = can_vai_tro('admin', 'nhan_su',
+  'truong_phong_nhan_su', 'truong_phong', 'tbks');
+
+/** Duyet OT cap 2 va duyet ket qua OT: TBKS hoac admin. */
+export const can_duyet_ot_cap_2 = can_vai_tro('tbks', 'admin');
+
 /** Chi admin (quan tri tai khoan, xoa du lieu). */
 export const can_admin = can_vai_tro('admin');
 

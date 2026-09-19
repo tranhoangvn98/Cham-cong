@@ -14,15 +14,19 @@ import { quet_va_xu_ly_ngay } from '../ra_vao/xu_ly.ts';
 import { dong_bo_khoa_cua } from '../ra_vao/khoa_cua.ts';
 import { quet_vi_pham } from '../vi_pham/phat_hien.ts';
 import { gom_va_xu_ly_thang } from '../ky_luat/xu_ly.ts';
+import { email_nhac_loi } from '../ky_luat/nhac_email.ts';
 import { ghi_nhan, ma_viec_dong_bo, moc_dong_bo, quet } from '../sharepoint/dong_bo.ts';
 import { quet_email_cho } from './gui_email_thong_bao.ts';
-import { cong_ngay, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
+import { cong_ngay, khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. Khai duoc trong .env. */
 const CHU_KY_PHUT = cau_hinh.lich_chu_ky_phut;
 
 /** Gio (theo mui gio may cham cong) bat dau chay viec cuoi ngay. */
 const GIO_CHAY = 1;
+
+/** Gio (theo mui gio may cham cong) gui email nhac loi ky luat — mac dinh 17h, cau hinh duoc. */
+const GIO_NHAC = cau_hinh.ky_luat.gio_nhac;
 
 let bo_hen: NodeJS.Timeout | null = null;
 
@@ -193,6 +197,7 @@ export async function nghi_viec_den_han(
 async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Promise<void> {
   const bay_gio = new Date();
   const hom_nay = ngay_dia_phuong(bay_gio);
+  const hom_qua = cong_ngay(hom_nay, -1);
   const gio_may = new Date(bay_gio.getTime() + OFFSET_MAY_MS).getUTCHours();
 
   // ------------------------------------------------------------ dong bo SharePoint
@@ -230,11 +235,61 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     ghi_log(`[lich] LOI khi quet email thong bao: ${(loi as Error).message}`);
   }
 
+  // ------------------------------------------------------------ email nhac loi ky luat
+  // Gui luc GIO_NHAC (mac dinh 17h chieu, mui gio may) — KHONG ke chung me viec cuoi ngay chay
+  // 1h sang, de nguoi nhan doc vao gio hanh chinh. Chay ca ngay tu GIO_NHAC tro di, nhung khoa
+  // (`ky_luat_nhac_email:<o>` / `ky_luat_thang_tong_hop:<thang>`) dam bao MOI CUA SO chi gui mot
+  // lan. Bao cao den HOM QUA (ngay da chot cuoi cung).
+  // (a) Dinh ky <chu_ky> ngay/lan (mac dinh 3): thong ke loi <chu_ky> ngay gan nhat -> gui ngay
+  //     dau cua so moi (vd 3 ngay/lan thi roi vao "ngay thu 4").
+  // (b) Cuoi thang (ngay 01): gui TONG HOP CA THANG cua thang truoc.
+  if (cau_hinh.ky_luat.che_do === 'nhac_nho' && gio_may >= GIO_NHAC) {
+    const chu_ky_nhac = cau_hinh.ky_luat.chu_ky_nhac_ngay;
+
+    const epoch_hq = Math.floor(Date.parse(`${hom_qua}T00:00:00Z`) / 86_400_000);
+    const o_nhac = Math.floor(epoch_hq / chu_ky_nhac);
+    const ma_nhac_email = `ky_luat_nhac_email:${o_nhac}`;
+    if (await nhan_viec(ma_nhac_email)) {
+      const tu = cong_ngay(hom_qua, -(chu_ky_nhac - 1));
+      try {
+        const r = await email_nhac_loi(tu, hom_qua);
+        await ghi_ket_qua(ma_nhac_email,
+          `${tu}..${hom_qua}: ${String(r.so_nguoi)} nguoi, `
+          + `gui ${String(r.so_email_ca_nhan)} email, HR ${r.hr_gui ? 'co' : 'khong'}`);
+        if (r.so_email_ca_nhan > 0 || r.hr_gui) {
+          ghi_log(`[lich] ky luat: gui ${String(r.so_email_ca_nhan)} email nhac loi (${String(chu_ky_nhac)} ngay)`);
+        }
+      } catch (loi) {
+        await nha_viec(ma_nhac_email);
+        ghi_log(`[lich] LOI khi gui email nhac loi: ${(loi as Error).message}`);
+      }
+    }
+
+    if (hom_nay.slice(8) === '01') {
+      const thang_truoc = hom_qua.slice(0, 7);
+      const { tu, den } = khoang_thang(thang_truoc);
+      const ma_thang = `ky_luat_thang_tong_hop:${thang_truoc}`;
+      if (await nhan_viec(ma_thang)) {
+        try {
+          const r = await email_nhac_loi(tu, den, { toan_thang: true });
+          await ghi_ket_qua(ma_thang,
+            `thang ${thang_truoc}: ${String(r.so_nguoi)} nguoi, `
+            + `gui ${String(r.so_email_ca_nhan)} email, HR ${r.hr_gui ? 'co' : 'khong'}`);
+          if (r.so_email_ca_nhan > 0 || r.hr_gui) {
+            ghi_log(`[lich] ky luat: gui tong hop thang ${thang_truoc} (${String(r.so_email_ca_nhan)} email)`);
+          }
+        } catch (loi) {
+          await nha_viec(ma_thang);
+          ghi_log(`[lich] LOI khi gui tong hop thang: ${(loi as Error).message}`);
+        }
+      }
+    }
+  }
+
   // ------------------------------------------------------------ cac viec cuoi ngay
   // Chi chay sau GIO_CHAY de chac chan may da day het log cua ngay hom truoc.
   if (gio_may < GIO_CHAY) return;
 
-  const hom_qua = cong_ngay(hom_nay, -1);
   const ma_viec = `chot_ngay:${hom_qua}`;
 
   if (await nhan_viec(ma_viec)) {
@@ -352,6 +407,7 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
       ghi_log(`[lich] LOI khi xu ly ky luat ${thang_kl}: ${(loi as Error).message}`);
     }
   }
+
 
   const ma_don = `don_outbox:${hom_nay.slice(0, 7)}-tuan${Math.ceil(Number(hom_nay.slice(8)) / 7)}`;
   if (await nhan_viec(ma_don)) {

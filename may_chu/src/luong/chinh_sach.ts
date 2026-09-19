@@ -14,11 +14,33 @@ export interface DongChinhSach {
   don_gia: number | null;
 }
 
+/**
+ * Gop chinh sach phu cap CAP KHOI + CA NHAN cho mot nguoi (YC 02 phan A).
+ *
+ * Ca nhan (028) DE len khoi theo `khoan_ma`: khoan nao ca nhan da khai thi lay ca nhan (override
+ * mien/doi muc), con lai lay theo khoi. Muon MIEN mot khoan cua khoi thi ca nhan mo dong khoan do
+ * voi so_tien = 0 (khoan_tu_chinh_sach se bo qua dong 0 dong).
+ */
+export function gop_chinh_sach(
+  ca_nhan: readonly DongChinhSach[], cua_khoi: readonly DongChinhSach[],
+): DongChinhSach[] {
+  if (cua_khoi.length === 0) return [...ca_nhan];
+  const ma_ca_nhan = new Set(ca_nhan.map((x) => x.khoan_ma));
+  return [...cua_khoi.filter((k) => !ma_ca_nhan.has(k.khoan_ma)), ...ca_nhan];
+}
+
 /** So lieu cua ky, dung cho cac nguon so luong tu dong. */
 export interface SoLieuKy {
   /** So ngay cong THUC TE cua nguoi do trong ky. */
   so_cong: number;
 }
+
+/**
+ * Khoan phu cap khai theo QUY nhung tra deu hang thang: so tien luu la muc CA QUY, khi sinh dong
+ * thang thi chia 3. Vd "Phu cap trang phuc quy" 500.000/quy -> ghi nhan ~166.667/thang.
+ * (Chu DN chot: "moi quy phu cap 500.000, chia deu tung thang".)
+ */
+const KHOAN_THEO_QUY = new Set(['pc_trang_phuc']);
 
 /** Mot dong khoan sap ghi vao `phieu_luong_khoan`. */
 export interface DongKhoanSinhRa {
@@ -50,7 +72,10 @@ export function khoan_tu_chinh_sach(
       // Khoan go thang so tien: chinh sach phai noi so tien la bao nhieu. Khong noi thi
       // khong sinh dong — mot dong 0 dong tren bang luong chi lam nhieu bang.
       if (cs.so_tien === null || cs.so_tien <= 0) continue;
-      ra.push({ khoan_ma: cs.khoan_ma, so_luong: null, don_gia: null, so_tien: cs.so_tien });
+      const so_tien = KHOAN_THEO_QUY.has(cs.khoan_ma)
+        ? Math.round(cs.so_tien / 3) // khai theo quy -> tra deu 3 thang
+        : cs.so_tien;
+      ra.push({ khoan_ma: cs.khoan_ma, so_luong: null, don_gia: null, so_tien });
       continue;
     }
 

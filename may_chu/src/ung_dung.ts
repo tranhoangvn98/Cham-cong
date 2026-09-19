@@ -13,6 +13,7 @@ import { tuyen_nhap_du_lieu } from './tuyen/nhap_du_lieu.ts';
 import { tuyen_ho_so } from './tuyen/ho_so.ts';
 import { tuyen_don_tu } from './tuyen/don_tu.ts';
 import { tuyen_luong } from './tuyen/luong.ts';
+import { tuyen_ung_luong } from './tuyen/ung_luong.ts';
 import { tuyen_vcontract } from './tuyen/vcontract.ts';
 import { tuyen_vi_pham } from './tuyen/vi_pham.ts';
 import { tuyen_ra_vao } from './tuyen/ra_vao.ts';
@@ -172,6 +173,7 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   await app.register(tuyen_nhap_du_lieu, { prefix: '/api' });
   await app.register(tuyen_ho_so, { prefix: '/api' });
   await app.register(tuyen_luong, { prefix: '/api' });
+  await app.register(tuyen_ung_luong, { prefix: '/api' });
   await app.register(tuyen_vi_pham, { prefix: '/api' });
   await app.register(tuyen_ra_vao, { prefix: '/api' });
   await app.register(tuyen_ky_luat, { prefix: '/api' });

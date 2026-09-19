@@ -356,67 +356,96 @@ blockquote {
 
 /* ---------------------------------------------------------------- bang dieu khien (tong quan)
    Trang Tong quan cua NHAN SU: gom toan bo noi dung vao MOT MAN HINH — khong phai cuon doc.
-   Man rong: hang thong ke ngang het chieu ngang + 3 cot khoi ben duoi. Man trung binh: 2
-   cot. Man hep: xep doc nhu truoc. Moi khoi boc trong `.bd-khoi` de gan vao o luoi theo ten. */
-.noi-dung:has(> .bang-dieu-khien) { max-width: 2040px; }
+   Man rong: hang thong ke ngang + 3 cot. Man trung binh: 2 cot. Man hep: xep doc nhu truoc.
+   Moi khoi boc trong `.bd-khoi` de gan vao o luoi theo ten. */
+.noi-dung:has(> .bang-dieu-khien) { max-width: 2040px; display: flex; flex-direction: column; }
+.noi-dung:has(> .bang-dieu-khien) .dau-trang { margin-bottom: 8px; }
 
 /* Giu vung tong quan dung bang chieu cao man hinh. Neu du lieu dot bien (hang chu di muon)
    thi cuon TRONG vung noi dung thay vi day dai ca trang. */
 .than:has(> .noi-dung > .bang-dieu-khien) { height: 100vh; height: 100dvh; overflow: hidden; }
 .than:has(> .noi-dung > .bang-dieu-khien) .noi-dung {
+  padding: 12px 22px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
 }
+.than:has(> .noi-dung > .bang-dieu-khien) .dau-app { padding: 8px 22px; }
 
-.bang-dieu-khien { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+.bang-dieu-khien { display: flex; flex-direction: column; gap: 12px; align-items: stretch; flex: 1; }
 .bang-dieu-khien .the { margin-bottom: 0; padding: 12px 14px; }
-.bd-khoi { min-width: 0; }
+.bd-khoi { min-width: 0; display: flex; flex-direction: column; }
+.bd-khoi > .the { flex: 1; display: flex; flex-direction: column; }
 
-/* Gom khoi: the mong hon, o so thap hon, bang chu nho hon, khoang cach hep lai. */
-.bang-dieu-khien .the h2 { font-size: 14.5px; margin: 0 0 8px; }
-.bang-dieu-khien .the h3 { font-size: 12.5px; margin: 10px 0 6px; }
-.bang-dieu-khien .dau-khoi { margin-bottom: 8px; }
-.bang-dieu-khien .o-so { padding: 9px 11px; }
-.bang-dieu-khien .o-so-gia-tri { font-size: 20px; margin-top: 1px; }
-.bang-dieu-khien .o-so-nhan,
-.bang-dieu-khien .o-so-phu { font-size: 11.5px; }
+/* Dau mot khoi: tieu de trai, nut/hanh dong phai. Xuong dong gon o man hep. */
+.dau-khoi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.dau-khoi h2 { margin: 0; }
+
+/* Nhip chung trong bang dieu khien: chu nho gon, o so dong nhat, bang mong. */
+.bang-dieu-khien .the h2 { font-size: 15px; margin: 0 0 10px; }
+.bang-dieu-khien .the h3 { font-size: 12.5px; margin: 8px 0 4px; }
+.bang-dieu-khien .o-so { padding: 10px 12px; }
+.bang-dieu-khien .o-so-gia-tri { font-size: 18px; margin-top: 2px; }
+.bang-dieu-khien .o-so-nhan { font-size: 11.5px; }
+.bang-dieu-khien .o-so-phu {
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .bang-dieu-khien .luoi { gap: 8px; }
-.bang-dieu-khien .luoi-2 { align-items: start; }
 .bang-dieu-khien table { font-size: 12.5px; }
-.bang-dieu-khien thead th { padding: 6px 10px; }
-.bang-dieu-khien tbody td { padding: 6px 10px; }
-.bang-dieu-khien .bang-gon tbody td { padding: 4px 10px 4px 0; }
+.bang-dieu-khien thead th { padding: 5px 10px; }
+.bang-dieu-khien tbody td { padding: 5px 10px; }
+.bang-dieu-khien .bang-gon tbody td { padding: 3px 10px 3px 0; }
 .bang-dieu-khien .chu-giai { margin-top: 8px; }
-.bang-dieu-khien .bieu-do { height: 126px; }
-.bang-dieu-khien .bd-xem-them { padding: 8px 14px 12px; }
+.bang-dieu-khien .bieu-do { height: 110px; }
+.bd-bieudo .bieu-do { flex: 1; height: auto; min-height: 110px; }
+.bang-dieu-khien .bd-xem-them { padding: 6px 14px 10px; }
+.bang-dieu-khien .trong { padding: 12px; }
+.bd-viens .trong,
+.bd-dimuon .trong,
+.bd-choduyet .trong { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.bang-dieu-khien .hop-thong-bao { padding: 8px 12px; font-size: 12.5px; margin-bottom: 0; }
+.bang-dieu-khien .hop-thong-bao + .hop-thong-bao { margin-top: 8px; }
 
-/* Cot phu hep: bai so va ho so con so xep 2 cot de tranh thanh chuoi dai doc. */
-.bd-toi .luoi,
-.bd-viens .luoi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Hang thong ke hom nay: o so lon hon cac khoi con lai — day la hang dau tien nhan su nhin. */
+.bd-ngay .o-so-gia-tri { font-size: 22px; }
+.bd-ngay .o-so-nhan { font-size: 11.5px; }
+.bd-ngay .o-so-phu { font-size: 10.5px; }
 
-/* Man rong: 3 cot. Hang thong ke hom nay xep ngang MOT hang (9 o). */
+/* Bai so diem nong: mot hang ngang. Viec nhan su: hai cot. */
+.bd-nong .luoi { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.bd-viens .luoi { grid-template-columns: 1fr; grid-auto-rows: 1fr; flex: 1; align-content: stretch; }
+
+/* Man rong: 3 cot can doi — diem nong trai, xu huong giua, viec can lam phai. */
 @media (min-width: 1500px) {
   .than:has(> .noi-dung > .bang-dieu-khien) { padding: 12px 32px 16px; }
   .bang-dieu-khien {
     display: grid;
-    grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr) minmax(0, 0.94fr);
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.95fr);
+    grid-template-rows: auto 1fr 1fr auto;
     grid-template-areas:
       'ngay     ngay     ngay'
-      'nong     bieudo   toi'
+      'nong     bieudo   viens'
       'nong     dimuon   viens'
       'hethong  choduyet viens';
-    align-items: start;
   }
   .bd-ngay { grid-area: ngay; }
   .bd-nong { grid-area: nong; }
   .bd-bieudo { grid-area: bieudo; }
   .bd-dimuon { grid-area: dimuon; }
   .bd-choduyet { grid-area: choduyet; }
-  .bd-toi { grid-area: toi; }
   .bd-viens { grid-area: viens; }
   .bd-hethong { grid-area: hethong; }
-  .bd-ngay .luoi { grid-template-columns: repeat(9, minmax(0, 1fr)); }
+  .bd-ngay .luoi { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 
 /* Man trung binh: 2 cot. */
@@ -429,28 +458,19 @@ blockquote {
       'ngay     ngay'
       'nong     bieudo'
       'nong     dimuon'
-      'toi      viens'
-      'toi      hethong'
-      'choduyet choduyet';
-    align-items: start;
+      'viens    choduyet'
+      'viens    hethong';
   }
   .bd-ngay { grid-area: ngay; }
   .bd-nong { grid-area: nong; }
   .bd-bieudo { grid-area: bieudo; }
   .bd-dimuon { grid-area: dimuon; }
   .bd-choduyet { grid-area: choduyet; }
-  .bd-toi { grid-area: toi; }
   .bd-viens { grid-area: viens; }
   .bd-hethong { grid-area: hethong; }
   .bd-ngay .luoi { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
-/* Dau mot khoi: tieu de trai, nut/hanh dong phai. Xuong dong gon o man hep. */
-.dau-khoi {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
-}
-.dau-khoi h2 { margin: 0; }
 
 .o-so {
   background: var(--nen-the);
@@ -1449,6 +1469,18 @@ textarea:focus-visible,
 .vb-dong:last-child { border-bottom: 0; }
 .vb-thong-tin { min-width: 0; }
 .vb-tieu-de { font-weight: 600; }
+/* So bam duoc (vd cot Khoan tru mo bang ke chi tiet): trong nhu link, khong nen nut. */
+.nut-lien-ket {
+  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
+  color: var(--chinh-dam); text-decoration: underline; text-underline-offset: 2px;
+}
+.nut-lien-ket:hover { color: var(--chinh); }
+/* Noi dung van ban da soan: giu xuong dong, gioi han chieu cao de danh sach van gon. */
+.vb-noi-dung {
+  margin-top: 6px; white-space: pre-wrap; color: var(--chu); font-size: 14px;
+  max-height: 8.5em; overflow: auto; padding: 8px 10px;
+  background: var(--nen-mo); border: 1px solid var(--vien); border-radius: 8px;
+}
 
 /* -------- tro ly (chatbot) -------- */
 .troly-nut {
@@ -1540,25 +1572,63 @@ textarea:focus-visible,
 
 /* ---------------------------------------------------------------- phieu luong ca nhan */
 .phai { text-align: right; }
-.phieu-luong h3 { margin: 1.25rem 0 0.5rem; }
+.phieu-luong { padding: 10px 16px; }
+.phieu-luong h3 { margin: 0.45rem 0 0.25rem; }
 .phieu-dau {
   display: flex; justify-content: space-between; align-items: flex-start;
-  gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 0.4rem;
 }
-.phieu-dau h2 { margin: 0 0 0.35rem; }
+.phieu-dau h2 { margin: 0 0 0.2rem; }
 .phieu-thuc-linh { text-align: right; }
-.phieu-thuc-linh strong { display: block; font-size: 1.5rem; color: var(--chinh-dam); }
+.phieu-thuc-linh strong { display: block; font-size: 1.25rem; color: var(--chinh-dam); }
 .phieu-cong {
-  display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem;
-  margin: 0.75rem 0; color: var(--chu-mo); font-size: 0.9rem;
+  display: flex; flex-wrap: wrap; gap: 0.35rem 1.2rem;
+  margin: 0.4rem 0; color: var(--chu-mo); font-size: 0.9rem;
 }
 .phieu-cong strong { color: var(--chu); }
+/* Thu nhap va khau tru song song de phieu luong nang ngang, bot cuon doc. */
+.phieu-hai-cot {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 2rem; align-items: start;
+}
+.phieu-hai-cot > div { min-width: 0; }
+.phieu-hai-cot h3 { margin-top: 0; }
+.phieu-luong tbody td { padding: 4px 12px; }
+@media (max-width: 760px) {
+  .phieu-hai-cot { grid-template-columns: 1fr; }
+}
+/* Chi tiet khoan phat / ngay nghi chay ngang theo chieu rong the, khong keo dai cot. */
+.phieu-lan {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 2px 14px; margin-top: 0.35rem;
+  font-size: 12px; color: var(--chu-nhat);
+}
+.phieu-lan-o { white-space: nowrap; }
+.phieu-lan-ly-do { flex-basis: 100%; color: var(--chu); font-weight: 600; }
+/* Chan phieu: thong tin thue + nut khieu nai tren cung mot dai. */
+.phieu-chan {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 4px 16px; flex-wrap: wrap;
+  margin-top: 0.35rem; padding-top: 0.35rem;
+  border-top: 1px solid var(--vien);
+  font-size: 12px; color: var(--chu-mo);
+}
+.phieu-kn { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.phieu-kn > span { color: var(--xau); font-size: 12px; }
+.phieu-kn-nut {
+  border-color: var(--xau); background: var(--xau); color: #fff;
+  font-weight: 600; padding: 5px 12px; font-size: 12.5px;
+}
+.phieu-kn-nut:hover:not(:disabled) { filter: brightness(0.92); }
 .hang-tong td { border-top: 2px solid var(--vien-dam); }
 .phieu-ket {
   display: flex; justify-content: space-between; align-items: center;
-  margin-top: 1rem; padding-top: 0.75rem; border-top: 2px solid var(--vien-dam);
+  margin-top: 0.75rem; padding-top: 0.5rem; border-top: 2px solid var(--vien-dam);
 }
-.phieu-ket strong { font-size: 1.5rem; color: var(--chinh-dam); }
+.phieu-ket strong { font-size: 1.25rem; color: var(--chinh-dam); }
+/* Kieu cua o khieu nai nam o style inline — class nay chi de bai kiem thiet ke
+   "moi className dung trong web deu co dinh nghia" doi chieu duoc. */
+.phieu-ket-nut {}
 
 /* ---------------------------------------------------------------- khu vực của tôi
    Trang /ca-nhan: giao diện cá nhân theo mẫu thiết kế "Giao diện cá nhân". Chỉ dùng biến
@@ -1755,6 +1825,57 @@ textarea:focus-visible,
 .cn-lich-vang { background: var(--xau-nen); color: var(--xau); }
 .cn-lich-mo { background: var(--nen-mo); color: var(--chu-nhat); }
 .cn-chu-thich { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+/* --- bảng công một màn: chọn tháng + 3 số chung hàng; lịch tháng + chi tiết hai cột --- */
+.cn-bang-cong-dau { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; }
+.cn-bang-cong-dau .cn-chon-thang { flex: 0 0 232px; padding: 6px; }
+.cn-bang-cong-dau .cn-nut-vuong { width: 36px; height: 36px; font-size: 16px; }
+.cn-bang-cong-dau .the { flex: 1; min-width: 280px; margin-bottom: 0; }
+.cn-bang-cong-dau .cn-ba-so { align-items: center; gap: 12px; padding: 10px 14px; }
+.cn-bang-cong-dau .cn-ba-so-gia { font-size: 28px; }
+.cn-bang-cong-luoi {
+  display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+  gap: 12px; align-items: start;
+}
+.cn-bang-cong-luoi > .the { margin-bottom: 0; }
+.cn-bang-cong-luoi .cn-dau-mong { padding: 12px 14px 8px; }
+/* Danh sach ngay chay hai cot ngang de ca thang nam gon mot man hinh. */
+.cn-bang-cong-luoi .cn-ngay-ds {
+  columns: 2;
+  column-gap: 16px;
+  padding: 0 12px 8px;
+}
+.cn-bang-cong-luoi .cn-ngay-ds > div { break-inside: avoid; }
+@media (max-width: 1150px) {
+  .cn-bang-cong-luoi .cn-ngay-ds { columns: 1; }
+}
+@media (min-width: 981px) {
+  /* Che do hai cot: o lich thap lai de ca lich ngang tam vai dong chi tiet. */
+  .cn-bang-cong-luoi .cn-lich-o { aspect-ratio: auto; min-height: 32px; }
+}
+@media (max-width: 980px) {
+  .cn-bang-cong-luoi { grid-template-columns: 1fr; }
+  .cn-bang-cong-dau .cn-chon-thang { flex: 1 1 232px; }
+}
+
+/* --- man luong: nua duoi xep hai cot kieu dashboard --- */
+.cn-luong-luoi {
+  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 12px; align-items: start;
+}
+.cn-luong-luoi .the, .cn-luong-luoi .hop-thong-bao { margin-bottom: 0; }
+.cn-luong-luoi .cn-cot-gap { gap: 12px; }
+.cn-luong-luoi .cn-hang-don { padding: 8px 16px; }
+.cn-luong-luoi .cn-dau-mong { padding: 10px 16px 6px; }
+.cn-luong-luoi .luoi-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cn-luong-luoi .o-so { padding: 8px 12px; }
+.cn-luong-luoi .o-so-gia-tri { font-size: 22px; }
+.cn-luong-luoi .cn-tieu-de-hang h2 { margin-bottom: 6px; }
+.cn-chon-thang-gon { padding: 6px; }
+.cn-chon-thang-gon .cn-nut-vuong { width: 36px; height: 36px; font-size: 16px; }
+@media (max-width: 900px) {
+  .cn-luong-luoi { grid-template-columns: 1fr; }
+}
 
 /* --- danh sách ngày công --- */
 .cn-ngay-cong {
@@ -1961,12 +2082,18 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .cn-ben-phu { display: flex; flex-direction: column; gap: 4px; }
 .cn-ben-phu-lien-ket {
   display: flex; align-items: center; gap: 11px; min-height: 44px; padding: 0 12px;
+  width: 100%; border: 0; cursor: pointer; font-family: inherit;
   border-radius: var(--tron); font-size: 14px; font-weight: 600; text-align: left;
-  color: var(--chu-ben); text-decoration: none;
+  background: transparent; color: var(--chu-ben); text-decoration: none;
 }
 .cn-ben-phu-lien-ket:hover {
   background: var(--vien-ben); color: var(--chu-ben-sang); text-decoration: none;
 }
+.cn-ben-phu-chon {
+  background: color-mix(in srgb, var(--chinh) 24%, transparent);
+  color: var(--lien-ket-ben);
+}
+.cn-ben-phu-chon:hover { color: var(--lien-ket-ben); }
 .cn-ben-phu-lien-ket > span:not(.cn-ben-dem) { flex: 1; }
 
 .cn-ben-chan {
@@ -2032,3 +2159,67 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   background: var(--canh-bao-nen); color: var(--canh-bao);
   outline: 1px dashed var(--canh-bao);
 }
+/* ---------------------------------------------------------------- ung luong: mot man hinh
+   Trang Ung luong: dau trang + luu y + hang loc + bang log chiem phan con lai. Trang KHONG
+   cuon; bang cuon noi bo trong the. Modal tao/sua khoan ung boc luoi 2 cot nen khong can cuon. */
+.than:has(> .noi-dung > .ul-vo) { height: 100vh; height: 100dvh; overflow: hidden; }
+.than:has(> .noi-dung > .ul-vo) .noi-dung {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.ul-vo { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.ul-vo .dau-trang { margin-bottom: 0; }
+.ul-vo .hop-luu-y { margin: 0; }
+.ul-loc { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+.ul-loc-o { display: flex; flex-direction: column; gap: 4px; }
+.ul-loc-o > label { margin-bottom: 0; }
+.ul-loc-o select { min-width: 130px; width: auto; }
+.chon-thang { display: flex; gap: 6px; }
+.chon-thang select { flex: 1; min-width: 110px; }
+.ul-bang { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ul-bang .vo-bang { flex: 1; min-height: 0; overflow: auto; }
+
+/* Modal: luoi 2 cot — trai danh sach nhan vien (cuon noi bo), phai cac o nhap. */
+.ul-form { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 16px; align-items: start; }
+.ul-form-mot-cot { grid-template-columns: 1fr; }
+.ul-cot-nv { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ul-ds {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--vien-dam);
+  border-radius: var(--tron-nho);
+}
+.ul-ds-dong {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--vien);
+  border-radius: 0;
+  background: var(--nen-the);
+  color: var(--chu);
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  text-align: left;
+  white-space: normal;
+}
+.ul-ds-dong:last-child { border-bottom: 0; }
+.ul-ds-dong:hover { background: var(--nen-mo); }
+/* `button.ul-ds-dong-chon` de thang quy tac `button:hover:not(:disabled)` dung chung. */
+.ul-ds button.ul-ds-dong-chon,
+.ul-ds button.ul-ds-dong-chon:hover { background: var(--lanh-nen); }
+.ul-ds-ma { flex: none; color: var(--chu-mo); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ul-ds-ten { flex: 1; min-width: 0; }
+.ul-ds-chon { flex: none; color: var(--lanh); font-weight: 700; }
+.ul-ds-trong { padding: 14px; text-align: center; color: var(--chu-mo); font-size: 13px; }
+.ul-cot-o { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ul-cot-o > label { margin-bottom: 0; }
+.ul-cot-o > .mo-ta { margin: 0; }
+@media (max-width: 720px) {
+  .ul-form { grid-template-columns: 1fr; }
+}
+

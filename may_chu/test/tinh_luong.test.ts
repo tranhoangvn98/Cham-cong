@@ -136,6 +136,37 @@ test('phieu luong day du: du cong, khong phu thuoc', () => {
   assert.equal(kq.thuc_linh, 17_460_000);
 });
 
+test('mien thue TNCN (admin tich): thue = 0, van giu thu nhap tinh thue de doi chieu', () => {
+  const thuong = tinh_phieu_luong(CO_BAN, TS);
+  const mien = tinh_phieu_luong({ ...CO_BAN, mien_thue: true }, TS);
+
+  assert.ok(thuong.thue_tncn > 0, 'binh thuong co thue');
+  assert.equal(mien.thue_tncn, 0, 'mien thue -> thue = 0');
+  // Thu nhap tinh thue KHONG bi xoa (chi thue = 0) — con doi chieu duoc.
+  assert.equal(mien.thu_nhap_tinh_thue, thuong.thu_nhap_tinh_thue);
+  // Thuc linh tang dung bang so thue duoc mien.
+  assert.equal(mien.thuc_linh - thuong.thuc_linh, thuong.thue_tncn);
+});
+
+test('luong net: KHONG tinh BH cua NLD (ve 0), khong giam tru BH truoc thue; cong ty van dong NSDLD', () => {
+  const thuong = tinh_phieu_luong(CO_BAN, TS);
+  const net = tinh_phieu_luong({ ...CO_BAN, luong_net: true }, TS);
+  const bao_hiem_nld = thuong.bhxh_nld + thuong.bhyt_nld + thuong.bhtn_nld;
+  assert.ok(bao_hiem_nld > 0, 'ban luong thuong phai co BH de so sanh');
+  // NET (chu cong ty chot): BH cua NLD = 0 het.
+  assert.equal(net.bhxh_nld, 0);
+  assert.equal(net.bhyt_nld, 0);
+  assert.equal(net.bhtn_nld, 0);
+  // Phan cong ty (NSDLD) van tinh binh thuong — nghia vu rieng cua doanh nghiep.
+  assert.equal(net.bhxh_nsdld, thuong.bhxh_nsdld);
+  // BH khong con nen khong con la giam tru truoc thue -> thue khong thap hon ban thuong.
+  assert.equal(net.giam_tru_tong, thuong.giam_tru_tong - bao_hiem_nld);
+  assert.ok(net.thue_tncn >= thuong.thue_tncn);
+  // Thuc nhan KHONG bi tru phan BH cua NLD (tong_tru khong con phan BH). Cac khoan tru khac giu.
+  const khac = thuong.tong_tru - bao_hiem_nld - thuong.thue_tncn;
+  assert.equal(net.tong_tru, net.thue_tncn + khac);
+});
+
 test('nguoi phu thuoc lam giam thue, moi nguoi 4.4tr', () => {
   const khong = tinh_phieu_luong(CO_BAN, TS);
   const hai = tinh_phieu_luong({ ...CO_BAN, so_nguoi_phu_thuoc: 2 }, TS);
@@ -156,12 +187,111 @@ test('nghi nua thang: luong theo cong giam, nhung MUC DONG BAO HIEM khong giam',
   assert.equal(kq.bhxh_nld, 1_600_000);
 });
 
+test('luong dong BH khai rieng (thap hon luong that): BH tinh tren muc khai', () => {
+  // Luong that 20tr, nhung KHAI dong BH chi 5tr -> BH tinh tren 5tr, luong theo cong van tren 20tr.
+  const kq = tinh_phieu_luong({ ...CO_BAN, luong_dong_bh: 5_000_000 }, TS);
+
+  assert.equal(kq.luong_theo_cong, 20_000_000, 'luong theo cong KHONG doi theo muc dong BH');
+  assert.equal(kq.luong_dong_bh, 5_000_000, 'can cu dong BH = muc khai');
+  assert.equal(kq.muc_dong_bh, 5_000_000);
+  assert.equal(kq.bhxh_nld, 400_000);  // 5tr x 8%
+  assert.equal(kq.bhyt_nld, 75_000);   // 5tr x 1.5%
+  assert.equal(kq.bhtn_nld, 50_000);   // 5tr x 1%
+  assert.equal(kq.bhxh_nsdld, 875_000); // 5tr x 17.5%
+});
+
+test('luong dong BH khong khai (null / 0): dong theo luong that nhu cu', () => {
+  const mac_dinh = tinh_phieu_luong(CO_BAN, TS);
+  const bang_null = tinh_phieu_luong({ ...CO_BAN, luong_dong_bh: null }, TS);
+  const bang_khong = tinh_phieu_luong({ ...CO_BAN, luong_dong_bh: 0 }, TS);
+
+  assert.equal(bang_null.luong_dong_bh, 20_000_000);
+  assert.equal(bang_null.bhxh_nld, mac_dinh.bhxh_nld);
+  assert.equal(bang_khong.bhxh_nld, mac_dinh.bhxh_nld);
+});
+
+test('luong dong BH khai cao vuot tran: van bi kep o tran', () => {
+  const kq = tinh_phieu_luong({ ...CO_BAN, luong_dong_bh: 60_000_000 }, TS);
+  assert.equal(kq.muc_dong_bh, 46_800_000, 'BHXH/BHYT kep o 20 lan luong co so');
+  assert.equal(kq.bhxh_nld, 3_744_000);
+});
+
+test('mien bao hiem (thu viec / thuc tap): moi khoan BH deu 0, khong tru vao luong', () => {
+  const kq = tinh_phieu_luong({ ...CO_BAN, dong_bao_hiem: false }, TS);
+  assert.equal(kq.luong_dong_bh, 0);
+  assert.equal(kq.muc_dong_bh, 0);
+  assert.equal(kq.bhxh_nld, 0);
+  assert.equal(kq.bhyt_nld, 0);
+  assert.equal(kq.bhtn_nld, 0);
+  assert.equal(kq.bhxh_nsdld, 0, 'phan doanh nghiep cung 0');
+  // Mien BH thi giam tru truoc thue chi con ban than + phu thuoc (khong con BH).
+  const co_bh = tinh_phieu_luong(CO_BAN, TS);
+  assert.ok(kq.thuc_linh > co_bh.thuc_linh, 'mien BH -> thuc linh cao hon');
+});
+
+test('mien bao hiem TRUM CA luong dong BH khai rieng', () => {
+  const kq = tinh_phieu_luong({ ...CO_BAN, luong_dong_bh: 5_000_000, dong_bao_hiem: false }, TS);
+  assert.equal(kq.bhxh_nld, 0, 'da mien thi khai rieng cung khong dong');
+});
+
 test('lam them gio: tinh theo don gia gio cua thang, nhan he so', () => {
   // 22 ngay x 8h = 176 gio chuan. Don gia gio = 20tr/176 = 113.636,36
   // 10 gio OT x 1.5 = 113.636,36 x 10 x 1.5 = 1.704.545 (lam tron)
   const kq = tinh_phieu_luong({ ...CO_BAN, phut_ot: 600 }, TS);
   assert.equal(kq.tien_ot, 1_704_545);
   assert.equal(kq.tong_thu_nhap, 21_704_545);
+});
+
+test('OT tach theo loai ngay: CN x2, le x3, thuong x1.5 — tong la tong 3 phan', () => {
+  // Don gia gio = 113.636,36. 1h moi loai:
+  //   thuong: 113.636,36 x 1,5 = 170.455 (lam tron)
+  //   CN:     113.636,36 x 2   = 227.273
+  //   le:     113.636,36 x 3   = 340.909
+  const kq = tinh_phieu_luong({
+    ...CO_BAN,
+    phut_ot: 180,
+    phut_ot_nghi_tuan: 60,
+    phut_ot_le: 60,
+  }, TS);
+  assert.equal(kq.tien_ot_thuong, 170_455);
+  assert.equal(kq.tien_ot_nghi_tuan, 227_273);
+  assert.equal(kq.tien_ot_le, 340_909);
+  assert.equal(kq.tien_ot, 738_637);
+});
+
+test('khong truyen phan tach thi hanh vi nhu cu — tat ca tinh theo he so ngay thuong', () => {
+  // 2h x 1.5 = 113.636,36 x 2 x 1.5 = 340.909 (lam tron) — bang test cu.
+  const kq = tinh_phieu_luong({ ...CO_BAN, phut_ot: 120 }, TS);
+  assert.equal(kq.tien_ot_thuong, 340_909);
+  assert.equal(kq.tien_ot_nghi_tuan, 0);
+  assert.equal(kq.tien_ot_le, 0);
+  assert.equal(kq.tien_ot, 340_909);
+});
+
+test('he so OT ngay thuong 1.0 (khoi kho da duyet): 1h = don gia gio, khong nhan them', () => {
+  const kq = tinh_phieu_luong({ ...CO_BAN, phut_ot: 60, he_so_ot: 1 }, TS);
+  assert.equal(kq.tien_ot_thuong, 113_636);
+  assert.equal(kq.tien_ot, 113_636);
+});
+
+test('he so rieng cho phan nghi tuan / le cua phieu de len tham so chung', () => {
+  const kq = tinh_phieu_luong({
+    ...CO_BAN,
+    phut_ot: 120,
+    phut_ot_nghi_tuan: 60,
+    phut_ot_le: 60,
+    he_so_ot_nghi_tuan: 2.5,
+    he_so_ot_le: 4,
+  }, TS);
+  // CN: 113.636,36 x 2.5 = 284.091 (lam tron); le: x 4 = 454.545
+  assert.equal(kq.tien_ot_nghi_tuan, 284_091);
+  assert.equal(kq.tien_ot_le, 454_545);
+});
+
+test('tham so luong gieo 3 he so OT — doi he so thi ket qua doi theo, khong hang so trong ma', () => {
+  const kq = tinh_phieu_luong({ ...CO_BAN, phut_ot: 60, phut_ot_le: 60 },
+    { ...TS, he_so_ot_ngay_le: 4 });
+  assert.equal(kq.tien_ot_le, 454_545);
 });
 
 test('thuong va phu cap khac vao thu nhap chiu thue, khong vao muc dong bao hiem', () => {
@@ -368,4 +498,30 @@ test('khong co khoan nao thi moi tong ve 0 — bang luong cu tinh ra dung so cu'
   // 20tr, du cong: luong theo cong = 20tr, bao hiem NLD = 8+1.5+1 = 10.5% = 2.100.000
   // nhung BHTN co tran rieng (20 x 4.960.000 = 99,2tr) nen chua cham tran.
   assert.equal(kq.tong_thu_nhap, 20_000_000);
+});
+
+// ---------------------------------------------------------------- nua cong thu Bay
+const { ngay_cong_chuan } = await import('../src/luong/ky_luong.ts');
+
+// Thang 8/2025: thu Bay roi vao 2, 9, 16, 23, 30 (5 thu Bay). Ca lam T2-T7.
+const LAM_T2_T7 = [1, 2, 3, 4, 5, 6];
+
+test('cong chuan: thu Bay tinh nua cong khi bat he so 0,5', () => {
+  const day_du = ngay_cong_chuan('2025-08-01', '2025-08-31', LAM_T2_T7, new Set(), 1);
+  const nua = ngay_cong_chuan('2025-08-01', '2025-08-31', LAM_T2_T7, new Set(), 0.5);
+  // Thang 8/2025 co 5 thu Bay. Moi thu Bay bot 0,5 cong -> chenh dung 2,5.
+  assert.equal(day_du - nua, 2.5);
+});
+
+test('cong chuan: he so mac dinh = 1 (thu Bay van 1 cong khi khong truyen)', () => {
+  const mac_dinh = ngay_cong_chuan('2025-08-01', '2025-08-31', LAM_T2_T7, new Set());
+  const he_so_1 = ngay_cong_chuan('2025-08-01', '2025-08-31', LAM_T2_T7, new Set(), 1);
+  assert.equal(mac_dinh, he_so_1);
+});
+
+test('cong chuan: khong lam thu Bay thi he so T7 khong anh huong', () => {
+  const lam_t2_t6 = [1, 2, 3, 4, 5];
+  const a = ngay_cong_chuan('2025-08-01', '2025-08-31', lam_t2_t6, new Set(), 1);
+  const b = ngay_cong_chuan('2025-08-01', '2025-08-31', lam_t2_t6, new Set(), 0.5);
+  assert.equal(a, b);
 });

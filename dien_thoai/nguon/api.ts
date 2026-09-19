@@ -338,6 +338,45 @@ export async function gui_cham_cong(tham_so: {
   return j as unknown as KetQuaChamCong;
 }
 
+/**
+ * Gui tep len mot route bat ky bang multipart — dung chung cho tai lieu dang ky va
+ * anh ket qua OT. Cung cach lam moi token khi 401 nhu `gui_cham_cong`.
+ */
+export async function gui_tep_form<T = unknown>(duong_dan: string, form: FormData): Promise<T> {
+  if (goc_may_chu === '') throw new LoiApi(0, 'Chưa cấu hình địa chỉ máy chủ.');
+
+  const gui = async (): Promise<Response> =>
+    fetch(`${goc_may_chu}${duong_dan}`, {
+      method: 'POST',
+      headers: phien === null ? {} : { authorization: `Bearer ${phien.token_truy_cap}` },
+      body: form,
+      // Anh co the vai MB tren mang yeu.
+      signal: AbortSignal.timeout(120_000),
+    });
+
+  let res: Response;
+  try {
+    res = await gui();
+  } catch (loi) {
+    throw new LoiApi(
+      0,
+      (loi as Error).name === 'TimeoutError'
+        ? 'Gửi ảnh quá lâu. Kiểm tra mạng rồi thử lại.'
+        : 'Không gửi được. Kiểm tra kết nối mạng.',
+    );
+  }
+
+  if (res.status === 401 && (await lam_moi_token())) {
+    res = await gui();
+  }
+
+  const j = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new LoiApi(res.status, typeof j['loi'] === 'string' ? j['loi'] : `Lỗi ${res.status}`);
+  }
+  return j as T;
+}
+
 /** Tai anh selfie (co xac thuc) thanh data URI de hien trong the Image. */
 export async function tai_anh_base64(lan_quet_id: string): Promise<string | null> {
   try {

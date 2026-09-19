@@ -23,6 +23,15 @@ export interface ThamSoLuong {
   giam_tru_ban_than: number;
   giam_tru_phu_thuoc: number;
   bac_thue: BacThue[];
+  /**
+   * He so OT ngay thuong (BLLD 2019 D.98: it nhat 150%). Bo trong = 1.5 de tuong thich
+   * bang `tham_so_luong` cu chua co cot nay. Khoi co the ghi de bang `khoi.he_so_ot_ngay_thuong`.
+   */
+  he_so_ot_ngay_thuong?: number;
+  /** He so OT ngay nghi hang tuan (CN). Bo trong = 2.0. */
+  he_so_ot_nghi_tuan?: number;
+  /** He so OT ngay le/tet. Bo trong = 3.0. */
+  he_so_ot_ngay_le?: number;
 }
 
 export interface BacThue {
@@ -36,10 +45,45 @@ export interface BacThue {
 export interface DauVaoPhieu {
   luong_co_ban: number;
   phu_cap: number;
+  /**
+   * Muc luong KHAI dong bao hiem (BHXH/BHYT/BHTN). Nhieu doanh nghiep khai muc nay THAP hon
+   * luong that. null/0/khong truyen = dong theo luong that (luong_co_ban + phu_cap) nhu cu.
+   */
+  luong_dong_bh?: number | null;
+  /**
+   * Co dong BHXH/BHYT/BHTN bat buoc khong. false = MIEN (thu viec, thuc tap/hoc viec khong
+   * thuoc dien dong). Mac dinh true. Mien thi can cu dong = 0 nen moi khoan BH deu = 0.
+   */
+  dong_bao_hiem?: boolean;
+  /**
+   * Mien thue TNCN cho phieu nay (thue_tncn = 0). Tich thu cong cua admin cho truong hop dac
+   * biet. Mac dinh false = tinh thue theo bieu thue luy tien nhu binh thuong.
+   */
+  mien_thue?: boolean;
+  /**
+   * Luong NET: mien THU BHXH tu NLD (cong ty ganh phan NLD) — KHONG tru bao_hiem_nld vao thuc
+   * linh, nhung BHXH van tinh day du + van giu trong giam tru khi tinh thue. Mac dinh false.
+   * Khac `dong_bao_hiem = false` (mien_bh): kia lam can cu dong = 0, khong phat sinh BHXH nao.
+   */
+  luong_net?: boolean;
   so_ngay_cong_chuan: number;
   so_ngay_cong_thuc: number;
+  /** Tong phut OT cua ky (ca ba loai ngay). */
   phut_ot: number;
+  /** He so OT phan ngay THUONG (ngay lam viec binh thuong cua ca). */
   he_so_ot: number;
+  /**
+   * Phut OT roi vao NGAY NGHI HANG TUAN (Chu nhat) va NGAY LE cua ky. `phut_ot` la tong;
+   * phan ngay thuong = phut_ot - phut_ot_nghi_tuan - phut_ot_le. Bo trong = 0 (hanh vi cu:
+   * toan bo tinh theo he so ngay thuong).
+   */
+  phut_ot_nghi_tuan?: number;
+  phut_ot_le?: number;
+  /**
+   * He so rieng cho phan nghi tuan / le cua phieu nay. Bo trong = lay tu `ThamSoLuong`.
+   */
+  he_so_ot_nghi_tuan?: number;
+  he_so_ot_le?: number;
   thuong: number;
   phu_cap_khac: number;
   so_nguoi_phu_thuoc: number;
@@ -57,7 +101,11 @@ export interface KetQuaPhieu {
   luong_theo_cong: number;
   /** Luong MOT NGAY CONG = (luong co ban + phu cap) / cong chuan. Cac khoan tinh theo no. */
   luong_ngay: number;
+  /** Tong tien OT = tien_ot_thuong + tien_ot_nghi_tuan + tien_ot_le. */
   tien_ot: number;
+  tien_ot_thuong: number;
+  tien_ot_nghi_tuan: number;
+  tien_ot_le: number;
   /** Tong cac khoan thu nhap tu `phieu_luong_khoan`. */
   khoan_thu_nhap: number;
   /** Tong cac khoan tru tu `phieu_luong_khoan`. */
@@ -67,6 +115,9 @@ export interface KetQuaPhieu {
   /** Tung dong khoan da tinh ra tien, de ghi vao `phieu_luong_khoan`. */
   cac_khoan: KhoanKetQua[];
   tong_thu_nhap: number;
+  /** Can cu dong bao hiem da dung (muc khai neu co, khong thi luong that) — TRUOC khi ap tran. */
+  luong_dong_bh: number;
+  /** Muc thuc te dong BHXH/BHYT sau khi ap tran (= min(luong_dong_bh, tran)). */
   muc_dong_bh: number;
   bhxh_nld: number;
   bhyt_nld: number;
@@ -150,20 +201,44 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
   // Don gia gio OT lay tren luong co ban theo gio cua thang chuan.
   const gio_chuan_thang = d.so_ngay_cong_chuan * 8;
   const don_gia_gio = gio_chuan_thang <= 0 ? 0 : (d.luong_co_ban + d.phu_cap) / gio_chuan_thang;
-  const tien_ot = dong(don_gia_gio * (d.phut_ot / 60) * d.he_so_ot);
+
+  // OT theo LOAI NGAY (BLLD D.98): ngay thuong / nghi tuan (CN) / le. `phut_ot` la tong ba
+  // phan; phan ngay thuong = tong - hai phan kia. Bo trong hai phan = hanh vi cu.
+  const phut_ot_nghi_tuan = Math.max(0, d.phut_ot_nghi_tuan ?? 0);
+  const phut_ot_le = Math.max(0, d.phut_ot_le ?? 0);
+  const phut_ot_thuong = Math.max(0, d.phut_ot - phut_ot_nghi_tuan - phut_ot_le);
+  const tien_ot_thuong = dong(don_gia_gio * (phut_ot_thuong / 60) * d.he_so_ot);
+  const tien_ot_nghi_tuan = dong(don_gia_gio * (phut_ot_nghi_tuan / 60)
+    * (d.he_so_ot_nghi_tuan ?? ts.he_so_ot_nghi_tuan ?? 2));
+  const tien_ot_le = dong(don_gia_gio * (phut_ot_le / 60)
+    * (d.he_so_ot_le ?? ts.he_so_ot_ngay_le ?? 3));
+  const tien_ot = tien_ot_thuong + tien_ot_nghi_tuan + tien_ot_le;
 
   const khoan = tinh_cac_khoan(d.khoan ?? [], luong_ngay);
 
   const tong_thu_nhap = luong_theo_cong + tien_ot + d.thuong + d.phu_cap_khac + khoan.thu_nhap;
 
   // ------------------------------------------------------------ bao hiem
-  const muc_hop_dong = d.luong_co_ban + d.phu_cap;
-  const muc_bhxh_bhyt = Math.min(muc_hop_dong, tran_bhxh_bhyt(ts));
-  const muc_bhtn = Math.min(muc_hop_dong, tran_bhtn(ts));
+  // Mien BHXH bat buoc: thu viec (HD thu viec rieng) va thuc tap/hoc viec KHONG thuoc dien dong
+  // BHXH/BHYT/BHTN. Nguoi goi truyen `dong_bao_hiem = false` -> can cu dong = 0 -> mien het.
+  //
+  // Can cu dong bao hiem = muc KHAI dong BH neu co, khong thi luong that (luong_co_ban + phu_cap).
+  // Muc khai co the thap hon luong that — day la ly do tach rieng khoi luong tinh cong/thue.
+  const luong_dong_bh = d.dong_bao_hiem === false
+    ? 0
+    : d.luong_dong_bh != null && d.luong_dong_bh > 0
+      ? d.luong_dong_bh
+      : d.luong_co_ban + d.phu_cap;
+  const muc_bhxh_bhyt = Math.min(luong_dong_bh, tran_bhxh_bhyt(ts));
+  const muc_bhtn = Math.min(luong_dong_bh, tran_bhtn(ts));
 
-  const bhxh_nld = dong(muc_bhxh_bhyt * (ts.ty_le_bhxh_nld / 100));
-  const bhyt_nld = dong(muc_bhxh_bhyt * (ts.ty_le_bhyt_nld / 100));
-  const bhtn_nld = dong(muc_bhtn * (ts.ty_le_bhtn_nld / 100));
+  // Luong NET: KHONG tinh BHXH/BHYT/BHTN cua NLD (chu cong ty chot — cong ty lo het). Phan NLD
+  // ve 0 het, nen cung khong con la khoan giam tru truoc thue. Phan cong ty (nsdld) van tinh
+  // binh thuong vi do la nghia vu rieng cua doanh nghiep.
+  const tinh_bh_nld = d.luong_net !== true;
+  const bhxh_nld = tinh_bh_nld ? dong(muc_bhxh_bhyt * (ts.ty_le_bhxh_nld / 100)) : 0;
+  const bhyt_nld = tinh_bh_nld ? dong(muc_bhxh_bhyt * (ts.ty_le_bhyt_nld / 100)) : 0;
+  const bhtn_nld = tinh_bh_nld ? dong(muc_bhtn * (ts.ty_le_bhtn_nld / 100)) : 0;
 
   const bhxh_nsdld = dong(muc_bhxh_bhyt * (ts.ty_le_bhxh_nsdld / 100));
   const bhyt_nsdld = dong(muc_bhxh_bhyt * (ts.ty_le_bhyt_nsdld / 100));
@@ -182,9 +257,12 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
   // Tinh thue tren ca tien hoan ung la thu thue tren mot khoan khong phai thu nhap.
   const thu_nhap_chiu_thue = Math.max(0, tong_thu_nhap - khoan.thu_nhap_mien_thue);
   const thu_nhap_tinh_thue = Math.max(0, thu_nhap_chiu_thue - giam_tru_tong);
-  const thue_tncn = thue_luy_tien(thu_nhap_tinh_thue, ts.bac_thue);
+  // Admin tich "mien thue TNCN" -> thue = 0 (van giu thu_nhap_tinh_thue de doi chieu).
+  const thue_tncn = d.mien_thue === true ? 0 : thue_luy_tien(thu_nhap_tinh_thue, ts.bac_thue);
 
   // ------------------------------------------------------------ thuc linh
+  // Luong NET: BH cua NLD da = 0 (khong tinh) nen bao_hiem_nld = 0 -> khong tru gi vao thuc nhan
+  // va cung khong nam trong giam_tru_tong. Luong GROSS: tru phan BH cua NLD nhu binh thuong.
   const tong_tru = bao_hiem_nld + thue_tncn + d.tru_khac + khoan.tru;
   const thuc_linh = tong_thu_nhap - tong_tru;
 
@@ -195,11 +273,15 @@ export function tinh_phieu_luong(d: DauVaoPhieu, ts: ThamSoLuong): KetQuaPhieu {
     luong_theo_cong,
     luong_ngay,
     tien_ot,
+    tien_ot_thuong,
+    tien_ot_nghi_tuan,
+    tien_ot_le,
     khoan_thu_nhap: khoan.thu_nhap,
     khoan_tru: khoan.tru,
     thu_nhap_mien_thue: khoan.thu_nhap_mien_thue,
     cac_khoan: khoan.dong,
     tong_thu_nhap,
+    luong_dong_bh,
     muc_dong_bh: muc_bhxh_bhyt,
     bhxh_nld,
     bhyt_nld,

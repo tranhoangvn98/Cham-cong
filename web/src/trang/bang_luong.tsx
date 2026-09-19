@@ -5,7 +5,7 @@
 //      He thong gieo san mot bo mac dinh — ke toan PHAI doi chieu truoc khi tra luong.
 //   2. Trang thai ky quyet dinh sua duoc hay khong. Da gui duyet la khoa, de nguoi duyet
 //      khong bi doi so lieu duoi chan.
-import { useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { goi, tai_tep } from '../api.ts';
 import { la_admin } from '../api.ts';
 import {
@@ -37,6 +37,23 @@ interface KyLuong {
   ghi_chu_duyet: string | null;
 }
 
+/** Mot dong lech luong: luong co ban trong phieu khong khop quyet dinh luong hien hanh. */
+interface DongLech {
+  ma_nv: string;
+  ho_ten: string;
+  phieu_base: number;
+  phieu_phu_cap: number;
+  ky_vong_base: number;
+  ky_vong_phu_cap: number;
+  loai_hop_dong: string | null;
+  nguon: 'quyet_dinh' | 'hop_dong' | 'khong_co';
+}
+
+/** Phan hoi cua endpoint quyet: hoac chot xong, hoac bi chan vi lech luong. */
+type PhanHoiQuyet =
+  | { ok: true }
+  | { ok: false; ma_loi: 'LECH_LUONG'; thong_bao: string; lech: DongLech[] };
+
 /** Mot dong trong danh muc khoan (phu cap / khoan tru). */
 interface KhoanDanhMuc {
   ma: string;
@@ -56,6 +73,8 @@ interface KhoanPhieu {
   khoan_ma: string;
   ten: string;
   loai: 'thu_nhap' | 'tru';
+  /** Với khoản thu nhập: 'phu_cap' (mặc định) hay 'thuong' (KPI/doanh số/hoa hồng). */
+  nhom: 'phu_cap' | 'thuong' | null;
   cach_tinh: KhoanDanhMuc['cach_tinh'];
   chiu_thue: boolean;
   canh_bao: string | null;
@@ -65,6 +84,18 @@ interface KhoanPhieu {
   ghi_chu: string | null;
   /** true = máy sinh từ chính sách phụ cấp; false = người gõ tay cho riêng kỳ này. */
   tu_chinh_sach: boolean;
+  /** Các lệnh chi tiết của khoản (nếu tách nhiều dòng). Rỗng = một dòng gộp như cũ. */
+  chi_tiet: DongChiTiet[];
+}
+
+/** Một loại lỗi bị giảm thưởng (lý do + số tiền), kèm từng lần cụ thể có ngày + giờ. */
+interface DongChiTiet {
+  id: string;
+  ly_do: string;
+  so_tien: string;
+  thu_tu: number;
+  /** Từng lần lỗi cụ thể, vd "06/08: vào 08:15 (muộn 15′)". */
+  cac_lan?: string[];
 }
 
 interface Phieu {
@@ -73,14 +104,26 @@ interface Phieu {
   ma_nv: string;
   ho_ten: string;
   phong_ban: string | null;
+  khoi_id: string | null;
+  khoi: string | null;
   loai_hop_dong: string | null;
   luong_co_ban: string;
   phu_cap: string;
+  luong_dong_bh: string;
   luong_ngay: string;
   so_ngay_cong_chuan: string;
   so_ngay_cong_thuc: string;
   luong_theo_cong: string;
+  phut_ot: string;
   tien_ot: string;
+  phut_ot_nghi_tuan: string;
+  phut_ot_le: string;
+  tien_ot_thuong: string;
+  tien_ot_nghi_tuan: string;
+  tien_ot_le: string;
+  he_so_ot: string;
+  he_so_ot_nghi_tuan: string;
+  he_so_ot_le: string;
   thuong: string;
   phu_cap_khac: string;
   khoan_thu_nhap: string;
@@ -99,6 +142,16 @@ interface Phieu {
   thuc_linh: string;
   thuc_linh_lam_tron: string;
   ghi_chu: string | null;
+  /** Admin ép công thực = công chuẩn để trả đủ lương tháng. */
+  ep_du_cong: boolean;
+  /** Admin miễn phạt đi muộn tự động cho phiếu này. */
+  mien_phat: boolean;
+  /** Admin miễn thuế TNCN cho phiếu này (thuế = 0). */
+  mien_thue: boolean;
+  /** Admin miễn BHXH/BHYT/BHTN cho phiếu này (căn cứ đóng = 0) — KHÔNG phát sinh BHXH nào. */
+  mien_bh: boolean;
+  /** Lương NET: công ty gánh BHXH của NLĐ (vẫn đóng đủ), không trừ vào thực lĩnh. */
+  luong_net: boolean;
   khoan: KhoanPhieu[];
 }
 
@@ -132,6 +185,41 @@ function tien(v: unknown): string {
   const n = Number(v ?? 0);
   if (!Number.isFinite(n)) return '—';
   return n.toLocaleString('vi-VN', { maximumFractionDigits: 0 });
+}
+/** Phut OT thanh chuoi 'Xh' / 'XhYY' — trung phieu luong ca nhan. */
+function gio_ot(phut: unknown): string {
+  const p = Number(phut) || 0;
+  return `${Math.floor(p / 60)}h${p % 60 > 0 ? String(p % 60).padStart(2, '0') : ''}`;
+}
+/** Mo ta chi tiet OT 3 muc cho tooltip cot OT tren bang luong. */
+function mo_ta_ot(p: Phieu): string {
+  const phut_thuong = Math.max(0,
+    Number(p.phut_ot) - Number(p.phut_ot_nghi_tuan) - Number(p.phut_ot_le));
+  const phan: string[] = [];
+  if (Number(p.tien_ot_thuong) > 0) {
+    phan.push(`Ngày thường: ${gio_ot(phut_thuong)} ×${p.he_so_ot} = ${tien(p.tien_ot_thuong)}`);
+  }
+  if (Number(p.tien_ot_nghi_tuan) > 0) {
+    phan.push(`Chủ nhật: ${gio_ot(p.phut_ot_nghi_tuan)} ×${p.he_so_ot_nghi_tuan} = ${tien(p.tien_ot_nghi_tuan)}`);
+  }
+  if (Number(p.tien_ot_le) > 0) {
+    phan.push(`Ngày lễ: ${gio_ot(p.phut_ot_le)} ×${p.he_so_ot_le} = ${tien(p.tien_ot_le)}`);
+  }
+  return phan.join(' · ');
+}
+
+/** Tong THUONG cua phieu = thuong (quyet dinh) + khoan thu_nhap nhom 'thuong' (KPI...). */
+function tong_thuong(p: Phieu): number {
+  return Number(p.thuong) + p.khoan
+    .filter((k) => k.loai === 'thu_nhap' && k.nhom === 'thuong')
+    .reduce((a, k) => a + Number(k.thanh_tien), 0);
+}
+
+/** Tong PHU CAP cua phieu = phu_cap_khac + khoan thu_nhap KHONG phai 'thuong'. */
+function tong_phu_cap(p: Phieu): number {
+  return Number(p.phu_cap_khac) + p.khoan
+    .filter((k) => k.loai === 'thu_nhap' && k.nhom !== 'thuong')
+    .reduce((a, k) => a + Number(k.thanh_tien), 0);
 }
 
 export function TrangBangLuong(): ReactNode {
@@ -262,6 +350,13 @@ function HopThoaiChiTiet(
     dung_nap<KyLuong & { phieu: Phieu[] }>(`/api/ky-luong/${ky_id}`);
   const [sua, dat_sua] = useState<Phieu | null>(null);
   const [khoan, dat_khoan] = useState<Phieu | null>(null);
+  const [xem_tru, dat_xem_tru] = useState<Phieu | null>(null);
+  const [xem_pc, dat_xem_pc] = useState<Phieu | null>(null);
+  const [xem_thuong, dat_xem_thuong] = useState<Phieu | null>(null);
+  const [xem_cong, dat_xem_cong] = useState<Phieu | null>(null);
+  const [thuong_kpi, dat_thuong_kpi] = useState(false);
+  const [tab, dat_tab] = useState<'vnd' | 'cny'>('vnd');
+  const [lech, dat_lech] = useState<{ thong_bao: string; ds: DongLech[] } | null>(null);
   const hd = dung_hanh_dong();
 
   if (dang_tai) return <KhungToanMan tieu_de="Kỳ lương" khi_dong={khi_dong}><DangTai /></KhungToanMan>;
@@ -277,10 +372,37 @@ function HopThoaiChiTiet(
       .then(() => { nap_lai(); khi_doi(); });
   };
 
+  // Duyet ky. Neu bi chan vi LECH LUONG, hien bang lech thay vi bao thanh cong gia.
+  // `bo_qua = true` khi admin da xem lech va van co y chot (ghi nhat ky o may chu).
+  const duyet_ky = (bo_qua: boolean) => {
+    void hd.chay_lay<PhanHoiQuyet>(
+      () => goi(`/api/ky-luong/${k.id}/quyet`,
+        { method: 'POST', body: { quyet_dinh: 'da_duyet', bo_qua_lech: bo_qua } }),
+    ).then((kq) => {
+      if (kq === null) return;                     // loi mang — HopLoi da hien
+      if (kq.ok === false) { dat_lech({ thong_bao: kq.thong_bao, ds: kq.lech }); return; }
+      dat_lech(null);
+      nap_lai();
+      khi_doi();
+    });
+  };
+
   return (
     <KhungToanMan tieu_de={`Bảng lương tháng ${k.thang}`} khi_dong={khi_dong}>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
 
+      <div className="thanh-tab">
+        <button className={`tab ${tab === 'vnd' ? 'tab-dang-mo' : ''}`}
+          onClick={() => dat_tab('vnd')}>Lương Việt Nam (VND)</button>
+        <button className={`tab ${tab === 'cny' ? 'tab-dang-mo' : ''}`}
+          onClick={() => dat_tab('cny')}>Lương Trung Quốc (CNY)</button>
+      </div>
+
+      {tab === 'cny' && (
+        <BangCny ky={k} sua_duoc={sua_duoc} khi_doi={() => { nap_lai(); khi_doi(); }} />
+      )}
+
+      {tab === 'vnd' && (<>
       <div className="hang-nut">
         <span className={MAU_TRANG_THAI[k.trang_thai]}>
           {NHAN_TRANG_THAI[k.trang_thai]}
@@ -288,12 +410,14 @@ function HopThoaiChiTiet(
         {sua_duoc && (
           <button
             disabled={hd.dang_chay}
-            onClick={chay(`/api/ky-luong/${k.id}/tinh`, 'Đã tính lại toàn bộ phiếu lương.')}
+            title="Tính lại cả chuỗi: bảng công → vi phạm → kỷ luật → phiếu lương (ngày đã chốt vẫn giữ)."
+            onClick={chay(`/api/ky-luong/${k.id}/tinh`,
+              'Đã tính lại: bảng công, vi phạm, kỷ luật và toàn bộ phiếu lương.')}
           >
             Tính lương
           </button>
         )}
-        {sua_duoc && k.so_phieu > 0 && (
+        {sua_duoc && k.phieu.length > 0 && (
           <button
             disabled={hd.dang_chay}
             onClick={chay(`/api/ky-luong/${k.id}/gui-duyet`, 'Đã gửi duyệt. Phiếu đã khóa sửa.')}
@@ -309,15 +433,32 @@ function HopThoaiChiTiet(
             Thu hồi
           </button>
         )}
+        {la_admin() && k.phieu.length > 0
+          && (k.trang_thai === 'nhap' || k.trang_thai === 'cho_duyet') && (
+          <button
+            className="nut-phang" disabled={hd.dang_chay}
+            onClick={chay(`/api/ky-luong/${k.id}/gui-phieu`,
+              'Đã gửi email phiếu lương để nhân viên xác nhận. '
+              + 'Nhân viên có thể khiếu nại lương nếu có sai sót để hệ thống chỉnh sửa.')}
+            title="Gửi phiếu lương cho từng người xác nhận trước khi duyệt. Nhân viên có quyền khiếu nại lương."
+          >
+            Gửi email xác nhận
+          </button>
+        )}
+        {sua_duoc && la_admin() && k.phieu.length > 0 && (
+          <button
+            className="nut-phang" disabled={hd.dang_chay}
+            onClick={() => dat_thuong_kpi(true)}
+            title="Nhập nhanh thưởng KPI cho nhiều người theo khối/phòng, kèm chứng từ duyệt"
+          >
+            Nhập nhanh thưởng KPI
+          </button>
+        )}
         {k.trang_thai === 'cho_duyet' && la_admin() && (
           <>
             <button
               disabled={hd.dang_chay}
-              onClick={() => void hd.chay(
-                () => goi(`/api/ky-luong/${k.id}/quyet`,
-                  { method: 'POST', body: { quyet_dinh: 'da_duyet' } }),
-                'Đã duyệt kỳ lương.',
-              ).then(() => { nap_lai(); khi_doi(); })}
+              onClick={() => duyet_ky(false)}
             >
               Duyệt
             </button>
@@ -334,11 +475,35 @@ function HopThoaiChiTiet(
           </>
         )}
         {k.trang_thai === 'da_duyet' && la_admin() && (
+          <>
+            <button
+              disabled={hd.dang_chay}
+              onClick={chay(`/api/ky-luong/${k.id}/da-tra`, 'Đã đánh dấu đã trả lương.')}
+            >
+              Đánh dấu đã trả
+            </button>
+            <button
+              className="nut-phang" disabled={hd.dang_chay}
+              onClick={() => {
+                if (!window.confirm(
+                  'Thu hồi duyệt sẽ mở lại kỳ lương về "nháp" để sửa/bổ sung '
+                  + '(giữ nguyên công 31/8 làm bù và các ngày chỉnh tay). Tiếp tục?')) return;
+                void hd.chay(
+                  () => goi(`/api/ky-luong/${k.id}/thu-hoi-duyet`, { method: 'POST' }),
+                  'Đã thu hồi duyệt. Kỳ mở lại để sửa — nhớ Tính lại rồi Gửi duyệt / Duyệt lại.',
+                ).then(() => { nap_lai(); khi_doi(); });
+              }}
+            >
+              Thu hồi duyệt
+            </button>
+          </>
+        )}
+        {(k.trang_thai === 'da_duyet' || k.trang_thai === 'da_tra') && la_admin() && (
           <button
-            disabled={hd.dang_chay}
-            onClick={chay(`/api/ky-luong/${k.id}/da-tra`, 'Đã đánh dấu đã trả lương.')}
+            className="nut-phang" disabled={hd.dang_chay}
+            onClick={chay(`/api/ky-luong/${k.id}/gui-phieu`, 'Đã gửi lại email phiếu lương.')}
           >
-            Đánh dấu đã trả
+            Gửi lại phiếu
           </button>
         )}
         <button
@@ -357,6 +522,25 @@ function HopThoaiChiTiet(
         >
           Xuất CSV
         </button>
+        {(k.trang_thai === 'da_duyet' || k.trang_thai === 'da_tra') && la_admin() && (
+          <button
+            className="nut-phang" disabled={hd.dang_chay}
+            onClick={() => void hd.chay(async () => {
+              const kq = await goi<{ danh_sach: { ten: string; so_nguoi: number }[] }>(
+                `/api/ky-luong/${k.id}/lenh-chi/danh-sach`,
+              );
+              // Moi phap nhan chi tra ra mot file rieng (tai khoan nguon khac nhau).
+              for (const dv of kq.danh_sach) {
+                await tai_tep(
+                  `/api/ky-luong/${k.id}/lenh-chi/tep?don_vi=${encodeURIComponent(dv.ten)}`,
+                  `lenh_chi_${dv.ten}_${k.thang}.xlsx`,
+                );
+              }
+            }, 'Đã xuất lệnh chi.')}
+          >
+            Lập Lệnh Chi
+          </button>
+        )}
       </div>
 
       {k.phieu.length === 0 ? (
@@ -374,9 +558,11 @@ function HopThoaiChiTiet(
                 <th className="canh-phai">Thưởng</th>
                 <th className="canh-phai">Phụ cấp</th>
                 <th className="canh-phai">Tổng thu nhập</th>
+                <th className="canh-phai">Lương đóng BH</th>
                 <th className="canh-phai">BHXH+YT+TN</th>
                 <th className="canh-phai">Thuế TNCN</th>
                 <th className="canh-phai">Khoản trừ</th>
+                <th className="canh-phai">Ứng lương</th>
                 <th className="canh-phai">Thực lĩnh</th>
                 {sua_duoc && <th />}
               </tr>
@@ -389,6 +575,16 @@ function HopThoaiChiTiet(
                 const tru = Number(p.khoan_tru) + Number(p.tru_khac);
                 const lam_tron = Number(p.thuc_linh_lam_tron);
                 const goc = Number(p.thuc_linh);
+                // Tach khoan thu_nhap: 'thuong' (KPI/doanh so/hoa hong) tinh vao cot Thuong;
+                // con lai la phu cap. Tong thu nhap khong doi, chi doi cho hien thi.
+                const kh_thuong = p.khoan.filter((x) => x.loai === 'thu_nhap' && x.nhom === 'thuong');
+                const co_pc = tong_phu_cap(p);
+                const co_thuong = tong_thuong(p);
+                // Ung luong = khoan tru 'da_tam_ung' (tu module Ung luong khi da chi). La MOT
+                // PHAN cua "Khoan tru" — hien rieng de thay ro, thuc linh da net san.
+                const ung = p.khoan
+                  .filter((x) => x.khoan_ma === 'da_tam_ung')
+                  .reduce((a, x) => a + Number(x.thanh_tien), 0);
                 return (
                   <tr key={p.id}>
                     <td>{p.ma_nv}</td>
@@ -400,18 +596,52 @@ function HopThoaiChiTiet(
                     </td>
                     <td className="canh-phai">{tien(p.luong_co_ban)}</td>
                     <td className="canh-phai">
-                      {Number(p.so_ngay_cong_thuc)}/{Number(p.so_ngay_cong_chuan)}
+                      <button className="nut-lien-ket" onClick={() => dat_xem_cong(p)}
+                        title="Xem chi tiết công từng ngày — ngày nào bị trừ, lý do gì">
+                        {Number(p.so_ngay_cong_thuc)}/{Number(p.so_ngay_cong_chuan)}
+                      </button>
+                      {p.ep_du_cong && <div className="nhan-canh-bao" title="Được tính đủ ngày công (miễn chấm công)">đủ công</div>}
+                      {p.mien_phat && <div className="nhan-canh-bao" title="Được miễn phạt đi muộn/về sớm">miễn phạt</div>}
+                      {p.mien_thue && <div className="nhan-canh-bao" title="Miễn thuế TNCN cho phiếu này">miễn thuế</div>}
+                      {p.mien_bh && <div className="nhan-canh-bao" title="Miễn BHXH/BHYT/BHTN cho phiếu này (không phát sinh BHXH)">miễn BH</div>}
+                      {p.luong_net && <div className="nhan-canh-bao" title="Lương NET: công ty gánh BHXH của NLĐ (vẫn đóng đủ), không trừ vào thực lĩnh">lương net</div>}
                     </td>
                     <td className="canh-phai">{tien(p.luong_theo_cong)}</td>
-                    <td className="canh-phai">{tien(p.tien_ot)}</td>
-                    <td className="canh-phai">{tien(p.thuong)}</td>
+                    <td className="canh-phai"
+                      title={Number(p.tien_ot) > 0 ? mo_ta_ot(p) : undefined}>
+                      {tien(p.tien_ot)}
+                    </td>
                     <td className="canh-phai">
-                      {tien(Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac))}
+                      {kh_thuong.length > 0 ? (
+                        <button className="nut-lien-ket" onClick={() => dat_xem_thuong(p)}
+                          title="Xem chi tiết thưởng">{tien(co_thuong)}</button>
+                      ) : tien(co_thuong)}
+                    </td>
+                    <td className="canh-phai">
+                      {co_pc > 0 ? (
+                        <button className="nut-lien-ket" onClick={() => dat_xem_pc(p)}
+                          title="Xem chi tiết phụ cấp">
+                          {tien(co_pc)}
+                        </button>
+                      ) : tien(co_pc)}
                     </td>
                     <td className="canh-phai">{tien(p.tong_thu_nhap)}</td>
+                    <td className="canh-phai">
+                      {tien(p.luong_dong_bh)}
+                      {Number(p.luong_dong_bh) !== Number(p.luong_co_ban) + Number(p.phu_cap)
+                        && <div className="mo-ta">khai riêng</div>}
+                    </td>
                     <td className="canh-phai">{tien(bh)}</td>
                     <td className="canh-phai">{tien(p.thue_tncn)}</td>
-                    <td className="canh-phai">{tien(tru)}</td>
+                    <td className="canh-phai">
+                      {tru > 0 ? (
+                        <button className="nut-lien-ket" onClick={() => dat_xem_tru(p)}
+                          title="Xem chi tiết các khoản trừ">
+                          {tien(tru)}
+                        </button>
+                      ) : tien(tru)}
+                    </td>
+                    <td className="canh-phai">{ung > 0 ? tien(ung) : '—'}</td>
                     <td className="canh-phai">
                       <strong>{tien(lam_tron)}</strong>
                       {lam_tron !== goc && (
@@ -435,12 +665,14 @@ function HopThoaiChiTiet(
                 <td className="canh-phai mo-ta">—</td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.luong_theo_cong), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.tien_ot), 0))}</strong></td>
-                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.thuong), 0))}</strong></td>
-                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.khoan_thu_nhap) + Number(p.phu_cap_khac), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + tong_thuong(p), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + tong_phu_cap(p), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.tong_thu_nhap), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.luong_dong_bh), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.bhxh_nld) + Number(p.bhyt_nld) + Number(p.bhtn_nld), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.thue_tncn), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.khoan_tru) + Number(p.tru_khac), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + p.khoan.filter((x) => x.khoan_ma === 'da_tam_ung').reduce((b, x) => b + Number(x.thanh_tien), 0), 0))}</strong></td>
                 <td className="canh-phai"><strong>{tien(k.phieu.reduce((a, p) => a + Number(p.thuc_linh_lam_tron), 0))}</strong></td>
                 {sua_duoc && <td />}
               </tr>
@@ -448,6 +680,7 @@ function HopThoaiChiTiet(
           </table>
         </div>
       )}
+      </>)}
 
       {sua !== null && (
         <HopThoaiSuaPhieu
@@ -463,7 +696,325 @@ function HopThoaiChiTiet(
           khi_xong={() => { dat_khoan(null); nap_lai(); khi_doi(); }}
         />
       )}
+      {xem_tru !== null && (
+        <HopThoaiKeKhoanTru phieu={xem_tru} khi_dong={() => dat_xem_tru(null)} />
+      )}
+      {xem_pc !== null && (
+        <HopThoaiKePhuCap phieu={xem_pc} khi_dong={() => dat_xem_pc(null)} />
+      )}
+      {xem_thuong !== null && (
+        <HopThoaiKePhuCap phieu={xem_thuong} che_do="thuong"
+          khi_dong={() => dat_xem_thuong(null)} />
+      )}
+      {thuong_kpi && (
+        <HopThoaiThuongKpi
+          ky_id={k.id} phieu={k.phieu}
+          khi_dong={() => dat_thuong_kpi(false)}
+          khi_xong={() => { dat_thuong_kpi(false); nap_lai(); khi_doi(); }}
+        />
+      )}
+      {xem_cong !== null && (
+        <HopThoaiCong ky_thang={k.thang} phieu={xem_cong} khi_dong={() => dat_xem_cong(null)} />
+      )}
+      {lech !== null && (
+        <HopThoai tieu_de="Chưa duyệt được — lệch lương" rong khi_dong={() => dat_lech(null)}>
+          <div className="hop-luu-y">{lech.thong_bao}</div>
+          <p style={{ margin: '12px 0' }}>
+            Lương cơ bản/phụ cấp trong phiếu không khớp quyết định lương hiện hành —
+            thường do đã sửa mức lương sau khi tính kỳ. Nên bấm <b>Thu hồi &amp; tính lại</b> để
+            phiếu cập nhật đúng số mới, rồi Gửi duyệt lại. Chỉ chọn <b>Vẫn duyệt</b> nếu cố ý
+            chốt theo số trong phiếu.
+          </p>
+          <div className="vo-bang">
+            <table className="bang-gon">
+              <thead>
+                <tr>
+                  <th>Mã NV</th><th>Họ tên</th><th>Loại HĐ</th>
+                  <th className="canh-phai">Cơ bản (phiếu)</th>
+                  <th className="canh-phai">Cơ bản (kỳ vọng)</th>
+                  <th className="canh-phai">Phụ cấp (phiếu → kỳ vọng)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lech.ds.map((d) => (
+                  <tr key={d.ma_nv}>
+                    <td>{d.ma_nv}</td>
+                    <td>{d.ho_ten}</td>
+                    <td>{d.loai_hop_dong ?? '—'}</td>
+                    <td className="canh-phai">{tien(d.phieu_base)}</td>
+                    <td className="canh-phai">{tien(d.ky_vong_base)}</td>
+                    <td className="canh-phai">
+                      {d.phieu_phu_cap === d.ky_vong_phu_cap
+                        ? tien(d.phieu_phu_cap)
+                        : `${tien(d.phieu_phu_cap)} → ${tien(d.ky_vong_phu_cap)}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="hang-nut" style={{ marginTop: 16 }}>
+            <button
+              disabled={hd.dang_chay}
+              onClick={() => void hd.chay(async () => {
+                await goi(`/api/ky-luong/${k.id}/thu-hoi`, { method: 'POST' });
+                await goi(`/api/ky-luong/${k.id}/tinh`, { method: 'POST' });
+              }, 'Đã thu hồi và tính lại. Kiểm tra rồi Gửi duyệt lại.')
+                .then((ok) => { if (ok) { dat_lech(null); nap_lai(); khi_doi(); } })}
+            >
+              Thu hồi &amp; tính lại
+            </button>
+            <button
+              className="nut-phang" disabled={hd.dang_chay}
+              onClick={() => duyet_ky(true)}
+            >
+              Vẫn duyệt (bỏ qua lệch)
+            </button>
+            <button className="nut-phang" disabled={hd.dang_chay} onClick={() => dat_lech(null)}>
+              Đóng
+            </button>
+          </div>
+        </HopThoai>
+      )}
     </KhungToanMan>
+  );
+}
+
+const NHAN_TT_NGAY: Record<string, string> = {
+  vang: 'Vắng', co_mat: 'Có mặt', nghi_phep: 'Nghỉ phép', nghi_khong_luong: 'Nghỉ không lương',
+  ngay_le: 'Ngày lễ', nghi_tuan: 'Nghỉ tuần', cong_tac: 'Công tác', lam_bu: 'Làm bù',
+};
+// Cột "Phép / lý do": vắng = KHÔNG phép (đơn nghỉ duyệt sẽ đổi trạng thái sang nghỉ phép/không lương).
+const PHEP_NGAY: Record<string, ReactNode> = {
+  vang: <span className="nhan-canh-bao" title="Vắng không có đơn duyệt">Không phép</span>,
+  nghi_phep: 'Có phép (phép năm)',
+  nghi_khong_luong: 'Nghỉ không lương',
+  cong_tac: 'Công tác',
+  ngay_le: 'Nghỉ lễ',
+  lam_bu: 'Nghỉ bù',
+};
+const THU_VN = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+interface NgayCong {
+  ngay: string; trang_thai: string; gio_vao: string | null; gio_ra: string | null;
+  phut_muon: number | null; phut_ve_som: number | null; phut_ot: number | null;
+  so_cong: string; co_dieu_chinh: boolean; ghi_chu: string | null;
+}
+
+/**
+ * Chi tiet CONG tung ngay cua mot nguoi trong ky: ngay nao bi tru, ly do gi. Doc lai bang cham
+ * cong that (`/bang-cong`) chu khong tu con so tong tren phieu.
+ */
+function HopThoaiCong(
+  { ky_thang, phieu, khi_dong }: { ky_thang: string; phieu: Phieu; khi_dong: () => void },
+): ReactNode {
+  const [nam, thang] = ky_thang.split('-').map(Number);
+  const so_ngay = new Date(nam!, thang!, 0).getDate();
+  const tu = `${ky_thang}-01`;
+  const den = `${ky_thang}-${String(so_ngay).padStart(2, '0')}`;
+  const { du_lieu, dang_tai, loi } = dung_nap<NgayCong[]>(
+    `/api/bang-cong?nhan_vien_id=${phieu.nhan_vien_id}&tu=${tu}&den=${den}`);
+  // Quy phep nam cua nguoi nay (da dung / quy / con lai) — de theo doi ngay tren bang cong.
+  const quy = dung_nap<{ dong: { id: string; quy: number; da_dung: number; con_lai: number }[] }>(
+    `/api/nghi-phep?nam=${nam}`);
+  const phep = (quy.du_lieu?.dong ?? []).find((x) => x.id === phieu.nhan_vien_id) ?? null;
+
+  const gio = (s: string | null): string => (s === null ? '' : ngay_gio(s).slice(-5));
+  const ds = du_lieu ?? [];
+  const bi_tru = ds.filter((d) =>
+    d.trang_thai === 'vang' || d.trang_thai === 'nghi_khong_luong'
+    || (d.trang_thai === 'co_mat' && Number(d.so_cong) < 1));
+
+  return (
+    <HopThoai tieu_de={`Chi tiết công — ${phieu.ho_ten} (${ky_thang})`} khi_dong={khi_dong} toan_man>
+      {loi !== null && <HopLoi loi={loi} />}
+      {dang_tai ? <DangTai /> : (
+        <>
+          <div className="goi-y" style={{ marginBottom: '0.5rem' }}>
+            Thực tế <strong>{Number(phieu.so_ngay_cong_thuc)}</strong> / chuẩn{' '}
+            <strong>{Number(phieu.so_ngay_cong_chuan)}</strong> công ·{' '}
+            <strong>{bi_tru.length}</strong> ngày bị trừ / thiếu công (bôi đậm bên dưới).
+            {phieu.ep_du_cong && ' — Phiếu đang được "tính đủ công".'}
+            {phep !== null && (
+              <> · <strong>Phép năm:</strong> đã dùng <strong>{Number(phep.da_dung)}</strong>{' '}
+                / quỹ <strong>{Number(phep.quy)}</strong> (còn{' '}
+                <strong>{Number(phep.con_lai)}</strong>)</>
+            )}
+          </div>
+          <div className="vo-bang" style={{ maxHeight: '72vh', overflow: 'auto' }}>
+            <table className="bang-gon">
+              <thead><tr>
+                <th>Ngày</th><th>Thứ</th><th>Trạng thái</th><th>Phép / lý do</th>
+                <th className="canh-phai">Công</th><th>Vào–Ra</th><th>Đi muộn / Về sớm</th>
+                <th>Ghi chú</th>
+              </tr></thead>
+              <tbody>
+                {ds.map((d) => {
+                  const thu = THU_VN[new Date(`${d.ngay}T00:00:00Z`).getUTCDay()];
+                  const tru = d.trang_thai === 'vang' || d.trang_thai === 'nghi_khong_luong'
+                    || (d.trang_thai === 'co_mat' && Number(d.so_cong) < 1);
+                  const muon = Number(d.phut_muon ?? 0);
+                  const ve_som = Number(d.phut_ve_som ?? 0);
+                  return (
+                    <tr key={d.ngay} style={tru ? { fontWeight: 600 } : undefined}>
+                      <td>{d.ngay.slice(8, 10)}/{d.ngay.slice(5, 7)}</td>
+                      <td>{thu}</td>
+                      <td>{NHAN_TT_NGAY[d.trang_thai] ?? d.trang_thai}
+                        {d.co_dieu_chinh && <span className="nhan-canh-bao" title="Có điều chỉnh tay / giải trình">sửa tay</span>}
+                      </td>
+                      <td>{PHEP_NGAY[d.trang_thai] ?? ''}</td>
+                      <td className="canh-phai">{Number(d.so_cong)}</td>
+                      <td>{gio(d.gio_vao)}{d.gio_ra !== null ? `–${gio(d.gio_ra)}` : ''}</td>
+                      <td>
+                        {muon > 0 && <span>muộn {muon}′ </span>}
+                        {ve_som > 0 && <span>về sớm {ve_som}′</span>}
+                      </td>
+                      <td className="mo-ta">{d.ghi_chu ?? ''}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="goi-y" style={{ marginTop: '0.5rem' }}>
+            Ghi chú: đi muộn / phạt tiền được tính ở bảng lương (cột "Khoản trừ"), không phải ở
+            số công. Số công chỉ phản ánh ngày làm thực tế (nửa ngày, vắng, nghỉ không lương…).
+          </div>
+        </>
+      )}
+    </HopThoai>
+  );
+}
+
+/**
+ * YC 02 phan B (GD1) — NHAP NHANH THUONG KPI: chon loai khoan, loc theo khoi/phong, dien so tien
+ * cho tung nguoi, kem CHUNG TU duyet, gui mot lan cho ca ky.
+ */
+const LOAI_THUONG_KPI: readonly { ma: string; ten: string }[] = [
+  { ma: 'thuong_kpi_ca_nhan', ten: 'Thưởng KPI cá nhân' },
+  { ma: 'thuong_kpi_phong', ten: 'Thưởng KPI phòng/khối' },
+  { ma: 'hoa_hong_cskh', ten: 'Hoa hồng CSKH' },
+  { ma: 'pc_doanh_so', ten: 'Doanh số rep ADS' },
+  { ma: 'pc_kpi', ten: 'Thưởng KPI (chung, cũ)' },
+];
+function HopThoaiThuongKpi(
+  { ky_id, phieu, khi_dong, khi_xong }:
+  { ky_id: string; phieu: Phieu[]; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [khoan_ma, dat_khoan_ma] = useState(LOAI_THUONG_KPI[0]!.ma);
+  const [loc_khoi, dat_loc_khoi] = useState('');
+  const [loc_phong, dat_loc_phong] = useState('');
+  const [chung_tu, dat_chung_tu] = useState('');
+  const [ap_chung, dat_ap_chung] = useState('');
+  const [so_tien, dat_so_tien] = useState<Record<string, string>>({});
+  const hd = dung_hanh_dong();
+
+  const cac_khoi = [...new Set(phieu.map((p) => p.khoi).filter((x): x is string => x !== null))].sort();
+  const cac_phong = [...new Set(phieu.map((p) => p.phong_ban).filter((x): x is string => x !== null))].sort();
+  const loc = phieu.filter((p) =>
+    (loc_khoi === '' || p.khoi === loc_khoi) && (loc_phong === '' || p.phong_ban === loc_phong));
+
+  const dat_mot = (id: string, v: string): void => dat_so_tien((cu) => ({ ...cu, [id]: v }));
+  const ap_chung_cho_loc = (): void => {
+    const v = ap_chung.trim();
+    if (v === '') return;
+    dat_so_tien((cu) => {
+      const moi = { ...cu };
+      for (const p of loc) moi[p.nhan_vien_id] = v;
+      return moi;
+    });
+  };
+
+  const gui = async (): Promise<void> => {
+    const dong = Object.entries(so_tien)
+      .filter(([, v]) => v.trim() !== '')
+      .map(([nhan_vien_id, v]) => ({ nhan_vien_id, so_tien: Number(v) }))
+      .filter((d) => Number.isFinite(d.so_tien)); // gui ca 0 de GO khoan neu sua nham
+    if (dong.length === 0) return;
+    const ok = await hd.chay(() => goi(`/api/ky-luong/${ky_id}/thuong-kpi-hang-loat`, {
+      method: 'POST', body: { khoan_ma, chung_tu_mo_ta: chung_tu.trim(), dong },
+    }), 'Đã áp thưởng KPI và tính lại kỳ.');
+    if (ok) khi_xong();
+  };
+
+  const du_chung_tu = chung_tu.trim().length >= 3;
+  const so_da_nhap = loc.filter((p) => (so_tien[p.nhan_vien_id] ?? '').trim() !== '').length;
+  const co_nhap = Object.values(so_tien).some((v) => v.trim() !== '');
+
+  return (
+    <HopThoai tieu_de="Nhập nhanh thưởng KPI" khi_dong={khi_dong}>
+      <HopLoi loi={hd.loi} />
+      <div className="luoi luoi-2">
+        <div className="o-nhap">
+          <label htmlFor="tk-khoan">Loại thưởng</label>
+          <select id="tk-khoan" value={khoan_ma} onChange={(e) => dat_khoan_ma(e.target.value)}>
+            {LOAI_THUONG_KPI.map((l) => <option key={l.ma} value={l.ma}>{l.ten}</option>)}
+          </select>
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="tk-ct">Chứng từ duyệt *</label>
+          <input id="tk-ct" value={chung_tu} onChange={(e) => dat_chung_tu(e.target.value)}
+            placeholder="Số/ngày quyết định duyệt thưởng" />
+        </div>
+      </div>
+      <div className="luoi luoi-2">
+        <div className="o-nhap">
+          <label htmlFor="tk-khoi">Lọc theo khối</label>
+          <select id="tk-khoi" value={loc_khoi} onChange={(e) => dat_loc_khoi(e.target.value)}>
+            <option value="">— Tất cả —</option>
+            {cac_khoi.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="tk-phong">Lọc theo phòng ban</label>
+          <select id="tk-phong" value={loc_phong} onChange={(e) => dat_loc_phong(e.target.value)}>
+            <option value="">— Tất cả —</option>
+            {cac_phong.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="hang-nut" style={{ alignItems: 'flex-end' }}>
+        <div className="o-nhap" style={{ flex: 1 }}>
+          <label htmlFor="tk-chung">Áp chung một mức cho danh sách đang lọc (đ)</label>
+          <input id="tk-chung" type="number" min="0" value={ap_chung}
+            onChange={(e) => dat_ap_chung(e.target.value)} placeholder="Ví dụ 500000" />
+        </div>
+        <button type="button" onClick={ap_chung_cho_loc}>Điền hết</button>
+      </div>
+
+      <div className="goi-y" style={{ margin: '0.5rem 0' }}>
+        {loc.length} người đang lọc · đã nhập tiền cho {so_da_nhap} người. Để trống = không đổi;
+        nhập <strong>0</strong> = gỡ khoản này khỏi phiếu.
+      </div>
+
+      <div className="vo-bang" style={{ maxHeight: '40vh', overflow: 'auto' }}>
+        <table className="bang-gon">
+          <thead><tr><th>Mã NV</th><th>Họ tên</th><th>Phòng</th><th>Khối</th>
+            <th className="canh-phai">Thưởng (đ)</th></tr></thead>
+          <tbody>
+            {loc.map((p) => (
+              <tr key={p.id}>
+                <td>{p.ma_nv}</td><td>{p.ho_ten}</td>
+                <td>{p.phong_ban ?? '—'}</td><td>{p.khoi ?? '—'}</td>
+                <td className="canh-phai">
+                  <input type="number" min="0" style={{ width: '9rem' }}
+                    value={so_tien[p.nhan_vien_id] ?? ''}
+                    onChange={(e) => dat_mot(p.nhan_vien_id, e.target.value)} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="hang-nut" style={{ marginTop: '0.75rem' }}>
+        <button className="nut-chinh" disabled={hd.dang_chay || !du_chung_tu || !co_nhap}
+          onClick={() => void gui()}>
+          {hd.dang_chay ? 'Đang áp…' : 'Áp thưởng & tính lại'}
+        </button>
+        <button type="button" onClick={khi_dong}>Hủy</button>
+        {!du_chung_tu && <span className="mo-ta">Cần nhập chứng từ duyệt (≥ 3 ký tự).</span>}
+      </div>
+    </HopThoai>
   );
 }
 
@@ -515,6 +1066,15 @@ function HopThoaiKhoan(
       so_tien: String(Number(k.thanh_tien)),
     }])),
   );
+  // Chi tiet TUNG DONG cua khoan nhap tay (ly do + so tien) — can cu nguoi lao dong se thay.
+  // Tong cac dong = so tien cua khoan (may chu tu dat). Rong = mot dong gop nhu cu.
+  const [ct, dat_ct] = useState<Record<string, { ly_do: string; so_tien: string }[]>>(
+    Object.fromEntries(phieu.khoan
+      .filter((k) => !k.tu_chinh_sach && k.cach_tinh === 'nhap_tay')
+      .map((k) => [k.khoan_ma, k.chi_tiet
+        .filter((c) => c.ly_do !== '')
+        .map((c) => ({ ly_do: c.ly_do, so_tien: String(Number(c.so_tien)) }))])),
+  );
   const hd = dung_hanh_dong();
 
   /** Dong dang do chinh sach dieu khien (va chua bi ghi de trong phien nay). */
@@ -554,6 +1114,22 @@ function HopThoaiKhoan(
       return sau;
     });
   };
+
+  const dat_ct_dong = (ma: string, i: number, khoa: 'ly_do' | 'so_tien', v: string): void => {
+    dat_ct((truoc) => {
+      const ds = [...(truoc[ma] ?? [])];
+      ds[i] = { ly_do: '', so_tien: '0', ...ds[i], [khoa]: v };
+      return { ...truoc, [ma]: ds };
+    });
+  };
+  const them_ct = (ma: string): void => dat_ct((truoc) => ({
+    ...truoc,
+    [ma]: [...(truoc[ma] ?? []), { ly_do: '', so_tien: '0' }],
+  }));
+  const xoa_ct = (ma: string, i: number): void => dat_ct((truoc) => ({
+    ...truoc,
+    [ma]: (truoc[ma] ?? []).filter((_, j) => j !== i),
+  }));
 
   const nhom = (loai: 'thu_nhap' | 'tru'): KhoanDanhMuc[] => tat_ca.filter((d) => d.loai === loai);
 
@@ -615,33 +1191,60 @@ function HopThoaiKhoan(
         <table className="bang-gon">
           <tbody>
             {ds.map((d) => (
-              <tr key={d.ma}>
-                <td>
-                  {d.ten}
-                  {!d.chiu_thue && <span className="nhan-tot"> miễn thuế</span>}
-                  {theo_chinh_sach.has(d.ma) && dong[d.ma] === undefined && (
-                    <span className="nhan-mo"> theo chính sách</span>
-                  )}
-                  {theo_chinh_sach.has(d.ma) && dong[d.ma] !== undefined && (
-                    <span className="nhan-canh-bao"> đã ghi đè cho kỳ này</span>
-                  )}
-                  {d.cach_tinh === 'so_luong_x_don_gia' && (
-                    <div className="mo-ta">
-                      Nhập SỐ LƯỢNG — đơn giá {tien(d.don_gia)} đ, máy nhân ra tiền.
-                    </div>
-                  )}
-                  {d.cach_tinh === 'nua_ngay_luong' && (
-                    <div className="mo-ta">
-                      Nhập SỐ LẦN — mỗi lần bằng nửa lương một ngày của chính người này
-                      ({tien(Number(phieu.luong_ngay) / 2)} đ).
-                    </div>
-                  )}
-                  {d.canh_bao !== null && d.canh_bao !== '' && (
-                    <div className="hop-luu-y">{d.canh_bao}</div>
-                  )}
-                </td>
-                <td className="canh-phai">{o_nhap(d)}</td>
-              </tr>
+              <Fragment key={d.ma}>
+                <tr>
+                  <td>
+                    {d.ten}
+                    {!d.chiu_thue && <span className="nhan-tot"> miễn thuế</span>}
+                    {theo_chinh_sach.has(d.ma) && dong[d.ma] === undefined && (
+                      <span className="nhan-mo"> theo chính sách</span>
+                    )}
+                    {theo_chinh_sach.has(d.ma) && dong[d.ma] !== undefined && (
+                      <span className="nhan-canh-bao"> đã ghi đè cho kỳ này</span>
+                    )}
+                    {d.cach_tinh === 'so_luong_x_don_gia' && (
+                      <div className="mo-ta">
+                        Nhập SỐ LƯỢNG — đơn giá {tien(d.don_gia)} đ, máy nhân ra tiền.
+                      </div>
+                    )}
+                    {d.cach_tinh === 'nua_ngay_luong' && (
+                      <div className="mo-ta">
+                        Nhập SỐ LẦN — mỗi lần bằng nửa lương một ngày của chính người này
+                        ({tien(Number(phieu.luong_ngay) / 2)} đ).
+                      </div>
+                    )}
+                    {d.canh_bao !== null && d.canh_bao !== '' && (
+                      <div className="hop-luu-y">{d.canh_bao}</div>
+                    )}
+                  </td>
+                  <td className="canh-phai">{o_nhap(d)}</td>
+                </tr>
+                {dong[d.ma] !== undefined && d.cach_tinh === 'nhap_tay' && (
+                  <tr>
+                    <td colSpan={2} style={{ paddingTop: 0 }}>
+                      <div className="mo-ta">
+                        Chi tiết từng dòng (nhân viên sẽ thấy từng căn cứ). Tổng các dòng = số
+                        tiền của khoản. Để trống = một dòng gộp như cũ.
+                      </div>
+                      {(ct[d.ma] ?? []).map((c, i) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <div key={i} style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                          <input value={c.ly_do} placeholder="Lý do / căn cứ (vd: 287 số × 10.000)"
+                            onChange={(e) => dat_ct_dong(d.ma, i, 'ly_do', e.target.value)} />
+                          <input type="number" min="0" style={{ width: 120 }} value={c.so_tien}
+                            aria-label={`Số tiền dòng chi tiết ${i + 1} của ${d.ten}`}
+                            onChange={(e) => dat_ct_dong(d.ma, i, 'so_tien', e.target.value)} />
+                          <button className="nut-phang" onClick={() => xoa_ct(d.ma, i)}>Xóa</button>
+                        </div>
+                      ))}
+                      <button className="nut-nho" style={{ marginTop: 4 }}
+                        onClick={() => them_ct(d.ma)}>
+                        + Thêm dòng chi tiết
+                      </button>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -671,8 +1274,8 @@ function HopThoaiKhoan(
       <div className="hang-nut">
         <button
           disabled={hd.dang_chay}
-          onClick={() => void hd.chay(
-            () => goi(`/api/phieu-luong/${phieu.id}/khoan`, {
+          onClick={() => void hd.chay(async () => {
+            await goi(`/api/phieu-luong/${phieu.id}/khoan`, {
               method: 'PUT',
               body: {
                 khoan: Object.entries(dong).map(([ma, v]) => ({
@@ -681,13 +1284,200 @@ function HopThoaiKhoan(
                   so_tien: Number(v.so_tien) || 0,
                 })),
               },
-            }),
-            'Đã lưu các khoản và tính lại kỳ lương.',
-          ).then((ok) => { if (ok !== null) khi_xong(); })}
+            });
+            // Chi tiet tung dong cho cac khoan NHAP TAY vua luu (rong = bo chi tiet).
+            for (const [ma] of Object.entries(dong)) {
+              const d = tat_ca.find((x) => x.ma === ma);
+              if (d === undefined || d.cach_tinh !== 'nhap_tay') continue;
+              await goi(`/api/phieu-luong/${phieu.id}/khoan/${ma}/chi-tiet`, {
+                method: 'PUT',
+                body: {
+                  dong: (ct[ma] ?? []).map((c) => ({
+                    ly_do: c.ly_do,
+                    so_tien: Number(c.so_tien) || 0,
+                  })),
+                },
+              });
+            }
+          }, 'Đã lưu các khoản và tính lại kỳ lương.')
+            .then((ok) => { if (ok) khi_xong(); })}
         >
           Lưu
         </button>
         <button className="nut-phang" onClick={khi_dong}>Hủy</button>
+      </div>
+    </HopThoai>
+  );
+}
+
+/**
+ * Bang KE cac khoan tru cua mot phieu (chi doc): tung dong khoan loai `tru` tu chinh sach /
+ * go tay, cong voi "Tru khac" (tam ung, doan phi...) neu co. Mo tu cot Khoan tru — de nguoi
+ * xem biet con so tong gom nhung gi, khong phai mo man Sua.
+ */
+function HopThoaiKeKhoanTru(
+  { phieu, khi_dong }: { phieu: Phieu; khi_dong: () => void },
+): ReactNode {
+  const cac_tru = phieu.khoan.filter((k) => k.loai === 'tru');
+  const tru_khac = Number(phieu.tru_khac);
+  const tong = cac_tru.reduce((a, k) => a + Number(k.thanh_tien), 0) + tru_khac;
+
+  return (
+    <HopThoai tieu_de={`Các khoản trừ — ${phieu.ho_ten}`} khi_dong={khi_dong}>
+      {cac_tru.length === 0 && tru_khac === 0 ? (
+        <p className="mo-ta">Phiếu này không có khoản trừ nào.</p>
+      ) : (
+        <table className="bang-gon">
+          <tbody>
+            {cac_tru.map((k) => {
+              // Dong con CO ly_do (breakdown ky luat) — de canh bao neu tong lech so dang tru.
+              // Dong "lan" cua di muon co ly_do rong (chi liet ke ngay/gio), khong tinh vao day.
+              const dong_tien = k.chi_tiet.filter((c) => c.ly_do !== '');
+              const tong_ct = dong_tien.reduce((a, c) => a + Number(c.so_tien), 0);
+              const lech = dong_tien.length > 0
+                && Math.round(tong_ct) !== Math.round(Number(k.thanh_tien));
+              return k.chi_tiet.length > 0 ? (
+                <Fragment key={k.khoan_ma}>
+                  <tr>
+                    <td>
+                      <strong>{k.ten}</strong>
+                      {k.tu_chinh_sach && <span className="nhan-mo"> theo chính sách</span>}
+                    </td>
+                    <td className="canh-phai"><strong>{tien(k.thanh_tien)} đ</strong></td>
+                  </tr>
+                  {k.chi_tiet.map((c) => (
+                    <Fragment key={c.id}>
+                      {c.ly_do !== '' && (
+                        <tr>
+                          <td style={{ paddingLeft: 20 }}>— {c.ly_do}</td>
+                          <td className="canh-phai">{tien(c.so_tien)} đ</td>
+                        </tr>
+                      )}
+                      {(c.cac_lan ?? []).map((mo_ta, i) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <tr key={`${c.id}:${String(i)}`}>
+                          <td style={{ paddingLeft: c.ly_do !== '' ? 40 : 20 }} className="mo-ta">
+                            • {mo_ta}
+                          </td>
+                          <td />
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                  {lech && (
+                    <tr>
+                      <td colSpan={2} className="hop-luu-y">
+                        Hồ sơ kỷ luật hiện tổng {tien(tong_ct)} đ, khác số đang trừ trên phiếu
+                        ({tien(k.thanh_tien)} đ). Bấm “Tính lương” lại để phiếu khớp hồ sơ.
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ) : (
+                <tr key={k.khoan_ma}>
+                  <td>
+                    {k.ten}
+                    {k.tu_chinh_sach && <span className="nhan-mo"> theo chính sách</span>}
+                    {k.ghi_chu !== null && k.ghi_chu !== '' && (
+                      <div className="mo-ta">{k.ghi_chu}</div>
+                    )}
+                  </td>
+                  <td className="canh-phai">{tien(k.thanh_tien)} đ</td>
+                </tr>
+              );
+            })}
+            {tru_khac > 0 && (
+              <tr>
+                <td>
+                  Trừ khác
+                  {phieu.ly_do_tru_khac !== null && phieu.ly_do_tru_khac !== '' && (
+                    <div className="mo-ta">{phieu.ly_do_tru_khac}</div>
+                  )}
+                </td>
+                <td className="canh-phai">{tien(tru_khac)} đ</td>
+              </tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="hang-tong">
+              <td><strong>Tổng khoản trừ</strong></td>
+              <td className="canh-phai"><strong>{tien(tong)} đ</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      )}
+      <p className="mo-ta">
+        BHXH/YT/TN và thuế TNCN là các khoản trừ pháp lý riêng, xem ở cột tương ứng.
+      </p>
+      <div className="hang-nut">
+        <button className="nut-phang" onClick={khi_dong}>Đóng</button>
+      </div>
+    </HopThoai>
+  );
+}
+
+/**
+ * Bang KE cac khoan PHU CAP / thu nhap them cua mot phieu (chi doc): tung dong khoan loai
+ * `thu_nhap` tu chinh sach / go tay, cong voi "Phu cap khac" neu co. Mo tu cot Phu cap.
+ */
+function HopThoaiKePhuCap(
+  { phieu, che_do = 'phu_cap', khi_dong }:
+  { phieu: Phieu; che_do?: 'phu_cap' | 'thuong'; khi_dong: () => void },
+): ReactNode {
+  const la_thuong = che_do === 'thuong';
+  // Thuong = KPI/doanh so/hoa hong (nhom='thuong'); Phu cap = thu nhap con lai.
+  const cac_pc = phieu.khoan.filter((k) => k.loai === 'thu_nhap'
+    && (la_thuong ? k.nhom === 'thuong' : k.nhom !== 'thuong'));
+  // Dong tien le kem theo: phu cap co "Phu cap khac"; thuong co "Thuong (quyet dinh)".
+  const le = la_thuong ? Number(phieu.thuong) : Number(phieu.phu_cap_khac);
+  const ten_le = la_thuong ? 'Thưởng (quyết định)' : 'Phụ cấp khác';
+  const tong = cac_pc.reduce((a, k) => a + Number(k.thanh_tien), 0) + le;
+  const tieu_de = la_thuong ? 'Chi tiết thưởng' : 'Chi tiết phụ cấp';
+
+  return (
+    <HopThoai tieu_de={`${tieu_de} — ${phieu.ho_ten}`} khi_dong={khi_dong}>
+      {cac_pc.length === 0 && le === 0 ? (
+        <p className="mo-ta">Phiếu này không có {la_thuong ? 'thưởng' : 'phụ cấp'} nào.</p>
+      ) : (
+        <table className="bang-gon">
+          <tbody>
+            {cac_pc.map((k) => (
+              <tr key={k.khoan_ma}>
+                <td>
+                  {k.ten}
+                  {k.tu_chinh_sach && <span className="nhan-mo"> theo chính sách</span>}
+                  {k.so_luong !== null && k.don_gia !== null && (
+                    <div className="mo-ta">{Number(k.so_luong)} × {tien(k.don_gia)} đ</div>
+                  )}
+                  {k.ghi_chu !== null && k.ghi_chu !== '' && (
+                    <div className="mo-ta">{k.ghi_chu}</div>
+                  )}
+                </td>
+                <td className="canh-phai">{tien(k.thanh_tien)} đ</td>
+              </tr>
+            ))}
+            {le > 0 && (
+              <tr>
+                <td>{ten_le}</td>
+                <td className="canh-phai">{tien(le)} đ</td>
+              </tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="hang-tong">
+              <td><strong>Tổng {la_thuong ? 'thưởng' : 'phụ cấp'}</strong></td>
+              <td className="canh-phai"><strong>{tien(tong)} đ</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      )}
+      <p className="mo-ta">
+        {la_thuong
+          ? 'KPI, doanh số, hoa hồng tính vào Thưởng — không phải phụ cấp.'
+          : 'Phụ cấp theo chính sách tự tính lại mỗi kỳ theo chấm công; muốn sửa bấm nút Khoản.'}
+      </p>
+      <div className="hang-nut">
+        <button className="nut-phang" onClick={khi_dong}>Đóng</button>
       </div>
     </HopThoai>
   );
@@ -704,10 +1494,23 @@ function HopThoaiSuaPhieu(
   const [tru_khac, dat_tru_khac] = useState(String(Number(phieu.tru_khac)));
   const [ly_do, dat_ly_do] = useState(phieu.ly_do_tru_khac ?? '');
   const [ghi_chu, dat_ghi_chu] = useState(phieu.ghi_chu ?? '');
+  const [ep_du_cong, dat_ep_du_cong] = useState(phieu.ep_du_cong);
+  const [mien_phat, dat_mien_phat] = useState(phieu.mien_phat);
+  const [mien_thue, dat_mien_thue] = useState(phieu.mien_thue);
+  const [mien_bh, dat_mien_bh] = useState(phieu.mien_bh);
+  const [luong_net, dat_luong_net] = useState(phieu.luong_net);
+  // Luong dong BH: trong = dong theo luong that. Chi hien so khi da khai muc rieng.
+  const bh_khai_ban_dau = Number(phieu.luong_dong_bh) !== Number(phieu.luong_co_ban) + Number(phieu.phu_cap)
+    ? String(Number(phieu.luong_dong_bh)) : '';
+  const [luong_dong_bh, dat_luong_dong_bh] = useState(bh_khai_ban_dau);
+  // YC-1: doi muc luong phai kem chung tu duyet.
+  const [chung_tu, dat_chung_tu] = useState('');
+  const admin = la_admin();
   const hd = dung_hanh_dong();
 
   const luong_doi = Number(luong_co_ban) !== Number(phieu.luong_co_ban)
-    || Number(phu_cap) !== Number(phieu.phu_cap);
+    || Number(phu_cap) !== Number(phieu.phu_cap)
+    || luong_dong_bh !== bh_khai_ban_dau;
 
   return (
     <HopThoai tieu_de={`Sửa phiếu — ${phieu.ho_ten}`} khi_dong={khi_dong}>
@@ -720,16 +1523,111 @@ function HopThoaiSuaPhieu(
       <label htmlFor="p2">Phụ cấp cố định — P2 (đ)</label>
       <input id="p2" type="number" min="0" value={phu_cap}
         onChange={(e) => dat_phu_cap(e.target.value)} />
+      <label htmlFor="ldbh">Lương đóng BHXH (đ) — để trống nếu đóng theo lương thật</label>
+      <input id="ldbh" type="number" min="0" value={luong_dong_bh}
+        placeholder="theo lương thật (P1 + P2)"
+        onChange={(e) => dat_luong_dong_bh(e.target.value)} />
+      <p className="mo-ta" style={{ margin: '0 0 0.5rem' }}>
+        Mức khai đóng BHXH/BHYT/BHTN — thường thấp hơn lương thật. Bỏ trống = đóng trên lương cứng
+        (P1 + P2). BHXH/YT/TN sẽ tính trên mức này (vẫn áp trần theo luật).
+      </p>
       <p className="mo-ta">
         Lương cứng = P1 + P2 (theo mẫu bảng lương công ty). Lưu vào <strong>quyết định lương</strong>
         {' '}hiệu lực từ đầu tháng của kỳ — các tháng sau vẫn giữ mức này cho tới khi có quyết định mới.
         Thử việc tự tính 85% theo tỷ lệ trong Tham số lương.
       </p>
 
+      {luong_doi && (
+        <label className="truong" style={{ marginTop: 8 }}>
+          <span style={{ color: '#b00000' }}>Chứng từ duyệt mức lương (bắt buộc khi đổi lương) *</span>
+          <input value={chung_tu} onChange={(e) => dat_chung_tu(e.target.value)}
+            placeholder="VD: QĐ nâng lương số 12/2026 ngày 01/08 / biên bản thỏa thuận…" />
+        </label>
+      )}
+
       <h3 style={{ margin: '1rem 0 0.5rem' }}>Điều chỉnh riêng kỳ này</h3>
       <p className="mo-ta">
         Lương theo công, bảo hiểm và thuế đều suy ra từ chấm công và tham số pháp lý.
       </p>
+
+      {(admin || phieu.ep_du_cong) && (
+        <div className="hop-luu-y" style={{ margin: '0 0 0.75rem' }}>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <input
+              type="checkbox" checked={ep_du_cong} disabled={!admin}
+              onChange={(e) => dat_ep_du_cong(e.target.checked)}
+            />
+            <span>
+              <strong>Tính đủ công</strong> — coi công thực = công chuẩn để trả đủ lương tháng,
+              bất kể chấm công thực tế. <strong>Chỉ admin</strong> được tích. Phụ cấp theo công
+              vẫn tính theo chấm công thật.
+            </span>
+          </label>
+        </div>
+      )}
+
+      {(admin || phieu.mien_phat) && (
+        <div className="hop-luu-y" style={{ margin: '0 0 0.75rem' }}>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <input
+              type="checkbox" checked={mien_phat} disabled={!admin}
+              onChange={(e) => dat_mien_phat(e.target.checked)}
+            />
+            <span>
+              <strong>Miễn phạt</strong> — bỏ các khoản phạt đi muộn tự động (50k / nửa ngày công)
+              cho phiếu này. <strong>Chỉ admin</strong> được tích. Không ảnh hưởng khoản trừ gõ tay
+              hay kỷ luật.
+            </span>
+          </label>
+        </div>
+      )}
+
+      {(admin || phieu.mien_thue) && (
+        <div className="hop-luu-y" style={{ margin: '0 0 0.75rem' }}>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <input
+              type="checkbox" checked={mien_thue} disabled={!admin}
+              onChange={(e) => dat_mien_thue(e.target.checked)}
+            />
+            <span>
+              <strong>Miễn thuế TNCN</strong> — không trừ thuế thu nhập cá nhân cho phiếu này
+              (thuế = 0). <strong>Chỉ admin</strong> được tích.
+            </span>
+          </label>
+        </div>
+      )}
+
+      {(admin || phieu.mien_bh) && (
+        <div className="hop-luu-y" style={{ margin: '0 0 0.75rem' }}>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <input
+              type="checkbox" checked={mien_bh} disabled={!admin}
+              onChange={(e) => dat_mien_bh(e.target.checked)}
+            />
+            <span>
+              <strong>Miễn BHXH/BHYT/BHTN</strong> — KHÔNG phát sinh bảo hiểm bắt buộc cho phiếu này
+              (căn cứ đóng = 0, công ty cũng không đóng). <strong>Chỉ admin</strong> được tích.
+            </span>
+          </label>
+        </div>
+      )}
+
+      {(admin || phieu.luong_net) && (
+        <div className="hop-luu-y" style={{ margin: '0 0 0.75rem' }}>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <input
+              type="checkbox" checked={luong_net} disabled={!admin}
+              onChange={(e) => dat_luong_net(e.target.checked)}
+            />
+            <span>
+              <strong>Lương NET</strong> — công ty gánh BHXH của người lao động: <strong>không trừ</strong>
+              {' '}phần BH của NLĐ khỏi thực lĩnh, nhưng BHXH <strong>vẫn tính &amp; đóng đủ</strong> và
+              vẫn được giữ trong giảm trừ khi tính thuế TNCN. Khác "Miễn BHXH". <strong>Chỉ admin</strong>
+              {' '}được tích.
+            </span>
+          </label>
+        </div>
+      )}
 
       <label htmlFor="thuong">Thưởng (đ)</label>
       <input id="thuong" type="number" min="0" value={thuong}
@@ -755,7 +1653,7 @@ function HopThoaiSuaPhieu(
 
       <div className="hang-nut">
         <button
-          disabled={hd.dang_chay}
+          disabled={hd.dang_chay || (luong_doi && chung_tu.trim().length < 3)}
           onClick={() => void hd.chay(
             async () => {
               // Luu luong cung TRUOC (tao quyet dinh luong + tinh lai), roi luu dieu chinh rieng
@@ -763,7 +1661,13 @@ function HopThoaiSuaPhieu(
               if (luong_doi) {
                 await goi(`/api/phieu-luong/${phieu.id}/luong-cung`, {
                   method: 'PUT',
-                  body: { luong_co_ban: Number(luong_co_ban) || 0, phu_cap: Number(phu_cap) || 0 },
+                  body: {
+                    luong_co_ban: Number(luong_co_ban) || 0,
+                    phu_cap: Number(phu_cap) || 0,
+                    // Trong = 0 = dong theo luong that; co so = khai muc rieng.
+                    luong_dong_bh: luong_dong_bh === '' ? 0 : Number(luong_dong_bh) || 0,
+                    chung_tu_mo_ta: chung_tu,
+                  },
                 });
               }
               return goi(`/api/phieu-luong/${phieu.id}`, {
@@ -774,10 +1678,228 @@ function HopThoaiSuaPhieu(
                   tru_khac: Number(tru_khac) || 0,
                   ly_do_tru_khac: ly_do,
                   ghi_chu,
+                  // Chi gui khi la admin — server cung chan, nhung khong gui thi nhan su thuong
+                  // sua thuong/tru ma khong vo tinh dong vao hai co nay.
+                  ...(admin ? { ep_du_cong, mien_phat, mien_thue, mien_bh, luong_net } : {}),
                 },
               });
             },
             'Đã lưu và tính lại kỳ lương.',
+          ).then((ok) => { if (ok !== null) khi_xong(); })}
+        >
+          Lưu
+        </button>
+        <button className="nut-phang" onClick={khi_dong}>Hủy</button>
+      </div>
+    </HopThoai>
+  );
+}
+
+// ============================================================ khoi luong Trung Quoc (CNY)
+
+interface PhieuCny {
+  id: string;
+  ma_nv: string;
+  ho_ten: string;
+  phong_ban: string | null;
+  luong_co_ban: string;
+  phu_cap: string;
+  so_ngay_cong_chuan: string;
+  so_ngay_cong_thuc: string;
+  luong_theo_cong: string;
+  thuong: string;
+  phu_cap_khac: string;
+  tru_khac: string;
+  ly_do_tru_khac: string | null;
+  tong_thu_nhap: string;
+  thuc_linh: string;
+  ghi_chu: string | null;
+}
+
+/**
+ * Tab luong Trung Quoc (CNY): nhom che_do_luong = 'tq'. Tinh theo cong y het VND nhung tien CNY
+ * va KHONG BHXH/thue. Dung chung ky luong (thang).
+ */
+function BangCny(
+  { ky, sua_duoc, khi_doi }:
+  { ky: { id: string; thang: string }; sua_duoc: boolean; khi_doi: () => void },
+): ReactNode {
+  const { du_lieu, dang_tai, loi, nap_lai } =
+    dung_nap<{ phieu: PhieuCny[] }>(`/api/ky-luong/${ky.id}/cny`);
+  const [sua, dat_sua] = useState<PhieuCny | null>(null);
+  const hd = dung_hanh_dong();
+
+  if (dang_tai) return <DangTai />;
+  if (loi !== null) return <HopLoi loi={loi} />;
+  const phieu = du_lieu?.phieu ?? [];
+
+  return (
+    <>
+      <div className="hop-luu-y">
+        Nhóm nhận lương <strong>CNY</strong> (chế độ lương Trung Quốc) — tính theo công như bảng
+        VND nhưng <strong>không khấu trừ BHXH/thuế</strong>. Gán chế độ lương ở mục Nhân sự.
+      </div>
+      <div className="hang-nut">
+        {sua_duoc && (
+          <button
+            disabled={hd.dang_chay}
+            onClick={() => void hd.chay(
+              () => goi(`/api/ky-luong/${ky.id}/tinh-cny`, { method: 'POST' }),
+              'Đã tính lại lương CNY.',
+            ).then((ok) => { if (ok !== null) { nap_lai(); khi_doi(); } })}
+          >
+            Tính lương CNY
+          </button>
+        )}
+        <button className="nut-phang" disabled={hd.dang_chay}
+          onClick={() => void hd.chay(
+            () => tai_tep(`/api/ky-luong/${ky.id}/xuat-xlsx-cny`, `luong_cny_${ky.thang}.xlsx`))}>
+          Xuất Excel
+        </button>
+        <button className="nut-phang" disabled={hd.dang_chay}
+          onClick={() => void hd.chay(
+            () => tai_tep(`/api/ky-luong/${ky.id}/xuat-csv-cny`, `luong_cny_${ky.thang}.csv`))}>
+          Xuất CSV
+        </button>
+      </div>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+
+      {phieu.length === 0 ? (
+        <Trong
+          tieu_de="Chưa có phiếu lương CNY"
+          mo_ta={String.raw`Bấm "Tính lương CNY" để sinh phiếu cho nhân sự chế độ lương Trung Quốc.`}
+        />
+      ) : (
+        <div className="vo-bang">
+          <table className="bang-gon bang-neo-cot-dau">
+            <thead>
+              <tr>
+                <th>Mã NV</th><th>Họ tên</th><th>Phòng ban</th>
+                <th className="canh-phai">Lương cơ bản</th>
+                <th className="canh-phai">Phụ cấp</th>
+                <th className="canh-phai">Công</th>
+                <th className="canh-phai">Lương theo công</th>
+                <th className="canh-phai">Thưởng</th>
+                <th className="canh-phai">Phụ cấp khác</th>
+                <th className="canh-phai">Trừ khác</th>
+                <th className="canh-phai">Thực lĩnh</th>
+                {sua_duoc && <th />}
+              </tr>
+            </thead>
+            <tbody>
+              {phieu.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.ma_nv}</td>
+                  <td>{p.ho_ten}</td>
+                  <td>{p.phong_ban ?? <span className="mo-ta">—</span>}</td>
+                  <td className="canh-phai">{tien(p.luong_co_ban)}</td>
+                  <td className="canh-phai">{tien(p.phu_cap)}</td>
+                  <td className="canh-phai">
+                    {Number(p.so_ngay_cong_thuc)}/{Number(p.so_ngay_cong_chuan)}
+                  </td>
+                  <td className="canh-phai">{tien(p.luong_theo_cong)}</td>
+                  <td className="canh-phai">{tien(p.thuong)}</td>
+                  <td className="canh-phai">{tien(p.phu_cap_khac)}</td>
+                  <td className="canh-phai">{tien(p.tru_khac)}</td>
+                  <td className="canh-phai"><strong>{tien(p.thuc_linh)}</strong> ¥</td>
+                  {sua_duoc && (
+                    <td className="canh-phai">
+                      <button className="nut-phang" onClick={() => dat_sua(p)}>Sửa</button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="hang-tong">
+                <td colSpan={3}><strong>Tổng cộng ({phieu.length} người)</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.luong_co_ban), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.phu_cap), 0))}</strong></td>
+                <td className="canh-phai mo-ta">—</td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.luong_theo_cong), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.thuong), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.phu_cap_khac), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.tru_khac), 0))}</strong></td>
+                <td className="canh-phai"><strong>{tien(phieu.reduce((a, p) => a + Number(p.thuc_linh), 0))} ¥</strong></td>
+                {sua_duoc && <td />}
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
+      {sua !== null && (
+        <HopThoaiSuaPhieuCny
+          phieu={sua}
+          khi_dong={() => dat_sua(null)}
+          khi_xong={() => { dat_sua(null); nap_lai(); khi_doi(); }}
+        />
+      )}
+    </>
+  );
+}
+
+function HopThoaiSuaPhieuCny(
+  { phieu, khi_dong, khi_xong }:
+  { phieu: PhieuCny; khi_dong: () => void; khi_xong: () => void },
+): ReactNode {
+  const [luong_co_ban, dat_luong_co_ban] = useState(String(Number(phieu.luong_co_ban)));
+  const [phu_cap, dat_phu_cap] = useState(String(Number(phieu.phu_cap)));
+  const [thuong, dat_thuong] = useState(String(Number(phieu.thuong)));
+  const [phu_cap_khac, dat_phu_cap_khac] = useState(String(Number(phieu.phu_cap_khac)));
+  const [tru_khac, dat_tru_khac] = useState(String(Number(phieu.tru_khac)));
+  const [ly_do, dat_ly_do] = useState(phieu.ly_do_tru_khac ?? '');
+  const [ghi_chu, dat_ghi_chu] = useState(phieu.ghi_chu ?? '');
+  const hd = dung_hanh_dong();
+
+  return (
+    <HopThoai tieu_de={`Sửa phiếu CNY — ${phieu.ho_ten}`} khi_dong={khi_dong}>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
+
+      <h3 style={{ margin: '0 0 0.5rem' }}>Lương cứng CNY (áp từ tháng này trở đi)</h3>
+      <label htmlFor="cny-lcb">Lương cơ bản (¥)</label>
+      <input id="cny-lcb" type="number" min="0" value={luong_co_ban}
+        onChange={(e) => dat_luong_co_ban(e.target.value)} />
+      <label htmlFor="cny-pc">Phụ cấp cố định (¥)</label>
+      <input id="cny-pc" type="number" min="0" value={phu_cap}
+        onChange={(e) => dat_phu_cap(e.target.value)} />
+      <p className="mo-ta">
+        Lưu vào <strong>quyết định lương CNY</strong> hiệu lực từ đầu tháng của kỳ — các tháng
+        sau vẫn giữ mức này cho tới khi có quyết định mới. Không áp BHXH/thuế Việt Nam.
+      </p>
+
+      <h3 style={{ margin: '1rem 0 0.5rem' }}>Điều chỉnh riêng kỳ này (¥)</h3>
+      <label htmlFor="cny-thuong">Thưởng (¥)</label>
+      <input id="cny-thuong" type="number" min="0" value={thuong}
+        onChange={(e) => dat_thuong(e.target.value)} />
+      <label htmlFor="cny-pck">Phụ cấp khác (¥)</label>
+      <input id="cny-pck" type="number" min="0" value={phu_cap_khac}
+        onChange={(e) => dat_phu_cap_khac(e.target.value)} />
+      <label htmlFor="cny-tru">Trừ khác (¥)</label>
+      <input id="cny-tru" type="number" min="0" value={tru_khac}
+        onChange={(e) => dat_tru_khac(e.target.value)} />
+      <label htmlFor="cny-lydo">Lý do trừ khác</label>
+      <input id="cny-lydo" value={ly_do} onChange={(e) => dat_ly_do(e.target.value)} />
+      <label htmlFor="cny-gc">Ghi chú</label>
+      <input id="cny-gc" value={ghi_chu} onChange={(e) => dat_ghi_chu(e.target.value)} />
+
+      <div className="hang-nut">
+        <button
+          disabled={hd.dang_chay}
+          onClick={() => void hd.chay(
+            () => goi(`/api/phieu-luong-cny/${phieu.id}`, {
+              method: 'PATCH',
+              body: {
+                luong_co_ban: Number(luong_co_ban) || 0,
+                phu_cap: Number(phu_cap) || 0,
+                thuong: Number(thuong) || 0,
+                phu_cap_khac: Number(phu_cap_khac) || 0,
+                tru_khac: Number(tru_khac) || 0,
+                ly_do_tru_khac: ly_do,
+                ghi_chu,
+              },
+            }),
+            'Đã lưu và tính lại lương CNY.',
           ).then((ok) => { if (ok !== null) khi_xong(); })}
         >
           Lưu

@@ -34,9 +34,148 @@ interface DuLieuLuong {
   co_so_tinh_luong: CoSoTinhLuong | null;
   phep: { quy: number; da_dung: number; con_lai: number; cho_duyet: number } | null;
   da_chot: boolean;
-  phieu_luong: null;
+  phieu_luong: PhieuLuong | null;
   ghi_chu_ot: string;
   ly_do_chua_co_phieu_luong: string;
+}
+
+/** Phiếu lương đã duyệt/trả của chính người xem (cùng dữ liệu web + email). */
+interface PhieuLuong {
+  id: string;
+  thang: string;
+  trang_thai_ky: string;
+  luong_co_ban: string;
+  phu_cap: string;
+  so_ngay_cong_chuan: string;
+  so_ngay_cong_thuc: string;
+  luong_ngay: string;
+  luong_theo_cong: string;
+  phut_ot: string;
+  he_so_ot: string;
+  tien_ot: string;
+  phut_ot_nghi_tuan: string;
+  phut_ot_le: string;
+  tien_ot_thuong: string;
+  tien_ot_nghi_tuan: string;
+  tien_ot_le: string;
+  he_so_ot_nghi_tuan: string;
+  he_so_ot_le: string;
+  thuong: string;
+  phu_cap_khac: string;
+  tong_thu_nhap: string;
+  bhxh_nld: string;
+  bhyt_nld: string;
+  bhtn_nld: string;
+  thue_tncn: string;
+  tru_khac: string;
+  ly_do_tru_khac: string | null;
+  tong_tru: string;
+  thuc_linh: string;
+  thuc_linh_lam_tron: string;
+  ep_du_cong: boolean;
+  mien_phat: boolean;
+  khoan: {
+    khoan_ma: string; ten: string; loai: string;
+    so_luong: string | null; don_gia: string | null; thanh_tien: string;
+    ghi_chu: string | null; chiu_thue: boolean;
+    chi_tiet?: {
+      id: string; ly_do: string; so_tien: string; thu_tu: number; cac_lan?: string[];
+    }[];
+  }[];
+  phep: { quy: number; da_dung: number; con_lai: number; cho_duyet: number } | null;
+  nghi: {
+    tu_ngay: string; den_ngay: string; nua_ngay: boolean; loai: string; trang_thai: string;
+  }[];
+}
+
+const dinh_dang_tien = new Intl.NumberFormat('vi-VN');
+const tien = (v: unknown): string => dinh_dang_tien.format(Math.round(Number(v) || 0));
+const gio_ot = (phut: unknown): string => {
+  const p = Number(phut) || 0;
+  return `${Math.floor(p / 60)}h${p % 60 > 0 ? String(p % 60).padStart(2, '0') : ''}`;
+};
+const he_so = (v: unknown): string =>
+  (Number(v) || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+const ngay_ngan = (s: string): string => `${s.slice(8, 10)}/${s.slice(5, 7)}`;
+
+/** Mot dong bang cua phieu: nhan + gia tri, kem dong phu mo ta cong thuc / can cu. */
+function DongPhieu(
+  { nhan, gia, phu, dam }: { nhan: string; gia: unknown; phu?: string; dam?: boolean },
+): ReactNode {
+  return (
+    <Dong>
+      <View style={kieu.nhieu}>
+        <Chu co={dam === true ? 'h3' : 'nho'}>{nhan}</Chu>
+        {phu !== undefined && phu !== '' && <Chu co="bo" mau="mo">{phu}</Chu>}
+      </View>
+      <Chu co={dam === true ? 'h3' : 'nho'} style={kieu.so}>{tien(gia)}</Chu>
+    </Dong>
+  );
+}
+
+/** Dong OT tong + ba dong theo loai ngay kem he so. */
+function DongOT({ p }: { p: PhieuLuong }): ReactNode {
+  if (Number(p.tien_ot) <= 0) return null;
+  const phut_thuong = Math.max(0,
+    Number(p.phut_ot) - Number(p.phut_ot_nghi_tuan) - Number(p.phut_ot_le));
+  return (
+    <View>
+      <DongPhieu nhan="Làm thêm giờ (OT)" gia={p.tien_ot} phu={gio_ot(p.phut_ot)} dam />
+      {Number(p.tien_ot_thuong) > 0 && (
+        <DongPhieu nhan="— Ngày thường" gia={p.tien_ot_thuong}
+          phu={`${gio_ot(phut_thuong)} × hệ số ${he_so(p.he_so_ot)}`} />
+      )}
+      {Number(p.tien_ot_nghi_tuan) > 0 && (
+        <DongPhieu nhan="— Chủ nhật" gia={p.tien_ot_nghi_tuan}
+          phu={`${gio_ot(p.phut_ot_nghi_tuan)} × hệ số ${he_so(p.he_so_ot_nghi_tuan)}`} />
+      )}
+      {Number(p.tien_ot_le) > 0 && (
+        <DongPhieu nhan="— Ngày lễ" gia={p.tien_ot_le}
+          phu={`${gio_ot(p.phut_ot_le)} × hệ số ${he_so(p.he_so_ot_le)}`} />
+      )}
+    </View>
+  );
+}
+
+/** Mot dong khoan (thu nhap / tru) kem chi tiet tung dong neu co. */
+function KhoanPhieuRow({ k }: { k: PhieuLuong['khoan'][number] }): ReactNode {
+  const dg = k.don_gia !== null ? Number(k.don_gia) : 0;
+  const sl = k.so_luong !== null ? Number(k.so_luong) : 0;
+  const phu = dg > 0 && sl > 0
+    ? `${tien(dg)}đ × ${sl}`
+    : sl > 0
+      ? `× ${sl}`
+      : k.ghi_chu !== null && k.ghi_chu !== ''
+        ? k.ghi_chu
+        : undefined;
+  return (
+    <View>
+      <Dong>
+        <View style={kieu.nhieu}>
+          <Chu co="nho">{k.ten}{k.chiu_thue ? '' : ' (miễn thuế)'}</Chu>
+          {phu !== undefined && <Chu co="bo" mau="mo">{phu}</Chu>}
+        </View>
+        <Chu co="nho" style={kieu.so}>{tien(k.thanh_tien)}</Chu>
+      </Dong>
+      {(k.chi_tiet ?? []).map((c) => (
+        <View key={c.id} style={{ paddingHorizontal: 14 }}>
+          {c.ly_do !== '' && (
+            <View style={[kieu.hang_deu, { marginTop: 2 }]}>
+              <Chu co="bo" mau="mo" style={kieu.nhieu}>— {c.ly_do}</Chu>
+              <Chu co="bo" mau="mo" style={kieu.so}>{tien(c.so_tien)}</Chu>
+            </View>
+          )}
+          {(c.cac_lan ?? []).map((lan, j) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <Chu key={`${c.id}:${String(j)}`} co="bo" mau="mo"
+              style={{ paddingLeft: c.ly_do !== '' ? 16 : 0, marginTop: 2 }}>
+              • {lan}
+            </Chu>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
 }
 
 export default function ManLuong(): ReactNode {
@@ -181,6 +320,101 @@ export default function ManLuong(): ReactNode {
                 </Chu>
               )}
             </The>
+          )}
+
+          {/* ------------------------------------------------ phieu luong */}
+          {du_lieu.phieu_luong !== null && (
+            <View>
+              <View style={{ marginTop: 12 }}>
+                <Chu co="h2">Phiếu lương</Chu>
+              </View>
+
+              <The>
+                <View style={kieu.hang_deu}>
+                  <Chu co="h3">Thực nhận (đã làm tròn)</Chu>
+                  <Chu co="h2" style={kieu.so}>
+                    {tien(du_lieu.phieu_luong.thuc_linh_lam_tron)} đ
+                  </Chu>
+                </View>
+                <Chu co="bo" mau="mo" style={{ marginTop: 4 }}>
+                  Công {Number(du_lieu.phieu_luong.so_ngay_cong_thuc)}/
+                  {Number(du_lieu.phieu_luong.so_ngay_cong_chuan)} · Lương cơ bản{' '}
+                  {tien(du_lieu.phieu_luong.luong_co_ban)} đ
+                  {du_lieu.phieu_luong.phep !== null
+                    ? ` · Phép còn ${du_lieu.phieu_luong.phep.con_lai}/${du_lieu.phieu_luong.phep.quy} ngày`
+                    : ''}
+                </Chu>
+              </The>
+
+              <The>
+                <Chu co="h3">Thu nhập</Chu>
+                <DongPhieu nhan="Lương theo công" gia={du_lieu.phieu_luong.luong_theo_cong}
+                  phu={`${Number(du_lieu.phieu_luong.so_ngay_cong_thuc)}/${Number(du_lieu.phieu_luong.so_ngay_cong_chuan)} công`} />
+                <DongOT p={du_lieu.phieu_luong} />
+                {du_lieu.phieu_luong.khoan
+                  .filter((k) => k.loai === 'thu_nhap')
+                  .map((k) => <KhoanPhieuRow key={k.khoan_ma} k={k} />)}
+                {Number(du_lieu.phieu_luong.thuong) > 0 && (
+                  <DongPhieu nhan="Thưởng" gia={du_lieu.phieu_luong.thuong} />
+                )}
+                {Number(du_lieu.phieu_luong.phu_cap_khac) > 0 && (
+                  <DongPhieu nhan="Phụ cấp khác" gia={du_lieu.phieu_luong.phu_cap_khac} />
+                )}
+                <Dong cuoi>
+                  <Chu co="h3" style={kieu.nhieu}>Tổng thu nhập</Chu>
+                  <Chu co="h3" style={kieu.so}>{tien(du_lieu.phieu_luong.tong_thu_nhap)}</Chu>
+                </Dong>
+              </The>
+
+              <The>
+                <Chu co="h3">Khấu trừ</Chu>
+                {Number(du_lieu.phieu_luong.bhxh_nld) > 0 && (
+                  <DongPhieu nhan="BHXH (8%)" gia={du_lieu.phieu_luong.bhxh_nld} />
+                )}
+                {Number(du_lieu.phieu_luong.bhyt_nld) > 0 && (
+                  <DongPhieu nhan="BHYT (1,5%)" gia={du_lieu.phieu_luong.bhyt_nld} />
+                )}
+                {Number(du_lieu.phieu_luong.bhtn_nld) > 0 && (
+                  <DongPhieu nhan="BHTN (1%)" gia={du_lieu.phieu_luong.bhtn_nld} />
+                )}
+                {Number(du_lieu.phieu_luong.thue_tncn) > 0 && (
+                  <DongPhieu nhan="Thuế TNCN" gia={du_lieu.phieu_luong.thue_tncn} />
+                )}
+                {du_lieu.phieu_luong.khoan
+                  .filter((k) => k.loai === 'tru')
+                  .map((k) => <KhoanPhieuRow key={k.khoan_ma} k={k} />)}
+                {Number(du_lieu.phieu_luong.tru_khac) > 0 && (
+                  <DongPhieu nhan="Trừ khác" gia={du_lieu.phieu_luong.tru_khac}
+                    phu={du_lieu.phieu_luong.ly_do_tru_khac ?? undefined} />
+                )}
+                <Dong cuoi>
+                  <Chu co="h3" style={kieu.nhieu}>Tổng khấu trừ</Chu>
+                  <Chu co="h3" style={kieu.so}>{tien(du_lieu.phieu_luong.tong_tru)}</Chu>
+                </Dong>
+              </The>
+
+              {du_lieu.phieu_luong.nghi.length > 0 && (
+                <The>
+                  <Chu co="h3">Ngày nghỉ trong tháng</Chu>
+                  {du_lieu.phieu_luong.nghi.map((d, i) => (
+                    <Dong key={`${d.tu_ngay}:${String(i)}`}
+                      cuoi={i === du_lieu.phieu_luong!.nghi.length - 1}>
+                      <View style={kieu.nhieu}>
+                        <Chu co="nho">
+                          {ngay_ngan(d.tu_ngay)}
+                          {d.tu_ngay !== d.den_ngay ? ` → ${ngay_ngan(d.den_ngay)}` : ''}
+                          {d.nua_ngay ? ' · nửa ngày' : ''}
+                        </Chu>
+                        <Chu co="bo" mau="mo">
+                          {d.loai === 'khong_luong' ? 'không lương' : 'phép có lương'}
+                          {d.trang_thai === 'cho_duyet' ? ' (chờ duyệt)' : ''}
+                        </Chu>
+                      </View>
+                    </Dong>
+                  ))}
+                </The>
+              )}
+            </View>
           )}
 
           {/* ------------------------------------------------ ghi chu */}

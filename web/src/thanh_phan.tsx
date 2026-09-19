@@ -1,6 +1,6 @@
 // Thanh phan dung chung cho toan bo webapp.
 import { useEffect, useState, type ReactNode } from 'react';
-import { goi, tai_blob, tai_tep, LoiApi, mui_gio_offset_gio } from './api.ts';
+import { goi, tai_anh_tu, tai_blob, tai_tep, LoiApi, mui_gio_offset_gio } from './api.ts';
 
 /**
  * Khoa React cho mot danh sach CHI DOC, sinh lai toan bo moi lan.
@@ -78,6 +78,37 @@ export function hom_nay(): string {
 /** Thang hien tai dang 'YYYY-MM' theo gio may cham cong. */
 export function thang_nay(): string {
   return hom_nay().slice(0, 7);
+}
+
+/**
+ * Chon thang 'YYYY-MM' bang hai o select TIENG VIET.
+ *
+ * `input type="month"` hien ten thang theo NGON NGU TRINH DUYET ("September 2026") va khong
+ * thong nhat giua cac may. Hai o select nay hien "Tháng 09" / "Năm 2026" o moi trinh duyet.
+ */
+export function ChonThang(
+  { gia_tri, doi }: { gia_tri: string; doi: (v: string) => void },
+): ReactNode {
+  const [nam, thg] = gia_tri.split('-');
+  const nam_hien_tai = Number(thang_nay().slice(0, 4));
+  const nam_bat_dau = nam_hien_tai - 5;
+  const cac_nam = Array.from({ length: 7 }, (_, i) => nam_bat_dau + i);
+  return (
+    <span className="chon-thang">
+      <select aria-label="Tháng" value={thg ?? ''}
+        onChange={(e) => doi(`${nam ?? String(nam_hien_tai)}-${e.target.value}`)}>
+        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((t) => (
+          <option key={t} value={t}>Tháng {t}</option>
+        ))}
+      </select>
+      <select aria-label="Năm" value={nam ?? String(nam_hien_tai)}
+        onChange={(e) => doi(`${e.target.value}-${thg ?? '01'}`)}>
+        {cac_nam.map((n) => (
+          <option key={String(n)} value={String(n)}>Năm {String(n)}</option>
+        ))}
+      </select>
+    </span>
+  );
 }
 
 // ============================================================ trang thai tai
@@ -349,8 +380,11 @@ const NHAN_NGAY: Record<string, { chu: string; lop: string }> = {
   co_mat: { chu: 'Có mặt', lop: 'nhan-tot' },
   vang: { chu: 'Vắng', lop: 'nhan-xau' },
   nghi_phep: { chu: 'Nghỉ phép', lop: 'nhan-lanh' },
+  nghi_khong_luong: { chu: 'Nghỉ không lương', lop: 'nhan-canh-bao' },
   ngay_le: { chu: 'Ngày lễ', lop: 'nhan-canh-bao' },
   nghi_tuan: { chu: 'Nghỉ tuần', lop: 'nhan-mo' },
+  cong_tac: { chu: 'Công tác', lop: 'nhan-lanh' },
+  lam_bu: { chu: 'Làm bù', lop: 'nhan-tot' },
 };
 
 export function NhanNgay({ trang_thai }: { trang_thai: string }): ReactNode {
@@ -360,6 +394,7 @@ export function NhanNgay({ trang_thai }: { trang_thai: string }): ReactNode {
 
 const NHAN_DON: Record<string, { chu: string; lop: string }> = {
   cho_duyet: { chu: 'Chờ duyệt', lop: 'nhan-canh-bao' },
+  cho_duyet_2: { chu: 'Chờ TBKS/Admin', lop: 'nhan-canh-bao' },
   da_duyet: { chu: 'Đã duyệt', lop: 'nhan-tot' },
   tu_choi: { chu: 'Từ chối', lop: 'nhan-xau' },
   da_huy: { chu: 'Đã hủy', lop: 'nhan-mo' },
@@ -387,6 +422,7 @@ export const TEN_VAI_TRO: Record<string, string> = {
   truong_phong_nhan_su: 'TP nhân sự',
   nhan_vien: 'Nhân viên',
   cho_duyet: 'Chờ phân quyền',
+  tbks: 'Trưởng ban kiểm soát',
 };
 
 export const TEN_NGUON: Record<string, string> = {
@@ -838,5 +874,65 @@ export function HopThoaiXemTep(
         <button type="button" onClick={khi_dong}>Đóng</button>
       </div>
     </HopThoai>
+  );
+}
+
+/**
+ * Anh tai qua fetch CO TOKEN (Authorization header) roi ve bang <img> qua blob URL — vi anh rieng
+ * tu can token ma the <img src> khong gui duoc header. Dung cho anh dinh kem khieu nai, v.v.
+ */
+export function AnhCoToken(
+  { duong_dan, alt, cao = 72 }: { duong_dan: string; alt: string; cao?: number },
+): ReactNode {
+  const [url, dat_url] = useState<string | null>(null);
+  const [loi, dat_loi] = useState(false);
+  useEffect(() => {
+    let con_dung = true;
+    let da_tao: string | null = null;
+    tai_anh_tu(duong_dan)
+      .then((u) => { if (con_dung) { da_tao = u; dat_url(u); } else URL.revokeObjectURL(u); })
+      .catch(() => { if (con_dung) dat_loi(true); });
+    return () => { con_dung = false; if (da_tao !== null) URL.revokeObjectURL(da_tao); };
+  }, [duong_dan]);
+  if (loi) return <span className="o-so-phu">không tải được ảnh</span>;
+  if (url === null) return <span className="o-so-phu">…</span>;
+  return (
+    <a href={url} target="_blank" rel="noreferrer noopener">
+      <img src={url} alt={alt} style={{ height: cao, borderRadius: 6, border: '1px solid #E5E7EB', display: 'block', objectFit: 'cover' }} />
+    </a>
+  );
+}
+
+export interface TinNhanKN { vai: string; noi_dung: string; tao_luc: string }
+
+/**
+ * Thread hoi thoai cua mot khieu nai: tin nhan dau (noi_dung goc, phia nhan vien) + cac tra loi
+ * qua lai. `la_admin` doi nhan de biet "Ban" la phia nao.
+ */
+export function ThreadKhieuNai(
+  { noi_dung, tao_luc, tra_loi, la_admin = false }:
+  { noi_dung: string; tao_luc: string; tra_loi: TinNhanKN[]; la_admin?: boolean },
+): ReactNode {
+  const tat_ca: TinNhanKN[] = [{ vai: 'nhan_vien', noi_dung, tao_luc }, ...tra_loi];
+  const ten = (vai: string): string => {
+    if (vai === 'nhan_su') return la_admin ? 'Nhân sự (bạn)' : 'Phòng Nhân sự';
+    return la_admin ? 'Người lao động' : 'Bạn';
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0' }}>
+      {tat_ca.map((m, i) => (
+        <div
+          key={`${String(i)}-${m.tao_luc}`}
+          style={{
+            maxWidth: '85%', padding: '6px 10px', borderRadius: 8,
+            background: m.vai === 'nhan_su' ? '#EFF6FF' : '#F3F4F6',
+            alignSelf: m.vai === 'nhan_su' ? 'flex-end' : 'flex-start',
+          }}
+        >
+          <div className="mo-ta" style={{ fontSize: 12 }}>{ten(m.vai)} · {ngay_gio(m.tao_luc)}</div>
+          <div style={{ whiteSpace: 'pre-wrap' }}>{m.noi_dung}</div>
+        </div>
+      ))}
+    </div>
   );
 }

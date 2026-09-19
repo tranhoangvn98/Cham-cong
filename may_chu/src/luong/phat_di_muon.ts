@@ -26,8 +26,17 @@ export interface CauHinhDiMuon {
   moc_nua_ngay_phut: number;
   /** So tien phat moi lan o tang 50k. */
   muc_50k: number;
-  /** So lan duoc mien moi thang (chi ap cho tang 50k, can co don). */
+  /** So lan duoc mien moi thang (chi ap cho tang 50k). */
   mien_moi_thang: number;
+  /**
+   * Viec mien `mien_moi_thang` lan/thang co BAT BUOC don di muon duyet truoc han khong.
+   *
+   *  - true (mac dinh): phai co don gui truoc han — chinh sach chuan.
+   *  - false: mien tu dong khong can don (giai doan an han truoc khi bat buoc lam don).
+   *
+   * Thieu = true, de tuong thich ban cu va cac cho tinh tay khong khai truong nay.
+   */
+  yeu_cau_don_mien?: boolean;
 }
 
 export interface KetQuaDiMuon {
@@ -64,7 +73,10 @@ export function tinh_phat_di_muon(ngay: readonly NgayDiMuon[], ch: CauHinhDiMuon
     }
   }
 
-  const mien = Math.min(so_50k_co_don, Math.max(0, ch.mien_moi_thang));
+  // Giai doan an han (yeu_cau_don_mien = false): mien ap cho MOI lan tang 50k, khong doi don.
+  // Chinh sach chuan (mac dinh): chi mien lan co don gui truoc han.
+  const so_du_dieu_kien_mien = (ch.yeu_cau_don_mien ?? true) ? so_50k_co_don : so_50k;
+  const mien = Math.min(so_du_dieu_kien_mien, Math.max(0, ch.mien_moi_thang));
   const so_lan_50k_phat = so_50k - mien;
 
   return {

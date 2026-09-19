@@ -104,6 +104,15 @@ export async function quet_vi_pham(thang: string, nguoi_ghi: string | null): Pro
 
   let so_moi = 0;
   await trong_giao_dich(async (khach) => {
+    // XOA truoc cac vi pham he_thong CON 'moi' cua ky nay: quet lai phai phan anh DUNG so lieu
+    // cham cong hien tai. Neu khong xoa, vi pham nao TUT xuong duoi nguong (vd doi nguong di muon
+    // 08:06 -> 08:11 lam so lan giam) se giu nguyen ban ghi cu voi so lieu cu -> tru thua tien.
+    // Ban ghi da co nguoi dong toi (cho_giai_trinh / da_xac_nhan / bac_bo / da_xu_ly) KHONG xoa.
+    await khach.query(
+      "delete from vi_pham where ky = $1 and nguon = 'he_thong' and trang_thai = 'moi'",
+      [thang],
+    );
+
     for (const nv of ds) {
       for (const q of quy_tac) {
         const gia_tri = lay(nv, q.chi_so);

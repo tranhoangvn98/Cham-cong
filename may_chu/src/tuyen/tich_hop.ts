@@ -21,7 +21,8 @@ import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
 import { can_khoa_api, ghi_lan_goi } from '../bao_mat/khoa_api.ts';
 import { dong_bo_thu_muc_nhan_vien } from '../ho_so/sap_xep_tep.ts';
 import {
-  LoiKhongTim, chuoi, chuoi_bat_buoc, khoang_ngay, ngay, phan_trang, than,
+  LoiDauVao, LoiKhongTim, chuoi, chuoi_bat_buoc, khoang_ngay, ngay, ngay_bat_buoc,
+  phan_trang, than,
 } from '../tien_ich/kiem_tra.ts';
 
 interface PhanTrang {
@@ -598,6 +599,54 @@ export async function tuyen_tich_hop(app: FastifyInstance): Promise<void> {
     // ma_nv/ho_ten, va day la mot trong bon.
     await dong_bo_thu_muc_nhan_vien(co.id, (m: string) => { req.log.info(m); });
     return { du_lieu: sua, da_tao: false };
+  });
+
+  // ====================================================== vi pham tu CSKH (ADR-0012)
+  //
+  // He thong CSKH day ho so vi pham cua KN Khai bao Hai quan sang. Chi ghi ban ghi
+  // 'moi' nguon 'cskh' — moi quyet dinh ky luat van di qua bien ban (BLLD Dieu 122)
+  // nhu moi vi pham khac. Idempotent theo id_ngoai: goi lai khong ghi trung.
+  app.post('/vi-pham', {
+    schema: mo_ta('ViPham', 'ghiNhanTuHeThongNgoai', 'Ghi nhận vi phạm từ hệ thống ngoài',
+      'Khóa API phải có phạm vi `vi_pham:ghi`. Bản ghi trùng `id_ngoai` không ghi lần hai — bên gửi chạy lại lô thoải mái.\n\n**Không gửi tệp**: `bang_chung` là chứng cứ dạng JSON (liên kết về hồ sơ gốc), không phải nội dung tệp.',
+      ['vi_pham:ghi'],
+      { body: 'Các trường: ma_nv (bắt buộc), ngay (bắt buộc, YYYY-MM-DD), mo_ta (bắt buộc), id_ngoai (bắt buộc), loai_ma (mã loại vi phạm; thiếu thì dùng loại KHAC), bang_chung, lien_ket.' }),
+    preHandler: can_khoa_api('vi_pham:ghi'),
+  }, async (req, res) => {
+    const b = than(req.body);
+    const ma_nv = chuoi_bat_buoc(b, 'ma_nv', { toi_da: 64 });
+    const ngay_vp = ngay_bat_buoc(b, 'ngay');
+    const loai_ma = chuoi(b, 'loai_ma', { toi_da: 40 });
+    const mo_ta_vp = chuoi_bat_buoc(b, 'mo_ta', { toi_da: 2000 });
+    const bang_chung = chuoi(b, 'bang_chung', { toi_da: 4000 });
+    const lien_ket = chuoi(b, 'lien_ket', { toi_da: 500 });
+    const id_ngoai = chuoi_bat_buoc(b, 'id_ngoai', { toi_da: 120 });
+
+    const nv = await nhan_vien_theo_ma(ma_nv);
+    const loai = loai_ma === null
+      ? await truy_van_mot<{ id: string }>(
+        `select id from loai_vi_pham where dang_bat = true and ma = 'KHAC' limit 1`)
+      : await truy_van_mot<{ id: string }>(
+        `select id from loai_vi_pham where lower(ma) = lower($1)`, [loai_ma]);
+    if (loai === null) throw new LoiDauVao(
+      `Chưa khai loại vi phạm "${loai_ma ?? 'KHAC'}" trong chấm công — hãy khai trước.`);
+
+    const dong = await truy_van_mot<{ id: string }>(
+      `insert into vi_pham
+         (nhan_vien_id, loai_vi_pham_id, nguon, ngay, ky, mo_ta,
+          bang_chung, lien_ket, id_ngoai, trang_thai)
+       values ($1,$2,'cskh',$3,$4,$5,$6,$7,$8,'moi')
+       on conflict (id_ngoai) where id_ngoai is not null do nothing
+       returning id`,
+      [nv.id, loai.id, ngay_vp, ngay_vp.slice(0, 7), mo_ta_vp,
+        bang_chung, lien_ket, id_ngoai],
+    );
+    if (dong === null) {
+      const cu = await truy_van_mot<{ id: string }>(
+        'select id from vi_pham where id_ngoai = $1', [id_ngoai]);
+      return { du_lieu: { id: cu!.id, da_ghi_truoc: true } };
+    }
+    return res.code(201).send({ du_lieu: { id: dong.id, da_ghi_truoc: false } });
   });
 
   // Duong dan la trong /api/v1 cung phai tra JSON dung hinh dang, khong phai trang 404 la.

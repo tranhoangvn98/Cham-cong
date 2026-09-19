@@ -68,6 +68,10 @@ interface ThongTinChung {
   quyet_luc: string | null;
   ghi_chu_duyet: string | null;
   tao_luc: string;
+  // Cap hai chi ton tai o don lam them (TBKS/Admin). null = don khong co cap hai.
+  nguoi_duyet_2?: string | null;
+  quyet_2_luc?: string | null;
+  ghi_chu_duyet_2?: string | null;
 }
 
 /**
@@ -77,7 +81,7 @@ interface ThongTinChung {
  * don khong co dong do thi chi la mot ban in lai cua form nhap, khong chung minh duoc gi.
  */
 function khoi_chung(tt: ThongTinChung, rieng: readonly (readonly [string, string])[]): KhoiDocx[] {
-  return [
+  const ra: KhoiDocx[] = [
     { loai: 'doan', chu: 'CÔNG TY TNHH TRẦN HOÀNG VIỆT NAM', dam: true, giua: true },
     { loai: 'doan', chu: 'Độc lập – Tự do – Hạnh phúc', giua: true },
     { loai: 'doan', chu: '' },
@@ -101,6 +105,22 @@ function khoi_chung(tt: ThongTinChung, rieng: readonly (readonly [string, string
         ['Ghi chú của người duyệt', tt.ghi_chu_duyet ?? '—'],
       ],
     },
+  ];
+  if (tt.nguoi_duyet_2 !== null && tt.nguoi_duyet_2 !== undefined) {
+    ra.push(
+      { loai: 'doan', chu: 'Xác nhận phê duyệt cấp hai (TBKS / Admin)', dam: true },
+      {
+        loai: 'bang',
+        hang: [
+          ['Kết quả', 'ĐÃ DUYỆT'],
+          ['Người duyệt', tt.nguoi_duyet_2 ?? '—'],
+          ['Thời điểm duyệt', tt.quyet_2_luc ?? '—'],
+          ['Ghi chú của người duyệt', tt.ghi_chu_duyet_2 ?? '—'],
+        ],
+      },
+    );
+  }
+  ra.push(
     { loai: 'doan', chu: '' },
     {
       loai: 'doan',
@@ -108,7 +128,8 @@ function khoi_chung(tt: ThongTinChung, rieng: readonly (readonly [string, string
         + 'Bản gốc là dữ liệu trong hệ thống cùng với thông tin người duyệt và thời điểm duyệt '
         + 'ở trên; tệp này là bản kết xuất.',
     },
-  ];
+  );
+  return ra;
 }
 
 // ---------------------------------------------------------------- doc don
@@ -298,6 +319,11 @@ export async function ban_don_khac(don_id: string): Promise<BanDonDaLuu | null> 
         quyet_luc: d.quyet_luc === null ? null : ngay_gio_viet(d.quyet_luc),
         ghi_chu_duyet: d.ghi_chu_duyet,
         tao_luc: ngay_gio_viet(d.tao_luc),
+        // Don lam them co cap duyet thu hai — in ca nguoi duyet cap 2 vao ban don.
+        nguoi_duyet_2: d.loai === 'lam_them' ? d.nguoi_duyet_2 : null,
+        quyet_2_luc: d.loai === 'lam_them' && d.quyet_2_luc !== null
+          ? ngay_gio_viet(d.quyet_2_luc) : null,
+        ghi_chu_duyet_2: d.loai === 'lam_them' ? d.ghi_chu_duyet_2 : null,
       },
       [...dt.hang_ban_don(day_du), ['Ngày lập đơn', ngay_gio_viet(d.tao_luc)]],
     ),

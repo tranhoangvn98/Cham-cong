@@ -44,8 +44,9 @@ Mọi lỗi trả về `{ "loi": "<thông điệp tiếng Việt hiển thị đ
 
 ### Vai trò
 
-`admin` › `nhan_su` › `truong_phong` › `nhan_vien`. Cột "Quyền" dưới đây là **mức tối
-thiểu**.
+`admin` › `nhan_su` › `truong_phong` › `nhan_vien`, cộng hai vai trò riêng:
+`truong_phong_nhan_su` (TP HR) và `tbks` (Trưởng Ban Kiểm Soát — duyệt OT cấp 2 và duyệt kết
+quả OT). Cột "Quyền" dưới đây là **mức tối thiểu**.
 
 ---
 
@@ -390,12 +391,41 @@ không chỉ có một.
 | POST | `/giai-trinh/:id/quyet` | truong_phong |
 | GET | `/quet-dien-thoai` | truong_phong |
 | POST | `/quet-dien-thoai/:id/quyet` | truong_phong |
+| GET | `/don?trang_thai=&loai=` | nguoi duyet |
+| POST | `/don/:id/quyet` | xem dưới |
+| GET | `/don/dem` | nguoi duyet |
+| GET | `/don/:id/canh-bao` | nguoi duyet |
+| POST | `/don/:id/ban-don` | nguoi duyet |
+| GET | `/ot-cap-2/dem` | tbks, admin |
+| GET | `/ot-ket-qua?trang_thai=` | tbks, admin |
+| GET | `/ot-ket-qua/dem` | tbks, admin |
+| POST | `/ot-ket-qua/:id/quyet` | tbks, admin |
+| GET | `/don/:id/tep-ot` | tbks, admin — mọi tệp (tài liệu + ảnh) của một đơn OT |
 
 Thân yêu cầu: `{ "quyet_dinh": "da_duyet" | "tu_choi", "ghi_chu": "..." }`
 
 Duyệt xong hệ thống **tự tính lại** bảng công của những ngày liên quan. Trưởng phòng chỉ
 quyết được đơn của nhân viên trong phòng mình — ngoài phạm vi trả **404** (không tiết lộ
 đơn đó tồn tại). Đơn đã xử lý không quyết lại được (400).
+
+### Duyệt đơn làm thêm giờ — hai cấp
+
+Đơn `lam_them` đi qua **hai cấp** (các loại đơn khác giữ nguyên một cấp):
+
+| Bước | Trạng thái | Ai duyệt |
+|---|---|---|
+| Tạo đơn | `cho_duyet` (phòng có trưởng phòng) hoặc `cho_duyet_2` (phòng chưa gán trưởng phòng → bỏ qua cấp 1) | — |
+| Cấp 1 | `cho_duyet` → `cho_duyet_2` | `truong_phong` (phòng mình), `truong_phong_nhan_su`, `nhan_su` |
+| Cấp 2 | `cho_duyet_2` → `da_duyet` / `tu_choi` | `tbks`, `admin` |
+
+`admin`/`tbks` **không** duyệt cấp 1 (400) để giữ tách bạch — một người không quyết cả hai
+cấp của cùng một đơn. Duyệt cấp 2 xong mới sinh bản đơn DOCX (in đủ hai người duyệt).
+
+### Duyệt kết quả OT
+
+`POST /api/duyet/ot-ket-qua/:id/quyet` — khi `da_duyet`, máy chủ **tự tính lại bảng công**
+của ngày làm thêm; từ lúc đó phút OT mới vào bảng công và đi vào lương. Ngày đã chốt bảng
+công thì không tính lại được (phản hồi kèm `loi_chot`).
 
 ## 5. Self-service cho app — `/api/toi`
 
@@ -411,6 +441,12 @@ quyết được đơn của nhân viên trong phòng mình — ngoài phạm vi
 | GET / POST | `/nghi-phep` | Xem / gửi đơn nghỉ phép |
 | POST | `/nghi-phep/:id/huy` | Hủy đơn của mình |
 | GET / POST | `/giai-trinh` | Xem / gửi đơn giải trình quên quẹt |
+| GET / POST | `/don` | Xem / gửi đơn làm thêm, đổi ca, công tác, thôi việc (kèm `ket_qua_trang_thai` của từng đơn OT) |
+| GET | `/don/loai` | Danh mục loại đơn |
+| POST | `/don/:id/huy` | Hủy đơn của mình |
+| POST | `/don/:id/tai-lieu` | **multipart** — đính kèm tài liệu cho đơn OT (tùy chọn; PDF/JPG/PNG) |
+| POST | `/don/:id/ket-qua` | **multipart** — nộp kết quả OT bằng ảnh (1–5 ảnh JPG/PNG, trường `anh`; `ghi_chu` tùy chọn) |
+| GET | `/don/:id/ket-qua` | Trạng thái kết quả OT của đơn mình |
 | POST / DELETE | `/token-push` | Đăng ký / bỏ token thông báo đẩy |
 
 ### Thông báo đẩy

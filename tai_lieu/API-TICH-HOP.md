@@ -91,6 +91,7 @@ Khi tạo phải chọn **phạm vi**. Không có phạm vi nào thì khóa khô
 | `nghi_phep:doc` | Đọc đơn nghỉ phép đã duyệt |
 | `ho_so:doc` | Đọc hồ sơ nhân sự |
 | `su_kien:doc` | Đọc dòng sự kiện |
+| `vi_pham:ghi` | Ghi nhận bản ghi vi phạm nguồn hệ thống ngoài (CSKH) |
 
 **Không có phạm vi ghi cho bảng công và lần quẹt.** Đây là bản ghi gốc để tính lương; cho hệ
 thống ngoài ghi đè vào đó là mở đường sửa sổ chấm công từ bên ngoài mà không qua duyệt.
@@ -221,6 +222,29 @@ GET /api/v1/su-kien?tu_id=0&loai=&gioi_han=100
 
 Bên tích hợp tự lưu `id_cuoi` rồi lần sau truyền vào `tu_id`. Hệ thống **không giữ con trỏ cho
 từng bên**, nên nhiều hệ thống cùng đọc một dòng sự kiện mà không đạp nhau.
+
+### Vi phạm từ hệ thống ngoài (nguồn CSKH)
+
+```
+POST /api/v1/vi-pham
+```
+
+Khóa API phải có phạm vi `vi_pham:ghi`. Bản ghi trùng `id_ngoai` không ghi lần hai — bên gửi
+chạy lại lô thoải mái. **Không gửi tệp**: `bang_chung` là chứng cứ dạng JSON (liên kết về hồ
+sơ gốc), không phải nội dung tệp.
+
+Thân yêu cầu (bắt buộc: `ma_nv`, `ngay`, `mo_ta`, `id_ngoai`):
+
+```json
+{ "ma_nv": "NV0012", "ngay": "2026-09-16", "loai_ma": "KN_NOI_BO",
+  "mo_ta": "Khai sai mã HS khiến lô hàng bị giữ ở cửa khẩu",
+  "bang_chung": "{\"lien_ket\":\"/cskh/ky-luat\"}",
+  "lien_ket": "/cskh/ky-luat", "id_ngoai": "cskh:uuid-cua-phieu" }
+```
+
+Phản hồi: `{ "du_lieu": { "id": "<id bản ghi>", "da_ghi_truoc": false } }`. Ghi bản ghi ở
+trạng thái `moi` nguồn `cskh`; mọi quyết định kỷ luật vẫn đi qua biên bản (BLLĐ Điều 122)
+như mọi vi phạm khác.
 
 Các loại sự kiện: `lan_quet.da_ghi`, `bang_cong.da_chot`, `nghi_phep.da_duyet`,
 `thiet_bi.mat_ket_noi`, `thiet_bi.ket_noi_lai`.

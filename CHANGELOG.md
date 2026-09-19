@@ -2,7 +2,59 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
-## [1.86.1] — 2026-09-19
+## [1.94.0] — 2026-09-19
+
+**Hệ văn bản AI (soạn thảo theo NĐ30 bằng AI) + Quy trình nghỉ việc tự động.**
+
+- **Văn bản AI**: soạn thông báo / quyết định / công văn theo Nghị định 30 bằng AI (DeepSeek),
+  kiểm tra thể thức qua bộ cổng gate, dựng tệp DOCX (Python sidecar), trình ký và ban hành
+  với số ký hiệu tự cấp; gửi email kèm DOCX qua Microsoft Graph (fail-soft, có gửi lại).
+- **Quy trình nghỉ việc tự động**: khi ban hành "Quyết định nghỉ việc" (loại Quyết định,
+  phạm vi Cá nhân + ngày nghỉ việc), tệp quyết định tự gắn vào hồ sơ nhân viên (mục
+  "Quyết định nghỉ việc", đồng bộ SharePoint). Đến ngày nghỉ việc, lịch chạy đêm tự động:
+  khóa tài khoản + thu hồi phiên; báo cổng phân quyền chặn đăng nhập và chuyển trạng thái;
+  gửi Microsoft Graph chặn đăng nhập (`accountEnabled = false`), thu hồi phiên và rút toàn bộ
+  giấy phép (bật bằng `MS365_NGHI_VIEC_BAT=1`). Sự kiện đi qua hộp thư đi `hop_thu_di` — có
+  retry, không mất khi cổng/Microsoft đang chết. Nút "Cho nghỉ việc" thủ công dùng chung
+  nghiệp vụ và nay có thêm bước chặn Microsoft.
+- Tên nhân viên dạng liên kết mở hồ sơ chuyển sang màu **xanh lá đậm** (token `--tot`) để
+  phân biệt với liên kết xanh dương thông thường.
+- Tài liệu mới: `tai_lieu/NGHI-VIEC.md`; cập nhật `tai_lieu/DANG-NHAP-MICROSOFT.md`.
+
+## [1.93.4] — 2026-09-19
+
+**Ứng lương: một màn hình, không cuộn + chọn tháng/ngày bằng tiếng Việt.**
+
+- Trang Ứng lương gọn về một màn hình: bảng log cuộn nội bộ trong thẻ, không kéo dài cả trang.
+- Modal tạo/sửa khoản ứng bố cục lại thành lưới 2 cột (danh sách nhân viên có ô tìm kiếm +
+  các ô nhập bên phải), không còn thanh cuộn của modal.
+- Ô chọn tháng hiện "Tháng 09 / Năm 2026" và ngày ứng nhập dạng dd/mm/yyyy — không còn phụ
+  thuộc ngôn ngữ trình duyệt ("September 2026", "09/19/2026").
+- Thêm `ChonThang` dùng chung trong `thanh_phan.tsx` để các trang khác dùng lại.
+
+## [1.93.3] — 2026-09-19
+
+**Tổng quan: lấp đầy khoảng trắng, ba cột giãn đều hết chiều cao màn hình.**
+
+- Lưới Tổng quan giờ căng đầy vùng nội dung: hai hàng giữa chia đều khoảng còn lại, ba cột
+  kết thúc thẳng hàng ở cùng một mép dưới — hết khoảng trắng thừa.
+- Khoảng trống phân bố vào trong thẻ: biểu đồ 7 ngày cao theo cột, danh sách Việc của nhân
+  sự dàn đều các dòng, trạng thái rỗng căn giữa, bảng cảnh báo đặt sát đáy thẻ.
+
+## [1.93.2] — 2026-09-19
+
+**Vẽ lại trang Tổng quan — gọn, cân đối, chỉ giữ thông tin cần hành động.**
+
+- Bỏ khỏi Tổng quan: khối "Của tôi" (đã có góc nhìn Cá nhân riêng), bảng máy chấm công và
+  ghi chú đồng bộ ERP (đã có trang Máy chấm công / Cài đặt), bảng con "Hợp đồng cần xử lý"
+  (giữ con số + liên kết sang trang Hợp đồng), hai ô "Về sớm" và "Ra ngoài giờ làm" (đã có
+  ở tab Ra/vào). Khối Hệ thống giờ chỉ hiện các cảnh báo cần xử lý: PIN lệch, máy mất kết
+  nối, chưa khai báo máy.
+- Sắp xếp lại thành 3 cột cân đối: trái "Điểm nóng ra/vào" + cảnh báo hệ thống, giữa
+  "7 ngày gần nhất" + "Đi muộn hôm nay" + "Đang chờ duyệt", phải "Việc của nhân sự".
+- Hàng "Toàn công ty — hôm nay" còn 7 số liệu cốt lõi, ô số to hơn hẳn các khối còn lại;
+  các ô số toàn trang dùng chung một nhịp khoảng cách.
+## [1.93.1] — 2026-09-19
 
 **Trang Tổng quan vừa một màn hình.**
 
@@ -14,21 +66,119 @@ Theo [SemVer](https://semver.org/lang/vi/).
 - Bảng "Đi muộn hôm nay" hiện tối đa 7 người kèm đường dẫn xem bảng công; bảng "Người bị
   cảnh báo nhiều nhất tháng" hiện top 5 (danh sách đầy đủ vẫn ở tab Ra/vào).
 
-## [1.86.0] — 2026-09-19
+## [1.93.0] — 2026-09-17
 
-**Quy trình nghỉ việc tự động.**
+**Quản lý OT hai cấp duyệt · tài liệu đăng ký · nộp kết quả OT bằng ảnh.**
 
-- Khi nhân sự **ban hành Quyết định nghỉ việc** trên hệ văn bản AI (loại Quyết định,
-  phạm vi Cá nhân + ô ngày nghỉ việc), tệp quyết định được tự động gắn vào hồ sơ nhân
-  viên (mục "Quyết định nghỉ việc", đồng bộ SharePoint như mọi tệp hồ sơ).
-- Đến **ngày nghỉ việc**, lịch chạy đêm tự động: khóa tài khoản + thu hồi mọi phiên đăng
-  nhập; báo cổng phân quyền chặn đăng nhập và chuyển trạng thái; gửi Microsoft Graph
-  chặn đăng nhập (`accountEnabled = false`), thu hồi phiên và rút toàn bộ giấy phép
-  (bật bằng `MS365_NGHI_VIEC_BAT=1`). Các sự kiện đi qua hộp thư đi `hop_thu_di` — có
-  retry, không mất khi cổng/Microsoft đang chết.
-- Nút "Cho nghỉ việc" thủ công giữ nguyên, dùng chung nghiệp vụ và nay có thêm bước
-  chặn Microsoft.
-- Tài liệu mới: `tai_lieu/NGHI-VIEC.md`.
+- **Vai trò mới `tbks`** (Trưởng Ban Kiểm Soát): duyệt đơn làm thêm giờ **cấp 2** và duyệt
+  kết quả OT; không xem dữ liệu nhân sự nào khác ngoài hai nhóm tệp OT.
+- **Đơn OT hai cấp**: trưởng bộ phận duyệt cấp 1 (`cho_duyet` → `cho_duyet_2`) rồi TBKS/Admin
+  duyệt cấp 2 (`cho_duyet_2` → `da_duyet`); admin/tbks không duyệt cấp 1 để giữ tách bạch.
+  Phòng chưa gán trưởng phòng thì đơn trình thẳng cấp 2. Các loại đơn khác giữ nguyên một cấp.
+- **Tài liệu đăng ký** (tùy chọn, PDF/ảnh) và **nộp kết quả OT bằng ảnh** (1–5 ảnh JPG/PNG,
+  kiểm magic byte) — trên web và app. Ảnh lưu vào kho hồ sơ nhân sự (nhóm `ot_tai_lieu` /
+  `ot_ket_qua`) với phân quyền đọc theo vai trò.
+- **Chốt tính lương theo kết quả**: `phut_ot` chỉ xuất hiện khi kết quả được TBKS/Admin duyệt
+  (giao với giờ quẹt thật); duyệt kết quả tự tính lại bảng công. Kết quả đã duyệt thì đơn
+  không hủy được; bị từ chối thì nộp lại được.
+- Bản đơn DOCX in đủ hai người duyệt; thông báo đẩy ở từng bước của chuỗi duyệt.
+- Di trú `076_ot_2_cap.sql`: cột duyệt cấp 2 trên `don_tu`, bảng `ket_qua_ot`, vai trò `tbks`.
+
+## [1.92.0] — 2026-09-17
+
+**Làm thêm giờ theo loại ngày · Kho Hà Nội làm đủ thứ Bảy · Phiếu lương chi tiết từng khoản.**
+
+- **OT tách theo loại ngày** (BLLĐ 2019 Đ.98): ngày thường ×1,5 · Chủ nhật ×2 · ngày lễ ×3 —
+  ba hệ số trong *Tham số lương*; ngày lễ ưu tiên hơn Chủ nhật. Phiếu lương (web, email, app)
+  hiện 3 dòng OT kèm giờ và hệ số; `phieu_luong` lưu cột breakdown và hệ số chụp lại khi tính.
+- **Ngoại lệ nhóm đã duyệt** (17/09): Khối Kho Hà Nội làm **đủ ngày thứ Bảy** (1 công, không
+  nửa công) và thêm giờ ngày thường **×1,0** — cấu hình theo khối trong bảng `khoi`, các khối
+  khác giữ nguyên chính sách chung. Tính công (cap công T7) cũng theo khối.
+- **Phiếu lương cá nhân** (web + app): hiện **ngày phép còn**, danh sách ngày nghỉ trong tháng,
+  đơn giá × số lượng của từng khoản, lý do "Trừ khác". Khoản gõ tay khai được **chi tiết từng
+  dòng** (lý do + tiền, bảng `phieu_luong_khoan_ct`) qua nút *Khoản* — nhân viên thấy từng căn
+  cứ thưởng/trừ.
+- Trang *Tham số lương* thêm 3 ô hệ số OT; bảng lương có tooltip chi tiết OT 3 mức.
+- Bổ sung biến `KY_LUAT_GIO_NHAC` vào `docker-compose.yml` và `.env.example` (guard test bắt
+  thiếu từ bản trước).
+
+## [1.91.0] — 2026-09-04
+
+**Thanh bên góc nhìn Quản trị giờ THUẦN quản trị.**
+
+- Các mục "của tôi" (Đơn của tôi, Phiếu lương, Hồ sơ của tôi, Thông báo, Văn bản công ty) đã
+  có đầy đủ trong "Khu vực của tôi" (giao diện cá nhân toàn màn hình), nên **ẩn khỏi thanh bên
+  Quản trị** — không lặp lại. Thanh admin còn: Tổng quan · Khu vực của tôi · **Chấm công** ·
+  **Nhân sự & lương** · **Hệ thống**.
+- Kỹ thuật: thêm cờ `chi_ca_nhan` cho các mục đó (vẫn nằm trong MENU để giữ ràng buộc menu ↔
+  hướng dẫn), bộ lọc góc nhìn Quản trị bỏ qua chúng.
+
+## [1.90.0] — 2026-09-04
+
+**Sắp xếp lại thanh bên (góc nhìn Quản trị) cho gọn.**
+
+- Khối trên cùng trước đây trộn lẫn mục "của tôi" (Đơn của tôi, Thông báo, Hồ sơ, Phiếu lương…)
+  với mục quản trị (Chấm công, Bảng công) mà không có tiêu đề nhóm. Nay chia rõ 5 khối:
+  truy cập nhanh (**Tổng quan**, **Khu vực của tôi**) · **Của tôi** · **Chấm công** · **Nhân sự
+  & lương** · **Hệ thống**. Không thêm/bớt mục, chỉ gom nhóm và sắp thứ tự.
+
+## [1.89.0] — 2026-09-04
+
+**Chuông thông báo ở Khu vực của tôi là trung tâm thông báo TỔNG HỢP.**
+
+- Bản trước tôi đặt nhầm một nút chuông tự chế chỉ mở màn "Thông báo công ty". Nay dùng đúng
+  component **`ChuongBao`** (`/api/toi/bao`) — gộp **mọi** thông báo: thông báo công ty, nhắc
+  nhở/cảnh cáo kỷ luật, trạng thái đơn từ… có đếm số chưa đọc, "đánh dấu đã đọc".
+- Bấm một thông báo trong chuông **mở đúng màn NGAY trong vỏ cá nhân** (không nhảy ra giao diện
+  quản trị cũ): kỷ luật/vi phạm/đơn → tab Đơn từ; thông báo công ty → màn Thông báo; duyệt đơn
+  → đổi sang góc nhìn Quản trị. `ChuongBao` nhận thêm tuỳ chọn `dieu_huong` cho việc này.
+
+## [1.88.0] — 2026-09-04
+
+**Sửa tab Cá nhân trắng màn — lệch hợp đồng backend/frontend.**
+
+- **`/api/toi/ho-so` trả sai hình dạng.** Máy chủ trải phẳng hồ sơ nhân viên ra top-level
+  (`...ho_so`), nhưng giao diện mới (bản làm lại Khu vực của tôi) đọc `du_lieu.nhan_vien.*` →
+  `nhan_vien` là `undefined`, tab **Cá nhân** vỡ ngay khi đọc `.ho_ten` (trắng màn). Nghĩa là
+  tab Cá nhân **chưa từng hiện** kể từ khi làm lại giao diện — endpoint này không có kiểm thử
+  phủ. Nay lồng đúng `nhan_vien: ho_so`; tài khoản chưa nối hồ sơ trả `nhan_vien: null` để
+  giao diện hiện thông báo thân thiện. Giao diện cũng nới guard `nv == null` (chặn cả undefined).
+- **Nút chuông thông báo dùng hình chuông thật** (SVG) thay cho icon ngôi sao — trước đây nhìn
+  không ra là chuông.
+
+## [1.87.0] — 2026-09-04
+
+**Khu vực của tôi: chặn màn hình trắng + thêm nút chuông thông báo.**
+
+- **Không còn "màn hình trắng".** Bọc nội dung Khu vực của tôi bằng ranh giới lỗi: một màn con
+  lỗi khi hiển thị (ví dụ tab **Cá nhân**) giờ chỉ hiện một thẻ báo lỗi **đọc được** (kèm chi
+  tiết để gửi nhân sự), các tab khác vẫn dùng bình thường. Trước đây một lỗi nhỏ làm trắng xoá
+  toàn bộ trang.
+- **Nút chuông thông báo** trên đầu trang (mọi kích thước màn): mở màn Thông báo **ngay trong
+  vỏ cá nhân**, có huy hiệu đếm số chưa đọc. Trên điện thoại (thanh bên ẩn) đây là lối vào
+  Thông báo/– trước chỉ có ở thanh bên desktop.
+
+## [1.86.0] — 2026-09-04
+
+**Sửa lỗi điều hướng & logic ở Khu vực của tôi (giao diện cá nhân).**
+
+- **Bấm xong không còn "quay về giao diện cũ".** Trong vỏ cá nhân toàn màn hình, ba liên kết
+  **Thông báo**, **Văn bản công ty** (thanh bên) và **Đi duyệt** (mục "Cần chú ý") trước đây
+  điều hướng ra route riêng (`/thong-bao`, `/van-ban`, `/duyet-don`) — mà những route đó lại
+  render trong **vỏ quản trị cũ**, nên bấm vào là rơi khỏi giao diện cá nhân.
+  - Thông báo & Văn bản công ty giờ mở **ngay trong vỏ cá nhân** (màn phụ, giữ thanh bên tối,
+    có nút ‹ quay lại), không rời trang.
+  - Đi duyệt (việc quản trị) **đổi hẳn sang góc nhìn Quản trị** rồi tới màn Duyệt đơn — chuyển
+    cảnh có chủ đích, không còn nửa cá nhân nửa quản trị.
+- **Huy hiệu "đơn chờ tôi duyệt" đếm thiếu.** `/api/toi/hom-nay` chỉ cộng đơn nghỉ phép +
+  giải trình, **bỏ sót bảng `don_tu`** (làm thêm, đổi ca, công tác, thôi việc). Trưởng phòng
+  có thể không thấy đơn OT/đổi ca/công tác nào chờ duyệt. Nay cộng đủ cả ba nguồn (đối xứng
+  với ô đếm "đơn của tôi chờ duyệt").
+- **Icon 5 tab & mục "Cần chú ý" đồng nhất quy ước** (`icon` không kèm tiền tố `bt-`, nơi
+  render tự ghép `bt bt-…`) — trước đây lệch quy ước với `App.tsx` làm bài kiểm giao diện đỏ
+  dù icon vẫn hiện đúng.
+- **Bảo mật nhỏ:** `DELETE /api/toi/token-push` nay ràng theo chủ sở hữu (`nguoi_dung_id`) —
+  trước đây ai biết token đẩy của người khác đều gỡ được.
 
 ## [1.85.0] — 2026-09-04
 

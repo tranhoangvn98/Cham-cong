@@ -52,6 +52,10 @@ interface ThamSo {
   di_muon_han_don: string;
   /** Ty le luong thu viec tren luong cung (0.85). */
   ty_le_thu_viec: string;
+  /** Ba he so OT theo loai ngay (BLLD D.98): ngay thuong / CN / le. */
+  he_so_ot_ngay_thuong: string;
+  he_so_ot_nghi_tuan: string;
+  he_so_ot_ngay_le: string;
   can_cu: string | null;
   ghi_chu: string | null;
   tao_luc: string;
@@ -236,6 +240,22 @@ function ThePhepTinh({ ts }: { ts: ThamSo }): ReactNode {
           </div>
           <div className="o-so-phu">số gốc vẫn giữ trên phiếu</div>
         </div>
+        {/* Ba he so OT — BLLD 2019 D.98; khoi co the ghi de he so ngay thuong (da duyet). */}
+        <div className="o-so">
+          <div className="o-so-nhan">OT ngày thường</div>
+          <div className="o-so-gia-tri">×{Number(ts.he_so_ot_ngay_thuong ?? 1.5)}</div>
+          <div className="o-so-phu">khối có thể ghi đè riêng</div>
+        </div>
+        <div className="o-so">
+          <div className="o-so-nhan">OT Chủ nhật</div>
+          <div className="o-so-gia-tri">×{Number(ts.he_so_ot_nghi_tuan ?? 2)}</div>
+          <div className="o-so-phu">ngày nghỉ hằng tuần</div>
+        </div>
+        <div className="o-so">
+          <div className="o-so-nhan">OT ngày lễ</div>
+          <div className="o-so-gia-tri">×{Number(ts.he_so_ot_ngay_le ?? 3)}</div>
+          <div className="o-so-phu">lễ trùng Chủ nhật lấy mức lễ</div>
+        </div>
       </div>
 
       {ts.can_cu !== null && ts.can_cu !== '' && (
@@ -322,6 +342,9 @@ function HopThoaiThem(
     di_muon_mien_moi_thang: String(mau?.di_muon_mien_moi_thang ?? 3),
     di_muon_han_don: (mau?.di_muon_han_don ?? '07:30').slice(0, 5),
     ty_le_thu_viec: mau?.ty_le_thu_viec ?? '0.85',
+    he_so_ot_ngay_thuong: mau?.he_so_ot_ngay_thuong ?? '1.5',
+    he_so_ot_nghi_tuan: mau?.he_so_ot_nghi_tuan ?? '2',
+    he_so_ot_ngay_le: mau?.he_so_ot_ngay_le ?? '3',
     can_cu: '',
   });
   const hd = dung_hanh_dong();
@@ -427,6 +450,16 @@ function HopThoaiThem(
         Hợp đồng loại <strong>thử việc</strong> tự áp tỷ lệ này lên lương cứng (P1 + P2). BLLĐ 2019
         Đ.26: tối thiểu 85%. Ghi mức lương thẳng trên hợp đồng thử việc là ghi đè.
       </p>
+
+      <h3>Hệ số làm thêm giờ (OT)</h3>
+      <p className="mo-ta">
+        Giờ OT được tách theo loại ngày và nhân hệ số riêng (BLLĐ 2019 Đ.98: ngày thường ít
+        nhất 150%, ngày nghỉ hằng tuần 200%, ngày lễ 300%). Ngày lễ trùng Chủ nhật lấy mức lễ.
+        Khối được duyệt có thể ghi đè hệ số ngày thường (hiện Khối Kho Hà Nội ×1.0).
+      </p>
+      <label>OT ngày thường</label>{so('he_so_ot_ngay_thuong')}
+      <label>OT Chủ nhật (ngày nghỉ hằng tuần)</label>{so('he_so_ot_nghi_tuan')}
+      <label>OT ngày lễ</label>{so('he_so_ot_ngay_le')}
 
       <label htmlFor="cc">Căn cứ pháp lý</label>
       <input id="cc" value={f.can_cu} onChange={dat('can_cu')}

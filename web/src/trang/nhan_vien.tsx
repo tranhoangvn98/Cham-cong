@@ -36,12 +36,16 @@ interface NhanVien {
   noi_lam_viec_id: string | null;
   noi_lam_viec: string | null;
   lich_nghi_ma: string | null;
+  che_do_luong: 'vn' | 'tq';
+  khoi_id: string | null;
+  khoi: string | null;
   co_tai_khoan: boolean;
 }
 
 interface CaLam { id: string; ten: string; dang_hoat_dong: boolean }
 interface PhongBan { id: string; ten: string }
 interface NoiLamViec { id: string; ten: string; lich_nghi_ma: string }
+interface Khoi { id: string; ma: string; ten: string; dang_bat: boolean }
 
 export function TrangNhanVien(): ReactNode {
   const [tim, dat_tim] = useState('');
@@ -140,6 +144,9 @@ export function TrangNhanVien(): ReactNode {
                       </LienKet>
                       {!n.dang_hoat_dong && (
                         <span className="nhan nhan-mo" style={{ marginLeft: 6 }}>đã nghỉ</span>
+                      )}
+                      {n.che_do_luong === 'tq' && (
+                        <span className="nhan nhan-canh-bao" style={{ marginLeft: 6 }}>lương CNY</span>
                       )}
                     </td>
                     <td className="so">
@@ -276,8 +283,11 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
     email: nhan_vien?.email ?? '',
     duoc_cham_cong_dien_thoai: nhan_vien?.duoc_cham_cong_dien_thoai ?? false,
     noi_lam_viec_id: nhan_vien?.noi_lam_viec_id ?? '',
+    che_do_luong: nhan_vien?.che_do_luong ?? 'vn',
+    khoi_id: nhan_vien?.khoi_id ?? '',
   });
   const noi = dung_nap<NoiLamViec[]>('/api/noi-lam-viec');
+  const khoi = dung_nap<Khoi[]>('/api/khoi');
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
 
@@ -298,6 +308,8 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
       email: f.email.trim() === '' ? null : f.email.trim(),
       duoc_cham_cong_dien_thoai: f.duoc_cham_cong_dien_thoai,
       noi_lam_viec_id: f.noi_lam_viec_id === '' ? null : f.noi_lam_viec_id,
+      che_do_luong: f.che_do_luong,
+      khoi_id: f.khoi_id === '' ? null : f.khoi_id,
     };
     const ok = await hd.chay(() =>
       nhan_vien === null
@@ -384,6 +396,35 @@ function FormNhanVien({ nhan_vien, cac_ca, cac_phong, khi_dong, khi_xong }: Form
           <div className="goi-y">
             Quyết định <strong>lịch nghỉ lễ</strong> áp dụng cho người này: làm ở Việt Nam theo lịch
             VN, làm ở Trung Quốc theo lịch TQ. Chưa gán = lịch Việt Nam.
+          </div>
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="cdl">Chế độ lương</label>
+          <select id="cdl" value={f.che_do_luong}
+            onChange={(e) => doi('che_do_luong', e.target.value)}>
+            <option value="vn">Lương Việt Nam (VND) — vào bảng lương</option>
+            <option value="tq">Lương Trung Quốc (CNY) — khối riêng</option>
+          </select>
+          <div className="goi-y">
+            Chọn <strong>Lương Trung Quốc</strong> cho nhân sự nhận lương bằng CNY: họ được
+            <strong> loại khỏi kỳ lương VND</strong> (không áp BHXH/thuế TNCN Việt Nam) và tính ở
+            khối lương Trung Quốc riêng.
+          </div>
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="khoi">Khối</label>
+          <select id="khoi" value={f.khoi_id}
+            onChange={(e) => doi('khoi_id', e.target.value)}>
+            <option value="">— Chưa gán —</option>
+            {(khoi.du_lieu ?? []).filter((k) => k.dang_bat).map((k) => (
+              <option key={k.id} value={k.id}>{k.ten}</option>
+            ))}
+          </select>
+          <div className="goi-y">
+            Gán khối để người này <strong>tự hưởng phụ cấp mặc định của khối</strong> (VP, Kho HN,
+            VP Lạng Sơn, Kho TQ). Phụ cấp cá nhân (nếu có) vẫn <strong>đè lên</strong> mức của khối.
           </div>
         </div>
 

@@ -438,6 +438,26 @@ export const cau_hinh = {
      * phai duyet (khong con duong tu ap).
      */
     nguong_duyet: Math.max(0, Math.round(so('KY_LUAT_NGUONG_DUYET', 2_000_000))),
+
+    /**
+     * Che do xu ly ky luat tu dong:
+     *   'nhac_nho' (mac dinh, chu cong ty chot) — CHI TONG HOP loi + nhac nho, KHONG tu ap giam
+     *              thuong. Ho so tu dong luon o 'da_nhac'; email nhac nho gui dinh ky 3 ngay/lan.
+     *              Chay lai quet se HOAN cac ho so tu dong da ap ve nhac nho (go giam thuong).
+     *   'xu_phat' — hanh vi cu: duoi nguong tu ap giam thuong, tu nguong cho duyet.
+     * Doi lai bang bien moi truong KY_LUAT_CHE_DO=xu_phat khi muon bat xu phat tro lai.
+     */
+    che_do: chu('KY_LUAT_CHE_DO', 'nhac_nho') === 'xu_phat' ? 'xu_phat' as const : 'nhac_nho' as const,
+
+    /** Chu ky gui email nhac loi (ngay) khi o che do 'nhac_nho'. Chu cong ty chot 3 ngay/lan. */
+    chu_ky_nhac_ngay: Math.max(1, Math.round(so('KY_LUAT_CHU_KY_NHAC_NGAY', 3))),
+
+    /**
+     * Gio (theo mui gio may cham cong) gui email nhac loi ky luat. Mac dinh 17h chieu — de nguoi
+     * nhan doc vao gio hanh chinh, KHONG bi ke chung me viec cuoi ngay (chay 1h sang de cho may
+     * day het log). 0..23.
+     */
+    gio_nhac: Math.min(23, Math.max(0, Math.round(so('KY_LUAT_GIO_NHAC', 17)))),
   },
 
   /**
@@ -455,6 +475,15 @@ export const cau_hinh = {
 
   /** Noi luu tep dinh kem ho so nhan su (hop dong scan, bien ban...). */
   thu_muc_ho_so: resolve(process.cwd(), chu('THU_MUC_HO_SO', './du_lieu/ho_so')),
+
+  /**
+   * Thong tin cong ty in tren dau bang luong xuat Excel (mau ERP). De TRONG thi o do bo trong
+   * tren file — khong hard-code ten cong ty vao ma nguon.
+   */
+  cong_ty: {
+    ten: chu('CONG_TY_TEN', ''),
+    dia_chi: chu('CONG_TY_DIA_CHI', ''),
+  },
 
   /** Kich thuoc mot tep dinh kem toi da (byte). Hop dong scan nhieu trang thi nang len. */
   tep_toi_da_byte: so('TEP_TOI_DA_BYTE', 15 * 1024 * 1024),

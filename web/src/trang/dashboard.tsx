@@ -10,7 +10,7 @@
 import { useState, type ReactNode } from 'react';
 import { LienKet } from '../dinh_tuyen.tsx';
 import {
-  DangTai, HopLoi, HopThoai, NhanNgay, OSo, Trong, dung_nap, gio_ngan, ngay_gio, ngay_viet,
+  DangTai, HopLoi, HopThoai, NhanNgay, OSo, Trong, dung_nap, gio_ngan, ngay_viet,
   phut_thanh_chu, thu_cua_ngay,
   XuongDanhSach,
 } from '../thanh_phan.tsx';
@@ -303,12 +303,6 @@ export function TrangDashboard(): ReactNode {
             <ChoDuyet ct={du_lieu.cong_ty} />
           </div>
 
-          {du_lieu.toi !== null && (
-            <div className="bd-khoi bd-toi">
-              <KhoiCuaToi toi={du_lieu.toi} />
-            </div>
-          )}
-
           {du_lieu.nhan_su !== null && (
             <div className="bd-khoi bd-viens">
               <KhoiNhanSu ns={du_lieu.nhan_su} />
@@ -427,25 +421,17 @@ function TongQuanNgay(
         <OSoBam nhan="Tổng nhân viên" gia_tri={t.tong_nhan_vien} loai="tong" ngay={ngay} />
         {rv !== null && (
           <OSo nhan="Đang trong văn phòng" gia_tri={rv.dang_trong} mau="lanh"
-            phu="chưa quẹt ra tính tới lúc này" />
+            phu="chưa quẹt ra" />
         )}
         <OSoBam nhan="Có mặt" gia_tri={t.co_mat} mau="tot" loai="co_mat" ngay={ngay} />
         <OSoBam nhan="Đi muộn" gia_tri={t.di_muon}
           mau={Number(t.di_muon) > 0 ? 'canh_bao' : undefined} loai="di_muon" ngay={ngay} />
-        {rv !== null && (
-          <OSo nhan="Về sớm" gia_tri={rv.ve_som}
-            mau={rv.ve_som > 0 ? 'canh_bao' : undefined} />
-        )}
+
         <OSoBam nhan="Vắng" gia_tri={t.vang} mau={Number(t.vang) > 0 ? 'xau' : undefined}
           loai="vang" ngay={ngay} />
         <OSoBam nhan="Nghỉ phép" gia_tri={t.nghi_phep} mau="lanh" loai="nghi_phep" ngay={ngay} />
-        {rv !== null && (
-          <OSo nhan="Ra ngoài giờ làm" gia_tri={rv.so_nguoi_ra_ngoai}
-            phu={rv.tong_phut_ra_ngoai > 0
-              ? `tổng ${phut_thanh_chu(rv.tong_phut_ra_ngoai)}`
-              : 'không ai ra ngoài'} />
-        )}
-        <OSoBam nhan="Chưa quẹt ra" gia_tri={t.chua_quet_ra} phu="còn trong giờ hoặc quên quẹt"
+
+        <OSoBam nhan="Chưa quẹt ra" gia_tri={t.chua_quet_ra} phu="trong giờ hoặc quên quẹt"
           loai="chua_quet_ra" ngay={ngay} />
       </div>
     </div>
@@ -580,8 +566,8 @@ function DiemNongRaVao({ rv }: { rv: RaVaoHR }): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {/* Tong quan chi diem danh top 5 — danh sach day du nam o tab /ra-vao. */}
-                {rv.top_nguoi.slice(0, 5).map((n) => (
+                {/* Tong quan chi diem danh top — danh sach day du nam o tab /ra-vao. */}
+                {rv.top_nguoi.slice(0, 4).map((n) => (
                   <tr key={n.nhan_vien_id}>
                     <td className="so">{n.ma_nv}</td>
                     <td><LienKet den={`/nhan-vien/${n.nhan_vien_id}`} lop="lk-nhan-vien">{n.ho_ten}</LienKet></td>
@@ -624,7 +610,7 @@ function KhoiNhanSu({ ns }: { ns: ViecNhanSu }): ReactNode {
             <OSo
               nhan="Hợp đồng ĐÃ hết hạn"
               gia_tri={ns.hop_dong_het_han}
-              phu="quá 30 ngày là tự thành không xác định thời hạn"
+              phu="quá 30 ngày thành không xác định thời hạn"
               mau="xau"
             />
           )}
@@ -640,7 +626,7 @@ function KhoiNhanSu({ ns }: { ns: ViecNhanSu }): ReactNode {
             <OSo
               nhan="Chưa gán PIN máy"
               gia_tri={ns.chua_gan_pin}
-              phu="những người này KHÔNG chấm công được"
+              phu="không chấm công được"
               mau="xau"
             />
           )}
@@ -648,7 +634,7 @@ function KhoiNhanSu({ ns }: { ns: ViecNhanSu }): ReactNode {
             <OSo
               nhan="Chưa có email"
               gia_tri={ns.thieu_email}
-              phu="không đăng nhập Microsoft được"
+              phu="không đăng nhập Microsoft"
               mau="canh_bao"
             />
           )}
@@ -664,7 +650,7 @@ function KhoiNhanSu({ ns }: { ns: ViecNhanSu }): ReactNode {
             <OSo
               nhan="Hồ sơ thiếu giấy tờ"
               gia_tri={ns.thieu_tai_lieu}
-              phu="người còn thiếu tài liệu bắt buộc"
+              phu="thiếu tài liệu bắt buộc"
               mau="canh_bao"
             />
           )}
@@ -672,41 +658,11 @@ function KhoiNhanSu({ ns }: { ns: ViecNhanSu }): ReactNode {
       )}
 
       {ns.sap_het_han.length > 0 && (
-        <>
-          <h3>Hợp đồng cần xử lý</h3>
-          <div className="vo-bang">
-            <table className="bang-gon">
-              <thead>
-                <tr><th>Nhân viên</th><th>Số HĐ</th><th>Hết hạn</th><th>Còn lại</th></tr>
-              </thead>
-              <tbody>
-                {ns.sap_het_han.map((h) => (
-                  <tr key={`${h.nhan_vien_id}-${h.hieu_luc_den}`}>
-                    <td>
-                      <LienKet den={`/nhan-vien/${h.nhan_vien_id}`} lop="lk-nhan-vien">
-                        <strong>{h.ma_nv}</strong> — {h.ho_ten}
-                      </LienKet>
-                    </td>
-                    <td className="so">{h.so_hd ?? '—'}</td>
-                    <td className="khong-ngat so">{ngay_viet(h.hieu_luc_den)}</td>
-                    <td className="khong-ngat">
-                      <span className={h.so_ngay_con < 0 || h.muc_gap === 'rat_gap' ? 'nhan-xau'
-                        : h.muc_gap === 'gap' ? 'nhan-canh-bao' : 'nhan-mo'}>
-                        {h.so_ngay_con < 0
-                          ? `quá hạn ${String(-h.so_ngay_con)} ngày`
-                          : h.so_ngay_con === 0 ? 'hết hạn hôm nay'
-                            : `còn ${String(h.so_ngay_con)} ngày`}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="hang-nut">
-            <LienKet den="/hop-dong" lop="nut">Xem tất cả hợp đồng</LienKet>
-          </div>
-        </>
+        <p className="mo-ta" style={{ marginTop: 8 }}>
+          <LienKet den="/hop-dong">
+            {ns.sap_het_han.length} hợp đồng sắp hết hạn — Xem ›
+          </LienKet>
+        </p>
       )}
     </div>
   );
@@ -716,67 +672,33 @@ function KhoiNhanSu({ ns }: { ns: ViecNhanSu }): ReactNode {
 
 function KhoiHeThong({ ht }: { ht: HeThong }): ReactNode {
   const may_offline = ht.thiet_bi.filter((m) => !m.dang_online);
-
+  // Bang dieu khien chi can cac CANH BAO can hanh dong. Trang thai tung may va dong bo ERP
+  // xem o trang May cham cong / Cai dat — khong trung ra day de giu trang gon.
+  const co_canh_bao = ht.pin_lech > 0 || ht.thiet_bi.length === 0 || may_offline.length > 0;
+  if (!co_canh_bao) return null;
   return (
-    <>
+    <div className="the">
+      <h2>Hệ thống</h2>
       {ht.pin_lech > 0 && (
         <div className="hop-thong-bao hop-loi">
-          <strong>⚠ {ht.pin_lech} PIN trong máy bị lệch / trùng người.</strong> Có người được enroll
-          trên máy dưới PIN đang thuộc nhân viên khác trong hệ thống — lượt quẹt sẽ bị gán nhầm.
-          Vào <LienKet den="/cai-dat/thiet-bi">Máy chấm công</LienKet> → “Đối chiếu user máy” để xử lý.
+          <strong>⚠ {ht.pin_lech} PIN trong máy bị lệch / trùng người.</strong>{' '}
+          Lượt quẹt sẽ bị gán nhầm. Vào <LienKet den="/cai-dat/thiet-bi">Máy chấm công</LienKet> →
+          “Đối chiếu user máy”.
         </div>
       )}
-
       {ht.thiet_bi.length === 0 && (
         <div className="hop-thong-bao hop-luu-y">
-          Chưa khai báo máy chấm công nào. Vào <LienKet den="/cai-dat/thiet-bi">Máy chấm công</LienKet> để
-          khai báo serial máy — máy chưa khai báo sẽ bị hệ thống từ chối.
+          Chưa khai báo máy chấm công nào. Vào <LienKet den="/cai-dat/thiet-bi">Máy chấm công</LienKet>
+          để khai báo serial — máy chưa khai báo sẽ bị hệ thống từ chối.
         </div>
       )}
-
       {may_offline.length > 0 && (
         <div className="hop-thong-bao hop-loi">
-          <strong>{may_offline.length} máy đang mất kết nối:</strong>{' '}
-          {may_offline.map((m) => m.ten).join(', ')}. Dữ liệu chấm công sẽ không về cho tới khi máy
-          kết nối lại (máy vẫn lưu nội bộ và đẩy bù sau).
+          <strong>{may_offline.length} máy mất kết nối:</strong>{' '}
+          {may_offline.map((m) => m.ten).join(', ')}. Dữ liệu sẽ về bù khi máy nối lại.
         </div>
       )}
-
-      <div className="the">
-        <h2>Hệ thống</h2>
-        {ht.thiet_bi.length === 0 ? (
-          <Trong tieu_de="Chưa có máy nào" />
-        ) : (
-          <div className="vo-bang">
-            <table>
-              <thead>
-                <tr><th>Máy</th><th>Trạng thái</th><th>Tín hiệu cuối</th></tr>
-              </thead>
-              <tbody>
-                {ht.thiet_bi.map((m) => (
-                  <tr key={m.serial}>
-                    <td>
-                      {m.ten}
-                      <div className="o-so-phu">{m.serial}</div>
-                    </td>
-                    <td className="khong-ngat">
-                      <i className={`diem ${m.dang_online ? 'diem-tot' : 'diem-xau'}`} />
-                      {m.dang_online ? 'Kết nối' : 'Mất kết nối'}
-                    </td>
-                    <td className="khong-ngat">{ngay_gio(m.thay_lan_cuoi)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="mo-ta">
-          {ht.erp_da_cau_hinh
-            ? <>Đồng bộ ERP đang bật — <strong>{ht.erp_da_noi}</strong> nhân viên đã nối với ERP.</>
-            : <>Chưa cấu hình đồng bộ ERP.</>}
-        </p>
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -809,7 +731,7 @@ function BangDiMuon(
   const ds_hien = gioi_han < ds.length ? ds.slice(0, gioi_han) : ds;
   return (
     <div className="the the-mong">
-      <div style={{ padding: '12px 14px 0' }}>
+      <div style={{ padding: '10px 12px 0' }}>
         <h2>{tieu_de}</h2>
       </div>
       {ds.length === 0 ? (

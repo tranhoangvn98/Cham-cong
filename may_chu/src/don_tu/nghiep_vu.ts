@@ -143,14 +143,28 @@ export async function tao_don(nhan_vien_id: string, d: DonTu): Promise<KetQuaTao
     if (co === null) throw new LoiDauVao('Người được đổi ca cùng không tồn tại.');
   }
 
+  // Don lam them di qua HAI CAP duyet: truong bo phan (cap 1) roi TBKS/admin (cap 2).
+  // Phong chua gan truong phong thi khong co ai duyet cap 1 — trinh thang len cap 2.
+  let trang_thai_dau = 'cho_duyet';
+  if (d.loai === 'lam_them') {
+    const tp = await truy_van_mot<{ co: boolean }>(
+      `select (pb.truong_phong_id is not null) as co
+         from nhan_vien nv
+         left join phong_ban pb on pb.id = nv.phong_ban_id
+        where nv.id = $1`,
+      [nhan_vien_id],
+    );
+    if (tp !== null && !tp.co) trang_thai_dau = 'cho_duyet_2';
+  }
+
   const dong = await truy_van_mot<{ id: string; trang_thai: string }>(
     `insert into don_tu(nhan_vien_id, loai, tu_ngay, den_ngay, gio_bat_dau, gio_ket_thuc,
-                        doi_voi_id, ca_hien_tai_id, ca_moi_id, noi_den, ly_do)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                        doi_voi_id, ca_hien_tai_id, ca_moi_id, noi_den, ly_do, trang_thai)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
      returning id, trang_thai`,
     [nhan_vien_id, d.loai, d.tu_ngay, dt.co_khoang_ngay ? d.den_ngay : null,
       d.gio_bat_dau, d.gio_ket_thuc, d.doi_voi_id, d.ca_hien_tai_id, d.ca_moi_id,
-      d.noi_den, d.ly_do],
+      d.noi_den, d.ly_do, trang_thai_dau],
   );
 
   return {
@@ -168,28 +182,38 @@ export interface DongDonTu extends DonTu {
   nhan_vien_id: string;
   trang_thai: string;
   ghi_chu_duyet: string | null;
+  ghi_chu_duyet_2: string | null;
   tao_luc: string;
   quyet_luc: string | null;
+  quyet_2_luc: string | null;
+  ket_qua_id: string | null;
+  ket_qua_trang_thai: string | null;
+  ket_qua_ghi_chu_duyet: string | null;
   ma_nv: string;
   ho_ten: string;
   phong_ban: string | null;
   chuc_danh: string | null;
   nguoi_duyet: string | null;
+  nguoi_duyet_2: string | null;
   doi_voi_ten: string | null;
   ca_hien_tai_ten: string | null;
   ca_moi_ten: string | null;
 }
 
 const CHON = `
-  d.id, d.nhan_vien_id, d.loai, d.trang_thai, d.ghi_chu_duyet, d.noi_den, d.ly_do,
+  d.id, d.nhan_vien_id, d.loai, d.trang_thai, d.ghi_chu_duyet, d.ghi_chu_duyet_2, d.noi_den, d.ly_do,
   d.doi_voi_id, d.ca_hien_tai_id, d.ca_moi_id,
   to_char(d.tu_ngay, 'YYYY-MM-DD') as tu_ngay,
   to_char(d.den_ngay, 'YYYY-MM-DD') as den_ngay,
   d.gio_bat_dau::text as gio_bat_dau, d.gio_ket_thuc::text as gio_ket_thuc,
   to_char(d.tao_luc, 'YYYY-MM-DD"T"HH24:MI:SSOF') as tao_luc,
   to_char(d.quyet_luc, 'YYYY-MM-DD"T"HH24:MI:SSOF') as quyet_luc,
+  to_char(d.quyet_2_luc, 'YYYY-MM-DD"T"HH24:MI:SSOF') as quyet_2_luc,
+  kq.id as ket_qua_id, kq.trang_thai as ket_qua_trang_thai,
+  kq.ghi_chu_duyet as ket_qua_ghi_chu_duyet,
   nv.ma_nv, nv.ho_ten, pb.ten as phong_ban, nv.chuc_danh,
   nd.ten_dang_nhap as nguoi_duyet,
+  nd2.ten_dang_nhap as nguoi_duyet_2,
   dv.ho_ten as doi_voi_ten,
   ch.ten as ca_hien_tai_ten, cm.ten as ca_moi_ten
 `;
@@ -199,6 +223,8 @@ const TU_BANG = `
   join nhan_vien nv on nv.id = d.nhan_vien_id
   left join phong_ban pb on pb.id = nv.phong_ban_id
   left join nguoi_dung nd on nd.id = d.nguoi_duyet_id
+  left join nguoi_dung nd2 on nd2.id = d.nguoi_duyet_2_id
+  left join ket_qua_ot kq on kq.don_tu_id = d.id
   left join nhan_vien dv on dv.id = d.doi_voi_id
   left join ca_lam ch on ch.id = d.ca_hien_tai_id
   left join ca_lam cm on cm.id = d.ca_moi_id
@@ -240,45 +266,86 @@ export async function don_theo_id(id: string): Promise<DongDonTu | null> {
 
 export interface KetQuaQuyet {
   loai: MaLoaiDon;
+  /** Trang thai MOI cua don sau quyet dinh nay — de route biet thong bao cho ai. */
+  trang_thai: 'da_duyet' | 'tu_choi' | 'cho_duyet_2';
   /** Khoang ngay phai tinh lai bang cong, khi loai don co anh huong. */
   tinh_lai: { tu_ngay: string; den_ngay: string } | null;
 }
 
 /**
- * Duyet hoac tu choi. Tra ve khoang ngay can tinh lai bang cong (neu co).
+ * Duyet hoac tu choi. Tra ve trang thai moi va khoang ngay can tinh lai bang cong (neu co).
+ *
+ * `cap` danh rieng cho don `lam_them` — loai duy nhat di qua hai cap:
+ *
+ *   cap 1 (truong bo phan):  cho_duyet   -> cho_duyet_2 / tu_choi
+ *   cap 2 (tbks / admin):    cho_duyet_2 -> da_duyet     / tu_choi
+ *
+ * Ba loai con lai giu nguyen vong doi mot cap nhu truoc day, va `cap` bi bo qua.
  *
  * `cong_tac` la loai DUY NHAT trong bon loai nay doi bang cong — mot ngay cong tac da duyet
  * chuyen tu `vang` sang `cong_tac` va duoc mot cong. Ba loai con lai khong doi gi:
  *
- *   `lam_them`  — la DANG KY TRUOC. So phut OT tren bang cong van tinh tu lan quet that, nen
- *                 duyet mot don OT khong tu nhien tao ra gio OT. Neu sau nay ban muon "chi
- *                 tinh OT da dang ky" thi do la mot quyet dinh khac va phai noi ra, vi no doi
- *                 cach tinh tien.
+ *   `lam_them`  — la DANG KY TRUOC. So phut OT tren bang cong van tinh tu lan quet that GIAO
+ *                 voi don da duyet VA ket qua da duyet (xem cong/tinh_cong.ts), nen duyet mot
+ *                 don OT khong tu nhien tao ra gio OT. Nop va duyet KET QUA moi tinh lai.
  *   `doi_ca`    — doi ca lam la viec cua nhan su tren ho so nhan vien; don chi la de nghi.
  *   `thoi_viec` — ngay nghi viec do nhan su ghi vao `nhan_vien.ngay_nghi_viec`.
  *
- * Ba dong tren la ranh gioi CO Y: don la de nghi va la ban ghi, khong phai lenh tu dong sua
+ * Bon dong tren la ranh gioi CO Y: don la de nghi va la ban ghi, khong phai lenh tu dong sua
  * du lieu goc. Mot don duyet nham ma tu sua ho so thi khong ai lan lai duoc.
  */
 export async function quyet_don(
   id: string, quyet: 'da_duyet' | 'tu_choi', nguoi_duyet_id: string, ghi_chu: string | null,
+  cap: 1 | 2 = 1,
 ): Promise<KetQuaQuyet> {
+  // Moi quyet dinh phai co nguoi duyet ro rang. Duyet tu dong (khong co nguoi bam) phai truyen id
+  // tai khoan he thong (id_tai_khoan_he_thong), KHONG duoc de NULL/rong — mot don da_duyet ma
+  // khong biet AI duyet la du lieu khong ro rang (ban dieu hanh chot).
+  if (nguoi_duyet_id === null || nguoi_duyet_id === undefined || nguoi_duyet_id === '') {
+    throw new LoiDauVao('Không thể quyết đơn mà không rõ người duyệt. Duyệt tự động phải gán tài '
+      + 'khoản hệ thống.');
+  }
   const d = await don_theo_id(id);
   if (d === null) throw new LoiKhongTim('Không tìm thấy đơn.');
-  if (d.trang_thai !== 'cho_duyet') {
+  if (cap === 2 && d.loai !== 'lam_them') {
+    throw new LoiDauVao('Chỉ đơn làm thêm giờ mới có bước duyệt cấp hai.');
+  }
+  const cho_phep = cap === 2 ? d.trang_thai === 'cho_duyet_2' : d.trang_thai === 'cho_duyet';
+  if (!cho_phep) {
     throw new LoiDauVao(`Đơn đã ở trạng thái "${d.trang_thai}", không thể quyết lại.`);
   }
 
-  await thuc_thi(
-    `update don_tu
-        set trang_thai = $2, nguoi_duyet_id = $3, ghi_chu_duyet = $4, quyet_luc = now()
-      where id = $1 and trang_thai = 'cho_duyet'`,
-    [id, quyet, nguoi_duyet_id, ghi_chu],
-  );
+  if (cap === 2) {
+    await thuc_thi(
+      `update don_tu
+          set trang_thai = $2, nguoi_duyet_2_id = $3, ghi_chu_duyet_2 = $4, quyet_2_luc = now()
+        where id = $1 and trang_thai = 'cho_duyet_2'`,
+      [id, quyet, nguoi_duyet_id, ghi_chu],
+    );
+  } else if (d.loai === 'lam_them') {
+    // Cap 1 cua don OT: duyet nghia la "chuyen len cap 2", chu khong chot.
+    await thuc_thi(
+      `update don_tu
+          set trang_thai = case when $2 = 'da_duyet' then 'cho_duyet_2' else $2 end,
+              nguoi_duyet_id = $3, ghi_chu_duyet = $4, quyet_luc = now()
+        where id = $1 and trang_thai = 'cho_duyet'`,
+      [id, quyet, nguoi_duyet_id, ghi_chu],
+    );
+  } else {
+    await thuc_thi(
+      `update don_tu
+          set trang_thai = $2, nguoi_duyet_id = $3, ghi_chu_duyet = $4, quyet_luc = now()
+        where id = $1 and trang_thai = 'cho_duyet'`,
+      [id, quyet, nguoi_duyet_id, ghi_chu],
+    );
+  }
 
   return {
     loai: d.loai,
-    tinh_lai: d.loai === 'cong_tac'
+    trang_thai: d.loai === 'lam_them' && cap === 1 && quyet === 'da_duyet'
+      ? 'cho_duyet_2'
+      : quyet,
+    tinh_lai: d.loai === 'cong_tac' && quyet === 'da_duyet'
       ? { tu_ngay: d.tu_ngay, den_ngay: d.den_ngay ?? d.tu_ngay }
       : null,
   };
@@ -299,6 +366,17 @@ export async function huy_don(
   if (d === null) throw new LoiKhongTim('Không tìm thấy đơn của bạn.');
   if (d.trang_thai === 'da_huy') return { tinh_lai: null };
   if (d.trang_thai === 'tu_choi') throw new LoiDauVao('Đơn đã bị từ chối, không cần hủy.');
+
+  // Ket qua OT DA DUYET la bang chung da tinh tien — khong the huy don cho no bien mat khoi
+  // so sach. Lien he TBKS de xu ly ngoai le (rat hiem, nen di qua con nguoi chu khong bam nut).
+  if (d.loai === 'lam_them') {
+    const kq = await truy_van_mot<{ id: string }>(
+      `select id from ket_qua_ot where don_tu_id = $1 and trang_thai = 'da_duyet'`, [id]);
+    if (kq !== null) {
+      throw new LoiXungDot(
+        'Kết quả OT của đơn này đã được duyệt nên không thể hủy đơn. Liên hệ TBKS để được xử lý.');
+    }
+  }
 
   await thuc_thi(
     `update don_tu set trang_thai = 'da_huy', quyet_luc = now() where id = $1`, [id]);
@@ -322,6 +400,17 @@ export async function dem_cho_duyet(chi_phong: string | null): Promise<Record<st
              or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1::uuid))
       group by d.loai`,
     [chi_phong],
+  );
+  return Object.fromEntries(dong.map((d) => [d.loai, d.so]));
+}
+
+/** Dem don lam_them dang cho duyet CAP 2 — cho tbks/admin. Khong pham vi phong. */
+export async function dem_cho_duyet_cap_2(): Promise<Record<string, number>> {
+  const dong = await truy_van<{ loai: string; so: number }>(
+    `select d.loai, count(*)::int as so
+       from don_tu d
+      where d.trang_thai = 'cho_duyet_2'
+      group by d.loai`,
   );
   return Object.fromEntries(dong.map((d) => [d.loai, d.so]));
 }

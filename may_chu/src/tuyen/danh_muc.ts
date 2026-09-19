@@ -30,7 +30,7 @@ import { lich_cua_may } from '../ra_vao/khoa_cua.ts';
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
 // KHONG duoc dung khi tao tai khoan moi bang tay (xem POST /nguoi-dung).
 const VAI_TRO = ['admin', 'nhan_su', 'truong_phong', 'truong_phong_nhan_su',
-  'nhan_vien', 'cho_duyet'] as const;
+  'nhan_vien', 'cho_duyet', 'tbks'] as const;
 
 /**
  * Vai tro DOI phai gan voi mot ho so nhan vien.
@@ -45,7 +45,7 @@ function can_ho_so(v: string | null): boolean {
   return (VAI_TRO_CAN_HO_SO as readonly string[]).includes(v ?? '');
 }
 const VAI_TRO_TAO_MOI = ['admin', 'nhan_su', 'truong_phong', 'truong_phong_nhan_su',
-  'nhan_vien'] as const;
+  'nhan_vien', 'tbks'] as const;
 
 export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   // =====================================================================  PHONG BAN
@@ -160,6 +160,10 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   });
 
   // =====================================================================  NHAN VIEN
+  // Danh sach khoi (YC 02 phan A) — cho form ho so + trang chinh sach phu cap theo khoi.
+  app.get('/khoi', { preHandler: can_dang_nhap }, async () =>
+    truy_van('select id, ma, ten, ghi_chu, dang_bat from khoi order by ma'));
+
   app.get('/nhan-vien', { preHandler: can_dang_nhap }, async (req) => {
     const q = req.query as Record<string, unknown>;
     const tim = chuoi(q, 'tim', { toi_da: 100 });
@@ -170,11 +174,13 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
               nv.phong_ban_id, pb.ten as phong_ban,
               nv.ca_lam_id, cl.ten as ca_lam,
               nv.noi_lam_viec_id, nlv.ten as noi_lam_viec, nlv.lich_nghi_ma,
+              nv.che_do_luong, nv.khoi_id, k.ten as khoi,
               (nd.id is not null) as co_tai_khoan
          from nhan_vien nv
          left join phong_ban pb on pb.id = nv.phong_ban_id
          left join ca_lam    cl on cl.id = nv.ca_lam_id
          left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
+         left join khoi k on k.id = nv.khoi_id
          left join nguoi_dung nd on nd.nhan_vien_id = nv.id
         where ($1::boolean is not true or nv.dang_hoat_dong = true)
           and ($2::text is null
@@ -197,8 +203,9 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         const kq = await khach.query<{ id: string }>(
           `insert into nhan_vien
              (ma_nv, ho_ten, pin_may, ma_erp, phong_ban_id, ca_lam_id, ngay_vao,
-              so_dien_thoai, email, duoc_cham_cong_dien_thoai, noi_lam_viec_id)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
+              so_dien_thoai, email, duoc_cham_cong_dien_thoai, noi_lam_viec_id, che_do_luong,
+              khoi_id)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning id`,
           ts,
         );
         await ghi_su_kien(
@@ -239,7 +246,8 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         await khach.query(
           `update nhan_vien set ma_nv=$2, ho_ten=$3, pin_may=$4, ma_erp=$5, phong_ban_id=$6,
                   ca_lam_id=$7, ngay_vao=$8, so_dien_thoai=$9, email=$10,
-                  duoc_cham_cong_dien_thoai=$11, noi_lam_viec_id=$12, cap_nhat_luc=now()
+                  duoc_cham_cong_dien_thoai=$11, noi_lam_viec_id=$12, che_do_luong=$13,
+                  khoi_id=$14, cap_nhat_luc=now()
             where id=$1`,
           [id, ...ts],
         );
@@ -1251,7 +1259,7 @@ function doc_ca_lam(b: Record<string, unknown>): unknown[] {
   return [
     chuoi_bat_buoc(b, 'ten', { toi_da: 80 }),
     gio_vao, gio_ra, nghi_tu, nghi_den,
-    so_nguyen(b, 'dung_sai_muon_phut', { min: 0, max: 240, mac_dinh: 5 }),
+    so_nguyen(b, 'dung_sai_muon_phut', { min: 0, max: 240, mac_dinh: 10 }),
     so_nguyen(b, 'dung_sai_som_phut', { min: 0, max: 240, mac_dinh: 5 }),
     so_nguyen(b, 'nguong_ot_phut', { min: 0, max: 480, mac_dinh: 30 }),
     qua_dem,
@@ -1412,6 +1420,8 @@ function doc_nhan_vien(b: Record<string, unknown>, bat_buoc: boolean): unknown[]
     chuoi(b, 'email', { toi_da: 200 }),
     luan_ly(b, 'duoc_cham_cong_dien_thoai', false),
     uuid(b, 'noi_lam_viec_id'),
+    trong_tap(b, 'che_do_luong', ['vn', 'tq'] as const, { bat_buoc: false }) ?? 'vn',
+    uuid(b, 'khoi_id'),
   ];
 }
 
