@@ -1867,6 +1867,32 @@ test('ho so: dung boi canh — hai nhan vien cung phong, mot nguoi la truong pho
   }
 });
 
+test('xac thuc: token cua nguoi dung da bi xoa tra 401, khong phai 500', async () => {
+  // Tinh huong that da gap: CSDL test bi xoa sach (pipeline) trong khi trinh duyet con giu
+  // token cu. Token van ky dung nen qua xac thuc, nhung insert nguoi_tao vo khoa ngoai ->
+  // HTTP 500 "loi he thong". Phai chan ngay o lop xac thuc: khong con nguoi dung -> 401.
+  const nv = await goi('POST', '/api/nhan-vien', {
+    token: token_admin, body: { ma_nv: 'XOA-01', ho_ten: 'Người Bị Xóa' },
+  });
+  assert.equal(nv.ma, 201, JSON.stringify(nv.body));
+  const tao = await goi('POST', '/api/nguoi-dung', {
+    token: token_admin,
+    body: { ten_dang_nhap: 'nguoi.bi.xoa', mat_khau: 'Xoa@2026', vai_tro: 'nhan_su',
+      nhan_vien_id: nv.body['id'] as string },
+  });
+  assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+  const id = tao.body['id'] as string;
+  const token = tao_token_truy_cap({
+    sub: id, vai_tro: 'nhan_su', nv: nv.body['id'] as string, ten: 'nguoi.bi.xoa',
+  }).token;
+
+  // Xoa thang dong nguoi dung (gia lap CSDL duoc khoi tao lai).
+  await thuc_thi('delete from nguoi_dung where id = $1', [id]);
+
+  const r = await goi('GET', '/api/thong-bao', { token });
+  assert.equal(r.ma, 401, `token cua nguoi dung da xoa phai bi tu choi (nhan ${r.ma})`);
+});
+
 test('ho so: nhan su tao duoc hop dong, luong, thiet bi cho nhan vien', async () => {
   const hd = await goi('POST', `/api/nhan-vien/${hs_nv_a}/hop-dong`, {
     token: token_admin,
@@ -6012,7 +6038,14 @@ test('don khac: KHONG trum khoang voi don cung loai dang cho', async () => {
 
 test('don khac: ngay cong tac DA DUYET chuyen bang cong tu vang sang cong_tac', async () => {
   // Day la ly do ca nhanh `cong_tac` trong bo tinh cong ton tai.
-  const ng = cong_ngay(NGAY, -120);
+  // Lui 120 ngay roi DO TIEp lui den ngay lam viec gan nhat: ngay nghi tuan khong co ca,
+  // bang cong la `nghi_tuan` va don cong tac khong co gi de chuyen (vang -> cong_tac).
+  let ng = cong_ngay(NGAY, -120);
+  for (let i = 0; i < 7; i++) {
+    const thu = new Date(`${ng}T00:00:00Z`).getUTCDay();
+    if (thu >= 1 && thu <= 5) break;
+    ng = cong_ngay(ng, -1);
+  }
   const tao = await goi('POST', '/api/toi/don', {
     token: token_nhan_vien,
     body: { loai: 'cong_tac', tu_ngay: ng, den_ngay: ng, noi_den: 'Hải Phòng' },

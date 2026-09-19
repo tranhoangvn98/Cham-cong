@@ -437,12 +437,12 @@ export function TrangCaNhan({ ve_quan_tri }: { ve_quan_tri?: () => void }): Reac
           </div>
 
           <div className="cn-ben-phu">
-            <LienKet den="/thong-bao" lop="cn-ben-phu-lien-ket">
+            <LienKet den="/van-ban" lop="cn-ben-phu-lien-ket">
               <i className="bt bt-star" aria-hidden="true" />
               <span>Thông báo</span>
               {so_chua_doc > 0 && <span className="cn-ben-dem">{so_chua_doc}</span>}
             </LienKet>
-            <LienKet den="/van-ban" lop="cn-ben-phu-lien-ket">
+            <LienKet den="/van-ban/tai-lieu" lop="cn-ben-phu-lien-ket">
               <i className="bt bt-file-text" aria-hidden="true" />
               <span>Văn bản công ty</span>
             </LienKet>

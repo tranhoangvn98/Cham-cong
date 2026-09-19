@@ -96,7 +96,7 @@ export function TrangKhieuNai(): ReactNode {
                       <td className="so mo-ma">{d.ma ?? '—'}</td>
                       <td className="khong-ngat">{NHAN_LOAI[d.loai] ?? d.loai}</td>
                       <td>
-                        <LienKet den={`/nhan-vien/${d.nhan_vien_id}`}>{d.ho_ten}</LienKet>
+                        <LienKet den={`/nhan-vien/${d.nhan_vien_id}`} lop="lk-nhan-vien">{d.ho_ten}</LienKet>
                         <span className="mo-ma"> {d.ma_nv}</span>
                       </td>
                       <td>{d.phong_ban ?? '—'}</td>

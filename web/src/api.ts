@@ -571,11 +571,28 @@ export async function tai_tep(duong_dan: string, ten_tep: string): Promise<void>
   if (!res.ok) throw new LoiApi(res.status, `Không tải được tệp (lỗi ${res.status}).`);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
+  // GAN vao DOM truoc khi click va GIAI PHONG URL cham: mot so trinh duyet huy tai
+  // neu revokeObjectURL chay ngay sau click. Da tung xay ra voi Chrome.
   const a = document.createElement('a');
   a.href = url;
   a.download = ten_tep;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  setTimeout(() => { URL.revokeObjectURL(url); }, 5000);
+}
+
+/** Tai tep nhi phan co xac thuc ve Blob thuong — cho render docx online. */
+export async function tai_tep_blob(duong_dan: string): Promise<Blob> {
+  const res = await fetch(`${GOC}${duong_dan}`, {
+    headers: phien === null ? {} : { authorization: `Bearer ${phien.token_truy_cap}` },
+  });
+  if (!res.ok) {
+    const than: unknown = await res.json().catch(() => null);
+    const loi = (than as { loi?: string } | null)?.loi;
+    throw new LoiApi(res.status, loi ?? `Không mở được tệp (lỗi ${res.status}).`);
+  }
+  return await res.blob();
 }
 
 /**

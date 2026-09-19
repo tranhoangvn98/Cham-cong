@@ -2,6 +2,34 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.86.1] — 2026-09-19
+
+**Trang Tổng quan vừa một màn hình.**
+
+- Toàn bộ khối trên Tổng quan xếp lại thành lưới thay vì dải dọc: màn rộng hiển thị hàng
+  thống kê hôm nay ngang hết chiều ngang + 3 cột (điểm nóng ra/vào, biểu đồ 7 ngày, đi muộn,
+  của tôi, việc của nhân sự, hệ thống); màn trung bình 2 cột; màn hẹp vẫn xếp dọc như cũ.
+- Gọn các thẻ, ô số, bảng để vừa một màn hình, không cần cuộn lên xuống; nếu dữ liệu đột
+  biến (hàng chục người đi muộn) thì cuộn trong vùng nội dung, không đẩy dài cả trang.
+- Bảng "Đi muộn hôm nay" hiện tối đa 7 người kèm đường dẫn xem bảng công; bảng "Người bị
+  cảnh báo nhiều nhất tháng" hiện top 5 (danh sách đầy đủ vẫn ở tab Ra/vào).
+
+## [1.86.0] — 2026-09-19
+
+**Quy trình nghỉ việc tự động.**
+
+- Khi nhân sự **ban hành Quyết định nghỉ việc** trên hệ văn bản AI (loại Quyết định,
+  phạm vi Cá nhân + ô ngày nghỉ việc), tệp quyết định được tự động gắn vào hồ sơ nhân
+  viên (mục "Quyết định nghỉ việc", đồng bộ SharePoint như mọi tệp hồ sơ).
+- Đến **ngày nghỉ việc**, lịch chạy đêm tự động: khóa tài khoản + thu hồi mọi phiên đăng
+  nhập; báo cổng phân quyền chặn đăng nhập và chuyển trạng thái; gửi Microsoft Graph
+  chặn đăng nhập (`accountEnabled = false`), thu hồi phiên và rút toàn bộ giấy phép
+  (bật bằng `MS365_NGHI_VIEC_BAT=1`). Các sự kiện đi qua hộp thư đi `hop_thu_di` — có
+  retry, không mất khi cổng/Microsoft đang chết.
+- Nút "Cho nghỉ việc" thủ công giữ nguyên, dùng chung nghiệp vụ và nay có thêm bước
+  chặn Microsoft.
+- Tài liệu mới: `tai_lieu/NGHI-VIEC.md`.
+
 ## [1.85.0] — 2026-09-04
 
 **Rà soát và sửa logic giao diện Khu vực của tôi.**

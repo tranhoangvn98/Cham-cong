@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import {
   DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_gio,
 } from '../thanh_phan.tsx';
-import { goi, la_nhan_su } from '../api.ts';
+import { goi, la_nhan_su, tai_tep } from '../api.ts';
 
 interface ThongBao {
   id: string;
@@ -12,6 +12,7 @@ interface ThongBao {
   tieu_de: string;
   noi_dung: string;
   muc_do: 'thuong' | 'quan_trong' | 'khan';
+  pham_vi: 'toan_cong_ty' | 'phong_ban' | 'ca_nhan';
   can_giai_trinh: boolean;
   tao_luc: string;
   het_han: string | null;
@@ -21,6 +22,10 @@ interface ThongBao {
   ma_giai_trinh: string | null;
   da_doc: boolean;
   da_giai_trinh: boolean;
+  co_tep: boolean;
+  da_gui_email: boolean;
+  gui_email_luc: string | null;
+  gui_email_loi: string | null;
 }
 
 const NHAN_MUC_DO: Record<ThongBao['muc_do'], string> = {
@@ -46,6 +51,15 @@ function MotThongBao(
     if (ok) khi_xong();
   };
 
+  /** Gui (lai) email kem DOCX toi tap nguoi nhan — chi cho nhân sự. */
+  const gui_lai_email = async (): Promise<void> => {
+    const ok = await hd.chay(
+      () => goi(`/api/thong-bao/${tb.id}/gui-email`, { method: 'POST' }),
+      'Đã gửi email.',
+    );
+    if (ok) khi_xong();
+  };
+
   return (
     <div className={con_no ? 'the tb-the tb-no' : 'the tb-the'}>
       <div className="tb-dau">
@@ -61,6 +75,29 @@ function MotThongBao(
 
       {khi_xem_doc !== undefined && (
         <button className="nut-nho nut-phang" onClick={khi_xem_doc}>Xem ai đã đọc</button>
+      )}
+      {tb.co_tep && (
+        <button className="nut-nho nut-phang"
+          onClick={() => { void tai_tep(`/api/toi/thong-bao/${tb.id}/tai`, 'van-ban-thong-bao.docx'); }}>
+          Tải văn bản (DOCX)
+        </button>
+      )}
+      {khi_xem_doc !== undefined && (
+        tb.da_gui_email ? (
+          <div className="mo-ta">
+            ✉ Đã gửi email{tb.gui_email_luc !== null ? ` · ${ngay_gio(tb.gui_email_luc)}` : ''}
+          </div>
+        ) : (
+          <div className="hang-nut" style={{ marginTop: 8 }}>
+            <button className="nut-nho nut-phang"
+              onClick={() => { void gui_lai_email(); }} disabled={hd.dang_chay}>
+              {hd.dang_chay ? 'Đang gửi…' : 'Gửi email'}
+            </button>
+            {tb.gui_email_loi !== null && (
+              <span className="mo-ta">Chưa gửi được: {tb.gui_email_loi}</span>
+            )}
+          </div>
+        )
       )}
       <HopLoi loi={hd.loi} />
       <HopTot chu={hd.tot} />
@@ -189,28 +226,43 @@ function AiDaDoc({ tb, khi_dong }: { tb: ThongBao; khi_dong: () => void }): Reac
   );
 }
 
-export function TrangThongBaoCaNhan(): ReactNode {
+/**
+ * Tab "Thong bao" trong trang Van ban cong ty. Loc nhanh "Toan cong ty" mac dinh —
+ * tat ca thong bao (ke ca phong ban / ca nhan) van doc duoc khi chon "Tat ca".
+ */
+export function TabThongBao(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<ThongBao[]>('/api/toi/thong-bao');
   const [xem_doc, dat_xem_doc] = useState<ThongBao | null>(null);
+  const [loc, dat_loc] = useState<'toan_cong_ty' | 'tat_ca'>('toan_cong_ty');
   const hr = la_nhan_su();
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
   const ds = du_lieu ?? [];
+  const ds_loc = loc === 'toan_cong_ty'
+    ? ds.filter((t) => t.pham_vi === 'toan_cong_ty') : ds;
 
   return (
-    <div className="canhan">
-      <div className="canhan-hero">
-        <div className="canhan-hero-chao">Thông báo công ty</div>
-        <div className="canhan-hero-phu">Thông báo từ Ban giám đốc và nhân sự.</div>
-      </div>
+    <div>
       {hr && <DangThongBao khi_xong={nap_lai} />}
       {xem_doc !== null && <AiDaDoc tb={xem_doc} khi_dong={() => dat_xem_doc(null)} />}
-      {ds.length === 0
+      <div className="hang-tab" role="tablist" aria-label="Lọc thông báo">
+        <button type="button"
+          className={loc === 'toan_cong_ty' ? 'dang-chon' : ''}
+          onClick={() => dat_loc('toan_cong_ty')}>
+          Toàn công ty ({ds.filter((t) => t.pham_vi === 'toan_cong_ty').length})
+        </button>
+        <button type="button"
+          className={loc === 'tat_ca' ? 'dang-chon' : ''}
+          onClick={() => dat_loc('tat_ca')}>
+          Tất cả ({ds.length})
+        </button>
+      </div>
+      {ds_loc.length === 0
         ? <Trong tieu_de="Chưa có thông báo" mo_ta="Khi công ty đăng thông báo, nó sẽ hiện ở đây." />
         : (
           <div className="tb-danh-sach">
-            {ds.map((tb, i) => (
+            {ds_loc.map((tb, i) => (
               <MotThongBao key={khoa_tinh(tb.id, i)} tb={tb} khi_xong={nap_lai}
                 khi_xem_doc={hr ? () => dat_xem_doc(tb) : undefined} />
             ))}

@@ -200,7 +200,7 @@ export function TrangKhoTep(): ReactNode {
                   <tr key={t.id}>
                     <td><strong>{t.ten_goc}</strong></td>
                     <td>
-                      <LienKet den={`/nhan-vien/${t.nhan_vien_id}`}>{t.ho_ten}</LienKet>
+                      <LienKet den={`/nhan-vien/${t.nhan_vien_id}`} lop="lk-nhan-vien">{t.ho_ten}</LienKet>
                       <div className="o-so-phu">{t.ma_nv}</div>
                     </td>
                     <td>{TEN_NHOM_TEP[t.nhom] ?? t.nhom}</td>

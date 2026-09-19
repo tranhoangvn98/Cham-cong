@@ -4,8 +4,9 @@
 // gi kich hoat tinh cong cho ho. Neu khong chay viec nay, ngay vang se KHONG BAO GIO
 // xuat hien tren bang cong va ke toan se tuong ho khong thieu cong.
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
-import { truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
+import { trong_giao_dich, truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { chot_ngay_hom_qua } from '../cong/tinh_cong.ts';
+import { cho_nghi_viec } from '../nhan_su/nghi_viec.ts';
 import { don_su_kien_cu } from './hop_thu_di.ts';
 import { ma_viec_nhac_han, quet_nhac_han } from '../hop_dong/nhac_han.ts';
 import { ma_viec_sap_xep, sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
@@ -14,6 +15,7 @@ import { dong_bo_khoa_cua } from '../ra_vao/khoa_cua.ts';
 import { quet_vi_pham } from '../vi_pham/phat_hien.ts';
 import { gom_va_xu_ly_thang } from '../ky_luat/xu_ly.ts';
 import { ghi_nhan, ma_viec_dong_bo, moc_dong_bo, quet } from '../sharepoint/dong_bo.ts';
+import { quet_email_cho } from './gui_email_thong_bao.ts';
 import { cong_ngay, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. Khai duoc trong .env. */
@@ -111,6 +113,83 @@ async function dong_bo_sharepoint(
   // Don hop thu di da gui, moi tuan mot lan.
 }
 
+/**
+ * Quet quyet dinh nghi viec den han: khoa tai khoan sau ngay nghi viec ghi trong quyet dinh.
+ *
+ * Nhan viec NGUYEN TU cho TUNG quyet dinh bang mot UPDATE danh dau `nghi_viec_dang_chay_luc`
+ * (for update skip locked) — nhieu instance chay song song khong xu ly trung, va neu may chet
+ * giua chung thi sau 5 phut quyet dinh duoc lay lai (giong `dang_xu_ly` cua worker van ban).
+ * Chi khi xong moi dat `nghi_viec_da_chay_luc`; that bai thi nha danh dau de vong sau thu lai.
+ */
+export async function nghi_viec_den_han(
+  hom_qua: string, ghi_log: (s: string, ...t: unknown[]) => void,
+): Promise<void> {
+  const dong = await truy_van<{
+    id: string; ma: string; nhan_vien_id: string | null; ngay_nghi_viec: string;
+  }>(
+    `update thong_bao_nhap_ai
+        set nghi_viec_dang_chay_luc = now()
+      where id in (
+        select id from thong_bao_nhap_ai
+         where la_qd_nghi_viec
+           and trang_thai = 'da_phat_hanh'
+           and ngay_nghi_viec <= $1::date
+           and nghi_viec_da_chay_luc is null
+           and (nghi_viec_dang_chay_luc is null
+                or nghi_viec_dang_chay_luc < now() - interval '5 minutes')
+         order by ngay_nghi_viec
+         for update skip locked
+      )
+      returning id, ma, nhan_vien_id, ngay_nghi_viec::text`,
+    [hom_qua],
+  );
+
+  for (const d of dong) {
+    if (d.nhan_vien_id === null) {
+      await thuc_thi(
+        `update thong_bao_nhap_ai
+            set nghi_viec_da_chay_luc = now(), nghi_viec_dang_chay_luc = null
+          where id = $1`,
+        [d.id],
+      );
+      ghi_log(`[lich] nghi viec ${d.ma}: thieu nhan vien, danh dau da chay va bo qua`);
+      continue;
+    }
+    try {
+      const kq = await trong_giao_dich(async (khach) => {
+        // Da cho nghi bang tay truoc do (nut thu cong): khong lam lai, tran bao cong phan
+        // quyen hai lan cho cung mot nguoi.
+        const nv = (await khach.query<{ dang_hoat_dong: boolean }>(
+          'select dang_hoat_dong from nhan_vien where id = $1', [d.nhan_vien_id])).rows[0];
+        if (nv === undefined) return { loai: 'thieu_nhan_vien' as const };
+        if (!nv.dang_hoat_dong) return { loai: 'da_chay_truoc' as const };
+        const ket_qua = await cho_nghi_viec(khach, d.nhan_vien_id, d.ngay_nghi_viec);
+        return ket_qua === null
+          ? { loai: 'thieu_nhan_vien' as const }
+          : { loai: 'da_chay' as const, ma_nv: ket_qua.ma_nv, upn: ket_qua.upn };
+      });
+      await thuc_thi(
+        `update thong_bao_nhap_ai
+            set nghi_viec_da_chay_luc = now(), nghi_viec_dang_chay_luc = null
+          where id = $1`,
+        [d.id],
+      );
+      if (kq.loai === 'da_chay') {
+        ghi_log(`[lich] nghi viec ${d.ma}: da khoa tai khoan ${kq.ma_nv}`
+          + (kq.upn === null ? ' (khong co tai khoan Microsoft)' : ` + bao Microsoft ${kq.upn}`));
+      } else if (kq.loai === 'da_chay_truoc') {
+        ghi_log(`[lich] nghi viec ${d.ma}: nguoi nay da duoc cho nghi truoc do, bo qua`);
+      } else {
+        ghi_log(`[lich] nghi viec ${d.ma}: khong con nhan vien trong CSDL, bo qua`);
+      }
+    } catch (loi) {
+      await thuc_thi(
+        'update thong_bao_nhap_ai set nghi_viec_dang_chay_luc = null where id = $1', [d.id]);
+      ghi_log(`[lich] LOI khi chay nghi viec ${d.ma}: ${(loi as Error).message}`);
+    }
+  }
+}
+
 async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Promise<void> {
   const bay_gio = new Date();
   const hom_nay = ngay_dia_phuong(bay_gio);
@@ -139,6 +218,16 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     if (doi > 0) ghi_log(`[lich] khoa cua: doi trang thai ${doi} may`);
   } catch (loi) {
     ghi_log(`[lich] LOI khi dong bo khoa cua: ${(loi as Error).message}`);
+  }
+
+  // ------------------------------------------------------------ email thong bao dang cho
+  // Fire-and-forget o buoc ban hanh / dang thong bao co the mat sau crash. Vong nay quet lai
+  // nhung dong chua gui duoc email — GUI MOI VONG, khong phai cho gio cuoi ngay.
+  try {
+    const so = await quet_email_cho();
+    if (so > 0) ghi_log(`[lich] gui ${so} email thong bao dang cho`);
+  } catch (loi) {
+    ghi_log(`[lich] LOI khi quet email thong bao: ${(loi as Error).message}`);
   }
 
   // ------------------------------------------------------------ cac viec cuoi ngay
@@ -173,7 +262,16 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     } catch (loi) {
       await nha_viec(ma_ra_vao);
       ghi_log(`[lich] LOI khi xu ly canh bao ra/vao ${hom_qua}: ${(loi as Error).message}`);
-    }
+   
+
+  // Quyet dinh nghi viec den han: khoa tai khoan sau ngay nghi viec ghi trong quyet dinh.
+  // Chay cung khung gio cuoi ngay vi phai cho HET ngay lam viec cuoi (hom qua) moi khoa —
+  // khoa som thi nguoi do mat quyen truy cap vao ngay lam viec cuoi cua ho.
+  try {
+    await nghi_viec_den_han(hom_qua, ghi_log);
+  } catch (loi) {
+    ghi_log(`[lich] LOI khi quet nghi viec den han: ${(loi as Error).message}`);
+  } }
   }
 
   // Nhac han hop dong, moi ngay mot lan.

@@ -208,7 +208,7 @@ function HopThoaiDanhSach(
                     {ds.map((d) => (
                       <tr key={d.nhan_vien_id}>
                         <td className="so">{d.ma_nv}</td>
-                        <td><LienKet den={`/nhan-vien/${d.nhan_vien_id}`}>{d.ho_ten}</LienKet></td>
+                        <td><LienKet den={`/nhan-vien/${d.nhan_vien_id}`} lop="lk-nhan-vien">{d.ho_ten}</LienKet></td>
                         <td>{d.phong_ban ?? '—'}</td>
                         <td className="khong-ngat">
                           {d.trang_thai === null
@@ -270,29 +270,56 @@ export function TrangDashboard(): ReactNode {
 
   // Goc nhin NHAN SU: bo cuc bang dieu khien nhieu cot, lay tinh hinh ra/vao lam trong tam.
   // `bang-dieu-khien` cung noi rong vung noi dung de dung het man hinh 2K (xem kieu.css).
+  // Mot man hinh duoc: hang thong ke ngang tren + 3 cot khoi, khong phai cuon doc (xem kieu.css).
   if (du_lieu.cong_ty !== null) {
     return (
       <>
         {dau_trang}
         <div className="bang-dieu-khien">
-          <TongQuanNgay ct={du_lieu.cong_ty} rv={du_lieu.ra_vao} ngay={du_lieu.ngay} />
+          <div className="bd-khoi bd-ngay">
+            <TongQuanNgay ct={du_lieu.cong_ty} rv={du_lieu.ra_vao} ngay={du_lieu.ngay} />
+          </div>
 
-          {du_lieu.ra_vao !== null && <DiemNongRaVao rv={du_lieu.ra_vao} />}
+          {du_lieu.ra_vao !== null && (
+            <div className="bd-khoi bd-nong">
+              <DiemNongRaVao rv={du_lieu.ra_vao} />
+            </div>
+          )}
 
-          <div className="luoi luoi-2">
+          <div className="bd-khoi bd-bieudo">
+            <BieuDoBayNgay ct={du_lieu.cong_ty} />
+          </div>
+
+          <div className="bd-khoi bd-dimuon">
             <BangDiMuon
               ds={du_lieu.cong_ty.di_muon_hom_nay}
               tieu_de="Đi muộn hôm nay"
               khi_trong="Cả công ty đúng giờ hôm nay."
+              toi_da={7}
             />
-            <BieuDoBayNgay ct={du_lieu.cong_ty} />
           </div>
 
-          <ChoDuyet ct={du_lieu.cong_ty} />
+          <div className="bd-khoi bd-choduyet">
+            <ChoDuyet ct={du_lieu.cong_ty} />
+          </div>
 
-          {du_lieu.nhan_su !== null && <KhoiNhanSu ns={du_lieu.nhan_su} />}
-          {du_lieu.he_thong !== null && <KhoiHeThong ht={du_lieu.he_thong} />}
-          {du_lieu.toi !== null && <KhoiCuaToi toi={du_lieu.toi} />}
+          {du_lieu.toi !== null && (
+            <div className="bd-khoi bd-toi">
+              <KhoiCuaToi toi={du_lieu.toi} />
+            </div>
+          )}
+
+          {du_lieu.nhan_su !== null && (
+            <div className="bd-khoi bd-viens">
+              <KhoiNhanSu ns={du_lieu.nhan_su} />
+            </div>
+          )}
+
+          {du_lieu.he_thong !== null && (
+            <div className="bd-khoi bd-hethong">
+              <KhoiHeThong ht={du_lieu.he_thong} />
+            </div>
+          )}
         </div>
       </>
     );
@@ -553,10 +580,11 @@ function DiemNongRaVao({ rv }: { rv: RaVaoHR }): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {rv.top_nguoi.map((n) => (
+                {/* Tong quan chi diem danh top 5 — danh sach day du nam o tab /ra-vao. */}
+                {rv.top_nguoi.slice(0, 5).map((n) => (
                   <tr key={n.nhan_vien_id}>
                     <td className="so">{n.ma_nv}</td>
-                    <td><LienKet den={`/nhan-vien/${n.nhan_vien_id}`}>{n.ho_ten}</LienKet></td>
+                    <td><LienKet den={`/nhan-vien/${n.nhan_vien_id}`} lop="lk-nhan-vien">{n.ho_ten}</LienKet></td>
                     <td>{n.phong_ban ?? '—'}</td>
                     <td className="canh-phai so">{n.so_canh_bao}</td>
                     <td className="canh-phai so">
@@ -655,7 +683,7 @@ function KhoiNhanSu({ ns }: { ns: ViecNhanSu }): ReactNode {
                 {ns.sap_het_han.map((h) => (
                   <tr key={`${h.nhan_vien_id}-${h.hieu_luc_den}`}>
                     <td>
-                      <LienKet den={`/nhan-vien/${h.nhan_vien_id}`}>
+                      <LienKet den={`/nhan-vien/${h.nhan_vien_id}`} lop="lk-nhan-vien">
                         <strong>{h.ma_nv}</strong> — {h.ho_ten}
                       </LienKet>
                     </td>
@@ -771,11 +799,17 @@ function ONgay({ t, ngay }: { t: TinhHinhNgay; ngay: string }): ReactNode {
 }
 
 function BangDiMuon(
-  { ds, tieu_de, khi_trong }: { ds: DiMuon[]; tieu_de: string; khi_trong: string },
+  { ds, tieu_de, khi_trong, toi_da }: {
+    ds: DiMuon[]; tieu_de: string; khi_trong: string; toi_da?: number;
+  },
 ): ReactNode {
+  // `toi_da` gioi han so dong hien ra de bang dieu khien vua mot man hinh. Phan con lai
+  // dan sang /bang-cong — khong giau du lieu, chi khong cho bieu do chen het cho khac.
+  const gioi_han = toi_da ?? ds.length;
+  const ds_hien = gioi_han < ds.length ? ds.slice(0, gioi_han) : ds;
   return (
     <div className="the the-mong">
-      <div style={{ padding: '16px 16px 0' }}>
+      <div style={{ padding: '12px 14px 0' }}>
         <h2>{tieu_de}</h2>
       </div>
       {ds.length === 0 ? (
@@ -790,7 +824,7 @@ function BangDiMuon(
               </tr>
             </thead>
             <tbody>
-              {ds.map((n) => (
+              {ds_hien.map((n) => (
                 <tr key={n.ma_nv}>
                   <td className="so">{n.ma_nv}</td>
                   <td>{n.ho_ten}</td>
@@ -803,6 +837,12 @@ function BangDiMuon(
             </tbody>
           </table>
         </div>
+      )}
+      {ds.length > gioi_han && (
+        <p className="mo-ta bd-xem-them">
+          Còn <strong>{ds.length - gioi_han}</strong> người —{' '}
+          <LienKet den="/bang-cong">xem bảng công ›</LienKet>
+        </p>
       )}
     </div>
   );

@@ -19,6 +19,7 @@ const CHAY_RIENG = new Set([
   'e2e.test.ts',
   'proxy_tin_cay.test.ts',
   'su_kien_nhan_su.test.ts',
+  'thong_bao_ai_e2e.test.ts',
   // Tep rieng vi no can `CONG_URL` RONG, ma `cau_hinh` doc bien moi truong mot lan luc import.
   'su_kien_nhan_su_chua_cau_hinh.test.ts',
 ]);

@@ -180,6 +180,23 @@ Hệ thống chỉ cần `openid profile email`. Cả ba đều là quyền cơ 
 
 Không cấp thêm quyền nào khác. Hệ thống không đọc mail, không đọc lịch, không đọc danh bạ.
 
+### Quyền cho quy trình nghỉ việc tự động
+
+Ứng dụng đăng nhập ở trên KHÔNG phải ứng dụng dùng cho bước "chặn đăng nhập + rút giấy
+phép" khi nhân viên nghỉ việc. Bước đó chạy app-only bằng chính ứng dụng đã cấp cho
+`MS_MAIL_*` (hoặc `SHAREPOINT_*` nếu không khai MS_MAIL riêng) — xem `tai_lieu/NGHI-VIEC.md`.
+
+Ứng dụng **đó** phải được admin Entra cấp thêm hai quyền ứng dụng:
+
+| Quyền | Dùng cho |
+| --- | --- |
+| `User.ReadWrite.All` | `accountEnabled = false` (chặn đăng nhập) + `assignLicense` (rút giấy phép) |
+| `User.RevokeSessions.All` | `revokeSignInSessions` (thu hồi phiên đang mở) |
+
+Đây là quyền **cao** (đụng được mọi tài khoản trong tenant) — chỉ cấp cho ứng dụng mà
+chỉ máy chủ nắm client secret, và chỉ bật `MS365_NGHI_VIEC_BAT=1` khi đã xác nhận quyền
+được admin consent xong.
+
 ## 4. Khai vào `.env`
 
 ```bash

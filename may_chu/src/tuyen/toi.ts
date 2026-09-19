@@ -944,7 +944,8 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
            select tb.id, tb.can_giai_trinh from thong_bao tb
             where tb.da_go = false and (tb.het_han is null or tb.het_han > now())
               and (tb.pham_vi = 'toan_cong_ty'
-                   or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1))
+                   or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+                   or tb.nhan_vien_id = $1)
          )
          select count(*) filter (where not exists (
                   select 1 from thong_bao_da_doc dd
@@ -1095,15 +1096,19 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     const nv_id = nhan_vien_cua_toi(req);
     return truy_van(
       `select tb.id, tb.ma, tb.tieu_de, tb.noi_dung, tb.muc_do, tb.can_giai_trinh,
+              tb.pham_vi,
               tb.tao_luc, tb.het_han,
+              tb.da_gui_email, tb.gui_email_luc, tb.gui_email_loi,
               dd.doc_luc, dd.giai_trinh, dd.giai_trinh_luc, dd.ma as ma_giai_trinh,
               (dd.doc_luc is not null) as da_doc,
-              (dd.giai_trinh is not null) as da_giai_trinh
+              (dd.giai_trinh is not null) as da_giai_trinh,
+              (tb.ten_luu is not null) as co_tep
          from thong_bao tb
          left join thong_bao_da_doc dd on dd.thong_bao_id = tb.id and dd.nhan_vien_id = $1
         where tb.da_go = false and (tb.het_han is null or tb.het_han > now())
           and (tb.pham_vi = 'toan_cong_ty'
-               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1))
+               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+               or tb.nhan_vien_id = $1)
         order by (dd.doc_luc is null) desc, tb.muc_do = 'khan' desc, tb.tao_luc desc
         limit 200`,
       [nv_id],
@@ -1122,7 +1127,8 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       `select tb.can_giai_trinh from thong_bao tb
         where tb.id = $1 and tb.da_go = false
           and (tb.pham_vi = 'toan_cong_ty'
-               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2))`,
+               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)
+               or tb.nhan_vien_id = $2)`,
       [tb_id, nv_id],
     );
     if (tb === null) throw new LoiKhongTim('Không tìm thấy thông báo trong phạm vi của bạn.');
@@ -1143,6 +1149,31 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     return res.send({ ok: true, ma_giai_trinh: dong?.ma ?? null });
   });
 
+  /** Tai tep DOCX (van ban ban hanh) cua mot thong bao trong pham vi cua toi. */
+  app.get('/thong-bao/:id/tai', async (req, res) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const tb_id = lay_id(req);
+    const tb = await truy_van_mot<{ ten_luu: string | null; mime: string | null }>(
+      `select tb.ten_luu, tb.mime from thong_bao tb
+        where tb.id = $1 and tb.da_go = false
+          and (tb.pham_vi = 'toan_cong_ty'
+               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)
+               or tb.nhan_vien_id = $2)`,
+      [tb_id, nv_id],
+    );
+    if (tb === null || tb.ten_luu === null) {
+      throw new LoiKhongTim('Không tìm thấy tệp văn bản trong phạm vi của bạn.');
+    }
+    const du_lieu = await doc_tep_ho_so(tb.ten_luu);
+    if (du_lieu === null) throw new LoiKhongTim('Tệp không còn trên máy chủ.');
+    return res
+      .header('content-type', tb.mime ?? 'application/octet-stream')
+      .header('x-content-type-options', 'nosniff')
+      .header('content-security-policy', "default-src 'none'; sandbox")
+      .header('content-disposition', 'attachment; filename*=UTF-8\'\'van-ban-thong-bao.docx')
+      .send(du_lieu);
+  });
+
   /** Kho van ban cong ty (noi quy, bieu mau...). Ai dang nhap cung xem duoc. */
   app.get('/van-ban', async () => truy_van(
     `select id, ma, tieu_de, mo_ta, danh_muc, ten_goc, mime, kich_thuoc, tao_luc,
@@ -1150,6 +1181,26 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
        from van_ban_cong_ty where da_go = false
       order by danh_muc, tao_luc desc limit 500`,
   ));
+
+  /**
+   * Van ban DA BAN HANH co so ky hieu (tu module AI) trong pham vi cua toi.
+   * Nhan vien doc + tai DOCX o tab "Van ban ban hanh" cua trang Van ban cong ty.
+   */
+  app.get('/van-ban-ban-hanh', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select tb.id, tb.ma, tb.tieu_de, tb.muc_do, tb.tao_luc,
+              n.so_ky_hieu, n.loai, (tb.ten_luu is not null) as co_tep
+         from thong_bao tb
+         join thong_bao_nhap_ai n on n.thong_bao_id = tb.id
+        where tb.da_go = false and (tb.het_han is null or tb.het_han > now())
+          and (tb.pham_vi = 'toan_cong_ty'
+               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+               or tb.nhan_vien_id = $1)
+        order by tb.tao_luc desc limit 300`,
+      [nv_id],
+    );
+  });
 
   /** Tai mot van ban cong ty ve. */
   app.get('/van-ban/:id/tai', async (req, res) => {

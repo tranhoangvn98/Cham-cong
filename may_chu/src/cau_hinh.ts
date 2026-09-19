@@ -294,6 +294,54 @@ export const cau_hinh = {
   anh_toi_da_byte: so('ANH_TOI_DA_BYTE', 3 * 1024 * 1024),
 
   /**
+   * AI soan van ban cong ty (module thong bao AI — DTKT 01).
+   *
+   * `khoa` RONG = khong goi duoc DeepSeek: pipeline chuyen sang fallback khong-LLM
+   * (nguoi tao tu nhap van xuoi). KHONG BAO GIO log khoa hay noi dung nhan khau ra log.
+   */
+  deepseek: {
+    khoa: chu('DEEPSEEK_API_KEY', ''),
+    model: chu('DEEPSEEK_MODEL', 'deepseek-chat'),
+    goc: chu('DEEPSEEK_BASE_URL', 'https://api.deepseek.com').replace(/\/+$/, ''),
+    timeout_ms: so('DEEPSEEK_TIMEOUT_MS', 60_000),
+    max_retry: so('DEEPSEEK_MAX_RETRY', 3),
+  },
+
+  /**
+   * The thuc van ban hanh chinh (ND 30/2020/ND-CP — doanh nghiep VAN DUNG).
+   *
+   * `co_quan_ban_hanh` va `dia_danh` DE TRONG thi may chu van chay, nhung van ban
+   * sinh ra se trong ten co quan/dia danh — phai dien truoc khi dung that.
+   *
+   * `nguoi_ky` + `chuc_vu` khong khai o day: mac dinh lay tu ho so nhan_vien cua
+   * nguoi tao (ho_ten, chuc_danh) — ai soan thi nguoi do ky.
+   */
+  van_ban: {
+    co_quan_ban_hanh: chu('CO_QUAN_BAN_HANH', ''),
+    dia_danh: chu('DIA_DANH_VAN_BAN', ''),
+    /** Ma don vi trong so ky hieu: 01/2026/TB-CTTHVN, 01/2026/QĐ-CTTHVN. */
+    ky_hieu_don_vi: chu('KY_HIEU_DON_VI', 'CTTHVN'),
+    /** Ma don vi soan thao cho cong van (khong in ten loai): 01/2026/CTTHVN-NS. */
+    ky_hieu_don_vi_soan: chu('KY_HIEU_DON_VI_SOAN', 'NS'),
+    /**
+     * So cap duyet:
+     *   tu_dong  = 1 cap cho ca nhan/phong ban, 2 cap cho toan cong ty va doi ngoai.
+     *   mot_cap  = nguoi soan duoc ban hanh luon.
+     *   hai_cap  = moi van ban deu phai co nguoi co quyen ban hanh (admin) duyet.
+     */
+    so_cap_duyet: chu('SO_CAP_DUYET', 'tu_dong'),
+  },
+
+  /** Bo sinh docx NĐ30 — Python sidecar (python-docx). Duong dan tu tim theo cwd. */
+  van_ban_hc: {
+    /** Lua chon thu tu: chay truc tiep tu may_chu/ hay tu goc repo (Docker). */
+    ung_vien_script: ['van_ban_hc/build_vbhc.py', 'may_chu/van_ban_hc/build_vbhc.py'],
+    script: chu('VAN_BAN_HC_SCRIPT', ''),
+    python_bin: chu('PYTHON_BIN', process.platform === 'win32' ? 'python' : 'python3'),
+    timeout_ms: so('VAN_BAN_HC_TIMEOUT_MS', 60_000),
+  },
+
+  /**
    * Hop dong dien tu vContract (Viettel). De TRONG `VCONTRACT_URL` = tat han tinh nang.
    *
    * `cp_code` va `cp_account_code` do Viettel cap khi mo ket noi. `cp_account_code` nhan
@@ -360,6 +408,20 @@ export const cau_hinh = {
     nguoi_gui: chu('MS_MAIL_NGUOI_GUI', ''),
     goc_graph: chu('SHAREPOINT_GOC_GRAPH', 'https://graph.microsoft.com/v1.0').replace(/\/+$/, ''),
     goc_token: chu('SHAREPOINT_GOC_TOKEN', 'https://login.microsoftonline.com').replace(/\/+$/, ''),
+  },
+
+  /**
+   * Nghi viec tu dong: goi Microsoft Graph de chan dang nhap (accountEnabled = false),
+   * thu hoi phien dang song (revokeSignInSessions) va rut TOAN BO giay phep cua tai khoan.
+   *
+   * Dung CHUNG creds cua `mail` (cung app client_credentials) — app do phai duoc admin
+   * Entra cap them quyen ung dung `User.ReadWrite.All` va `User.RevokeSessions.All`.
+   *
+   * Khong khai `MS365_NGHI_VIEC_BAT=1` thi buoc Microsoft khong chay; su kien
+   * `ms365.nghi_viec` van nam lai trong bang hop thu di cho den khi bat — khong mat.
+   */
+  ms365_nghi_viec: {
+    bat: chu('MS365_NGHI_VIEC_BAT', '0') === '1',
   },
 
   /** Quy tac xu ly canh bao ra/vao van phong. */

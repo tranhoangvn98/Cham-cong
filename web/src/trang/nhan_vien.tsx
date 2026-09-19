@@ -134,7 +134,8 @@ export function TrangNhanVien(): ReactNode {
                   <tr key={n.id} style={n.dang_hoat_dong ? undefined : { opacity: 0.55 }}>
                     <td className="so">{n.ma_nv}</td>
                     <td>
-                      <LienKet den={`/nhan-vien/${n.id}`} tieu_de="Mở hồ sơ nhân sự">
+                      <LienKet den={`/nhan-vien/${n.id}`} tieu_de="Mở hồ sơ nhân sự"
+                        lop="lk-nhan-vien">
                         {n.ho_ten}
                       </LienKet>
                       {!n.dang_hoat_dong && (

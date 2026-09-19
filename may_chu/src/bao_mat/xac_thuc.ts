@@ -24,6 +24,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { giai_ma_token, type NoiDungToken, type VaiTro } from './jwt.ts';
 import { bat_cong_sso, xac_minh_token_cong } from './cong_sso.ts';
 import { phien_tu_token_cong } from './cong_phien.ts';
+import { truy_van_mot } from '../csdl/ket_noi.ts';
 
 // Gan nguoi dung da xac thuc vao request de cac route dung lai.
 declare module 'fastify' {
@@ -84,6 +85,14 @@ async function xac_minh(req: FastifyRequest): Promise<KetQuaDoc> {
   const noi_bo = giai_ma_token(token);
   if (noi_bo !== null) {
     if (noi_bo.loai !== 'tc') return { ok: false, ma: 401, than: LOI_401 };
+    // Token con chu ky KHONG co nghia nguoi dung con ton tai: CSDL test bi xoa sach, hoac
+    // tai khoan bi xoa luc van con token. Khong kiem o day thi cac route insert se vo
+    // khoa ngoai (nguoi_tao) -> HTTP 500 "loi he thong" thay vi 401 danh ve dang nhap lai.
+    const dong = await truy_van_mot<{ dang_hoat_dong: boolean }>(
+      'select dang_hoat_dong from nguoi_dung where id = $1', [noi_bo.sub],
+    );
+    if (dong === null) return { ok: false, ma: 401, than: LOI_401 };
+    if (!dong.dang_hoat_dong) return { ok: false, ma: 403, than: LOI_VO_HIEU_HOA };
     return { ok: true, nd: noi_bo };
   }
 

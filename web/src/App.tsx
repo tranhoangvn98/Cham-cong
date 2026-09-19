@@ -34,7 +34,6 @@ import { TrangDashboardCaNhan } from './trang/dashboard_ca_nhan.tsx';
 import { TrangCaNhan } from './trang/ca_nhan.tsx';
 import { TrangHoSoToi } from './trang/ho_so_toi.tsx';
 import { TrangPhieuLuongToi } from './trang/phieu_luong_toi.tsx';
-import { TrangThongBaoCaNhan } from './trang/thong_bao_ca_nhan.tsx';
 import { TrangVanBan } from './trang/van_ban.tsx';
 import { TroLyCaNhan } from './trang/tro_ly.tsx';
 import { ChuongBao } from './trang/chuong_bao.tsx';
@@ -75,8 +74,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: '', phu: 'Log đồng bộ từ máy ADMS', quyen: 'nhan_su' },
   { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: '', phu: 'Tổng hợp theo tháng', quyen: 'quan_tri' },
   { duong_dan: '/don-cua-toi', ten: 'Đơn của tôi', icon: 'file-text', nhom: '', phu: 'Xin nghỉ phép, giải trình', ca_nhan: true },
-  { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: '', phu: 'Thông báo từ BGĐ & nhân sự', ca_nhan: true },
-  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: '', phu: 'Nội quy, biểu mẫu, chính sách', ca_nhan: true },
+  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: '', phu: 'Thông báo, văn bản ban hành, tài liệu', ca_nhan: true },
   { duong_dan: '/ho-so-toi', ten: 'Hồ sơ của tôi', icon: 'user-check', nhom: '', phu: 'Thông tin & liên hệ cá nhân', ca_nhan: true },
   { duong_dan: '/phieu-luong-toi', ten: 'Phiếu lương', icon: 'download', nhom: '', phu: 'Phiếu lương hàng tháng của bạn', ca_nhan: true },
 
@@ -133,6 +131,8 @@ const MENU_CAI_DAT: MucMenu[] = [
  * (thay the trong lich su, de nut Lui khong ket giua hai duong).
  */
 const CHUYEN_HUONG: Record<string, string> = {
+  '/thong-bao': '/van-ban',
+  '/thong-bao-ai': '/van-ban/ban-hanh',
   '/thiet-bi': '/cai-dat/thiet-bi',
   '/ca-lam': '/cai-dat/ca-lam',
   '/dia-diem': '/cai-dat/dia-diem',
@@ -182,8 +182,9 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     // dashboard toan cong ty — vua la yeu cau nghiep vu vua la NĐ 13/2023.
     case '/ca-nhan': return <TrangCaNhan />;
     case '/': return ca_nhan ? <TrangDashboardCaNhan /> : <TrangDashboard />;
-    case '/thong-bao': return <TrangThongBaoCaNhan />;
-    case '/van-ban': return <TrangVanBan />;
+    case '/van-ban': return <TrangVanBan tab="thong_bao" />;
+    case '/van-ban/ban-hanh': return <TrangVanBan tab="ban_hanh" />;
+    case '/van-ban/tai-lieu': return <TrangVanBan tab="tai_lieu" />;
     case '/ho-so-toi': return <TrangHoSoToi />;
     case '/phieu-luong-toi': return <TrangPhieuLuongToi />;
     case '/don-cua-toi': return <TrangDonCuaToi />;

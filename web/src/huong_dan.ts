@@ -73,27 +73,18 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
-    duong_dan: '/thong-bao',
-    tom_tat: 'Thông báo từ Ban giám đốc và nhân sự — đọc, xác nhận, và giải trình khi được yêu cầu.',
-    buoc: [
-      { chu: 'Đọc thông báo, bấm "Đã đọc & hiểu" để xác nhận.' },
-      { chu: 'Thông báo gắn nhãn "Cần giải trình" (nổi đỏ) thì phải nhập giải trình mới xong.' },
-      { chu: 'Đăng thông báo mới, chọn mức độ và bật "bắt buộc giải trình" khi cần.', vai_tro: NHAN_SU },
-      { chu: 'Bấm "Xem ai đã đọc" để biết ai đã xác nhận và nội dung giải trình.', vai_tro: NHAN_SU },
-    ],
-    luu_y: [
-      'Giải trình cho thông báo có mã GT- riêng và gộp chung với mục Khiếu nại & giải trình để nhân sự theo dõi.',
-    ],
-  },
-  {
     duong_dan: '/van-ban',
-    tom_tat: 'Kho văn bản công ty: nội quy, biểu mẫu, chính sách — tải về khi cần.',
+    tom_tat: 'Đầu mối duy nhất cho thông báo công ty, văn bản ban hành có số hiệu và kho tài liệu — 3 tab.',
     buoc: [
-      { chu: 'Chọn danh mục, bấm Tải để lấy văn bản về máy.' },
-      { chu: 'Tải văn bản mới lên, gắn danh mục và mô tả cho dễ tìm.', vai_tro: NHAN_SU },
+      { chu: 'Tab "Thông báo": đọc, bấm "Đã đọc & hiểu", giải trình khi bị yêu cầu. Bộ lọc "Toàn công ty" bật sẵn để xem nhanh.' },
+      { chu: 'Tab "Văn bản ban hành": xem văn bản có số ký hiệu trong phạm vi của mình và tải DOCX về.' },
+      { chu: 'Soạn văn bản NĐ30 bằng AI: bấm "+ Soạn văn bản bằng AI" trong tab Văn bản ban hành, nhập ý vắn tắt rồi theo luồng duyệt → ban hành.', vai_tro: NHAN_SU },
+      { chu: 'Ban hành xong, hệ thống tự gửi email kèm DOCX tới cá nhân / phòng ban / toàn công ty. Chưa gửi được thì bấm "Gửi lại email".', vai_tro: NHAN_SU },
+      { chu: 'Tab "Tài liệu công ty": tải nội quy, biểu mẫu, chính sách; nhân sự tải văn bản mới lên.', vai_tro: NHAN_SU },
     ],
     luu_y: [
-      'Tệp nhận PDF, DOCX, XLSX và ảnh — máy chủ kiểm định dạng thật, không tin đuôi tên.',
+      'Số ký hiệu chỉ được cấp ở bước Ban hành và là vĩnh viễn — hủy sau này chỉ ghi sổ, không cấp lại số đó.',
+      'Email gửi từ hộp thư chung của công ty; máy chủ chưa khai báo hộp thư thì hiện trạng thái "Chưa gửi được" và vẫn có nút gửi lại.',
     ],
   },
   {

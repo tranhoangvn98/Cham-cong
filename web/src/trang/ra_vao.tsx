@@ -119,7 +119,7 @@ export function TrangRaVao(): ReactNode {
                       <td className="khong-ngat so">{ngay_v(d.ngay)}</td>
                       <td className="so">{d.ma_nv}</td>
                       <td>
-                        <LienKet den={`/nhan-vien/${d.nhan_vien_id}`}>{d.ho_ten}</LienKet>
+                        <LienKet den={`/nhan-vien/${d.nhan_vien_id}`} lop="lk-nhan-vien">{d.ho_ten}</LienKet>
                       </td>
                       <td>{d.phong_ban ?? '—'}</td>
                       <td className="khong-ngat">

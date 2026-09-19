@@ -45,7 +45,7 @@ export function TrangDashboardCaNhan(): ReactNode {
       {can_gt > 0 && (
         <div className="hop-thong-bao hop-loi">
           Bạn có <b>{can_gt}</b> thông báo cần giải trình.{' '}
-          <LienKet den="/thong-bao" lop="lk-manh">Mở ngay →</LienKet>
+          <LienKet den="/van-ban" lop="lk-manh">Mở ngay →</LienKet>
         </div>
       )}
 
@@ -65,7 +65,7 @@ export function TrangDashboardCaNhan(): ReactNode {
         <div className="the canhan-muc">
           <div className="canhan-muc-dau">
             <h2>Nghỉ lễ sắp tới</h2>
-            <LienKet den="/thong-bao" lop="lk-nhat">Thông báo</LienKet>
+            <LienKet den="/van-ban" lop="lk-nhat">Thông báo</LienKet>
           </div>
           {nghi_le.length === 0
             ? <p className="mo-ta">Sắp tới chưa có ngày lễ nào trong lịch.</p>
@@ -87,8 +87,8 @@ export function TrangDashboardCaNhan(): ReactNode {
           </div>
           <div className="canhan-tat">
             <LienKet den="/don-cua-toi" lop="canhan-tat-o">Xin nghỉ / giải trình</LienKet>
-            <LienKet den="/thong-bao" lop="canhan-tat-o">Thông báo công ty</LienKet>
-            <LienKet den="/van-ban" lop="canhan-tat-o">Văn bản công ty</LienKet>
+            <LienKet den="/van-ban" lop="canhan-tat-o">Thông báo công ty</LienKet>
+            <LienKet den="/van-ban/tai-lieu" lop="canhan-tat-o">Tài liệu công ty</LienKet>
             <LienKet den="/ho-so-toi" lop="canhan-tat-o">Hồ sơ của tôi</LienKet>
           </div>
         </div>

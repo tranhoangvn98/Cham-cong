@@ -11,6 +11,7 @@ import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
+import { cho_nghi_viec } from '../nhan_su/nghi_viec.ts';
 import { dong_bo_thu_muc_nhan_vien } from '../ho_so/sap_xep_tep.ts';
 import { PHAM_VI, la_pham_vi, sinh_khoa } from '../bao_mat/khoa_api.ts';
 import { doc_danh_sach_ip } from '../tien_ich/dia_chi_ip.ts';
@@ -361,40 +362,8 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const id = lay_id(req);
     const b = than(req.body ?? {});
     const ngay_nghi = ngay(b, 'ngay_nghi_viec');
-    const ma_nv = await trong_giao_dich(async (khach) => {
-      const dong = (
-        await khach.query<{ ma_nv: string }>(
-          `update nhan_vien
-              set dang_hoat_dong = false,
-                  ngay_nghi_viec = coalesce($2::date, current_date),
-                  cap_nhat_luc = now()
-            where id = $1
-            returning ma_nv`,
-          [id, ngay_nghi],
-        )
-      ).rows[0];
-      if (dong === undefined) return null;
-
-      // Vo hieu hoa luon tai khoan dang nhap cua nguoi do.
-      await khach.query('update nguoi_dung set dang_hoat_dong = false where nhan_vien_id = $1', [id]);
-      await khach.query(
-        `update token_lam_moi set thu_hoi_luc = now()
-          where thu_hoi_luc is null
-            and nguoi_dung_id in (select id from nguoi_dung where nhan_vien_id = $1)`,
-        [id],
-      );
-
-      // Bao cong: ben do se doi `nhan_su.trang_thai`, vo hieu hoa tai khoan cong VA thu hoi
-      // moi phien dang song. Buoc cuoi la buoc quan trong nhat — `vo_hieu_hoa` chan duoc dang
-      // nhap lai nhung khong chan duoc tab dang mo.
-      //
-      // Cung transaction voi viec cho nghi: neu tach ra, mot lan may chet dung giua hai buoc
-      // se de lai mot nguoi da nghi viec o Cham cong ma van dang nhap duoc vao moi phan he
-      // khac trong cum. Do la dung loai lo khong ai phat hien ra cho den khi qua muon.
-      await ghi_su_kien('nhan_su.nghi_viec', { ma_nv: dong.ma_nv }, khach);
-      return dong.ma_nv;
-    });
-    if (ma_nv === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
+    const ket_qua = await trong_giao_dich((khach) => cho_nghi_viec(khach, id, ngay_nghi));
+    if (ket_qua === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'cho_nghi_viec', 'nhan_vien', id, null, req.ip);
     return { ok: true };
   });
