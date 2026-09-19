@@ -39,3 +39,23 @@ export function nghe_muc_tieu_bao(f: () => void): () => void {
   nguoi_nghe.add(f);
   return () => { nguoi_nghe.delete(f); };
 }
+
+// ============================================================ soan quyet dinh nghi viec
+//
+// Tu trang ho so nhan vien, nut "Quyet dinh nghi viec" dieu huong sang /van-ban/ban-hanh va
+// muon form soan AI mo san voi: loai=quyet_dinh, pham_vi=ca_nhan, nguoi nhan = nhan vien do.
+// Router khong mang query nen gui qua kho mot lan nay (doc xong la xoa, giong muc tieu bao).
+
+let qd_nghi: { nhan_vien_id: string } | null = null;
+
+/** Dat nguoi nhan cho quyet dinh nghi viec sap soan (goi ngay truoc di_toi). null de xoa. */
+export function dat_qd_nghi_viec(nv: { nhan_vien_id: string } | null): void {
+  qd_nghi = nv;
+}
+
+/** Lay nguoi nhan da dat va XOA (doc mot lan). Tra null neu khong co. */
+export function lay_qd_nghi_viec(): { nhan_vien_id: string } | null {
+  const v = qd_nghi;
+  qd_nghi = null;
+  return v;
+}

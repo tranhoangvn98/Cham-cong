@@ -4,12 +4,13 @@
 // ve theo. Trang nay KHONG tu suy ra quyen tu vai tro — neu suy o hai noi thi som muon hai
 // noi lech nhau, va cai lech nguy hiem la ben giao dien "de" hon ben may chu.
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import { goi, gui_tep, tai_tep } from '../api.ts';
+import { goi, gui_tep, la_nhan_su, tai_tep } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, HopThoaiXemTep, HopTot, OSo, Trong,
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet, ngay_gio,
 } from '../thanh_phan.tsx';
 import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
+import { dat_qd_nghi_viec } from '../dieu_huong_sau.ts';
 import { dung_dat_tieu_de } from '../tieu_de_trang.tsx';
 import { NhanCachTrich } from './hop_dong.tsx';
 import { TheMaDinhDanh } from './ma_dinh_danh.tsx';
@@ -186,6 +187,7 @@ function Nhan({ ma, bang }: { ma: unknown; bang: string }): ReactNode {
 
 export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {
   const [nhom, dat_nhom] = useState<Nhom | null>(null);
+  const { di_toi } = dung_tuyen();
   const tq = dung_nap<TongQuan>(`/api/nhan-vien/${nhan_vien_id}/ho-so`, [nhan_vien_id]);
 
   // Tieu de header + duong mon. Goi TRUOC cac nhanh tra ve som — hook phai chay moi lan ve.
@@ -229,7 +231,18 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
               {nv['dang_hoat_dong'] === false && <> · <span className="nhan nhan-xau">đã nghỉ việc</span></>}
             </p>
           </div>
-          <LienKet den="/nhan-vien" lop="nut">← Danh sách nhân viên</LienKet>
+          <div className="ho-so-hanh-dong">
+            {la_nhan_su() && nv['dang_hoat_dong'] !== false && (
+              <button type="button" className="nut-nguy"
+                onClick={() => {
+                  dat_qd_nghi_viec({ nhan_vien_id: nv.id });
+                  di_toi('/van-ban/ban-hanh');
+                }}>
+                Quyết định nghỉ việc
+              </button>
+            )}
+            <LienKet den="/nhan-vien" lop="nut">← Danh sách nhân viên</LienKet>
+          </div>
         </div>
 
         <div className="ho-so-chi-so">

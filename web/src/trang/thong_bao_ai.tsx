@@ -12,6 +12,7 @@ import {
   DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_gio,
 } from '../thanh_phan.tsx';
 import { goi, tai_tep, tai_tep_blob } from '../api.ts';
+import { lay_qd_nghi_viec } from '../dieu_huong_sau.ts';
 
 type KieuVanBan = 'thong_bao' | 'quyet_dinh' | 'cong_van';
 type PhamVi = 'ca_nhan' | 'phong_ban' | 'toan_cong_ty';
@@ -99,7 +100,10 @@ interface NhanVienGon { id: string; ho_ten: string; phong_ban: string | null; }
 interface PhongBanGon { id: string; ten: string; }
 
 // ==================================================================== form tao
-function FormTao({ khi_xong }: { khi_xong: () => void }): ReactNode {
+function FormTao(
+  { khi_xong, mac_dinh }:
+  { khi_xong: () => void; mac_dinh?: { nhan_vien_id: string } | null },
+): ReactNode {
   const [mo, dat_mo] = useState(false);
   const [loai, dat_loai] = useState<KieuVanBan>('thong_bao');
   const [pham_vi, dat_pham_vi] = useState<PhamVi>('toan_cong_ty');
@@ -125,6 +129,17 @@ function FormTao({ khi_xong }: { khi_xong: () => void }): ReactNode {
   const pb = dung_nap<PhongBanGon[]>(mo ? '/api/phong-ban' : null, []);
 
   const dat_lo = (g: string, doi: (v: KieuVanBan) => void): void => doi(g as KieuVanBan);
+
+  // Tu trang ho so nhan vien (nut "Quyet dinh nghi viec"): mo san form voi loai=quyet_dinh,
+  // pham_vi=ca_nhan, nguoi nhan = nhan vien do. Nguoi dung chi con chon ngay nghi + nhap van xoi.
+  useEffect(() => {
+    if (mac_dinh === undefined || mac_dinh === null) return;
+    dat_loai('quyet_dinh');
+    dat_pham_vi('ca_nhan');
+    dat_la_qd(true);
+    dat_nhan_vien_id(mac_dinh.nhan_vien_id);
+    dat_mo(true);
+  }, [mac_dinh]);
 
   const gui = async (): Promise<void> => {
     if (pham_vi === 'ca_nhan' && nhan_vien_id === '') {
@@ -753,6 +768,8 @@ export function TabVanBanBanHanh(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<NhapAI[]>('/api/thong-bao/ai');
   const [xem, dat_xem] = useState<string | null>(null);
   const [lan, dat_lan] = useState(0);
+  // Doc mot lan luc mount: nut o trang ho so dat muc tieu truoc khi dieu huong sang day.
+  const [mac_dinh] = useState<{ nhan_vien_id: string } | null>(() => lay_qd_nghi_viec());
 
   const ds = du_lieu ?? [];
   const co_dang_soan = ds.some((d) => d.trang_thai === 'dang_soan');
@@ -773,7 +790,7 @@ export function TabVanBanBanHanh(): ReactNode {
 
   return (
     <div>
-      <FormTao khi_xong={nap_lai} />
+      <FormTao khi_xong={nap_lai} mac_dinh={mac_dinh} />
       {xem !== null && <ChiTiet id={xem} khi_dong={() => dat_xem(null)} khi_xong={nap_lai} />}
       {ds.length === 0
         ? <Trong tieu_de="Chưa có văn bản AI" mo_ta="Tạo bản nháp đầu tiên bằng nút phía trên." />
