@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.94.8] — 2026-09-19
+
+**Sửa lỗi: báo rõ khi chưa cấu hình tên cơ quan ban hành / địa danh.**
+
+- Worker giờ chặn từ đầu: nếu máy chủ chưa khai `CO_QUAN_BAN_HANH` / `DIA_DANH_VAN_BAN`,
+  bản nháp kết thúc ở "Lỗi" với lời nhắn rõ "Chưa cấu hình... liên hệ quản trị" thay vì
+  tốn một lượt gọi AI rồi mới sập ở bước dựng DOCX.
+- Đã nạp cấu hình thật cho sản xuất: CÔNG TY TNHH TRẦN HOÀNG VIỆT NAM, Lạng Sơn.
+
 ## [1.94.7] — 2026-09-19
 
 **Sửa lỗi: bản nháp AI kẹt vĩnh viễn ở "Đang soạn".**
