@@ -2,6 +2,13 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.99.4] — 2026-09-20
+
+**Sửa lỗi: phiếu lương bị đè chữ lên nhau khi cửa sổ thấp.**
+
+- Khi khung hình không đủ cao, các cột phiếu lương tự cuộn bên trong thay vì tràn vẽ đè
+  lên phần lưu ý/khiếu nại bên dưới; đồng thời thu gọn khoảng cách để thường không cần cuộn.
+
 ## [1.99.3] — 2026-09-20
 
 **Sửa lỗi: nhân sự/quản trị nói "mở cho cái ứng lương" với trợ lý cá nhân không mở được trang.**

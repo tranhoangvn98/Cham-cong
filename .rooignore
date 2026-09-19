@@ -1,0 +1,11 @@
+node_modules/
+bin/
+obj/
+dist/
+build/
+.vs/
+.git/
+packages/
+*.log
+*.user
+*.suo

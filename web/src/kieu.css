@@ -2484,3 +2484,12 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   .cn-than .pl-cot { grid-template-columns: 1fr; }
   .cn-than .pl-hero { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Tranh de chu len nhau khi cua so thap: 4 cot tu cuon noi bo (chi hien thanh cuon khi that su thieu cho) */
+.pl-cot { overflow-y: auto; }
+.pl-vo { gap: 8px; }
+.pl-hero { gap: 8px; }
+.pl-the { padding: 10px 12px; }
+.pl-dong { padding: 5px 2px; }
+.pl-hero-chinh, .pl-o { padding: 10px 12px; gap: 3px; }
+.pl-tien-lon { font-size: 1.7rem; }
