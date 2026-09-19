@@ -570,7 +570,9 @@ function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () => void;
 
   const chay = (duong_dan: string, tot: string) => async (): Promise<void> => {
     const ok = await hd.chay(() => goi(duong_dan, { method: 'POST' }), tot);
-    if (ok) khi_xong();
+    // Nap lai du lieu chi tiet ngay: vi du "Viết lại bằng AI" chuyen ban nhap ve
+    // dang_soan, can d.trang_thai moi de vong lap tu lam moi ben duoi bat dau chay.
+    if (ok) { nap_lai(); khi_xong(); }
   };
 
   /** Gui lai email cua van ban da ban hanh (ban tu dong bi loi / chua khai MS_MAIL). */
@@ -580,7 +582,7 @@ function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () => void;
       () => goi(`/api/thong-bao/${d.thong_bao_id}/gui-email`, { method: 'POST' }),
       'Đã gửi email.',
     );
-    if (ok) khi_xong();
+    if (ok) { nap_lai(); khi_xong(); }
   };
 
   if (dang_tai) return <DangTai />;
@@ -600,7 +602,7 @@ function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () => void;
       }),
       'Đã lưu sửa đổi. Hệ thống đang dựng lại văn bản…',
     );
-    if (ok) { dat_dang_sua(false); khi_xong(); }
+    if (ok) { dat_dang_sua(false); nap_lai(); khi_xong(); }
   };
 
   const mo_xem_truoc = (): void => {
@@ -741,8 +743,8 @@ function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () => void;
       )}
       {d.che_do === 'ai' && d.trang_thai === 'loi' && d.spec_json === null && (
         <div className="hop-thong-bao hop-luu-y" style={{ marginTop: 12 }}>
-          AI không soạn được. Hãy bấm "Sửa văn xuôi" không có tác dụng với bản này — hãy tạo bản
-          nháp mới ở chế độ "Tự soạn" và nhập văn xuôi trực tiếp, hoặc bấm "Viết lại bằng AI".
+          AI không soạn được. Hãy bấm "Viết lại bằng AI" để thử lại; nếu vẫn lỗi, hãy tạo bản
+          nháp mới ở chế độ "Tự soạn" và nhập văn xuôi trực tiếp.
         </div>
       )}
     </>

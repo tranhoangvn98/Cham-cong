@@ -2,6 +2,16 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.94.10] — 2026-09-19
+
+**Sửa lỗi: hộp thoại chi tiết không tự làm mới sau khi bấm "Viết lại bằng AI".**
+
+- Sau "Viết lại bằng AI" (hay bất kỳ hành động nào trong hộp thoại: lưu sửa, trình ký, ban
+  hành, hủy, gửi lại email), chi tiết giờ nạp lại dữ liệu ngay — vòng lặp tự làm mới chạy
+  trong lúc AI đang soạn và khi có văn bản là tự bật xem trước toàn màn hình, hết cảnh
+  hộp thoại đứng nguyên ở trạng thái "Lỗi" cũ trong khi bảng ngoài đã "Chờ duyệt".
+- Sửa lại câu nhắc khi AI không soạn được cho rõ nghĩa.
+
 ## [1.94.9] — 2026-09-19
 
 **Trợ lý biết trò chuyện: AI hiểu câu + viết lời tự nhiên, giao diện thêm hiệu ứng mượt.**
