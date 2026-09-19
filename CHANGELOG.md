@@ -2,6 +2,13 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.98.1] — 2026-09-20
+
+**Sửa lỗi: lịch sử trợ lý đôi khi chưa kịp lưu trước khi người dùng đọc lại.**
+
+- Cả hai trợ lý (cá nhân và quản trị) giờ chờ ghi lịch sử xong trước khi trả lời — hết cảnh
+  mở lại ngay sau khi hỏi không thấy lượt vừa hỏi.
+
 ## [1.98.0] — 2026-09-20
 
 **Thêm trợ lý quản trị cho góc nhìn Quản trị.**
