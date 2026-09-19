@@ -1589,6 +1589,13 @@ textarea:focus-visible,
   0%, 60%, 100% { transform: none; opacity: 0.45; }
   30% { transform: translateY(-4px); opacity: 1; }
 }
+/* Con tro dang go cua hieu ung chu hien dan — nhap nhay nhu con tro ban phim. */
+.troly-con-tro {
+  display: inline-block; width: 6px; height: 1em; margin-left: 2px;
+  background: var(--chinh-dam); vertical-align: -2px;
+  animation: troly-nhap-nhay 0.9s steps(2, start) infinite;
+}
+@keyframes troly-nhap-nhay { 50% { opacity: 0; } }
 /* Nut va chip phan hoi cham nhe khi bam. */
 .troly-hd-xac-nhan { transition: filter 0.15s ease, transform 0.1s ease; }
 .troly-hd-xac-nhan:active { transform: scale(0.97); }
@@ -1596,7 +1603,8 @@ textarea:focus-visible,
 .troly-chip:hover { transform: translateY(-1px); }
 .troly-hang button[type="submit"]:hover:not(:disabled) { filter: brightness(1.05); }
 @media (prefers-reduced-motion: reduce) {
-  .troly-tn, .troly-hd, .troly-goi-y, .troly-nut, .troly-panel, .troly-ba-cham i {
+  .troly-tn, .troly-hd, .troly-goi-y, .troly-nut, .troly-panel, .troly-ba-cham i,
+  .troly-con-tro {
     animation: none;
   }
 }

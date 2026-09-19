@@ -66,14 +66,13 @@ export interface TraLoiTroLy {
 }
 
 const GOI_Y = [
+  'Xin nghỉ phép du lịch',
+  'Xin về sớm',
+  'Xin nghỉ ốm',
+  'Đăng ký OT thêm thu nhập',
+  'Xin đi muộn ngày mai',
+  'Giải trình quên quẹt',
   'Tôi còn bao nhiêu ngày phép?',
-  'Đăng ký OT giúp tôi',
-  'Công tháng này của tôi thế nào?',
-  'Tháng này tôi đi muộn mấy lần?',
-  'Đi muộn bị xử lý thế nào?',
-  'Tôi muốn xin đổi ca',
-  'Sắp tới có nghỉ lễ gì không?',
-  'Tôi có đơn nào đang chờ duyệt không?',
 ];
 
 /** Bo dau + thuong hoa de so khop tu khoa khong phu thuoc dau tieng Viet. */
@@ -333,7 +332,7 @@ export type YDinh =
   | 'chao' | 'hoi_tham' | 'mo_trang' | 'giai_trinh' | 'huy_don' | 'de_xuat' | 'xin_nghi_phep'
   | 'noi_quy' | 'thong_bao' | 'van_ban' | 'luong' | 'di_muon'
   | 'cong_thang' | 'nghi_le' | 'ca_lam' | 'don_cho' | 'phep' | 'khong_ro'
-  | 'dang_ky_ot' | 'doi_ca' | 'cong_tac' | 'nghi_viec' | 'xin_di_muon'
+  | 'dang_ky_ot' | 'doi_ca' | 'cong_tac' | 'nghi_viec' | 'xin_di_muon' | 'xin_ve_som'
   | 'khieu_nai_luong' | 'khieu_nai_ky_luat' | 'ung_luong';
 
 /**
@@ -372,6 +371,9 @@ export function nhan_dang_y_dinh(cau_goc: string): YDinh {
   if (co(cau, 'doi ca', 'chuyen ca')) return 'doi_ca';
   if (co(cau, 'cong tac')) return 'cong_tac';
   if (co(cau, 'xin di muon', 'dang ky di muon', 'bao di muon', 'xin den tre', 'dang ky den tre')) return 'xin_di_muon';
+  // Xin VE SOM la viec co loi cho nguoi lao dong nhung he thong chua co don rieng — tra loi
+  // huong dan xin nghi phep nua ngay. Tu "ve som" tran van la cau hoi so lieu (di_muon).
+  if (co(cau, 'xin ve som', 'muon ve som', 'xin ra som', 'muon ra som')) return 'xin_ve_som';
   if (co(cau, 'ung luong', 'tam ung', 'ung truoc')) return 'ung_luong';
   if (co(cau, 'noi quy', 'vi pham', 'ky luat', 'che tai', 'bi phat', 'giam thuong', 'xu ly khi', 'sai pham')) return 'noi_quy';
   // Hoi hanh vi + che tai cung la cau hoi noi quy: "di muon bi xu ly the nao" khong phai
@@ -451,6 +453,7 @@ async function tra_loi_noi_bo(
     case 'doi_ca': return tra_loi_doi_ca(nv_id, cau_hoi_goc, cau, hom_nay);
     case 'cong_tac': return tra_loi_cong_tac(nv_id, cau_hoi_goc, cau, hom_nay);
     case 'xin_di_muon': return tra_loi_xin_di_muon(nv_id, cau_hoi_goc, cau, hom_nay);
+    case 'xin_ve_som': return tra_loi_xin_ve_som();
     case 'ung_luong': return tra_loi_ung_luong();
     case 'giai_trinh': return tra_loi_giai_trinh(nv_id, cau_hoi_goc, cau, hom_nay);
     case 'huy_don': return tra_loi_huy_don(nv_id, cau);
@@ -613,7 +616,8 @@ async function tro_chuyen_llm(
     + 'KHONG bịa so lieu cong ty, khong ban chinh tri/ton giao/noi dung nguoi lon, khong hua '
     + 'viec ngoai pham vi. '
     + 'Tra ve DUY NHAT doi tuong JSON dang {"tra_loi": "...", "goi_y": ["cau goi y 1", "cau goi y 2"]} '
-    + 'toi da 3 goi y, noi dung goi y nhu cach nguoi dung nen hoi.');
+    + 'toi da 3 goi y. Goi y nen la cac VIEC CO LOI cho nguoi lao dong (vi du "Xin nghi phep '
+    + 'du lich", "Xin ve som", "Xin nghi om", "Dang ky OT them thu nhap", "Xin di muon ngay mai").');
   if (kq === null) return null;
   const chu = kq['tra_loi'];
   if (typeof chu !== 'string' || chu.trim() === '') return null;
@@ -1382,6 +1386,17 @@ async function don_tu_trung_ngay(
     [nv_id, loai, tu, den],
   );
   return trung !== null;
+}
+
+/** Xin ve som: chua co don rieng — huong dan xin nghi phep nua ngay (co loi, lam duoc ngay). */
+function tra_loi_xin_ve_som(): TraLoiTroLy {
+  return {
+    tra_loi: 'Hệ thống chưa có đơn xin về sớm riêng. Cách nhanh nhất là **xin nghỉ phép nửa '
+      + 'ngày** — bạn nói "xin nghỉ phép nửa ngày hôm nay" là mình điền sẵn đơn giúp. Nếu '
+      + 'cần về gấp, bạn nên báo trực tiếp quản lý của mình nhé.',
+    y_dinh: 'xin_ve_som',
+    goi_y: ['Xin nghỉ phép nửa ngày hôm nay', 'Xin nghỉ phép du lịch'],
+  };
 }
 
 async function tra_loi_dang_ky_ot(

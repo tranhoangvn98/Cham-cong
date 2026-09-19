@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { goi, LoiApi } from '../api.ts';
 import { khoa_tinh } from '../thanh_phan.tsx';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
+import { DongBotGo } from './tro_ly_go.tsx';
 
 /** Icon bieu do SVG — khac icon chat cua tro ly ca nhan de phan biet hai kenh. */
 function IconQuanTri(): ReactNode {
@@ -150,7 +151,9 @@ export function TroLyQuanTri(): ReactNode {
       <div className="troly-than" ref={cuon}>
         {dong.map((d, i) => (
           <div key={khoa_tinh(d.chu, i)} className={d.ai === 'toi' ? 'troly-tn troly-tn-toi' : 'troly-tn troly-tn-bot'}>
-            {noi_dung(d.chu)}
+            {d.ai === 'bot'
+              ? <DongBotGo chu={d.chu} go={i === dong.length - 1 && !dang_hoi} cuon={cuon} />
+              : noi_dung(d.chu)}
           </div>
         ))}
         {dang_hoi && (

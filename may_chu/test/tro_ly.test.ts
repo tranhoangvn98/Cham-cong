@@ -123,6 +123,9 @@ test('nhan_dang_y_dinh: cac tac vu ca nhan moi', () => {
   assert.equal(nhan_dang_y_dinh('tôi muốn làm thêm giờ'), 'dang_ky_ot');
   assert.equal(nhan_dang_y_dinh('tôi muốn xin đổi ca'), 'doi_ca');
   assert.equal(nhan_dang_y_dinh('xin đi muộn ngày mai'), 'xin_di_muon');
+  // Xin VE SOM la yeu cau hanh dong; "ve som may lan" van la cau hoi so lieu.
+  assert.equal(nhan_dang_y_dinh('xin về sớm hôm nay'), 'xin_ve_som');
+  assert.equal(nhan_dang_y_dinh('tháng này tôi về sớm mấy lần'), 'di_muon');
   assert.equal(nhan_dang_y_dinh('tôi đi công tác từ 26/09 đến 27/09'), 'cong_tac');
   // "nghi viec"/"nghi lam" la xin nghi phep (mot buoi/ngay) — CHI "thoi viec" moi la thoi viec.
   assert.equal(nhan_dang_y_dinh('tôi muốn nghỉ việc'), 'xin_nghi_phep');

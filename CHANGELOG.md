@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.99.5] — 2026-09-20
+
+**Tin nhắn trợ lý gõ ra dần dần + gợi ý có lợi cho người lao động.**
+
+- Tin nhắn bot hiện từng từ kèm con trỏ nhấp nháy như người đang gõ (nhanh dần với câu dài;
+  tự tắt khi trình duyệt bật "giảm chuyển động").
+- Gợi ý giờ là các việc **có lợi cho người lao động**: xin nghỉ phép du lịch, xin về sớm,
+  xin nghỉ ốm, đăng ký OT thêm thu nhập, xin đi muộn ngày mai, giải trình quên quẹt.
+- Thêm ý định "xin về sớm": hệ thống chưa có đơn riêng nên trợ lý hướng dẫn xin nghỉ phép
+  nửa ngày (điền sẵn được ngay). Lời nhắc AI cũng hướng gợi ý theo các việc này.
+
 ## [1.99.4] — 2026-09-20
 
 **Sửa lỗi: phiếu lương bị đè chữ lên nhau khi cửa sổ thấp.**
