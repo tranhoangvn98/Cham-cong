@@ -43,3 +43,10 @@ dien_thoai/expo-env.d.ts
 
 # Ban sao luu sinh ra tren VPS (trien_khai/cap_nhat_vps.sh) — khong bao gio commit.
 sao_luu/
+
+# Script chan doan tam (co the chua thong tin may chu)
+__*.sh
+__*.txt
+trien_khai/_khoi_phuc_test.sh
+trien_khai/dua_len_test_ket_noi.ps1
+trien_khai/dua_len_test_ket_noi.sh
