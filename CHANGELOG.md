@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.97.1] — 2026-09-20
+
+**Phiếu lương: bố cục hoàn toàn mới — bảng điều khiển 1 màn hình.**
+
+- Bỏ kiểu "tờ phiếu giấy" dọc. Bố cục mới:
+  - Chọn kỳ bằng dải nút pill ngang (thấy hết các kỳ, bấm chuyển ngay) + nút In phiếu.
+  - Khối số lớn: THỰC NHẬN nổi bật + 4 ô chỉ số (tổng thu nhập, tổng khấu trừ, công thực tế,
+    làm thêm).
+  - Thanh "dòng tiền" ngang: đoạn xanh thu nhập / đoạn đỏ khấu trừ + tỷ lệ %, nhìn một phát
+    biết lương đi đâu.
+  - Ba cột: Thu nhập · Khấu trừ (kèm chip từng lần phạt) · Kỳ & nghỉ (phép năm có thanh tiến
+    trình, ngày nghỉ dạng chip, mức đóng BH, giảm trừ gia cảnh).
+  - Màn rộng hiển thị gọn trong một màn hình, mỗi cột tự cuộn bên trong; màn hẹp tự xếp dọc.
+- Giữ nguyên dữ liệu, công thức giải thích từng khoản và chức năng khiếu nại.
+
 ## [1.97.0] — 2026-09-20
 
 **Trợ lý lưu lịch sử lâu dài theo từng nhân sự và hiểu từng người hơn.**
