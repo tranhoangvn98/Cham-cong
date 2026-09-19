@@ -2,6 +2,20 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.97.3] — 2026-09-20
+
+**Phiếu lương: bố cục theo mẫu tham khảo — đầu trang tên nhân viên + chuyển kỳ, 5 thẻ tổng hợp, 2 cột.**
+
+- Đầu trang: "Nhân viên: \<tên\> — Kỳ tháng..." + nút ‹ › chuyển kỳ + "Tải PDF" (in) + "Xuất file"
+  (CSV từng khoản, chống CSV injection).
+- 5 thẻ tổng hợp: Thực nhận · Tổng thu nhập (N khoản) · Tổng khấu trừ (đỏ, N khoản) · Công thực tế
+  (kèm thanh tiến độ) · Tỉ trọng (thanh xanh/đỏ + % khấu trừ trên tổng thu nhập).
+- Hai cột: trái = Thu nhập + Khấu trừ (kèm danh sách đỏ các lần đi muộn về sớm) + Cơ sở tính lương
+  (chấm công: công thực tế, giờ công, OT, vắng); phải = Căn cứ tính lương + Phép năm + Chi tiết kỳ
+  (có mặt / nghỉ phép / ngày lễ / đi muộn / về sớm / quên chấm công) + nút Khiếu nại.
+- API `/api/toi/phieu-luong` trả thêm họ tên, mã NV và khối `cham_cong` tổng hợp từ bảng công +
+  đơn giải trình.
+
 ## [1.97.2] — 2026-09-20
 
 **Sửa lỗi: thanh dòng tiền hiện "Khấu trừ 100%" khi phiếu chưa có số liệu.**

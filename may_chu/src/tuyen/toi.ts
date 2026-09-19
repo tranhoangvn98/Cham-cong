@@ -321,7 +321,7 @@ export async function phieu_luong_cua_toi(
   nv_id: string, chi_thang: string | null,
 ): Promise<Record<string, unknown>[]> {
   const phieu = await truy_van<{ id: string } & Record<string, unknown>>(
-    `select p.id, p.nhan_vien_id, k.thang, k.trang_thai as trang_thai_ky,
+    `select p.id, p.nhan_vien_id, nv.ho_ten, nv.ma_nv, k.thang, k.trang_thai as trang_thai_ky,
             p.luong_co_ban, p.phu_cap, p.so_ngay_cong_chuan, p.so_ngay_cong_thuc,
             p.luong_ngay, p.luong_theo_cong, p.phut_ot, p.he_so_ot, p.tien_ot,
             p.phut_ot_nghi_tuan, p.phut_ot_le,
@@ -334,6 +334,7 @@ export async function phieu_luong_cua_toi(
             p.loai_hop_dong, p.ep_du_cong, p.mien_phat
        from phieu_luong p
        join ky_luong k on k.id = p.ky_luong_id
+       join nhan_vien nv on nv.id = p.nhan_vien_id
       where p.nhan_vien_id = $1 and k.trang_thai in ('da_duyet', 'da_tra')
         and ($2::text is null or k.thang = $2)
       order by k.thang desc`,
@@ -413,6 +414,43 @@ export async function phieu_luong_cua_toi(
         trang_thai: d.trang_thai,
       }));
 
+  // Co so tinh luong (cham cong) cho TUNG thang cua cac phieu — cac the nho trong bo cuc
+  // phieu luong moi (cong thuc te, gio cong, OT, vang) + chi tiet ky (di muon/ve som/quen quet).
+  const cc = await truy_van<Record<string, unknown>>(
+    `select to_char(bc.ngay, 'YYYY-MM') as thang,
+            count(*)::int                                           as tong_ngay_du_lieu,
+            coalesce(sum(bc.phut_lam), 0)::int                      as tong_phut_lam,
+            count(*) filter (where bc.trang_thai = 'co_mat')::int   as so_ngay_co_mat,
+            count(*) filter (where bc.trang_thai in ('vang', 'nghi_khong_luong'))::int
+                                                                    as so_ngay_vang,
+            count(*) filter (where bc.trang_thai = 'nghi_phep')::int as so_ngay_nghi_phep,
+            count(*) filter (where bc.trang_thai = 'ngay_le')::int  as so_ngay_le,
+            count(*) filter (where bc.phut_muon > 0)::int           as so_lan_di_muon,
+            coalesce(sum(bc.phut_muon), 0)::int                     as tong_phut_muon,
+            count(*) filter (where bc.phut_ve_som > 0)::int         as so_lan_ve_som,
+            coalesce(sum(bc.phut_ve_som), 0)::int                   as tong_phut_ve_som
+       from bang_cong_ngay bc
+      where bc.nhan_vien_id = $1
+        and to_char(bc.ngay, 'YYYY-MM') between $2 and $3
+      group by to_char(bc.ngay, 'YYYY-MM')`,
+    [nv_id, thang_dau, thang_cuoi],
+  );
+  const quen = await truy_van<Record<string, unknown>>(
+    `select to_char(ngay, 'YYYY-MM') as thang, count(*)::int as so_lan_quen_quet
+       from don_giai_trinh
+      where nhan_vien_id = $1
+        and to_char(ngay, 'YYYY-MM') between $2 and $3
+        and trang_thai in ('cho_duyet', 'da_duyet')
+      group by to_char(ngay, 'YYYY-MM')`,
+    [nv_id, thang_dau, thang_cuoi],
+  );
+  const cc_theo_thang = new Map<string, Record<string, unknown>>();
+  for (const d of cc) cc_theo_thang.set(String(d['thang']), d);
+  for (const q of quen) {
+    const d = cc_theo_thang.get(String(q['thang']));
+    if (d !== undefined) d['so_lan_quen_quet'] = q['so_lan_quen_quet'];
+  }
+
   const theo_phieu = new Map<string, Record<string, unknown>[]>();
   for (const k of khoan) {
     const { phieu_luong_id, ...con } = k;
@@ -437,6 +475,7 @@ export async function phieu_luong_cua_toi(
       khoan: theo_phieu.get(p.id) ?? [],
       phep: phep_theo_nam.get(thang.slice(0, 4)) ?? null,
       nghi: nghi_thang(thang),
+      cham_cong: cc_theo_thang.get(thang) ?? null,
     };
   });
 }
