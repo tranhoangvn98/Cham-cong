@@ -11,7 +11,13 @@ Copilot, Microsoft Foundry…) đọc và thao tác phân hệ Chấm công bằ
   danh sách IP cho phép — đúng cơ chế dùng cho mọi hệ thống ngoài.
 - Hai cách chạy cùng một mã nguồn:
   - `stdio` — Claude Desktop / Code chạy cục bộ.
-  - `http` — Streamable HTTP trên VPS, đặt sau Caddy ở đường `https://<ten-mien>/mcp`.
+  - `http` — Streamable HTTP trên VPS, đặt sau Caddy hệ thống ở đường
+    `https://<ten-mien>/chamcong/mcp`.
+
+> Trên VPS có HAI lớp Caddy: Caddy HỆ THỐNG (`/etc/caddy/Caddyfile`) là lớp biên, định
+> tuyến `/chamcong/mcp/*` → `127.0.0.1:3100` (strip tiền tố `/chamcong`); Caddy trong
+> compose (`cong_vao/`) chỉ dùng khi tự triển khai tên miền riêng. MCP tự xác thực bằng
+> khóa API `ck_` nên không cần đăng nhập cổng SSO — giống `/chamcong/api`.
 
 ## Tạo khóa API
 
@@ -44,7 +50,7 @@ MCP_KHOA_API=ck_...
 bash trien_khai/cap_nhat_vps.sh
 ```
 
-Sau đó client nối tới `https://<ten-mien>/mcp`.
+Sau đó client nối tới `https://<ten-mien>/chamcong/mcp`.
 
 ## Chạy cục bộ (stdio)
 
@@ -112,7 +118,7 @@ mã rõ ràng để AI giải thích lại cho người dùng.
 
 ```bash
 npx @modelcontextprotocol/inspector
-# chọn "Connect" rồi điền lệnh chạy như trên (stdio), hoặc URL https://<ten-mien>/mcp
+# chọn "Connect" rồi điền lệnh chạy như trên (stdio), hoặc URL https://<ten-mien>/chamcong/mcp
 ```
 
 ## Lưu ý

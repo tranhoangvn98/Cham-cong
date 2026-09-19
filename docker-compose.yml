@@ -186,6 +186,10 @@ services:
       CHAM_CONG_KHOA: ${MCP_KHOA_API:-}
       MCP_TRANSPORT: http
       MCP_PORT: 3100
+    # Chi mo ra localhost: Caddy HE THONG cua VPS (khong phai cong_vao trong compose)
+    # di vao duong /chamcong/mcp roi strip tien to. Xem tai_lieu/MCP.md.
+    ports:
+      - "127.0.0.1:3100:3100"
 
   # ---------------------------------------------------------------- cong vao (tuy chon)
   # Chi chay khi .env co COMPOSE_PROFILES=ten_mien. Xem tai_lieu/TEN-MIEN.md.
