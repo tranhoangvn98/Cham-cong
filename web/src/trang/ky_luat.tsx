@@ -9,6 +9,7 @@ import {
   DangTai, HopLoi, HopThoai, OSo, Trong, dung_hanh_dong, dung_nap, dung_nhap_chu, ngay_gio,
   thang_nay,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 const TEN_MUC_DO: Record<string, string> = {
   nhe: 'Nhẹ', trung: 'Trung bình', nang: 'Nặng', rat_nang: 'Rất nặng',
@@ -86,6 +87,9 @@ export function TrangKyLuat(): ReactNode {
 
   const nap_lai = (): void => { tq.nap_lai(); ds.nap_lai(); dat_chon(new Set()); };
   const t = tq.du_lieu?.tong ?? null;
+
+  // Phan trang tren danh sach ho so da loc (loc do may chu).
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds.du_lieu ?? []);
 
   // Chi mien duoc cac ho so dang o trang thai cho phep (bo qua cai da mien / bac bo / huy).
   const chon_mien_duoc = [...chon].filter((id) =>
@@ -215,7 +219,7 @@ export function TrangKyLuat(): ReactNode {
                   </tr>
                 </thead>
                 <tbody>
-                  {ds.du_lieu.map((d) => (
+                  {ds_xem.map((d) => (
                     <tr key={d.id} className={d.so_khieu_nai > 0 ? 'dong-canh-bao' : undefined}>
                       {admin && (
                         <td>
@@ -254,6 +258,7 @@ export function TrangKyLuat(): ReactNode {
                   ))}
                 </tbody>
               </table>
+              {bo_phan_trang}
             </div>
           </div>
         )}

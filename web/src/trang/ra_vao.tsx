@@ -12,6 +12,7 @@ import { LienKet } from '../dinh_tuyen.tsx';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, gio_ngan, hom_nay, thang_nay,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 const MA_LOI: Record<string, { ten: string; nang: boolean }> = {
   QUEN_QUET_RA: { ten: 'Quên quẹt ra', nang: true },
@@ -67,6 +68,7 @@ export function TrangRaVao(): ReactNode {
 
   const url = `/api/ra-vao?tu=${tu}&den=${den}${loc === '' ? '' : `&trang_thai=${loc}`}`;
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<Dong[]>(url, [tu, den, loc]);
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   return (
     <>
@@ -114,7 +116,7 @@ export function TrangRaVao(): ReactNode {
                   </tr>
                 </thead>
                 <tbody>
-                  {du_lieu.map((d) => (
+                  {ds_xem.map((d) => (
                     <tr key={`${d.nhan_vien_id}-${d.ngay}-${d.ma_loi}`}>
                       <td className="khong-ngat so">{ngay_v(d.ngay)}</td>
                       <td className="so">{d.ma_nv}</td>
@@ -143,6 +145,7 @@ export function TrangRaVao(): ReactNode {
                   ))}
                 </tbody>
               </table>
+              {bo_phan_trang}
             </div>
           </div>
         )}

@@ -8,6 +8,7 @@ import { goi } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, HopTot, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 export interface DongMa {
   id: string;
@@ -416,6 +417,7 @@ export function TheTraCuuMa(): ReactNode {
   const [q, dat_q] = useState('');
   const { du_lieu, dang_tai } = dung_nap<KetQuaTim[]>(
     q === '' ? null : `/api/ma-dinh-danh/tim?q=${encodeURIComponent(q)}`, [q]);
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   return (
     <div className="the">
@@ -446,7 +448,7 @@ export function TheTraCuuMa(): ReactNode {
               <tr><th>Mã</th><th>Ở hệ thống</th><th>Nhân viên</th><th>Trạng thái</th></tr>
             </thead>
             <tbody>
-              {(du_lieu ?? []).map((d, i) => (
+              {ds_xem.map((d, i) => (
                 <tr key={`${d.nhan_vien_id}-${i}`}>
                   <td><code>{d.ma}</code></td>
                   <td>{d.ten_he_thong}</td>
@@ -461,6 +463,7 @@ export function TheTraCuuMa(): ReactNode {
               ))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       )}
     </div>
@@ -487,6 +490,8 @@ export function TheDoiSoatMa(): ReactNode {
   const [mo, dat_mo] = useState(false);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<{ so_lech: number; chi_tiet: DongLech[] }>(
     mo ? '/api/ma-dinh-danh/doi-soat' : null, [mo]);
+  const ds_lech = du_lieu === null ? [] : du_lieu.chi_tiet.slice(0, 200);
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds_lech);
 
   return (
     <div className="the">
@@ -521,7 +526,7 @@ export function TheDoiSoatMa(): ReactNode {
                     </tr>
                   </thead>
                   <tbody>
-                    {du_lieu.chi_tiet.slice(0, 200).map((d, i) => (
+                    {ds_xem.map((d, i) => (
                       <tr key={`${d.ma_nv}-${i}`}>
                         <td>{d.ma_nv} — {d.ho_ten}</td>
                         <td>{d.ten_he_thong}</td>
@@ -532,6 +537,7 @@ export function TheDoiSoatMa(): ReactNode {
                     ))}
                   </tbody>
                 </table>
+                {bo_phan_trang}
               </div>
             </>
           )}

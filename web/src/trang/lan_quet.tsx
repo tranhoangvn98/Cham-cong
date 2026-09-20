@@ -8,6 +8,7 @@ import {
   DangTai, HopLoi, HopTot, HopThoai, HopThoaiNhap, NhanDon, TEN_NGUON, Trong,
   dung_hanh_dong, dung_nap, hom_nay, ngay_gio,
 } from '../thanh_phan.tsx';
+import { BoPhanTrang } from '../phan_trang.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
 
 /** Tep mau nhap lich su: dang de doc nhat, may xuat ra dang nao bo doc cung nhan duoc. */
@@ -45,7 +46,6 @@ interface ChuaMap {
   lan_cuoi: string;
 }
 
-const MOI_TRANG = 200;
 /** The PIN chua gan chi hien 5 dong mac dinh — ban danh sach day phai bam "Xem tat ca". */
 const PIN_TOI_DA_GON = 5;
 
@@ -56,7 +56,9 @@ export function TrangLanQuet(): ReactNode {
   const [thiet_bi_serial, dat_thiet_bi_serial] = useState('');
   const [nguon, dat_nguon] = useState('');
   const [trang_thai_duyet, dat_trang_thai_duyet] = useState('');
-  const [so_dong, dat_so_dong] = useState(MOI_TRANG);
+  // Phan trang phia MAY CHU: gui gioi_han + bo_qua, may chu tra lai tong so dong.
+  const [kich_thuoc, dat_kich_thuoc] = useState(20);
+  const [trang, dat_trang] = useState(1);
   const [mo_pin, dat_mo_pin] = useState(false);
   const [gan_lai_pin, dat_gan_lai_pin] = useState<GanLai | null>(null);
   const [dang_nhap_tep, dat_dang_nhap_tep] = useState(false);
@@ -67,18 +69,23 @@ export function TrangLanQuet(): ReactNode {
   // "khong co them du lieu" trong khi thuc ra dang xem ket qua cua bo loc cu.
   const doi_loc = (dat: (v: string) => void) => (v: string): void => {
     dat(v);
-    dat_so_dong(MOI_TRANG);
+    dat_trang(1);
   };
 
   const chuoi_loc = [
-    `tu=${tu}`, `den=${den}`, `gioi_han=${so_dong}`,
+    `tu=${tu}`, `den=${den}`, `gioi_han=${kich_thuoc}`, `bo_qua=${(trang - 1) * kich_thuoc}`,
     nhan_vien_id === '' ? '' : `nhan_vien_id=${nhan_vien_id}`,
     thiet_bi_serial === '' ? '' : `thiet_bi_serial=${encodeURIComponent(thiet_bi_serial)}`,
     nguon === '' ? '' : `nguon=${nguon}`,
     trang_thai_duyet === '' ? '' : `trang_thai_duyet=${trang_thai_duyet}`,
   ].filter((x) => x !== '').join('&');
 
-  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<LanQuet[]>(`/api/lan-quet?${chuoi_loc}`);
+  const nap_lq = dung_nap<{ du_lieu: LanQuet[]; phan_trang: { tong: number } }>(`/api/lan-quet?${chuoi_loc}`);
+  const du_lieu = nap_lq.du_lieu?.du_lieu ?? [];
+  const tong_quet = nap_lq.du_lieu?.phan_trang.tong ?? 0;
+  const dang_tai = nap_lq.dang_tai;
+  const loi = nap_lq.loi;
+  const nap_lai = nap_lq.nap_lai;
   const chua_map = dung_nap<ChuaMap[]>(la_nhan_su() ? '/api/lan-quet/chua-map' : null);
   const ds_nv = dung_nap<NhanVien[]>(la_nhan_su() ? '/api/nhan-vien' : null);
   const ds_tb = dung_nap<{ serial: string; ten: string }[]>(la_nhan_su() ? '/api/thiet-bi' : null);
@@ -86,7 +93,7 @@ export function TrangLanQuet(): ReactNode {
   const xuat = async (): Promise<void> => {
     await hd.chay(
       () => tai_tep(
-        `/api/lan-quet/xuat-csv?${chuoi_loc.replace(/&?gioi_han=\d+/, '')}`,
+        `/api/lan-quet/xuat-csv?${chuoi_loc.replace(/&?(gioi_han|bo_qua)=\d+/g, '')}`,
         `lan_quet_${tu}_${den}.csv`,
       ),
       'Đã tải tệp CSV.',
@@ -240,7 +247,7 @@ export function TrangLanQuet(): ReactNode {
         )}
 
         <div className="lq-log the the-mong">
-          {dang_tai ? <DangTai /> : (du_lieu ?? []).length === 0 ? (
+          {dang_tai ? <DangTai /> : du_lieu.length === 0 ? (
             <Trong
               tieu_de="Không có lần quẹt nào trong khoảng này"
               mo_ta="Nếu máy đang kết nối mà vẫn trống, kiểm tra serial máy đã khai đúng chưa."
@@ -260,7 +267,7 @@ export function TrangLanQuet(): ReactNode {
                   </tr>
                 </thead>
                 <tbody>
-                  {(du_lieu ?? []).map((q) => (
+                  {du_lieu.map((q) => (
                     <tr key={q.id}>
                       <td className="khong-ngat so">{ngay_gio(q.thoi_diem)}</td>
                       <td>
@@ -292,19 +299,13 @@ export function TrangLanQuet(): ReactNode {
               </table>
             </div>
           )}
-          {(du_lieu ?? []).length > 0 && (
-            <div className="lq-log-chan">
-              <span className="mo-ta">Đang hiện {(du_lieu ?? []).length} dòng</span>
-              {/* Day du MOI_TRANG dong nghia la con nua — chua chac, nhung dung mot truy van
-                  dem rieng cho mot bang co the rat lon thi khong dang. */}
-              {(du_lieu ?? []).length >= so_dong && (
-                <button type="button" className="nut-nho"
-                  onClick={() => dat_so_dong(so_dong + MOI_TRANG)}>
-                  Xem thêm {MOI_TRANG} dòng
-                </button>
-              )}
-            </div>
-          )}
+          <BoPhanTrang
+            tong={tong_quet}
+            trang={trang}
+            kich_thuoc={kich_thuoc}
+            dat_trang={dat_trang}
+            dat_kich_thuoc={(k) => { dat_kich_thuoc(k); dat_trang(1); }}
+          />
         </div>
       </div>
 

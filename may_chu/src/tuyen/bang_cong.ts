@@ -460,11 +460,24 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
        gioi_han, bo_qua, ...pv.tham_so],
     );
 
-    return dong.map((d) => ({
-      ...d,
-      nhan_trang_thai: NHAN_TRANG_THAI[Number(d['trang_thai'])] ?? 'Khac',
-      nhan_xac_thuc: nhan_cach_xac_thuc(Number(d['xac_thuc'])),
-    }));
+    // Dem TONG de giao dien hien "Trang x / y" va biet con trang sau hay khong.
+    const dem = await truy_van<{ tong: number }>(
+      `select count(*)::int as tong
+         from lan_quet lq
+         left join nhan_vien nv on nv.id = lq.nhan_vien_id
+        ${DIEU_KIEN_LAN_QUET(pv.sql)}`,
+      [tu, den, loc.nhan_vien_id, loc.thiet_bi_serial, loc.nguon, loc.trang_thai_duyet,
+       ...pv.tham_so],
+    );
+
+    return {
+      du_lieu: dong.map((d) => ({
+        ...d,
+        nhan_trang_thai: NHAN_TRANG_THAI[Number(d['trang_thai'])] ?? 'Khac',
+        nhan_xac_thuc: nhan_cach_xac_thuc(Number(d['xac_thuc'])),
+      })),
+      phan_trang: { gioi_han, bo_qua, tong: dem[0]?.tong ?? 0 },
+    };
   });
 
   /**

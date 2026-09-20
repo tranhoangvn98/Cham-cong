@@ -4,6 +4,7 @@ import {
   DangTai, HopLoi, HopTot, HopThoai, NhanNgay, Trong, dung_hanh_dong, dung_nap, gio_ngan,
   ngay_viet, phut_thanh_chu, thang_nay, thu_cua_ngay,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface DongTongHop {
   nhan_vien_id: string;
@@ -53,6 +54,7 @@ export function TrangBangCong(): ReactNode {
     + (phong_ban_id === '' ? '' : `&phong_ban_id=${phong_ban_id}`);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<DongTongHop[]>(url_tong_hop);
   const phong = dung_nap<PhongBan[]>('/api/phong-ban');
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   const tinh_lai = async (bo_qua_chot = false): Promise<void> => {
     const [y, m] = thang.split('-').map(Number) as [number, number];
@@ -172,7 +174,7 @@ export function TrangBangCong(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {(du_lieu ?? []).map((d) => (
+                {ds_xem.map((d) => (
                   // Ca hang mo chi tiet, nen no phai la mot dich den cua ban phim: `tabIndex`
                   // de Tab toi duoc, `role` de trinh doc man hinh biet bam duoc, va Enter /
                   // Space lam dung viec cua chuot. Thieu chung thi voi nguoi khong dung chuot
@@ -219,6 +221,7 @@ export function TrangBangCong(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>

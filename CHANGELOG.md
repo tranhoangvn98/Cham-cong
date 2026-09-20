@@ -2,6 +2,24 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.104.2] — 2026-09-21
+
+**Thay đổi: rà soát toàn bộ bảng — phân trang + chọn 20/50/100 dòng mỗi trang.**
+
+- Bộ phận dùng chung mới `web/src/phan_trang.tsx`: hook `dung_phan_trang(ds)` cho danh sách đã
+  tải đủ (phân trang ngay trên trình duyệt) và `<BoPhanTrang>` cho bảng lớn phân trang phía
+  máy chủ (trang/kích thước do component giữ, máy chủ trả tổng số dòng).
+- Áp dụng cho toàn bộ bảng danh sách: Nhân viên, Bảng công, Bảng lương (kỳ + phiếu VND/CNY),
+  Duyệt đơn (7 bảng), Lần quẹt, Ra/vào, KPI, Công việc (danh sách/định kỳ/workflow),
+  Tổ chức & trách nhiệm (6 bảng), Hồ sơ nhân viên, Kỷ luật, Vi phạm, Khiếu nại (2 trang),
+  Quản lý phép, Hợp đồng, Ứng lương, Phụ cấp (2 trang), Danh mục khoản, Tài khoản + Nhật ký,
+  Khóa API, Mã định danh, Kho tệp, Thiết bị, Đồng bộ ERP, Thông báo, Văn bản, Tham số lương,
+  Cài đặt (ca/địa điểm/ngày lễ/kế hoạch nghỉ/nơi làm việc), bảng nhập tệp chung.
+- Lần quẹt: `/api/lan-quet` chuyển sang trả `{du_lieu, phan_trang: {gioi_han, bo_qua, tong}}`
+  (nhận thêm tham số `bo_qua`) thay cho nút "Xem thêm" — biết đích xác tổng số dòng.
+- Khi đổi bộ lọc hoặc xóa dòng làm số trang giảm, bảng tự lùi về trang cuối hợp lệ; bảng có
+  cột số thứ tự giữ đánh số liên tục qua các trang.
+
 ## [1.104.1] — 2026-09-21
 
 **Sửa lỗi: nhiều nút/tab bị mất màu khi di chuột vào (hover trả về nền xám).**

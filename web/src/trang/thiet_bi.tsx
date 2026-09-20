@@ -6,6 +6,7 @@ import {
 } from '../thanh_phan.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
 import type { NhomMa as NhomMaDinhDanh } from './ma_dinh_danh.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface ThietBi {
   id: string;
@@ -42,6 +43,7 @@ export function TrangThietBi(): ReactNode {
   const xn = dung_xac_nhan();
 
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<ThietBi[]>('/api/thiet-bi');
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   const lenh_may = async (serial: string, duong_dan: string, thong_bao: string): Promise<void> => {
     await hd.chay(
@@ -123,7 +125,7 @@ export function TrangThietBi(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {(du_lieu ?? []).map((tb) => (
+                {ds_xem.map((tb) => (
                   <tr key={tb.id} style={tb.dang_bat ? undefined : { opacity: 0.55 }}>
                     <td>
                       <strong>{tb.ten}</strong>
@@ -206,6 +208,7 @@ export function TrangThietBi(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>
@@ -391,6 +394,7 @@ function LichSuLenh({ thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () =>
   const { du_lieu, dang_tai, loi } = dung_nap<Lenh[]>(
     `/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/lenh`,
   );
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   return (
     <HopThoai tieu_de={`Lịch sử lệnh — ${thiet_bi.ten}`} khi_dong={khi_dong} rong>
@@ -410,7 +414,7 @@ function LichSuLenh({ thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () =>
               </tr>
             </thead>
             <tbody>
-              {(du_lieu ?? []).map((l) => (
+              {ds_xem.map((l) => (
                 <tr key={l.id}>
                   <td className="so">{l.id}</td>
                   <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11.5, maxWidth: 260 }}>
@@ -433,6 +437,7 @@ function LichSuLenh({ thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () =>
               ))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       )}
     </HopThoai>
@@ -753,6 +758,7 @@ function DoiChieuNguoiDung(
       `/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/nguoi-dung`, [thiet_bi.serial]);
   const hd = dung_hanh_dong();
   const ds = du_lieu?.danh_sach ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
   return (
     <HopThoai tieu_de={`Đối chiếu user — ${thiet_bi.ten}`} khi_dong={khi_dong} rong>
@@ -795,7 +801,7 @@ function DoiChieuNguoiDung(
                   </tr>
                 </thead>
                 <tbody>
-                  {ds.map((u) => (
+                  {ds_xem.map((u) => (
                     <tr key={u.pin} className={u.khop === 'lech' ? 'dong-canh-bao' : undefined}>
                       <td className="so">{u.pin}</td>
                       <td>{u.ten_may ?? <span className="chu-mo">—</span>}</td>
@@ -810,6 +816,7 @@ function DoiChieuNguoiDung(
                   ))}
                 </tbody>
               </table>
+              {bo_phan_trang}
             </div>
           </>
         )}

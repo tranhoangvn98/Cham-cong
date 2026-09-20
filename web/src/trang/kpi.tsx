@@ -7,6 +7,7 @@ import { goi } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 type Tab = 'ky' | 'danh_muc';
 
@@ -156,10 +157,11 @@ function TabKy(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<Ky[]>('/api/ky-kpi');
   const [mo, dat_mo] = useState<string | null>(null);
   const [tao, dat_tao] = useState(false);
+  const ds = du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
-  const ds = du_lieu ?? [];
 
   return (
     <>
@@ -171,6 +173,7 @@ function TabKy(): ReactNode {
         <Trong tieu_de="Chưa có kỳ đánh giá nào"
           hanh_dong={<button onClick={() => dat_tao(true)}>Tạo kỳ đầu tiên</button>} />
       ) : (
+        <>
         <table>
           <thead>
             <tr>
@@ -180,7 +183,7 @@ function TabKy(): ReactNode {
             </tr>
           </thead>
           <tbody>
-            {ds.map((k) => (
+            {ds_xem.map((k) => (
               <tr key={k.id}>
                 <td><strong>{k.thang}</strong></td>
                 <td>
@@ -198,6 +201,8 @@ function TabKy(): ReactNode {
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
+        </>
       )}
 
       {tao && <HopThoaiTaoKy khi_dong={() => dat_tao(false)}
@@ -239,6 +244,7 @@ function HopThoaiKy(
     dung_nap<Ky & { ds: DongTongHop[] }>(`/api/ky-kpi/${ky_id}`);
   const [chi_tiet, dat_chi_tiet] = useState<DongTongHop | null>(null);
   const hd = dung_hanh_dong();
+  const { ds_xem, bo_phan_trang, dau } = dung_phan_trang(du_lieu?.ds ?? []);
 
   if (dang_tai) return <HopThoai tieu_de="Kỳ KPI" khi_dong={khi_dong}><DangTai /></HopThoai>;
   if (loi !== null || du_lieu === null) {
@@ -295,9 +301,9 @@ function HopThoaiKy(
               </tr>
             </thead>
             <tbody>
-              {k.ds.map((d, i) => (
+              {ds_xem.map((d, i) => (
                 <tr key={d.nhan_vien_id}>
-                  <td>{i + 1}</td>
+                  <td>{dau + i + 1}</td>
                   <td>{d.ma_nv} — {d.ho_ten}</td>
                   <td>{d.phong_ban ?? '—'}</td>
                   <td className="canh-phai">
@@ -311,6 +317,7 @@ function HopThoaiKy(
               ))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       )}
 

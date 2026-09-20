@@ -8,6 +8,7 @@ import {
   DangTai, HopLoi, HopThoai, HopTot, Trong, dung_hanh_dong, dung_nap,
   hom_nay, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 // ---------------------------------------------------------------- kieu du lieu
 export interface DongViec {
@@ -419,6 +420,8 @@ function ManDanhSach({ la_qly }: { la_qly: boolean }): ReactNode {
     : loc.filter((v) => v.tieu_de.toLowerCase().includes(tim_sach)
         || (v.ho_ten ?? '').toLowerCase().includes(tim_sach));
 
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
+
   return (
     <div>
       <div className="cv-hang-loc">
@@ -442,6 +445,7 @@ function ManDanhSach({ la_qly }: { la_qly: boolean }): ReactNode {
       {dang_tai ? <XuongBang /> : loi !== null ? <HopLoi loi={loi} /> : ds.length === 0 ? (
         <Trong tieu_de="Không có công việc nào" mo_ta="Bấm “Giao việc” để tạo việc mới." />
       ) : (
+        <>
         <table className="cv-bang">
           <thead>
             <tr>
@@ -456,7 +460,7 @@ function ManDanhSach({ la_qly }: { la_qly: boolean }): ReactNode {
             </tr>
           </thead>
           <tbody>
-            {ds.map((v) => (
+            {ds_xem.map((v) => (
               <tr key={v.id}>
                 <td className="cv-cot-tich">
                   <input
@@ -491,6 +495,8 @@ function ManDanhSach({ la_qly }: { la_qly: boolean }): ReactNode {
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
+        </>
       )}
 
       {mo_tao && (
@@ -828,6 +834,8 @@ function ManDinhKy(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<MauDinhKy[]>('/api/viec/mau-dinh-ky', []);
   const hd = dung_hanh_dong();
   const [mo_tao, dat_mo_tao] = useState(false);
+  const ds = du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
   const doi_bat = async (m: MauDinhKy, dang_bat: boolean): Promise<void> => {
     await goi(`/api/viec/mau-dinh-ky/${m.id}`, { method: 'PATCH', body: { dang_bat } });
@@ -840,10 +848,11 @@ function ManDinhKy(): ReactNode {
         <button className="nut nut-chinh" onClick={() => dat_mo_tao(true)}>Tạo việc định kỳ</button>
       </div>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
-      {dang_tai ? <XuongBang /> : loi !== null ? <HopLoi loi={loi} /> : (du_lieu ?? []).length === 0 ? (
+      {dang_tai ? <XuongBang /> : loi !== null ? <HopLoi loi={loi} /> : ds.length === 0 ? (
         <Trong tieu_de="Chưa có việc định kỳ nào"
           mo_ta="Việc lặp lại hằng ngày / hằng tuần / hằng tháng sẽ tự sinh theo lịch vào ban đêm." />
       ) : (
+        <>
         <table className="cv-bang">
           <thead>
             <tr>
@@ -852,7 +861,7 @@ function ManDinhKy(): ReactNode {
             </tr>
           </thead>
           <tbody>
-            {(du_lieu ?? []).map((m) => (
+            {ds_xem.map((m) => (
               <tr key={m.id}>
                 <td>{m.ten}</td>
                 <td>{m.ho_ten ?? '—'}</td>
@@ -867,6 +876,8 @@ function ManDinhKy(): ReactNode {
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
+        </>
       )}
       {mo_tao && (
         <HopThoai tieu_de="Tạo việc định kỳ" khi_dong={() => dat_mo_tao(false)} rong>
@@ -994,6 +1005,8 @@ function FormMauDinhKy({ khi_xong }: { khi_xong: () => void }): ReactNode {
 function ManWorkflow(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<WorkflowCF[]>('/api/viec/workflow', []);
   const [mo, dat_mo] = useState<WorkflowCF | null>(null);
+  const ds = du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
   return (
     <div>
@@ -1002,6 +1015,7 @@ function ManWorkflow(): ReactNode {
         lúc xảy ra), có thể tắt hẳn.
       </div>
       {dang_tai ? <XuongBang /> : loi !== null ? <HopLoi loi={loi} /> : (
+        <>
         <table className="cv-bang">
           <thead>
             <tr>
@@ -1014,7 +1028,7 @@ function ManWorkflow(): ReactNode {
             </tr>
           </thead>
           <tbody>
-            {(du_lieu ?? []).map((w) => (
+            {ds_xem.map((w) => (
               <tr key={w.ma}>
                 <td>
                   <b>{w.ten}</b>
@@ -1039,6 +1053,8 @@ function ManWorkflow(): ReactNode {
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
+        </>
       )}
       {mo !== null && (
         <HopThoai tieu_de={`Cấu hình: ${mo.ten}`} khi_dong={() => { dat_mo(null); nap_lai(); }} rong>

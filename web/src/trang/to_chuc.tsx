@@ -13,6 +13,7 @@
 import { useState, type ReactNode } from 'react';
 import { goi, la_nhan_su } from '../api.ts';
 import { DangTai, HopLoi, HopThoai, OSo, Trong, dung_nap } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 // ---------------------------------------------------------------- kieu du lieu
 interface DongViTri {
@@ -152,9 +153,13 @@ function ti_le(co: number, tong: number): number {
 
 function ManTongQuan({ chuyen_tab }: { chuyen_tab: (t: Tab) => void }): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<DongTongQuan>('/api/to-chuc/tong-quan');
-  if (dang_tai) return <DangTai />;
-  if (loi !== null || du_lieu === null) return <HopLoi loi={loi} />;
   const tq = du_lieu;
+  const theo_nhom = tq?.theo_nhom ?? [];
+  const theo_cap_bac = tq?.theo_cap_bac ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(theo_nhom);
+  const { ds_xem: cb_xem, bo_phan_trang: bo_cb } = dung_phan_trang(theo_cap_bac);
+  if (dang_tai) return <DangTai />;
+  if (loi !== null || tq === null) return <HopLoi loi={loi} />;
 
   return (
     <div className="cv-trang">
@@ -199,7 +204,7 @@ function ManTongQuan({ chuyen_tab }: { chuyen_tab: (t: Tab) => void }): ReactNod
               <tr><th>Nhóm</th><th className="so">Task có người</th><th>Bao phủ</th><th className="so">Đang chạy</th></tr>
             </thead>
             <tbody>
-              {tq.theo_nhom.map((n) => {
+              {ds_xem.map((n) => {
                 const tile = ti_le(n.so_task_co_nguoi, n.so_task);
                 return (
                   <tr key={n.nhom_id}>
@@ -219,6 +224,7 @@ function ManTongQuan({ chuyen_tab }: { chuyen_tab: (t: Tab) => void }): ReactNod
               })}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
 
         <div className="the">
@@ -228,7 +234,7 @@ function ManTongQuan({ chuyen_tab }: { chuyen_tab: (t: Tab) => void }): ReactNod
               <tr><th>Cấp bậc</th><th className="so">Có người giữ</th><th>Bao phủ</th></tr>
             </thead>
             <tbody>
-              {tq.theo_cap_bac.map((c) => {
+              {cb_xem.map((c) => {
                 const tile = ti_le(c.so_vi_tri_co_nguoi, c.so_vi_tri);
                 return (
                   <tr key={c.cap_bac}>
@@ -247,6 +253,7 @@ function ManTongQuan({ chuyen_tab }: { chuyen_tab: (t: Tab) => void }): ReactNod
               })}
             </tbody>
           </table>
+          {bo_cb}
         </div>
       </div>
     </div>
@@ -259,11 +266,12 @@ function ManCoCau(): ReactNode {
     '/api/to-chuc/bao-phu', [],
   );
   const dm = dung_nap<{ nhom: DongNhom[]; tn: DongTn[] }>('/api/to-chuc/nhom', []);
-  if (dang_tai || dm.dang_tai) return <DangTai />;
-  if (loi !== null) return <HopLoi loi={loi} />;
   const theo_tn = du_lieu?.theo_tn ?? [];
   const lo_hong = du_lieu?.lo_hong ?? [];
   const nhom = dm.du_lieu?.nhom ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(lo_hong);
+  if (dang_tai || dm.dang_tai) return <DangTai />;
+  if (loi !== null) return <HopLoi loi={loi} />;
 
   return (
     <div className="cv-trang">
@@ -275,7 +283,7 @@ function ManCoCau(): ReactNode {
               <tr><th>Đầu việc</th><th>Vị trí thực thi</th><th>Nhóm trách nhiệm</th><th>Trách nhiệm chi tiết</th></tr>
             </thead>
             <tbody>
-              {lo_hong.map((d) => (
+              {ds_xem.map((d) => (
                 <tr key={d.id}>
                   <td>{d.ten}</td>
                   <td className="khong-ngat">{d.ten_vi_tri ?? '—'}</td>
@@ -285,6 +293,7 @@ function ManCoCau(): ReactNode {
               ))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       )}
       {nhom.map((n) => {
@@ -717,6 +726,8 @@ function ManNhanVien(): ReactNode {
   const vi_tri = dung_nap<{ vi_tri_id: string; ten: string; cap_bac: string; la_chinh: boolean }[]>(
     la_ns && chon !== '' ? `/api/to-chuc/nhan-vien/${chon}/vi-tri` : null, [chon],
   );
+  const ds_giu = vi_tri.du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds_giu);
 
   if (!la_ns) {
     return <Trong tieu_de="Chỉ nhân sự mới xem và gán vị trí. Nhân viên xem trách nhiệm của mình ở trang Công việc → tab Trách nhiệm của tôi." />;
@@ -772,7 +783,7 @@ function ManNhanVien(): ReactNode {
                 <tr><th>Vị trí</th><th>Cấp bậc</th><th>Chính</th><th></th></tr>
               </thead>
               <tbody>
-                {(vi_tri.du_lieu ?? []).map((v) => (
+                {ds_xem.map((v) => (
                   <tr key={v.vi_tri_id}>
                     <td>{v.ten}</td>
                     <td className="khong-ngat">{NHAN_CAP_BAC[v.cap_bac]}</td>
@@ -786,6 +797,7 @@ function ManNhanVien(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
             <div className="o-nhap-ngang" style={{ marginTop: 10 }}>
               <label>Gán thêm vị trí:</label>
               <select value={vi_tri_them} onChange={(e) => dat_vt_them(e.target.value)}>
@@ -807,9 +819,10 @@ function ManNhanVien(): ReactNode {
 // ================================================================ DO LUONG
 function ManDoLuong(): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<DongDoLuong[]>('/api/to-chuc/do-luong', []);
+  const ds = du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
-  const ds = du_lieu ?? [];
   return (
     <div className="the">
       <h3>Nhân sự có làm tròn trách nhiệm không (kỳ hiện tại)</h3>
@@ -821,7 +834,7 @@ function ManDoLuong(): ReactNode {
           </tr>
         </thead>
         <tbody>
-          {ds.map((d) => (
+          {ds_xem.map((d) => (
             <tr key={d.nhan_vien_id}>
               <td className="khong-ngat">{d.ho_ten ?? '—'}</td>
               <td className="khong-ngat">{d.ten_phong_ban ?? '—'}</td>
@@ -835,6 +848,7 @@ function ManDoLuong(): ReactNode {
           ))}
         </tbody>
       </table>
+      {bo_phan_trang}
       {ds.length === 0 && <Trong tieu_de="Chưa nhân viên nào được gán vị trí. Vào tab Nhân viên để gán." />}
     </div>
   );
@@ -845,9 +859,10 @@ function ManMaBc(): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<{ id: string; ma: string; ten: string | null; trang_thai: string; so_dau_viec: number; so_da_nop: number; nop_gan_nhat: string | null }[]>(
     '/api/to-chuc/ma-bc', [],
   );
+  const ds = du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
-  const ds = du_lieu ?? [];
   return (
     <div className="the">
       <h3>Danh mục mã báo cáo ({ds.length})</h3>
@@ -857,7 +872,7 @@ function ManMaBc(): ReactNode {
           <tr><th>Mã BC</th><th>Trạng thái</th><th>Số đầu việc</th><th>Đã nộp (30 ngày)</th><th>Nộp gần nhất</th></tr>
         </thead>
         <tbody>
-          {ds.map((d) => (
+          {ds_xem.map((d) => (
             <tr key={d.id}>
               <td className="khong-ngat">{d.ma}</td>
               <td>{d.trang_thai === 'chuan' ? <span className="nhan nhan-tot">Chuẩn</span> : <span className="nhan nhan-canh-bao">Đề xuất</span>}</td>
@@ -872,6 +887,7 @@ function ManMaBc(): ReactNode {
           ))}
         </tbody>
       </table>
+      {bo_phan_trang}
     </div>
   );
 }

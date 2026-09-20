@@ -13,6 +13,7 @@ import { goi } from '../api.ts';
 import {
   DangTai, HopLoi, OSo, Trong, dung_nap, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 type Tab = 'sap_het_han' | 'tim';
 
@@ -122,9 +123,12 @@ function TabSapHetHan(): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<KetQuaSapHan>(
     `/api/ho-so/hop-dong/sap-het-han?trong_ngay=${String(trong_ngay)}`, [trong_ngay]);
 
+  // Tinh truoc moi return som de hook luon duoc goi moi lan render.
+  const kq = du_lieu ?? { trong_ngay, danh_sach: [], so_da_het_han: 0 };
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(kq.danh_sach);
+
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
-  const kq = du_lieu ?? { trong_ngay, danh_sach: [], so_da_het_han: 0 };
 
   return (
     <>
@@ -188,7 +192,7 @@ function TabSapHetHan(): ReactNode {
               </tr>
             </thead>
             <tbody>
-              {kq.danh_sach.map((hd) => (
+              {ds_xem.map((hd) => (
                 <tr key={hd.id}>
                   <td>
                     <a href={`/nhan-vien/${hd.nhan_vien_id}`} className="lk-nhan-vien">
@@ -211,6 +215,7 @@ function TabSapHetHan(): ReactNode {
               ))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       )}
     </>
@@ -225,6 +230,8 @@ function TabTim(): ReactNode {
   const [ds, dat_ds] = useState<DongTim[] | null>(null);
   const [dang_tim, dat_dang_tim] = useState(false);
   const [loi, dat_loi] = useState<unknown>(null);
+
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds ?? []);
 
   const tim = (): void => {
     const q = go.trim();
@@ -284,7 +291,7 @@ function TabTim(): ReactNode {
                   </tr>
                 </thead>
                 <tbody>
-                  {ds.map((hd) => (
+                  {ds_xem.map((hd) => (
                     <tr key={hd.id}>
                       <td>
                         <a href={`/nhan-vien/${hd.nhan_vien_id}`} className="lk-nhan-vien">
@@ -308,6 +315,7 @@ function TabTim(): ReactNode {
                   ))}
                 </tbody>
               </table>
+              {bo_phan_trang}
             </div>
           </>
         )

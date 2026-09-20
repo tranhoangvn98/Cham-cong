@@ -14,6 +14,7 @@ import {
   ChonThang, DangTai, HopLoi, HopThoai, Trong, XuongDanhSach,
   dung_hanh_dong, dung_nap, hom_nay, thang_nay,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface NhanVienGon {
   id: string;
@@ -118,6 +119,9 @@ export function TrangUngLuong(): ReactNode {
   const tong_da_chi = ds.filter((u) => u.trang_thai === 'da_chi')
     .reduce((s, u) => s + Number(u.so_tien), 0);
 
+  // Phan trang tren danh sach khoan ung da loc theo thang + trang thai.
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
+
   return (
     <div className="ul-vo">
       <div className="dau-trang">
@@ -173,7 +177,7 @@ export function TrangUngLuong(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {ds.map((u) => (
+                {ds_xem.map((u) => (
                   <tr key={u.id}>
                     <td>{u.ma_nv}</td>
                     <td>{u.ho_ten}</td>
@@ -217,6 +221,7 @@ export function TrangUngLuong(): ReactNode {
                 </tr>
               </tfoot>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>

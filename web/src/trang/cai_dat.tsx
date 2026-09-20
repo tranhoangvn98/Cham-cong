@@ -5,6 +5,7 @@ import {
   DangTai, HopLoi, HopTot, HopThoai, Trong,
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet, thu_cua_ngay,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 const TEN_THU_DAY = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
 const TEN_THU_NGAN = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -45,6 +46,7 @@ export function TrangCaLam(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<CaLam[]>('/api/ca-lam');
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   const vo_hieu = async (c: CaLam): Promise<void> => {
     const dong_y = await xn.hoi({
@@ -96,7 +98,7 @@ export function TrangCaLam(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {(du_lieu ?? []).map((c) => (
+                {ds_xem.map((c) => (
                   <tr key={c.id} style={c.dang_hoat_dong ? undefined : { opacity: 0.5 }}>
                     <td>
                       <strong>{c.ten}</strong>
@@ -137,6 +139,7 @@ export function TrangCaLam(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>
@@ -404,6 +407,7 @@ export function TrangDiaDiem(): ReactNode {
   const [dang_them, dat_dang_them] = useState(false);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<DiaDiem[]>('/api/dia-diem');
   const hd = dung_hanh_dong();
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   const bat_tat = async (d: DiaDiem): Promise<void> => {
     await hd.chay(() => goi(`/api/dia-diem/${d.id}`, {
@@ -450,7 +454,7 @@ export function TrangDiaDiem(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {(du_lieu ?? []).map((d) => (
+                {ds_xem.map((d) => (
                   <tr key={d.id} style={d.dang_hoat_dong ? undefined : { opacity: 0.5 }}>
                     <td><strong>{d.ten}</strong></td>
                     <td className="so chu-nho">
@@ -477,6 +481,7 @@ export function TrangDiaDiem(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>
@@ -625,6 +630,7 @@ function TabNgayLe(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<NgayLe[]>(`/api/ngay-le?nam=${nam}`);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   const xoa = async (ng: NgayLe): Promise<void> => {
     const dong_y = await xn.hoi({
@@ -697,7 +703,7 @@ function TabNgayLe(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {(du_lieu ?? []).map((n) => (
+                {ds_xem.map((n) => (
                   <tr key={`${n.ngay}-${n.lich_ma}`}>
                     <td className="khong-ngat">{thu_cua_ngay(n.ngay)} {ngay_viet(n.ngay)}</td>
                     <td>{n.ten}{n.ke_hoach_id !== null && <span className="nhan nhan-mo"> đợt</span>}</td>
@@ -716,6 +722,7 @@ function TabNgayLe(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>
@@ -793,6 +800,7 @@ function TabKeHoach(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<KeHoach[]>(`/api/ke-hoach-nghi-le?nam=${nam}`);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   const xoa = async (k: KeHoach): Promise<void> => {
     const dong_y = await xn.hoi({
@@ -849,7 +857,7 @@ function TabKeHoach(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {(du_lieu ?? []).map((k) => (
+                {ds_xem.map((k) => (
                   <tr key={k.id}>
                     <td>{k.ten}</td>
                     <td className="khong-ngat">{ngay_viet(k.tu_ngay)}</td>
@@ -866,6 +874,7 @@ function TabKeHoach(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>
@@ -943,6 +952,7 @@ function TabNoiLamViec(): ReactNode {
   const [sua, dat_sua] = useState<NoiLamViec | null>(null);
   const [dang_them, dat_dang_them] = useState(false);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<NoiLamViec[]>('/api/noi-lam-viec');
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   return (
     <>
@@ -969,7 +979,7 @@ function TabNoiLamViec(): ReactNode {
                   <th>Trạng thái</th>{la_nhan_su() && <th></th>}</tr>
               </thead>
               <tbody>
-                {(du_lieu ?? []).map((n) => (
+                {ds_xem.map((n) => (
                   <tr key={n.id}>
                     <td>{n.ten}</td>
                     <td><NhanLich ma={n.lich_nghi_ma} ten={n.lich_ten} /></td>
@@ -985,6 +995,7 @@ function TabNoiLamViec(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>

@@ -8,6 +8,7 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { goi, tai_tep } from '../api.ts';
 import { la_admin } from '../api.ts';
+import { dung_phan_trang } from '../phan_trang.tsx';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
   XuongDanhSach,
@@ -227,6 +228,7 @@ export function TrangBangLuong(): ReactNode {
   const [mo_ky, dat_mo_ky] = useState<string | null>(null);
   const [dang_tao, dat_dang_tao] = useState(false);
   const hd = dung_hanh_dong();
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   if (dang_tai) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
@@ -262,6 +264,7 @@ export function TrangBangLuong(): ReactNode {
           hanh_dong={<button onClick={() => dat_dang_tao(true)}>Tạo kỳ lương đầu tiên</button>}
         />
       ) : (
+        <>
         <table>
           <thead>
             <tr>
@@ -275,7 +278,7 @@ export function TrangBangLuong(): ReactNode {
             </tr>
           </thead>
           <tbody>
-            {ds.map((k) => (
+            {ds_xem.map((k) => (
               <tr key={k.id}>
                 <td><strong>{k.thang}</strong></td>
                 <td><span className={MAU_TRANG_THAI[k.trang_thai]}>
@@ -292,6 +295,8 @@ export function TrangBangLuong(): ReactNode {
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
+        </>
       )}
 
       {dang_tao && (
@@ -358,6 +363,8 @@ function HopThoaiChiTiet(
   const [tab, dat_tab] = useState<'vnd' | 'cny'>('vnd');
   const [lech, dat_lech] = useState<{ thong_bao: string; ds: DongLech[] } | null>(null);
   const hd = dung_hanh_dong();
+  // Phan trang bảng phiếu VND: hook phai truoc cac return som (dang tai / loi).
+  const { ds_xem: phieu_xem, bo_phan_trang } = dung_phan_trang(du_lieu?.phieu ?? []);
 
   if (dang_tai) return <KhungToanMan tieu_de="Kỳ lương" khi_dong={khi_dong}><DangTai /></KhungToanMan>;
   if (loi !== null || du_lieu === null) {
@@ -568,7 +575,7 @@ function HopThoaiChiTiet(
               </tr>
             </thead>
             <tbody>
-              {k.phieu.map((p) => {
+              {phieu_xem.map((p) => {
                 const bh = Number(p.bhxh_nld) + Number(p.bhyt_nld) + Number(p.bhtn_nld);
                 // Cot "Khoan tru" gop ca `tru_khac` cu lan cac khoan moi — nguoi doc bang can
                 // MOT con so tru, khong phai hai cho phai tu cong.
@@ -678,6 +685,7 @@ function HopThoaiChiTiet(
               </tr>
             </tfoot>
           </table>
+          {bo_phan_trang}
         </div>
       )}
       </>)}
@@ -1728,6 +1736,7 @@ function BangCny(
     dung_nap<{ phieu: PhieuCny[] }>(`/api/ky-luong/${ky.id}/cny`);
   const [sua, dat_sua] = useState<PhieuCny | null>(null);
   const hd = dung_hanh_dong();
+  const { ds_xem: phieu_xem, bo_phan_trang } = dung_phan_trang(du_lieu?.phieu ?? []);
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
@@ -1787,7 +1796,7 @@ function BangCny(
               </tr>
             </thead>
             <tbody>
-              {phieu.map((p) => (
+              {phieu_xem.map((p) => (
                 <tr key={p.id}>
                   <td>{p.ma_nv}</td>
                   <td>{p.ho_ten}</td>
@@ -1825,6 +1834,7 @@ function BangCny(
               </tr>
             </tfoot>
           </table>
+          {bo_phan_trang}
         </div>
       )}
 

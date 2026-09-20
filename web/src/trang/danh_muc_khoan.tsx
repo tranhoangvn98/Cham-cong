@@ -8,6 +8,7 @@ import {
   HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, XuongDanhSach,
 } from '../thanh_phan.tsx';
 import { tien } from './phu_cap.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface Khoan {
   ma: string;
@@ -35,13 +36,16 @@ export function TrangDanhMucKhoan(): ReactNode {
   const [sua, dat_sua] = useState<Khoan | null>(null);
   const admin = la_admin();
 
-  if (dang_tai) return <XuongDanhSach />;
-  if (loi !== null) return <HopLoi loi={loi} />;
   const ds = du_lieu ?? [];
   const thu_nhap = ds.filter((k) => k.loai === 'thu_nhap');
   const tru = ds.filter((k) => k.loai === 'tru');
+  const pn_thu_nhap = dung_phan_trang(thu_nhap);
+  const pn_tru = dung_phan_trang(tru);
 
-  const bang = (nhom: Khoan[], tieu_de: string): ReactNode => (
+  if (dang_tai) return <XuongDanhSach />;
+  if (loi !== null) return <HopLoi loi={loi} />;
+
+  const bang = (nhom: Khoan[], bo: ReactNode, tieu_de: string): ReactNode => (
     <>
       <h3>{tieu_de}</h3>
       <div className="vo-bang">
@@ -82,6 +86,7 @@ export function TrangDanhMucKhoan(): ReactNode {
             ))}
           </tbody>
         </table>
+        {bo}
       </div>
     </>
   );
@@ -109,8 +114,8 @@ export function TrangDanhMucKhoan(): ReactNode {
         <Trong tieu_de="Chưa có khoản nào" mo_ta="Thêm khoản phụ cấp / khoản trừ để bắt đầu." />
       ) : (
         <>
-          {thu_nhap.length > 0 && bang(thu_nhap, 'Phụ cấp / thu nhập thêm')}
-          {tru.length > 0 && bang(tru, 'Các khoản trừ')}
+          {thu_nhap.length > 0 && bang(pn_thu_nhap.ds_xem, pn_thu_nhap.bo_phan_trang, 'Phụ cấp / thu nhập thêm')}
+          {tru.length > 0 && bang(pn_tru.ds_xem, pn_tru.bo_phan_trang, 'Các khoản trừ')}
         </>
       )}
 

@@ -8,6 +8,7 @@ import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
   XuongDanhSach,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface Luot {
   id: string;
@@ -84,6 +85,10 @@ export function TrangDongBoErp(): ReactNode {
   const [kq, dat_kq] = useState<KetQua | null>(null);
   const [xem_thieu, dat_xem_thieu] = useState(false);
   const hd = dung_hanh_dong();
+
+  // Hook phan trang phai chay moi lan render: tinh ds va goi truoc cac return som.
+  const ds_lich_su = (du_lieu ?? { da_cau_hinh: false, so_da_noi: 0, lich_su: [] }).lich_su;
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds_lich_su);
 
   if (dang_tai) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
@@ -168,7 +173,7 @@ export function TrangDongBoErp(): ReactNode {
                   </tr>
                 </thead>
                 <tbody>
-                  {tt.lich_su.map((l) => (
+                  {ds_xem.map((l) => (
                     <tr key={l.id}>
                       <td>{ngay_gio(l.bat_dau_luc)}</td>
                       <td>{l.che_do === 'thu' ? 'Chạy thử' : 'Thật'}</td>
@@ -186,6 +191,7 @@ export function TrangDongBoErp(): ReactNode {
                   ))}
                 </tbody>
               </table>
+              {bo_phan_trang}
             </div>
           )}
         </>
@@ -202,6 +208,7 @@ function BangKetQua({ kq }: { kq: KetQua }): ReactNode {
   // "Đồng bộ thật" va dang can biet no lam gi.
   const chi_tiet = kq.chi_tiet ?? [];
   const ds = chi_hien === '' ? chi_tiet : chi_tiet.filter((d) => d.hanh_dong === chi_hien);
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
   return (
     <div className="the">
@@ -232,7 +239,7 @@ function BangKetQua({ kq }: { kq: KetQua }): ReactNode {
             </tr>
           </thead>
           <tbody>
-            {ds.slice(0, 300).map((d, i) => (
+            {ds_xem.map((d, i) => (
               <tr key={`${String(d.erp_user_id)}-${i}`}>
                 <td>{d.erp_user_id ?? '—'}</td>
                 <td>{d.ho_ten ?? '—'}</td>
@@ -252,16 +259,15 @@ function BangKetQua({ kq }: { kq: KetQua }): ReactNode {
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
       </div>
-      {ds.length > 300 && (
-        <p className="mo-ta">Hiển thị 300 dòng đầu trong {ds.length} dòng.</p>
-      )}
     </div>
   );
 }
 
 function HopThoaiThieuEmail({ khi_dong }: { khi_dong: () => void }): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<ThieuEmail[]>('/api/dong-bo-erp/thieu-email');
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   return (
     <HopThoai tieu_de="Nhân viên chưa có email" khi_dong={khi_dong} rong>
@@ -274,20 +280,23 @@ function HopThoaiThieuEmail({ khi_dong }: { khi_dong: () => void }): ReactNode {
         (du_lieu ?? []).length === 0
           ? <Trong tieu_de="Mọi nhân viên đang làm việc đều đã có email" />
           : (
-            <table>
-              <thead>
-                <tr><th>Mã NV</th><th>Họ tên</th><th>Điện thoại</th><th>Mã ERP</th></tr>
-              </thead>
-              <tbody>
-                {(du_lieu ?? []).map((n) => (
-                  <tr key={n.id}>
-                    <td>{n.ma_nv}</td><td>{n.ho_ten}</td>
-                    <td>{n.so_dien_thoai ?? '—'}</td>
-                    <td>{n.erp_user_id ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <>
+              <table>
+                <thead>
+                  <tr><th>Mã NV</th><th>Họ tên</th><th>Điện thoại</th><th>Mã ERP</th></tr>
+                </thead>
+                <tbody>
+                  {ds_xem.map((n) => (
+                    <tr key={n.id}>
+                      <td>{n.ma_nv}</td><td>{n.ho_ten}</td>
+                      <td>{n.so_dien_thoai ?? '—'}</td>
+                      <td>{n.erp_user_id ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {bo_phan_trang}
+            </>
           )
       )}
     </HopThoai>

@@ -14,6 +14,7 @@ import {
   phut_thanh_chu, thu_cua_ngay,
   XuongDanhSach,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface ThietBi {
   ten: string;
@@ -729,6 +730,7 @@ function BangDiMuon(
   // dan sang /bang-cong — khong giau du lieu, chi khong cho bieu do chen het cho khac.
   const gioi_han = toi_da ?? ds.length;
   const ds_hien = gioi_han < ds.length ? ds.slice(0, gioi_han) : ds;
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds_hien);
   return (
     <div className="the the-mong">
       <div style={{ padding: '10px 12px 0' }}>
@@ -746,7 +748,7 @@ function BangDiMuon(
               </tr>
             </thead>
             <tbody>
-              {ds_hien.map((n) => (
+              {ds_xem.map((n) => (
                 <tr key={n.ma_nv}>
                   <td className="so">{n.ma_nv}</td>
                   <td>{n.ho_ten}</td>
@@ -758,6 +760,7 @@ function BangDiMuon(
               ))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       )}
       {ds.length > gioi_han && (

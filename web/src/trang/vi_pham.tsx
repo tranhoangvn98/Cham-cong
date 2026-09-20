@@ -9,6 +9,7 @@ import { goi, chi_xem_quan_tri } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 type Tab = 'ban_ghi' | 'danh_muc' | 'quy_tac';
 
@@ -146,9 +147,12 @@ function TabBanGhi({ chi_xem }: { chi_xem: boolean }): ReactNode {
   const [xem, dat_xem] = useState<BanGhi | null>(null);
   const [quet, dat_quet] = useState(false);
 
+  // Tinh truoc moi return som: phan trang tren danh sach da loc.
+  const ds = du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
+
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
-  const ds = du_lieu ?? [];
 
   return (
     <>
@@ -174,7 +178,7 @@ function TabBanGhi({ chi_xem }: { chi_xem: boolean }): ReactNode {
               </tr>
             </thead>
             <tbody>
-              {ds.map((v) => (
+              {ds_xem.map((v) => (
                 <tr key={v.id}>
                   <td>{ngay_v(v.ngay)}</td>
                   <td>{v.ma_nv} — {v.ho_ten}</td>
@@ -192,6 +196,7 @@ function TabBanGhi({ chi_xem }: { chi_xem: boolean }): ReactNode {
               ))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       )}
 
@@ -363,9 +368,12 @@ function HopThoaiQuyet(
 function TabDanhMuc(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<LoaiViPham[]>('/api/loai-vi-pham');
   const hd = dung_hanh_dong();
+
+  const ds = du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
+
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
-  const ds = du_lieu ?? [];
 
   const bat_tat = (l: LoaiViPham) => () => {
     void hd.chay(
@@ -396,7 +404,7 @@ function TabDanhMuc(): ReactNode {
             </tr>
           </thead>
           <tbody>
-            {ds.map((l) => (
+            {ds_xem.map((l) => (
               <tr key={l.id} style={l.dang_bat ? undefined : { opacity: 0.55 }}>
                 <td><code>{l.ma}</code></td>
                 <td>
@@ -423,6 +431,7 @@ function TabDanhMuc(): ReactNode {
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
       </div>
     </>
   );
@@ -432,9 +441,12 @@ function TabDanhMuc(): ReactNode {
 function TabQuyTac(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<QuyTac[]>('/api/quy-tac-vi-pham');
   const hd = dung_hanh_dong();
+
+  const ds = du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
+
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
-  const ds = du_lieu ?? [];
 
   const bat_tat = (q: QuyTac) => () => {
     void hd.chay(
@@ -461,7 +473,7 @@ function TabQuyTac(): ReactNode {
             </tr>
           </thead>
           <tbody>
-            {ds.map((q) => (
+            {ds_xem.map((q) => (
               <tr key={q.id}>
                 <td>{q.ten}<div className="mo-ta">{q.ghi_chu}</div></td>
                 <td>{q.ten_loai}</td>
@@ -482,6 +494,7 @@ function TabQuyTac(): ReactNode {
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
       </div>
       <p className="mo-ta">Cập nhật lần cuối {ngay_gio(new Date().toISOString())}</p>
     </>

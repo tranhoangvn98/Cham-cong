@@ -10,6 +10,7 @@ import {
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet, ngay_gio,
 } from '../thanh_phan.tsx';
 import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 import { dat_qd_nghi_viec } from '../dieu_huong_sau.ts';
 import { dung_dat_tieu_de } from '../tieu_de_trang.tsx';
 import { NhanCachTrich } from './hop_dong.tsx';
@@ -386,6 +387,8 @@ function BangNhom(
   const [xem_noi_dung, dat_xem_noi_dung] = useState<string | null>(null);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
+  const ds = du_lieu?.danh_sach ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
   const lam_moi = (): void => { nap_lai(); khi_doi(); };
 
@@ -406,7 +409,6 @@ function BangNhom(
 
   if (dang_tai) return <DangTai />;
 
-  const ds = du_lieu?.danh_sach ?? [];
   const sua_duoc = du_lieu?.sua_duoc ?? false;
 
   return (
@@ -435,7 +437,7 @@ function BangNhom(
             <table>
               <thead><tr>{COT[nhom].map((c) => <th key={c.nhan}>{c.nhan}</th>)}{sua_duoc && <th></th>}</tr></thead>
               <tbody>
-                {ds.map((r) => (
+                {ds_xem.map((r) => (
                   <tr key={String(r['id'])}>
                     {COT[nhom].map((c) => <td key={c.nhan}>{c.ve(r)}</td>)}
                     {sua_duoc && (
@@ -460,6 +462,7 @@ function BangNhom(
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>
@@ -635,6 +638,7 @@ function DanhSachTep(
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
   const [dang_xem, dat_dang_xem] = useState<TepDinhKem | null>(null);
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(tep);
   if (tep.length === 0) return null;
 
   const tai = async (t: TepDinhKem): Promise<void> => {
@@ -660,7 +664,7 @@ function DanhSachTep(
       <div className="vo-bang">
         <table>
           <tbody>
-            {tep.map((t) => (
+            {ds_xem.map((t) => (
               <tr key={t.id}>
                 <td>{t.ten_goc}</td>
                 <td className="canh-phai so chu-nho">
@@ -678,6 +682,7 @@ function DanhSachTep(
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
       </div>
 
       {dang_xem !== null && (
@@ -1403,9 +1408,10 @@ function PanelTaiLieu(
   const [dang_sua, dat_dang_sua] = useState<DongTaiLieu | null>(null);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
+  const ds = du_lieu?.danh_sach ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
   if (dang_tai) return <DangTai />;
-  const ds = du_lieu?.danh_sach ?? [];
   const td = du_lieu?.tien_do ?? { can_co: 0, da_du: 0 };
   const sua_duoc = du_lieu?.sua_duoc ?? false;
   const thay_xoa_duoc = du_lieu?.thay_xoa_tep_duoc ?? false;
@@ -1506,7 +1512,7 @@ function PanelTaiLieu(
               </tr>
             </thead>
             <tbody>
-              {ds.map((d) => (
+              {ds_xem.map((d) => (
                 <tr key={d.ma} style={d.tam_mien ? { opacity: 0.6 } : undefined}>
                   <td>
                     <strong>{d.ten}</strong>
@@ -1563,6 +1569,7 @@ function PanelTaiLieu(
               ))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       </div>
 

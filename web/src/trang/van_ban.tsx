@@ -13,6 +13,7 @@ import {
 } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
 import { gui_tep, la_nhan_su, tai_tep } from '../api.ts';
+import { dung_phan_trang } from '../phan_trang.tsx';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
 import { TabVanBanBanHanh } from './thong_bao_ai.tsx';
 
@@ -278,10 +279,12 @@ function TabTaiLieu({ chi_doc = false }: { chi_doc?: boolean }): ReactNode {
 function DsVanBanBanHanh(): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<VanBanBanHanh[]>('/api/toi/van-ban-ban-hanh');
   const hd = dung_hanh_dong();
+  const ds = du_lieu ?? [];
+  // Hook phan trang phai chay moi lan render: dat truoc cac return som.
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
-  const ds = du_lieu ?? [];
 
   if (ds.length === 0) {
     return <Trong tieu_de="Chưa có văn bản ban hành"
@@ -297,7 +300,7 @@ function DsVanBanBanHanh(): ReactNode {
           </tr>
         </thead>
         <tbody>
-          {ds.map((v, i) => (
+          {ds_xem.map((v, i) => (
             <tr key={khoa_tinh(v.id, i)}>
               <td><b>{v.so_ky_hieu ?? '—'}</b></td>
               <td>{NHAN_LOAI[v.loai] ?? v.loai}</td>
@@ -321,6 +324,7 @@ function DsVanBanBanHanh(): ReactNode {
           ))}
         </tbody>
       </table>
+      {bo_phan_trang}
     </div>
   );
 }

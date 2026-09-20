@@ -4,6 +4,7 @@ import {
   DangTai, HopLoi, HopTot, HopThoai, NhanDon, TEN_LOAI_NGHI, Trong,
   dung_hanh_dong, dung_nap, dung_nhap_chu, gio_ngan, khoa_tinh, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 type Tab = 'nghi_phep' | 'giai_trinh' | 'quet_dien_thoai' | 'don_khac' | 'de_xuat'
   | 'ot_cap_2' | 'ket_qua_ot';
@@ -286,6 +287,7 @@ function BangDeXuat(
   const nhap = dung_nhap_chu();
   const [quan_ly, dat_quan_ly] = useState(false);
   const ds = kq.du_lieu?.danh_sach ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
   const tu_choi = (id: string): void => {
     void nhap.hoi({
       tieu_de: 'Từ chối đề xuất', mo_ta: 'Nhập lý do từ chối (nhân viên sẽ thấy):',
@@ -311,7 +313,7 @@ function BangDeXuat(
           <div className="the the-mong"><div className="vo-bang"><table>
             <thead><tr><th>Mã</th><th>Nhân viên</th><th>Loại</th><th>Nội dung</th><th>Trạng thái</th><th /></tr></thead>
             <tbody>
-              {ds.map((d) => (
+              {ds_xem.map((d) => (
                 <tr key={d.id}>
                   <td className="khong-ngat">{d.ma ?? '—'}</td>
                   <td className="khong-ngat">{d.ho_ten}<div className="mo-ta">{d.phong_ban ?? ''}</div></td>
@@ -332,7 +334,7 @@ function BangDeXuat(
                 </tr>
               ))}
             </tbody>
-          </table></div></div>
+          </table>{bo_phan_trang}</div></div>
         )}
     </>
   );
@@ -349,6 +351,7 @@ function QuanLyLoaiDeXuat({ khi_dong }: { khi_dong: () => void }): ReactNode {
   const [ten, dat_ten] = useState('');
   const [can_sl, dat_can_sl] = useState(false);
   const hd = dung_hanh_dong();
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
   const them = (): void => {
     void hd.chay(() => goi('/api/de-xuat/loai', {
       method: 'POST', body: { ten, can_so_luong: can_sl },
@@ -383,7 +386,7 @@ function QuanLyLoaiDeXuat({ khi_dong }: { khi_dong: () => void }): ReactNode {
           <div className="the the-mong"><div className="vo-bang"><table>
             <thead><tr><th>Tên</th><th>Số lượng?</th><th>Đơn</th><th>Trạng thái</th><th /></tr></thead>
             <tbody>
-              {(du_lieu ?? []).map((l) => (
+              {ds_xem.map((l) => (
                 <tr key={l.id}>
                   <td>{l.ten}</td>
                   <td>{l.can_so_luong ? 'Có' : '—'}</td>
@@ -394,7 +397,7 @@ function QuanLyLoaiDeXuat({ khi_dong }: { khi_dong: () => void }): ReactNode {
                 </tr>
               ))}
             </tbody>
-          </table></div></div>
+          </table>{bo_phan_trang}</div></div>
         )}
     </HopThoai>
   );
@@ -456,9 +459,10 @@ function NutQuyet(
 }
 
 function BangNghiPhep({ kq, quyet, dang_chay }: BangProps<DonNghiPhep>): ReactNode {
+  const ds = kq.du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
   if (kq.dang_tai) return <DangTai />;
   if (kq.loi !== null) return <HopLoi loi={kq.loi} />;
-  const ds = kq.du_lieu ?? [];
   if (ds.length === 0) return <div className="the"><Trong tieu_de="Không có đơn nghỉ phép nào" /></div>;
 
   return (
@@ -478,7 +482,7 @@ function BangNghiPhep({ kq, quyet, dang_chay }: BangProps<DonNghiPhep>): ReactNo
             </tr>
           </thead>
           <tbody>
-            {ds.map((d) => (
+            {ds_xem.map((d) => (
               <tr key={d.id}>
                 <td>
                   {d.ho_ten}
@@ -507,15 +511,17 @@ function BangNghiPhep({ kq, quyet, dang_chay }: BangProps<DonNghiPhep>): ReactNo
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
       </div>
     </div>
   );
 }
 
 function BangGiaiTrinh({ kq, quyet, dang_chay }: BangProps<DonGiaiTrinh>): ReactNode {
+  const ds = kq.du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
   if (kq.dang_tai) return <DangTai />;
   if (kq.loi !== null) return <HopLoi loi={kq.loi} />;
-  const ds = kq.du_lieu ?? [];
   if (ds.length === 0) {
     return <div className="the"><Trong tieu_de="Không có đơn giải trình nào" /></div>;
   }
@@ -536,7 +542,7 @@ function BangGiaiTrinh({ kq, quyet, dang_chay }: BangProps<DonGiaiTrinh>): React
             </tr>
           </thead>
           <tbody>
-            {ds.map((d) => (
+            {ds_xem.map((d) => (
               <tr key={d.id}>
                 <td>
                   {d.ho_ten}
@@ -562,15 +568,17 @@ function BangGiaiTrinh({ kq, quyet, dang_chay }: BangProps<DonGiaiTrinh>): React
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
       </div>
     </div>
   );
 }
 
 function BangQuetDienThoai({ kq, quyet, dang_chay }: BangProps<QuetDienThoai>): ReactNode {
+  const ds = kq.du_lieu ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
   if (kq.dang_tai) return <DangTai />;
   if (kq.loi !== null) return <HopLoi loi={kq.loi} />;
-  const ds = kq.du_lieu ?? [];
   if (ds.length === 0) {
     return (
       <div className="the">
@@ -603,7 +611,7 @@ function BangQuetDienThoai({ kq, quyet, dang_chay }: BangProps<QuetDienThoai>): 
               </tr>
             </thead>
             <tbody>
-              {ds.map((d) => (
+              {ds_xem.map((d) => (
                 <tr key={d.id}>
                   <td><AnhSelfie id={d.id} /></td>
                   <td>
@@ -650,6 +658,7 @@ function BangQuetDienThoai({ kq, quyet, dang_chay }: BangProps<QuetDienThoai>): 
               ))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       </div>
     </>
@@ -718,6 +727,8 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
   // Canh bao phap ly nap RIENG cho tung don khi mo trang: chung can truy van CSDL (tong OT
   // thang, loai hop dong) nen khong nam trong danh sach.
   const ds = nap.du_lieu?.danh_sach ?? [];
+  const hien = loc_loai === '' ? ds : ds.filter((d) => d.loai === loc_loai);
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(hien);
   useEffect(() => {
     let huy = false;
     void (async () => {
@@ -737,7 +748,6 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
   if (nap.dang_tai) return <DangTai />;
   if (nap.loi !== null) return <HopLoi loi={nap.loi} />;
 
-  const hien = loc_loai === '' ? ds : ds.filter((d) => d.loai === loc_loai);
   if (hien.length === 0) return <Trong tieu_de="Không có đơn nào." />;
 
   /** Cac o rieng cua tung loai, gop thanh mot cot de bang khong co 8 cot trong. */
@@ -784,7 +794,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
             </tr>
           </thead>
           <tbody>
-            {hien.map((d) => (
+            {ds_xem.map((d) => (
               <tr key={d.id}>
                 <td>
                   <strong>{d.ma_nv}</strong> — {d.ho_ten}
@@ -854,6 +864,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
       </div>
       {nc.hop_thoai}
     </>
@@ -933,9 +944,10 @@ function BangKetQuaOt({ kq, dang_chay, quyet }: {
   quyet: (id: string, qd: 'da_duyet' | 'tu_choi', gc?: string) => Promise<void>;
 }): ReactNode {
   const nc = dung_nhap_chu();
+  const ds = kq.du_lieu?.danh_sach ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
   if (kq.dang_tai) return <DangTai />;
   if (kq.loi !== null) return <HopLoi loi={kq.loi} />;
-  const ds = kq.du_lieu?.danh_sach ?? [];
   if (ds.length === 0) return <Trong tieu_de="Không có kết quả OT nào." />;
 
   return (
@@ -950,7 +962,7 @@ function BangKetQuaOt({ kq, dang_chay, quyet }: {
             </tr>
           </thead>
           <tbody>
-            {ds.map((d) => (
+            {ds_xem.map((d) => (
               <tr key={d.id}>
                 <td>
                   <strong>{d.ma_nv}</strong> — {d.ho_ten}
@@ -1005,6 +1017,7 @@ function BangKetQuaOt({ kq, dang_chay, quyet }: {
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
       </div>
     </>
   );

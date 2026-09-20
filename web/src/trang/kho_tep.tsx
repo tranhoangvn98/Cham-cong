@@ -10,6 +10,7 @@ import {
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio,
 } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface DongTep {
   id: string;
@@ -126,6 +127,7 @@ export function TrangKhoTep(): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<KetQuaKho>(duong, [nhom]);
 
   const ds = du_lieu?.danh_sach ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
   return (
     <>
@@ -199,7 +201,7 @@ export function TrangKhoTep(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {ds.map((t) => (
+                {ds_xem.map((t) => (
                   <tr key={t.id}>
                     <td><strong>{t.ten_goc}</strong></td>
                     <td>
@@ -224,6 +226,7 @@ export function TrangKhoTep(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>
@@ -254,6 +257,8 @@ function KhoiSapXep(): ReactNode {
   const [kq, dat_kq] = useState<KetQuaSapXep | null>(null);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
+  const ds_sx = kq?.chi_tiet ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds_sx);
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
@@ -353,7 +358,7 @@ function KhoiSapXep(): ReactNode {
                 <tr><th>Nhân viên</th><th>Tệp</th><th>Từ → đến</th><th>Kết quả</th></tr>
               </thead>
               <tbody>
-                {kq.chi_tiet.map((c) => (
+                {ds_xem.map((c) => (
                   <tr key={c.id}>
                     <td><strong>{c.ma_nv}</strong> — {c.ho_ten}</td>
                     <td>{c.ten_goc}</td>
@@ -372,6 +377,7 @@ function KhoiSapXep(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
           {kq.cat_bot && <p className="mo-ta">Hiển thị 200 dòng đầu.</p>}
         </>
@@ -397,6 +403,8 @@ function KhoiSharePoint(): ReactNode {
   const [kq, dat_kq] = useState<KetQuaDongBo | null>(null);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
+  const ds_sp = du_lieu === null ? [] : du_lieu.danh_sach;
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds_sp);
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
@@ -546,7 +554,7 @@ function KhoiSharePoint(): ReactNode {
               </tr>
             </thead>
             <tbody>
-              {du_lieu.danh_sach.map((d) => (
+              {ds_xem.map((d) => (
                 <tr key={d.tep_id}>
                   <td>
                     {d.ma_nv === null
@@ -584,6 +592,7 @@ function KhoiSharePoint(): ReactNode {
               ))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       )}
 

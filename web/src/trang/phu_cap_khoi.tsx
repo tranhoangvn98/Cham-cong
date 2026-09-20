@@ -14,6 +14,7 @@ import {
 import {
   tien, ngay, hom_nay, mo_ta_muc, type KhoanDanhMuc,
 } from './phu_cap.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface Khoi {
   id: string;
@@ -52,8 +53,6 @@ export function TrangPhuCapKhoi(): ReactNode {
   const [dong, dat_dong] = useState<ChinhSachKhoi | null>(null);
   const hd = dung_hanh_dong();
 
-  if (dang_tai) return <XuongDanhSach />;
-  if (loi !== null) return <HopLoi loi={loi} />;
   const ds = du_lieu ?? [];
 
   const theo_khoi = new Map<string, ChinhSachKhoi[]>();
@@ -61,6 +60,11 @@ export function TrangPhuCapKhoi(): ReactNode {
     const co = theo_khoi.get(cs.khoi_id);
     if (co === undefined) theo_khoi.set(cs.khoi_id, [cs]); else co.push(cs);
   }
+  // Phan trang theo NHOM (theo khoi) de khong cat nhom do dang giua chung.
+  const { ds_xem, bo_phan_trang } = dung_phan_trang([...theo_khoi.values()]);
+
+  if (dang_tai) return <XuongDanhSach />;
+  if (loi !== null) return <HopLoi loi={loi} />;
 
   const xoa = (cs: ChinhSachKhoi) => (): void => {
     void hd.chay(
@@ -117,7 +121,7 @@ export function TrangPhuCapKhoi(): ReactNode {
               </tr>
             </thead>
             <tbody>
-              {[...theo_khoi.values()].map((nhom) => nhom.map((cs, i) => (
+              {ds_xem.map((nhom) => nhom.map((cs, i) => (
                 <tr key={cs.id} className={cs.hieu_luc_den === null ? undefined : 'mo-ta'}>
                   <td>
                     {i === 0 ? (
@@ -157,6 +161,7 @@ export function TrangPhuCapKhoi(): ReactNode {
               )))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       )}
 

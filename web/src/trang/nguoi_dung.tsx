@@ -6,6 +6,7 @@ import {
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio,
 } from '../thanh_phan.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface TaiKhoan {
   id: string;
@@ -43,6 +44,7 @@ export function TrangNguoiDung(): ReactNode {
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
   const toi = nguoi_dung_hien_tai();
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   const bat_tat = async (tk: TaiKhoan): Promise<void> => {
     const dong_y = await xn.hoi({
@@ -122,7 +124,7 @@ export function TrangNguoiDung(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {(du_lieu ?? []).map((tk) => (
+                {ds_xem.map((tk) => (
                   <tr key={tk.id} style={tk.dang_hoat_dong ? undefined : { opacity: 0.5 }}>
                     <td>
                       <strong>{tk.ten_dang_nhap}</strong>
@@ -195,6 +197,7 @@ export function TrangNguoiDung(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>
@@ -482,6 +485,7 @@ interface DongNhatKy {
 
 export function TrangNhatKy(): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<DongNhatKy[]>('/api/nhat-ky?gioi_han=200');
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   return (
     <>
@@ -512,7 +516,7 @@ export function TrangNhatKy(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {(du_lieu ?? []).map((n) => (
+                {ds_xem.map((n) => (
                   <tr key={n.id}>
                     <td className="khong-ngat chu-nho">{ngay_gio(n.luc)}</td>
                     <td>{n.ten_dang_nhap ?? '—'}</td>
@@ -528,6 +532,7 @@ export function TrangNhatKy(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>

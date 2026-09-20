@@ -2670,3 +2670,22 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .cv-mo-ta-nho { color: var(--chu-mo, #71717a); font-size: 0.8rem; margin-top: 2px; }
 .cv-thieu { color: var(--canh-bao, #b45309); }
 .cv-form-check { flex-direction: row !important; align-items: center; gap: 8px !important; }
+
+/* ============================================================================
+   Phan trang chung cho bang danh sach (web/src/phan_trang.tsx). Moi trang 20/50/100 dong.
+   ============================================================================ */
+.phan-trang {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; padding: 10px 2px 2px;
+  font-size: 13px; color: var(--chu-nhat);
+}
+.phan-trang-tong { color: var(--chu-nhat); }
+.phan-trang-phai { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.phan-trang-chon {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 0; font-size: 13px; font-weight: 500; color: var(--chu-nhat);
+}
+.phan-trang-chon select { width: auto; padding: 4px 8px; }
+.phan-trang-nut-hang { display: flex; align-items: center; gap: 6px; }
+.phan-trang-nut { min-width: 34px; justify-content: center; padding: 4px 10px; }
+.phan-trang-so { white-space: nowrap; }

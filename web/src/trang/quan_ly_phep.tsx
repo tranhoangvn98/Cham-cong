@@ -6,6 +6,7 @@
 import { useState, type ReactNode } from 'react';
 import { DangTai, HopLoi, HopThoai, Trong, dung_nap } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface Dong {
   id: string;
@@ -47,6 +48,7 @@ function ChiTietPhep(
     `/api/duyet/nghi-phep/chi-tiet?nhan_vien_id=${nhan_vien_id}&nam=${nam}`,
   );
   const cac_lan = ds.du_lieu?.cac_lan ?? [];
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(cac_lan);
   return (
     <HopThoai tieu_de={`Lịch sử trừ phép — ${ho_ten} (${nam})`} khi_dong={khi_dong} rong>
       {ds.dang_tai ? <DangTai /> : ds.loi !== null ? <HopLoi loi={ds.loi} />
@@ -63,7 +65,7 @@ function ChiTietPhep(
                 </tr>
               </thead>
               <tbody>
-                {cac_lan.map((x) => (
+                {ds_xem.map((x) => (
                   <tr key={x.id}>
                     <td className="khong-ngat mo-ma">{x.tu_ngay}</td>
                     <td className="khong-ngat mo-ma">{x.den_ngay}</td>
@@ -74,6 +76,7 @@ function ChiTietPhep(
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
     </HopThoai>
@@ -85,6 +88,9 @@ export function TrangQuanLyPhep(): ReactNode {
   const [nam, dat_nam] = useState(nam_nay);
   const [chi_tiet, dat_chi_tiet] = useState<Dong | null>(null);
   const ds = dung_nap<KetQua>(`/api/duyet/nghi-phep/tong-hop?nam=${nam}`, [nam]);
+
+  // Phan trang tren tong hop phep cua nam dang xem.
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds.du_lieu?.dong ?? []);
 
   const cac_nam: number[] = [];
   for (let n = nam_nay + 1; n >= nam_nay - 3; n--) cac_nam.push(n);
@@ -129,7 +135,7 @@ export function TrangQuanLyPhep(): ReactNode {
                   </tr>
                 </thead>
                 <tbody>
-                  {ds.du_lieu.dong.map((d) => (
+                  {ds_xem.map((d) => (
                     <tr key={d.ma_nv}>
                       <td className="so mo-ma">{d.ma_nv}</td>
                       <td className="khong-ngat">{d.ho_ten}</td>
@@ -152,6 +158,7 @@ export function TrangQuanLyPhep(): ReactNode {
                   ))}
                 </tbody>
               </table>
+              {bo_phan_trang}
             </div>
             <p className="mo-ta" style={{ marginTop: 8 }}>
               <LienKet den="/duyet-don">Sang trang duyệt đơn →</LienKet>

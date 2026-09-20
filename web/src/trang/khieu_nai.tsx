@@ -9,6 +9,7 @@ import { LienKet } from '../dinh_tuyen.tsx';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 const NHAN_TT: Record<string, { ten: string; lop: string }> = {
   moi: { ten: 'Mới', lop: 'nhan-xau' },
@@ -53,6 +54,8 @@ export function TrangKhieuNai(): ReactNode {
   const url = `/api/khieu-nai${loc === '' ? '' : `?trang_thai=${loc}`}`;
   const ds = dung_nap<Dong[]>(url, [loc]);
 
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds.du_lieu ?? []);
+
   return (
     <>
       <div className="dau-trang">
@@ -91,7 +94,7 @@ export function TrangKhieuNai(): ReactNode {
                   </tr>
                 </thead>
                 <tbody>
-                  {ds.du_lieu.map((d) => (
+                  {ds_xem.map((d) => (
                     <tr key={d.id}>
                       <td className="so mo-ma">{d.ma ?? '—'}</td>
                       <td className="khong-ngat">{NHAN_LOAI[d.loai] ?? d.loai}</td>
@@ -120,6 +123,7 @@ export function TrangKhieuNai(): ReactNode {
                   ))}
                 </tbody>
               </table>
+              {bo_phan_trang}
             </div>
           </div>
         )}

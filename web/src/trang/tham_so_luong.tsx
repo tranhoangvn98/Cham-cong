@@ -15,6 +15,7 @@ import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
   XuongDanhSach,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface BacThue {
   bac: number;
@@ -76,10 +77,12 @@ export function TrangThamSoLuong(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<ThamSo[]>('/api/tham-so-luong');
   const [dang_tao, dat_dang_tao] = useState<ThamSo | null>(null);
   const [tao_moi, dat_tao_moi] = useState(false);
+  const ds = du_lieu ?? [];
+  // Hook phan trang phai chay moi lan render: dat truoc cac return som.
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
   if (dang_tai) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
-  const ds = du_lieu ?? [];
   // API tra theo hieu_luc_tu giam dan -> phan tu dau la bo dang ap dung.
   const dang_dung = ds[0] ?? null;
 
@@ -128,11 +131,11 @@ export function TrangThamSoLuong(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {ds.map((t, i) => (
+                {ds_xem.map((t) => (
                   <tr key={t.id}>
                     <td>
                       <strong>{ngay(t.hieu_luc_tu)}</strong>
-                      {i === 0 && <span className="nhan-tot"> đang áp dụng</span>}
+                      {t.id === dang_dung?.id && <span className="nhan-tot"> đang áp dụng</span>}
                     </td>
                     <td>{t.ten}</td>
                     <td className="canh-phai">{tien(t.luong_co_so)}</td>
@@ -146,6 +149,7 @@ export function TrangThamSoLuong(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         </>
       )}
@@ -524,10 +528,12 @@ function KhoiDanhMucKhoan(): ReactNode {
     dung_nap<KhoanLuong[]>('/api/khoan-luong?ca=true');
   const [them, dat_them] = useState(false);
   const hd = dung_hanh_dong();
+  const ds = du_lieu ?? [];
+  // Hook phan trang phai chay moi lan render: dat truoc cac return som.
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
-  const ds = du_lieu ?? [];
 
   const bat_tat = (k: KhoanLuong) => (): void => {
     void hd.chay(
@@ -568,7 +574,7 @@ function KhoiDanhMucKhoan(): ReactNode {
             </tr>
           </thead>
           <tbody>
-            {ds.map((k) => (
+            {ds_xem.map((k) => (
               <tr key={k.ma} className={k.dang_dung ? undefined : 'mo-ta'}>
                 <td>
                   <strong>{k.ten}</strong>
@@ -597,6 +603,7 @@ function KhoiDanhMucKhoan(): ReactNode {
             ))}
           </tbody>
         </table>
+        {bo_phan_trang}
       </div>
 
       {them && (

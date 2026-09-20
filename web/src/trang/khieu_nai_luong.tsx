@@ -11,6 +11,7 @@ import {
   AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
   type TinNhanKN,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 const NHAN_TT: Record<string, { ten: string; lop: string }> = {
   moi: { ten: 'Mới', lop: 'nhan-xau' },
@@ -69,6 +70,9 @@ export function TrangKhieuNaiLuong(): ReactNode {
     if (dong !== undefined) dat_dang(dong);
   }, [ds.du_lieu, can_mo]);
 
+  // Phan trang tren danh sach khieu nai da loc theo trang thai (loc o may chu).
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds.du_lieu ?? []);
+
   return (
     <>
       <div className="dau-trang">
@@ -106,7 +110,7 @@ export function TrangKhieuNaiLuong(): ReactNode {
                   </tr>
                 </thead>
                 <tbody>
-                  {ds.du_lieu.map((d) => (
+                  {ds_xem.map((d) => (
                     <tr key={d.id}>
                       <td className="so mo-ma">{d.ma ?? '—'}</td>
                       <td>
@@ -129,6 +133,7 @@ export function TrangKhieuNaiLuong(): ReactNode {
                   ))}
                 </tbody>
               </table>
+              {bo_phan_trang}
             </div>
           </div>
         )}

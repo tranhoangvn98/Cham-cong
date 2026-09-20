@@ -5,6 +5,7 @@ import {
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet,
 } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 /**
  * Tieu de tep mau nhap nhan vien.
@@ -64,6 +65,8 @@ export function TrangNhanVien(): ReactNode {
 
   const chua_co_pin = (du_lieu ?? []).filter((n) => n.pin_may === null && n.dang_hoat_dong);
   const chua_co_ca = (du_lieu ?? []).filter((n) => n.ca_lam_id === null && n.dang_hoat_dong);
+
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   return (
     <>
@@ -134,7 +137,7 @@ export function TrangNhanVien(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {(du_lieu ?? []).map((n) => (
+                {ds_xem.map((n) => (
                   <tr key={n.id} style={n.dang_hoat_dong ? undefined : { opacity: 0.55 }}>
                     <td className="so">{n.ma_nv}</td>
                     <td>
@@ -183,6 +186,7 @@ export function TrangNhanVien(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>

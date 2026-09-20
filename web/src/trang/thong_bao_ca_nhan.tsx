@@ -5,6 +5,7 @@ import {
   DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_gio,
 } from '../thanh_phan.tsx';
 import { goi, la_nhan_su, tai_tep } from '../api.ts';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface ThongBao {
   id: string;
@@ -246,26 +247,30 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
 /** HR: xem ai da doc mot thong bao. */
 function AiDaDoc({ tb, khi_dong }: { tb: ThongBao; khi_dong: () => void }): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<DaDoc[]>(`/api/thong-bao/${tb.id}/da-doc`);
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
   return (
     <HopThoai tieu_de={`Đã đọc — ${tb.tieu_de}`} khi_dong={khi_dong} rong>
       {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} /> : (du_lieu ?? []).length === 0
         ? <Trong tieu_de="Chưa ai xác nhận đọc" />
         : (
-          <table className="bang-gon">
-            <thead><tr><th>Nhân viên</th><th>Phòng</th><th>Đọc lúc</th><th>Giải trình</th></tr></thead>
-            <tbody>
-              {(du_lieu ?? []).map((d, i) => (
-                <tr key={khoa_tinh(d.ma_nv, i)}>
-                  <td>{d.ho_ten} <span className="mo-ta">({d.ma_nv})</span></td>
-                  <td>{d.phong_ban ?? '—'}</td>
-                  <td>{ngay_gio(d.doc_luc)}</td>
-                  <td>{d.giai_trinh !== null
-                    ? <span>{d.ma_giai_trinh !== null ? `${d.ma_giai_trinh}: ` : ''}{d.giai_trinh}</span>
-                    : <span className="mo-ta">—</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <>
+            <table className="bang-gon">
+              <thead><tr><th>Nhân viên</th><th>Phòng</th><th>Đọc lúc</th><th>Giải trình</th></tr></thead>
+              <tbody>
+                {ds_xem.map((d, i) => (
+                  <tr key={khoa_tinh(d.ma_nv, i)}>
+                    <td>{d.ho_ten} <span className="mo-ta">({d.ma_nv})</span></td>
+                    <td>{d.phong_ban ?? '—'}</td>
+                    <td>{ngay_gio(d.doc_luc)}</td>
+                    <td>{d.giai_trinh !== null
+                      ? <span>{d.ma_giai_trinh !== null ? `${d.ma_giai_trinh}: ` : ''}{d.giai_trinh}</span>
+                      : <span className="mo-ta">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {bo_phan_trang}
+          </>
         )}
     </HopThoai>
   );
@@ -281,11 +286,14 @@ export function TrangThongBaoCaNhan(): ReactNode {
   const [loc, dat_loc] = useState<'toan_cong_ty' | 'tat_ca'>('toan_cong_ty');
   const hr = la_nhan_su();
 
-  if (dang_tai) return <DangTai />;
-  if (loi !== null) return <HopLoi loi={loi} />;
+  // Tinh danh sach da loc truoc roi goi hook — hook phai chay truoc cac return som.
   const ds = du_lieu ?? [];
   const ds_loc = loc === 'toan_cong_ty'
     ? ds.filter((t) => t.pham_vi === 'toan_cong_ty') : ds;
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(ds_loc);
+
+  if (dang_tai) return <DangTai />;
+  if (loi !== null) return <HopLoi loi={loi} />;
 
   return (
     <div>
@@ -306,12 +314,15 @@ export function TrangThongBaoCaNhan(): ReactNode {
       {ds_loc.length === 0
         ? <Trong tieu_de="Chưa có thông báo" mo_ta="Khi công ty đăng thông báo, nó sẽ hiện ở đây." />
         : (
-          <div className="tb-danh-sach">
-            {ds_loc.map((tb, i) => (
-              <MotThongBao key={khoa_tinh(tb.id, i)} tb={tb} khi_xong={nap_lai}
-                khi_xem_doc={hr ? () => dat_xem_doc(tb) : undefined} />
-            ))}
-          </div>
+          <>
+            <div className="tb-danh-sach">
+              {ds_xem.map((tb, i) => (
+                <MotThongBao key={khoa_tinh(tb.id, i)} tb={tb} khi_xong={nap_lai}
+                  khi_xem_doc={hr ? () => dat_xem_doc(tb) : undefined} />
+              ))}
+            </div>
+            {bo_phan_trang}
+          </>
         )}
     </div>
   );

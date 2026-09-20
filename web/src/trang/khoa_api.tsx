@@ -9,6 +9,7 @@ import {
   DangTai, HopLoi, HopThoai, HopTot, Trong,
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio,
 } from '../thanh_phan.tsx';
+import { dung_phan_trang } from '../phan_trang.tsx';
 
 interface KhoaApi {
   id: string;
@@ -52,6 +53,7 @@ export function TrangKhoaApi(): ReactNode {
   const [xem_nhat_ky, dat_xem_nhat_ky] = useState<KhoaApi | null>(null);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   const bat_tat = async (k: KhoaApi): Promise<void> => {
     await hd.chay(
@@ -137,7 +139,7 @@ export function TrangKhoaApi(): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {(du_lieu ?? []).map((k) => (
+                {ds_xem.map((k) => (
                   <tr key={k.id} style={k.dang_bat ? undefined : { opacity: 0.55 }}>
                     <td>
                       <strong>{k.ten}</strong>
@@ -174,6 +176,7 @@ export function TrangKhoaApi(): ReactNode {
                 ))}
               </tbody>
             </table>
+            {bo_phan_trang}
           </div>
         )}
       </div>
@@ -341,6 +344,7 @@ function HopThoaiNhatKy(
   { khoa, khi_dong }: { khoa: KhoaApi; khi_dong: () => void },
 ): ReactNode {
   const { du_lieu, dang_tai } = dung_nap<DongNhatKy[]>(`/api/khoa-api/${khoa.id}/nhat-ky`);
+  const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   return (
     <HopThoai tieu_de={`Nhật ký gọi — ${khoa.ten}`} khi_dong={khi_dong} rong>
@@ -360,7 +364,7 @@ function HopThoaiNhatKy(
               </tr>
             </thead>
             <tbody>
-              {(du_lieu ?? []).map((d) => (
+              {ds_xem.map((d) => (
                 // Nhat ky khong co id rieng, nhung bon truong nay xac dinh duy nhat mot lan goi.
                 <tr key={`${d.tao_luc} ${d.phuong_thuc} ${d.duong_dan} ${String(d.ma_tra_ve)}`}>
                   <td className="khong-ngat">{ngay_gio(d.tao_luc)}</td>
@@ -377,6 +381,7 @@ function HopThoaiNhatKy(
               ))}
             </tbody>
           </table>
+          {bo_phan_trang}
         </div>
       )}
     </HopThoai>

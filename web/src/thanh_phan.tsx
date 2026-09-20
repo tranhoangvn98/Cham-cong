@@ -1,6 +1,7 @@
 // Thanh phan dung chung cho toan bo webapp.
 import { useEffect, useState, type ReactNode } from 'react';
 import { goi, tai_anh_tu, tai_blob, tai_tep, LoiApi, mui_gio_offset_gio } from './api.ts';
+import { dung_phan_trang } from './phan_trang.tsx';
 
 /**
  * Khoa React cho mot danh sach CHI DOC, sinh lai toan bo moi lan.
@@ -622,6 +623,8 @@ export function HopThoaiNhap(
   };
 
   const co_loi = (xem?.loi ?? 0) > 0;
+  const ds_loi = (xem?.dong ?? []).filter((d) => d.viec === 'loi');
+  const { ds_xem: loi_xem, bo_phan_trang: bo_loi } = dung_phan_trang(ds_loi);
 
   return (
     <HopThoai tieu_de={tieu_de} khi_dong={khi_dong}>
@@ -672,12 +675,12 @@ export function HopThoaiNhap(
             </div>
           )}
 
-          {(xem.dong ?? []).filter((d) => d.viec === 'loi').length > 0 && (
+          {ds_loi.length > 0 && (
             <div className="vo-bang" style={{ maxHeight: 220, overflowY: 'auto', marginTop: 8 }}>
               <table>
                 <thead><tr><th>Dòng</th><th>Mã NV</th><th>Lý do</th></tr></thead>
                 <tbody>
-                  {(xem.dong ?? []).filter((d) => d.viec === 'loi').map((d) => (
+                  {loi_xem.map((d) => (
                     <tr key={d.dong}>
                       <td className="so">{d.dong}</td>
                       <td>{d.ma_nv || '—'}</td>
@@ -686,6 +689,7 @@ export function HopThoaiNhap(
                   ))}
                 </tbody>
               </table>
+              {bo_loi}
             </div>
           )}
 
@@ -787,6 +791,9 @@ export function HopThoaiXemTep(
     };
   }, [tep_id, kieu]);
 
+  const hang = trich?.hang ?? [];
+  const { ds_xem: hang_xem, bo_phan_trang: bo_hang, dau: dau_hang } = dung_phan_trang(hang);
+
   return (
     <HopThoai tieu_de={ten_goc} khi_dong={khi_dong} rong>
       <HopLoi loi={loi} />
@@ -836,17 +843,21 @@ export function HopThoaiXemTep(
             <div className="vo-bang">
               <table>
                 <tbody>
-                  {(trich.hang ?? []).map((h, i) => (
-                    <tr key={khoa_tinh(h[0], i)}>
-                      {h.map((o, j) => (
-                        i === 0
-                          ? <th key={khoa_tinh(o, j)}>{o}</th>
-                          : <td key={khoa_tinh(o, j)}>{o}</td>
-                      ))}
-                    </tr>
-                  ))}
+                  {hang_xem.map((h, i) => {
+                    const vi = dau_hang + i;
+                    return (
+                      <tr key={khoa_tinh(h[0], vi)}>
+                        {h.map((o, j) => (
+                          vi === 0
+                            ? <th key={khoa_tinh(o, j)}>{o}</th>
+                            : <td key={khoa_tinh(o, j)}>{o}</td>
+                        ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
+              {bo_hang}
             </div>
           )}
 

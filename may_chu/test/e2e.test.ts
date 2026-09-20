@@ -1753,27 +1753,31 @@ test('loc log cham cong theo nhan vien, may, nguon, trang thai duyet', async () 
 
   const tat_ca = await goi('GET', `/api/lan-quet?${chung}`, { token: token_admin });
   assert.equal(tat_ca.ma, 200);
-  const so_tat_ca = (tat_ca.body as unknown as unknown[]).length;
+  const than_tat_ca = tat_ca.body as unknown as { du_lieu: unknown[]; phan_trang: { tong: number } };
+  const so_tat_ca = than_tat_ca.du_lieu.length;
   assert.ok(so_tat_ca > 0, 'phai co du lieu de loc');
+  assert.ok(than_tat_ca.phan_trang.tong >= so_tat_ca, 'tong phai khong nho hon so dong tra ve');
 
   const theo_may = await goi('GET', `/api/lan-quet?${chung}&thiet_bi_serial=${SERIAL}`,
     { token: token_admin });
-  assert.ok((theo_may.body as unknown as unknown[]).length > 0);
+  assert.ok((theo_may.body as unknown as { du_lieu: unknown[] }).du_lieu.length > 0);
 
   const may_khac = await goi('GET', `/api/lan-quet?${chung}&thiet_bi_serial=KHONG-CO-THAT`,
     { token: token_admin });
-  assert.equal((may_khac.body as unknown as unknown[]).length, 0, 'may khac phai ra rong');
+  assert.equal((may_khac.body as unknown as { du_lieu: unknown[] }).du_lieu.length, 0,
+    'may khac phai ra rong');
 
   const theo_nguon = await goi('GET', `/api/lan-quet?${chung}&nguon=may`, { token: token_admin });
-  assert.ok((theo_nguon.body as unknown as Record<string, unknown>[]).every((d) => d['nguon'] === 'may'));
+  assert.ok((theo_nguon.body as unknown as { du_lieu: Record<string, unknown>[] }).du_lieu
+    .every((d) => d['nguon'] === 'may'));
 
   const dien_thoai = await goi('GET', `/api/lan-quet?${chung}&nguon=dien_thoai`, { token: token_admin });
-  assert.ok((dien_thoai.body as unknown as Record<string, unknown>[])
+  assert.ok((dien_thoai.body as unknown as { du_lieu: Record<string, unknown>[] }).du_lieu
     .every((d) => d['nguon'] === 'dien_thoai'), 'loc nguon phai loai het ban ghi tu may');
 
   const theo_nv = await goi('GET', `/api/lan-quet?${chung}&nhan_vien_id=${nhan_vien_id}`,
     { token: token_admin });
-  assert.ok((theo_nv.body as unknown as Record<string, unknown>[])
+  assert.ok((theo_nv.body as unknown as { du_lieu: Record<string, unknown>[] }).du_lieu
     .every((d) => d['nhan_vien_id'] === nhan_vien_id));
 
   // Gia tri khong hop le bi tu choi thay vi im lang bo qua bo loc.
