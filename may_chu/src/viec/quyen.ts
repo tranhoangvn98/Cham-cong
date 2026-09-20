@@ -2,6 +2,14 @@
 //
 // Thu tu uu tien nguon do nguoi dung chot: Giám đốc giao > hệ thống > trưởng phòng >
 // liên phòng > tự tạo. `ho_so` la di san cua tab ho so nhan su — xep cuoi cung.
+//
+// Vai tro so sanh QUA helper o bao_mat/quyen_ho_so.ts (mot cho duy nhat) — gate test
+// cam so sanh chuoi vai tro ngoai module do.
+import {
+  la_nguoi_duyet, la_quan_tri, la_vai_tro_nhan_su,
+} from '../bao_mat/quyen_ho_so.ts';
+
+export { la_vai_tro_nhan_su };
 
 export const CAC_NGUON = ['giam_doc', 'he_thong', 'truong_phong', 'lien_phong', 'tu_tao'] as const;
 export type NguonViec = typeof CAC_NGUON[number];
@@ -26,21 +34,11 @@ export interface NguoiXem {
 }
 
 /** true neu vai tro thuoc nhom nhan su (xem duoc tat ca) — khop can_nhan_su cua may chu. */
-export function la_vai_tro_nhan_su(vai_tro: string): boolean {
-  return vai_tro === 'admin' || vai_tro === 'nhan_su' || vai_tro === 'truong_phong_nhan_su';
-}
-
-/**
- * Nguon khi nguoi dung giao viec cho mot nhan vien.
- *
- * - admin (Giám đốc) -> 'giam_doc'
- * - trưởng phòng / nhân sự -> cung phong ban thi 'truong_phong', khac phong thi 'lien_phong'
- * - nhan vien -> 'tu_tao' (chi duoc giao chinh minh)
- */
 export function nguon_khi_giao(vai_tro: string, cung_phong: boolean): NguonViec {
-  if (vai_tro === 'admin') return 'giam_doc';
-  if (vai_tro === 'truong_phong' || vai_tro === 'truong_phong_nhan_su'
-    || vai_tro === 'nhan_su') {
+  // Giám đốc = admin: uu tien cao nhat.
+  if (la_quan_tri(vai_tro)) return 'giam_doc';
+  // Nhan su cac cap + truong phong: cung phong thi truong_phong, khac phong thi lien_phong.
+  if (la_nguoi_duyet(vai_tro)) {
     return cung_phong ? 'truong_phong' : 'lien_phong';
   }
   return 'tu_tao';
@@ -50,7 +48,7 @@ export function nguon_khi_giao(vai_tro: string, cung_phong: boolean): NguonViec 
 export type PhamViGiao = 'moi_nguoi' | 'chi_minh';
 
 export function pham_vi_giao(nd: NguoiXem): PhamViGiao {
-  if (la_vai_tro_nhan_su(nd.vai_tro) || nd.vai_tro === 'truong_phong') return 'moi_nguoi';
+  if (la_nguoi_duyet(nd.vai_tro)) return 'moi_nguoi';
   return 'chi_minh';
 }
 

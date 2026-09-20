@@ -7,7 +7,7 @@ import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_n
 import { moc_thoi_gian, ngay_dia_phuong, gio_dia_phuong, ngay_viet } from '../tien_ich/thoi_gian.ts';
 import { gui_ngam, tai_khoan_cua_nhan_vien, tai_khoan_nguoi_duyet } from '../su_kien/thong_bao_day.ts';
 import { LoiKhongQuyen, LoiKhongTim, LoiXungDot } from '../tien_ich/kiem_tra.ts';
-import type { NguoiXem } from './quyen.ts';
+import { duoc_duyet, type NguoiXem } from './quyen.ts';
 
 export const TT_VIEC = ['moi', 'dang_lam', 'cho_duyet', 'hoan_thanh', 'khong_hoan_thanh', 'huy'] as const;
 
@@ -211,8 +211,7 @@ export async function duyet_viec(
     throw new LoiXungDot('Công việc không ở trạng thái chờ duyệt.');
   }
   // nguoi_giao duyet viec minh giao; nhan su/admin duyet moi viec.
-  if (v.giao_boi !== nd.sub && !(nd.vai_tro === 'admin' || nd.vai_tro === 'nhan_su'
-      || nd.vai_tro === 'truong_phong_nhan_su')) {
+  if (!duoc_duyet(nd, v.giao_boi)) {
     throw new LoiKhongQuyen('Chỉ người giao việc mới được xác nhận kết quả.');
   }
 
@@ -242,8 +241,7 @@ export async function huy_viec(id: string, ly_do: string, nd: NguoiXem): Promise
   if (v.trang_thai === 'hoan_thanh' || v.trang_thai === 'khong_hoan_thanh') {
     throw new LoiXungDot('Công việc đã kết thúc, không thể hủy.');
   }
-  if (v.giao_boi !== nd.sub && !(nd.vai_tro === 'admin' || nd.vai_tro === 'nhan_su'
-      || nd.vai_tro === 'truong_phong_nhan_su')) {
+  if (!duoc_duyet(nd, v.giao_boi)) {
     throw new LoiKhongQuyen('Chỉ người giao việc mới được hủy.');
   }
   await thuc_thi(

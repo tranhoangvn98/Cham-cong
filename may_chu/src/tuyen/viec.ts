@@ -14,6 +14,7 @@ import {
 import {
   nguon_khi_giao, pham_vi_doc, pham_vi_giao, khoa_pham_vi_doc, type NguoiXem,
 } from '../viec/quyen.ts';
+import { la_nguoi_duyet } from '../bao_mat/quyen_ho_so.ts';
 import { CAC_SU_KIEN, type MaSuKien } from '../viec/workflow.ts';
 import { moc_thoi_gian } from '../tien_ich/thoi_gian.ts';
 import {
@@ -40,8 +41,7 @@ function nd_hien_tai(req: FastifyRequest): NguoiXem {
  * Nhan vien thuong chi tu tao viec cho minh, khong duoc tao nhom hay mau.
  */
 function duoc_quan_ly(nd: NguoiXem): boolean {
-  return nd.vai_tro === 'admin' || nd.vai_tro === 'nhan_su'
-    || nd.vai_tro === 'truong_phong_nhan_su' || nd.vai_tro === 'truong_phong';
+  return la_nguoi_duyet(nd.vai_tro);
 }
 
 /** Khoa pham vi cho truy van doc danh sach — kem tham so [nv, sub]. */
