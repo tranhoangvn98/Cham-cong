@@ -144,6 +144,16 @@ test('gan vi tri cho nhan vien -> sinh mau dinh ky, sinh viec JD', async () => {
   );
   assert.ok(Number(d?.n ?? 0) > 0, 'khong co mau jd nao duoc sinh');
 
+  // Mau moi tao co sinh_den = hom nay nen lich chay chi sinh tu NGAY MAI (khong tao
+  // viec tre cho ngay da qua). Day lui sinh_den 1 ngay de mo phong "mau da ton tai
+  // tu hom qua" — dung nhu mau that sau dem dau tien.
+  await thuc_thi(
+    `update cong_viec_mau_dinh_ky
+        set sinh_den = sinh_den - 1, bat_dau = bat_dau - 1
+      where nhan_vien_id = $1 and nguon = 'jd'`,
+    [nv_id],
+  );
+
   // Chay lich sinh viec cho hom nay — cac viec hang_ngay duoc tao.
   const hom_nay = ngay_dia_phuong(new Date());
   const so = await sinh_viec_dinh_ky(hom_nay);
