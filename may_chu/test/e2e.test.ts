@@ -8774,6 +8774,17 @@ test('cong viec: admin giao -> nv nop -> duyet; nguon dung theo vai tro', async 
   assert.equal(duyet.ma, 200, JSON.stringify(duyet.body));
   const sau = await goi('GET', `/api/viec/${id}`, { token: cv_token_a });
   assert.equal((sau.body['viec'] as Record<string, unknown>)['trang_thai'], 'hoan_thanh');
+
+  // Goc nhin ADMIN (pham vi tat_ca): danh sach va gantt phai chay khong loi bind tham so.
+  const ds_admin = await goi('GET', '/api/viec/toi', { token: token_admin });
+  assert.equal(ds_admin.ma, 200, JSON.stringify(ds_admin.body));
+  assert.ok((ds_admin.body['danh_sach'] as unknown[]).length > 0, 'admin phai thay viec');
+
+  const g_admin = await goi('GET',
+    `/api/viec/gantt?tu=${cong_ngay(NGAY, -10)}&den=${cong_ngay(NGAY, 10)}`,
+    { token: token_admin });
+  assert.equal(g_admin.ma, 200, JSON.stringify(g_admin.body));
+  assert.ok((g_admin.body as unknown[]).length > 0, 'admin phai thay gantt');
 });
 
 test('cong viec: nhan vien chi tu tao viec cho minh', async () => {
