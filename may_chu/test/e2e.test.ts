@@ -8778,13 +8778,13 @@ test('cong viec: admin giao -> nv nop -> duyet; nguon dung theo vai tro', async 
   // Goc nhin ADMIN (pham vi tat_ca): danh sach va gantt phai chay khong loi bind tham so.
   const ds_admin = await goi('GET', '/api/viec/toi', { token: token_admin });
   assert.equal(ds_admin.ma, 200, JSON.stringify(ds_admin.body));
-  assert.ok((ds_admin.body['danh_sach'] as unknown[]).length > 0, 'admin phai thay viec');
+  assert.ok((ds_admin.body['danh_sach'] as unknown as unknown[]).length > 0, 'admin phai thay viec');
 
   const g_admin = await goi('GET',
     `/api/viec/gantt?tu=${cong_ngay(NGAY, -10)}&den=${cong_ngay(NGAY, 10)}`,
     { token: token_admin });
   assert.equal(g_admin.ma, 200, JSON.stringify(g_admin.body));
-  assert.ok((g_admin.body as unknown[]).length > 0, 'admin phai thay gantt');
+  assert.ok((g_admin.body as unknown as unknown[]).length > 0, 'admin phai thay gantt');
 });
 
 test('cong viec: nhan vien chi tu tao viec cho minh', async () => {
