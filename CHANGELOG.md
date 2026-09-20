@@ -2,6 +2,18 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.104.1] — 2026-09-21
+
+**Sửa lỗi: nhiều nút/tab bị mất màu khi di chuột vào (hover trả về nền xám).**
+
+- Tab trang Công việc (`/cong-viec`): hover giờ nền xanh nhạt + chữ đậm lên thay vì xám nhạt.
+- Chip chọn xanh trong đơn từ/hồ sơ, nút đổi chế độ ở Công việc của tôi, tab đang chọn trong
+  Khu vực của tôi (thanh bên + mục phụ), mục đang chọn ở thanh bên chính, nút cảnh báo cam,
+  nút Xóa/Đóng trên đầu khung trợ lý, tab đang chọn ở các trang có thanh tab: tất cả đều giữ
+  màu khi hover thay vì thành xám làm chữ trắng chìm.
+- Thêm test canh cửa `thiet_ke/hover.test.mjs`: nút/tab có màu phải có hover riêng, cấm rơi
+  vào các nền rửa trôi (`--nen-mo`, `--nen-nhat`, `--nen-the`, `--vien-ben`).
+
 ## [1.104.0] — 2026-09-21
 
 **Thêm mới: tab “Tổng quan” trong trang Tổ chức & Trách nhiệm — bảng điều khiển

@@ -117,6 +117,11 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
   color: var(--tren-chinh);
   font-weight: 600;
 }
+/* Giữ nền xanh đậm khi hover, đừng để quy tắc `.dieu-huong a:hover` trả về xám. */
+.dieu-huong a.dang-chon:hover {
+  background: var(--chinh-dam);
+  color: var(--tren-chinh);
+}
 
 .chan-thanh-ben {
   padding: 12px;
@@ -740,8 +745,9 @@ input[type="checkbox"] {
   color: var(--chu-nhat);
   font-weight: 500;
 }
-.hang-tab button:hover { background: var(--nen-mo); }
+.hang-tab button:hover { background: var(--nen-mo); color: var(--chu); }
 .hang-tab button.dang-chon { color: var(--chinh-dam); border-bottom-color: var(--chinh); }
+.hang-tab button.dang-chon:hover { background: var(--chinh-nhat); }
 /* Lien ket tab (trang Van ban cong ty dung duong dan con thay nut) — cung hinh dang nut. */
 .hang-tab a {
   display: inline-block;
@@ -754,8 +760,9 @@ input[type="checkbox"] {
   font-weight: 500;
   text-decoration: none;
 }
-.hang-tab a:hover { background: var(--nen-mo); }
+.hang-tab a:hover { background: var(--nen-mo); color: var(--chu); }
 .hang-tab a.dang-chon { color: var(--chinh-dam); border-bottom-color: var(--chinh); }
+.hang-tab a.dang-chon:hover { background: var(--chinh-nhat); }
 
 .dem-tab {
   background: var(--xau);
@@ -1131,6 +1138,7 @@ input[type="checkbox"] {
   color: var(--chinh-dam);
   border-bottom-color: var(--chinh-dam);
 }
+.thanh-tab .tab-dang-mo:hover { background: var(--chinh-nhat); }
 .tab-so {
   display: inline-block;
   margin-left: 6px;
@@ -1525,6 +1533,11 @@ textarea:focus-visible,
 }
 .troly-dau > span { display: inline-flex; align-items: center; gap: 4px; }
 .troly-dau .nut-phang { color: #fff; }
+/* Chu trang tren nen gradient xanh: hover khong duoc de nen xanh nhat lam chu chìm —
+   dung lop trang mo mong giu tuong phan. */
+.troly-dau .nut-phang:hover:not(:disabled) {
+  background: color-mix(in srgb, #fff 16%, transparent);
+}
 .troly-than { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .troly-tn { max-width: 85%; padding: 9px 12px; border-radius: 14px; font-size: 14px; line-height: 1.45; white-space: normal; }
 .troly-tn-bot { align-self: flex-start; background: var(--nen-mo); border-bottom-left-radius: 4px; }
@@ -1780,6 +1793,8 @@ textarea:focus-visible,
 .cn-nut-canh-bao {
   border: 1px solid var(--canh-bao); background: var(--canh-bao-nen); color: var(--canh-bao);
 }
+/* Giữ nền cam nhạt khi hover thay vì xám (mất màu cảnh báo). */
+.cn-nut-canh-bao:hover:not(:disabled) { background: var(--canh-bao-nen); }
 .cn-nut-thuong { border: 1px solid var(--vien-dam); background: var(--nen-the); color: var(--chu); }
 .cn-dem {
   min-width: 24px; height: 24px; border-radius: var(--tron-tron);
@@ -1995,6 +2010,8 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   display: inline-flex; align-items: center; gap: 6px;
 }
 .cn-chip-chon { border-color: var(--chinh-dam); background: var(--chinh-dam); color: var(--tren-chinh); }
+/* Giư màu xanh khi hover — quy tac chung `button:hover` sẽ làm nền xám làm chữ trắng chìm. */
+.cn-chip-chon:hover:not(:disabled) { border-color: var(--chinh-dam); background: var(--chinh-dam); }
 .cn-chip-dai { flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; }
 .cn-chip-dai-ten { font-size: 14.5px; font-weight: 600; }
 .cn-chip-dai-phu { font-size: 12.5px; opacity: .85; }
@@ -2132,6 +2149,8 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   background: color-mix(in srgb, var(--chinh) 24%, transparent);
   color: var(--lien-ket-ben); opacity: 1;
 }
+/* Tab đang chọn giữ nền xanh khi hover, đừng để `.cn-tab-ben:hover` trả về xám. */
+.cn-tab-ben-chon:hover { background: color-mix(in srgb, var(--chinh) 30%, transparent); }
 .cn-tab-ben > span:not(.cn-ben-dem) { flex: 1; text-align: left; }
 .cn-ben-dem {
   min-width: 20px; height: 20px; border-radius: var(--tron-tron);
@@ -2153,7 +2172,10 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   background: color-mix(in srgb, var(--chinh) 24%, transparent);
   color: var(--lien-ket-ben);
 }
-.cn-ben-phu-chon:hover { color: var(--lien-ket-ben); }
+.cn-ben-phu-chon:hover {
+  background: color-mix(in srgb, var(--chinh) 30%, transparent);
+  color: var(--lien-ket-ben);
+}
 .cn-ben-phu-lien-ket > span:not(.cn-ben-dem) { flex: 1; }
 
 .cn-ben-chan {
@@ -2521,7 +2543,7 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   border: none; background: none; padding: 8px 14px; cursor: pointer;
   border-radius: 8px; font-size: 0.95rem; color: var(--chu-mo, #64748b);
 }
-.cv-tab:hover { background: var(--nen-nhat, #f1f5f9); }
+.cv-tab:hover { background: var(--chinh-nhat, #eff6ff); color: var(--chu, #18181b); }
 .cv-tab-chon { background: var(--chinh, #3b82f6); color: var(--tren-chinh, #fff); }
 .cv-tab-chon:hover { background: var(--chinh-dam, #2563eb); }
 .cv-tab-phu { color: var(--chu-mo, #64748b); font-size: 0.85rem; }
@@ -2602,7 +2624,9 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .vt-phu { color: var(--chu-mo, #64748b); font-size: 0.88rem; margin-top: 2px; }
 .vt-chuyen { display: flex; gap: 6px; }
 .vt-nut { border: 1px solid var(--vien, #e2e8f0); background: #fff; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+.vt-nut:hover { border-color: var(--chinh, #3b82f6); color: var(--chinh-dam, #2563eb); }
 .vt-nut-chon { background: var(--chinh, #3b82f6); color: var(--tren-chinh, #fff); border-color: var(--chinh, #3b82f6); }
+.vt-nut-chon:hover { background: var(--chinh-dam, #2563eb); border-color: var(--chinh-dam, #2563eb); color: var(--tren-chinh, #fff); }
 .vt-khoi-tat { display: flex; flex-direction: column; gap: 12px; }
 .vt-khoi { display: flex; flex-direction: column; gap: 6px; }
 .vt-qua-han .vt-dong { border-left: 3px solid #dc2626; }
