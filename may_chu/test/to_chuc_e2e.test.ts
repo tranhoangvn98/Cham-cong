@@ -20,7 +20,7 @@ const { dung_ung_dung } = await import('../src/ung_dung.ts');
 const { chay_di_tru } = await import('../src/csdl/di_tru.ts');
 const { thuc_thi, truy_van_mot } = await import('../src/csdl/ket_noi.ts');
 const { bam_mat_khau } = await import('../src/bao_mat/mat_khau.ts');
-const { nap_jd_neu_trong, thong_ke_jd } = await import('../src/to_chuc/du_lieu_jd.ts');
+const { nap_jd_neu_trong, thong_ke_jd, CAC_DAU_VIEC } = await import('../src/to_chuc/du_lieu_jd.ts');
 const { sinh_viec_dinh_ky } = await import('../src/viec/dinh_ky.ts');
 const { ngay_dia_phuong } = await import('../src/tien_ich/thoi_gian.ts');
 
@@ -109,6 +109,14 @@ test('nap JD: du 45 vi tri, 296 dau viec, 67 tn, 23 nhom, co ma bao cao', async 
   assert.equal(kq.tn, 67);
   assert.equal(kq.nhom, 23);
   assert.ok(kq.ma_bc > 200, `ma bao cao chi ${kq.ma_bc}`);
+  // Dau viec co tn trong file phai duoc noi dung vao tn_chi_tiet (theo MA,
+  // khong theo ten) — day la loi da tung xay ra: tra cuu nham khoa nen 296
+  // dau viec deu khong co trach nhiem chi tiet.
+  const so_tn_null = CAC_DAU_VIEC.filter((d) => d.tn === null).length;
+  const thieu = await truy_van_mot<{ n: string }>(
+    `select count(*)::text as n from dau_viec where tn_chi_tiet_id is null`,
+  );
+  assert.equal(Number(thieu?.n ?? -1), so_tn_null, 'so dau viec thieu tn khong dung');
 });
 
 test('danh sach vi tri + bao phu tra ve du lieu', async () => {

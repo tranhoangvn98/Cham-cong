@@ -80,24 +80,29 @@ async function nap_danh_muc(khach: pg.PoolClient): Promise<IdMap> {
       [nhom_id, tn.ma, tn.ten, qt],
     );
   }
+  // Khoa theo MA (trong file dau viec, tn la ma vi du '6.5'), khong theo ten.
   const tn_map = new Map<string, string>();
-  const ds_tn = await khach.query<{ id: string; nhom_id: string; ten: string }>(
-    'select id, nhom_id, ten from tn_chi_tiet',
+  const ds_tn = await khach.query<{ id: string; nhom_id: string; ma: string | null }>(
+    'select id, nhom_id, ma from tn_chi_tiet',
   );
   const nhom_ma_cua = new Map<string, string>();
   for (const [ma, id] of nhom) nhom_ma_cua.set(id, ma);
   for (const d of ds_tn.rows) {
-    tn_map.set(`${nhom_ma_cua.get(d.nhom_id) ?? '?'}\u0000${d.ten}`, d.id);
+    if (d.ma === null) continue;
+    tn_map.set(khoa_tn(nhom_ma_cua.get(d.nhom_id) ?? '?', d.ma), d.id);
   }
 
   return { phong, nhom, vi_tri, tn: tn_map };
 }
 
-function khoa_tn(nhom_ma: string, ten: string): string {
-  return `${nhom_ma}\u0000${ten}`;
+function khoa_tn(nhom_ma: string, ma: string): string {
+  return `${nhom_ma}\u0000${ma}`;
 }
 
-/** Nap toan bo JD. Tra ve so luong dong DA THEM MOI (khong tinh dong da co). */
+/**
+ * Nap toan bo JD (idempotent). Tra ve so luong dong DA THEM MOI (khong tinh dong da co).
+ * Dong da co ma thieu `tn_chi_tiet_id` duoc bo sung lai (tu sua du lieu cu).
+ */
 export async function nap_jd_neu_trong(): Promise<KetQuaNapJd> {
   return trong_giao_dich(async (khach) => {
     const ids = await nap_danh_muc(khach);
@@ -110,19 +115,21 @@ export async function nap_jd_neu_trong(): Promise<KetQuaNapJd> {
       if (vt_id === undefined || nhom_id === undefined) continue;
       const tn_id = dv.tn === null ? null : (ids.tn.get(khoa_tn(dv.nhom, dv.tn)) ?? null);
       const pid = dv.phong === null ? null : (ids.phong.get(dv.phong) ?? null);
-      const kq = await khach.query<{ id: string }>(
+      const kq = await khach.query<{ id: string; moi: boolean }>(
         `insert into dau_viec
            (vi_tri_id, ten, nhom_id, tn_chi_tiet_id, phong_ban_id, input, output, kpi,
             co_bc, ma_bc, trang_thai_ma_bc, tan_suat, tan_suat_tho, sla, phan_cap_xu_ly,
             muc_do_quan_trong, ghi_chu, thu_tu)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
-         on conflict (vi_tri_id, ten) do nothing returning id`,
+         on conflict (vi_tri_id, ten) do update
+           set tn_chi_tiet_id = coalesce(dau_viec.tn_chi_tiet_id, excluded.tn_chi_tiet_id)
+         returning id, (xmax = 0) as moi`,
         [vt_id, dv.ten, nhom_id, tn_id, pid, dv.vao, dv.ra, dv.kpi,
           dv.co_bc, dv.ma_bc, dv.tt_bc, dv.ts, dv.ts_tho, dv.sla, dv.ng,
           dv.md, dv.gc, 0],
       );
       const id = kq.rows[0]?.id;
-      if (id !== undefined) {
+      if (kq.rows[0]?.moi === true) {
         dau_viec++;
         for (const [vai_tro, kieu_nguoi] of dv.raci) {
           await khach.query(

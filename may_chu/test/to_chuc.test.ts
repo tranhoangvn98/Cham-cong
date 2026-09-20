@@ -32,13 +32,19 @@ test('moi dau viec noi dung vi tri / nhom / tn co san trong danh muc', () => {
   const vt = new Set(CAC_VI_TRI.map((v) => v.ma));
   const nhom = new Set(CAC_NHOM.map((n) => n.ma));
   const tn = new Set(CAC_TN.filter((t) => t.ma !== null).map((t) => `${t.nhom}:${t.ma}`));
+  let so_tn_null = 0;
   for (const dv of CAC_DAU_VIEC) {
     assert.ok(vt.has(dv.vt), `vi tri khong ton tai: ${dv.vt} (${dv.ten})`);
     assert.ok(nhom.has(dv.nhom), `nhom khong ton tai: ${dv.nhom} (${dv.ten})`);
     if (dv.tn !== null) {
       assert.ok(tn.has(`${dv.nhom}:${dv.tn}`), `tn khong ton tai: ${dv.nhom}.${dv.tn} (${dv.ten})`);
+    } else {
+      so_tn_null++;
     }
   }
+  // 16 dau viec khong nam trong tn chi tiet nao (task truc tiep cua nhom, tn = null).
+  // 280 dau viec con lai deu phai noi duoc vao tn chi tiet khi nap JD (khoa la MA).
+  assert.equal(so_tn_null, 16);
 });
 
 test('RACI chi dung vai tro R/A/C/I va kieu nguoi hop le; co BC thi phai co ma BC', () => {
