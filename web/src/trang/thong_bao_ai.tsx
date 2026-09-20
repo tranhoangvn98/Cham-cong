@@ -12,6 +12,7 @@ import {
   DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_gio,
 } from '../thanh_phan.tsx';
 import { goi, tai_tep, tai_tep_blob } from '../api.ts';
+import { Chon } from '../chon.tsx';
 import { lay_qd_nghi_viec } from '../dieu_huong_sau.ts';
 
 type KieuVanBan = 'thong_bao' | 'quyet_dinh' | 'cong_van';
@@ -235,22 +236,18 @@ function FormTao(
           <div className="soan-tieu-de">Người nhận</div>
           {pham_vi === 'phong_ban' && (
             <label className="truong"><span>Phòng ban nhận</span>
-              <select value={phong_ban_id} onChange={(e) => dat_phong_ban_id(e.target.value)}>
-                <option value="">— Chọn phòng ban —</option>
-                {(pb.du_lieu ?? []).map((p) => <option key={p.id} value={p.id}>{p.ten}</option>)}
-              </select>
+              <Chon gia_tri={phong_ban_id} dat_gia_tri={dat_phong_ban_id}
+                cac_tuy_chon={(pb.du_lieu ?? []).map((p) => ({ ma: p.id, nhan: p.ten }))}
+                rong="— Chọn phòng ban —" nhan="Phòng ban nhận" />
             </label>
           )}
           {pham_vi === 'ca_nhan' && (
             <label className="truong"><span>Nhân viên nhận</span>
-              <select value={nhan_vien_id} onChange={(e) => dat_nhan_vien_id(e.target.value)}>
-                <option value="">— Chọn nhân viên —</option>
-                {(nv.du_lieu ?? []).map((n) => (
-                  <option key={n.id} value={n.id}>
-                    {n.ho_ten}{n.phong_ban !== null ? ` — ${n.phong_ban}` : ''}
-                  </option>
-                ))}
-              </select>
+              <Chon gia_tri={nhan_vien_id} dat_gia_tri={dat_nhan_vien_id}
+                cac_tuy_chon={(nv.du_lieu ?? []).map((n) => ({
+                  ma: n.id, nhan: `${n.ho_ten}${n.phong_ban !== null ? ` — ${n.phong_ban}` : ''}`,
+                }))}
+                rong="— Chọn nhân viên —" nhan="Nhân viên nhận" />
             </label>
           )}
         </div>

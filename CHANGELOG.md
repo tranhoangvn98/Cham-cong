@@ -2,6 +2,18 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.104.6] — 2026-09-21
+
+**Sửa lỗi droplist: chọn vị trí/nhân viên/máy… nở rộng quá ô, không tìm kiếm được.**
+
+- Bộ chọn thả xuống dùng chung mới `web/src/chon.tsx` thay `<select>` gốc cho các danh sách
+  dài: bảng thả xuống **rộng vừa khít ô**, kết quả giới hạn chiều cao 280px kèm **thanh cuộn**,
+  và từ **5 lựa chọn trở lên có ô gõ để tìm**; bấm ra ngoài / Esc để đóng.
+- Áp dụng: Tổ chức & trách nhiệm (chọn vị trí, đầu việc mẫu, trách nhiệm chi tiết 280+ mục,
+  chọn nhân viên, gán vị trí), Lần quẹt (lọc nhân viên/máy, nhập tệp theo máy), Thiết bị (nạp
+  xuống máy), Thông báo AI + Văn bản (phòng ban/nhân viên nhận), Phụ cấp (chọn khoản, 2 trang),
+  KPI (phòng ban, chỉ số). Các select ngắn cố định giữ nguyên.
+
 ## [1.104.5] — 2026-09-21
 
 **Thay đổi: tổ chức lại thanh điều hướng thành các nhóm hợp lý.**

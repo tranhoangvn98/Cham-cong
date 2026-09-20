@@ -14,6 +14,7 @@ import { useState, type ReactNode } from 'react';
 import { goi, la_nhan_su } from '../api.ts';
 import { DangTai, HopLoi, HopThoai, OSo, Trong, dung_nap } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 
 // ---------------------------------------------------------------- kieu du lieu
 interface DongViTri {
@@ -360,20 +361,19 @@ function ManViTri(): ReactNode {
   if (ds.dang_tai) return <DangTai />;
   if (ds.loi !== null) return <HopLoi loi={ds.loi} />;
   const ds_vt = (ds.du_lieu ?? []).filter((v) => v.dang_hoat_dong || v.id === chon);
+  const tuy_chon_vt: TuyChonChon[] = ds_vt.map((v) => ({
+    ma: v.id,
+    nhan: `${v.ten} · ${NHAN_CAP_BAC[v.cap_bac]} · ${v.ten_phong_ban ?? 'Toàn công ty'}`
+      + ` (${v.so_dau_viec} task, ${v.so_nguoi_gui} người)`,
+  }));
 
   return (
     <div className="cv-trang">
       <div className="the">
         <div className="o-nhap-ngang">
           <label>Vị trí:</label>
-          <select value={chon} onChange={(e) => dat_chon(e.target.value)}>
-            <option value="">— chọn vị trí —</option>
-            {ds_vt.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.ten} · {NHAN_CAP_BAC[v.cap_bac]} · {v.ten_phong_ban ?? 'Toàn công ty'} ({v.so_dau_viec} task, {v.so_nguoi_gui} người)
-              </option>
-            ))}
-          </select>
+          <Chon gia_tri={chon} dat_gia_tri={dat_chon} cac_tuy_chon={tuy_chon_vt}
+            rong="— chọn vị trí —" nhan="Chọn vị trí" />
           {la_ns && <button className="nut-chinh" onClick={() => dat_mo_tao_vt(true)}>Thêm vị trí mới</button>}
         </div>
       </div>
@@ -543,6 +543,10 @@ function HopTaoDauViec({ vi_tri_id, dong }: { vi_tri_id: string; dong: () => voi
   const ds_dv = dung_nap<DongDauViec[]>(che_do === 'chep' ? '/api/to-chuc/vi-tri/' + vi_tri_id : null, [che_do]);
 
   const tn_theo_nhom = (dm.du_lieu?.tn ?? []);
+  // Dẹp nhom + TN thanh mot danh sach phang de tim kiem — 280+ muc, select goc khong dung duoc.
+  const tuy_chon_tn: TuyChonChon[] = (dm.du_lieu?.nhom ?? []).flatMap((n) =>
+    tn_theo_nhom.filter((t) => t.nhom_id === n.id)
+      .map((t) => ({ ma: t.id, nhan: `${n.ten} → ${t.ten}` })));
 
   const tao = async (): Promise<void> => {
     try {
@@ -585,10 +589,9 @@ function HopTaoDauViec({ vi_tri_id, dong }: { vi_tri_id: string; dong: () => voi
       {che_do === 'chep' && (
         <label className="o-nhap">
           <span>Đầu việc mẫu (của vị trí đang xem — để đổi vị trí mẫu thì chọn vị trí khác trước)</span>
-          <select value={nguon_chep} onChange={(e) => dat_nguon_chep(e.target.value)}>
-            <option value="">— chọn đầu việc mẫu —</option>
-            {(ds_dv.du_lieu ?? []).map((d) => <option key={d.id} value={d.id}>{d.ten}</option>)}
-          </select>
+          <Chon gia_tri={nguon_chep} dat_gia_tri={dat_nguon_chep}
+            cac_tuy_chon={(ds_dv.du_lieu ?? []).map((d) => ({ ma: d.id, nhan: d.ten }))}
+            rong="— chọn đầu việc mẫu —" nhan="Chọn đầu việc mẫu" />
         </label>
       )}
       <label className="o-nhap">
@@ -597,16 +600,8 @@ function HopTaoDauViec({ vi_tri_id, dong }: { vi_tri_id: string; dong: () => voi
       </label>
       <label className="o-nhap">
         <span>Trách nhiệm chi tiết (bám vào khối có sẵn)</span>
-        <select value={tn_id} onChange={(e) => dat_tn(e.target.value)}>
-          <option value="">— chưa gán —</option>
-          {(dm.du_lieu?.nhom ?? []).map((n) => (
-            <optgroup key={n.id} label={n.ten}>
-              {tn_theo_nhom.filter((t) => t.nhom_id === n.id).map((t) => (
-                <option key={t.id} value={t.id}>{t.ten}</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <Chon gia_tri={tn_id} dat_gia_tri={dat_tn} cac_tuy_chon={tuy_chon_tn}
+          rong="— chưa gán —" nhan="Chọn trách nhiệm chi tiết" />
       </label>
       {che_do === 'moi' && (
         <>
@@ -732,6 +727,10 @@ function ManNhanVien(): ReactNode {
   if (!la_ns) {
     return <Trong tieu_de="Chỉ nhân sự mới xem và gán vị trí. Nhân viên xem trách nhiệm của mình ở trang Công việc → tab Trách nhiệm của tôi." />;
   }
+  const tuy_chon_nv: TuyChonChon[] = (ds_nv.du_lieu ?? []).filter((n) => n.dang_hoat_dong)
+    .map((n) => ({ ma: n.id, nhan: `${n.ma_nv} · ${n.ho_ten} · ${n.phong_ban ?? '—'}` }));
+  const tuy_chon_vt: TuyChonChon[] = (ds_vt.du_lieu ?? []).filter((v) => v.dang_hoat_dong)
+    .map((v) => ({ ma: v.id, nhan: `${v.ten} · ${v.ten_phong_ban ?? 'Toàn công ty'}` }));
 
   const gan = async (): Promise<void> => {
     if (chon === '' || vi_tri_them === '') return;
@@ -766,12 +765,8 @@ function ManNhanVien(): ReactNode {
       <div className="the">
         <div className="o-nhap-ngang">
           <label>Nhân viên:</label>
-          <select value={chon} onChange={(e) => dat_chon(e.target.value)}>
-            <option value="">— chọn nhân viên —</option>
-            {(ds_nv.du_lieu ?? []).filter((n) => n.dang_hoat_dong).map((n) => (
-              <option key={n.id} value={n.id}>{n.ma_nv} · {n.ho_ten} · {n.phong_ban ?? '—'}</option>
-            ))}
-          </select>
+          <Chon gia_tri={chon} dat_gia_tri={dat_chon} cac_tuy_chon={tuy_chon_nv}
+            rong="— chọn nhân viên —" nhan="Chọn nhân viên" />
         </div>
       </div>
       {chon !== '' && (
@@ -800,12 +795,8 @@ function ManNhanVien(): ReactNode {
             {bo_phan_trang}
             <div className="o-nhap-ngang" style={{ marginTop: 10 }}>
               <label>Gán thêm vị trí:</label>
-              <select value={vi_tri_them} onChange={(e) => dat_vt_them(e.target.value)}>
-                <option value="">— chọn vị trí —</option>
-                {(ds_vt.du_lieu ?? []).filter((v) => v.dang_hoat_dong).map((v) => (
-                  <option key={v.id} value={v.id}>{v.ten} · {v.ten_phong_ban ?? 'Toàn công ty'}</option>
-                ))}
-              </select>
+              <Chon gia_tri={vi_tri_them} dat_gia_tri={dat_vt_them} cac_tuy_chon={tuy_chon_vt}
+                rong="— chọn vị trí —" nhan="Gán thêm vị trí" />
               <button className="nut-chinh" onClick={() => void gan()} disabled={vi_tri_them === ''}>Gán</button>
             </div>
             {loi !== null && <p className="mo-ta" style={{ color: 'var(--xau)' }}>{loi}</p>}

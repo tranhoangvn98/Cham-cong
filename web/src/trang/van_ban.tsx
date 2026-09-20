@@ -14,6 +14,7 @@ import {
 import { LienKet } from '../dinh_tuyen.tsx';
 import { gui_tep, la_nhan_su, tai_tep } from '../api.ts';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon } from '../chon.tsx';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
 import { TabVanBanBanHanh } from './thong_bao_ai.tsx';
 
@@ -174,22 +175,18 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
         </label>
         {pham_vi === 'phong_ban' && (
           <label className="truong"><span>Chọn phòng ban</span>
-            <select value={phong_ban_id} onChange={(e) => dat_phong_ban_id(e.target.value)}>
-              <option value="">— Chọn —</option>
-              {(ds_pb.du_lieu ?? []).map((p) => (
-                <option key={p.id} value={p.id}>{p.ten}</option>
-              ))}
-            </select>
+            <Chon gia_tri={phong_ban_id} dat_gia_tri={dat_phong_ban_id}
+              cac_tuy_chon={(ds_pb.du_lieu ?? []).map((p) => ({ ma: p.id, nhan: p.ten }))}
+              rong="— Chọn —" nhan="Phòng ban nhận văn bản" />
           </label>
         )}
         {pham_vi === 'ca_nhan' && (
           <label className="truong"><span>Chọn nhân viên</span>
-            <select value={nhan_vien_id} onChange={(e) => dat_nhan_vien_id(e.target.value)}>
-              <option value="">— Chọn —</option>
-              {(ds_nv.du_lieu ?? []).map((n) => (
-                <option key={n.id} value={n.id}>{n.ho_ten} ({n.ma_nv})</option>
-              ))}
-            </select>
+            <Chon gia_tri={nhan_vien_id} dat_gia_tri={dat_nhan_vien_id}
+              cac_tuy_chon={(ds_nv.du_lieu ?? []).map((n) => ({
+                ma: n.id, nhan: `${n.ho_ten} (${n.ma_nv})`,
+              }))}
+              rong="— Chọn —" nhan="Nhân viên nhận văn bản" />
           </label>
         )}
       </div>

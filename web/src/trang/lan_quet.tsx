@@ -9,6 +9,7 @@ import {
   dung_hanh_dong, dung_nap, hom_nay, ngay_gio,
 } from '../thanh_phan.tsx';
 import { BoPhanTrang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
 
 /** Tep mau nhap lich su: dang de doc nhat, may xuat ra dang nao bo doc cung nhan duoc. */
@@ -132,23 +133,21 @@ export function TrangLanQuet(): ReactNode {
           <>
             <div className="o-nhap">
               <label htmlFor="lnv">Nhân viên</label>
-              <select id="lnv" value={nhan_vien_id}
-                onChange={(e) => doi_loc(dat_nhan_vien_id)(e.target.value)}>
-                <option value="">Tất cả</option>
-                {(ds_nv.du_lieu ?? []).map((n) => (
-                  <option key={n.id} value={n.id}>{n.ho_ten} ({n.ma_nv})</option>
-                ))}
-              </select>
+              <Chon gia_tri={nhan_vien_id}
+                dat_gia_tri={(ma) => doi_loc(dat_nhan_vien_id)(ma)}
+                cac_tuy_chon={ds_nv.du_lieu?.map((n): TuyChonChon => ({
+                  ma: n.id, nhan: `${n.ho_ten} (${n.ma_nv})`,
+                })) ?? []}
+                rong="Tất cả" nhan="Lọc theo nhân viên" />
             </div>
             <div className="o-nhap">
               <label htmlFor="ltb">Máy chấm công</label>
-              <select id="ltb" value={thiet_bi_serial}
-                onChange={(e) => doi_loc(dat_thiet_bi_serial)(e.target.value)}>
-                <option value="">Tất cả</option>
-                {(ds_tb.du_lieu ?? []).map((t) => (
-                  <option key={t.serial} value={t.serial}>{t.ten} ({t.serial})</option>
-                ))}
-              </select>
+              <Chon gia_tri={thiet_bi_serial}
+                dat_gia_tri={(ma) => doi_loc(dat_thiet_bi_serial)(ma)}
+                cac_tuy_chon={ds_tb.du_lieu?.map((t): TuyChonChon => ({
+                  ma: t.serial, nhan: `${t.ten} (${t.serial})`,
+                })) ?? []}
+                rong="Tất cả" nhan="Lọc theo máy chấm công" />
             </div>
           </>
         )}
@@ -329,12 +328,11 @@ export function TrangLanQuet(): ReactNode {
           tuy_chon={
             <div className="o-nhap">
               <label htmlFor="snh">Ghi nhận là của máy</label>
-              <select id="snh" value={serial_nhap} onChange={(e) => dat_serial_nhap(e.target.value)}>
-                <option value="">— Nhập từ file (không gắn máy nào) —</option>
-                {(ds_tb.du_lieu ?? []).map((t) => (
-                  <option key={t.serial} value={t.serial}>{t.ten} ({t.serial})</option>
-                ))}
-              </select>
+              <Chon gia_tri={serial_nhap} dat_gia_tri={dat_serial_nhap}
+                cac_tuy_chon={ds_tb.du_lieu?.map((t): TuyChonChon => ({
+                  ma: t.serial, nhan: `${t.ten} (${t.serial})`,
+                })) ?? []}
+                rong="— Nhập từ file (không gắn máy nào) —" nhan="Ghi nhận là của máy" />
               <div className="goi-y">
                 Chọn đúng máy nếu file này do chính máy đó xuất ra — nhờ vậy bộ chống trùng
                 nhận ra bản ghi máy đã đẩy lên rồi, không tạo bản sao.

@@ -2704,3 +2704,34 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .phan-trang-nut-hang { display: flex; align-items: center; gap: 6px; }
 .phan-trang-nut { min-width: 34px; justify-content: center; padding: 4px 10px; }
 .phan-trang-so { white-space: nowrap; }
+
+/* ============================================================================
+   Bo chon tha xuong dung chung (web/src/chon.tsx) — thay select goc khi danh sach dai.
+   Bang tha xuong RONG BANG O (khong no theo tuy chon dai nhat), cao toi da 280px + cuon.
+   ============================================================================ */
+.chon { position: relative; min-width: 0; flex: 1; }
+.chon-o {
+  width: 100%; justify-content: space-between; gap: 8px; min-height: 36px;
+  background: var(--nen-the); border: 1px solid var(--vien-dam); border-radius: 6px;
+  color: var(--chu); text-align: left;
+}
+.chon-o:hover:not(:disabled) { background: var(--nen-the); border-color: var(--chinh); }
+.chon-o i { transform: rotate(90deg); }
+.chon-o-nhan {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.chon-bang {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 60;
+  background: var(--nen-the); border: 1px solid var(--vien); border-radius: 8px;
+  box-shadow: var(--bong-noi); display: flex; flex-direction: column; overflow: hidden;
+}
+.chon-tim { border: 0; border-bottom: 1px solid var(--vien); border-radius: 0; padding: 8px 10px; }
+.chon-ds { max-height: 280px; overflow-y: auto; padding: 4px; }
+.chon-muc {
+  width: 100%; border: 0; border-radius: 6px; background: none; color: var(--chu);
+  justify-content: flex-start; text-align: left; padding: 7px 10px;
+  white-space: normal; line-height: 1.35;
+}
+.chon-muc:hover { background: var(--chinh-nhat); }
+.chon-muc-chon { background: var(--chinh-nhat); color: var(--chinh-dam); font-weight: 600; }
+.chon-rong { padding: 10px; color: var(--chu-mo); font-size: 13px; text-align: center; }

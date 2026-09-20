@@ -13,6 +13,7 @@ import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap,
   XuongDanhSach,
 } from '../thanh_phan.tsx';
+import { Chon } from '../chon.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 
 export interface KhoanDanhMuc {
@@ -321,15 +322,12 @@ function HopThoaiGan(
     <HopThoai tieu_de="Gán phụ cấp" khi_dong={khi_dong} rong>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
 
-      <label htmlFor="pc-khoan">Khoản</label>
-      <select id="pc-khoan" value={khoan_ma} onChange={(e) => dat_khoan_ma(e.target.value)}>
-        <option value="">— chọn khoản —</option>
-        {danh_muc.map((x) => (
-          <option key={x.ma} value={x.ma}>
-            {x.loai === 'tru' ? '− ' : '+ '}{x.ten}
-          </option>
-        ))}
-      </select>
+      <label>Khoản</label>
+      <Chon gia_tri={khoan_ma} dat_gia_tri={dat_khoan_ma}
+        cac_tuy_chon={danh_muc.map((x) => ({
+          ma: x.ma, nhan: `${x.loai === 'tru' ? '− ' : '+ '}${x.ten}`,
+        }))}
+        rong="— chọn khoản —" nhan="Khoản phụ cấp" />
 
       {k !== null && (
         <>

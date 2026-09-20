@@ -7,6 +7,7 @@ import {
 import type { NhanVien } from './nhan_vien.tsx';
 import type { NhomMa as NhomMaDinhDanh } from './ma_dinh_danh.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon } from '../chon.tsx';
 
 interface ThietBi {
   id: string;
@@ -481,14 +482,12 @@ function NapNhanVien(
         </div>
 
         <div className="o-nhap">
-          <label htmlFor="nvid">Nhân viên *</label>
-          <select id="nvid" value={nhan_vien_id}
-            onChange={(e) => dat_nhan_vien_id(e.target.value)} required>
-            <option value="">— Chọn nhân viên —</option>
-            {co_pin.map((n) => (
-              <option key={n.id} value={n.id}>{n.ma_nv} — {n.ho_ten} (PIN {n.pin_may})</option>
-            ))}
-          </select>
+          <label>Nhân viên *</label>
+          <Chon gia_tri={nhan_vien_id} dat_gia_tri={dat_nhan_vien_id}
+            cac_tuy_chon={co_pin.map((n) => ({
+              ma: n.id, nhan: `${n.ma_nv} — ${n.ho_ten} (PIN ${n.pin_may})`,
+            }))}
+            rong="— Chọn nhân viên —" nhan="Nhân viên nạp xuống máy" />
           {co_pin.length === 0 && (
             <div className="goi-y chu-xau">
               Chưa có nhân viên nào được gán PIN máy.

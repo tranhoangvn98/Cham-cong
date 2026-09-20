@@ -7,6 +7,7 @@ import { goi } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
+import { Chon } from '../chon.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 
 type Tab = 'ky' | 'danh_muc';
@@ -602,11 +603,10 @@ function HopThoaiChiSo(
         {NHOM.map((n) => <option key={n} value={n}>{NHAN_NHOM[n]}</option>)}
       </select>
 
-      <label htmlFor="pb">Phạm vi áp dụng</label>
-      <select id="pb" value={pb} onChange={(e) => dat_pb(e.target.value)}>
-        <option value="">Toàn công ty</option>
-        {(phong.du_lieu ?? []).map((p) => <option key={p.id} value={p.id}>{p.ten}</option>)}
-      </select>
+      <label>Phạm vi áp dụng</label>
+      <Chon gia_tri={pb} dat_gia_tri={dat_pb}
+        cac_tuy_chon={(phong.du_lieu ?? []).map((p) => ({ ma: p.id, nhan: p.ten }))}
+        rong="Toàn công ty" nhan="Phạm vi áp dụng" />
       <p className="mo-ta">Chọn một phòng ban để chỉ chấm chỉ số này cho người phòng đó; để
         &quot;Toàn công ty&quot; nếu áp cho tất cả.</p>
 
@@ -623,12 +623,12 @@ function HopThoaiChiSo(
           </select>
           {nguon !== 'nhap_tay' && (
             <>
-              <label htmlFor="chiso">Lấy số liệu từ</label>
-              <select id="chiso" value={chi_so_ma} onChange={(e) => dat_chi_so_ma(e.target.value)}>
-                <option value="">— chọn chỉ số —</option>
-                {(CHI_SO_THEO_NGUON[nguon] ?? []).map((cs) =>
-                  <option key={cs} value={cs}>{NHAN_CHI_SO[cs] ?? cs}</option>)}
-              </select>
+              <label>Lấy số liệu từ</label>
+              <Chon gia_tri={chi_so_ma} dat_gia_tri={dat_chi_so_ma}
+                cac_tuy_chon={(CHI_SO_THEO_NGUON[nguon] ?? []).map((cs) => ({
+                  ma: cs, nhan: NHAN_CHI_SO[cs] ?? cs,
+                }))}
+                rong="— chọn chỉ số —" nhan="Chỉ số lấy số liệu từ" />
             </>
           )}
           {nguon === 'nhap_tay' && (
