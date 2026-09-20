@@ -2,6 +2,16 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.103.0] — 2026-09-21
+
+**Thay đổi: bảng “Lỗ hổng bao phủ” thêm cột Nhóm trách nhiệm.**
+
+- Mỗi đầu việc chưa có người thực hiện giờ hiện đủ 4 cột: Đầu việc · Vị trí thực
+  thi · Nhóm trách nhiệm (23 nhóm lớn) · Trách nhiệm chi tiết — nhìn là biết đầu
+  việc rơi vào khối nào, ai quản trị khối đó.
+- API `/api/to-chuc/bao-phu` trả thêm `ten_nhom`; test e2e canh mọi dòng lỗ hổng
+  đều có nhóm (không rơi vào dấu gạch ngang).
+
 ## [1.102.2] — 2026-09-21
 
 **Sửa lỗi: 296/296 đầu việc không hiện trách nhiệm chi tiết (bảng Lỗ hổng bao phủ
