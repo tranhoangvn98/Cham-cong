@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.104.4] — 2026-09-21
+
+**Sửa lỗi: chuông thông báo tab "Tất cả" không hiện thông báo chưa xem lên đầu.**
+
+- Trước đây giao diện xếp mọi thông báo "cần xử lý" (hầu hết đã xem, chờ duyệt) lên trên
+  nên các thông báo CHƯA XEM bị chôn phía dưới, nhìn như không tồn tại.
+- Thứ tự mới: (1) Chưa xem lên đầu, mới nhất trước; (2) Đã xem nhưng còn chờ xử lý — việc
+  chờ lâu nhất lên trước; (3) Đã xem còn lại xếp mới nhất trước.
+
 ## [1.104.3] — 2026-09-21
 
 **Thay đổi: tối ưu hiển thị màn Full HD — nội dung căn giữa, tiêu đề thăng cột với nội dung.**

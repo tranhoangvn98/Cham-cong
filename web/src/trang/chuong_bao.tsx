@@ -106,11 +106,17 @@ export function ChuongBao({ dieu_huong }: {
     void goi('/api/toi/bao/doc-het', { method: 'POST', body: {} }).then(nap).catch(() => {});
   };
 
-  // Sap xep: viec CON PHAI XU LY len dau, trong do cai LAU CHUA XU LY nhat len tren cung;
-  // phan con lai (da xu ly / thuần tin) xep moi nhat truoc.
+  // Sap xep ba tang:
+  //   1. CHUA XEM len dau, moi nhat truoc — de khong bao gio bi viec "cho duyet" chen mat.
+  //   2. DA XEM nhung viec CON PHAI XU LY (cho duyet) — cai LAU CHUA XU LY nhat len tren cung.
+  //   3. Phan da xem con lai (da xu ly / thuần tin) — moi nhat truoc.
+  const bac = (b: Bao): 0 | 1 | 2 => (!b.da_doc ? 0 : b.con_xu_ly ? 1 : 2);
   const sap = [...ds].sort((a, b) => {
-    if (a.con_xu_ly !== b.con_xu_ly) return a.con_xu_ly ? -1 : 1;
-    if (a.con_xu_ly) return a.tao_luc < b.tao_luc ? -1 : 1;
+    const ba = bac(a);
+    const bb = bac(b);
+    if (ba !== bb) return ba - bb;
+    if (ba === 0) return a.tao_luc > b.tao_luc ? -1 : 1;
+    if (ba === 1) return a.tao_luc < b.tao_luc ? -1 : 1;
     return a.tao_luc > b.tao_luc ? -1 : 1;
   });
   const ds_cho_duyet = sap.filter((b) => b.da_doc && b.con_xu_ly);
