@@ -229,6 +229,8 @@ export async function tuyen_to_chuc(app: FastifyInstance): Promise<void> {
   });
 
   // ==================================================================== bao phu + do luong
+  app.get('/tong-quan', { preHandler: can_dang_nhap }, async () => doc.tong_quan());
+
   app.get('/bao-phu', { preHandler: can_dang_nhap }, async () => {
     const [theo_tn, lo_hong] = await Promise.all([doc.bao_phu_theo_tn(), doc.dau_viec_lo_hong()]);
     return { theo_tn, lo_hong };

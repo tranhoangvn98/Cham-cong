@@ -135,6 +135,30 @@ test('danh sach vi tri + bao phu tra ve du lieu', async () => {
   for (const d of lo_hong) {
     assert.ok(d.ten_nhom !== null && d.ten_nhom !== '', 'lo hong thieu ten nhom trach nhiem');
   }
+  // Bang dieu khien tong quan: so lieu chinh + bao phu theo nhom + cap bac.
+  const tq = await goi('GET', '/api/to-chuc/tong-quan', { token: token_admin });
+  assert.equal(tq.ma, 200);
+  const b = tq.body as {
+    vi_tri: number; nhom: number; tn: number; dau_viec: number;
+    dau_viec_lo_hong: number;
+    theo_nhom: { so_task: number; so_task_co_nguoi: number }[];
+    theo_cap_bac: { cap_bac: string; so_vi_tri: number }[];
+  };
+  assert.equal(b.vi_tri, 45);
+  assert.equal(b.nhom, 23);
+  assert.equal(b.tn, 67);
+  assert.equal(b.dau_viec, 296);
+  assert.equal(b.dau_viec_lo_hong, 296);
+  assert.equal(b.theo_nhom.length, 23);
+  assert.equal(b.theo_cap_bac.length, 5);
+  assert.equal(
+    b.theo_cap_bac.reduce((t, c) => t + c.so_vi_tri, 0), 45,
+    'phan bo cap bac phai gom du 45 vi tri',
+  );
+  assert.equal(
+    b.theo_nhom.reduce((t, n) => t + n.so_task, 0), 296,
+    'bao phu theo nhom phai gom du 296 dau viec',
+  );
 });
 
 test('gan vi tri cho nhan vien -> sinh mau dinh ky, sinh viec JD', async () => {

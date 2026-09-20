@@ -324,3 +324,147 @@ export async function danh_sach_ma_bc(): Promise<{
       order by b.trang_thai, b.ma`,
   );
 }
+
+// ================================================================ tong quan
+/** Bao phu theo nhom trach nhiem lon (cho thanh tien do cua bang dieu khien). */
+export interface DongTongQuanNhom {
+  nhom_id: string;
+  ma: string;
+  ten: string;
+  so_task: number;
+  so_task_co_nguoi: number;
+  so_task_dang_chay: number;
+}
+
+/** Phan bo vi tri theo cap bac (cap cao -> nhan vien). */
+export interface DongTongQuanCapBac {
+  cap_bac: string;
+  so_vi_tri: number;
+  so_vi_tri_co_nguoi: number;
+}
+
+export interface DongTongQuan {
+  vi_tri: number;
+  vi_tri_co_nguoi: number;
+  nhan_vien_co_vi_tri: number;
+  nhan_vien_kiem_nhiem: number;
+  nhom: number;
+  tn: number;
+  dau_viec: number;
+  dau_viec_dang_chay: number;
+  dau_viec_lo_hong: number;
+  ma_bc: number;
+  ma_bc_da_nop: number;
+  viec_thang: { so_viec: number; so_xong: number; so_qua_han: number };
+  theo_nhom: DongTongQuanNhom[];
+  theo_cap_bac: DongTongQuanCapBac[];
+}
+
+/**
+ * Bang dieu khien tong quan co cau quan tri: so lieu chinh (vi tri, nhan vien, dau
+ * viec, ma BC, viec thang) + bao phu theo nhom + phan bo vi tri theo cap bac.
+ */
+export async function tong_quan(): Promise<DongTongQuan> {
+  const [vi_tri, nhan_vien, danh_muc, dau_viec, ma_bc, viec, theo_nhom, theo_cap_bac] =
+    await Promise.all([
+      truy_van_mot<{ tong: string; co_nguoi: string }>(
+        `select count(*)::text as tong,
+                (select count(distinct nvv.vi_tri_id)::text
+                   from nhan_vien_vi_tri nvv
+                   join nhan_vien nv on nv.id = nvv.nhan_vien_id and nv.dang_hoat_dong) as co_nguoi
+           from vi_tri`,
+      ),
+      truy_van_mot<{ co_vi_tri: string; kiem_nhiem: string }>(
+        `select (select count(distinct nvv.nhan_vien_id)::text
+                   from nhan_vien_vi_tri nvv
+                   join nhan_vien nv on nv.id = nvv.nhan_vien_id and nv.dang_hoat_dong) as co_vi_tri,
+                (select count(*)::text from (
+                   select nvv2.nhan_vien_id
+                     from nhan_vien_vi_tri nvv2
+                     join nhan_vien nv2 on nv2.id = nvv2.nhan_vien_id and nv2.dang_hoat_dong
+                    group by nvv2.nhan_vien_id
+                   having count(distinct nvv2.vi_tri_id) > 1
+                 ) k) as kiem_nhiem`,
+      ),
+      truy_van_mot<{ nhom: string; tn: string }>(
+        `select (select count(*)::text from nhom_trach_nhiem) as nhom,
+                (select count(*)::text from tn_chi_tiet) as tn`,
+      ),
+      truy_van_mot<{ dau_viec: string; dang_chay: string; lo_hong: string }>(
+        `select count(*)::text as dau_viec,
+                (select count(distinct md.dau_viec_id)::text from cong_viec_mau_dinh_ky md
+                  where md.dau_viec_id is not null and md.dang_bat) as dang_chay,
+                (select count(*)::text from dau_viec dv2
+                  where dv2.dang_bat and not exists (
+                    select 1 from nhan_vien_vi_tri nvv
+                     join nhan_vien nv on nv.id = nvv.nhan_vien_id and nv.dang_hoat_dong
+                    where nvv.vi_tri_id = dv2.vi_tri_id)) as lo_hong
+           from dau_viec`,
+      ),
+      truy_van_mot<{ tong: string; da_nop: string }>(
+        `select count(*)::text as tong,
+                count(*) filter (where exists (
+                  select 1 from bao_cao bc2 where bc2.ma_bc = b.ma
+                   and bc2.tao_luc >= now() - interval '30 days'))::text as da_nop
+           from bao_cao_mau b`,
+      ),
+      truy_van_mot<{ so_viec: string; so_xong: string; so_qua_han: string }>(
+        `select count(*)::text as so_viec,
+                count(*) filter (where trang_thai = 'hoan_thanh')::text as so_xong,
+                count(*) filter (where trang_thai = 'khong_hoan_thanh')::text as so_qua_han
+           from cong_viec
+          where dau_viec_id is not null and tao_luc >= date_trunc('month', now())`,
+      ),
+      truy_van<DongTongQuanNhom>(
+        `select nh.id as nhom_id, nh.ma, nh.ten,
+                count(dv.id)::int as so_task,
+                count(dv.id) filter (where exists (
+                  select 1 from nhan_vien_vi_tri nvv
+                   join nhan_vien nv on nv.id = nvv.nhan_vien_id and nv.dang_hoat_dong
+                  where nvv.vi_tri_id = dv.vi_tri_id))::int as so_task_co_nguoi,
+                count(dv.id) filter (where exists (
+                  select 1 from cong_viec_mau_dinh_ky md
+                  where md.dau_viec_id = dv.id and md.dang_bat))::int as so_task_dang_chay
+           from nhom_trach_nhiem nh
+           left join dau_viec dv on dv.nhom_id = nh.id
+          group by nh.id, nh.ma, nh.ten
+          order by nullif(regexp_replace(nh.ma, '\\D', '', 'g'), '')::int nulls last, nh.ma`,
+      ),
+      truy_van<DongTongQuanCapBac>(
+        `select vt.cap_bac,
+                count(*)::int as so_vi_tri,
+                count(*) filter (where exists (
+                  select 1 from nhan_vien_vi_tri nvv
+                   join nhan_vien nv on nv.id = nvv.nhan_vien_id and nv.dang_hoat_dong
+                  where nvv.vi_tri_id = vt.id))::int as so_vi_tri_co_nguoi
+           from vi_tri vt
+          group by vt.cap_bac
+          order by case vt.cap_bac
+                     when 'cap_cao' then 0 when 'truong_phong' then 1
+                     when 'truong_nhom' then 2 when 'chuyen_vien' then 3
+                     else 4 end`,
+      ),
+    ]);
+
+  const num = (s: string | null | undefined): number => Number(s ?? 0);
+  return {
+    vi_tri: num(vi_tri?.tong),
+    vi_tri_co_nguoi: num(vi_tri?.co_nguoi),
+    nhan_vien_co_vi_tri: num(nhan_vien?.co_vi_tri),
+    nhan_vien_kiem_nhiem: num(nhan_vien?.kiem_nhiem),
+    nhom: num(danh_muc?.nhom),
+    tn: num(danh_muc?.tn),
+    dau_viec: num(dau_viec?.dau_viec),
+    dau_viec_dang_chay: num(dau_viec?.dang_chay),
+    dau_viec_lo_hong: num(dau_viec?.lo_hong),
+    ma_bc: num(ma_bc?.tong),
+    ma_bc_da_nop: num(ma_bc?.da_nop),
+    viec_thang: {
+      so_viec: num(viec?.so_viec),
+      so_xong: num(viec?.so_xong),
+      so_qua_han: num(viec?.so_qua_han),
+    },
+    theo_nhom,
+    theo_cap_bac,
+  };
+}

@@ -1,6 +1,8 @@
 // Quan ly co cau to chuc – vi tri – trach nhiem (JD phan tang 3 cap + RACI + PDCA).
 //
-// 5 tab:
+// 6 tab:
+//   Tong quan:       bang dieu khien co cau quan tri: so lieu chinh, bao phu theo
+//                     nhom, phan bo vi tri theo cap bac.
 //   Co cau & bao phu: cay Nhom TN -> TN chi tiet -> dau viec, den bao da co nguoi
 //                     thuc hien / dang sinh viec chua + danh sach lo hong.
 //   Vi tri & JD:     danh muc vi tri, chi tiet dau viec, SUA RACI + step, tao moi,
@@ -10,7 +12,7 @@
 //   Ma bao cao:      danh muc 208 ma BC.
 import { useState, type ReactNode } from 'react';
 import { goi, la_nhan_su } from '../api.ts';
-import { DangTai, HopLoi, HopThoai, Trong, dung_nap } from '../thanh_phan.tsx';
+import { DangTai, HopLoi, HopThoai, OSo, Trong, dung_nap } from '../thanh_phan.tsx';
 
 // ---------------------------------------------------------------- kieu du lieu
 interface DongViTri {
@@ -95,15 +97,16 @@ const NHAN_MUC_DO: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------- trang chinh
-type Tab = 'co_cau' | 'vi_tri' | 'nhan_vien' | 'do_luong' | 'ma_bc';
+type Tab = 'tong_quan' | 'co_cau' | 'vi_tri' | 'nhan_vien' | 'do_luong' | 'ma_bc';
 
 export function TrangToChuc(): ReactNode {
-  const [tab, dat_tab] = useState<Tab>('co_cau');
+  const [tab, dat_tab] = useState<Tab>('tong_quan');
   const la_ns = la_nhan_su();
   return (
     <div className="cv-trang">
       <div className="cv-tab-hang">
         {([
+          ['tong_quan', 'Tổng quan'],
           ['co_cau', 'Cơ cấu & bao phủ'],
           ['vi_tri', 'Vị trí & JD'],
           ['nhan_vien', 'Nhân viên'],
@@ -120,11 +123,132 @@ export function TrangToChuc(): ReactNode {
         ))}
         {la_ns && <span className="cv-tab-phu">Bạn có quyền thêm / sửa danh mục</span>}
       </div>
+      {tab === 'tong_quan' && <ManTongQuan chuyen_tab={dat_tab} />}
       {tab === 'co_cau' && <ManCoCau />}
       {tab === 'vi_tri' && <ManViTri />}
       {tab === 'nhan_vien' && <ManNhanVien />}
       {tab === 'do_luong' && <ManDoLuong />}
       {tab === 'ma_bc' && <ManMaBc />}
+    </div>
+  );
+}
+
+// ================================================================ TONG QUAN
+interface DongTongQuan {
+  vi_tri: number; vi_tri_co_nguoi: number;
+  nhan_vien_co_vi_tri: number; nhan_vien_kiem_nhiem: number;
+  nhom: number; tn: number;
+  dau_viec: number; dau_viec_dang_chay: number; dau_viec_lo_hong: number;
+  ma_bc: number; ma_bc_da_nop: number;
+  viec_thang: { so_viec: number; so_xong: number; so_qua_han: number };
+  theo_nhom: { nhom_id: string; ma: string; ten: string; so_task: number; so_task_co_nguoi: number; so_task_dang_chay: number }[];
+  theo_cap_bac: { cap_bac: string; so_vi_tri: number; so_vi_tri_co_nguoi: number }[];
+}
+
+/** Ti le phan tram (bao 0/0 = 100 de khong chia 0). */
+function ti_le(co: number, tong: number): number {
+  return tong === 0 ? 100 : Math.round((co / tong) * 100);
+}
+
+function ManTongQuan({ chuyen_tab }: { chuyen_tab: (t: Tab) => void }): ReactNode {
+  const { du_lieu, dang_tai, loi } = dung_nap<DongTongQuan>('/api/to-chuc/tong-quan');
+  if (dang_tai) return <DangTai />;
+  if (loi !== null || du_lieu === null) return <HopLoi loi={loi} />;
+  const tq = du_lieu;
+
+  return (
+    <div className="cv-trang">
+      <div className="luoi luoi-4">
+        <OSo
+          nhan="Vị trí"
+          gia_tri={<>{tq.vi_tri_co_nguoi}<span className="chu-mo">/{tq.vi_tri}</span></>}
+          phu="có người giữ / tổng số"
+          mau={tq.vi_tri_co_nguoi < tq.vi_tri ? 'canh_bao' : 'tot'}
+        />
+        <OSo
+          nhan="Nhân viên gắn vị trí"
+          gia_tri={tq.nhan_vien_co_vi_tri}
+          phu={`${tq.nhan_vien_kiem_nhiem} người kiêm nhiệm từ 2 vị trí`}
+        />
+        <OSo nhan="Nhóm trách nhiệm" gia_tri={tq.nhom} phu={`${tq.tn} trách nhiệm chi tiết`} />
+        <OSo
+          nhan="Đầu việc"
+          gia_tri={tq.dau_viec}
+          phu={`${tq.dau_viec_dang_chay} đang sinh việc định kỳ`}
+        />
+        <OSo
+          nhan="Lỗ hổng bao phủ"
+          gia_tri={tq.dau_viec_lo_hong}
+          phu="đầu việc chưa có người thực hiện"
+          mau={tq.dau_viec_lo_hong === 0 ? 'tot' : 'xau'}
+          khi_bam={() => chuyen_tab('co_cau')}
+        />
+        <OSo nhan="Mã báo cáo" gia_tri={tq.ma_bc} phu={`${tq.ma_bc_da_nop} mã đã nộp trong 30 ngày`} />
+        <OSo
+          nhan="Việc JD trong tháng"
+          gia_tri={tq.viec_thang.so_viec}
+          phu={`xong ${tq.viec_thang.so_xong} · quá hạn ${tq.viec_thang.so_qua_han}`}
+        />
+      </div>
+
+      <div className="luoi luoi-2">
+        <div className="the">
+          <h3>Bao phủ theo nhóm trách nhiệm</h3>
+          <table>
+            <thead>
+              <tr><th>Nhóm</th><th className="so">Task có người</th><th>Bao phủ</th><th className="so">Đang chạy</th></tr>
+            </thead>
+            <tbody>
+              {tq.theo_nhom.map((n) => {
+                const tile = ti_le(n.so_task_co_nguoi, n.so_task);
+                return (
+                  <tr key={n.nhom_id}>
+                    <td className="khong-ngat">{n.ma}. {n.ten}</td>
+                    <td className="so">{n.so_task_co_nguoi}/{n.so_task}</td>
+                    <td style={{ minWidth: 120 }}>
+                      <div className="thanh-tien-do">
+                        <div
+                          className={tile === 100 ? 'thanh-tien-do-day du' : 'thanh-tien-do-day'}
+                          style={{ width: `${tile}%` }}
+                        />
+                      </div>
+                    </td>
+                    <td className="so">{n.so_task_dang_chay > 0 ? n.so_task_dang_chay : '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="the">
+          <h3>Vị trí theo cấp bậc</h3>
+          <table>
+            <thead>
+              <tr><th>Cấp bậc</th><th className="so">Có người giữ</th><th>Bao phủ</th></tr>
+            </thead>
+            <tbody>
+              {tq.theo_cap_bac.map((c) => {
+                const tile = ti_le(c.so_vi_tri_co_nguoi, c.so_vi_tri);
+                return (
+                  <tr key={c.cap_bac}>
+                    <td className="khong-ngat">{NHAN_CAP_BAC[c.cap_bac] ?? c.cap_bac}</td>
+                    <td className="so">{c.so_vi_tri_co_nguoi}/{c.so_vi_tri}</td>
+                    <td style={{ minWidth: 120 }}>
+                      <div className="thanh-tien-do">
+                        <div
+                          className={tile === 100 ? 'thanh-tien-do-day du' : 'thanh-tien-do-day'}
+                          style={{ width: `${tile}%` }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
