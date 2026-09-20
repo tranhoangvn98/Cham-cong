@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.104.0] — 2026-09-21
+
+**Thêm mới: tab “Tổng quan” trong trang Tổ chức & Trách nhiệm — bảng điều khiển
+  theo dõi cơ cấu quản trị.**
+
+- 7 ô số liệu: vị trí có người giữ, nhân viên gắn vị trí (kèm số người kiêm nhiệm),
+  nhóm trách nhiệm, đầu việc (kèm số đang sinh việc định kỳ), lỗ hổng bao phủ (bấm
+  để nhảy sang tab Cơ cấu & bao phủ), mã báo cáo (kèm số mã đã nộp 30 ngày), việc
+  JD trong tháng (xong / quá hạn).
+- Hai thanh bao phủ: theo **nhóm trách nhiệm** (23 nhóm — bao nhiêu task đã có người
+  thực hiện, bao nhiêu đang sinh việc) và theo **cấp bậc vị trí** (5 cấp — vị trí nào
+  chưa có người giữ). Đủ 100% thì thanh chuyển xanh.
+- API mới `/api/to-chuc/tong-quan`; test e2e canh số liệu khớp (45 vị trí / 23 nhóm /
+  67 TN / 296 đầu việc, tổng theo nhóm và cấp bậc đủ).
+
 ## [1.103.0] — 2026-09-21
 
 **Thay đổi: bảng “Lỗ hổng bao phủ” thêm cột Nhóm trách nhiệm.**
