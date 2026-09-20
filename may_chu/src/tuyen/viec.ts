@@ -240,10 +240,10 @@ export async function tuyen_viec(app: FastifyInstance): Promise<void> {
 
     const { sql, ts } = phan_vi_doc_sql(nd);
     const dk: string[] = [`(${sql})`];
-    // Thanh gantt nam giua bat_dau va han; quet theo khoang xem.
-    ts.push(tu_moc);
-    dk.push(`coalesce(v.bat_dau, v.tao_luc) <= $${ts.length}::timestamptz`);
+    // Thanh gantt giao voi cua so xem: bat_dau <= cuoi ky VA han_moc >= dau ky.
     ts.push(den_moc);
+    dk.push(`coalesce(v.bat_dau, v.tao_luc) <= $${ts.length}::timestamptz`);
+    ts.push(tu_moc);
     dk.push(`coalesce(v.han_moc, v.han::timestamptz) >= $${ts.length}::timestamptz`);
     if (nhom_id !== null) {
       ts.push(nhom_id);
