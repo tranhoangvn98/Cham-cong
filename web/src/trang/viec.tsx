@@ -145,6 +145,86 @@ function danh_sach_ngay(tu: string, den: string): string[] {
   return kq;
 }
 
+/** Bo dau tieng Viet de tim kiem khong can go dau (vd go "hoang" van ra "Hoàng"). */
+function khong_dau(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+    .toLowerCase();
+}
+
+/**
+ * O chon nhan vien GO DUOC: go ten hoac ma de loc thay vi cuon danh sach dai.
+ * `co_tat_ca` them muc "Mọi nhân viên" (id rong) dung cho bo loc.
+ */
+function ChonNhanVien(
+  { nv, gia_tri, khi_chon, co_tat_ca = false, chi_hoat_dong = false }: {
+    nv: NhanVienGon[];
+    gia_tri: string;
+    khi_chon: (id: string) => void;
+    co_tat_ca?: boolean;
+    chi_hoat_dong?: boolean;
+  },
+): ReactNode {
+  const [mo, dat_mo] = useState(false);
+  const [tim, dat_tim] = useState('');
+  const da_chon = nv.find((x) => x.id === gia_tri) ?? null;
+  const ds_goc = chi_hoat_dong ? nv.filter((x) => x.dang_hoat_dong) : nv;
+  const tu = khong_dau(tim.trim());
+  const ds = tu === ''
+    ? ds_goc.slice(0, 60)
+    : ds_goc
+      .filter((x) => khong_dau(x.ho_ten).includes(tu) || x.ma_nv.toLowerCase().includes(tu))
+      .slice(0, 60);
+
+  const chon = (id: string): void => {
+    khi_chon(id);
+    dat_tim('');
+    dat_mo(false);
+  };
+
+  return (
+    <div className="cv-chon">
+      <input
+        className="cv-chon-input"
+        value={mo ? tim : (da_chon?.ho_ten ?? '')}
+        placeholder={da_chon === null ? 'Gõ tên hoặc mã để tìm…' : 'Gõ để đổi người…'}
+        onFocus={() => { dat_mo(true); dat_tim(''); }}
+        onChange={(e) => { dat_mo(true); dat_tim(e.target.value); }}
+        onBlur={() => dat_mo(false)}
+      />
+      {mo && (
+        <ul className="cv-chon-o" role="listbox">
+          {co_tat_ca && (
+            <li
+              role="option"
+              className={gia_tri === '' ? 'cv-chon-muc cv-chon-muc-chon' : 'cv-chon-muc'}
+              onMouseDown={(e) => { e.preventDefault(); chon(''); }}
+            >
+              Mọi nhân viên
+            </li>
+          )}
+          {ds.length === 0 ? (
+            <li className="cv-chon-rong">Không có ai khớp “{tim.trim()}”</li>
+          ) : ds.map((x) => (
+            <li
+              key={x.id} role="option"
+              className={gia_tri === x.id ? 'cv-chon-muc cv-chon-muc-chon' : 'cv-chon-muc'}
+              onMouseDown={(e) => { e.preventDefault(); chon(x.id); }}
+            >
+              {x.ho_ten} ({x.ma_nv}){x.dang_hoat_dong ? '' : ' · đã nghỉ'}
+            </li>
+          ))}
+          {tu === '' && ds_goc.length > 60 && (
+            <li className="cv-chon-rong">Còn {ds_goc.length - 60} người — gõ tên để tìm…</li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- trang chinh
 type TabViec = 'danh_sach' | 'gantt' | 'dinh_ky' | 'workflow';
 
@@ -218,12 +298,10 @@ function ManDanhSach({ la_qly }: { la_qly: boolean }): ReactNode {
           {TT_LOC.map((t) => <option key={t} value={t}>{NHAN_TT[t]}</option>)}
         </select>
         {la_qly && (
-          <select value={nhan_vien_id} onChange={(e) => dat_nhan_vien_id(e.target.value)}>
-            <option value="">Mọi nhân viên</option>
-            {(nv.du_lieu ?? []).map((x) => (
-              <option key={x.id} value={x.id}>{x.ho_ten} ({x.ma_nv})</option>
-            ))}
-          </select>
+          <ChonNhanVien
+            nv={nv.du_lieu ?? []} gia_tri={nhan_vien_id} khi_chon={dat_nhan_vien_id}
+            co_tat_ca
+          />
         )}
         <input
           value={tim} placeholder="Tìm theo tên việc hoặc người nhận"
@@ -337,12 +415,10 @@ function FormTaoViec({ la_qly, khi_xong }: { la_qly: boolean; khi_xong: () => vo
       {la_qly ? (
         <label>
           Người nhận (bắt buộc)
-          <select value={f.nhan_vien_id} onChange={doi('nhan_vien_id')}>
-            <option value="">— chọn nhân viên —</option>
-            {(nv.du_lieu ?? []).filter((x) => x.dang_hoat_dong).map((x) => (
-              <option key={x.id} value={x.id}>{x.ho_ten} ({x.ma_nv})</option>
-            ))}
-          </select>
+          <ChonNhanVien
+            nv={nv.du_lieu ?? []} gia_tri={f.nhan_vien_id} chi_hoat_dong
+            khi_chon={(id) => dat({ ...f, nhan_vien_id: id })}
+          />
         </label>
       ) : (
         <div className="cv-ghi-chu">Bạn đang tạo việc cho chính mình.</div>
@@ -708,12 +784,10 @@ function FormMauDinhKy({ khi_xong }: { khi_xong: () => void }): ReactNode {
     <div className="cv-form">
       <label>
         Người nhận (bắt buộc)
-        <select value={f.nhan_vien_id} onChange={doi('nhan_vien_id')}>
-          <option value="">— chọn nhân viên —</option>
-          {(nv.du_lieu ?? []).filter((x) => x.dang_hoat_dong).map((x) => (
-            <option key={x.id} value={x.id}>{x.ho_ten} ({x.ma_nv})</option>
-          ))}
-        </select>
+        <ChonNhanVien
+          nv={nv.du_lieu ?? []} gia_tri={f.nhan_vien_id} chi_hoat_dong
+          khi_chon={(id) => dat({ ...f, nhan_vien_id: id })}
+        />
       </label>
       <label>
         Tên mẫu (bắt buộc)
@@ -841,12 +915,10 @@ function DongWorkflow({ w, nap_lai }: { w: WorkflowCF; nap_lai: () => void }): R
           )}
         </select>
         {f.nguoi_nhan_kieu === 'co_dinh' && (
-          <select value={f.nhan_vien_id} onChange={doi('nhan_vien_id')}>
-            <option value="">— chọn người phụ trách —</option>
-            {(nv.du_lieu ?? []).filter((x) => x.dang_hoat_dong).map((x) => (
-              <option key={x.id} value={x.id}>{x.ho_ten} ({x.ma_nv})</option>
-            ))}
-          </select>
+          <ChonNhanVien
+            nv={nv.du_lieu ?? []} gia_tri={f.nhan_vien_id} chi_hoat_dong
+            khi_chon={(id) => dat({ ...f, nhan_vien_id: id })}
+          />
         )}
         <label>
           Hạn sau (giờ)

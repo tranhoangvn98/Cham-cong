@@ -2623,3 +2623,18 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .vt-nguon-ho_so { background: #94a3b8; }
 .vt-han { font-size: 0.8rem; color: var(--chu-mo, #64748b); flex: none; }
 .vt-buoc { font-size: 0.78rem; color: var(--chu-mo, #64748b); flex: none; }
+/* O chon nhan vien GO DUOC trong trang cong viec */
+.cv-chon { position: relative; }
+.cv-chon-input { width: 100%; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--vien, #e4e4e7); }
+.cv-chon-o {
+  list-style: none; margin: 4px 0 0; padding: 4px;
+  position: absolute; z-index: 40; top: 100%; left: 0; right: 0;
+  max-height: 280px; overflow-y: auto;
+  background: var(--nen-the, #fff);
+  border: 1px solid var(--vien, #e4e4e7); border-radius: 8px;
+  box-shadow: var(--bong-noi, 0 6px 16px rgb(0 0 0 / 8%));
+}
+.cv-chon-muc { padding: 7px 10px; cursor: pointer; font-size: 0.88rem; border-radius: 6px; }
+.cv-chon-muc:hover { background: var(--chinh-nhat, #eff6ff); }
+.cv-chon-muc-chon { background: var(--chinh-nhat, #eff6ff); font-weight: 600; }
+.cv-chon-rong { padding: 7px 10px; color: var(--chu-mo, #71717a); font-size: 0.85rem; }
