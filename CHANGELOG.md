@@ -2,6 +2,16 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.104.3] — 2026-09-21
+
+**Thay đổi: tối ưu hiển thị màn Full HD — nội dung căn giữa, tiêu đề thăng cột với nội dung.**
+
+- Khối nội dung các trang (`.noi-dung`, rộng tối đa 1280px) giờ căn giữa trong vùng còn lại —
+  trên màn 1920 không còn dính mép trái và bỏ trống một dải rộng bên phải.
+- Tiêu đề đầu trang (`.dau-app-trong`) căn theo đúng chiều rộng 1280px của nội dung bên dưới,
+  đường viền chân header vẫn chạy hết chiều ngang; trang Tổng quan dạng bảng điều khiển (2040px)
+  thì tiêu đề cũng theo 2040px.
+
 ## [1.104.2] — 2026-09-21
 
 **Thay đổi: rà soát toàn bộ bảng — phân trang + chọn 20/50/100 dòng mỗi trang.**

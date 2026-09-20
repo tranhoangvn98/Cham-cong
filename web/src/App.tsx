@@ -476,6 +476,7 @@ function BoCuc(): ReactNode {
 
       <main className="than">
         <header className="dau-app">
+          <div className="dau-app-trong">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
             <button
               className="nut-tron nut-menu"
@@ -515,6 +516,7 @@ function BoCuc(): ReactNode {
             <div className="anh-dai-dien" title={nd?.ho_ten ?? ''} aria-hidden="true">
               {chu_dau}
             </div>
+          </div>
           </div>
         </header>
 

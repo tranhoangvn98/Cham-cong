@@ -176,6 +176,13 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
 .dau-app-tieu-de { font-weight: 600; font-size: 17px; }
 .dau-app-phu { font-size: 12.5px; color: var(--chu-mo); }
 .dau-app-nut { display: flex; align-items: center; gap: 10px; }
+/* Lo canh giua cung chieu rong voi `.noi-dung` (1280) de tieu de va noi dung thang cot nhau
+   tren man rong; trang Bang dieu khien (tong quan) duoc rong hon thi no theo 2040. */
+.dau-app-trong {
+  width: 100%; max-width: 1280px; margin: 0 auto;
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+}
+.than:has(> .noi-dung > .bang-dieu-khien) .dau-app-trong { max-width: 2040px; }
 
 .nut-tron {
   width: 36px;
@@ -206,7 +213,15 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
   flex: 0 0 auto;
 }
 
-.noi-dung { padding: 22px; max-width: 1280px; flex: 1; }
+.noi-dung {
+  padding: 22px;
+  max-width: 1280px;
+  flex: 1;
+  /* Man Full HD (1920) rong hon 1280 + thanh ben: can giua khoi noi dung thay vi dinh
+     mep trai va bo trong mot dai rong ben phai. */
+  margin: 0 auto;
+  width: 100%;
+}
 
 .dau-trang {
   display: flex;
