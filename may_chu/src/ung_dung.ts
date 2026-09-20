@@ -23,6 +23,7 @@ import { tuyen_kpi } from './tuyen/kpi.ts';
 import { tuyen_dong_bo_erp } from './tuyen/dong_bo_erp.ts';
 import { tuyen_toi } from './tuyen/toi.ts';
 import { tuyen_viec } from './tuyen/viec.ts';
+import { tuyen_to_chuc } from './to_chuc/tuyen.ts';
 import { tuyen_thong_bao } from './tuyen/thong_bao.ts';
 import { tuyen_thong_bao_ai } from './tuyen/thong_bao_ai.ts';
 import { tuyen_de_xuat } from './tuyen/de_xuat.ts';
@@ -188,6 +189,7 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   await app.register(tuyen_don_tu, { prefix: '/api/duyet' });
   await app.register(tuyen_toi, { prefix: '/api/toi' });
   await app.register(tuyen_viec, { prefix: '/api/viec' });
+  await app.register(tuyen_to_chuc, { prefix: '/api/to-chuc' });
   await app.register(tuyen_quan_tri, { prefix: '/api/quan-tri' });
   // API cho he thong ngoai. Prefix rieng + xac thuc bang khoa API, xem tuyen/tich_hop.ts.
   await app.register(tuyen_tich_hop, { prefix: '/api/v1' });

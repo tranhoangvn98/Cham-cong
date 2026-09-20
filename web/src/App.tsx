@@ -16,6 +16,7 @@ import { TrangThietBi } from './trang/thiet_bi.tsx';
 import { TrangDuyetDon } from './trang/duyet_don.tsx';
 import { TrangQuanLyPhep } from './trang/quan_ly_phep.tsx';
 import { TrangViec } from './trang/viec.tsx';
+import { TrangToChuc } from './trang/to_chuc.tsx';
 import { TrangKhieuNaiLuong } from './trang/khieu_nai_luong.tsx';
 import { TrangCaLam, TrangDiaDiem, TrangNgayLe } from './trang/cai_dat.tsx';
 import { TrangLamBu } from './trang/lam_bu.tsx';
@@ -104,6 +105,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Nhân sự & lương', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
   { duong_dan: '/quan-ly-phep', ten: 'Quản lý phép', icon: 'calendar-stats', nhom: 'Nhân sự & lương', phu: 'Tổng hợp ngày phép từng người', quyen: 'nguoi_duyet' },
   { duong_dan: '/cong-viec', ten: 'Công việc', icon: 'check', nhom: 'Nhân sự & lương', phu: 'Giao việc, duyệt kết quả, lịch công việc', quyen: 'nguoi_duyet', ca_nhan: true },
+  { duong_dan: '/to-chuc', ten: 'Tổ chức & trách nhiệm', icon: 'sitemap', nhom: 'Nhân sự & lương', phu: 'Cơ cấu, vị trí, JD, RACI, bao phủ', quyen: 'nhan_su' },
   { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Nhân sự & lương', phu: 'Chấm điểm từ dữ liệu thật', quyen: 'nhan_su' },
   { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Nhân sự & lương', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
   { duong_dan: '/khieu-nai-luong', ten: 'Khiếu nại lương', icon: 'receipt-2', nhom: 'Nhân sự & lương', phu: 'Khiếu nại phiếu lương của nhân viên', quyen: 'nhan_su' },
@@ -222,6 +224,7 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     case '/duyet-don': return <TrangDuyetDon />;
     case '/quan-ly-phep': return la_nguoi_duyet() ? <TrangQuanLyPhep /> : <KhongCoQuyen />;
     case '/cong-viec': return <TrangViec />;
+    case '/to-chuc': return la_nhan_su() ? <TrangToChuc /> : <KhongCoQuyen />;
     case '/nhan-vien': return <TrangNhanVien />;
     case '/bang-luong': return la_nhan_su() ? <TrangBangLuong /> : <KhongCoQuyen />;
     case '/phu-cap': return la_nhan_su() ? <TrangQuanLyPhuCap /> : <KhongCoQuyen />;

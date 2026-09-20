@@ -17,6 +17,7 @@ const GOI = join(THU_MUC, '..', 'package.json');
 /** Chay rieng vi can CSDL that; xem script `test_e2e`. */
 const CHAY_RIENG = new Set([
   'e2e.test.ts',
+  'to_chuc_e2e.test.ts',
   'proxy_tin_cay.test.ts',
   'su_kien_nhan_su.test.ts',
   'thong_bao_ai_e2e.test.ts',

@@ -431,6 +431,23 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       'Truy cập dữ liệu cá nhân nhạy cảm (CCCD, số BHXH, hồ sơ sức khỏe) được ghi lại theo NĐ 13/2023.',
     ],
   },
+  {
+    duong_dan: '/to-chuc',
+    tom_tat: 'Cơ cấu tổ chức – vị trí – trách nhiệm: JD phân tầng 3 cấp, RACI, bao phủ và đo lường.',
+    buoc: [
+      { chu: 'Tab "Cơ cấu & bao phủ": xem cây nhóm trách nhiệm → trách nhiệm chi tiết → đầu việc; đèn đỏ chỉ đầu việc chưa có người thực hiện.', vai_tro: NHAN_SU },
+      { chu: 'Tab "Vị trí & JD": chọn vị trí, xem từng đầu việc (KPI, SLA, ngưỡng phân cấp, mã báo cáo); bấm "Chi tiết / sửa" để điền RACI và step.', vai_tro: NHAN_SU },
+      { chu: 'Thêm vị trí mới, thêm đầu việc bám vào trách nhiệm chi tiết có sẵn, hoặc SAO CHÉP đầu việc đã có kèm RACI + checklist.', vai_tro: NHAN_SU },
+      { chu: 'Tab "Nhân viên": gán vị trí cho từng người (một người kiêm nhiệm nhiều vị trí). Gán xong, hệ thống tự sinh việc định kỳ theo tần suất của từng đầu việc.', vai_tro: NHAN_SU },
+      { chu: 'Tab "Đo lường trách nhiệm": xem ai đang làm tròn trách nhiệm (tỷ lệ hoàn thành, quá hạn, chờ duyệt trong kỳ).', vai_tro: NHAN_SU },
+      { chu: 'Tab "Mã báo cáo": danh mục 208 mã BC sinh tự động từ JD.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Nhân viên xem trách nhiệm của chính mình ở trang Công việc → tab "Trách nhiệm của tôi" — hệ thống tính từ các vị trí họ đang giữ.',
+      'Đầu việc tần suất "Phát sinh" hoặc "Liên tục" không sinh việc tự động — chỉ làm căn cứ khi giao việc tay.',
+      'Trưởng phòng quản lý trách nhiệm chi tiết nào thì được sửa rule (tần suất, SLA, KPI, RACI) của các đầu việc thuộc khối đó, không đụng được khối khác.',
+    ],
+  },
 ];
 
 const THEO_DUONG = new Map(HUONG_DAN.map((h) => [h.duong_dan, h]));

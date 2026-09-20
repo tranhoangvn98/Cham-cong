@@ -9,6 +9,7 @@ import { bat_soan_van_ban, dung_soan_van_ban } from './su_kien/soan_van_ban_day.
 import { bat_giam_sat_may, dung_giam_sat_may } from './su_kien/giam_sat_may.ts';
 import { dung_ung_dung } from './ung_dung.ts';
 import { kiem_tra_luu_tru } from './tien_ich/luu_tep.ts';
+import { nap_jd_neu_trong } from './to_chuc/du_lieu_jd.ts';
 
 const app = await dung_ung_dung();
 
@@ -38,6 +39,17 @@ try {
 
   if (cau_hinh.tu_dong_di_tru) {
     await chay_di_tru((s) => app.log.info(s));
+  }
+
+  // Nap JD (phan tang trach nhiem) neu bang con trong. Idempotent — khong trung.
+  try {
+    const jd = await nap_jd_neu_trong();
+    app.log.info(
+      { so_vi_tri: jd.vi_tri, so_dau_viec: jd.dau_viec, so_ma_bc: jd.ma_bc },
+      'da kiem tra JD — so dau viec moi nap: ' + String(jd.dau_viec),
+    );
+  } catch (loi) {
+    app.log.error({ loi: (loi as Error).message }, 'LOI khi nap JD — he thong van chay, khong co du lieu trach nhiem moi.');
   }
 
   bat_tien_trinh_day();

@@ -2,6 +2,30 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.101.0] — 2026-09-20
+
+**Thêm mới: Quản lý cơ cấu tổ chức – vị trí – trách nhiệm (JD phân tầng + RACI + PDCA).**
+
+- Bảng 4 tầng: `nhom_trach_nhiem` (23) → `tn_chi_tiet` (67, có người quản trị) → `dau_viec`
+  (296, gắn vị trí thực thi, tần suất, SLA, KPI, mã BC, ngưỡng phân cấp) → `dau_viec_buoc`
+  (step checklist); RACI theo vai trò (CEO/TP/TN/NV-CV/TBKS); `bao_cao_mau` 208 mã BC;
+  `nhan_vien_vi_tri` cho kiêm nhiệm nhiều vị trí.
+- Seed tự động lúc khởi động từ file “Sổ làm việc số 01 – phân tầng 3 cấp trách nhiệm –
+  task” (idempotent, `on conflict do nothing`) — gồm đủ input/output/KPI/SLA/57 ngưỡng
+  phân cấp xử lý.
+- Gán vị trí cho nhân viên → tự sinh mẫu việc định kỳ `nguon='jd'` theo tần suất (ngày /
+  tuần / 2 tuần / tháng / quý / năm / 6 tháng); việc sinh ra gắn đầu việc JD + copy step
+  checklist; tần suất “Phát sinh”/“Liên tục” chỉ làm căn cứ giao việc tay.
+- Web trang `/to-chuc`: Cơ cấu & bao phủ (đèn báo đầu việc chưa có người thực hiện) ·
+  Vị trí & JD (sửa RACI + step, thêm vị trí/đầu việc mới, SAO CHÉP đầu việc kèm checklist) ·
+  Nhân viên (gán kiêm nhiệm) · Đo lường trách nhiệm · Mã báo cáo (đối chiếu nộp 30 ngày).
+- Trang `/cong-viec` thêm tab **Trách nhiệm của tôi**: nhân viên biết mình đang thực hiện
+  trách nhiệm gì, từng đầu việc đã sinh chưa / xong / chờ duyệt / quá hạn và nộp báo cáo
+  mã BC chưa — kèm thanh tiến độ “đã làm đủ chưa”.
+- Phân quyền: trưởng phòng quản lý trách nhiệm chi tiết nào thì được sửa rule (tần suất,
+  SLA, KPI, RACI) của đầu việc thuộc khối đó; báo cáo nộp kèm `ma_bc`/`dau_viec_id`.
+- Xem tài liệu `tai_lieu/TO-CHUC-TRACH-NHIEM.md`.
+
 ## [1.100.0] — 2026-09-20
 
 **Thêm mới: module Quản lý công việc — giao việc, checklist, gantt, định kỳ, workflow.**

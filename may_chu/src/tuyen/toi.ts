@@ -23,6 +23,7 @@ import {
 } from './trang_thai_bao.ts';
 import { CAC_LOAI, MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_don.ts';
 import { don_cua_nhan_vien, huy_don, tao_don } from '../don_tu/nghiep_vu.ts';
+import { trach_nhiem_cua_nhan_vien } from '../to_chuc/doc.ts';
 import { ket_qua_cua_don, nop_ket_qua } from '../don_tu/ket_qua_ot.ts';
 import { tu_dong_quyet_don, TU_NGAY_AP } from '../don_tu/tu_dong_duyet.ts';
 import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
@@ -482,6 +483,15 @@ export async function phieu_luong_cua_toi(
 
 export async function tuyen_toi(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', can_dang_nhap);
+
+  // ================================================================ trach nhiem cua toi
+  // Tu cac vi tri dang giu (kiem nhiem) suy ra nhom TN -> TN chi tiet -> dau viec,
+  // kem trang thai ky hien tai de nhan vien biet da lam du trach nhiem chua.
+  app.get('/trach-nhiem', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    if (nv_id === null) return [];
+    return trach_nhiem_cua_nhan_vien(nv_id);
+  });
 
   // ================================================================ hom nay
   app.get('/hom-nay', async (req) => {

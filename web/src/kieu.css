@@ -2526,6 +2526,10 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .cv-tab-chon:hover { background: var(--chinh-dam, #2563eb); }
 .cv-tab-phu { color: var(--chu-mo, #64748b); font-size: 0.85rem; }
 
+/* Trang to chuc - trach nhiem (JD) */
+.tc-thanh { height: 10px; border-radius: 999px; background: var(--nen-mo, #e2e8f0); overflow: hidden; }
+.tc-thanh-trong { height: 100%; background: var(--tot, #16a34a); border-radius: 999px; transition: width 0.3s; }
+
 .cv-hang-loc { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .cv-hang-loc select, .cv-hang-loc input { padding: 7px 10px; border-radius: 8px; }
 
@@ -2638,3 +2642,7 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .cv-chon-muc:hover { background: var(--chinh-nhat, #eff6ff); }
 .cv-chon-muc-chon { background: var(--chinh-nhat, #eff6ff); font-weight: 600; }
 .cv-chon-rong { padding: 7px 10px; color: var(--chu-mo, #71717a); font-size: 0.85rem; }
+/* Danh sach workflow + popup cau hinh */
+.cv-mo-ta-nho { color: var(--chu-mo, #71717a); font-size: 0.8rem; margin-top: 2px; }
+.cv-thieu { color: var(--canh-bao, #b45309); }
+.cv-form-check { flex-direction: row !important; align-items: center; gap: 8px !important; }

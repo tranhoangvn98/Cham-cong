@@ -170,6 +170,9 @@ alter table cong_viec_mau_dinh_ky
   add column if not exists dau_viec_id uuid references dau_viec(id) on delete set null;
 create index if not exists cong_viec_mau_dau_viec_idx
   on cong_viec_mau_dinh_ky(dau_viec_id);
+-- Mot nhan vien chi co MOT mau sinh cho mot dau viec (bat/tat lai dung lai mau do).
+create unique index if not exists cong_viec_mau_nv_dau_viec_idx
+  on cong_viec_mau_dinh_ky(nhan_vien_id, dau_viec_id) where dau_viec_id is not null;
 
 alter table cong_viec_mau_dinh_ky drop constraint if exists cong_viec_mau_dinh_ky_nguon_check;
 alter table cong_viec_mau_dinh_ky

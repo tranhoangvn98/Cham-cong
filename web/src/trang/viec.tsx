@@ -2,7 +2,7 @@
 // giao viec, duyet ket qua, chien dich, dinh ky, workflow he thong.
 // Hai giao dien chinh: Danh sach (checklist) va Gantt (tu dung bang CSS grid).
 // Giao dien CA NHAN nam o trang/viec_toi.tsx (tab trong Khu vuc cua toi).
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { goi, la_nguoi_duyet, la_nhan_su, nguoi_dung_hien_tai } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, HopTot, Trong, dung_hanh_dong, dung_nap,
@@ -35,6 +35,8 @@ export interface DongViec {
   nhom_id: string | null;
   ten_nhom: string | null;
   mau_dinh_ky_id: string | null;
+  dau_viec_id: string | null;
+  ten_dau_viec: string | null;
   tao_luc: string;
   so_hanh_dong: number;
   so_hanh_dong_xong: number;
@@ -100,12 +102,12 @@ const MAU_TT: Record<string, string> = {
 };
 const NHAN_NGUON: Record<string, string> = {
   giam_doc: 'Giám đốc giao', he_thong: 'Hệ thống', truong_phong: 'Trưởng phòng giao',
-  lien_phong: 'Liên phòng ban', tu_tao: 'Tự tạo', ho_so: 'Hồ sơ',
+  lien_phong: 'Liên phòng ban', tu_tao: 'Tự tạo', ho_so: 'Hồ sơ', jd: 'JD trách nhiệm',
 };
 const LOP_NGUON: Record<string, string> = {
   giam_doc: 'cv-nguon-giam-doc', he_thong: 'cv-nguon-he-thong',
   truong_phong: 'cv-nguon-truong-phong', lien_phong: 'cv-nguon-lien-phong',
-  tu_tao: 'cv-nguon-tu-tao', ho_so: 'cv-nguon-ho-so',
+  tu_tao: 'cv-nguon-tu-tao', ho_so: 'cv-nguon-ho-so', jd: 'cv-nguon-he-thong',
 };
 const NHAN_UU_TIEN: Record<string, string> = {
   khan: 'Khẩn', cao: 'Cao', thuong: 'Thường', thap: 'Thấp',
@@ -113,6 +115,7 @@ const NHAN_UU_TIEN: Record<string, string> = {
 const NHAN_QUY_TAC: Record<string, string> = {
   hang_ngay: 'Hằng ngày', hang_tuan: 'Hằng tuần',
   hang_thang: 'Hằng tháng', khoang_ngay: 'Mỗi N ngày',
+  hai_tuan: '2 tuần', hang_quy: 'Hằng quý', hang_nam: 'Hằng năm', '6_thang': '6 tháng',
 };
 const TT_LOC = ['moi', 'dang_lam', 'cho_duyet', 'hoan_thanh', 'khong_hoan_thanh', 'huy'] as const;
 
@@ -226,7 +229,7 @@ function ChonNhanVien(
 }
 
 // ---------------------------------------------------------------- trang chinh
-type TabViec = 'danh_sach' | 'gantt' | 'dinh_ky' | 'workflow';
+type TabViec = 'danh_sach' | 'gantt' | 'dinh_ky' | 'workflow' | 'trach_nhiem';
 
 export function TrangViec(): ReactNode {
   const [tab, dat_tab] = useState<TabViec>('danh_sach');
@@ -237,6 +240,7 @@ export function TrangViec(): ReactNode {
   const cac_tab: { ma: TabViec; ten: string }[] = [
     { ma: 'danh_sach', ten: 'Danh sách' },
     { ma: 'gantt', ten: 'Gantt' },
+    { ma: 'trach_nhiem', ten: 'Trách nhiệm của tôi' },
   ];
   if (la_qly) cac_tab.push({ ma: 'dinh_ky', ten: 'Định kỳ' });
   if (la_ns) cac_tab.push({ ma: 'workflow', ten: 'Workflow hệ thống' });
@@ -262,8 +266,133 @@ export function TrangViec(): ReactNode {
 
       {tab === 'danh_sach' && <ManDanhSach la_qly={la_qly} />}
       {tab === 'gantt' && <ManGantt />}
+      {tab === 'trach_nhiem' && <ManTrachNhiem />}
       {tab === 'dinh_ky' && la_qly && <ManDinhKy />}
       {tab === 'workflow' && la_ns && <ManWorkflow />}
+    </div>
+  );
+}
+
+// ================================================================ TRACH NHIEM CUA TOI
+// Tu cac vi tri minh dang giu (kiem nhiem) suy ra nhom TN -> TN chi tiet -> dau viec.
+// Moi dau viec kem trang thai viec gan nhat de nhan vien biet da lam du hay chua.
+interface DongTrachNhiemViec {
+  dau_viec_id: string;
+  ten_dau_viec: string;
+  ten_vi_tri: string | null;
+  tan_suat: string;
+  ma_bc: string | null;
+  kpi: string | null;
+  sla: string | null;
+  viec_id: string | null;
+  viec_trang_thai: string | null;
+  viec_han: string | null;
+  co_bao_cao: boolean;
+  bao_cao_trang_thai: string | null;
+}
+
+interface DongTrachNhiemNhom {
+  nhom_id: string;
+  nhom_ten: string;
+  tn_chi_tiet_id: string | null;
+  tn_chi_tiet_ten: string | null;
+  ten_nguoi_quan_tri: string | null;
+  so_viec: number;
+  so_xong: number;
+  so_cho_duyet: number;
+  so_qua_han: number;
+  so_chua: number;
+  viec: DongTrachNhiemViec[];
+}
+
+const NHAN_TAN_SUAT: Record<string, string> = {
+  hang_ngay: 'Hằng ngày', hang_tuan: 'Hằng tuần', hai_tuan: '2 tuần',
+  hang_thang: 'Hằng tháng', hang_quy: 'Hằng quý', hang_nam: 'Hằng năm',
+  '6_thang': '6 tháng', phat_sinh: 'Phát sinh', lien_tuc: 'Liên tục',
+};
+
+function ManTrachNhiem(): ReactNode {
+  const { du_lieu, dang_tai, loi } = dung_nap<DongTrachNhiemNhom[]>('/api/toi/trach-nhiem', []);
+  if (dang_tai) return <DangTai />;
+  if (loi !== null) return <HopLoi loi={loi} />;
+  const ds = du_lieu ?? [];
+  if (ds.length === 0) {
+    return <Trong tieu_de="Bạn chưa được gán vị trí nào. Liên hệ nhân sự để gán vị trí theo JD." />;
+  }
+  const tong = ds.reduce((t, n) => t + n.so_viec, 0);
+  const tong_xong = ds.reduce((t, n) => t + n.so_xong, 0);
+  return (
+    <div className="cv-trang">
+      <div className="the">
+        <strong>Tiến độ trách nhiệm</strong>
+        <div className="tc-thanh" style={{ marginTop: 8 }}>
+          <div className="tc-thanh-trong" style={{ width: `${tong === 0 ? 0 : Math.round(tong_xong / tong * 100)}%` }} />
+        </div>
+        <p className="mo-ta" style={{ marginTop: 6 }}>
+          Đã hoàn thành {tong_xong}/{tong} đầu việc đã sinh việc trong kỳ
+          {tong === 0 ? ' — việc định kỳ chưa tới ngày sinh, hoặc vị trí của bạn chưa có đầu việc.' : '.'}
+        </p>
+      </div>
+      {ds.map((n) => (
+        <div className="the" key={`${n.nhom_id}:${n.tn_chi_tiet_id ?? ''}`}>
+          <h3>
+            {n.nhom_ten}{n.tn_chi_tiet_ten === null ? '' : ` → ${n.tn_chi_tiet_ten}`}
+            <span className="nhan nhan-mo" style={{ marginLeft: 8 }}>
+              {n.so_xong + n.so_cho_duyet}/{n.so_viec}
+            </span>
+          </h3>
+          {n.ten_nguoi_quan_tri !== null && (
+            <p className="mo-ta">Người quản trị trách nhiệm: {n.ten_nguoi_quan_tri}</p>
+          )}
+          <table>
+            <thead>
+              <tr>
+                <th>Đầu việc</th>
+                <th>Vị trí</th>
+                <th>Tần suất</th>
+                <th>Kỳ hiện tại</th>
+                <th>Báo cáo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {n.viec.map((v) => (
+                <tr key={v.dau_viec_id}>
+                  <td>{v.ten_dau_viec}</td>
+                  <td className="khong-ngat">{v.ten_vi_tri ?? '—'}</td>
+                  <td className="khong-ngat">{NHAN_TAN_SUAT[v.tan_suat] ?? v.tan_suat}</td>
+                  <td>
+                    {v.viec_trang_thai === null ? (
+                      <span className="nhan nhan-mo">Chưa sinh</span>
+                    ) : v.viec_trang_thai === 'hoan_thanh' ? (
+                      <span className="nhan nhan-tot">Hoàn thành</span>
+                    ) : v.viec_trang_thai === 'cho_duyet' ? (
+                      <span className="nhan nhan-canh-bao">Chờ duyệt</span>
+                    ) : v.viec_trang_thai === 'khong_hoan_thanh' ? (
+                      <span className="nhan nhan-xau">Quá hạn</span>
+                    ) : v.viec_trang_thai === 'huy' ? (
+                      <span className="nhan nhan-xau">Đã hủy</span>
+                    ) : (
+                      <span className="nhan nhan-canh-bao">Đang làm</span>
+                    )}
+                    {v.viec_han !== null && <span className="nhan-cot" style={{ marginLeft: 6 }}>{ngay_viet(v.viec_han)}</span>}
+                  </td>
+                  <td>
+                    {v.ma_bc !== null ? (
+                      v.co_bao_cao ? (
+                        <span className="nhan nhan-tot">{v.ma_bc}</span>
+                      ) : (
+                        <span className="nhan nhan-canh-bao">{v.ma_bc} · chưa nộp</span>
+                      )
+                    ) : (
+                      <span className="nhan-cot">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </div>
   );
 }
@@ -861,8 +990,11 @@ function FormMauDinhKy({ khi_xong }: { khi_xong: () => void }): ReactNode {
 }
 
 // ================================================================ WORKFLOW HE THONG
+// Dang DANH SACH: moi su kien la mot dong, bam "Cau hinh" mo popup chinh cau hinh.
 function ManWorkflow(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<WorkflowCF[]>('/api/viec/workflow', []);
+  const [mo, dat_mo] = useState<WorkflowCF | null>(null);
+
   return (
     <div>
       <div className="cv-ghi-chu cv-chu-y">
@@ -870,13 +1002,55 @@ function ManWorkflow(): ReactNode {
         lúc xảy ra), có thể tắt hẳn.
       </div>
       {dang_tai ? <XuongBang /> : loi !== null ? <HopLoi loi={loi} /> : (
-        (du_lieu ?? []).map((w) => <DongWorkflow key={w.ma} w={w} nap_lai={nap_lai} />)
+        <table className="cv-bang">
+          <thead>
+            <tr>
+              <th>Sự kiện</th>
+              <th>Trạng thái</th>
+              <th>Người nhận</th>
+              <th>Hạn sau</th>
+              <th>Ưu tiên</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {(du_lieu ?? []).map((w) => (
+              <tr key={w.ma}>
+                <td>
+                  <b>{w.ten}</b>
+                  <div className="cv-mo-ta-nho">{w.mo_ta}</div>
+                </td>
+                <td>
+                  <span className={`nhan ${w.dang_bat ? 'nhan-tot' : 'nhan-mo'}`}>
+                    {w.dang_bat ? 'Bật' : 'Tắt'}
+                  </span>
+                </td>
+                <td>
+                  {w.nguoi_nhan_kieu === 'truong_phong_lien_quan'
+                    ? 'Trưởng phòng liên quan'
+                    : (w.ho_ten ?? <span className="cv-thieu">Chưa chọn người</span>)}
+                </td>
+                <td>{w.han_sau_gio} giờ</td>
+                <td>{NHAN_UU_TIEN[w.uu_tien] ?? w.uu_tien}</td>
+                <td>
+                  <button className="nut nut-nho" onClick={() => dat_mo(w)}>Cấu hình</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {mo !== null && (
+        <HopThoai tieu_de={`Cấu hình: ${mo.ten}`} khi_dong={() => { dat_mo(null); nap_lai(); }} rong>
+          <FormWorkflow w={mo} khi_xong={() => { dat_mo(null); nap_lai(); }} />
+        </HopThoai>
       )}
     </div>
   );
 }
 
-function DongWorkflow({ w, nap_lai }: { w: WorkflowCF; nap_lai: () => void }): ReactNode {
+/** Popup cau hinh mot su kien workflow. Dong popup khi luu thanh cong. */
+function FormWorkflow({ w, khi_xong }: { w: WorkflowCF; khi_xong: () => void }): ReactNode {
   const hd = dung_hanh_dong();
   const nv = dung_nap<NhanVienGon[]>('/api/nhan-vien', []);
   const [f, dat] = useState({
@@ -884,15 +1058,6 @@ function DongWorkflow({ w, nap_lai }: { w: WorkflowCF; nap_lai: () => void }): R
     nhan_vien_id: w.nhan_vien_id ?? '', han_sau_gio: String(w.han_sau_gio),
     uu_tien: w.uu_tien,
   });
-  // Sau khi LUU, nap_lai() keo cau hinh moi ve nhung `f` la state cu — phai dong bo lai,
-  // neu khong man hinh van hien gia tri truoc khi luu va nguoi dung tuong khong luu duoc.
-  useEffect(() => {
-    dat({
-      dang_bat: w.dang_bat, nguoi_nhan_kieu: w.nguoi_nhan_kieu,
-      nhan_vien_id: w.nhan_vien_id ?? '', han_sau_gio: String(w.han_sau_gio),
-      uu_tien: w.uu_tien,
-    });
-  }, [w]);
   const doi = (k: string) => (e: { target: { value: string } }): void =>
     dat({ ...f, [k]: e.target.value });
 
@@ -907,45 +1072,57 @@ function DongWorkflow({ w, nap_lai }: { w: WorkflowCF; nap_lai: () => void }): R
         uu_tien: f.uu_tien,
       },
     });
-    nap_lai();
   };
 
   return (
-    <div className="cv-workflow">
-      <div className="cv-workflow-ten">{w.ten}</div>
+    <div className="cv-form">
       <div className="cv-mo-ta">{w.mo_ta}</div>
-      <div className="cv-hang-loc">
-        <label>
-          <input type="checkbox" checked={f.dang_bat}
-            onChange={(e) => dat({ ...f, dang_bat: e.target.checked })} /> Bật
-        </label>
+      <label className="cv-form-check">
+        <input type="checkbox" checked={f.dang_bat}
+          onChange={(e) => dat({ ...f, dang_bat: e.target.checked })} /> Bật sự kiện này
+      </label>
+      <label>
+        Người nhận
         <select value={f.nguoi_nhan_kieu} onChange={doi('nguoi_nhan_kieu')}>
           {w.kieu_duoc_chon.includes('co_dinh') && <option value="co_dinh">Người cố định</option>}
           {w.kieu_duoc_chon.includes('truong_phong_lien_quan') && (
             <option value="truong_phong_lien_quan">Trưởng phòng liên quan</option>
           )}
         </select>
-        {f.nguoi_nhan_kieu === 'co_dinh' && (
+      </label>
+      {f.nguoi_nhan_kieu === 'co_dinh' && (
+        <label>
+          Nhân viên phụ trách
           <ChonNhanVien
             nv={nv.du_lieu ?? []} gia_tri={f.nhan_vien_id} chi_hoat_dong
             khi_chon={(id) => dat({ ...f, nhan_vien_id: id })}
           />
-        )}
+        </label>
+      )}
+      <div className="cv-hai-cot">
         <label>
           Hạn sau (giờ)
           <input type="number" min={0} step={0.5} value={f.han_sau_gio} onChange={doi('han_sau_gio')} />
         </label>
-        <select value={f.uu_tien} onChange={doi('uu_tien')}>
-          <option value="thuong">Thường</option>
-          <option value="thap">Thấp</option>
-          <option value="cao">Cao</option>
-          <option value="khan">Khẩn</option>
-        </select>
-        <button className="nut nut-chinh" disabled={hd.dang_chay}
-          onClick={() => void hd.chay(luu, 'Đã lưu cấu hình')}>Lưu</button>
+        <label>
+          Ưu tiên
+          <select value={f.uu_tien} onChange={doi('uu_tien')}>
+            <option value="thuong">Thường</option>
+            <option value="thap">Thấp</option>
+            <option value="cao">Cao</option>
+            <option value="khan">Khẩn</option>
+          </select>
+        </label>
       </div>
       {hd.tot !== null && <HopTot chu={hd.tot} />}
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      <div className="cv-nut-hang">
+        <button className="nut nut-chinh" disabled={hd.dang_chay}
+          onClick={() => void hd.chay(luu, 'Đã lưu cấu hình').then((ok) => { if (ok) khi_xong(); })}>
+          Lưu
+        </button>
+        <button className="nut" onClick={khi_xong}>Đóng</button>
+      </div>
     </div>
   );
 }

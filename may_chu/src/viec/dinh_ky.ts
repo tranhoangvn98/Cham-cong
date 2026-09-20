@@ -25,6 +25,8 @@ export interface MauDinhKy {
   ket_thuc: string | null;
   uu_tien: string;
   sinh_den: string;
+  /** Dau viec JD sinh ra mau nay (null voi mau giao tay). */
+  dau_viec_id?: string | null;
 }
 
 /** Ngay cuoi thang cua 'YYYY-MM-DD'. */
@@ -48,6 +50,10 @@ export function lap_trong_thang(ngay: string, cac_ngay: readonly number[]): bool
  *  - hang_tuan: cac thu trong `cac_thu` (0=CN ... 6=T7).
  *  - hang_thang: cac ngay trong `ngay_trong_thang` (ngay qua dai thi kep vao cuoi thang).
  *  - khoang_ngay: moi `so_ngay` ngay mot lan, moc dau la `bat_dau`.
+ *  - hai_tuan: moi 14 ngay mot lan, moc dau la `bat_dau`.
+ *  - hang_quy: ngay goc cua `bat_dau`, lap moi 3 thang (kep vao cuoi thang).
+ *  - 6_thang: ngay goc cua `bat_dau`, lap moi 6 thang.
+ *  - hang_nam: ngay goc (ngay + thang) cua `bat_dau`, moi nam mot lan.
  */
 export function cac_ngay_lap(mau: MauDinhKy, tu: string, den: string): string[] {
   const ket_thuc = mau.ket_thuc === null ? den : (mau.ket_thuc < den ? mau.ket_thuc : den);
@@ -79,6 +85,28 @@ export function cac_ngay_lap(mau: MauDinhKy, tu: string, den: string): string[] 
       }
       return kq;
     }
+    case 'hai_tuan': {
+      let moc = mau.bat_dau;
+      while (moc <= ket_thuc && kq.length < 400) {
+        if (moc >= tu) kq.push(moc);
+        moc = cong_ngay(moc, 14);
+      }
+      return kq;
+    }
+    case 'hang_quy':
+    case '6_thang':
+    case 'hang_nam': {
+      const [y0, m0, d0] = tach_ngay(mau.bat_dau);
+      const buoc = mau.quy_tac === 'hang_quy' ? 3 : (mau.quy_tac === '6_thang' ? 6 : 12);
+      for (const ng of danh_sach_ngay(tu, ket_thuc)) {
+        const [y, m, d] = tach_ngay(ng);
+        const dk = Math.min(d0, ngay_cuoi_thang(ng));
+        // So thang chenh lech so voi thang goc cua bat_dau, chia het cho buoc.
+        const hieu = (y * 12 + (m - 1)) - (y0 * 12 + (m0 - 1));
+        if (hieu % buoc === 0 && d === dk) kq.push(ng);
+      }
+      return kq;
+    }
     default:
       return [];
   }
@@ -99,18 +127,36 @@ export async function sinh_viec_dinh_ky(hom_nay: string): Promise<number> {
             ngay_trong_thang, so_ngay, to_char(gio_han, 'HH24:MI') as gio_han,
             to_char(bat_dau, 'YYYY-MM-DD') as bat_dau,
             to_char(ket_thuc, 'YYYY-MM-DD') as ket_thuc, uu_tien,
-            to_char(sinh_den, 'YYYY-MM-DD') as sinh_den
+            to_char(sinh_den, 'YYYY-MM-DD') as sinh_den, dau_viec_id
        from cong_viec_mau_dinh_ky
       where dang_bat and sinh_den < $1::date
       order by tao_luc`,
     [hom_nay],
   );
 
+  // Step checklist cua cac dau viec JD (mau nguon 'jd'): tai truoc mot lan, tra
+  // nhanh khi sinh hang loat.
+  const buoc_theo_dv = new Map<string, string[]>();
+  const dv_ids = [...new Set(mau.map((m) => m.dau_viec_id ?? null).filter((x) => x !== null))];
+  if (dv_ids.length > 0) {
+    const dong = await truy_van<{ dau_viec_id: string; ten: string }>(
+      `select dau_viec_id, ten from dau_viec_buoc
+        where dau_viec_id = any($1::uuid[]) order by dau_viec_id, thu_tu, tao_luc`,
+      [dv_ids],
+    );
+    for (const d of dong) {
+      const mang = buoc_theo_dv.get(d.dau_viec_id) ?? [];
+      mang.push(d.ten);
+      buoc_theo_dv.set(d.dau_viec_id, mang);
+    }
+  }
+
   let so_sinh = 0;
   for (const m of mau) {
     const tu = cong_ngay(m.sinh_den, 1);
     const ngay_lap = cac_ngay_lap(m, tu, hom_nay).slice(0, SINH_TOI_DA);
     for (const ng of ngay_lap) {
+      const dv_id = m.dau_viec_id ?? null;
       const tao = await tao_viec(
         {
           nhan_vien_id: m.nhan_vien_id,
@@ -121,13 +167,22 @@ export async function sinh_viec_dinh_ky(hom_nay: string): Promise<number> {
           bat_dau: ng,
           uu_tien: m.uu_tien,
           nhom_id: null,
-          hanh_dong: [],
+          hanh_dong: dv_id === null ? [] : (buoc_theo_dv.get(dv_id) ?? []),
         },
         m.nguon,
         m.nguoi_giao,
         `dinh_ky:${m.id}:${ng}`,
       );
-      if (tao !== null) so_sinh++;
+      if (tao !== null) {
+        so_sinh++;
+        // Ghi nguon JD vao cong viec de truy nguoc dau viec + bao cao ma BC.
+        if (dv_id !== null) {
+          await thuc_thi(
+            'update cong_viec set dau_viec_id = $2 where id = $1',
+            [tao.id, dv_id],
+          );
+        }
+      }
     }
     await thuc_thi(
       'update cong_viec_mau_dinh_ky set sinh_den = $2::date where id = $1',

@@ -142,7 +142,8 @@ const DAC_TA: DacTaNhom[] = [
   },
   {
     nhom: 'bao_cao', duong: 'bao-cao', bang: 'bao_cao', ten: 'báo cáo',
-    cot: 'id, ky, ky_tu, ky_den, tieu_de, noi_dung, trang_thai, phan_hoi, xem_luc, tao_luc',
+    cot: `id, ky, ky_tu, ky_den, tieu_de, noi_dung, trang_thai, phan_hoi, xem_luc,
+          ma_bc, dau_viec_id, cong_viec_id, tao_luc`,
     sap_xep: 'coalesce(ky_tu, tao_luc::date) desc, tao_luc desc',
     truong: {
       ky: (b) => trong_tap(b, 'ky', KY_BAO_CAO, { mac_dinh: 'tuan' }),
@@ -152,6 +153,10 @@ const DAC_TA: DacTaNhom[] = [
       noi_dung: (b) => chuoi(b, 'noi_dung', { toi_da: 50000 }),
       trang_thai: (b) => trong_tap(b, 'trang_thai', TT_BAO_CAO, { mac_dinh: 'da_nop' }),
       phan_hoi: (b) => chuoi(b, 'phan_hoi', { toi_da: 5000 }),
+      // Nop bao cao theo ma BC cua JD: gan ma + dau viec + cong viec nguon.
+      ma_bc: (b) => chuoi(b, 'ma_bc', { toi_da: 60 }),
+      dau_viec_id: (b) => uuid(b, 'dau_viec_id'),
+      cong_viec_id: (b) => uuid(b, 'cong_viec_id'),
     },
   },
   {
