@@ -135,12 +135,13 @@ export async function bao_phu_theo_tn(): Promise<DongBaoPhuTn[]> {
 
 /** Thong ke dau viec KHONG co nguoi thuc hien (lo hong bao phu). */
 export async function dau_viec_lo_hong(): Promise<{
-  id: string; ten: string; ten_vi_tri: string | null; ten_tn: string | null;
+  id: string; ten: string; ten_vi_tri: string | null; ten_nhom: string | null; ten_tn: string | null;
 }[]> {
   return truy_van(
-    `select dv.id, dv.ten, vt.ten as ten_vi_tri, tc.ten as ten_tn
+    `select dv.id, dv.ten, vt.ten as ten_vi_tri, nh.ten as ten_nhom, tc.ten as ten_tn
        from dau_viec dv
        left join vi_tri vt on vt.id = dv.vi_tri_id
+       left join nhom_trach_nhiem nh on nh.id = dv.nhom_id
        left join tn_chi_tiet tc on tc.id = dv.tn_chi_tiet_id
       where dv.dang_bat
         and not exists (

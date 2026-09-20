@@ -131,7 +131,7 @@ export function TrangToChuc(): ReactNode {
 
 // ================================================================ CO CAU & BAO PHU
 function ManCoCau(): ReactNode {
-  const { du_lieu, dang_tai, loi } = dung_nap<{ theo_tn: DongBaoPhuTn[]; lo_hong: { id: string; ten: string; ten_vi_tri: string | null; ten_tn: string | null }[] }>(
+  const { du_lieu, dang_tai, loi } = dung_nap<{ theo_tn: DongBaoPhuTn[]; lo_hong: { id: string; ten: string; ten_vi_tri: string | null; ten_nhom: string | null; ten_tn: string | null }[] }>(
     '/api/to-chuc/bao-phu', [],
   );
   const dm = dung_nap<{ nhom: DongNhom[]; tn: DongTn[] }>('/api/to-chuc/nhom', []);
@@ -148,13 +148,14 @@ function ManCoCau(): ReactNode {
           <h3>Lỗ hổng bao phủ — đầu việc chưa có người thực hiện ({lo_hong.length})</h3>
           <table>
             <thead>
-              <tr><th>Đầu việc</th><th>Vị trí thực thi</th><th>Trách nhiệm chi tiết</th></tr>
+              <tr><th>Đầu việc</th><th>Vị trí thực thi</th><th>Nhóm trách nhiệm</th><th>Trách nhiệm chi tiết</th></tr>
             </thead>
             <tbody>
               {lo_hong.map((d) => (
                 <tr key={d.id}>
                   <td>{d.ten}</td>
                   <td className="khong-ngat">{d.ten_vi_tri ?? '—'}</td>
+                  <td className="khong-ngat">{d.ten_nhom ?? '—'}</td>
                   <td>{d.ten_tn ?? '—'}</td>
                 </tr>
               ))}

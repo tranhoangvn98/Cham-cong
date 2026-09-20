@@ -128,8 +128,13 @@ test('danh sach vi tri + bao phu tra ve du lieu', async () => {
   const theo_tn = (bp.body as { theo_tn: { so_task: number }[] }).theo_tn;
   assert.ok(theo_tn.length > 60);
   // Truoc khi gan vi tri: moi task deu chua co nguoi thuc hien.
-  const lo_hong = (bp.body as { lo_hong: unknown[] }).lo_hong;
+  const lo_hong = (bp.body as { lo_hong: { ten_nhom: string | null }[] }).lo_hong;
   assert.equal(lo_hong.length, 296);
+  // Moi dau viec deu thuoc mot nhom trach nhiem lon (nhom_id bat buoc) — cot nay
+  // phai tra du ten de bang Lo hong bao phu hien dung, khong roi vao dau gach.
+  for (const d of lo_hong) {
+    assert.ok(d.ten_nhom !== null && d.ten_nhom !== '', 'lo hong thieu ten nhom trach nhiem');
+  }
 });
 
 test('gan vi tri cho nhan vien -> sinh mau dinh ky, sinh viec JD', async () => {
