@@ -2,6 +2,22 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.102.1] — 2026-09-20
+
+**Sửa lỗi: lịch chạy KHÔNG sinh được việc định kỳ nào.**
+
+- `on conflict (khoa_chong_trung)` không khớp chỉ mục unique MỘT PHẦN của `cong_viec`
+  nên `tao_viec` luôn ném lỗi, lịch chạy ghi log rồi bỏ qua im lặng — mọi mẫu định kỳ
+  (kể cả từ JD) đều không ra việc. Sửa thành `on conflict (khoa_chong_trung)
+  where khoa_chong_trung is not null`.
+- Bảng `cong_viec.nguon` chưa chấp nhận giá trị `'jd'` (migration 085) — việc sinh từ
+  JD bị lỗi ràng buộc. Đã mở rộng ràng buộc (chỉ rộng ra, không thu hẹp).
+
+**Khác:**
+
+- E2e to_chuc đạt đủ 7/7; chạy lại toàn bộ e2e đối chứng trước/sau cho thấy 11 test
+  lỗi còn lại đều có sẵn từ trước, không do bản sửa này gây ra.
+
 ## [1.102.0] — 2026-09-20
 
 **Thay đổi: tab Workflow hệ thống hiển thị theo danh sách, cấu hình qua popup.**
