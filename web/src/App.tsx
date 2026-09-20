@@ -92,26 +92,32 @@ const MENU: MucMenu[] = [
   // lai cac muc nay nua. Duong dan cu /don-cua-toi, /phieu-luong-toi, /ho-so-toi van song
   // (bookmark, lien ket ngoai) va chuyen huong vao DUNG TAB trong Khu vuc (xem CHUYEN_HUONG).
 
-  // Cham cong: log may + tong hop cong + canh bao ra/vao.
+  // Cham cong: log may + tong hop cong + canh bao ra/vao — tat ca noi ve THOI GIAN LAM VIEC.
   { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: 'Chấm công', phu: 'Log đồng bộ từ máy ADMS', quyen: 'nhan_su' },
   { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: 'Chấm công', phu: 'Tổng hợp theo tháng', quyen: 'quan_tri' },
   { duong_dan: '/ra-vao', ten: 'Ra/vào', icon: 'clock-exclamation', nhom: 'Chấm công', phu: 'Cảnh báo ra/vào & xử lý', quyen: 'nhan_su' },
-  { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Chấm công', phu: 'Tính lương, phiếu từng người', quyen: 'nhan_su' },
-  { duong_dan: '/phu-cap', ten: 'Phụ cấp', icon: 'plus', nhom: 'Chấm công', phu: 'Danh mục khoản · theo khối · cá nhân', quyen: 'nhan_su' },
-  { duong_dan: '/ung-luong', ten: 'Ứng lương', icon: 'download', nhom: 'Chấm công', phu: 'Tạm ứng · duyệt · đã chi', quyen: 'nhan_su' },
 
-  // Nhan su & luong: quan tri ho so nguoi lao dong.
-  { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Nhân sự & lương', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
-  { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Nhân sự & lương', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
-  { duong_dan: '/quan-ly-phep', ten: 'Quản lý phép', icon: 'sun', nhom: 'Nhân sự & lương', phu: 'Tổng hợp ngày phép từng người', quyen: 'nguoi_duyet' },
-  { duong_dan: '/cong-viec', ten: 'Công việc', icon: 'check', nhom: 'Nhân sự & lương', phu: 'Giao việc, duyệt kết quả, lịch công việc', quyen: 'nguoi_duyet', ca_nhan: true },
-  { duong_dan: '/to-chuc', ten: 'Tổ chức & trách nhiệm', icon: 'menu-2', nhom: 'Nhân sự & lương', phu: 'Cơ cấu, vị trí, JD, RACI, bao phủ', quyen: 'nhan_su' },
-  { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Nhân sự & lương', phu: 'Chấm điểm từ dữ liệu thật', quyen: 'nhan_su' },
-  { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Nhân sự & lương', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
-  { duong_dan: '/khieu-nai-luong', ten: 'Khiếu nại lương', icon: 'file-text', nhom: 'Nhân sự & lương', phu: 'Khiếu nại phiếu lương của nhân viên', quyen: 'nhan_su' },
-  { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: 'Nhân sự & lương', phu: 'Đăng thông báo / gửi email / popup toàn công ty', quyen: 'nhan_su' },
-  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: 'Nhân sự & lương', phu: 'Soạn bằng AI, ban hành, tài liệu công ty', quyen: 'nhan_su' },
-  { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Nhân sự & lương', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
+  // Luong: tien luong cua nguoi lao dong — tu thang luong den ung va khieu nai.
+  { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Lương', phu: 'Tính lương, phiếu từng người', quyen: 'nhan_su' },
+  { duong_dan: '/phu-cap', ten: 'Phụ cấp', icon: 'plus', nhom: 'Lương', phu: 'Danh mục khoản · theo khối · cá nhân', quyen: 'nhan_su' },
+  { duong_dan: '/ung-luong', ten: 'Ứng lương', icon: 'download', nhom: 'Lương', phu: 'Tạm ứng · duyệt · đã chi', quyen: 'nhan_su' },
+  { duong_dan: '/khieu-nai-luong', ten: 'Khiếu nại lương', icon: 'file-text', nhom: 'Lương', phu: 'Khiếu nại phiếu lương của nhân viên', quyen: 'nhan_su' },
+
+  // Nhan su: con nguoi va quan he lao dong.
+  { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
+  { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Nhân sự', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
+  { duong_dan: '/quan-ly-phep', ten: 'Quản lý phép', icon: 'sun', nhom: 'Nhân sự', phu: 'Tổng hợp ngày phép từng người', quyen: 'nguoi_duyet' },
+  { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
+  { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Nhân sự', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
+
+  // Cong viec & to chuc: ai lam gi, lam toi dau.
+  { duong_dan: '/cong-viec', ten: 'Công việc', icon: 'check', nhom: 'Công việc & tổ chức', phu: 'Giao việc, duyệt kết quả, lịch công việc', quyen: 'nguoi_duyet', ca_nhan: true },
+  { duong_dan: '/to-chuc', ten: 'Tổ chức & trách nhiệm', icon: 'menu-2', nhom: 'Công việc & tổ chức', phu: 'Cơ cấu, vị trí, JD, RACI, bao phủ', quyen: 'nhan_su' },
+  { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Công việc & tổ chức', phu: 'Chấm điểm từ dữ liệu thật', quyen: 'nhan_su' },
+
+  // Truyen thong noi bo: thong bao va van ban ban hanh.
+  { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: 'Truyền thông nội bộ', phu: 'Đăng thông báo / gửi email / popup toàn công ty', quyen: 'nhan_su' },
+  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: 'Truyền thông nội bộ', phu: 'Soạn bằng AI, ban hành, tài liệu công ty', quyen: 'nhan_su' },
 
   { duong_dan: '/cai-dat', ten: 'Cài đặt', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp', quyen: 'nhan_su' },
 ];

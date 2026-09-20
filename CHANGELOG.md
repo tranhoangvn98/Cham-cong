@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.104.5] — 2026-09-21
+
+**Thay đổi: tổ chức lại thanh điều hướng thành các nhóm hợp lý.**
+
+- Nhóm cũ "Nhân sự & lương" (11 mục, trộn lương với truyền thông) tách thành:
+  **Lương** (Bảng lương, Phụ cấp, Ứng lương, Khiếu nại lương),
+  **Nhân sự** (Nhân viên, Duyệt đơn, Quản lý phép, Hợp đồng, Kỷ luật & vi phạm),
+  **Công việc & tổ chức** (Công việc, Tổ chức & trách nhiệm, KPI),
+  **Truyền thông nội bộ** (Thông báo, Văn bản công ty).
+- Nhóm "Chấm công" chỉ còn các màn về giờ làm: Chấm công, Bảng công, Ra/vào.
+
 ## [1.104.4] — 2026-09-21
 
 **Sửa lỗi: chuông thông báo tab "Tất cả" không hiện thông báo chưa xem lên đầu.**
