@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.102.2] — 2026-09-21
+
+**Sửa lỗi: 296/296 đầu việc không hiện trách nhiệm chi tiết (bảng Lỗ hổng bao phủ
+  trống cột thứ ba, các nhóm trách nhiệm đếm 0 task).**
+
+- Trong file dữ liệu JD, trường `tn` là **mã** (ví dụ `6.5`), nhưng bước nạp JD lại
+  tra cứu `tn_chi_tiet` theo **tên** nên không khớp dòng nào — toàn bộ đầu việc có
+  `tn_chi_tiet_id = null`. Đổi khoá tra cứu sang `(mã nhóm, mã TN)`.
+- Nạp lại JD tự vá dữ liệu cũ: `on conflict` chỉ bổ sung `tn_chi_tiet_id` còn thiếu,
+  không đè các chỉnh sửa khác của quản trị.
+- Thêm test canh cửa: đơn vị (16 đầu việc `tn = null` đúng như file, 280 mã TN đều
+  khớp danh mục) và e2e (số đầu việc thiếu TN trong CSDL bằng đúng số trong file).
+
 ## [1.102.1] — 2026-09-20
 
 **Sửa lỗi: lịch chạy KHÔNG sinh được việc định kỳ nào.**
