@@ -124,7 +124,7 @@ const COT_VIEC_CONG_KHAI = `
   v.ket_qua, v.phan_hoi, v.ly_do_huy, v.nop_luc, v.hoan_thanh_luc,
   v.nhom_id, v.mau_dinh_ky_id, v.tao_luc,
   nv.ho_ten, nv.ma_nv, pb.ten as ten_phong_ban,
-  nd2.ten as ten_nguoi_giao, cn.ten as ten_nhom,
+  coalesce(nd2.ho_ten, nd.ten_dang_nhap) as ten_nguoi_giao, cn.ten as ten_nhom,
   (select count(*) from cong_viec_hanh_dong hd where hd.cong_viec_id = v.id)::int as so_hanh_dong,
   (select count(*) from cong_viec_hanh_dong hd where hd.cong_viec_id = v.id and hd.xong)::int
     as so_hanh_dong_xong`;
@@ -133,7 +133,8 @@ const TU_VIEC_CONG_KHAI = `
   from cong_viec v
   left join nhan_vien nv on nv.id = v.nhan_vien_id
   left join phong_ban pb on pb.id = nv.phong_ban_id
-  left join nguoi_dung nd2 on nd2.id = v.giao_boi
+  left join nguoi_dung nd on nd.id = v.giao_boi
+  left join nhan_vien nd2 on nd2.id = nd.nhan_vien_id
   left join cong_viec_nhom cn on cn.id = v.nhom_id`;
 
 /** Thu tu sap xep mac dinh: qua han truoc, roi han gan, roi uu tien nguon, roi muc uu tien. */
@@ -346,10 +347,11 @@ export async function tuyen_viec(app: FastifyInstance): Promise<void> {
               to_char(cn.ngay_bat_dau, 'YYYY-MM-DD') as ngay_bat_dau,
               to_char(cn.ngay_ket_thuc, 'YYYY-MM-DD') as ngay_ket_thuc,
               cn.tao_boi, cn.trang_thai, cn.tao_luc,
-              nd2.ten as ten_nguoi_tao,
+              coalesce(nd3.ho_ten, nd2.ten_dang_nhap) as ten_nguoi_tao,
               (select count(*) from cong_viec v where v.nhom_id = cn.id)::int as so_viec
          from cong_viec_nhom cn
          left join nguoi_dung nd2 on nd2.id = cn.tao_boi
+         left join nhan_vien nd3 on nd3.id = nd2.nhan_vien_id
         where ${dk.join(' and ')}
         order by cn.tao_luc desc`,
       ts,
@@ -403,10 +405,11 @@ export async function tuyen_viec(app: FastifyInstance): Promise<void> {
               to_char(md.bat_dau, 'YYYY-MM-DD') as bat_dau,
               to_char(md.ket_thuc, 'YYYY-MM-DD') as ket_thuc,
               md.uu_tien, md.dang_bat, md.tao_luc,
-              nv.ho_ten, nd2.ten as ten_nguoi_giao
+              nv.ho_ten, coalesce(nd3.ho_ten, nd2.ten_dang_nhap) as ten_nguoi_giao
          from cong_viec_mau_dinh_ky md
          join nhan_vien nv on nv.id = md.nhan_vien_id
          left join nguoi_dung nd2 on nd2.id = md.nguoi_giao
+         left join nhan_vien nd3 on nd3.id = nd2.nhan_vien_id
         where ${dk}
         order by md.tao_luc desc`,
       [nd.nv, nd.sub],

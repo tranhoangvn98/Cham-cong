@@ -50,7 +50,7 @@ const COT_VIEC = `
   v.ket_qua, v.phan_hoi, v.ly_do_huy, v.nop_luc, v.hoan_thanh_luc,
   v.nhom_id, v.mau_dinh_ky_id, v.tao_luc,
   nv.ho_ten, nv.ma_nv, pb.ten as ten_phong_ban,
-  nd.ten as ten_nguoi_giao, cn.ten as ten_nhom,
+  coalesce(nd2.ho_ten, nd.ten_dang_nhap) as ten_nguoi_giao, cn.ten as ten_nhom,
   (select count(*) from cong_viec_hanh_dong hd where hd.cong_viec_id = v.id)::int as so_hanh_dong,
   (select count(*) from cong_viec_hanh_dong hd where hd.cong_viec_id = v.id and hd.xong)::int as so_hanh_dong_xong`;
 
@@ -59,6 +59,7 @@ const TU_VIEC = `
   left join nhan_vien nv on nv.id = v.nhan_vien_id
   left join phong_ban pb on pb.id = nv.phong_ban_id
   left join nguoi_dung nd on nd.id = v.giao_boi
+  left join nhan_vien nd2 on nd2.id = nd.nhan_vien_id
   left join cong_viec_nhom cn on cn.id = v.nhom_id`;
 
 /** Dau vao tao viec (da kiem tra o route). */
