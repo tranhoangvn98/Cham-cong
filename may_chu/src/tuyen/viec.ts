@@ -44,9 +44,38 @@ function duoc_quan_ly(nd: NguoiXem): boolean {
   return la_nguoi_duyet(nd.vai_tro);
 }
 
-/** Khoa pham vi cho truy van doc danh sach — kem tham so [nv, sub]. */
-function khoa_doc(nd: NguoiXem): string {
-  return khoa_pham_vi_doc(pham_vi_doc(nd));
+/**
+ * SQL + tham so cua pham vi doc. `tat_ca` tra 'true' KHONG co tham so — truyen thua tham
+ * so cho cau khong co cho chua la loi bind cua PostgreSQL ("bind message supplies N
+ * parameters, but prepared statement requires 0").
+ */
+function phan_vi_doc_sql(nd: NguoiXem): { sql: string; ts: unknown[] } {
+  const pv = pham_vi_doc(nd);
+  if (pv === 'tat_ca') return { sql: 'true', ts: [] };
+  return { sql: khoa_pham_vi_doc(pv), ts: [nd.nv, nd.sub] };
+}
+
+/** Nhu `phan_vi_doc_sql` nhung cho bang cong_viec_nhom. */
+function phan_vi_nhom_sql(nd: NguoiXem): { sql: string; ts: unknown[] } {
+  const pv = pham_vi_doc(nd);
+  if (pv === 'tat_ca') return { sql: 'true', ts: [] };
+  return { sql: khoa_doc_nhom(nd), ts: [nd.nv, nd.sub] };
+}
+
+/** Nhu tren nhung cho bang cong_viec_mau_dinh_ky (nhan vien thuong khong co gi). */
+function phan_vi_mau_sql(nd: NguoiXem): { sql: string; ts: unknown[] } {
+  const pv = pham_vi_doc(nd);
+  if (pv === 'tat_ca') return { sql: 'true', ts: [] };
+  if (pv === 'cua_minh') return { sql: 'false', ts: [] };
+  return {
+    sql: `(md.nguoi_giao = $2 or md.nhan_vien_id = $1 or md.nhan_vien_id in (
+            select nv2.id from nhan_vien nv2
+             where nv2.phong_ban_id in (
+               select pb.id from phong_ban pb where pb.truong_phong_id = $1
+             )
+          ))`,
+    ts: [nd.nv, nd.sub],
+  };
 }
 
 /**
@@ -80,10 +109,12 @@ async function kiem_giao_duoc(
 /** Kiem tra nhom_id hop le va nguoi goi duoc phep dung nhom do. */
 async function kiem_nhom_duoc(nhom_id: string | null, nd: NguoiXem): Promise<void> {
   if (nhom_id === null) return;
+  const { sql, ts } = phan_vi_nhom_sql(nd);
+  ts.push(nhom_id);
   const dong = await truy_van_mot<{ id: string }>(
     `select cn.id from cong_viec_nhom cn
-      where cn.id = $3 and (${khoa_doc_nhom(nd)})`,
-    [nd.nv, nd.sub, nhom_id],
+      where cn.id = $${ts.length} and (${sql})`,
+    ts,
   );
   if (dong === null) throw new LoiKhongTim('Không tìm thấy nhóm công việc thuộc phạm vi của bạn.');
 }
@@ -106,10 +137,12 @@ function khoa_doc_nhom(nd: NguoiXem): string {
 
 /** Doc viec theo id kem pham vi — tra 404 neu ngoai pham vi (khong tiet lo su ton tai). */
 async function viec_trong_pham_vi(id: string, nd: NguoiXem): Promise<DongViec> {
+  const { sql, ts } = phan_vi_doc_sql(nd);
+  ts.push(id);
   const dong = await truy_van_mot<DongViec>(
     `select ${COT_VIEC_CONG_KHAI} ${TU_VIEC_CONG_KHAI}
-      where v.id = $3 and (${khoa_doc(nd)})`,
-    [nd.nv, nd.sub, id],
+      where v.id = $${ts.length} and (${sql})`,
+    ts,
   );
   if (dong === null) throw new LoiKhongTim('Không tìm thấy công việc.');
   return dong;
@@ -163,8 +196,8 @@ export async function tuyen_viec(app: FastifyInstance): Promise<void> {
     // Tai khoan khong noi voi ho so nhan vien nao thi khong co viec nao ca.
     if (nd.nv === null && pham_vi_doc(nd) === 'cua_minh') return { danh_sach: [], tong: 0 };
 
-    const dk: string[] = [`(${khoa_doc(nd)})`];
-    const ts: unknown[] = [nd.nv, nd.sub];
+    const { sql, ts } = phan_vi_doc_sql(nd);
+    const dk: string[] = [`(${sql})`];
     const them = (sql: string, gia_tri: unknown): void => {
       ts.push(gia_tri);
       dk.push(sql.replaceAll('?', `$${ts.length}`));
@@ -205,13 +238,13 @@ export async function tuyen_viec(app: FastifyInstance): Promise<void> {
     const tu_moc = moc_thoi_gian(tu, '00:00').toISOString();
     const den_moc = moc_thoi_gian(den, '23:59').toISOString();
 
-    const dk: string[] = [
-      `(${khoa_doc(nd)})`,
-      // Thanh gantt nam giua bat_dau va han; quet theo khoang xem.
-      `coalesce(v.bat_dau, v.tao_luc) <= $4::timestamptz`,
-      `coalesce(v.han_moc, v.han::timestamptz) >= $3::timestamptz`,
-    ];
-    const ts: unknown[] = [nd.nv, nd.sub, tu_moc, den_moc];
+    const { sql, ts } = phan_vi_doc_sql(nd);
+    const dk: string[] = [`(${sql})`];
+    // Thanh gantt nam giua bat_dau va han; quet theo khoang xem.
+    ts.push(tu_moc);
+    dk.push(`coalesce(v.bat_dau, v.tao_luc) <= $${ts.length}::timestamptz`);
+    ts.push(den_moc);
+    dk.push(`coalesce(v.han_moc, v.han::timestamptz) >= $${ts.length}::timestamptz`);
     if (nhom_id !== null) {
       ts.push(nhom_id);
       dk.push(`v.nhom_id = $${ts.length}`);
@@ -336,8 +369,8 @@ export async function tuyen_viec(app: FastifyInstance): Promise<void> {
   app.get('/nhom', { preHandler: can_dang_nhap }, async (req) => {
     const nd = nd_hien_tai(req);
     const loai = trong_tap(req.query as Record<string, unknown>, 'loai', LOAI_NHOM);
-    const dk: string[] = [`(${khoa_doc_nhom(nd)})`];
-    const ts: unknown[] = [nd.nv, nd.sub];
+    const { sql, ts } = phan_vi_nhom_sql(nd);
+    const dk: string[] = [`(${sql})`];
     if (loai !== null) {
       ts.push(loai);
       dk.push(`cn.loai = $${ts.length}`);
@@ -385,19 +418,7 @@ export async function tuyen_viec(app: FastifyInstance): Promise<void> {
   // ================================================================ MAU DINH KY
   app.get('/mau-dinh-ky', { preHandler: can_dang_nhap }, async (req) => {
     const nd = nd_hien_tai(req);
-    const pv = pham_vi_doc(nd);
-    if (pv === 'cua_minh') {
-      // Nhan vien thuong khong tao mau — tra danh sach rong thay vi loi.
-      return [];
-    }
-    const dk = pv === 'tat_ca'
-      ? 'true'
-      : `(md.nguoi_giao = $2 or md.nhan_vien_id = $1 or md.nhan_vien_id in (
-           select nv2.id from nhan_vien nv2
-            where nv2.phong_ban_id in (
-              select pb.id from phong_ban pb where pb.truong_phong_id = $1
-            )
-         ))`;
+    const { sql, ts } = phan_vi_mau_sql(nd);
     return truy_van(
       `select md.id, md.ten, md.mo_ta, md.nguoi_giao, md.nhan_vien_id, md.nguon, md.quy_tac,
               md.cac_thu, md.ngay_trong_thang, md.so_ngay,
@@ -410,9 +431,9 @@ export async function tuyen_viec(app: FastifyInstance): Promise<void> {
          join nhan_vien nv on nv.id = md.nhan_vien_id
          left join nguoi_dung nd2 on nd2.id = md.nguoi_giao
          left join nhan_vien nd3 on nd3.id = nd2.nhan_vien_id
-        where ${dk}
+        where (${sql})
         order by md.tao_luc desc`,
-      [nd.nv, nd.sub],
+      ts,
     );
   });
 
@@ -467,16 +488,20 @@ export async function tuyen_viec(app: FastifyInstance): Promise<void> {
     const dang_bat = luan_ly(b, 'dang_bat');
     if (dang_bat === null) throw new LoiDauVao('Thiếu trường dang_bat.');
     const pv = pham_vi_doc(nd);
-    const dk = pv === 'tat_ca' ? 'md.id = $1' : `md.id = $1 and (
-      md.nguoi_giao = $2 or md.nhan_vien_id in (
-        select nv2.id from nhan_vien nv2
-         where nv2.phong_ban_id in (
-           select pb.id from phong_ban pb where pb.truong_phong_id = $3
-         )
-      ))`;
+    const sql = pv === 'tat_ca'
+      ? 'md.id = $1'
+      : `md.id = $1 and (
+           md.nguoi_giao = $2 or md.nhan_vien_id in (
+             select nv2.id from nhan_vien nv2
+              where nv2.phong_ban_id in (
+                select pb.id from phong_ban pb where pb.truong_phong_id = $3
+              )
+           )
+         )`;
+    const ts = pv === 'tat_ca' ? [id, dang_bat] : [id, nd.sub, nd.nv, dang_bat];
     const kq = await thuc_thi(
-      `update cong_viec_mau_dinh_ky md set dang_bat = $4 where ${dk}`,
-      [id, nd.sub, nd.nv, dang_bat],
+      `update cong_viec_mau_dinh_ky md set dang_bat = $${ts.length} where ${sql}`,
+      ts,
     );
     if (kq === 0) throw new LoiKhongTim('Không tìm thấy mẫu định kỳ thuộc phạm vi của bạn.');
     return { ok: true };
