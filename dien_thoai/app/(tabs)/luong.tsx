@@ -10,7 +10,7 @@ import { useState, type ReactNode } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { dung_mau, kieu } from '../../nguon/kieu';
 import {
-  Chu, DangTai, Dong, Hop, HopLoi, Nut, OChiSo, The, ThanhTienDo, dung_nap,
+  Chu, DangTai, Dong, Hop, HopLoi, KyHieu, Nut, OChiSo, The, ThanhTienDo, dung_nap,
 } from '../../nguon/thanh_phan';
 import { doi_thang, phut_thanh_chu, ten_thang, thang_nay } from '../../nguon/tien_ich';
 
@@ -400,11 +400,17 @@ export default function ManLuong(): ReactNode {
                     <Dong key={`${d.tu_ngay}:${String(i)}`}
                       cuoi={i === du_lieu.phieu_luong!.nghi.length - 1}>
                       <View style={kieu.nhieu}>
-                        <Chu co="nho">
-                          {ngay_ngan(d.tu_ngay)}
-                          {d.tu_ngay !== d.den_ngay ? ` → ${ngay_ngan(d.den_ngay)}` : ''}
-                          {d.nua_ngay ? ' · nửa ngày' : ''}
-                        </Chu>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <Chu co="nho">{ngay_ngan(d.tu_ngay)}</Chu>
+                          {d.tu_ngay !== d.den_ngay && (
+                            <>
+                              {/* Mui ten khong co glyph trong Be Vietnam Pro — ve bang font he thong. */}
+                              <KyHieu co={13}> → </KyHieu>
+                              <Chu co="nho">{ngay_ngan(d.den_ngay)}</Chu>
+                            </>
+                          )}
+                          {d.nua_ngay && <Chu co="nho"> · nửa ngày</Chu>}
+                        </View>
                         <Chu co="bo" mau="mo">
                           {d.loai === 'khong_luong' ? 'không lương' : 'phép có lương'}
                           {d.trang_thai === 'cho_duyet' ? ' (chờ duyệt)' : ''}

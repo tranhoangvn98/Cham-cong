@@ -2,6 +2,18 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.104.7] — 2026-09-21
+
+**Đồng nhất font chữ: một stack đơn cách duy nhất cho web, bỏ ký tự thiếu glyph trên app.**
+
+- Web từng chỗ dùng mỗi kiểu `font-family` đơn cách một khác (`monospace`,
+  `ui-monospace, monospace`, font mặc định của `<pre>`). Gộp về **một lớp dùng chung
+  `.chu-ma`** trong `web/src/kieu.css` (`ui-monospace, 'Cascadia Code', 'SF Mono', Consolas,
+  'Courier New', monospace` + chữ số dạng bảng), áp cho: khóa API, cột lệnh lịch sử thiết bị,
+  khối lệnh curl và hai khối hiển thị dữ liệu thô (màn cá nhân, nhật ký thiết bị).
+- App: ngày kết thúc hợp đồng dùng mũi tên `→` thiếu glyph trong Be Vietnam Pro — trên máy
+  thật hiện ô vuông rỗng. Vẽ lại bằng `<KyHieu>` (font hệ thống) như chuẩn đã quy ước.
+
 ## [1.104.6] — 2026-09-21
 
 **Sửa lỗi droplist: chọn vị trí/nhân viên/máy… nở rộng quá ô, không tìm kiếm được.**

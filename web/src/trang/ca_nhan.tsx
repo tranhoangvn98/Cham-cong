@@ -43,7 +43,7 @@ class RanhGioiLoi extends Component<{ children: ReactNode }, { loi: Error | null
             Các màn khác vẫn dùng bình thường — bấm sang tab khác rồi quay lại, hoặc tải lại
             trang. Nếu vẫn lỗi, gửi giúp nhân sự dòng chi tiết dưới đây.
           </p>
-          <pre style={{
+          <pre className="chu-ma" style={{
             whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12,
             background: 'var(--nen-mo)', padding: 12, borderRadius: 8, marginTop: 8,
           }}>{this.state.loi.message}</pre>

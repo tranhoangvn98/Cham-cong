@@ -321,7 +321,7 @@ function HopThoaiKhoaMoi(
       <div className="o-nhap">
         <label htmlFor="khoa">Khóa</label>
         <input id="khoa" readOnly value={khoa.khoa} onFocus={(e) => e.currentTarget.select()}
-          style={{ fontFamily: 'monospace', fontSize: 13 }} />
+          className="chu-ma" style={{ fontSize: 13 }} />
       </div>
 
       <div className="o-nhap">

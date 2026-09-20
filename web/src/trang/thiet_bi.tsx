@@ -418,7 +418,7 @@ function LichSuLenh({ thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () =>
               {ds_xem.map((l) => (
                 <tr key={l.id}>
                   <td className="so">{l.id}</td>
-                  <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11.5, maxWidth: 260 }}>
+                  <td className="chu-ma" style={{ fontSize: 11.5, maxWidth: 260 }}>
                     {l.lenh}
                   </td>
                   <td className="khong-ngat">{ngay_gio(l.tao_luc)}</td>
@@ -981,7 +981,7 @@ function KhoaCuaTheoGio(
                 {tho.map((t) => (
                   <div key={t.bang}>
                     <div className="mo-ta"><b>{t.bang}</b> · {t.so_dong} dòng · {ngay_gio(t.luc)}</div>
-                    <pre style={{ margin: 0, padding: 8, overflow: 'auto', maxHeight: 180,
+                    <pre className="chu-ma" style={{ margin: 0, padding: 8, overflow: 'auto', maxHeight: 180,
                       background: 'var(--nen-mo)', borderRadius: 6, fontSize: 12 }}>{t.noi_dung}</pre>
                   </div>
                 ))}

@@ -702,6 +702,12 @@ input[type="checkbox"] {
   word-break: break-all;
   overflow-x: auto;
 }
+/* Font don cach DUNG CHUNG cho ma/khoa/lenh — MOT stack duy nhat cho ca ung dung,
+   khong de moi cho tu nghia mot font khac nhau. */
+.khoi-ma, .chu-ma {
+  font-family: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, 'Courier New', monospace;
+}
+.chu-ma { font-variant-numeric: tabular-nums; }
 .hop-tin { background: var(--lanh-nen); color: var(--lanh); border-color: var(--lanh); }
 
 /* ---------------------------------------------------------------- ky luat: chon hang loat + khieu nai */
