@@ -134,7 +134,8 @@ export async function tao_viec(
              (nhan_vien_id, tieu_de, mo_ta, giao_boi, han, han_gio, han_moc, bat_dau,
               uu_tien, nguon, nhom_id, khoa_chong_trung)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-           on conflict (khoa_chong_trung) do nothing returning id`,
+           on conflict (khoa_chong_trung) where khoa_chong_trung is not null
+           do nothing returning id`,
       [dau_vao.nhan_vien_id, dau_vao.tieu_de, dau_vao.mo_ta, nguoi_giao_id,
         dau_vao.han, dau_vao.han_gio, han_moc,
         dau_vao.bat_dau === null ? null : moc_thoi_gian(dau_vao.bat_dau, '00:00'),
