@@ -2,10 +2,10 @@
 // giao viec, duyet ket qua, chien dich, dinh ky, workflow he thong.
 // Hai giao dien chinh: Danh sach (checklist) va Gantt (tu dung bang CSS grid).
 // Giao dien CA NHAN nam o trang/viec_toi.tsx (tab trong Khu vuc cua toi).
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { goi, la_nguoi_duyet, la_nhan_su, nguoi_dung_hien_tai } from '../api.ts';
 import {
-  DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap,
+  DangTai, HopLoi, HopThoai, HopTot, Trong, dung_hanh_dong, dung_nap,
   hom_nay, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
 
@@ -461,9 +461,10 @@ function FormTaoViec({ la_qly, khi_xong }: { la_qly: boolean; khi_xong: () => vo
         <textarea value={f.hanh_dong} onChange={doi('hanh_dong')} rows={3}
           placeholder={'Bước 1\nBước 2'} />
       </label>
+      {hd.tot !== null && <HopTot chu={hd.tot} />}
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
       <div className="cv-nut-hang">
-        <button className="nut nut-chinh" onClick={() => void hd.chay(gui, 'Đã giao việc')}>Lưu</button>
+        <button className="nut nut-chinh" disabled={hd.dang_chay} onClick={() => void hd.chay(gui, 'Đã giao việc')}>Lưu</button>
         <button className="nut" onClick={khi_xong}>Đóng</button>
       </div>
     </div>
@@ -849,9 +850,10 @@ function FormMauDinhKy({ khi_xong }: { khi_xong: () => void }): ReactNode {
           <option value="khan">Khẩn</option>
         </select>
       </label>
+      {hd.tot !== null && <HopTot chu={hd.tot} />}
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
       <div className="cv-nut-hang">
-        <button className="nut nut-chinh" onClick={() => void hd.chay(gui, 'Đã tạo mẫu định kỳ')}>Lưu</button>
+        <button className="nut nut-chinh" disabled={hd.dang_chay} onClick={() => void hd.chay(gui, 'Đã tạo mẫu định kỳ')}>Lưu</button>
         <button className="nut" onClick={khi_xong}>Đóng</button>
       </div>
     </div>
@@ -882,6 +884,15 @@ function DongWorkflow({ w, nap_lai }: { w: WorkflowCF; nap_lai: () => void }): R
     nhan_vien_id: w.nhan_vien_id ?? '', han_sau_gio: String(w.han_sau_gio),
     uu_tien: w.uu_tien,
   });
+  // Sau khi LUU, nap_lai() keo cau hinh moi ve nhung `f` la state cu — phai dong bo lai,
+  // neu khong man hinh van hien gia tri truoc khi luu va nguoi dung tuong khong luu duoc.
+  useEffect(() => {
+    dat({
+      dang_bat: w.dang_bat, nguoi_nhan_kieu: w.nguoi_nhan_kieu,
+      nhan_vien_id: w.nhan_vien_id ?? '', han_sau_gio: String(w.han_sau_gio),
+      uu_tien: w.uu_tien,
+    });
+  }, [w]);
   const doi = (k: string) => (e: { target: { value: string } }): void =>
     dat({ ...f, [k]: e.target.value });
 
@@ -930,8 +941,10 @@ function DongWorkflow({ w, nap_lai }: { w: WorkflowCF; nap_lai: () => void }): R
           <option value="cao">Cao</option>
           <option value="khan">Khẩn</option>
         </select>
-        <button className="nut nut-chinh" onClick={() => void hd.chay(luu, 'Đã lưu cấu hình')}>Lưu</button>
+        <button className="nut nut-chinh" disabled={hd.dang_chay}
+          onClick={() => void hd.chay(luu, 'Đã lưu cấu hình')}>Lưu</button>
       </div>
+      {hd.tot !== null && <HopTot chu={hd.tot} />}
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
     </div>
   );
