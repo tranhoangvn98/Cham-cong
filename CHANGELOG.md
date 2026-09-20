@@ -2,6 +2,26 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.100.0] — 2026-09-20
+
+**Thêm mới: module Quản lý công việc — giao việc, checklist, gantt, định kỳ, workflow.**
+
+- Bảng `cong_viec` (đang nằm trong hồ sơ nhân sự) được mở rộng thành module công việc đầy
+  đủ: nguồn giao việc (Giám đốc → Hệ thống → Trưởng phòng → Liên phòng → Tự tạo), hạn có
+  giờ, checklist con, phản hồi, khóa chống trùng — bảng cũ vẫn chạy nguyên.
+- Luồng: giao → bắt đầu → nộp kết quả → người giao xác nhận hoặc yêu cầu làm lại; hết hạn
+  chưa nộp tự chuyển **Không hoàn thành** (không có gia hạn) và vào chỉ số KPI mới
+  `so_cong_viec_khong_hoan_thanh`.
+- Trưởng phòng tạo **việc định kỳ** (hằng ngày / tuần / tháng / mỗi N ngày) — lịch chạy
+  đêm tự sinh theo lịch cố định, chống trùng bằng khóa `dinh_ky:<mau>:<ngay>`.
+- **Workflow hệ thống** cấu hình được: máy mất kết nối, đơn chờ duyệt quá hạn, hợp đồng
+  sắp hết hạn → tự giao việc cho người phụ trách kèm hạn.
+- Web: trang `/cong-viec` (Danh sách + Gantt tự dựng CSS + Định kỳ + Workflow) và tab
+  **Công việc** trong Khu vực của tôi (`/ca-nhan/viec`) — xem tài liệu `tai_lieu/CONG-VIEC.md`.
+- App di động: tab Công việc (danh sách theo nhóm + gantt gọn 14 ngày + nộp kết quả).
+- Chuông báo khi giao/nộp/duyệt/từ chối/hủy/quá hạn — bấm mở thẳng việc (man `cong-viec`).
+- Tách bạch quyền: việc của module không sửa được qua tab hồ sơ nhân sự (chỉ `nguon='ho_so'`).
+
 ## [1.99.9] — 2026-09-20
 
 **Sửa lỗi: test e2e trợ lý kiểm tra theo dạng trả lời mới.**

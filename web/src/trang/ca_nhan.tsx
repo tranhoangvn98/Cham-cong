@@ -12,6 +12,7 @@ import { Component, useEffect, useState, type ReactNode } from 'react';
 import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, gui_tep, mui_gio_offset_gio } from '../api.ts';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
 import { TrangPhieuLuongToi, TrangKhieuNaiToi } from './phieu_luong_toi.tsx';
+import { ViecToi } from './viec_toi.tsx';
 import { TrangVanBan } from './van_ban.tsx';
 import { ChuongBao } from './chuong_bao.tsx';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
@@ -366,7 +367,7 @@ function chu_dau(ho_ten: string | null): string {
 
 // ==================================================================== trang goc
 
-type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'phep' | 'khieu_nai' | 'ca_nhan';
+type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'phep' | 'khieu_nai' | 'viec' | 'ca_nhan';
 type FormMo = 'nghi' | 'giai' | 'khac' | 'ot';
 
 // Ten icon KHONG kem tien to `bt-` (giong MENU o App.tsx) — noi render tu ghep `bt bt-${icon}`.
@@ -379,6 +380,7 @@ const CAC_TAB: { ma: Tab; ten: string; icon: string }[] = [
   { ma: 'luong', ten: 'Lương', icon: 'receipt-2' },
   { ma: 'phep', ten: 'Phép', icon: 'calendar-stats' },
   { ma: 'khieu_nai', ten: 'Khiếu nại', icon: 'alert-triangle' },
+  { ma: 'viec', ten: 'Công việc', icon: 'check' },
   { ma: 'ca_nhan', ten: 'Cá nhân', icon: 'user-check' },
 ];
 
@@ -394,6 +396,7 @@ const DUONG_TAB: Record<string, Tab> = {
   '/ca-nhan/luong': 'luong',
   '/ca-nhan/phep': 'phep',
   '/ca-nhan/khieu-nai': 'khieu_nai',
+  '/ca-nhan/viec': 'viec',
   '/ca-nhan/ca-nhan': 'ca_nhan',
 };
 
@@ -404,6 +407,7 @@ const TAB_DUONG: Record<Tab, string> = {
   luong: '/ca-nhan/luong',
   phep: '/ca-nhan/phep',
   khieu_nai: '/ca-nhan/khieu-nai',
+  viec: '/ca-nhan/viec',
   ca_nhan: '/ca-nhan/ca-nhan',
 };
 
@@ -414,6 +418,7 @@ const TEN_MAN: Record<Exclude<Tab, 'trang_chu'>, [string, string]> = {
   luong: ['Phiếu lương', 'Cơ sở tính lương của kỳ'],
   phep: ['Quản lý phép', 'Quỹ phép năm & lịch sử nghỉ của bạn'],
   khieu_nai: ['Khiếu nại lương', 'Lập & theo dõi khiếu nại phiếu lương, trao đổi với Nhân sự'],
+  viec: ['Công việc của tôi', 'Việc được giao, hạn hoàn thành và các bước cần làm'],
   ca_nhan: ['Cá nhân', 'Hồ sơ, tài liệu, hợp đồng, BHXH, cài đặt'],
 };
 
@@ -628,6 +633,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
                   {tab === 'luong' && <ManLuong />}
                   {tab === 'phep' && <NoiDungPhep />}
                   {tab === 'khieu_nai' && <TrangKhieuNaiToi />}
+                  {tab === 'viec' && <ViecToi />}
                   {tab === 'ca_nhan' && <ManCaNhan />}
                 </>
               )}

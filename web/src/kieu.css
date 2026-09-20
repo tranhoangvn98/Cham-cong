@@ -2510,3 +2510,116 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .pl-dong { padding: 5px 2px; }
 .pl-hero-chinh, .pl-o { padding: 10px 12px; gap: 3px; }
 .pl-tien-lon { font-size: 1.7rem; }
+/* ============================================================================
+   Quan ly cong viec (trang /cong-viec + tab Khu vuc cua toi). Tien to cv-.
+   ============================================================================ */
+
+.cv-trang { display: flex; flex-direction: column; gap: 12px; }
+
+.cv-tab-hang { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cv-tab {
+  border: none; background: none; padding: 8px 14px; cursor: pointer;
+  border-radius: 8px; font-size: 0.95rem; color: var(--chu-mo, #64748b);
+}
+.cv-tab:hover { background: var(--nen-nhat, #f1f5f9); }
+.cv-tab-chon { background: var(--chinh, #3b82f6); color: var(--tren-chinh, #fff); }
+.cv-tab-chon:hover { background: var(--chinh-dam, #2563eb); }
+.cv-tab-phu { color: var(--chu-mo, #64748b); font-size: 0.85rem; }
+
+.cv-hang-loc { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.cv-hang-loc select, .cv-hang-loc input { padding: 7px 10px; border-radius: 8px; }
+
+.cv-bang { width: 100%; }
+.cv-bang th { text-align: left; }
+.cv-cot-tich { width: 28px; }
+
+.cv-mo {
+  border: none; background: none; color: var(--chinh-dam, #2563eb); cursor: pointer;
+  text-align: left; font-weight: 600; padding: 0;
+}
+.cv-mo:hover { text-decoration: underline; }
+
+.cv-nguon { font-size: 0.78rem; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.cv-nguon-giam-doc { background: #7c3aed; color: #fff; }
+.cv-nguon-he-thong { background: #0e7490; color: #fff; }
+.cv-nguon-truong-phong { background: #2563eb; color: #fff; }
+.cv-nguon-lien-phong { background: #059669; color: #fff; }
+.cv-nguon-tu-tao { background: #64748b; color: #fff; }
+.cv-nguon-ho-so { background: #94a3b8; color: #fff; }
+
+.cv-nhom-ten { font-size: 0.8rem; color: var(--chu-mo, #64748b); margin-left: 8px; }
+.cv-hanh-dong-dem { font-size: 0.8rem; color: var(--chu-mo, #64748b); margin-left: 8px; }
+
+.cv-xuong { padding: 24px 0; }
+
+.cv-form { display: flex; flex-direction: column; gap: 10px; min-width: 340px; }
+.cv-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; }
+.cv-hai-cot { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cv-nut-hang { display: flex; gap: 8px; justify-content: flex-end; }
+.cv-ghi-chu { font-size: 0.85rem; color: var(--chu-mo, #64748b); }
+.cv-chu-y { padding: 8px 12px; border-radius: 8px; background: var(--nen-nhat, #f1f5f9); }
+
+.cv-chi-tiet { display: flex; flex-direction: column; gap: 8px; min-width: 420px; max-width: 640px; }
+.cv-tua { font-size: 1.15rem; font-weight: 700; }
+.cv-thong-tin { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cv-dong { font-size: 0.88rem; color: var(--chu-mo, #64748b); }
+.cv-mo-ta { white-space: pre-wrap; font-size: 0.92rem; }
+.cv-muc { font-weight: 600; margin-bottom: 4px; }
+.cv-hanh-dong-khoi { display: flex; flex-direction: column; gap: 6px; }
+.cv-hanh-dong { display: flex; gap: 8px; align-items: center; }
+.cv-hanh-dong-xong { text-decoration: line-through; color: var(--chu-mo, #64748b); }
+.cv-ket-qua { white-space: pre-wrap; font-size: 0.92rem; padding: 8px 12px; border-radius: 8px; background: var(--nen-nhat, #f1f5f9); }
+.cv-phan-hoi { font-size: 0.9rem; padding: 8px 12px; border-radius: 8px; background: #fef3c7; }
+.cv-o-ket-qua { display: flex; flex-direction: column; gap: 6px; }
+.cv-o-ket-qua label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; }
+
+/* Gantt tu dung: cot ten (dinh) + luoi ngay (cuon ngang). So cot dat inline theo so ngay. */
+.cv-gantt { overflow-x: auto; border: 1px solid var(--vien, #e2e8f0); border-radius: 8px; }
+.cv-gantt-dau { display: grid; min-width: 760px; }
+.cv-gantt-ten-cot { position: sticky; left: 0; background: var(--nen-nhat, #f1f5f9); }
+.cv-gantt-ngay { text-align: center; font-size: 0.7rem; color: var(--chu-mo, #64748b); padding: 4px 0; border-left: 1px solid var(--vien-nhat, #f1f5f9); }
+.cv-gantt-hom-nay { background: #dbeafe; font-weight: 700; color: var(--chinh-dam, #2563eb); }
+.cv-gantt-than { display: flex; flex-direction: column; }
+.cv-gantt-hang { display: grid; min-width: 760px; border-top: 1px solid var(--vien-nhat, #f1f5f9); align-items: center; }
+.cv-gantt-ten { position: sticky; left: 0; background: #fff; padding: 4px 8px; font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; gap: 6px; align-items: center; }
+.cv-gantt-o { display: contents; }
+.cv-gantt-thanh { height: 18px; border-radius: 4px; opacity: 0.85; margin: 2px 0; }
+.cv-gantt-chu-thich { display: flex; gap: 8px; align-items: center; font-size: 0.8rem; }
+
+.cv-workflow { border: 1px solid var(--vien, #e2e8f0); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+.cv-workflow-ten { font-weight: 700; margin-bottom: 4px; }
+/* ============================================================================
+   Cong viec cua toi (tab Khu vuc cua toi). Tien to vt-.
+   ============================================================================ */
+
+.vt-trang { display: flex; flex-direction: column; gap: 12px; }
+.vt-dau { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.vt-tua { font-size: 1.1rem; font-weight: 700; }
+.vt-phu { color: var(--chu-mo, #64748b); font-size: 0.88rem; margin-top: 2px; }
+.vt-chuyen { display: flex; gap: 6px; }
+.vt-nut { border: 1px solid var(--vien, #e2e8f0); background: #fff; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+.vt-nut-chon { background: var(--chinh, #3b82f6); color: var(--tren-chinh, #fff); border-color: var(--chinh, #3b82f6); }
+.vt-khoi-tat { display: flex; flex-direction: column; gap: 12px; }
+.vt-khoi { display: flex; flex-direction: column; gap: 6px; }
+.vt-qua-han .vt-dong { border-left: 3px solid #dc2626; }
+.vt-den-han .vt-dong { border-left: 3px solid #d97706; }
+.vt-xong .vt-dong { opacity: 0.65; }
+.vt-khoi-ten { font-weight: 600; font-size: 0.9rem; }
+.vt-rong { color: var(--chu-mo, #64748b); font-size: 0.85rem; padding: 2px 0; }
+.vt-dong {
+  display: flex; gap: 8px; align-items: center; text-align: left; width: 100%;
+  border: 1px solid var(--vien-nhat, #f1f5f9); border-radius: 8px; background: #fff;
+  padding: 8px 10px; cursor: pointer;
+}
+.vt-dong:hover { border-color: var(--chinh, #3b82f6); }
+.vt-tich { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--vien, #cbd5e1); flex: none; }
+.vt-tich-xong { background: #16a34a; border-color: #16a34a; }
+.vt-viec-ten { flex: 1; font-size: 0.92rem; }
+.vt-nguon { font-size: 0.72rem; padding: 1px 6px; border-radius: 99px; color: #fff; flex: none; }
+.vt-nguon-giam_doc { background: #7c3aed; }
+.vt-nguon-he_thong { background: #0e7490; }
+.vt-nguon-truong_phong { background: #2563eb; }
+.vt-nguon-lien_phong { background: #059669; }
+.vt-nguon-ho_so { background: #94a3b8; }
+.vt-han { font-size: 0.8rem; color: var(--chu-mo, #64748b); flex: none; }
+.vt-buoc { font-size: 0.78rem; color: var(--chu-mo, #64748b); flex: none; }

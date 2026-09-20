@@ -23,6 +23,7 @@ interface SoLieu {
   diem_tru_vi_pham: number;
   so_cong_viec_hoan_thanh: number;
   so_cong_viec_dung_han: number;
+  so_cong_viec_khong_hoan_thanh: number;
   ty_le_dung_han: number | null;
   so_bao_cao_da_nop: number;
 }
@@ -42,6 +43,7 @@ function lay_chi_so(sl: SoLieu, ten: string): number | null {
     case 'diem_tru_vi_pham': return sl.diem_tru_vi_pham;
     case 'so_cong_viec_hoan_thanh': return sl.so_cong_viec_hoan_thanh;
     case 'so_cong_viec_dung_han': return sl.so_cong_viec_dung_han;
+    case 'so_cong_viec_khong_hoan_thanh': return sl.so_cong_viec_khong_hoan_thanh;
     case 'ty_le_dung_han': return sl.ty_le_dung_han;
     case 'so_bao_cao_da_nop': return sl.so_bao_cao_da_nop;
     // Chi so 'nhap_tay' khong co du lieu tu dong — quan ly tu cham.
@@ -112,6 +114,7 @@ export async function tinh_ky_kpi(ky_id: string, thang: string): Promise<number>
             coalesce(vp.diem_tru, 0)::float8                     as diem_tru_vi_pham,
             coalesce(cv.hoan_thanh, 0)::int                      as so_cong_viec_hoan_thanh,
             coalesce(cv.dung_han, 0)::int                        as so_cong_viec_dung_han,
+            coalesce(cv.khong_hoan_thanh, 0)::int                as so_cong_viec_khong_hoan_thanh,
             coalesce(bcao.so_bao_cao, 0)::int                    as so_bao_cao_da_nop
        from nhan_vien nv
        left join ca_lam cl on cl.id = nv.ca_lam_id
@@ -138,8 +141,10 @@ export async function tinh_ky_kpi(ky_id: string, thang: string): Promise<number>
        left join lateral (
          select count(*) filter (where trang_thai = 'hoan_thanh') as hoan_thanh,
                 count(*) filter (where trang_thai = 'hoan_thanh'
-                                   and (han is null
-                                        or hoan_thanh_luc::date <= han)) as dung_han
+                                   and ((han_moc is not null and hoan_thanh_luc <= han_moc)
+                                        or (han_moc is null and hoan_thanh_luc::date <= han)))
+                  as dung_han,
+                count(*) filter (where trang_thai = 'khong_hoan_thanh') as khong_hoan_thanh
            from cong_viec
           where nhan_vien_id = nv.id
             and coalesce(hoan_thanh_luc::date, han, $1) between $1 and $2

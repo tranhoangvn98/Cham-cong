@@ -436,7 +436,10 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       bat_buoc_doc(nd, dac.nhom, bc, dac.ten);
 
       const dong = await truy_van(
-        `select ${dac.cot} from ${dac.bang} where nhan_vien_id = $1 order by ${dac.sap_xep}`,
+        dac.bang === 'cong_viec'
+          ? `select ${dac.cot} from ${dac.bang} where nhan_vien_id = $1 and nguon = 'ho_so'
+             order by ${dac.sap_xep}`
+          : `select ${dac.cot} from ${dac.bang} where nhan_vien_id = $1 order by ${dac.sap_xep}`,
         [id],
       );
       const tep = await truy_van(
@@ -497,6 +500,19 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       const chu = await truy_van_mot<{ nhan_vien_id: string }>(
         `select nhan_vien_id from ${dac.bang} where id = $1`, [ban_ghi_id]);
       if (chu === null) throw new LoiKhongTim(`Không tìm thấy ${dac.ten}.`);
+
+      // Cong viec do module Cong viec quan ly (nguon != 'ho_so') KHONG sua duoc qua ho so —
+      // nhan vien duoc tu doi trang_thai/ket_qua cua viec ho_so, nhung viec duoc giao boi
+      // giam doc/truong phong/he thong phai di theo luong nop -> duyet cua module moi.
+      if (dac.bang === 'cong_viec') {
+        const cv = await truy_van_mot<{ nguon: string }>(
+          'select nguon from cong_viec where id = $1', [ban_ghi_id]);
+        if (cv === null) throw new LoiKhongTim(`Không tìm thấy ${dac.ten}.`);
+        if (cv.nguon !== 'ho_so') {
+          throw new LoiKhongQuyen(
+            'Công việc này do phân hệ Công việc quản lý — mở trang Công việc để xử lý.');
+        }
+      }
 
       const { bc } = await nap_boi_canh(nd, chu.nhan_vien_id);
       bat_buoc_sua(nd, dac.nhom, bc, dac.ten);
@@ -563,6 +579,16 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       const chu = await truy_van_mot<{ nhan_vien_id: string }>(
         `select nhan_vien_id from ${dac.bang} where id = $1`, [ban_ghi_id]);
       if (chu === null) throw new LoiKhongTim(`Không tìm thấy ${dac.ten}.`);
+
+      if (dac.bang === 'cong_viec') {
+        const cv = await truy_van_mot<{ nguon: string }>(
+          'select nguon from cong_viec where id = $1', [ban_ghi_id]);
+        if (cv === null) throw new LoiKhongTim(`Không tìm thấy ${dac.ten}.`);
+        if (cv.nguon !== 'ho_so') {
+          throw new LoiKhongQuyen(
+            'Công việc này do phân hệ Công việc quản lý — mở trang Công việc để xử lý.');
+        }
+      }
 
       const { bc } = await nap_boi_canh(nd, chu.nhan_vien_id);
       bat_buoc_sua(nd, dac.nhom, bc, dac.ten);

@@ -10,6 +10,7 @@
 import { cau_hinh } from '../cau_hinh.ts';
 import { truy_van } from '../csdl/ket_noi.ts';
 import { ghi_su_kien } from './hop_thu_di.ts';
+import { khi_may_mat_ket_noi } from '../viec/workflow.ts';
 
 /** Chu ky kiem tra. Nho hon nguong offline de canh bao khong tre qua mot chu ky. */
 const CHU_KY_GIAY = 60;
@@ -67,6 +68,12 @@ export async function chay_mot_vong(
       im_lang_giay: m.im_lang_giay,
       nguong_giay: cau_hinh.may_offline_sau_giay,
     });
+    // Workflow "may mat ket noi": tao viec giao nguoi phu trach (neu da cau hinh bat).
+    // Tu nuot loi cua no — khong duoc lam sap vong giam sat. Khoa theo (serial, ngay).
+    khi_may_mat_ket_noi({ serial: m.serial, ten: m.ten, vi_tri: m.vi_tri })
+      .catch((loi: unknown) => {
+        ghi_log('tin', 'workflow may mat ket noi loi', { loi: String(loi) });
+      });
     so_su_kien++;
   }
 

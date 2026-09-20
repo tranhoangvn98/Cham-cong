@@ -91,7 +91,8 @@ const CHI_SO_THEO_NGUON: Record<string, string[]> = {
   cham_cong: ['ty_le_du_cong', 'so_ngay_co_mat', 'so_ngay_vang', 'so_lan_di_muon',
     'tong_phut_muon', 'so_lan_ve_som', 'gio_ot', 'so_ngay_nghi_phep'],
   vi_pham: ['so_vi_pham', 'diem_tru_vi_pham'],
-  cong_viec: ['so_cong_viec_hoan_thanh', 'so_cong_viec_dung_han', 'ty_le_dung_han'],
+  cong_viec: ['so_cong_viec_hoan_thanh', 'so_cong_viec_dung_han', 'ty_le_dung_han',
+    'so_cong_viec_khong_hoan_thanh'],
   bao_cao: ['so_bao_cao_da_nop'],
   nhap_tay: [],
 };
@@ -110,6 +111,7 @@ const NHAN_CHI_SO: Record<string, string> = {
   so_cong_viec_hoan_thanh: 'Số công việc hoàn thành',
   so_cong_viec_dung_han: 'Số công việc đúng hạn',
   ty_le_dung_han: 'Tỷ lệ đúng hạn (%)',
+  so_cong_viec_khong_hoan_thanh: 'Số công việc không hoàn thành',
   so_bao_cao_da_nop: 'Số báo cáo đã nộp',
 };
 

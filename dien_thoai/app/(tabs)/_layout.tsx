@@ -27,7 +27,7 @@ export default function BoCucTab(): ReactNode {
         tabBarLabelStyle: { fontSize: 11.5, fontFamily: HO_CHU.dam },
       }}
     >
-      {/* Bon tab theo Phu luc B: Trang chu · Bang cong · Luong · Ca nhan. */}
+      {/* Nam tab: Trang chu · Bang cong · Cong viec · Luong · Ca nhan. */}
       <Tabs.Screen
         name="index"
         options={{
@@ -40,6 +40,13 @@ export default function BoCucTab(): ReactNode {
         options={{
           title: 'Bảng công',
           tabBarIcon: ({ color }) => <BieuTuong ky_tu="▤" mau={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="viec"
+        options={{
+          title: 'Công việc',
+          tabBarIcon: ({ color }) => <BieuTuong ky_tu="☑" mau={color} />,
         }}
       />
       <Tabs.Screen

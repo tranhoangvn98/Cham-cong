@@ -51,6 +51,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       { chu: 'Trang chủ: xem giờ vào/ra hôm nay, công tháng, phép còn lại và các lần quẹt.' },
       { chu: 'Bảng công: xem lịch tháng và từng ngày. Thấy sai lệch thì bấm gửi giải trình quên quẹt.' },
       { chu: 'Đơn từ: xin nghỉ phép, gửi giải trình hoặc làm đơn khác; hủy được đơn khi còn chờ duyệt.' },
+      { chu: 'Công việc: xem việc đang còn — quá hạn, đến hạn, đang làm, chờ duyệt; tick các bước con rồi nộp kết quả.' },
       { chu: 'Lương: xem phiếu lương từng kỳ, đối chiếu từng khoản thu/trừ, tải PDF. Thấy sai thì bấm Khiếu nại ngay trong phiếu.' },
       { chu: 'Cá nhân: kiểm tra hồ sơ, hợp đồng, BHXH và tài liệu còn thiếu; tự cập nhật liên hệ.' },
     ],
@@ -212,6 +213,22 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
     luu_y: [
       'Chỉ tiêu nào hệ thống đo được thì để hệ thống đo. Gõ tay số mà hệ thống có là mở đường cho tranh cãi không có bằng chứng.',
+    ],
+  },
+  {
+    duong_dan: '/cong-viec',
+    tom_tat: 'Giao việc, theo dõi tiến độ và duyệt kết quả của phòng mình — danh sách hoặc biểu đồ Gantt.',
+    buoc: [
+      { chu: 'Tab Danh sách: lọc theo trạng thái, người nhận, tìm theo tên việc; bấm "Giao việc" để tạo việc kèm hạn và checklist con.' },
+      { chu: 'Việc mình giao: người nhận nộp kết quả thì xác nhận hoàn thành hoặc yêu cầu làm lại kèm lý do.' },
+      { chu: 'Tab Gantt: nhìn toàn cảnh việc của phòng theo ngày, màu theo nguồn giao việc.' },
+      { chu: 'Tab Định kỳ: tạo việc lặp lại hằng ngày / hằng tuần / hằng tháng — hệ thống tự sinh vào ban đêm.', vai_tro: ['admin', 'nhan_su', 'truong_phong_nhan_su', 'truong_phong'] },
+      { chu: 'Tab Workflow hệ thống: chọn người nhận và hạn cho các sự kiện tự động (máy mất kết nối, đơn chờ duyệt quá hạn, hợp đồng sắp hết hạn).', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Việc quá hạn chưa nộp kết quả sẽ tự chuyển thành "Không hoàn thành" — không có chế độ gia hạn, và nó được tính vào chỉ số KPI công việc.',
+      'Trưởng phòng giao việc cho người phòng khác sẽ thành việc "Liên phòng ban", xếp sau việc Giám đốc, hệ thống và trưởng phòng trong thứ tự ưu tiên.',
+      'Việc giao qua trang này không sửa được từ tab Công việc trong hồ sơ nhân viên — hai luồng tách bạch.',
     ],
   },
   {

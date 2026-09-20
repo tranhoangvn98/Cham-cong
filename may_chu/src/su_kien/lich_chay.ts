@@ -17,6 +17,9 @@ import { gom_va_xu_ly_thang } from '../ky_luat/xu_ly.ts';
 import { email_nhac_loi } from '../ky_luat/nhac_email.ts';
 import { ghi_nhan, ma_viec_dong_bo, moc_dong_bo, quet } from '../sharepoint/dong_bo.ts';
 import { quet_email_cho } from './gui_email_thong_bao.ts';
+import { quet_qua_han } from '../viec/cham_han.ts';
+import { sinh_viec_dinh_ky } from '../viec/dinh_ky.ts';
+import { khi_hop_dong_sap_het, quet_don_cho_duyet } from '../viec/workflow.ts';
 import { cong_ngay, khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. Khai duoc trong .env. */
@@ -228,6 +231,16 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     ghi_log(`[lich] LOI khi dong bo khoa cua: ${(loi as Error).message}`);
   }
 
+  // ------------------------------------------------------------ cong viec qua han
+  // CHAY MOI VONG: trang thai "khong hoan thanh" phai doi dung gio han (deadline co gio),
+  // khong doi den 1h sang hom sau. Mot cau UPDATE co chi muc mot phan nen re.
+  try {
+    const so = await quet_qua_han();
+    if (so > 0) ghi_log(`[lich] cong viec: ${so} viec qua han chuyen thanh khong hoan thanh`);
+  } catch (loi) {
+    ghi_log(`[lich] LOI khi quet cong viec qua han: ${(loi as Error).message}`);
+  }
+
   // ------------------------------------------------------------ email thong bao dang cho
   // Fire-and-forget o buoc ban hanh / dang thong bao co the mat sau crash. Vong nay quet lai
   // nhung dong chua gui duoc email — GUI MOI VONG, khong phai cho gio cuoi ngay.
@@ -346,10 +359,31 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
       if (kq.so_gui > 0) {
         ghi_log(`[lich] da nhac han ${String(kq.so_gui)} hop dong`);
       }
+      // Workflow "hop dong sap het han": giao viec cho nguoi phu trach ho so neu co.
+      await khi_hop_dong_sap_het({ so_hop_dong: kq.so_hop_dong, hom_nay });
     } catch (loi) {
       await nha_viec(ma_nhac);
       ghi_log(`[lich] LOI khi nhac han hop dong: ${(loi as Error).message}`);
     }
+  }
+
+  // ------------------------------------------------------------ cong viec dinh ky
+  // Sinh cac viec lap lai den han trong ngay hom nay. Khoa chong trung
+  // 'dinh_ky:<mau>:<ngay>' nen nhieu instance song song cung khong sinh trung.
+  try {
+    const so = await sinh_viec_dinh_ky(hom_nay);
+    if (so > 0) ghi_log(`[lich] cong viec: sinh ${so} viec dinh ky`);
+  } catch (loi) {
+    ghi_log(`[lich] LOI khi sinh viec dinh ky: ${(loi as Error).message}`);
+  }
+
+  // ------------------------------------------------------------ workflow don cho duyet
+  // Don con cho duyet qua lau thi giao viec nhac nguoi duyet — moi ngay mot lan.
+  try {
+    const so = await quet_don_cho_duyet(hom_nay);
+    if (so > 0) ghi_log(`[lich] cong viec: tao ${so} viec nhac don cho duyet qua han`);
+  } catch (loi) {
+    ghi_log(`[lich] LOI khi quet don cho duyet: ${(loi as Error).message}`);
   }
 
   // Sap xep kho tep, moi ngay mot lan.

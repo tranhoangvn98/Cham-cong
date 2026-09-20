@@ -110,6 +110,7 @@ const { bam_mat_khau } = await import('../src/bao_mat/mat_khau.ts');
 const { tao_token_truy_cap } = await import('../src/bao_mat/jwt.ts');
 const { ngay_dia_phuong, gio_dia_phuong, cong_ngay } = await import('../src/tien_ich/thoi_gian.ts');
 const { chay_mot_vong: giam_sat_may } = await import('../src/su_kien/giam_sat_may.ts');
+const { quet_qua_han } = await import('../src/viec/cham_han.ts');
 
 let app: FastifyInstance;
 let token_admin = '';
@@ -8661,4 +8662,219 @@ test('tro ly quan tri: nhan vien bi chan, nhan su hoi duoc va luu lich su rieng'
   assert.equal(xoa.ma, 200, xoa.tho);
   const sau = await goi('GET', '/api/quan-tri/tro-ly/lich-su', { token: token_admin });
   assert.equal((sau.body as unknown as unknown[]).length, 0, 'sau xoa phai rong');
+});
+// ============================================================ CONG VIEC (module viec)
+// Luong: admin (giam doc) giao -> nhan vien nop -> nguoi giao duyet. Truong phong giao
+// noi phong (truong_phong) va lien phong (lien_phong). Nhan vien chi tu tao cho minh.
+// Qua han tu chuyen khong_hoan_thanh; ho so nhan su KHONG sua duoc viec cua module.
+let cv_phong_a = '';
+let cv_phong_b = '';
+let cv_nv_a = '';
+let cv_nv_b = '';
+let cv_tp = '';
+let cv_token_a = '';
+let cv_token_b = '';
+let cv_token_tp = '';
+
+test('cong viec: dung boi canh hai phong + truong phong', async () => {
+  for (const [ten, bien] of [['CV Phong A', 'a'], ['CV Phong B', 'b']] as const) {
+    const pb = await goi('POST', '/api/phong-ban', { token: token_admin, body: { ten } });
+    assert.equal(pb.ma, 201, JSON.stringify(pb.body));
+    if (bien === 'a') cv_phong_a = pb.body['id'] as string;
+    else cv_phong_b = pb.body['id'] as string;
+  }
+  for (const [ma, ten, phong, bien] of [
+    ['CVA01', 'Công Việc A', () => cv_phong_a, 'a'],
+    ['CVB01', 'Công Việc B', () => cv_phong_b, 'b'],
+    ['CVTP01', 'Trưởng Phòng CV', () => cv_phong_a, 'tp'],
+  ] as const) {
+    const r = await goi('POST', '/api/nhan-vien', {
+      token: token_admin, body: { ma_nv: ma, ho_ten: ten, phong_ban_id: phong() },
+    });
+    assert.equal(r.ma, 201, JSON.stringify(r.body));
+    if (bien === 'a') cv_nv_a = r.body['id'] as string;
+    else if (bien === 'b') cv_nv_b = r.body['id'] as string;
+    else cv_tp = r.body['id'] as string;
+  }
+  // Gan truong phong cho phong A.
+  const gan = await goi('PATCH', `/api/phong-ban/${cv_phong_a}`, {
+    token: token_admin, body: { truong_phong_id: cv_tp },
+  });
+  assert.equal(gan.ma, 200, JSON.stringify(gan.body));
+
+  for (const [tk, vai, lay_nv, bien] of [
+    ['cv_a', 'nhan_vien', () => cv_nv_a, 'a'],
+    ['cv_b', 'nhan_vien', () => cv_nv_b, 'b'],
+    ['cv_tp', 'truong_phong', () => cv_tp, 'tp'],
+  ] as const) {
+    const tao = await goi('POST', '/api/nguoi-dung', {
+      token: token_admin,
+      body: { ten_dang_nhap: tk, mat_khau: 'CongViec@2026', vai_tro: vai, nhan_vien_id: lay_nv() },
+    });
+    assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+    const token = tao_token_truy_cap({
+      sub: tao.body['id'] as string, vai_tro: vai, nv: lay_nv(), ten: tk,
+    }).token;
+    if (bien === 'a') cv_token_a = token;
+    else if (bien === 'b') cv_token_b = token;
+    else cv_token_tp = token;
+  }
+});
+
+test('cong viec: admin giao -> nv nop -> duyet; nguon dung theo vai tro', async () => {
+  const tao = await goi('POST', '/api/viec', {
+    token: token_admin,
+    body: {
+      nhan_vien_id: cv_nv_a, tieu_de: 'Báo cáo tuần cho giám đốc', mo_ta: 'Đếm tồn kho.',
+      han: cong_ngay(NGAY, 5), han_gio: '17:00', uu_tien: 'cao',
+      hanh_dong: ['Kiểm kho', 'Viết báo cáo'],
+    },
+  });
+  assert.equal(tao.ma, 200, JSON.stringify(tao.body));
+  const id = tao.body['id'] as string;
+  assert.equal(tao.body['nguon'], 'giam_doc');
+  assert.equal(tao.body['trang_thai'], 'moi');
+  assert.equal(tao.body['so_hanh_dong'], 2);
+
+  const ds = await goi('GET', '/api/viec/toi', { token: cv_token_a });
+  assert.equal(ds.ma, 200);
+  const danh_sach = ds.body['danh_sach'] as unknown as Record<string, unknown>[];
+  assert.ok(danh_sach.some((v) => v['id'] === id), 'nv phai thay viec duoc giao');
+
+  // NV phong khac khong doc duoc (404, khong tiet lo su ton tai).
+  const ngoai = await goi('GET', `/api/viec/${id}`, { token: cv_token_b });
+  assert.equal(ngoai.ma, 404);
+
+  const bd = await goi('PATCH', `/api/viec/${id}/trang-thai`, {
+    token: cv_token_a, body: { trang_thai: 'dang_lam' },
+  });
+  assert.equal(bd.ma, 200, JSON.stringify(bd.body));
+
+  const chi_tiet = await goi('GET', `/api/viec/${id}`, { token: cv_token_a });
+  const hanh_dong = chi_tiet.body['hanh_dong'] as unknown as { id: string }[];
+  const tick = await goi('PATCH', `/api/viec/${id}/hanh-dong/${hanh_dong[0]!.id}`, {
+    token: cv_token_a, body: { xong: true },
+  });
+  assert.equal(tick.ma, 200, JSON.stringify(tick.body));
+
+  const nop = await goi('PATCH', `/api/viec/${id}/nop`, {
+    token: cv_token_a, body: { ket_qua: 'Đã kiểm kho và viết báo cáo xong.' },
+  });
+  assert.equal(nop.ma, 200, JSON.stringify(nop.body));
+
+  // Nguoi nhan khong tu duyet duoc viec minh nop.
+  const tu_duyet = await goi('PATCH', `/api/viec/${id}/duyet`, {
+    token: cv_token_a, body: { chap_nhan: true },
+  });
+  assert.equal(tu_duyet.ma, 403);
+
+  const duyet = await goi('PATCH', `/api/viec/${id}/duyet`, {
+    token: token_admin, body: { chap_nhan: true, phan_hoi: 'Tốt' },
+  });
+  assert.equal(duyet.ma, 200, JSON.stringify(duyet.body));
+  const sau = await goi('GET', `/api/viec/${id}`, { token: cv_token_a });
+  assert.equal((sau.body['viec'] as Record<string, unknown>)['trang_thai'], 'hoan_thanh');
+});
+
+test('cong viec: nhan vien chi tu tao viec cho minh', async () => {
+  const tu = await goi('POST', '/api/viec', {
+    token: cv_token_a,
+    body: { nhan_vien_id: cv_nv_a, tieu_de: 'Tự dọn dữ liệu', han: cong_ngay(NGAY, 3) },
+  });
+  assert.equal(tu.ma, 200, JSON.stringify(tu.body));
+  assert.equal(tu.body['nguon'], 'tu_tao');
+
+  const cam = await goi('POST', '/api/viec', {
+    token: cv_token_a,
+    body: { nhan_vien_id: cv_nv_b, tieu_de: 'Giao hộ', han: cong_ngay(NGAY, 3) },
+  });
+  assert.equal(cam.ma, 403);
+});
+
+test('cong viec: truong phong giao noi phong va lien phong', async () => {
+  const noi = await goi('POST', '/api/viec', {
+    token: cv_token_tp,
+    body: { nhan_vien_id: cv_nv_a, tieu_de: 'Việc nội phòng', han: cong_ngay(NGAY, 4) },
+  });
+  assert.equal(noi.ma, 200, JSON.stringify(noi.body));
+  assert.equal(noi.body['nguon'], 'truong_phong');
+
+  const ngoai = await goi('POST', '/api/viec', {
+    token: cv_token_tp,
+    body: { nhan_vien_id: cv_nv_b, tieu_de: 'Việc liên phòng', han: cong_ngay(NGAY, 4) },
+  });
+  assert.equal(ngoai.ma, 200, JSON.stringify(ngoai.body));
+  assert.equal(ngoai.body['nguon'], 'lien_phong');
+
+  // TP thay viec cua nguoi phong minh va cua phong khac ma minh da giao.
+  const ds = await goi('GET', '/api/viec/toi', { token: cv_token_tp });
+  const danh_sach = ds.body['danh_sach'] as unknown as Record<string, unknown>[];
+  assert.ok(danh_sach.some((v) => v['id'] === noi.body['id']), 'tp phai thay viec phong minh');
+  assert.ok(danh_sach.some((v) => v['id'] === ngoai.body['id']), 'tp phai thay viec minh giao');
+});
+
+test('cong viec: qua han tu chuyen khong_hoan_thanh, da nop thi khong bi cham', async () => {
+  const tao = await goi('POST', '/api/viec', {
+    token: token_admin,
+    body: {
+      nhan_vien_id: cv_nv_a, tieu_de: 'Việc trễ hạn',
+      han: cong_ngay(NGAY, -1), han_gio: '08:00',
+    },
+  });
+  assert.equal(tao.ma, 200, JSON.stringify(tao.body));
+  const id = tao.body['id'] as string;
+
+  await quet_qua_han();
+  const sau = await goi('GET', `/api/viec/${id}`, { token: cv_token_a });
+  assert.equal((sau.body['viec'] as Record<string, unknown>)['trang_thai'], 'khong_hoan_thanh');
+
+  // Viec da nop (cho_duyet) khong bi cham khi het han.
+  const nop = await goi('POST', '/api/viec', {
+    token: cv_token_a,
+    body: { nhan_vien_id: cv_nv_a, tieu_de: 'Nộp sát hạn', han: cong_ngay(NGAY, -1), han_gio: '08:00' },
+  });
+  assert.equal(nop.ma, 200, JSON.stringify(nop.body));
+  const nop_id = nop.body['id'] as string;
+  await goi('PATCH', `/api/viec/${nop_id}/nop`, {
+    token: cv_token_a, body: { ket_qua: 'Đã nộp đúng hạn.' },
+  });
+  await quet_qua_han();
+  const kt = await goi('GET', `/api/viec/${nop_id}`, { token: cv_token_a });
+  assert.equal((kt.body['viec'] as Record<string, unknown>)['trang_thai'], 'cho_duyet',
+    'viec da nop khong bi cham qua han');
+});
+
+test('cong viec: ho so nhan su khong sua duoc viec cua module', async () => {
+  const tao = await goi('POST', '/api/viec', {
+    token: token_admin,
+    body: { nhan_vien_id: cv_nv_a, tieu_de: 'Việc khóa hồ sơ', han: cong_ngay(NGAY, 5) },
+  });
+  assert.equal(tao.ma, 200, JSON.stringify(tao.body));
+  const id = tao.body['id'] as string;
+
+  const sua = await goi('PATCH', `/api/cong-viec/${id}`, {
+    token: token_admin, body: { trang_thai: 'hoan_thanh' },
+  });
+  assert.equal(sua.ma, 403);
+
+  const xoa = await goi('DELETE', `/api/cong-viec/${id}`, { token: token_admin });
+  assert.equal(xoa.ma, 403);
+});
+
+test('cong viec: gantt tra dung pham vi cua nguoi xem', async () => {
+  const tu = cong_ngay(NGAY, -10);
+  const den = cong_ngay(NGAY, 10);
+  const q = `tu=${tu}&den=${den}`;
+
+  const cua_nv = await goi('GET', `/api/viec/gantt?${q}`, { token: cv_token_a });
+  assert.equal(cua_nv.ma, 200);
+  const ds_nv = cua_nv.body as unknown as Record<string, unknown>[];
+  assert.ok(ds_nv.length > 0);
+  assert.ok(ds_nv.every((v) => v['nhan_vien_id'] === cv_nv_a),
+    'nhan vien chi thay viec cua chinh minh');
+
+  const cua_tp = await goi('GET', `/api/viec/gantt?${q}`, { token: cv_token_tp });
+  assert.equal(cua_tp.ma, 200);
+  const ds_tp = cua_tp.body as unknown as Record<string, unknown>[];
+  assert.ok(ds_tp.some((v) => v['nhan_vien_id'] === cv_nv_a), 'tp thay viec cua phong minh');
 });

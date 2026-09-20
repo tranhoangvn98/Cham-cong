@@ -24,6 +24,7 @@ const CHI_SO = [
   'tong_phut_muon', 'so_lan_ve_som', 'gio_ot', 'so_ngay_nghi_phep',
   'so_vi_pham', 'diem_tru_vi_pham',
   'so_cong_viec_hoan_thanh', 'so_cong_viec_dung_han', 'ty_le_dung_han',
+  'so_cong_viec_khong_hoan_thanh',
   'so_bao_cao_da_nop',
 ] as const;
 
