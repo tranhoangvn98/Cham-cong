@@ -448,6 +448,45 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       'Trưởng phòng quản lý trách nhiệm chi tiết nào thì được sửa rule (tần suất, SLA, KPI, RACI) của các đầu việc thuộc khối đó, không đụng được khối khác.',
     ],
   },
+  {
+    duong_dan: '/phu-cap',
+    tom_tat: 'Phụ cấp / khoản trừ theo 3 tầng: danh mục khoản → mức mặc định của khối → mức riêng từng người.',
+    buoc: [
+      { chu: 'Tab "Danh mục khoản": tạo loại phụ cấp/trừ (tên, kiểu cố định hay theo lương, đơn vị tính).', vai_tro: NHAN_SU },
+      { chu: 'Tab "Theo khối": đặt mức mặc định cho cả khối — ai chưa có mức riêng sẽ dùng mức này.', vai_tro: NHAN_SU },
+      { chu: 'Tab "Cá nhân": đặt mức riêng cho từng người. Mức cá nhân ĐÈ lên mức của khối.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Mức cá nhân đè lên mức khối: người đã có mức riêng thì sửa khối KHÔNG đổi số của họ — phải sửa từng người.',
+      'Thay đổi phụ cấp xong phải chạy lại tính lương của kỳ liên quan thì số mới vào phiếu lương.',
+    ],
+  },
+  {
+    duong_dan: '/thong-bao',
+    tom_tat: 'Thông báo công ty: đọc, xác nhận đã hiểu, và giải trình khi thông báo yêu cầu phản hồi.',
+    buoc: [
+      { chu: 'Đọc thông báo rồi bấm "Đã đọc & hiểu" — thông báo yêu cầu xác nhận sẽ hiện rõ chưa ai đã đọc.' },
+      { chu: 'Thông báo yêu cầu giải trình: nhập lý do và gửi — giải trình đúng hạn được ghi vào hồ sơ chấp hành.' },
+      { chu: 'Nhân sự: bấm "Gửi lại email" nếu thông báo chưa tới hộp thư nhân viên.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Bấm "Đã đọc & hiểu" là xác nhận cam kết — trước khi bấm nên đọc hết, vì thông báo có thể yêu cầu giải trình đúng hạn.',
+      'Gửi email qua hộp thư chung của công ty; máy chủ chưa khai hộp thư thì trạng thái hiện "Chưa gửi được" và vẫn có nút gửi lại.',
+    ],
+  },
+  {
+    duong_dan: '/cai-dat/lam-bu',
+    tom_tat: 'Ngày nghỉ (có hưởng công) được bù bằng các buổi làm bù — công tính lại bao trùm ngày nghỉ và các buổi.',
+    buoc: [
+      { chu: 'Thêm ngày nghỉ: chọn ngày và bật trạng thái — ngày đó vẫn nằm trong công chuẩn, không bị trừ công.' },
+      { chu: 'Thêm buổi làm bù cho ngày nghỉ đó (sáng/chiều của một ngày khác) — nối theo cột tương ứng.' },
+      { chu: 'Lưu xong bấm Tính lại công — khoảng bao trùm ngày nghỉ + các buổi làm bù được tính lại.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Thêm buổi làm bù xong PHẢI bấm Tính lại công — nếu không bảng công vẫn tính theo ngày cũ.',
+      'Xóa ngày nghỉ/buổi làm bù sau khi đã chốt lương sẽ làm lệch sổ — chỉ sửa trong kỳ chưa duyệt.',
+    ],
+  },
 ];
 
 const THEO_DUONG = new Map(HUONG_DAN.map((h) => [h.duong_dan, h]));

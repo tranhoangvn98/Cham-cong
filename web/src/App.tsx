@@ -97,18 +97,18 @@ const MENU: MucMenu[] = [
   { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: 'Chấm công', phu: 'Tổng hợp theo tháng', quyen: 'quan_tri' },
   { duong_dan: '/ra-vao', ten: 'Ra/vào', icon: 'clock-exclamation', nhom: 'Chấm công', phu: 'Cảnh báo ra/vào & xử lý', quyen: 'nhan_su' },
   { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Chấm công', phu: 'Tính lương, phiếu từng người', quyen: 'nhan_su' },
-  { duong_dan: '/phu-cap', ten: 'Phụ cấp', icon: 'file-certificate', nhom: 'Chấm công', phu: 'Danh mục khoản · theo khối · cá nhân', quyen: 'nhan_su' },
-  { duong_dan: '/ung-luong', ten: 'Ứng lương', icon: 'cash', nhom: 'Chấm công', phu: 'Tạm ứng · duyệt · đã chi', quyen: 'nhan_su' },
+  { duong_dan: '/phu-cap', ten: 'Phụ cấp', icon: 'plus', nhom: 'Chấm công', phu: 'Danh mục khoản · theo khối · cá nhân', quyen: 'nhan_su' },
+  { duong_dan: '/ung-luong', ten: 'Ứng lương', icon: 'download', nhom: 'Chấm công', phu: 'Tạm ứng · duyệt · đã chi', quyen: 'nhan_su' },
 
   // Nhan su & luong: quan tri ho so nguoi lao dong.
   { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Nhân sự & lương', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
   { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Nhân sự & lương', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
-  { duong_dan: '/quan-ly-phep', ten: 'Quản lý phép', icon: 'calendar-stats', nhom: 'Nhân sự & lương', phu: 'Tổng hợp ngày phép từng người', quyen: 'nguoi_duyet' },
+  { duong_dan: '/quan-ly-phep', ten: 'Quản lý phép', icon: 'sun', nhom: 'Nhân sự & lương', phu: 'Tổng hợp ngày phép từng người', quyen: 'nguoi_duyet' },
   { duong_dan: '/cong-viec', ten: 'Công việc', icon: 'check', nhom: 'Nhân sự & lương', phu: 'Giao việc, duyệt kết quả, lịch công việc', quyen: 'nguoi_duyet', ca_nhan: true },
-  { duong_dan: '/to-chuc', ten: 'Tổ chức & trách nhiệm', icon: 'sitemap', nhom: 'Nhân sự & lương', phu: 'Cơ cấu, vị trí, JD, RACI, bao phủ', quyen: 'nhan_su' },
+  { duong_dan: '/to-chuc', ten: 'Tổ chức & trách nhiệm', icon: 'menu-2', nhom: 'Nhân sự & lương', phu: 'Cơ cấu, vị trí, JD, RACI, bao phủ', quyen: 'nhan_su' },
   { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Nhân sự & lương', phu: 'Chấm điểm từ dữ liệu thật', quyen: 'nhan_su' },
   { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Nhân sự & lương', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
-  { duong_dan: '/khieu-nai-luong', ten: 'Khiếu nại lương', icon: 'receipt-2', nhom: 'Nhân sự & lương', phu: 'Khiếu nại phiếu lương của nhân viên', quyen: 'nhan_su' },
+  { duong_dan: '/khieu-nai-luong', ten: 'Khiếu nại lương', icon: 'file-text', nhom: 'Nhân sự & lương', phu: 'Khiếu nại phiếu lương của nhân viên', quyen: 'nhan_su' },
   { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: 'Nhân sự & lương', phu: 'Đăng thông báo / gửi email / popup toàn công ty', quyen: 'nhan_su' },
   { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: 'Nhân sự & lương', phu: 'Soạn bằng AI, ban hành, tài liệu công ty', quyen: 'nhan_su' },
   { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Nhân sự & lương', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
@@ -136,7 +136,7 @@ const MENU_CAI_DAT: MucMenu[] = [
   { duong_dan: '/cai-dat/ca-lam', ten: 'Ca làm việc', icon: 'clock', nhom: 'Chấm công', phu: 'Giờ vào/ra, dung sai, ngưỡng OT' },
   { duong_dan: '/cai-dat/dia-diem', ten: 'Địa điểm', icon: 'map-pin', nhom: 'Chấm công', phu: 'Đối chiếu GPS khi đi công tác' },
   { duong_dan: '/cai-dat/ngay-le', ten: 'Ngày lễ', icon: 'star', nhom: 'Chấm công', phu: 'Tết Nguyên đán phải tự thêm mỗi năm' },
-  { duong_dan: '/cai-dat/lam-bu', ten: 'Ngày làm bù', icon: 'calendar-plus', nhom: 'Chấm công', phu: 'Ngày được nghỉ, kiếm công bằng buổi làm bù', quyen: 'nhan_su' },
+  { duong_dan: '/cai-dat/lam-bu', ten: 'Ngày làm bù', icon: 'calendar-stats', nhom: 'Chấm công', phu: 'Ngày được nghỉ, kiếm công bằng buổi làm bù', quyen: 'nhan_su' },
 
   { duong_dan: '/cai-dat/tham-so-luong', ten: 'Tham số lương', icon: 'receipt-2', nhom: 'Nhân sự & lương', phu: 'BHXH, thuế TNCN, giảm trừ gia cảnh', quyen: 'nhan_su' },
 

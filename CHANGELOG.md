@@ -2,6 +2,25 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.102.0] — 2026-09-20
+
+**Thay đổi: tab Workflow hệ thống hiển thị theo danh sách, cấu hình qua popup.**
+
+- Mỗi sự kiện là một dòng trong bảng: trạng thái Bật/Tắt, người nhận, hạn sau N giờ,
+  ưu tiên; bấm nút “Cấu hình” mở popup chỉnh toàn bộ (người nhận, hạn, ưu tiên) — lưu
+  xong popup tự đóng và danh sách nạp lại.
+
+**Sửa lỗi: 6 icon thanh điều hướng không có glyph trong subset font hoặc trùng nhau
+  trong cùng danh sách** — Phụ cấp, Ứng lương, Quản lý phép, Tổ chức & trách nhiệm,
+  Khiếu nại lương, Ngày làm bù. Trên màn hình thật các icon này hiện ô vuông rỗng
+  hoặc làm thanh bên khó quét mắt.
+
+**Khác:**
+
+- Bổ sung hướng dẫn sử dụng cho 3 trang còn thiếu: `/phu-cap`, `/thong-bao`,
+  `/cai-dat/lam-bu`.
+- Test hướng dẫn chịu CRLF — chạy đúng trên Windows không báo “0 khối hướng dẫn”.
+
 ## [1.101.0] — 2026-09-20
 
 **Thêm mới: Quản lý cơ cấu tổ chức – vị trí – trách nhiệm (JD phân tầng + RACI + PDCA).**

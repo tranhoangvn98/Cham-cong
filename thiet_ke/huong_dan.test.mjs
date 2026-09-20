@@ -73,7 +73,9 @@ test('moi vai tro nhac trong huong dan deu co that trong api.ts', () => {
 
 test('moi huong dan co tom tat va it nhat mot buoc', () => {
   // Mot muc rong van qua duoc hai bai tren, va tren man hinh no ra mot khung trong.
-  const khoi = huong_dan.split(/\n  \{\n    duong_dan: /).slice(1);
+  // Tach theo dau dong cua tung muc. Chiu ca CRLF (may Windows) — khong thi
+  // split tra ve 0 khoi va ca cum test huong dan do sai.
+  const khoi = huong_dan.split(/\r?\n  \{\r?\n    duong_dan: /).slice(1);
   assert.ok(khoi.length >= 15, `chi tach duoc ${khoi.length} khoi huong dan`);
   for (const k of khoi) {
     const ten = /^'([^']+)'/.exec(k)?.[1] ?? '(?)';
