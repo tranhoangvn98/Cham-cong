@@ -71,6 +71,7 @@ export function TrangNhanVien(): ReactNode {
   const [chi_dang_lam, dat_chi_dang_lam] = useState(true);
   const [dang_sua, dat_dang_sua] = useState<NhanVien | null>(null);
   const [dang_them, dat_dang_them] = useState(false);
+  const [dang_them_tu_dong, dat_dang_them_tu_dong] = useState(false);
   const [tao_tk_cho, dat_tao_tk_cho] = useState<NhanVien | null>(null);
   const [dang_nhap_tep, dat_dang_nhap_tep] = useState(false);
   const [tao_thieu, dat_tao_thieu] = useState(false);
@@ -100,8 +101,9 @@ export function TrangNhanVien(): ReactNode {
         {la_nhan_su() && (
           <div className="hang-nut" style={{ marginBottom: 0 }}>
             <button onClick={() => dat_dang_nhap_tep(true)}>Nhập từ file</button>
-            <button className="nut-chinh" onClick={() => dat_dang_them(true)}>
-              + Thêm nhân viên
+            <button onClick={() => dat_dang_them(true)}>+ Thêm nhân viên</button>
+            <button className="nut-chinh" onClick={() => dat_dang_them_tu_dong(true)}>
+              + Thêm nhân viên tự động
             </button>
           </div>
         )}
@@ -211,19 +213,22 @@ export function TrangNhanVien(): ReactNode {
         )}
       </div>
 
-      {(dang_them || dang_sua !== null) && (
+      {(dang_them || dang_them_tu_dong || dang_sua !== null) && (
         <FormNhanVien
           nhan_vien={dang_sua}
+          tu_dong={dang_them_tu_dong}
           cac_ca={(ca.du_lieu ?? []).filter((c) => c.dang_hoat_dong)}
           cac_phong={phong.du_lieu ?? []}
           cac_may={(may.du_lieu ?? []).filter((m) => m.dang_bat)}
           ms365_tao_bat={ch_may_chu.du_lieu?.ms365_tao?.bat === true}
           khi_dong={() => {
             dat_dang_them(false);
+            dat_dang_them_tu_dong(false);
             dat_dang_sua(null);
           }}
           khi_xong={() => {
             dat_dang_them(false);
+            dat_dang_them_tu_dong(false);
             dat_dang_sua(null);
             nap_lai();
           }}
@@ -290,6 +295,8 @@ export function TrangNhanVien(): ReactNode {
 // ============================================================ form nhan vien
 interface FormProps {
   nhan_vien: NhanVien | null;
+  /** Che do tu dong: tu cap PIN + tao tai khoan Microsoft bat san. */
+  tu_dong: boolean;
   cac_ca: CaLam[];
   cac_phong: PhongBan[];
   cac_may: ThietBi[];
@@ -299,7 +306,7 @@ interface FormProps {
 }
 
 function FormNhanVien(
-  { nhan_vien, cac_ca, cac_phong, cac_may, ms365_tao_bat, khi_dong, khi_xong }: FormProps,
+  { nhan_vien, tu_dong, cac_ca, cac_phong, cac_may, ms365_tao_bat, khi_dong, khi_xong }: FormProps,
 ): ReactNode {
   const [f, dat_f] = useState({
     ma_nv: nhan_vien?.ma_nv ?? '',
@@ -317,9 +324,9 @@ function FormNhanVien(
     che_do_luong: nhan_vien?.che_do_luong ?? 'vn',
     khoi_id: nhan_vien?.khoi_id ?? '',
   });
-  const [tu_cap_pin, dat_tu_cap_pin] = useState(false);
+  const [tu_cap_pin, dat_tu_cap_pin] = useState(tu_dong);
   const [serial_pin, dat_serial_pin] = useState('');
-  const [tao_tk_ms, dat_tao_tk_ms] = useState(false);
+  const [tao_tk_ms, dat_tao_tk_ms] = useState(tu_dong && ms365_tao_bat);
   const [ket_qua, dat_ket_qua] = useState<
     NonNullable<KetQuaTaoNhanVien['tai_khoan_ms365']> | null
   >(null);
@@ -397,11 +404,24 @@ function FormNhanVien(
 
   return (
     <HopThoai
-      tieu_de={nhan_vien === null ? 'Thêm nhân viên' : `Sửa: ${nhan_vien.ho_ten}`}
+      tieu_de={nhan_vien === null
+        ? (tu_dong ? 'Thêm nhân viên tự động' : 'Thêm nhân viên')
+        : `Sửa: ${nhan_vien.ho_ten}`}
       khi_dong={khi_dong}
     >
       <form onSubmit={gui}>
         <HopLoi loi={hd.loi} />
+
+        {nhan_vien === null && tu_dong && (
+          <div className="hop-thong-bao hop-tin">
+            Chế độ tự động: hệ thống <strong>tự cấp PIN theo dãy của máy bạn chọn</strong>
+            {ms365_tao_bat
+              ? <> và <strong>tự tạo tài khoản Microsoft 365</strong> — mật khẩu khởi tạo chỉ
+                hiện một lần ngay sau khi lưu.</>
+              : <> — máy chủ chưa bật tạo tài khoản Microsoft nên bước đó sẽ chờ, hồ sơ vẫn
+                lưu bình thường.</>}
+          </div>
+        )}
 
         <div className="luoi luoi-2">
           <div className="o-nhap">
@@ -426,7 +446,7 @@ function FormNhanVien(
           </div>
         </div>
 
-        {nhan_vien === null && (
+        {nhan_vien === null && !tu_dong && (
           <div className="o-nhap-ngang" style={{ marginBottom: tu_cap_pin ? 0 : 8 }}>
             <input id="tcp" type="checkbox" checked={tu_cap_pin}
               onChange={(e) => dat_tu_cap_pin(e.target.checked)} />
@@ -555,20 +575,27 @@ function FormNhanVien(
           đã khai vẫn phải chờ nhân sự duyệt mới được tính công.
         </div>
 
-        {nhan_vien === null && (
+        {nhan_vien === null && !tu_dong && (
           <div className="o-nhap-ngang" style={{ marginTop: 8 }}>
             <input id="tkms" type="checkbox" checked={tao_tk_ms} disabled={!ms365_tao_bat}
               onChange={(e) => dat_tao_tk_ms(e.target.checked)} />
             <label htmlFor="tkms">Tạo tài khoản Microsoft 365 + cấp giấy phép</label>
           </div>
         )}
-        {nhan_vien === null && (
+        {nhan_vien === null && !tu_dong && (
           <div className="goi-y" style={{ marginTop: -8, marginBottom: 12 }}>
             {ms365_tao_bat
               ? <>Email trở thành tên đăng nhập Microsoft. Mật khẩu khởi tạo sẽ <strong>chỉ hiện
                 một lần</strong> ngay sau khi lưu — hãy chép lại rồi bàn giao cho nhân viên.
                 Giấy phép cấp theo chức danh: trưởng phòng nhận Standard, còn lại nhận Basic.</>
               : 'Máy chủ chưa bật tính năng này (MS365_TAO_TAI_KHOAN_BAT) — hỏi quản trị hệ thống.'}
+          </div>
+        )}
+        {nhan_vien === null && tu_dong && (
+          <div className="goi-y" style={{ marginBottom: 12 }}>
+            <strong>Lưu ý:</strong> điền email công ty (dùng làm tên đăng nhập Microsoft) nếu máy
+            chủ đã bật tạo tài khoản; giấy phép cấp theo chức danh — trưởng phòng nhận Standard,
+            còn lại nhận Basic.
           </div>
         )}
 
