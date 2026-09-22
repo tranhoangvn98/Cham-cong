@@ -39,6 +39,11 @@ Theo [SemVer](https://semver.org/lang/vi/).
   định danh, Người dùng, Hồ sơ, KPI, Kỷ luật, Khiếu nại, Vi phạm, Công việc, Tổ chức, Văn bản,
   Thông báo AI, Ứng lương, Quản lý phép, Phiếu lương, Kho tệp, Đồng bộ ERP…). Các select cố
   định dưới 5 mục giữ nguyên.
+- Sau phản hồi người dùng (bản gốc vẫn còn dropdown trình duyệt ở select ngắn): chuyển **toàn
+  bộ** các `<select>` còn lại sang `Chon` — kể cả danh sách 2–4 mục (chế độ lương, vai trò,
+  nguồn, kích thước trang, lịch nghỉ, năm, loại khoản, thuế, vùng, phạm vi, mức độ, buổi làm
+  bù, cửa sổ Gantt…). Webapp giờ không còn dropdown gốc nào của trình duyệt; mọi bảng thả đều
+  rộng đúng ô và hiện tối đa 5 mục kèm con lăn.
 
 ## [1.104.8] — 2026-09-22
 
