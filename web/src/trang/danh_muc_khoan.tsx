@@ -9,6 +9,7 @@ import {
 } from '../thanh_phan.tsx';
 import { tien } from './phu_cap.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon } from '../chon.tsx';
 
 interface Khoan {
   ma: string;
@@ -156,27 +157,33 @@ function HopThoaiThemKhoan(
       <input id="dm-ten" value={f.ten} onChange={dat('ten')} placeholder="vd: Phụ cấp điện thoại" />
 
       <label htmlFor="dm-loai">Loại</label>
-      <select id="dm-loai" value={f.loai} onChange={dat('loai')}>
-        <option value="thu_nhap">Phụ cấp / thu nhập thêm</option>
-        <option value="tru">Khoản trừ</option>
-      </select>
+      <Chon gia_tri={f.loai} dat_gia_tri={(ma) => dat_f({ ...f, loai: ma })}
+        cac_tuy_chon={[
+          { ma: 'thu_nhap', nhan: 'Phụ cấp / thu nhập thêm' },
+          { ma: 'tru', nhan: 'Khoản trừ' },
+        ]}
+        nhan="Loại khoản" />
 
       {f.loai === 'thu_nhap' && (
         <>
           <label htmlFor="dm-nhom">Nhóm</label>
-          <select id="dm-nhom" value={f.nhom} onChange={dat('nhom')}>
-            <option value="phu_cap">Phụ cấp (ăn trưa, trang điểm, địa điểm…)</option>
-            <option value="thuong">Thưởng (KPI, doanh số, hoa hồng — không tính vào phụ cấp)</option>
-          </select>
+          <Chon gia_tri={f.nhom} dat_gia_tri={(ma) => dat_f({ ...f, nhom: ma as 'phu_cap' | 'thuong' })}
+            cac_tuy_chon={[
+              { ma: 'phu_cap', nhan: 'Phụ cấp (ăn trưa, trang điểm, địa điểm…)' },
+              { ma: 'thuong', nhan: 'Thưởng (KPI, doanh số, hoa hồng — không tính vào phụ cấp)' },
+            ]}
+            nhan="Nhóm khoản" />
         </>
       )}
 
       <label htmlFor="dm-ct">Cách tính</label>
-      <select id="dm-ct" value={f.cach_tinh} onChange={dat('cach_tinh')}>
-        <option value="nhap_tay">Gõ tay số tiền</option>
-        <option value="so_luong_x_don_gia">Số lượng × đơn giá</option>
-        <option value="nua_ngay_luong">Số lần × nửa ngày lương</option>
-      </select>
+      <Chon gia_tri={f.cach_tinh} dat_gia_tri={(ma) => dat_f({ ...f, cach_tinh: ma })}
+        cac_tuy_chon={[
+          { ma: 'nhap_tay', nhan: 'Gõ tay số tiền' },
+          { ma: 'so_luong_x_don_gia', nhan: 'Số lượng × đơn giá' },
+          { ma: 'nua_ngay_luong', nhan: 'Số lần × nửa ngày lương' },
+        ]}
+        nhan="Cách tính" />
 
       {can_don_gia && (
         <>
@@ -187,11 +194,13 @@ function HopThoaiThemKhoan(
       )}
 
       <label htmlFor="dm-thue">Thuế TNCN</label>
-      <select id="dm-thue" value={f.chiu_thue ? '1' : '0'}
-        onChange={(e) => dat_f({ ...f, chiu_thue: e.target.value === '1' })}>
-        <option value="1">Chịu thuế</option>
-        <option value="0">Miễn thuế</option>
-      </select>
+      <Chon gia_tri={f.chiu_thue ? '1' : '0'}
+        dat_gia_tri={(ma) => dat_f({ ...f, chiu_thue: ma === '1' })}
+        cac_tuy_chon={[
+          { ma: '1', nhan: 'Chịu thuế' },
+          { ma: '0', nhan: 'Miễn thuế' },
+        ]}
+        nhan="Thuế TNCN" />
 
       <label htmlFor="dm-tt">Thứ tự hiển thị</label>
       <input id="dm-tt" type="number" min="0" value={f.thu_tu} onChange={dat('thu_tu')} />
@@ -254,10 +263,12 @@ function HopThoaiSuaKhoan(
       {khoan.loai === 'thu_nhap' && (
         <>
           <label htmlFor="dms-nhom">Nhóm</label>
-          <select id="dms-nhom" value={f.nhom} onChange={dat('nhom')}>
-            <option value="phu_cap">Phụ cấp</option>
-            <option value="thuong">Thưởng (KPI/doanh số/hoa hồng — không tính vào phụ cấp)</option>
-          </select>
+          <Chon gia_tri={f.nhom} dat_gia_tri={(ma) => dat_f({ ...f, nhom: ma as 'phu_cap' | 'thuong' })}
+            cac_tuy_chon={[
+              { ma: 'phu_cap', nhan: 'Phụ cấp' },
+              { ma: 'thuong', nhan: 'Thưởng (KPI/doanh số/hoa hồng — không tính vào phụ cấp)' },
+            ]}
+            nhan="Nhóm khoản" />
         </>
       )}
 
@@ -270,21 +281,25 @@ function HopThoaiSuaKhoan(
       )}
 
       <label htmlFor="dms-thue">Thuế TNCN</label>
-      <select id="dms-thue" value={f.chiu_thue ? '1' : '0'}
-        onChange={(e) => dat_f({ ...f, chiu_thue: e.target.value === '1' })}>
-        <option value="1">Chịu thuế</option>
-        <option value="0">Miễn thuế</option>
-      </select>
+      <Chon gia_tri={f.chiu_thue ? '1' : '0'}
+        dat_gia_tri={(ma) => dat_f({ ...f, chiu_thue: ma === '1' })}
+        cac_tuy_chon={[
+          { ma: '1', nhan: 'Chịu thuế' },
+          { ma: '0', nhan: 'Miễn thuế' },
+        ]}
+        nhan="Thuế TNCN" />
 
       <label htmlFor="dms-tt">Thứ tự hiển thị</label>
       <input id="dms-tt" type="number" min="0" value={f.thu_tu} onChange={dat('thu_tu')} />
 
       <label htmlFor="dms-dung">Trạng thái</label>
-      <select id="dms-dung" value={f.dang_dung ? '1' : '0'}
-        onChange={(e) => dat_f({ ...f, dang_dung: e.target.value === '1' })}>
-        <option value="1">Đang dùng</option>
-        <option value="0">Ngừng dùng (không gán mới được)</option>
-      </select>
+      <Chon gia_tri={f.dang_dung ? '1' : '0'}
+        dat_gia_tri={(ma) => dat_f({ ...f, dang_dung: ma === '1' })}
+        cac_tuy_chon={[
+          { ma: '1', nhan: 'Đang dùng' },
+          { ma: '0', nhan: 'Ngừng dùng (không gán mới được)' },
+        ]}
+        nhan="Trạng thái" />
 
       <label htmlFor="dms-cb">Cảnh báo</label>
       <input id="dms-cb" value={f.canh_bao} onChange={dat('canh_bao')} />

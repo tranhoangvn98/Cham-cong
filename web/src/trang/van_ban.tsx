@@ -166,12 +166,14 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
 
       <div className="tb-dang-hang">
         <label className="truong"><span>Phạm vi</span>
-          <select value={pham_vi}
-            onChange={(e) => dat_pham_vi(e.target.value as typeof pham_vi)}>
-            <option value="toan_cong_ty">Toàn công ty</option>
-            <option value="phong_ban">Phòng ban</option>
-            <option value="ca_nhan">Cá nhân</option>
-          </select>
+          <Chon gia_tri={pham_vi}
+            dat_gia_tri={(ma) => dat_pham_vi(ma as typeof pham_vi)}
+            cac_tuy_chon={[
+              { ma: 'toan_cong_ty', nhan: 'Toàn công ty' },
+              { ma: 'phong_ban', nhan: 'Phòng ban' },
+              { ma: 'ca_nhan', nhan: 'Cá nhân' },
+            ]}
+            nhan="Phạm vi nhận văn bản" />
         </label>
         {pham_vi === 'phong_ban' && (
           <label className="truong"><span>Chọn phòng ban</span>

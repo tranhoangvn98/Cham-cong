@@ -644,11 +644,13 @@ function HopThoaiChiSo(
       )}
 
       <label htmlFor="chieu">Chiều</label>
-      <select id="chieu" value={chieu}
-        onChange={(e) => dat_chieu(e.target.value as 'cao_tot' | 'thap_tot')}>
-        <option value="cao_tot">Càng cao càng tốt</option>
-        <option value="thap_tot">Càng thấp càng tốt</option>
-      </select>
+      <Chon gia_tri={chieu}
+        dat_gia_tri={(ma) => dat_chieu(ma as 'cao_tot' | 'thap_tot')}
+        cac_tuy_chon={[
+          { ma: 'cao_tot', nhan: 'Càng cao càng tốt' },
+          { ma: 'thap_tot', nhan: 'Càng thấp càng tốt' },
+        ]}
+        nhan="Chiều chỉ số" />
 
       <label htmlFor="dv">Đơn vị (tùy chọn)</label>
       <input id="dv" value={don_vi} onChange={(e) => dat_don_vi(e.target.value)}

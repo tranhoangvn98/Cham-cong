@@ -16,6 +16,7 @@ import {
   XuongDanhSach,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon } from '../chon.tsx';
 
 interface BacThue {
   bac: number;
@@ -380,12 +381,14 @@ function HopThoaiThem(
       <label>Lương tối thiểu vùng (đ) — trần đóng BHTN bằng 20 lần mức này</label>
       {so('luong_toi_thieu_vung')}
       <label htmlFor="vung">Vùng</label>
-      <select id="vung" value={f.vung} onChange={dat('vung')}>
-        <option value="1">Vùng I</option>
-        <option value="2">Vùng II</option>
-        <option value="3">Vùng III</option>
-        <option value="4">Vùng IV</option>
-      </select>
+      <Chon gia_tri={f.vung} dat_gia_tri={(ma) => dat_f({ ...f, vung: ma })}
+        cac_tuy_chon={[
+          { ma: '1', nhan: 'Vùng I' },
+          { ma: '2', nhan: 'Vùng II' },
+          { ma: '3', nhan: 'Vùng III' },
+          { ma: '4', nhan: 'Vùng IV' },
+        ]}
+        nhan="Vùng lương tối thiểu" />
 
       <h3>Tỷ lệ trích (%)</h3>
       <label>BHXH — người lao động</label>{so('ty_le_bhxh_nld')}
@@ -642,17 +645,21 @@ function HopThoaiThemKhoan(
       <input id="k-ten" value={f.ten} onChange={dat('ten')} placeholder="vd: Phụ cấp điện thoại" />
 
       <label htmlFor="k-loai">Loại</label>
-      <select id="k-loai" value={f.loai} onChange={dat('loai')}>
-        <option value="thu_nhap">Cộng vào thu nhập</option>
-        <option value="tru">Trừ khỏi thực lĩnh</option>
-      </select>
+      <Chon gia_tri={f.loai} dat_gia_tri={(ma) => dat_f({ ...f, loai: ma })}
+        cac_tuy_chon={[
+          { ma: 'thu_nhap', nhan: 'Cộng vào thu nhập' },
+          { ma: 'tru', nhan: 'Trừ khỏi thực lĩnh' },
+        ]}
+        nhan="Loại khoản" />
 
       <label htmlFor="k-ct">Cách tính</label>
-      <select id="k-ct" value={f.cach_tinh} onChange={dat('cach_tinh')}>
-        <option value="nhap_tay">Gõ thẳng số tiền</option>
-        <option value="so_luong_x_don_gia">Số lượng × đơn giá</option>
-        <option value="nua_ngay_luong">Nửa ngày lương × số lần</option>
-      </select>
+      <Chon gia_tri={f.cach_tinh} dat_gia_tri={(ma) => dat_f({ ...f, cach_tinh: ma })}
+        cac_tuy_chon={[
+          { ma: 'nhap_tay', nhan: 'Gõ thẳng số tiền' },
+          { ma: 'so_luong_x_don_gia', nhan: 'Số lượng × đơn giá' },
+          { ma: 'nua_ngay_luong', nhan: 'Nửa ngày lương × số lần' },
+        ]}
+        nhan="Cách tính" />
 
       {f.cach_tinh === 'so_luong_x_don_gia' && (
         <>
@@ -663,10 +670,12 @@ function HopThoaiThemKhoan(
       )}
 
       <label htmlFor="k-thue">Thuế thu nhập cá nhân</label>
-      <select id="k-thue" value={f.chiu_thue} onChange={dat('chiu_thue')}>
-        <option value="true">Chịu thuế</option>
-        <option value="false">Miễn thuế</option>
-      </select>
+      <Chon gia_tri={f.chiu_thue} dat_gia_tri={(ma) => dat_f({ ...f, chiu_thue: ma })}
+        cac_tuy_chon={[
+          { ma: 'true', nhan: 'Chịu thuế' },
+          { ma: 'false', nhan: 'Miễn thuế' },
+        ]}
+        nhan="Thuế TNCN" />
       <p className="mo-ta">
         Chọn <em>miễn thuế</em> chỉ khi có căn cứ — ví dụ phụ cấp ăn giữa ca và phụ cấp trang
         phục trong hạn mức (Thông tư 111/2013), hay tiền hoàn lại khoản nhân viên đã chi hộ

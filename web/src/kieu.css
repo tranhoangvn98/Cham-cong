@@ -2708,6 +2708,7 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   margin: 0; font-size: 13px; font-weight: 500; color: var(--chu-nhat);
 }
 .phan-trang-chon select { width: auto; padding: 4px 8px; }
+.phan-trang-chon .chon { width: 76px; }
 .phan-trang-nut-hang { display: flex; align-items: center; gap: 6px; }
 .phan-trang-nut { min-width: 34px; justify-content: center; padding: 4px 10px; }
 .phan-trang-so { white-space: nowrap; }
@@ -2717,6 +2718,8 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
    QUY CHUAN: bang tha xuong RONG DUNG BANG O (khong no theo tuy chon dai nhat),
    danh sach CHI HIEN 5 KET QUA kem con lan (moi muc cao 36px).
    ============================================================================ */
+.chon-hop-dong { display: inline-block; width: 110px; vertical-align: middle; }
+
 .chon { position: relative; min-width: 0; flex: 1; }
 .chon-o {
   width: 100%; justify-content: space-between; gap: 8px; min-height: 36px;

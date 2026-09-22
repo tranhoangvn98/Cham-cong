@@ -14,6 +14,7 @@ import {
   DangTai, HopLoi, OSo, Trong, dung_nap, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon } from '../chon.tsx';
 
 type Tab = 'sap_het_han' | 'tim';
 
@@ -160,15 +161,14 @@ function TabSapHetHan(): ReactNode {
       <div className="hang-nut">
         <label>
           Trong{' '}
-          <select
-            value={trong_ngay}
-            onChange={(e) => dat_trong_ngay(Number(e.target.value))}
-          >
-            <option value={15}>15 ngày</option>
-            <option value={30}>30 ngày</option>
-            <option value={45}>45 ngày</option>
-            <option value={90}>90 ngày</option>
-          </select>
+          <span className="chon-hop-dong">
+            <Chon gia_tri={String(trong_ngay)}
+              dat_gia_tri={(ma) => dat_trong_ngay(Number(ma))}
+              cac_tuy_chon={[15, 30, 45, 90].map((n) => ({
+                ma: String(n), nhan: `${n} ngày`,
+              }))}
+              nhan="Khoảng ngày xem hợp đồng" />
+          </span>
         </label>
       </div>
       <p className="mo-ta">

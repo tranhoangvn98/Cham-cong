@@ -5,6 +5,7 @@
 import { useState, type ReactNode } from 'react';
 import { goi } from '../api.ts';
 import { DangTai, HopLoi, HopTot, Trong, dung_hanh_dong, dung_nap, ngay_gio } from '../thanh_phan.tsx';
+import { Chon } from '../chon.tsx';
 
 interface Buoi { ngay: string; buoi: 'sang' | 'chieu' }
 interface NgayLamBu {
@@ -126,10 +127,13 @@ function FormLamBu({ khi_xong }: { khi_xong: () => void }): ReactNode {
             <label className="truong"><span>Ngày làm bù</span>
               <input type="date" value={b.ngay} onChange={(e) => sua_buoi(i, { ngay: e.target.value })} /></label>
             <label className="truong"><span>Buổi</span>
-              <select value={b.buoi} onChange={(e) => sua_buoi(i, { buoi: e.target.value as 'sang' | 'chieu' })}>
-                <option value="chieu">Chiều</option>
-                <option value="sang">Sáng</option>
-              </select></label>
+              <Chon gia_tri={b.buoi}
+                dat_gia_tri={(ma) => sua_buoi(i, { buoi: ma as 'sang' | 'chieu' })}
+                cac_tuy_chon={[
+                  { ma: 'chieu', nhan: 'Chiều' },
+                  { ma: 'sang', nhan: 'Sáng' },
+                ]}
+                nhan="Buổi làm bù" /></label>
             {buoi.length > 1 && (
               <button className="nut-nho nut-phang" onClick={() => dat_buoi((cu) => cu.filter((_, j) => j !== i))}>Bỏ</button>
             )}

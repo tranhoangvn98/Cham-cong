@@ -6,6 +6,7 @@ import {
 } from '../thanh_phan.tsx';
 import { goi, la_nhan_su, tai_tep } from '../api.ts';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon } from '../chon.tsx';
 
 interface ThongBao {
   id: string;
@@ -196,11 +197,13 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
       </div>
       <div className="tb-dang-hang">
         <label className="truong"><span>Mức độ</span>
-          <select value={muc_do} onChange={(e) => dat_muc_do(e.target.value)}>
-            <option value="thuong">Thường</option>
-            <option value="quan_trong">Quan trọng</option>
-            <option value="khan">Khẩn</option>
-          </select>
+          <Chon gia_tri={muc_do} dat_gia_tri={dat_muc_do}
+            cac_tuy_chon={[
+              { ma: 'thuong', nhan: 'Thường' },
+              { ma: 'quan_trong', nhan: 'Quan trọng' },
+              { ma: 'khan', nhan: 'Khẩn' },
+            ]}
+            nhan="Mức độ" />
         </label>
         <label className="truong-hang">
           <input type="checkbox" checked={can_gt} onChange={(e) => dat_can_gt(e.target.checked)} />

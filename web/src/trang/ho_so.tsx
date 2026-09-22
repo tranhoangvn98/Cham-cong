@@ -1697,12 +1697,12 @@ function FormDongTaiLieu(
 
         <div className="o-nhap">
           <label htmlFor="tt">Trạng thái</label>
-          <select id="tt" value={f.trang_thai}
-            onChange={(e) => dat_f((c) => ({ ...c, trang_thai: e.target.value }))}>
-            {Object.entries(TEN['tt_tai_lieu'] ?? {}).map(([ma, ten]) => (
-              <option key={ma} value={ma}>{ten}</option>
-            ))}
-          </select>
+          <Chon gia_tri={String(f.trang_thai ?? '')}
+            dat_gia_tri={(ma) => dat_f((c) => ({ ...c, trang_thai: ma }))}
+            cac_tuy_chon={Object.entries(TEN['tt_tai_lieu'] ?? {}).map(([ma, ten]): TuyChonChon => ({
+              ma, nhan: ten,
+            }))}
+            nhan="Trạng thái tài liệu" />
           <div className="goi-y">
             Ba mức theo checklist HCNS: đã có dữ liệu → đã số hóa → đã lên phần mềm.
             Chỉ mức cuối mới tính vào tiến độ.

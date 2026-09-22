@@ -250,10 +250,13 @@ function HopThoaiGanKhoi(
           ) : (
             <>
               <label htmlFor="pck-nguon">Số lượng lấy từ</label>
-              <select id="pck-nguon" value={f.nguon_so_luong} onChange={dat('nguon_so_luong')}>
-                <option value="co_dinh">Số cố định mỗi tháng</option>
-                <option value="theo_cong">Số ngày công thực tế của kỳ</option>
-              </select>
+              <Chon gia_tri={f.nguon_so_luong}
+                dat_gia_tri={(ma) => dat_f({ ...f, nguon_so_luong: ma })}
+                cac_tuy_chon={[
+                  { ma: 'co_dinh', nhan: 'Số cố định mỗi tháng' },
+                  { ma: 'theo_cong', nhan: 'Số ngày công thực tế của kỳ' },
+                ]}
+                nhan="Số lượng lấy từ" />
               {f.nguon_so_luong === 'co_dinh' ? (
                 <>
                   <label htmlFor="pck-sl">Số lượng mỗi tháng</label>

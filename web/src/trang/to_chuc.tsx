@@ -625,11 +625,14 @@ function HopTaoDauViec({ vi_tri_id, dong }: { vi_tri_id: string; dong: () => voi
           </label>
           <label className="o-nhap">
             <span>Mức độ quan trọng</span>
-            <select value={muc_do} onChange={(e) => dat_md(e.target.value as 'cao' | 'rat_cao' | 'trung_binh')}>
-              <option value="cao">Cao</option>
-              <option value="rat_cao">Rất cao</option>
-              <option value="trung_binh">Trung bình</option>
-            </select>
+            <Chon gia_tri={muc_do}
+              dat_gia_tri={(ma) => dat_md(ma as 'cao' | 'rat_cao' | 'trung_binh')}
+              cac_tuy_chon={[
+                { ma: 'cao', nhan: 'Cao' },
+                { ma: 'rat_cao', nhan: 'Rất cao' },
+                { ma: 'trung_binh', nhan: 'Trung bình' },
+              ]}
+              nhan="Mức độ quan trọng" />
           </label>
           <label className="o-nhap">
             <span>Mô tả</span>
@@ -686,11 +689,13 @@ function HopTaoViTri({ dong }: { dong: () => void }): ReactNode {
       </label>
       <label className="o-nhap">
         <span>Phạm vi áp dụng</span>
-        <select value={pham_vi} onChange={(e) => dat_pv(e.target.value)}>
-          <option value="cu_the">Một phòng cụ thể</option>
-          <option value="moi_phong">Mỗi phòng</option>
-          <option value="toan_cong_ty">Toàn công ty</option>
-        </select>
+        <Chon gia_tri={pham_vi} dat_gia_tri={dat_pv}
+          cac_tuy_chon={[
+            { ma: 'cu_the', nhan: 'Một phòng cụ thể' },
+            { ma: 'moi_phong', nhan: 'Mỗi phòng' },
+            { ma: 'toan_cong_ty', nhan: 'Toàn công ty' },
+          ]}
+          nhan="Phạm vi áp dụng" />
       </label>
       {pham_vi === 'cu_the' && (
         <label className="o-nhap">

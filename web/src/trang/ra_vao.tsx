@@ -214,11 +214,11 @@ function HopThoaiXuLy(
 
       <h3>Hành động</h3>
       <label htmlFor="hd">Chọn cách xử lý</label>
-      <select id="hd" value={hanh_dong} onChange={(e) => dat_hanh_dong(e.target.value)}>
-        {Object.entries(NHAN_HANH_DONG).map(([k, v]) => (
-          <option key={k} value={k}>{v}</option>
-        ))}
-      </select>
+      <Chon gia_tri={hanh_dong} dat_gia_tri={dat_hanh_dong}
+        cac_tuy_chon={Object.entries(NHAN_HANH_DONG).map(([k, v]) => ({
+          ma: k, nhan: v,
+        }))}
+        nhan="Chọn cách xử lý" />
 
       {hanh_dong === 'nhac_nho' && (
         <p className="mo-ta">Gửi email nhắc nhở tới nhân viên (kèm thông báo trong app). Không tính vi phạm.</p>

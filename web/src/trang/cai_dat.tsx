@@ -6,6 +6,7 @@ import {
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet, thu_cua_ngay,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 
 const TEN_THU_DAY = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
 const TEN_THU_NGAN = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -677,11 +678,11 @@ function TabNgayLe(): ReactNode {
       <div className="bo-loc">
         <div className="o-nhap">
           <label htmlFor="nam">Năm</label>
-          <select id="nam" value={nam} onChange={(e) => dat_nam(e.target.value)}>
-            {[nam_nay - 1, nam_nay, nam_nay + 1].map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
+          <Chon gia_tri={nam} dat_gia_tri={dat_nam}
+            cac_tuy_chon={[nam_nay - 1, nam_nay, nam_nay + 1].map((n): TuyChonChon => ({
+              ma: String(n), nhan: String(n),
+            }))}
+            nhan="Chọn năm" />
         </div>
       </div>
 
@@ -770,11 +771,11 @@ function FormNgayLe({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: ()
         </div>
         <div className="o-nhap">
           <label htmlFor="lnl">Lịch áp dụng</label>
-          <select id="lnl" value={lich_ma} onChange={(e) => dat_lich(e.target.value)}>
-            {(lichs ?? [{ ma: 'vn', ten: 'Việt Nam' } as Lich]).map((l) => (
-              <option key={l.ma} value={l.ma}>{l.ten}</option>
-            ))}
-          </select>
+          <Chon gia_tri={lich_ma} dat_gia_tri={dat_lich}
+            cac_tuy_chon={(lichs ?? [{ ma: 'vn', ten: 'Việt Nam' } as Lich]).map((l): TuyChonChon => ({
+              ma: l.ma, nhan: l.ten,
+            }))}
+            nhan="Lịch áp dụng" />
         </div>
         <div className="o-nhap-ngang">
           <input id="hl" type="checkbox" checked={huong_luong}
@@ -834,11 +835,11 @@ function TabKeHoach(): ReactNode {
       <div className="bo-loc">
         <div className="o-nhap">
           <label htmlFor="namkh">Năm</label>
-          <select id="namkh" value={nam} onChange={(e) => dat_nam(e.target.value)}>
-            {[nam_nay - 1, nam_nay, nam_nay + 1].map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
+          <Chon gia_tri={nam} dat_gia_tri={dat_nam}
+            cac_tuy_chon={[nam_nay - 1, nam_nay, nam_nay + 1].map((n): TuyChonChon => ({
+              ma: String(n), nhan: String(n),
+            }))}
+            nhan="Chọn năm" />
         </div>
       </div>
 
@@ -925,11 +926,11 @@ function FormKeHoach({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
         </div>
         <div className="o-nhap">
           <label htmlFor="lichkh">Lịch áp dụng</label>
-          <select id="lichkh" value={lich_ma} onChange={(e) => dat_lich(e.target.value)}>
-            {(lichs ?? [{ ma: 'vn', ten: 'Việt Nam' } as Lich]).map((l) => (
-              <option key={l.ma} value={l.ma}>{l.ten}</option>
-            ))}
-          </select>
+          <Chon gia_tri={lich_ma} dat_gia_tri={dat_lich}
+            cac_tuy_chon={(lichs ?? [{ ma: 'vn', ten: 'Việt Nam' } as Lich]).map((l): TuyChonChon => ({
+              ma: l.ma, nhan: l.ten,
+            }))}
+            nhan="Lịch áp dụng" />
         </div>
         <div className="o-nhap-ngang">
           <input id="hlkh" type="checkbox" checked={huong_luong}
@@ -1039,11 +1040,11 @@ function FormNoiLamViec(
         </div>
         <div className="o-nhap">
           <label htmlFor="lichnlv">Lịch nghỉ lễ *</label>
-          <select id="lichnlv" value={lich_nghi_ma} onChange={(e) => dat_lich(e.target.value)}>
-            {(lichs ?? [{ ma: 'vn', ten: 'Việt Nam' } as Lich]).map((l) => (
-              <option key={l.ma} value={l.ma}>{l.ten}</option>
-            ))}
-          </select>
+          <Chon gia_tri={lich_nghi_ma} dat_gia_tri={dat_lich}
+            cac_tuy_chon={(lichs ?? [{ ma: 'vn', ten: 'Việt Nam' } as Lich]).map((l): TuyChonChon => ({
+              ma: l.ma, nhan: l.ten,
+            }))}
+            nhan="Lịch nghỉ lễ" />
         </div>
         <div className="o-nhap">
           <label htmlFor="dcnlv">Địa chỉ</label>

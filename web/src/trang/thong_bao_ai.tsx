@@ -203,24 +203,31 @@ function FormTao(
         <div className="soan-tieu-de">Thông tin cơ bản</div>
         <div className="soan-hang soan-hang-4">
           <label className="truong"><span>Loại văn bản</span>
-            <select value={loai} onChange={(e) => dat_lo(e.target.value, dat_loai)}>
-              <option value="thong_bao">Thông báo</option>
-              <option value="quyet_dinh">Quyết định</option>
-              <option value="cong_van">Công văn</option>
-            </select>
+            <Chon gia_tri={loai} dat_gia_tri={(ma) => dat_lo(ma, dat_loai)}
+              cac_tuy_chon={[
+                { ma: 'thong_bao', nhan: 'Thông báo' },
+                { ma: 'quyet_dinh', nhan: 'Quyết định' },
+                { ma: 'cong_van', nhan: 'Công văn' },
+              ]}
+              nhan="Loại văn bản" />
           </label>
           <label className="truong"><span>Phạm vi nhận</span>
-            <select value={pham_vi} onChange={(e) => dat_pham_vi(e.target.value as PhamVi)}>
-              <option value="toan_cong_ty">Toàn công ty</option>
-              <option value="phong_ban">Phòng ban</option>
-              <option value="ca_nhan">Cá nhân</option>
-            </select>
+            <Chon gia_tri={pham_vi} dat_gia_tri={(ma) => dat_pham_vi(ma as PhamVi)}
+              cac_tuy_chon={[
+                { ma: 'toan_cong_ty', nhan: 'Toàn công ty' },
+                { ma: 'phong_ban', nhan: 'Phòng ban' },
+                { ma: 'ca_nhan', nhan: 'Cá nhân' },
+              ]}
+              nhan="Phạm vi nhận" />
           </label>
           <label className="truong"><span>Quan hệ</span>
-            <select value={quan_he} onChange={(e) => dat_quan_he(e.target.value as 'noi_bo' | 'doi_ngoai')}>
-              <option value="noi_bo">Nội bộ</option>
-              <option value="doi_ngoai">Đối ngoại</option>
-            </select>
+            <Chon gia_tri={quan_he}
+              dat_gia_tri={(ma) => dat_quan_he(ma as 'noi_bo' | 'doi_ngoai')}
+              cac_tuy_chon={[
+                { ma: 'noi_bo', nhan: 'Nội bộ' },
+                { ma: 'doi_ngoai', nhan: 'Đối ngoại' },
+              ]}
+              nhan="Quan hệ văn bản" />
           </label>
           <label className="truong"><span>Mục đích</span>
             <Chon gia_tri={muc_dich} dat_gia_tri={dat_muc_dich}
@@ -273,17 +280,23 @@ function FormTao(
         <div className="soan-tieu-de">Chế độ soạn</div>
         <div className="soan-hang soan-hang-4">
           <label className="truong"><span>Chế độ</span>
-            <select value={che_do} onChange={(e) => dat_che_do(e.target.value as 'ai' | 'tu_soan')}>
-              <option value="ai">AI soạn (nhập ý vắn tắt)</option>
-              <option value="tu_soan">Tự soạn (không dùng AI)</option>
-            </select>
+            <Chon gia_tri={che_do}
+              dat_gia_tri={(ma) => dat_che_do(ma as 'ai' | 'tu_soan')}
+              cac_tuy_chon={[
+                { ma: 'ai', nhan: 'AI soạn (nhập ý vắn tắt)' },
+                { ma: 'tu_soan', nhan: 'Tự soạn (không dùng AI)' },
+              ]}
+              nhan="Chế độ soạn" />
           </label>
           <label className="truong"><span>Mức độ</span>
-            <select value={muc_do} onChange={(e) => dat_muc_do(e.target.value as typeof muc_do)}>
-              <option value="thuong">Thường</option>
-              <option value="quan_trong">Quan trọng</option>
-              <option value="khan">Khẩn</option>
-            </select>
+            <Chon gia_tri={muc_do}
+              dat_gia_tri={(ma) => dat_muc_do(ma as typeof muc_do)}
+              cac_tuy_chon={[
+                { ma: 'thuong', nhan: 'Thường' },
+                { ma: 'quan_trong', nhan: 'Quan trọng' },
+                { ma: 'khan', nhan: 'Khẩn' },
+              ]}
+              nhan="Mức độ" />
           </label>
           <label className="truong-hang">
             <input type="checkbox" checked={can_gt} onChange={(e) => dat_can_gt(e.target.checked)} />

@@ -312,11 +312,13 @@ function HopThoaiQuyet(
         <>
           <h3>Quyết định</h3>
           <label htmlFor="qd">Kết luận</label>
-          <select id="qd" value={quyet} onChange={(e) => dat_quyet(e.target.value)}>
-            <option value="da_xac_nhan">Xác nhận có vi phạm</option>
-            <option value="bac_bo">Bãi bỏ — không có vi phạm</option>
-            <option value="da_xu_ly">Đã xử lý xong</option>
-          </select>
+          <Chon gia_tri={quyet} dat_gia_tri={dat_quyet}
+            cac_tuy_chon={[
+              { ma: 'da_xac_nhan', nhan: 'Xác nhận có vi phạm' },
+              { ma: 'bac_bo', nhan: 'Bãi bỏ — không có vi phạm' },
+              { ma: 'da_xu_ly', nhan: 'Đã xử lý xong' },
+            ]}
+            nhan="Kết luận" />
 
           <label htmlFor="kl">Hình thức kỷ luật</label>
           <Chon gia_tri={ky_luat} dat_gia_tri={dat_ky_luat}

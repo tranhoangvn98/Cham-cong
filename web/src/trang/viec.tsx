@@ -9,7 +9,7 @@ import {
   hom_nay, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
-import { Chon } from '../chon.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 
 // ---------------------------------------------------------------- kieu du lieu
 export interface DongViec {
@@ -94,8 +94,7 @@ interface NhanVienGon {
 }
 
 // ---------------------------------------------------------------- nhan / mau
-const NHAN_TT: Record<string, string> = {
-  moi: 'Mới', dang_lam: 'Đang làm', cho_duyet: 'Chờ duyệt',
+const NHAN_TT: Record<string, string> = { moi: 'Mới', dang_lam: 'Đang làm', cho_duyet: 'Chờ duyệt',
   hoan_thanh: 'Hoàn thành', khong_hoan_thanh: 'Không hoàn thành', huy: 'Đã hủy',
 };
 const MAU_TT: Record<string, string> = {
@@ -119,6 +118,12 @@ const NHAN_QUY_TAC: Record<string, string> = {
   hang_thang: 'Hằng tháng', khoang_ngay: 'Mỗi N ngày',
   hai_tuan: '2 tuần', hang_quy: 'Hằng quý', hang_nam: 'Hằng năm', '6_thang': '6 tháng',
 };
+const CAC_UU_TIEN: TuyChonChon[] = [
+  { ma: 'thuong', nhan: 'Thường' },
+  { ma: 'thap', nhan: 'Thấp' },
+  { ma: 'cao', nhan: 'Cao' },
+  { ma: 'khan', nhan: 'Khẩn' },
+];
 const TT_LOC = ['moi', 'dang_lam', 'cho_duyet', 'hoan_thanh', 'khong_hoan_thanh', 'huy'] as const;
 
 /** 'dd/mm/yyyy' -> 'YYYY-MM-DD'; tra null khi rong, loi khi sai dang. */
@@ -586,12 +591,10 @@ function FormTaoViec({ la_qly, khi_xong }: { la_qly: boolean; khi_xong: () => vo
         </label>
         <label>
           Ưu tiên
-          <select value={f.uu_tien} onChange={doi('uu_tien')}>
-            <option value="thuong">Thường</option>
-            <option value="thap">Thấp</option>
-            <option value="cao">Cao</option>
-            <option value="khan">Khẩn</option>
-          </select>
+          <Chon gia_tri={f.uu_tien}
+            dat_gia_tri={(ma) => doi('uu_tien')({ target: { value: ma } })}
+            cac_tuy_chon={CAC_UU_TIEN}
+            nhan="Ưu tiên" />
         </label>
       </div>
       <label>
@@ -769,11 +772,14 @@ export function ManGantt(): ReactNode {
     <div>
       <div className="cv-hang-loc">
         <label className="cv-ghi-chu">Cửa sổ xem:</label>
-        <select value={nghin} onChange={(e) => dat_nghin(Number(e.target.value))}>
-          <option value={7}>±7 ngày</option>
-          <option value={14}>±14 ngày</option>
-          <option value={30}>±30 ngày</option>
-        </select>
+        <Chon gia_tri={String(nghin)}
+          dat_gia_tri={(ma) => dat_nghin(Number(ma))}
+          cac_tuy_chon={[
+            { ma: '7', nhan: '±7 ngày' },
+            { ma: '14', nhan: '±14 ngày' },
+            { ma: '30', nhan: '±30 ngày' },
+          ]}
+          nhan="Cửa sổ xem Gantt" />
         <span className="cv-gantt-chu-thich">
           <span className="cv-nguon cv-nguon-giam-doc">Giám đốc</span>
           <span className="cv-nguon cv-nguon-he-thong">Hệ thống</span>
@@ -944,12 +950,15 @@ function FormMauDinhKy({ khi_xong }: { khi_xong: () => void }): ReactNode {
       <div className="cv-hai-cot">
         <label>
           Lặp lại
-          <select value={f.quy_tac} onChange={doi('quy_tac')}>
-            <option value="hang_ngay">Hằng ngày</option>
-            <option value="hang_tuan">Hằng tuần</option>
-            <option value="hang_thang">Hằng tháng</option>
-            <option value="khoang_ngay">Mỗi N ngày</option>
-          </select>
+          <Chon gia_tri={f.quy_tac}
+            dat_gia_tri={(ma) => doi('quy_tac')({ target: { value: ma } })}
+            cac_tuy_chon={[
+              { ma: 'hang_ngay', nhan: 'Hằng ngày' },
+              { ma: 'hang_tuan', nhan: 'Hằng tuần' },
+              { ma: 'hang_thang', nhan: 'Hằng tháng' },
+              { ma: 'khoang_ngay', nhan: 'Mỗi N ngày' },
+            ]}
+            nhan="Quy tắc lặp" />
         </label>
         <label>
           Giờ hạn
@@ -986,12 +995,10 @@ function FormMauDinhKy({ khi_xong }: { khi_xong: () => void }): ReactNode {
       </div>
       <label>
         Ưu tiên
-        <select value={f.uu_tien} onChange={doi('uu_tien')}>
-          <option value="thuong">Thường</option>
-          <option value="thap">Thấp</option>
-          <option value="cao">Cao</option>
-          <option value="khan">Khẩn</option>
-        </select>
+        <Chon gia_tri={f.uu_tien}
+          dat_gia_tri={(ma) => doi('uu_tien')({ target: { value: ma } })}
+          cac_tuy_chon={CAC_UU_TIEN}
+          nhan="Ưu tiên" />
       </label>
       {hd.tot !== null && <HopTot chu={hd.tot} />}
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
@@ -1102,12 +1109,17 @@ function FormWorkflow({ w, khi_xong }: { w: WorkflowCF; khi_xong: () => void }):
       </label>
       <label>
         Người nhận
-        <select value={f.nguoi_nhan_kieu} onChange={doi('nguoi_nhan_kieu')}>
-          {w.kieu_duoc_chon.includes('co_dinh') && <option value="co_dinh">Người cố định</option>}
-          {w.kieu_duoc_chon.includes('truong_phong_lien_quan') && (
-            <option value="truong_phong_lien_quan">Trưởng phòng liên quan</option>
-          )}
-        </select>
+        <Chon gia_tri={f.nguoi_nhan_kieu}
+          dat_gia_tri={(ma) => doi('nguoi_nhan_kieu')({ target: { value: ma } })}
+          cac_tuy_chon={[
+            ...(w.kieu_duoc_chon.includes('co_dinh')
+              ? [{ ma: 'co_dinh', nhan: 'Người cố định' }]
+              : []),
+            ...(w.kieu_duoc_chon.includes('truong_phong_lien_quan')
+              ? [{ ma: 'truong_phong_lien_quan', nhan: 'Trưởng phòng liên quan' }]
+              : []),
+          ]}
+          nhan="Kiểu người nhận" />
       </label>
       {f.nguoi_nhan_kieu === 'co_dinh' && (
         <label>
@@ -1125,12 +1137,10 @@ function FormWorkflow({ w, khi_xong }: { w: WorkflowCF; khi_xong: () => void }):
         </label>
         <label>
           Ưu tiên
-          <select value={f.uu_tien} onChange={doi('uu_tien')}>
-            <option value="thuong">Thường</option>
-            <option value="thap">Thấp</option>
-            <option value="cao">Cao</option>
-            <option value="khan">Khẩn</option>
-          </select>
+          <Chon gia_tri={f.uu_tien}
+            dat_gia_tri={(ma) => doi('uu_tien')({ target: { value: ma } })}
+            cac_tuy_chon={CAC_UU_TIEN}
+            nhan="Ưu tiên" />
         </label>
       </div>
       {hd.tot !== null && <HopTot chu={hd.tot} />}

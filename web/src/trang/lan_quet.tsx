@@ -154,12 +154,14 @@ export function TrangLanQuet(): ReactNode {
 
         <div className="o-nhap">
           <label htmlFor="lng">Nguồn</label>
-          <select id="lng" value={nguon} onChange={(e) => doi_loc(dat_nguon)(e.target.value)}>
-            <option value="">Tất cả</option>
-            <option value="may">Máy chấm công</option>
-            <option value="dien_thoai">Điện thoại</option>
-            <option value="thu_cong">Nhập tay</option>
-          </select>
+          <Chon gia_tri={nguon}
+            dat_gia_tri={(ma) => doi_loc(dat_nguon)(ma)}
+            cac_tuy_chon={[
+              { ma: 'may', nhan: 'Máy chấm công' },
+              { ma: 'dien_thoai', nhan: 'Điện thoại' },
+              { ma: 'thu_cong', nhan: 'Nhập tay' },
+            ]}
+            rong="Tất cả" nhan="Lọc theo nguồn" />
         </div>
         <div className="o-nhap">
           <label htmlFor="ltt">Trạng thái duyệt</label>

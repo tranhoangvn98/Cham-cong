@@ -14,6 +14,7 @@
 //   <BoPhanTrang tong={tong} trang={trang} kich_thuoc={kich_thuoc}
 //     dat_trang={dat_trang} dat_kich_thuoc={dat_kich_thuoc} />
 import { useEffect, useState, type ReactNode } from 'react';
+import { Chon } from './chon.tsx';
 
 export const CAC_KICH_THUOC_TRANG = [20, 50, 100] as const;
 
@@ -36,9 +37,12 @@ export function BoPhanTrang({ tong, trang, kich_thuoc, dat_trang, dat_kich_thuoc
       <div className="phan-trang-phai">
         <label className="phan-trang-chon">
           Mỗi trang
-          <select value={kich_thuoc} onChange={(e) => dat_kich_thuoc(Number(e.target.value))}>
-            {CAC_KICH_THUOC_TRANG.map((k) => <option key={k} value={k}>{k}</option>)}
-          </select>
+          <Chon gia_tri={String(kich_thuoc)}
+            dat_gia_tri={(ma) => dat_kich_thuoc(Number(ma))}
+            cac_tuy_chon={CAC_KICH_THUOC_TRANG.map((k) => ({
+              ma: String(k), nhan: String(k),
+            }))}
+            nhan="Số dòng mỗi trang" />
         </label>
         <div className="phan-trang-nut-hang">
           <button

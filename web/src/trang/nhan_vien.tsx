@@ -493,11 +493,13 @@ function FormNhanVien(
 
         <div className="o-nhap">
           <label htmlFor="cdl">Chế độ lương</label>
-          <select id="cdl" value={f.che_do_luong}
-            onChange={(e) => doi('che_do_luong', e.target.value)}>
-            <option value="vn">Lương Việt Nam (VND) — vào bảng lương</option>
-            <option value="tq">Lương Trung Quốc (CNY) — khối riêng</option>
-          </select>
+          <Chon gia_tri={f.che_do_luong}
+            dat_gia_tri={(ma) => doi('che_do_luong', ma)}
+            cac_tuy_chon={[
+              { ma: 'vn', nhan: 'Lương Việt Nam (VND) — vào bảng lương' },
+              { ma: 'tq', nhan: 'Lương Trung Quốc (CNY) — khối riêng' },
+            ]}
+            nhan="Chế độ lương" />
           <div className="goi-y">
             Chọn <strong>Lương Trung Quốc</strong> cho nhân sự nhận lương bằng CNY: họ được
             <strong> loại khỏi kỳ lương VND</strong> (không áp BHXH/thuế TNCN Việt Nam) và tính ở
@@ -679,13 +681,13 @@ function FormTaoTaiKhoan(
 
         <div className="o-nhap">
           <label htmlFor="vt">Vai trò</label>
-          <select id="vt" value={vai_tro}
-            onChange={(e) => dat_vai_tro(e.target.value as 'nhan_vien' | 'truong_phong')}>
-            <option value="nhan_vien">{TEN_VAI_TRO['nhan_vien']} — chỉ xem công của mình</option>
-            <option value="truong_phong">
-              {TEN_VAI_TRO['truong_phong']} — xem và duyệt đơn của phòng mình
-            </option>
-          </select>
+          <Chon gia_tri={vai_tro}
+            dat_gia_tri={(ma) => dat_vai_tro(ma as 'nhan_vien' | 'truong_phong')}
+            cac_tuy_chon={[
+              { ma: 'nhan_vien', nhan: `${TEN_VAI_TRO['nhan_vien']} — chỉ xem công của mình` },
+              { ma: 'truong_phong', nhan: `${TEN_VAI_TRO['truong_phong']} — xem và duyệt đơn của phòng mình` },
+            ]}
+            nhan="Vai trò" />
         </div>
 
         <div className="hang-nut">

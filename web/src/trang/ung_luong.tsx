@@ -350,10 +350,13 @@ function HopThoaiUng(
           {loi_ngay !== null && <div className="hop-thong-bao hop-loi">{loi_ngay}</div>}
 
           <label htmlFor="ul-f-ht">Hình thức</label>
-          <select id="ul-f-ht" value={f.hinh_thuc} onChange={dat('hinh_thuc')}>
-            <option value="tien_mat">Tiền mặt</option>
-            <option value="chuyen_khoan">Chuyển khoản</option>
-          </select>
+          <Chon gia_tri={f.hinh_thuc}
+            dat_gia_tri={(ma) => dat_f({ ...f, hinh_thuc: ma as 'tien_mat' | 'chuyen_khoan' })}
+            cac_tuy_chon={[
+              { ma: 'tien_mat', nhan: 'Tiền mặt' },
+              { ma: 'chuyen_khoan', nhan: 'Chuyển khoản' },
+            ]}
+            nhan="Hình thức ứng" />
 
           <label htmlFor="ul-f-lydo">Lý do</label>
           <input id="ul-f-lydo" value={f.ly_do} onChange={dat('ly_do')} />
