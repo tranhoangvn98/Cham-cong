@@ -5,6 +5,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { goi, gui_tep } from '../api.ts';
 import { lay_muc_tieu_bao, nghe_muc_tieu_bao } from '../dieu_huong_sau.ts';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 import {
   AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap,
   khoa_tinh, ngay_gio, type TinNhanKN,
@@ -800,9 +801,12 @@ export function TrangKhieuNaiToi(): ReactNode {
         ) : (
           <>
             <label htmlFor="kn_ky">Chọn kỳ lương</label>
-            <select id="kn_ky" value={chon} onChange={(e) => dat_chon(Number(e.target.value))}>
-              {ds_phieu.map((x, i) => <option key={x.id} value={i}>{thang_viet(x.thang)}</option>)}
-            </select>
+            <Chon gia_tri={String(chon)}
+              dat_gia_tri={(ma) => dat_chon(Number(ma))}
+              cac_tuy_chon={ds_phieu.map((x, i): TuyChonChon => ({
+                ma: String(i), nhan: thang_viet(x.thang),
+              }))}
+              nhan="Chọn kỳ lương" />
             <div className="hang-nut" style={{ marginTop: 8 }}>
               <button className="nut-lanh" onClick={() => dat_mo(true)}>Lập khiếu nại kỳ này</button>
             </div>

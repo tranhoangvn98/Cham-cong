@@ -15,6 +15,7 @@ import {
   dung_hanh_dong, dung_nap, hom_nay, thang_nay,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon } from '../chon.tsx';
 
 interface NhanVienGon {
   id: string;
@@ -149,14 +150,15 @@ export function TrangUngLuong(): ReactNode {
         </span>
         <span className="ul-loc-o">
           <label htmlFor="ul-tt">Trạng thái</label>
-          <select id="ul-tt" value={trang_thai}
-            onChange={(e) => dat_trang_thai(e.target.value as '' | Ung['trang_thai'])}>
-            <option value="">— tất cả —</option>
-            <option value="cho_duyet">Chờ duyệt</option>
-            <option value="da_duyet">Đã duyệt</option>
-            <option value="da_chi">Đã chi</option>
-            <option value="huy">Hủy</option>
-          </select>
+          <Chon gia_tri={trang_thai}
+            dat_gia_tri={(ma) => dat_trang_thai(ma as '' | Ung['trang_thai'])}
+            cac_tuy_chon={[
+              { ma: 'cho_duyet', nhan: 'Chờ duyệt' },
+              { ma: 'da_duyet', nhan: 'Đã duyệt' },
+              { ma: 'da_chi', nhan: 'Đã chi' },
+              { ma: 'huy', nhan: 'Hủy' },
+            ]}
+            rong="— tất cả —" nhan="Lọc theo trạng thái" />
         </span>
       </div>
 

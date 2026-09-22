@@ -146,11 +146,11 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
 
       <div className="tb-dang-hang">
         <label className="truong"><span>Loại / hình thức</span>
-          <select value={danh_muc} onChange={(e) => dat_danh_muc(e.target.value)}>
-            {DANH_MUC_THU_TU.map((m) => (
-              <option key={m} value={m}>{NHAN_DANH_MUC[m]}</option>
-            ))}
-          </select>
+          <Chon gia_tri={danh_muc} dat_gia_tri={dat_danh_muc}
+            cac_tuy_chon={DANH_MUC_THU_TU.map((m) => ({
+              ma: m, nhan: NHAN_DANH_MUC[m] ?? m,
+            }))}
+            nhan="Loại / hình thức văn bản" />
         </label>
         <label className="truong"><span>Người ban hành</span>
           <input value={nguoi_ban_hanh} placeholder="vd Giám đốc, Phòng HCNS"

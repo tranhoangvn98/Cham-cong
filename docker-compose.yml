@@ -102,6 +102,12 @@ services:
       # Nghi viec tu dong: chan dang nhap + rut giay phep Microsoft khi nghi viec.
       # 1 = bat; 0 (mac dinh) = su kien nam lai trong hop_thu_di cho. Xem tai_lieu/NGHI-VIEC.md.
       MS365_NGHI_VIEC_BAT: ${MS365_NGHI_VIEC_BAT:-0}
+      # Tao tai khoan Microsoft 365 + cap giay phep khi tao ho so nhan su moi.
+      # 1 = bat; 0 (mac dinh) = su kien nam lai trong hop_thu_di cho. Xem tai_lieu/TAO-HO-SO-NHAN-SU.md.
+      MS365_TAO_TAI_KHOAN_BAT: ${MS365_TAO_TAI_KHOAN_BAT:-0}
+      # skuId giay phep theo chuc danh: truong phong nhan STANDARD, con lai nhan BASIC.
+      MS365_SKU_BASIC: ${MS365_SKU_BASIC:-}
+      MS365_SKU_STANDARD: ${MS365_SKU_STANDARD:-}
       # Ten & dia chi cong ty in tren dau bang luong xuat Excel (mau ERP). De trong = bo trong.
       CONG_TY_TEN: ${CONG_TY_TEN:-}
       CONG_TY_DIA_CHI: ${CONG_TY_DIA_CHI:-}

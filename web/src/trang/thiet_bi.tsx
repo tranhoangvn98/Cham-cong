@@ -7,7 +7,7 @@ import {
 import type { NhanVien } from './nhan_vien.tsx';
 import type { NhomMa as NhomMaDinhDanh } from './ma_dinh_danh.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
-import { Chon } from '../chon.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 
 interface ThietBi {
   id: string;
@@ -498,10 +498,9 @@ function NapNhanVien(
         {pin_dang_co.length > 1 && (
           <div className="o-nhap">
             <label htmlFor="pinchon">PIN nạp xuống máy này *</label>
-            <select id="pinchon" value={pin} onChange={(e) => dat_pin(e.target.value)} required>
-              <option value="">— Chọn PIN —</option>
-              {pin_dang_co.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
+            <Chon gia_tri={pin} dat_gia_tri={dat_pin}
+              cac_tuy_chon={pin_dang_co.map((p): TuyChonChon => ({ ma: p, nhan: p }))}
+              rong="— Chọn PIN —" nhan="PIN nạp xuống máy" />
             <div className="goi-y">
               Người này có {pin_dang_co.length} PIN đang dùng. Chọn PIN đã khai{' '}
               <strong>trên chính máy {thiet_bi.ten}</strong> — nạp nhầm PIN của máy khác thì họ

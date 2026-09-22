@@ -607,9 +607,9 @@ function HopTaoDauViec({ vi_tri_id, dong }: { vi_tri_id: string; dong: () => voi
         <>
           <label className="o-nhap">
             <span>Tần suất (để sinh việc tự động)</span>
-            <select value={tan_suat} onChange={(e) => dat_ts(e.target.value)}>
-              {Object.entries(NHAN_TAN_SUAT).map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-            </select>
+            <Chon gia_tri={tan_suat} dat_gia_tri={dat_ts}
+              cac_tuy_chon={Object.entries(NHAN_TAN_SUAT).map(([v, n]) => ({ ma: v, nhan: n }))}
+              nhan="Tần suất" />
           </label>
           <label className="o-nhap">
             <span>Mã báo cáo (để trống nếu không có)</span>
@@ -680,9 +680,9 @@ function HopTaoViTri({ dong }: { dong: () => void }): ReactNode {
       </label>
       <label className="o-nhap">
         <span>Cấp bậc</span>
-        <select value={cap_bac} onChange={(e) => dat_cb(e.target.value)}>
-          {Object.entries(NHAN_CAP_BAC).map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-        </select>
+        <Chon gia_tri={cap_bac} dat_gia_tri={dat_cb}
+          cac_tuy_chon={Object.entries(NHAN_CAP_BAC).map(([v, n]) => ({ ma: v, nhan: n }))}
+          nhan="Cấp bậc" />
       </label>
       <label className="o-nhap">
         <span>Phạm vi áp dụng</span>
@@ -695,10 +695,9 @@ function HopTaoViTri({ dong }: { dong: () => void }): ReactNode {
       {pham_vi === 'cu_the' && (
         <label className="o-nhap">
           <span>Phòng ban</span>
-          <select value={phong_id} onChange={(e) => dat_phong(e.target.value)}>
-            <option value="">— chọn phòng —</option>
-            {(phong.du_lieu ?? []).map((p) => <option key={p.id} value={p.id}>{p.ten}</option>)}
-          </select>
+          <Chon gia_tri={phong_id} dat_gia_tri={dat_phong}
+            cac_tuy_chon={(phong.du_lieu ?? []).map((p) => ({ ma: p.id, nhan: p.ten }))}
+            rong="— chọn phòng —" nhan="Phòng ban" />
         </label>
       )}
       {loi !== null && <p className="mo-ta" style={{ color: 'var(--xau)' }}>{loi}</p>}

@@ -10,6 +10,7 @@ import {
   thang_nay,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon } from '../chon.tsx';
 
 const TEN_MUC_DO: Record<string, string> = {
   nhe: 'Nhẹ', trung: 'Trung bình', nang: 'Nặng', rat_nang: 'Rất nặng',
@@ -163,24 +164,26 @@ export function TrangKyLuat(): ReactNode {
         </div>
         <div className="o-nhap">
           <label htmlFor="md">Mức độ</label>
-          <select id="md" value={muc_do} onChange={(e) => dat_muc_do(e.target.value)}>
-            <option value="">Tất cả</option>
-            <option value="nhe">Nhẹ</option>
-            <option value="trung">Trung bình</option>
-            <option value="nang">Nặng</option>
-            <option value="rat_nang">Rất nặng</option>
-          </select>
+          <Chon gia_tri={muc_do} dat_gia_tri={dat_muc_do}
+            cac_tuy_chon={[
+              { ma: 'nhe', nhan: 'Nhẹ' },
+              { ma: 'trung', nhan: 'Trung bình' },
+              { ma: 'nang', nhan: 'Nặng' },
+              { ma: 'rat_nang', nhan: 'Rất nặng' },
+            ]}
+            rong="Tất cả" nhan="Lọc theo mức độ" />
         </div>
         <div className="o-nhap">
           <label htmlFor="tt">Trạng thái</label>
-          <select id="tt" value={loc} onChange={(e) => dat_loc(e.target.value)}>
-            <option value="">Tất cả</option>
-            <option value="cho_duyet">Chờ duyệt</option>
-            <option value="da_ap_dung">Đã áp dụng</option>
-            <option value="da_nhac">Đã nhắc nhở</option>
-            <option value="mien">Miễn kỷ luật</option>
-            <option value="bac_bo">Đã bãi bỏ</option>
-          </select>
+          <Chon gia_tri={loc} dat_gia_tri={dat_loc}
+            cac_tuy_chon={[
+              { ma: 'cho_duyet', nhan: 'Chờ duyệt' },
+              { ma: 'da_ap_dung', nhan: 'Đã áp dụng' },
+              { ma: 'da_nhac', nhan: 'Đã nhắc nhở' },
+              { ma: 'mien', nhan: 'Miễn kỷ luật' },
+              { ma: 'bac_bo', nhan: 'Đã bãi bỏ' },
+            ]}
+            rong="Tất cả" nhan="Lọc theo trạng thái" />
         </div>
       </div>
 

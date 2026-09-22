@@ -5,8 +5,9 @@
 //   2. Ket qua khong co gioi han chieu cao — tran xuong het man hinh.
 //   3. Khong the GO de tim — moi lan phai cuon qua ca danh sach.
 //
-// Bo chon nay: bang tha xuong RONG BANG O, cao toi da 280px kem thanh cuon; khi co tu 5
-// tuy chon tro len thi co o GO DE TIM phia tren. Bam ra ngoai hoac Esc de dong.
+// QUY CHUAN (2026-09-22): bang tha xuong RONG DUNG BANG O; danh sach CHI HIEN 5 KET QUA
+// kem con lan (xem .chon-ds / .chon-muc o kieu.css); khi co tu 5 tuy chon tro len thi co
+// o GO DE TIM phia tren. Bam ra ngoai hoac Esc de dong.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 export interface TuyChonChon {

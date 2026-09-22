@@ -9,6 +9,7 @@ import {
   DangTai, HopLoi, HopThoai, HopTot, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 
 export interface DongMa {
   id: string;
@@ -316,14 +317,12 @@ function HopThoaiCapPin(
           </p>
           <label className="o-nhap">
             <span>Máy chấm công *</span>
-            <select value={serial} onChange={(e) => dat_serial(e.target.value)}>
-              <option value="">— Chọn máy —</option>
-              {dang_bat.map((m) => (
-                <option key={m.serial} value={m.serial}>
-                  {m.ten}{m.pin_tu === null ? '' : ` (dải ${m.pin_tu}–${m.pin_den ?? ''})`}
-                </option>
-              ))}
-            </select>
+            <Chon gia_tri={serial} dat_gia_tri={dat_serial}
+              cac_tuy_chon={dang_bat.map((m): TuyChonChon => ({
+                ma: m.serial,
+                nhan: m.pin_tu === null ? m.ten : `${m.ten} (dải ${m.pin_tu}–${m.pin_den ?? ''})`,
+              }))}
+              rong="— Chọn máy —" nhan="Máy chấm công" />
           </label>
 
           <HopLoi loi={loi_goi_y} />

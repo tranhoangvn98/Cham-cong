@@ -2282,6 +2282,7 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .ul-loc-o select { min-width: 130px; width: auto; }
 .chon-thang { display: flex; gap: 6px; }
 .chon-thang select { flex: 1; min-width: 110px; }
+.chon-thang .chon { flex: 1; min-width: 110px; }
 .ul-bang { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .ul-bang .vo-bang { flex: 1; min-height: 0; overflow: auto; }
 
@@ -2713,7 +2714,8 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 
 /* ============================================================================
    Bo chon tha xuong dung chung (web/src/chon.tsx) — thay select goc khi danh sach dai.
-   Bang tha xuong RONG BANG O (khong no theo tuy chon dai nhat), cao toi da 280px + cuon.
+   QUY CHUAN: bang tha xuong RONG DUNG BANG O (khong no theo tuy chon dai nhat),
+   danh sach CHI HIEN 5 KET QUA kem con lan (moi muc cao 36px).
    ============================================================================ */
 .chon { position: relative; min-width: 0; flex: 1; }
 .chon-o {
@@ -2732,11 +2734,12 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   box-shadow: var(--bong-noi); display: flex; flex-direction: column; overflow: hidden;
 }
 .chon-tim { border: 0; border-bottom: 1px solid var(--vien); border-radius: 0; padding: 8px 10px; }
-.chon-ds { max-height: 280px; overflow-y: auto; padding: 4px; }
+/* 5 muc x 36px + 2 x 4px padding = 188px — muc thu sau bat dau khuyat, con lan hien len. */
+.chon-ds { max-height: 188px; overflow-y: auto; padding: 4px; }
 .chon-muc {
-  width: 100%; border: 0; border-radius: 6px; background: none; color: var(--chu);
-  justify-content: flex-start; text-align: left; padding: 7px 10px;
-  white-space: normal; line-height: 1.35;
+  display: block; width: 100%; height: 36px; line-height: 36px; border: 0; border-radius: 6px;
+  background: none; color: var(--chu); text-align: left; padding: 0 10px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .chon-muc:hover { background: var(--chinh-nhat); }
 .chon-muc-chon { background: var(--chinh-nhat); color: var(--chinh-dam); font-weight: 600; }

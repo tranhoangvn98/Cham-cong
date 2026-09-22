@@ -2,6 +2,44 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.105.0] — 2026-09-22
+
+**Tạo hồ sơ nhân sự mới: tự cấp PIN, tự tạo tài khoản Microsoft 365, báo cổng + ERP1.**
+
+- Form "Thêm nhân viên" (trang Nhân viên) có thêm: ô **Chức danh**, tùy chọn **Tự cấp PIN
+  theo dãy của máy** (chọn máy, hệ thống chọn số PIN trống đầu tiên trong dải và ghi vào bảng
+  mã định danh — chống tranh chấp khi hai người bấm cùng lúc bằng vòng thử lại), và tùy chọn
+  **Tạo tài khoản Microsoft 365** (ẩn nếu máy chủ chưa bật `MS365_TAO_TAI_KHOAN_BAT`).
+- Tạo tài khoản Microsoft: email hồ sơ là UPN (bắt buộc, không trùng người khác); hệ thống sinh
+  mật khẩu khởi tạo 16 ký tự đủ 4 nhóm, **chỉ hiện một lần** cho HR ngay sau khi lưu (có nút sao
+  chép), tài khoản bắt buộc đổi mật khẩu ở lần đăng nhập đầu. Giấy phép cấp theo chức danh:
+  **trưởng phòng → `MS365_SKU_STANDARD`, còn lại → `MS365_SKU_BASIC`**. Việc tạo + cấp phép chạy
+  nền qua hộp thư đi (sự kiện `ms365.tao_tai_khoan`), thử lại theo backoff; sau khi gửi xong,
+  mật khẩu bị xóa khỏi hộp thư.
+- Báo các bên liên quan cùng transaction với dòng nhân viên: **cổng phân quyền** nhận
+  `nhan_su.da_tao` (như cũ), **ERP1** nhận sự kiện mới `erp1.nhan_su.da_tao` (thân gồm
+  `ma_nv`, `ma_erp`, `email`, `ho_ten`, `so_dien_thoai`, `ngay_vao`, `pin_may` — ERP1 tự thiết
+  lập tài khoản, xem `tai_lieu/WEBHOOK-ERP1.md`).
+- `GET /api/xac-thuc/cau-hinh` trả thêm cờ `ms365_tao` để web biết có hiện tùy chọn tạo tài
+  khoản Microsoft không. Hồ sơ vẫn lưu được khi chưa bật tính năng / chưa khai SKU — có cảnh
+  báo rõ ràng, sự kiện nằm chờ trong hộp thư đi.
+- Test: 8 test đơn vị mới (khuôn Graph tạo tài khoản + cấp phép, quy tắc trưởng phòng, mật
+  khẩu khởi tạo, khuôn webhook `erp1.nhan_su.da_tao`) và 4 test e2e cho luồng tạo hồ sơ.
+  Xem `tai_lieu/TAO-HO-SO-NHAN-SU.md`.
+
+**Rà soát toàn bộ droplist theo quy chuẩn: bảng thả rộng đúng ô, chỉ hiện 5 kết quả kèm con lăn.**
+
+- Quy chuẩn `Chon` (`web/src/chon.tsx` + `kieu.css`): danh sách thả xuống **chỉ hiển thị 5
+  kết quả** kèm **con lăn** (mỗi mục cao 36px, nhãn dài một dòng cắt bằng dấu ba chấm), bảng
+  thả **rộng đúng chiều ngang của ô**; từ 5 tùy chọn trở lên vẫn có ô gõ để tìm.
+- Rà soát toàn bộ 83 thẻ `<select>` trên web: **39 vị trí** có danh sách dài (từ API hoặc từ
+  5 mục trở lên) đã chuyển sang `Chon` — gồm toàn bộ form "Thêm nhân viên" (phòng ban, ca làm,
+  nơi làm việc, khối, chọn máy tự cấp PIN), bộ chọn tháng/năm dùng chung, các bộ lọc phòng
+  ban/nhân viên/máy/trạng thái trên ~20 trang (Bảng công, Bảng lương, Lần quẹt, Thiết bị, Mã
+  định danh, Người dùng, Hồ sơ, KPI, Kỷ luật, Khiếu nại, Vi phạm, Công việc, Tổ chức, Văn bản,
+  Thông báo AI, Ứng lương, Quản lý phép, Phiếu lương, Kho tệp, Đồng bộ ERP…). Các select cố
+  định dưới 5 mục giữ nguyên.
+
 ## [1.104.8] — 2026-09-22
 
 **Webhook ERP1: tự deactivate tài khoản khi nghỉ việc.**

@@ -434,6 +434,22 @@ export const cau_hinh = {
     bat: chu('MS365_NGHI_VIEC_BAT', '0') === '1',
   },
 
+  /**
+   * Tao tai khoan Microsoft 365 + cap giay phep khi tao ho so nhan su moi.
+   *
+   * Dung CHUNG creds cua `mail` nhu `ms365_nghi_viec` (app client_credentials) — app do
+   * phai duoc admin Entra cap quyen ung dung `User.ReadWrite.All` (tao user + assignLicense).
+   *
+   * SKU theo chuc danh: nhan su thuong nhan `sku_basic`, truong phong nhan `sku_standard`.
+   * Khong khai SKU nao thi buoc cap giay phep that bai va su kien `ms365.tao_tai_khoan`
+   * nam lai trong bang hop thu di cho den khi khai — khong mat.
+   */
+  ms365_tao: {
+    bat: chu('MS365_TAO_TAI_KHOAN_BAT', '0') === '1',
+    sku_basic: chu('MS365_SKU_BASIC', ''),
+    sku_standard: chu('MS365_SKU_STANDARD', ''),
+  },
+
   /** Quy tac xu ly canh bao ra/vao van phong. */
   ra_vao: {
     /** Cung mot loi >= nguong lan trong thang thi CHUYEN KY LUAT thay vi chi nhac nho. */

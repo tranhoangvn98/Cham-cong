@@ -9,6 +9,7 @@ import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { goi, tai_tep } from '../api.ts';
 import { la_admin } from '../api.ts';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
   XuongDanhSach,
@@ -954,9 +955,10 @@ function HopThoaiThuongKpi(
       <div className="luoi luoi-2">
         <div className="o-nhap">
           <label htmlFor="tk-khoan">Loại thưởng</label>
-          <select id="tk-khoan" value={khoan_ma} onChange={(e) => dat_khoan_ma(e.target.value)}>
-            {LOAI_THUONG_KPI.map((l) => <option key={l.ma} value={l.ma}>{l.ten}</option>)}
-          </select>
+          <Chon gia_tri={khoan_ma}
+            dat_gia_tri={dat_khoan_ma}
+            cac_tuy_chon={LOAI_THUONG_KPI.map((l): TuyChonChon => ({ ma: l.ma, nhan: l.ten }))}
+            nhan="Loại thưởng" />
         </div>
         <div className="o-nhap">
           <label htmlFor="tk-ct">Chứng từ duyệt *</label>
@@ -967,17 +969,17 @@ function HopThoaiThuongKpi(
       <div className="luoi luoi-2">
         <div className="o-nhap">
           <label htmlFor="tk-khoi">Lọc theo khối</label>
-          <select id="tk-khoi" value={loc_khoi} onChange={(e) => dat_loc_khoi(e.target.value)}>
-            <option value="">— Tất cả —</option>
-            {cac_khoi.map((x) => <option key={x} value={x}>{x}</option>)}
-          </select>
+          <Chon gia_tri={loc_khoi}
+            dat_gia_tri={dat_loc_khoi}
+            cac_tuy_chon={cac_khoi.map((x): TuyChonChon => ({ ma: x, nhan: x }))}
+            rong="— Tất cả —" nhan="Lọc theo khối" />
         </div>
         <div className="o-nhap">
           <label htmlFor="tk-phong">Lọc theo phòng ban</label>
-          <select id="tk-phong" value={loc_phong} onChange={(e) => dat_loc_phong(e.target.value)}>
-            <option value="">— Tất cả —</option>
-            {cac_phong.map((x) => <option key={x} value={x}>{x}</option>)}
-          </select>
+          <Chon gia_tri={loc_phong}
+            dat_gia_tri={dat_loc_phong}
+            cac_tuy_chon={cac_phong.map((x): TuyChonChon => ({ ma: x, nhan: x }))}
+            rong="— Tất cả —" nhan="Lọc theo phòng ban" />
         </div>
       </div>
       <div className="hang-nut" style={{ alignItems: 'flex-end' }}>

@@ -2,6 +2,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { goi, tai_anh_tu, tai_blob, tai_tep, LoiApi, mui_gio_offset_gio } from './api.ts';
 import { dung_phan_trang } from './phan_trang.tsx';
+import { Chon, type TuyChonChon } from './chon.tsx';
 
 /**
  * Khoa React cho mot danh sach CHI DOC, sinh lai toan bo moi lan.
@@ -82,10 +83,11 @@ export function thang_nay(): string {
 }
 
 /**
- * Chon thang 'YYYY-MM' bang hai o select TIENG VIET.
+ * Chon thang 'YYYY-MM' bang hai o TIENG VIET.
  *
  * `input type="month"` hien ten thang theo NGON NGU TRINH DUYET ("September 2026") va khong
- * thong nhat giua cac may. Hai o select nay hien "Tháng 09" / "Năm 2026" o moi trinh duyet.
+ * thong nhat giua cac may. Hai o chon nay hien "Tháng 09" / "Năm 2026" o moi trinh duyet,
+ * bang tha xuong dung quy chuan `Chon`: rong dung o, chi hien 5 ket qua kem con lan.
  */
 export function ChonThang(
   { gia_tri, doi }: { gia_tri: string; doi: (v: string) => void },
@@ -93,21 +95,24 @@ export function ChonThang(
   const [nam, thg] = gia_tri.split('-');
   const nam_hien_tai = Number(thang_nay().slice(0, 4));
   const nam_bat_dau = nam_hien_tai - 5;
-  const cac_nam = Array.from({ length: 7 }, (_, i) => nam_bat_dau + i);
+  const cac_nam: TuyChonChon[] = Array.from({ length: 7 }, (_, i) => {
+    const n = String(nam_bat_dau + i);
+    return { ma: n, nhan: `Năm ${n}` };
+  });
+  const cac_thang: TuyChonChon[] = Array.from({ length: 12 }, (_, i) => {
+    const t = String(i + 1).padStart(2, '0');
+    return { ma: t, nhan: `Tháng ${t}` };
+  });
   return (
     <span className="chon-thang">
-      <select aria-label="Tháng" value={thg ?? ''}
-        onChange={(e) => doi(`${nam ?? String(nam_hien_tai)}-${e.target.value}`)}>
-        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((t) => (
-          <option key={t} value={t}>Tháng {t}</option>
-        ))}
-      </select>
-      <select aria-label="Năm" value={nam ?? String(nam_hien_tai)}
-        onChange={(e) => doi(`${e.target.value}-${thg ?? '01'}`)}>
-        {cac_nam.map((n) => (
-          <option key={String(n)} value={String(n)}>Năm {String(n)}</option>
-        ))}
-      </select>
+      <Chon gia_tri={thg ?? ''}
+        dat_gia_tri={(t) => doi(`${nam ?? String(nam_hien_tai)}-${t}`)}
+        cac_tuy_chon={cac_thang}
+        nhan="Tháng" />
+      <Chon gia_tri={nam ?? String(nam_hien_tai)}
+        dat_gia_tri={(n) => doi(`${n}-${thg ?? '01'}`)}
+        cac_tuy_chon={cac_nam}
+        nhan="Năm" />
     </span>
   );
 }

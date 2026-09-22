@@ -10,6 +10,7 @@ import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 
 type Tab = 'ban_ghi' | 'danh_muc' | 'quy_tac';
 
@@ -157,12 +158,13 @@ function TabBanGhi({ chi_xem }: { chi_xem: boolean }): ReactNode {
   return (
     <>
       <div className="hang-nut">
-        <select value={loc} onChange={(e) => dat_loc(e.target.value)}>
-          <option value="">Tất cả trạng thái</option>
-          {Object.entries(NHAN_TRANG_THAI).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
+        <div className="o-nhap" style={{ minWidth: 220 }}>
+          <Chon gia_tri={loc} dat_gia_tri={dat_loc}
+            cac_tuy_chon={Object.entries(NHAN_TRANG_THAI).map(([k, v]): TuyChonChon => ({
+              ma: k, nhan: v,
+            }))}
+            rong="Tất cả trạng thái" nhan="Lọc theo trạng thái" />
+        </div>
         {!chi_xem && <button onClick={() => dat_quet(true)}>Quét tự động</button>}
       </div>
 
@@ -317,12 +319,11 @@ function HopThoaiQuyet(
           </select>
 
           <label htmlFor="kl">Hình thức kỷ luật</label>
-          <select id="kl" value={ky_luat} onChange={(e) => dat_ky_luat(e.target.value)}>
-            <option value="">Không áp dụng</option>
-            {Object.entries(NHAN_KY_LUAT).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
+          <Chon gia_tri={ky_luat} dat_gia_tri={dat_ky_luat}
+            cac_tuy_chon={Object.entries(NHAN_KY_LUAT).map(([k, v]): TuyChonChon => ({
+              ma: k, nhan: v,
+            }))}
+            rong="Không áp dụng" nhan="Hình thức kỷ luật" />
           <p className="mo-ta">
             Bộ luật Lao động 2019 Điều 124 chỉ có bốn hình thức kỷ luật. <em>Nhắc nhở</em>
             {' '}không phải kỷ luật chính thức. <strong>Không có hình thức phạt tiền.</strong>

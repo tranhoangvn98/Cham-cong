@@ -7,6 +7,7 @@ import { useState, type ReactNode } from 'react';
 import { DangTai, HopLoi, HopThoai, Trong, dung_nap } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 
 interface Dong {
   id: string;
@@ -108,9 +109,10 @@ export function TrangQuanLyPhep(): ReactNode {
       <div className="bo-loc">
         <div className="o-nhap">
           <label htmlFor="nam">Năm</label>
-          <select id="nam" value={nam} onChange={(e) => dat_nam(Number(e.target.value))}>
-            {cac_nam.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
+          <Chon gia_tri={String(nam)}
+            dat_gia_tri={(ma) => dat_nam(Number(ma))}
+            cac_tuy_chon={cac_nam.map((n): TuyChonChon => ({ ma: String(n), nhan: String(n) }))}
+            nhan="Chọn năm" />
         </div>
       </div>
 

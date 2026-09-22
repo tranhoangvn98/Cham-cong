@@ -5,6 +5,7 @@ import {
   ngay_viet, phut_thanh_chu, thang_nay, thu_cua_ngay,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 
 interface DongTongHop {
   nhan_vien_id: string;
@@ -134,12 +135,12 @@ export function TrangBangCong(): ReactNode {
         </div>
         <div className="o-nhap">
           <label htmlFor="pb">Phòng ban</label>
-          <select id="pb" value={phong_ban_id} onChange={(e) => dat_phong_ban(e.target.value)}>
-            <option value="">Tất cả</option>
-            {(phong.du_lieu ?? []).map((p) => (
-              <option key={p.id} value={p.id}>{p.ten}</option>
-            ))}
-          </select>
+          <Chon gia_tri={phong_ban_id}
+            dat_gia_tri={dat_phong_ban}
+            cac_tuy_chon={(phong.du_lieu ?? []).map((p): TuyChonChon => ({
+              ma: p.id, nhan: p.ten,
+            }))}
+            rong="Tất cả" nhan="Lọc theo phòng ban" />
         </div>
       </div>
 

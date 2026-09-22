@@ -396,6 +396,101 @@ test('khai bao may cham cong', async () => {
   assert.equal(r.ma, 201);
 });
 
+// ============================================================ tao ho so nhan su moi
+// Luong tich hop khi tao ho so: tu cap PIN theo dai may + su kien sang cong / ERP1 / Graph.
+const EMAIL_TU_TAO = 'tu.dong.tao@tranhoangvietnam.com';
+let nv_tu_tao_id = '';
+
+test('tao ho so: tu cap PIN + tao tai khoan Microsoft + su kien ERP1/cong/Graph', async () => {
+  const r = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: {
+      ma_nv: 'NVTU-1', ho_ten: 'Nguyễn Tự Tạo', pin_may: null,
+      email: EMAIL_TU_TAO, chuc_danh: 'Trưởng phòng Kinh doanh',
+      so_dien_thoai: '0987654321', ngay_vao: '2026-09-22',
+      tu_cap_pin: true, thiet_bi_serial: SERIAL, tao_tk_ms365: true,
+    },
+  });
+  assert.equal(r.ma, 201);
+  nv_tu_tao_id = r.body['id'] as string;
+
+  // Tai khoan Microsoft: UPN la email thuong hoa, mat khau sinh san trong phan hoi.
+  const tk = r.body['tai_khoan_ms365'] as Record<string, unknown>;
+  assert.ok(tk, 'phan hoi phai kem tai_khoan_ms365');
+  assert.equal(tk['upn'], EMAIL_TU_TAO);
+  assert.equal(typeof tk['mat_khau'], 'string');
+  assert.equal((tk['mat_khau'] as string).length, 16);
+
+  // PIN duoc he thong cap (theo dai cua may) va ghi vao ca hai noi.
+  const nv = await truy_van_mot<{ pin_may: string | null; chuc_danh: string | null }>(
+    'select pin_may, chuc_danh from nhan_vien where id = $1', [nv_tu_tao_id],
+  );
+  assert.ok(nv !== null && nv.pin_may !== null, 'phai co PIN tu cap');
+  assert.match(nv.pin_may, /^[0-9]{1,9}$/);
+  assert.equal(nv.chuc_danh, 'Trưởng phòng Kinh doanh');
+  const md = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from ma_dinh_danh
+      where nhan_vien_id = $1 and he_thong = 'may_cham_cong' and hieu_luc_den is null`,
+    [nv_tu_tao_id],
+  );
+  assert.equal(md?.so, 1, 'bang ma dinh danh phai co dung mot PIN dang hieu luc');
+
+  // Ba su kien nam trong hop thu di: cong, ERP1, Microsoft Graph.
+  const su_kien = await truy_van<{ loai_su_kien: string; du_lieu: Record<string, unknown> }>(
+    `select loai_su_kien, du_lieu from hop_thu_di where du_lieu ->> 'ma_nv' = 'NVTU-1'`,
+  );
+  const loai = new Set(su_kien.map((s) => s.loai_su_kien));
+  assert.ok(loai.has('nhan_su.da_tao'), 'cong phai nhan su kien da_tao');
+  assert.ok(loai.has('erp1.nhan_su.da_tao'), 'ERP1 phai nhan su kien da_tao');
+  assert.ok(loai.has('ms365.tao_tai_khoan'), 'Graph phai nhan su kien tao tai khoan');
+
+  const erp1 = su_kien.find((s) => s.loai_su_kien === 'erp1.nhan_su.da_tao');
+  assert.equal(erp1?.du_lieu['ho_ten'], 'Nguyễn Tự Tạo');
+  assert.equal(erp1?.du_lieu['email'], EMAIL_TU_TAO);
+  assert.equal(erp1?.du_lieu['pin_may'], nv?.pin_may);
+
+  const ms = su_kien.find((s) => s.loai_su_kien === 'ms365.tao_tai_khoan');
+  assert.equal(ms?.du_lieu['upn'], EMAIL_TU_TAO);
+  assert.equal(typeof ms?.du_lieu['mat_khau'], 'string');
+  assert.equal(ms?.du_lieu['mat_khau'], tk['mat_khau'], 'mat khau trong outbox dung nhu phan hoi');
+});
+
+test('tao ho so: tu cap PIN ma thieu may thi tu choi', async () => {
+  const r = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: { ma_nv: 'NVTU-2', ho_ten: 'Thieu May', tu_cap_pin: true },
+  });
+  assert.equal(r.ma, 400);
+  assert.match(String(r.body['loi']), /máy chấm công/);
+});
+
+test('tao ho so: tao tai khoan Microsoft ma thieu email thi tu choi', async () => {
+  const r = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: { ma_nv: 'NVTU-3', ho_ten: 'Thieu Email', tao_tk_ms365: true },
+  });
+  assert.equal(r.ma, 400);
+  assert.match(String(r.body['loi']), /email/);
+});
+
+test('tao ho so: email trung nguoi khac thi khong tao duoc tai khoan Microsoft', async () => {
+  const r = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: {
+      ma_nv: 'NVTU-4', ho_ten: 'Email Trung',
+      email: EMAIL_TU_TAO, tao_tk_ms365: true,
+    },
+  });
+  assert.equal(r.ma, 409);
+  assert.match(String(r.body['loi']), /đã thuộc/);
+
+  // Don dep: nguoi tao thu tu dong khong tham gia cac bai tinh cong ve sau.
+  await thuc_thi(
+    `update nhan_vien set dang_hoat_dong = false
+      where ma_nv in ('NVTU-1', 'NVTU-2', 'NVTU-3', 'NVTU-4')`,
+  );
+});
+
 // ============================================================ GIAO THUC ADMS
 test('may CHUA khai bao bi tu choi 401 (whitelist theo serial)', async () => {
   const r = await goi('GET', '/iclock/cdata?SN=MAY-LA-999&options=all');

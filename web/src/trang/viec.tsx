@@ -9,6 +9,7 @@ import {
   hom_nay, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon } from '../chon.tsx';
 
 // ---------------------------------------------------------------- kieu du lieu
 export interface DongViec {
@@ -425,10 +426,12 @@ function ManDanhSach({ la_qly }: { la_qly: boolean }): ReactNode {
   return (
     <div>
       <div className="cv-hang-loc">
-        <select value={trang_thai} onChange={(e) => dat_trang_thai(e.target.value as typeof TT_LOC[number] | '')}>
-          <option value="">Mọi trạng thái</option>
-          {TT_LOC.map((t) => <option key={t} value={t}>{NHAN_TT[t]}</option>)}
-        </select>
+        <div className="o-nhap" style={{ marginBottom: 0 }}>
+          <Chon gia_tri={trang_thai}
+            dat_gia_tri={(ma) => dat_trang_thai(ma as typeof TT_LOC[number] | '')}
+            cac_tuy_chon={TT_LOC.map((t) => ({ ma: t, nhan: NHAN_TT[t] ?? t }))}
+            rong="Mọi trạng thái" nhan="Lọc theo trạng thái" />
+        </div>
         {la_qly && (
           <ChonNhanVien
             nv={nv.du_lieu ?? []} gia_tri={nhan_vien_id} khi_chon={dat_nhan_vien_id}

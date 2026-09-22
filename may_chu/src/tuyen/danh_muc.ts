@@ -20,11 +20,12 @@ import {
   than, trong_tap, uuid, uuid_bat_buoc, LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
 import {
-  doi_soat, gan_bo_ma_nhan_su, gan_ma, ma_cua_nhan_vien, thu_hoi_ma, tim_theo_ma,
+  bo_chay_tu, doi_soat, gan_bo_ma_nhan_su, gan_ma, ma_cua_nhan_vien, thu_hoi_ma, tim_theo_ma,
 } from '../dinh_danh/nghiep_vu.ts';
 import { CAC_HE_THONG, MA_CAC_HE_THONG } from '../dinh_danh/he_thong.ts';
 import { cap_pin, doc_dai_pin, goi_y_pin } from '../dinh_danh/cap_pin.ts';
 import { doi_chieu_may } from '../dinh_danh/doi_chieu_may.ts';
+import { la_truong_phong, ms365_tao_bat, sinh_mat_khau_khoi_tao } from '../nhan_su/ms365.ts';
 import { lich_cua_may } from '../ra_vao/khoa_cua.ts';
 
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
@@ -170,7 +171,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const chi_dang_lam = luan_ly(q, 'chi_dang_lam', true);
     return truy_van(
       `select nv.id, nv.ma_nv, nv.ho_ten, nv.pin_may, nv.ma_erp, nv.ngay_vao,
-              nv.so_dien_thoai, nv.email, nv.duoc_cham_cong_dien_thoai, nv.dang_hoat_dong,
+              nv.so_dien_thoai, nv.email, nv.chuc_danh, nv.duoc_cham_cong_dien_thoai, nv.dang_hoat_dong,
               nv.phong_ban_id, pb.ten as phong_ban,
               nv.ca_lam_id, cl.ten as ca_lam,
               nv.noi_lam_viec_id, nlv.ten as noi_lam_viec, nlv.lich_nghi_ma,
@@ -195,33 +196,131 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   app.post('/nhan-vien', { preHandler: can_nhan_su }, async (req, res) => {
     const b = than(req.body);
     const ts = doc_nhan_vien(b, true);
-    const dong = await ghi_bat_trung(
-      // Su kien vao `hop_thu_di` CUNG transaction voi dong nhan vien: hai cau roi nhau thi co
-      // luc nhan vien duoc tao ma su kien khong duoc ghi (may chet giua hai cau), va cong se
-      // khong bao gio biet ve nguoi nay.
-      () => trong_giao_dich(async (khach) => {
-        const kq = await khach.query<{ id: string }>(
-          `insert into nhan_vien
-             (ma_nv, ho_ten, pin_may, ma_erp, phong_ban_id, ca_lam_id, ngay_vao,
-              so_dien_thoai, email, duoc_cham_cong_dien_thoai, noi_lam_viec_id, che_do_luong,
-              khoi_id)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning id`,
-          ts,
-        );
-        await ghi_su_kien(
-          'nhan_su.da_tao',
-          { ma_nv: ts[0], ho_ten: ts[1] },
-          khach,
-        );
-        return kq.rows[0] ?? null;
-      }),
-      'Mã nhân viên hoặc PIN máy đã được dùng cho người khác.',
-    );
-    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tao_nhan_vien', 'nhan_vien',
-      dong?.id ?? null, { ma_nv: b['ma_nv'] }, req.ip);
+    const ma_nv = String(ts[0]);
+    const ho_ten = String(ts[1]);
+    const tu_cap_pin = luan_ly(b, 'tu_cap_pin', false);
+    const serial = chuoi(b, 'thiet_bi_serial', { toi_da: 64 });
+    const tao_tk_ms = luan_ly(b, 'tao_tk_ms365', false);
+    const chuc_danh = chuoi(b, 'chuc_danh', { toi_da: 200 });
 
-    const canh_bao = dong === null ? [] : await ghi_ma_dinh_danh(dong.id, b);
-    return res.code(201).send(canh_bao.length === 0 ? dong : { ...dong, canh_bao });
+    if (tu_cap_pin && (serial === null || serial === '')) {
+      throw new LoiDauVao('Tự cấp PIN cần chọn máy chấm công.');
+    }
+
+    // Tao tai khoan Microsoft: email chinh la UPN, bat buoc va khong duoc trung nguoi khac
+    // dang lam viec (trung thi Graph tra 409 va mot nguoi se bi cap nham giay phep).
+    let upn = '';
+    let mat_khau = '';
+    let sku_id = '';
+    if (tao_tk_ms) {
+      const email = chuoi(b, 'email', { toi_da: 200 });
+      if (email === null || !email.includes('@')) {
+        throw new LoiDauVao('Tạo tài khoản Microsoft cần email công ty hợp lệ (email chính là tên đăng nhập).');
+      }
+      upn = email.trim().toLowerCase();
+      const trung = await truy_van_mot<{ ho_ten: string }>(
+        'select ho_ten from nhan_vien where lower(email) = lower($1) limit 1', [upn]);
+      if (trung !== null) {
+        throw new LoiXungDot(
+          `Email ${upn} đã thuộc ${trung.ho_ten} — không thể tạo tài khoản Microsoft trùng.`);
+      }
+      mat_khau = sinh_mat_khau_khoi_tao();
+      // Giay phep theo chuc danh: truong phong dung Standard, con lai dung Basic.
+      sku_id = la_truong_phong(chuc_danh)
+        ? cau_hinh.ms365_tao.sku_standard
+        : cau_hinh.ms365_tao.sku_basic;
+    }
+
+    // Vong lap 5 lan de chong tranh chap PIN: hai nguoi cung bam "tu cap PIN" mot luc co the
+    // duoc goi y cung mot so. Unique index `ma_dinh_danh_dang_hieu_luc_idx` chan nguoi thu
+    // hai, va ta thu lai voi so ke tiep thay vi bao loi.
+    let dong: { id: string } | null = null;
+    let pin_cap: string | null = null;
+    for (let lan = 0; lan < 5 && dong === null; lan++) {
+      const goi_y = tu_cap_pin ? await goi_y_pin(serial as string) : null;
+      const ts_gui = goi_y === null ? ts : ts.map((v, i) => (i === 2 ? goi_y.pin : v));
+      try {
+        // Su kien vao `hop_thu_di` CUNG transaction voi dong nhan vien: hai cau roi nhau thi co
+        // luc nhan vien duoc tao ma su kien khong duoc ghi (may chet giua hai cau), va cong /
+        // ERP1 / Microsoft se khong bao gio biet ve nguoi nay.
+        dong = await ghi_bat_trung(
+          () => trong_giao_dich(async (khach) => {
+            const kq = await khach.query<{ id: string }>(
+              `insert into nhan_vien
+                 (ma_nv, ho_ten, pin_may, ma_erp, phong_ban_id, ca_lam_id, ngay_vao,
+                  so_dien_thoai, email, duoc_cham_cong_dien_thoai, noi_lam_viec_id, che_do_luong,
+                  khoi_id, chuc_danh)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id`,
+              ts_gui,
+            );
+            const moi = kq.rows[0] ?? null;
+            if (moi === null) return moi;
+            if (goi_y !== null) {
+              await gan_ma(moi.id, 'may_cham_cong', goi_y.pin, {
+                nguon: 'nguoi_khai',
+                ghi_chu: `Hệ thống cấp khi tạo hồ sơ cho máy ${goi_y.thiet_bi_ten}`,
+              }, bo_chay_tu(khach));
+            }
+            // Cong phan quyen: tu tao ban ghi danh tinh (nhan_su.da_tao da co tu truoc).
+            await ghi_su_kien('nhan_su.da_tao', { ma_nv, ho_ten }, khach);
+            // ERP1: thiet lap tai khoan cho nhan su moi.
+            await ghi_su_kien('erp1.nhan_su.da_tao', {
+              ma_nv,
+              ma_erp: ts_gui[3],
+              email: ts_gui[8],
+              ho_ten,
+              so_dien_thoai: ts_gui[7],
+              ngay_vao: ts_gui[6],
+              pin_may: ts_gui[2],
+            }, khach);
+            // Microsoft Graph: tao tai khoan + cap giay phep (tien trinh nen day di).
+            if (tao_tk_ms) {
+              await ghi_su_kien('ms365.tao_tai_khoan', {
+                ma_nv, upn, ho_ten, mat_khau, sku_id,
+              }, khach);
+            }
+            return moi;
+          }),
+          'Mã nhân viên hoặc PIN máy đã được dùng cho người khác.',
+        );
+        if (dong !== null) pin_cap = goi_y?.pin ?? null;
+      } catch (loi) {
+        // Tranh chap PIN: nguoi khac vua lay dung so vua goi y — thu lai voi so ke tiep.
+        const k = loi as { code?: string; constraint?: string };
+        const tranh_pin = goi_y !== null
+          && k.code === '23505'
+          && (k.constraint ?? '').includes('ma_dinh_danh');
+        if (!tranh_pin) throw loi;
+      }
+    }
+    if (dong === null) {
+      throw new LoiXungDot(
+        'Không cấp được PIN sau 5 lần thử — có người khác đang tạo cùng lúc. Hãy thử lại.');
+    }
+
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tao_nhan_vien', 'nhan_vien',
+      dong.id, { ma_nv: b['ma_nv'] }, req.ip);
+
+    const canh_bao = await ghi_ma_dinh_danh(dong.id, {
+      ...b, pin_may: pin_cap ?? b['pin_may'],
+    });
+    if (tao_tk_ms) {
+      if (!ms365_tao_bat()) {
+        canh_bao.push('MS365_TAO_TAI_KHOAN_BAT chưa bật — tài khoản Microsoft sẽ được tạo khi máy chủ bật tính năng.');
+      } else if (sku_id === '') {
+        canh_bao.push('Chưa khai SKU Microsoft cho chức danh này — tài khoản sẽ được cấp giấy phép khi khai đủ SKU.');
+      }
+    }
+
+    const ket_qua: Record<string, unknown> = { ...dong };
+    if (canh_bao.length > 0) ket_qua['canh_bao'] = canh_bao;
+    if (tao_tk_ms) {
+      ket_qua['tai_khoan_ms365'] = {
+        upn, mat_khau, sku_id,
+        ghi_chu: 'Tài khoản sẽ được tạo trong giây lát. Mật khẩu chỉ hiện lần này — hãy bàn giao cho nhân viên.',
+      };
+    }
+    return res.code(201).send(ket_qua);
   });
 
   app.put('/nhan-vien/:id', { preHandler: can_nhan_su }, async (req) => {
@@ -247,7 +346,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
           `update nhan_vien set ma_nv=$2, ho_ten=$3, pin_may=$4, ma_erp=$5, phong_ban_id=$6,
                   ca_lam_id=$7, ngay_vao=$8, so_dien_thoai=$9, email=$10,
                   duoc_cham_cong_dien_thoai=$11, noi_lam_viec_id=$12, che_do_luong=$13,
-                  khoi_id=$14, cap_nhat_luc=now()
+                  khoi_id=$14, chuc_danh=$15, cap_nhat_luc=now()
             where id=$1`,
           [id, ...ts],
         );
@@ -1422,6 +1521,7 @@ function doc_nhan_vien(b: Record<string, unknown>, bat_buoc: boolean): unknown[]
     uuid(b, 'noi_lam_viec_id'),
     trong_tap(b, 'che_do_luong', ['vn', 'tq'] as const, { bat_buoc: false }) ?? 'vn',
     uuid(b, 'khoi_id'),
+    chuoi(b, 'chuc_danh', { toi_da: 200 }),
   ];
 }
 

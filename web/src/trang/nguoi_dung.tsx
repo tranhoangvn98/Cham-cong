@@ -7,6 +7,7 @@ import {
 } from '../thanh_phan.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 
 interface TaiKhoan {
   id: string;
@@ -374,27 +375,19 @@ function FormTaoTaiKhoan(
 
         <div className="o-nhap">
           <label htmlFor="vtm">Vai trò *</label>
-          <select id="vtm" value={vai_tro} onChange={(e) => dat_vai_tro(e.target.value)} required>
-            {VAI_TRO_CAP.map((v) => (
-              <option key={v.ma} value={v.ma}>{v.ten}</option>
-            ))}
-          </select>
+          <Chon gia_tri={vai_tro} dat_gia_tri={dat_vai_tro}
+            cac_tuy_chon={VAI_TRO_CAP.map((v): TuyChonChon => ({ ma: v.ma, nhan: v.ten }))}
+            nhan="Vai trò" />
           {mo_ta_vai_tro !== '' && <div className="goi-y">{mo_ta_vai_tro}</div>}
         </div>
 
         <div className="o-nhap">
           <label htmlFor="nvm">Nhân viên {can_ho_so ? '*' : '(không bắt buộc)'}</label>
-          <select
-            id="nvm"
-            value={nhan_vien_id}
-            onChange={(e) => dat_nhan_vien_id(e.target.value)}
-            required={can_ho_so}
-          >
-            <option value="">— Không gắn hồ sơ nhân viên —</option>
-            {(ds_nv ?? []).map((n) => (
-              <option key={n.id} value={n.id}>{n.ma_nv} — {n.ho_ten}</option>
-            ))}
-          </select>
+          <Chon gia_tri={nhan_vien_id} dat_gia_tri={dat_nhan_vien_id}
+            cac_tuy_chon={(ds_nv ?? []).map((n): TuyChonChon => ({
+              ma: n.id, nhan: `${n.ma_nv} — ${n.ho_ten}`,
+            }))}
+            rong="— Không gắn hồ sơ nhân viên —" nhan="Nhân viên" />
           <div className="goi-y">
             {can_ho_so
               ? 'Vai trò này bắt buộc phải nối với một hồ sơ nhân viên, nếu không họ đăng nhập vào mà không xem được gì.'

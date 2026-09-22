@@ -163,14 +163,15 @@ export function TrangLanQuet(): ReactNode {
         </div>
         <div className="o-nhap">
           <label htmlFor="ltt">Trạng thái duyệt</label>
-          <select id="ltt" value={trang_thai_duyet}
-            onChange={(e) => doi_loc(dat_trang_thai_duyet)(e.target.value)}>
-            <option value="">Tất cả</option>
-            <option value="tu_dong">Tự động (máy)</option>
-            <option value="cho_duyet">Chờ duyệt</option>
-            <option value="da_duyet">Đã duyệt</option>
-            <option value="tu_choi">Từ chối</option>
-          </select>
+          <Chon gia_tri={trang_thai_duyet}
+            dat_gia_tri={(ma) => doi_loc(dat_trang_thai_duyet)(ma)}
+            cac_tuy_chon={[
+              { ma: 'tu_dong', nhan: 'Tự động (máy)' },
+              { ma: 'cho_duyet', nhan: 'Chờ duyệt' },
+              { ma: 'da_duyet', nhan: 'Đã duyệt' },
+              { ma: 'tu_choi', nhan: 'Từ chối' },
+            ]}
+            rong="Tất cả" nhan="Lọc theo trạng thái duyệt" />
         </div>
 
         {la_nhan_su() && (
@@ -469,14 +470,12 @@ function FormGanLai(
 
         <div className="o-nhap">
           <label htmlFor="nv">Nhân viên *</label>
-          <select id="nv" value={nhan_vien_id} onChange={(e) => dat_nhan_vien_id(e.target.value)} required>
-            <option value="">— Chọn nhân viên —</option>
-            {(du_lieu ?? []).map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.ma_nv} — {n.ho_ten}{n.pin_may === null ? '' : ` (PIN hiện tại ${n.pin_may})`}
-              </option>
-            ))}
-          </select>
+          <Chon gia_tri={nhan_vien_id} dat_gia_tri={dat_nhan_vien_id}
+            cac_tuy_chon={(du_lieu ?? []).map((n): TuyChonChon => ({
+              ma: n.id,
+              nhan: `${n.ma_nv} — ${n.ho_ten}${n.pin_may === null ? '' : ` (PIN hiện tại ${n.pin_may})`}`,
+            }))}
+            rong="— Chọn nhân viên —" nhan="Nhân viên" />
           <div className="goi-y">
             Nhớ sửa PIN của nhân viên này thành {pin} ở trang Nhân viên, nếu không log mới vẫn không map được.
           </div>

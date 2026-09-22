@@ -10,6 +10,7 @@ import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 
 const NHAN_TT: Record<string, { ten: string; lop: string }> = {
   moi: { ten: 'Mới', lop: 'nhan-xau' },
@@ -69,13 +70,11 @@ export function TrangKhieuNai(): ReactNode {
       <div className="bo-loc">
         <div className="o-nhap">
           <label htmlFor="tt">Trạng thái</label>
-          <select id="tt" value={loc} onChange={(e) => dat_loc(e.target.value)}>
-            <option value="">Tất cả</option>
-            <option value="moi">Mới</option>
-            <option value="dang_xem">Đang xem xét</option>
-            <option value="chap_nhan">Đã chấp nhận</option>
-            <option value="tu_choi">Đã từ chối</option>
-          </select>
+          <Chon gia_tri={loc} dat_gia_tri={dat_loc}
+            cac_tuy_chon={Object.entries(NHAN_TT).map(([ma, t]): TuyChonChon => ({
+              ma, nhan: t.ten,
+            }))}
+            rong="Tất cả" nhan="Lọc theo trạng thái" />
         </div>
       </div>
 

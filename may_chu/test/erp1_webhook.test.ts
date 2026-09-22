@@ -6,7 +6,8 @@ import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { di_sang_erp1, dung_than_erp1 } = await import('../src/su_kien/hop_thu_di.ts');
+const { di_sang_erp1, dung_than_erp1, dung_than_erp1_da_tao } =
+  await import('../src/su_kien/hop_thu_di.ts');
 
 const dong = (du_lieu: Record<string, unknown>) => ({
   id: 18234, loai_su_kien: 'erp1.nhan_su.nghi_viec', du_lieu, so_lan: 0,
@@ -14,6 +15,7 @@ const dong = (du_lieu: Record<string, unknown>) => ({
 
 test('dinh tuyen: chi tien to erp1. di sang ERP1, khong lan sang cong hay ERP cu', () => {
   assert.equal(di_sang_erp1('erp1.nhan_su.nghi_viec'), true);
+  assert.equal(di_sang_erp1('erp1.nhan_su.da_tao'), true);
   assert.equal(di_sang_erp1('nhan_su.nghi_viec'), false);
   assert.equal(di_sang_erp1('lan_quet.da_ghi'), false);
   assert.equal(di_sang_erp1('ms365.nghi_viec'), false);
@@ -51,4 +53,45 @@ test('khuon payload: truong trong tra null, khong phai chuoi rong', () => {
 test('su_kien_id ghep tu id dong outbox — khong doi giua cac lan gui lai', () => {
   const mot = JSON.parse(dung_than_erp1(dong({ ma_nv: 'A' })));
   assert.equal(mot.su_kien_id, 'chamcong-18234');
+});
+
+// ============================================================ erp1.nhan_su.da_tao
+
+const dong_tao = (du_lieu: Record<string, unknown>) => ({
+  id: 21991, loai_su_kien: 'erp1.nhan_su.da_tao', du_lieu, so_lan: 0,
+});
+
+test('da_tao: khuon payload du cac dinh danh ERP1 can de thiet lap tai khoan', () => {
+  const than = JSON.parse(dung_than_erp1_da_tao(dong_tao({
+    ma_nv: 'NV0156',
+    ma_erp: 'THVN-0789',
+    email: 'tranthib@tranhoangvietnam.com',
+    ho_ten: 'Trần Thị Bình',
+    so_dien_thoai: '0912345678',
+    ngay_vao: '2026-09-22',
+    pin_may: '1013',
+  })));
+  assert.deepEqual(than, {
+    su_kien_id: 'chamcong-21991',
+    loai_su_kien: 'erp1.nhan_su.da_tao',
+    ma_nv: 'NV0156',
+    ma_erp: 'THVN-0789',
+    email: 'tranthib@tranhoangvietnam.com',
+    ho_ten: 'Trần Thị Bình',
+    so_dien_thoai: '0912345678',
+    ngay_vao: '2026-09-22',
+    pin_may: '1013',
+  });
+});
+
+test('da_tao: truong trong tra null, khong phai chuoi rong', () => {
+  const than = JSON.parse(dung_than_erp1_da_tao(dong_tao({
+    ma_nv: 'NV0156', ma_erp: '', email: null, ho_ten: 'Trần Thị Bình',
+  })));
+  assert.equal(than.ma_erp, null);
+  assert.equal(than.email, null);
+  assert.equal(than.so_dien_thoai, null);
+  assert.equal(than.ngay_vao, null);
+  assert.equal(than.pin_may, null);
+  assert.equal(than.su_kien_id, 'chamcong-21991');
 });

@@ -223,11 +223,11 @@ function FormTao(
             </select>
           </label>
           <label className="truong"><span>Mục đích</span>
-            <select value={muc_dich} onChange={(e) => dat_muc_dich(e.target.value)}>
-              {Object.entries(NHAN_MUC_DICH).map(([m, ten]) => (
-                <option key={m} value={m}>{ten}</option>
-              ))}
-            </select>
+            <Chon gia_tri={muc_dich} dat_gia_tri={dat_muc_dich}
+              cac_tuy_chon={Object.entries(NHAN_MUC_DICH).map(([m, ten]) => ({
+                ma: m, nhan: ten,
+              }))}
+              nhan="Mục đích văn bản" />
           </label>
         </div>
       </div>

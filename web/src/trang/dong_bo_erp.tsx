@@ -9,6 +9,7 @@ import {
   XuongDanhSach,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon } from '../chon.tsx';
 
 interface Luot {
   id: string;
@@ -222,13 +223,17 @@ function BangKetQua({ kq }: { kq: KetQua }): ReactNode {
       )}
 
       <div className="hang-nut">
-        <select value={chi_hien} onChange={(e) => dat_chi_hien(e.target.value as never)}>
-          <option value="">Tất cả ({chi_tiet.length})</option>
-          <option value="tao_moi">Tạo mới ({kq.so_tao_moi})</option>
-          <option value="cap_nhat">Cập nhật ({kq.so_cap_nhat})</option>
-          <option value="bo_qua">Bỏ qua ({kq.so_bo_qua})</option>
-          <option value="khong_doi">Không đổi</option>
-        </select>
+        <div className="o-nhap" style={{ minWidth: 240 }}>
+          <Chon gia_tri={chi_hien}
+            dat_gia_tri={(ma) => dat_chi_hien(ma as never)}
+            cac_tuy_chon={[
+              { ma: 'tao_moi', nhan: `Tạo mới (${String(kq.so_tao_moi)})` },
+              { ma: 'cap_nhat', nhan: `Cập nhật (${String(kq.so_cap_nhat)})` },
+              { ma: 'bo_qua', nhan: `Bỏ qua (${String(kq.so_bo_qua)})` },
+              { ma: 'khong_doi', nhan: 'Không đổi' },
+            ]}
+            rong={`Tất cả (${chi_tiet.length})`} nhan="Lọc kết quả đồng bộ" />
+        </div>
       </div>
 
       <div className="vo-bang">

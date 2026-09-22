@@ -13,6 +13,7 @@ import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, gio_ngan, hom_nay, thang_nay,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon } from '../chon.tsx';
 
 const MA_LOI: Record<string, { ten: string; nang: boolean }> = {
   QUEN_QUET_RA: { ten: 'Quên quẹt ra', nang: true },
@@ -90,14 +91,15 @@ export function TrangRaVao(): ReactNode {
         </div>
         <div className="o-nhap">
           <label htmlFor="loc">Trạng thái</label>
-          <select id="loc" value={loc} onChange={(e) => dat_loc(e.target.value)}>
-            <option value="">Tất cả</option>
-            <option value="chua">Chưa xử lý</option>
-            <option value="da_nhac">Đã nhắc nhở</option>
-            <option value="chuyen_ky_luat">Chuyển kỷ luật</option>
-            <option value="hop_le">Hợp lệ</option>
-            <option value="bo_qua">Bỏ qua</option>
-          </select>
+          <Chon gia_tri={loc} dat_gia_tri={dat_loc}
+            cac_tuy_chon={[
+              { ma: 'chua', nhan: 'Chưa xử lý' },
+              { ma: 'da_nhac', nhan: 'Đã nhắc nhở' },
+              { ma: 'chuyen_ky_luat', nhan: 'Chuyển kỷ luật' },
+              { ma: 'hop_le', nhan: 'Hợp lệ' },
+              { ma: 'bo_qua', nhan: 'Bỏ qua' },
+            ]}
+            rong="Tất cả" nhan="Lọc theo trạng thái" />
         </div>
       </div>
 

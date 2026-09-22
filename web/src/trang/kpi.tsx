@@ -7,7 +7,7 @@ import { goi } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
-import { Chon } from '../chon.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 
 type Tab = 'ky' | 'danh_muc';
@@ -598,10 +598,12 @@ function HopThoaiChiSo(
       <label htmlFor="mota">Mô tả</label>
       <input id="mota" value={mo_ta} onChange={(e) => dat_mo_ta(e.target.value)} />
 
-      <label htmlFor="nhom">Nhóm</label>
-      <select id="nhom" value={nhom} onChange={(e) => dat_nhom(e.target.value)}>
-        {NHOM.map((n) => <option key={n} value={n}>{NHAN_NHOM[n]}</option>)}
-      </select>
+      <div className="o-nhap">
+        <label htmlFor="nhom">Nhóm</label>
+        <Chon gia_tri={nhom} dat_gia_tri={dat_nhom}
+          cac_tuy_chon={NHOM.map((n): TuyChonChon => ({ ma: n, nhan: NHAN_NHOM[n] ?? n }))}
+          nhan="Nhóm chỉ số" />
+      </div>
 
       <label>Phạm vi áp dụng</label>
       <Chon gia_tri={pb} dat_gia_tri={dat_pb}
@@ -616,11 +618,15 @@ function HopThoaiChiSo(
           {' '}(không đổi được sau khi tạo).</p>
       ) : (
         <>
-          <label htmlFor="nguon">Nguồn dữ liệu</label>
-          <select id="nguon" value={nguon}
-            onChange={(e) => { dat_nguon(e.target.value); dat_chi_so_ma(''); }}>
-            {NGUON.map((n) => <option key={n} value={n}>{NHAN_NGUON[n]}</option>)}
-          </select>
+          <div className="o-nhap">
+            <label htmlFor="nguon">Nguồn dữ liệu</label>
+            <Chon gia_tri={nguon}
+              dat_gia_tri={(ma) => { dat_nguon(ma); dat_chi_so_ma(''); }}
+              cac_tuy_chon={NGUON.map((n): TuyChonChon => ({
+                ma: n, nhan: NHAN_NGUON[n] ?? n,
+              }))}
+              nhan="Nguồn dữ liệu" />
+          </div>
           {nguon !== 'nhap_tay' && (
             <>
               <label>Lấy số liệu từ</label>

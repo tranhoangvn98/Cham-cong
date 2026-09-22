@@ -5,7 +5,10 @@ import type { PoolClient } from 'pg';
 import { createHmac } from 'node:crypto';
 import { cau_hinh } from '../cau_hinh.ts';
 import { pool, truy_van, thuc_thi } from '../csdl/ket_noi.ts';
-import { chan_dang_nhap_va_rut_giay_phep } from '../nhan_su/ms365.ts';
+import {
+  chan_dang_nhap_va_rut_giay_phep,
+  tao_tai_khoan_va_cap_giay_phep,
+} from '../nhan_su/ms365.ts';
 
 /**
  * Su kien gui sang ERP. Than tu do — ERP doc theo hop dong rieng cua no.
@@ -18,13 +21,14 @@ export type LoaiSuKienErp =
   | 'thiet_bi.ket_noi_lai';
 
 /**
- * Su kien gui sang ERP1 (ERP moi). Hien tai chi co nghiep vu nghi viec: ERP1 nhan de tu
- * vo hieu hoa tai khoan ben do. Tien to `erp1.` KHONG duoc trung `nhan_su.` (cong) hay cac
- * loai ERP cu — router chon dich theo tien to nay.
+ * Su kien gui sang ERP1 (ERP moi). Hai nghiep vu: nghi viec (de ERP1 vo hieu hoa tai
+ * khoan) va tao ho so nhan su moi (de ERP1 thiet lap tai khoan). Tien to `erp1.` KHONG
+ * duoc trung `nhan_su.` (cong) hay cac loai ERP cu — router chon dich theo tien to nay.
  *
- * `du_lieu` bat buoc co `ma_nv`; kem them `ma_erp` / `email` / `ngay_nghi_viec` / `luc`.
+ * `du_lieu` bat buoc co `ma_nv`; `nghi_viec` kem `ma_erp` / `email` / `ngay_nghi_viec` /
+ * `luc`; `da_tao` kem `ho_ten` / `email` / `so_dien_thoai` / `ngay_vao` / `pin_may`.
  */
-export type LoaiSuKienErp1 = 'erp1.nhan_su.nghi_viec';
+export type LoaiSuKienErp1 = 'erp1.nhan_su.nghi_viec' | 'erp1.nhan_su.da_tao';
 
 /**
  * Su kien nhan su gui sang CONG. Bon loai nay do CONG dinh nghia, khong phai ta —
@@ -40,10 +44,13 @@ export type LoaiSuKienCong =
   | 'nhan_su.quay_lai';
 
 /**
- * Su kien nghi vu cho Microsoft Graph (offboarding khi nghi viec). `du_lieu` BAT BUOC co
- * `upn` (email/UPN cua tai khoan Entra) va `ma_nv` de truy vet.
+ * Su kien nghi vu cho Microsoft Graph. `ms365.nghi_viec` de offboarding; `ms365.tao_tai_khoan`
+ * de tao tai khoan Entra + cap giay phep khi tao ho so nhan su moi.
+ *
+ * `du_lieu` BAT BUOC co `upn` (email/UPN cua tai khoan Entra); `tao_tai_khoan` con can
+ * `ho_ten`, `mat_khau` (khoi tao) va `sku_id` (giay phep can cap).
  */
-export type LoaiSuKienMs365 = 'ms365.nghi_viec';
+export type LoaiSuKienMs365 = 'ms365.nghi_viec' | 'ms365.tao_tai_khoan';
 
 export type LoaiSuKien = LoaiSuKienErp | LoaiSuKienErp1 | LoaiSuKienCong | LoaiSuKienMs365;
 
@@ -86,7 +93,8 @@ function co_dich(): boolean {
   return cau_hinh.erp.webhook_url !== ''
     || cau_hinh.erp1.webhook_url !== ''
     || cau_hinh.cong_su_kien.goc !== ''
-    || cau_hinh.ms365_nghi_viec.bat;
+    || cau_hinh.ms365_nghi_viec.bat
+    || cau_hinh.ms365_tao.bat;
 }
 
 /**
@@ -157,10 +165,29 @@ async function gui_mot(d: DongOutbox): Promise<void> {
 }
 
 /**
- * Day mot su kien offboarding sang Microsoft Graph: chan dang nhap, thu hoi phien va rut
- * toan bo giay phep cua tai khoan Entra.
+ * Day mot su kien offboarding/onboarding sang Microsoft Graph.
+ *
+ * `ms365.nghi_viec`: chan dang nhap, thu hoi phien va rut toan bo giay phep.
+ * `ms365.tao_tai_khoan`: tao tai khoan Entra + cap giay phep theo SKU.
+ *
+ * Sau khi tao xong thi XOA `mat_khau` khoi `du_lieu`: mat khau khoi tao chi hien cho HR mot
+ * lan o phan hoi tao ho so, khong duoc nam mai trong bang outbox.
  */
 async function gui_sang_ms365(d: DongOutbox): Promise<void> {
+  if (d.loai_su_kien === 'ms365.tao_tai_khoan') {
+    const du = d.du_lieu;
+    const upn = typeof du['upn'] === 'string' ? du['upn'].trim() : '';
+    const ho_ten = typeof du['ho_ten'] === 'string' ? du['ho_ten'].trim() : '';
+    const mat_khau = typeof du['mat_khau'] === 'string' ? du['mat_khau'] : '';
+    const sku_id = typeof du['sku_id'] === 'string' ? du['sku_id'] : '';
+    if (upn === '' || !upn.includes('@')) throw new Error(`su kien ${d.id} upn sai dang`);
+    if (mat_khau === '') throw new Error(`su kien ${d.id} thieu mat_khau`);
+    await tao_tai_khoan_va_cap_giay_phep(upn, ho_ten, mat_khau, sku_id);
+    await thuc_thi(
+      `update hop_thu_di set du_lieu = du_lieu - 'mat_khau' where id = $1`, [d.id]);
+    return;
+  }
+
   const upn = typeof d.du_lieu['upn'] === 'string' ? d.du_lieu['upn'].trim() : '';
   if (upn === '') throw new Error(`su kien ${d.id} thieu upn`);
   if (!upn.includes('@')) throw new Error(`su kien ${d.id} upn sai dang: ${upn}`);
@@ -277,14 +304,36 @@ export function dung_than_erp1(d: DongOutbox): string {
 }
 
 /**
- * Day mot su kien sang ERP1: ERP1 nhan de tu vo hieu hoa tai khoan nhan vien da nghi.
- * Neu chua khai URL thi NEM loi de dong o lai hop thu cho (khong danh dau da gui).
+ * Khuon than cho `erp1.nhan_su.da_tao` — bao tao ho so nhan su moi de ERP1 thiet lap tai
+ * khoan. Tach rieng khoi khuon nghi viec: hai nghiep vu khac nhau, moi ben mot hop dong.
+ */
+export function dung_than_erp1_da_tao(d: DongOutbox): string {
+  const chuoi = (k: string): string | null =>
+    typeof d.du_lieu[k] === 'string' && d.du_lieu[k] !== '' ? d.du_lieu[k] as string : null;
+  return JSON.stringify({
+    su_kien_id: `chamcong-${d.id}`,
+    loai_su_kien: d.loai_su_kien,
+    ma_nv: chuoi('ma_nv'),
+    ma_erp: chuoi('ma_erp'),
+    email: chuoi('email'),
+    ho_ten: chuoi('ho_ten'),
+    so_dien_thoai: chuoi('so_dien_thoai'),
+    ngay_vao: chuoi('ngay_vao'),
+    pin_may: chuoi('pin_may'),
+  });
+}
+
+/**
+ * Day mot su kien sang ERP1: nghi viec -> ERP1 vo hieu hoa tai khoan; da_tao -> ERP1 thiet
+ * lap tai khoan moi. Neu chua khai URL thi NEM loi de dong o lai hop thu cho.
  */
 async function gui_sang_erp1(d: DongOutbox): Promise<void> {
   if (cau_hinh.erp1.webhook_url === '') {
     throw new Error('Chua khai ERP1_WEBHOOK_URL — su kien erp1 nam lai cho');
   }
-  const than = dung_than_erp1(d);
+  const than = d.loai_su_kien === 'erp1.nhan_su.da_tao'
+    ? dung_than_erp1_da_tao(d)
+    : dung_than_erp1(d);
 
   const header: Record<string, string> = { 'content-type': 'application/json' };
   // Chu ky HMAC de ERP1 xac minh su kien that su den tu he thong cham cong.

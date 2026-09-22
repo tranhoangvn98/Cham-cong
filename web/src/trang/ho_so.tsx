@@ -11,6 +11,7 @@ import {
 } from '../thanh_phan.tsx';
 import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 import { dat_qd_nghi_viec } from '../dieu_huong_sau.ts';
 import { dung_dat_tieu_de } from '../tieu_de_trang.tsx';
 import { NhanCachTrich } from './hop_dong.tsx';
@@ -815,12 +816,13 @@ function HopThoaiNoiDungHopDong(
             />
           ) : (
             <div className="hang-nut">
-              <select value={chon_tep} onChange={(e) => dat_chon_tep(e.target.value)}>
-                <option value="">— chọn tệp để trích —</option>
-                {tep_duoc.map((t) => (
-                  <option key={t.id} value={t.id}>{t.ten_goc}</option>
-                ))}
-              </select>
+              <div className="o-nhap" style={{ flex: 1, minWidth: 260 }}>
+                <Chon gia_tri={chon_tep} dat_gia_tri={dat_chon_tep}
+                  cac_tuy_chon={tep_duoc.map((t): TuyChonChon => ({
+                    ma: t.id, nhan: t.ten_goc,
+                  }))}
+                  rong="— chọn tệp để trích —" nhan="Chọn tệp để trích" />
+              </div>
               <button
                 className="nut-chinh"
                 disabled={hd.dang_chay || chon_tep === ''}
@@ -1099,13 +1101,12 @@ function FormHoSo(
             <div className="o-nhap" key={x.ten} style={x.rong === true ? { gridColumn: '1 / -1' } : undefined}>
               <label htmlFor={x.ten}>{x.nhan}{x.bat_buoc === true ? ' *' : ''}</label>
               {x.kieu === 'chon' ? (
-                <select id={x.ten} value={f[x.ten] ?? ''} onChange={(e) => doi(x.ten, e.target.value)}
-                  required={x.bat_buoc === true}>
-                  <option value="">— Chọn —</option>
-                  {Object.entries(TEN[x.chon ?? ''] ?? {}).map(([ma, ten]) => (
-                    <option key={ma} value={ma}>{ten}</option>
-                  ))}
-                </select>
+                <Chon gia_tri={String(f[x.ten] ?? '')}
+                  dat_gia_tri={(ma) => doi(x.ten, ma)}
+                  cac_tuy_chon={Object.entries(TEN[x.chon ?? ''] ?? {}).map(([ma, ten]): TuyChonChon => ({
+                    ma, nhan: ten,
+                  }))}
+                  rong="— Chọn —" nhan={x.nhan} />
               ) : x.kieu === 'van_ban' ? (
                 <textarea id={x.ten} rows={3} value={f[x.ten] ?? ''}
                   onChange={(e) => doi(x.ten, e.target.value)} required={x.bat_buoc === true} />
@@ -1341,13 +1342,12 @@ function FormThongTin(
                 <div className="o-nhap" key={o.ten}>
                   <label htmlFor={o.ten}>{o.nhan}</label>
                   {o.kieu === 'chon' ? (
-                    <select id={o.ten} value={f[o.ten] ?? ''}
-                      onChange={(e) => dat_f((c) => ({ ...c, [o.ten]: e.target.value }))}>
-                      <option value="">— Chọn —</option>
-                      {Object.entries(TEN[o.chon ?? ''] ?? {}).map(([ma, ten]) => (
-                        <option key={ma} value={ma}>{ten}</option>
-                      ))}
-                    </select>
+                    <Chon gia_tri={String(f[o.ten] ?? '')}
+                      dat_gia_tri={(ma) => dat_f((c) => ({ ...c, [o.ten]: ma }))}
+                      cac_tuy_chon={Object.entries(TEN[o.chon ?? ''] ?? {}).map(([ma, ten]): TuyChonChon => ({
+                        ma, nhan: ten,
+                      }))}
+                      rong="— Chọn —" nhan={o.nhan} />
                   ) : (
                     <input id={o.ten} type={o.kieu === 'date' ? 'date' : 'text'}
                       value={f[o.ten] ?? ''}

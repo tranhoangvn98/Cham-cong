@@ -320,6 +320,8 @@ export async function tuyen_dang_nhap(app: FastifyInstance): Promise<void> {
     // ben may chu phai lam webapp doi theo ngay, khong cho build lai.
     dang_nhap_rieng: !bo_dang_nhap_rieng(),
     dang_nhap_microsoft: !bo_dang_nhap_rieng() && bat_dang_nhap_microsoft(),
+    // Form tao ho so nhan su dung de biet co hien "Tao tai khoan Microsoft 365" khong.
+    ms365_tao: { bat: cau_hinh.ms365_tao.bat },
     cong_sso: bo_dang_nhap_rieng()
       ? {
         goc_dang_nhap: ch_sso.cong_sso.goc_dang_nhap,

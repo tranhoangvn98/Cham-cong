@@ -11,6 +11,7 @@ import {
 } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { Chon, type TuyChonChon } from '../chon.tsx';
 
 interface DongTep {
   id: string;
@@ -169,12 +170,12 @@ export function TrangKhoTep(): ReactNode {
       <div className="bo-loc">
         <div className="o-nhap">
           <label htmlFor="ln">Nhóm hồ sơ</label>
-          <select id="ln" value={nhom} onChange={(e) => dat_nhom(e.target.value)}>
-            <option value="">Tất cả</option>
-            {Object.entries(TEN_NHOM_TEP).map(([ma, ten]) => (
-              <option key={ma} value={ma}>{ten}</option>
-            ))}
-          </select>
+          <Chon gia_tri={nhom}
+            dat_gia_tri={dat_nhom}
+            cac_tuy_chon={Object.entries(TEN_NHOM_TEP).map(([ma, ten]): TuyChonChon => ({
+              ma, nhan: ten,
+            }))}
+            rong="Tất cả" nhan="Lọc theo nhóm hồ sơ" />
         </div>
       </div>
 
