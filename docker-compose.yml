@@ -90,6 +90,8 @@ services:
       SHAREPOINT_GOC_TOKEN: ${SHAREPOINT_GOC_TOKEN:-}
       ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
       ERP_WEBHOOK_SECRET: ${ERP_WEBHOOK_SECRET:-}
+      ERP1_WEBHOOK_URL: ${ERP1_WEBHOOK_URL:-}
+      ERP1_WEBHOOK_SECRET: ${ERP1_WEBHOOK_SECRET:-}
       # Gui email (nhac nho ra/vao) qua Microsoft Graph sendMail. De trong MS_MAIL_NGUOI_GUI =
       # tat email, chi con thong bao day trong app. Tan dung app SharePoint neu khong khai rieng,
       # nhung app do PHAI duoc cap them quyen ung dung Mail.Send.
