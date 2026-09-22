@@ -6,6 +6,7 @@
 // Tach cac buoc ra la de lai mot nguoi da nghi o he thong nay nhung van dang nhap duoc
 // vao phan he khac trong cum — dung loai lo khong ai phat hien cho den khi qua muon.
 import type { PoolClient } from 'pg';
+import { OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 
 export interface KetQuaNghiViec {
@@ -26,13 +27,15 @@ export async function cho_nghi_viec(
   ngay_nghi: string | null,
 ): Promise<KetQuaNghiViec | null> {
   const dong = (
-    await khach.query<{ ma_nv: string }>(
+    await khach.query<{
+      ma_nv: string; ma_erp: string | null; email: string | null; ngay_nghi_viec: string;
+    }>(
       `update nhan_vien
           set dang_hoat_dong = false,
               ngay_nghi_viec = coalesce($2::date, current_date),
               cap_nhat_luc = now()
         where id = $1
-        returning ma_nv`,
+        returning ma_nv, ma_erp, email, ngay_nghi_viec::text`,
       [nhan_vien_id, ngay_nghi],
     )
   ).rows[0];
@@ -52,6 +55,17 @@ export async function cho_nghi_viec(
   // thu hoi moi phien dang song. Buoc cuoi la buoc quan trong nhat — `vo_hieu_hoa` chan
   // duoc dang nhap lai nhung khong chan duoc tab dang mo.
   await ghi_su_kien('nhan_su.nghi_viec', { ma_nv: dong.ma_nv }, khach);
+
+  // ERP1 (ERP moi): nhan su kien de tu vo hieu hoa tai khoan ben do. Gui ca ma_erp va
+  // email de ERP1 tu chon truong no quan ly; ngay_nghi_viec + luc de ERP1 ghi nhat ky.
+  // `luc` theo mui gio cua may cham cong (gio dia phuong cua cong ty), khong theo may chu.
+  await ghi_su_kien('erp1.nhan_su.nghi_viec', {
+    ma_nv: dong.ma_nv,
+    ma_erp: dong.ma_erp,
+    email: dong.email,
+    ngay_nghi_viec: dong.ngay_nghi_viec,
+    luc: new Date(Date.now() + OFFSET_MAY_MS).toISOString(),
+  }, khach);
 
   // Microsoft: chan dang nhap + rut giay phep. Khong co email Microsoft thi bo qua —
   // khong ghi su kien khong bao gio gui duoc (chi day bang hop thu vo ich).

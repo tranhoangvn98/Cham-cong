@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.104.8] — 2026-09-22
+
+**Webhook ERP1: tự deactivate tài khoản khi nghỉ việc.**
+
+- Thêm đích thứ tư cho hộp thư đi: khi nghỉ việc (nút thủ công hoặc quyết định tự động),
+  ghi sự kiện `erp1.nhan_su.nghi_viec` cùng transaction rồi POST sang `ERP1_WEBHOOK_URL`
+  (kèm chữ ký HMAC `x-cham-cong-signature` khi khai `ERP1_WEBHOOK_SECRET`). Thân gồm
+  `su_kien_id` ổn định (ERP1 chống trùng), `ma_nv`, `ma_erp`, `email`, `ngay_nghi_viec`, `luc`.
+  Để trống URL = tắt; sự kiện nằm chờ trong hộp thư, khai lúc nào đi lúc đó. Không đụng ba
+  đích hiện tại. Xem `tai_lieu/WEBHOOK-ERP1.md` + 4 test đơn vị `erp1_webhook.test.ts`.
+
 ## [1.104.7] — 2026-09-21
 
 **Đồng nhất font chữ: một stack đơn cách duy nhất cho web, bỏ ký tự thiếu glyph trên app.**

@@ -18,6 +18,15 @@ export type LoaiSuKienErp =
   | 'thiet_bi.ket_noi_lai';
 
 /**
+ * Su kien gui sang ERP1 (ERP moi). Hien tai chi co nghiep vu nghi viec: ERP1 nhan de tu
+ * vo hieu hoa tai khoan ben do. Tien to `erp1.` KHONG duoc trung `nhan_su.` (cong) hay cac
+ * loai ERP cu — router chon dich theo tien to nay.
+ *
+ * `du_lieu` bat buoc co `ma_nv`; kem them `ma_erp` / `email` / `ngay_nghi_viec` / `luc`.
+ */
+export type LoaiSuKienErp1 = 'erp1.nhan_su.nghi_viec';
+
+/**
  * Su kien nhan su gui sang CONG. Bon loai nay do CONG dinh nghia, khong phai ta —
  * xem `may_chu/src/tuyen/su_kien_nhan_su.ts` cua kho `phanquyen`. Them mot loai o day ma cong
  * chua biet thi cong tra 400 va dong do nam lai trong hop thu, thu lai mai.
@@ -36,7 +45,7 @@ export type LoaiSuKienCong =
  */
 export type LoaiSuKienMs365 = 'ms365.nghi_viec';
 
-export type LoaiSuKien = LoaiSuKienErp | LoaiSuKienCong | LoaiSuKienMs365;
+export type LoaiSuKien = LoaiSuKienErp | LoaiSuKienErp1 | LoaiSuKienCong | LoaiSuKienMs365;
 
 /** Su kien nao di sang cong thay vi sang ERP. */
 function di_sang_cong(loai: string): boolean {
@@ -46,6 +55,11 @@ function di_sang_cong(loai: string): boolean {
 /** Su kien nao di sang Microsoft Graph thay vi sang ERP / cong. */
 function di_sang_ms365(loai: string): boolean {
   return loai.startsWith('ms365.');
+}
+
+/** Su kien nao di sang ERP1 (ERP moi) thay vi cac dich khac. */
+export function di_sang_erp1(loai: string): boolean {
+  return loai.startsWith('erp1.');
 }
 
 /** Ghi su kien vao outbox. Dung `khach` de nam trong cung transaction voi du lieu goc. */
@@ -70,6 +84,7 @@ interface DongOutbox {
 /** Co dich nao duoc cau hinh chua. Chua thi khong can nhan viec ra khoi bang. */
 function co_dich(): boolean {
   return cau_hinh.erp.webhook_url !== ''
+    || cau_hinh.erp1.webhook_url !== ''
     || cau_hinh.cong_su_kien.goc !== ''
     || cau_hinh.ms365_nghi_viec.bat;
 }
@@ -137,6 +152,7 @@ export async function day_hop_thu_di(so_luong = 50): Promise<number> {
 async function gui_mot(d: DongOutbox): Promise<void> {
   if (di_sang_ms365(d.loai_su_kien)) return gui_sang_ms365(d);
   if (di_sang_cong(d.loai_su_kien)) return gui_sang_cong(d);
+  if (di_sang_erp1(d.loai_su_kien)) return gui_sang_erp1(d);
   return gui_sang_erp(d);
 }
 
@@ -235,6 +251,60 @@ async function gui_sang_erp(d: DongOutbox): Promise<void> {
   });
   if (!res.ok) {
     throw new Error(`ERP tra ve HTTP ${res.status}`);
+  }
+}
+
+/**
+ * Dung than gui sang ERP1. Tach thanh ham THUAN de test hop dong ma khong goi HTTP that:
+ * sai khuon payload la sai hop dong voi ERP1, va kieu nay chi lo ra khi ERP1 khong tu deactive
+ * duoc tai khoan cua mot nguoi da nghi — qua muon. Nen khuon duoc khoa bang test.
+ *
+ * `su_kien_id` = `chamcong-<id dong outbox>` — ON DINH qua cac lan gui lai de ERP1 chong
+ * trung bang `unique(su_kien_id)` (cung mau cong phan quyen dang dung).
+ */
+export function dung_than_erp1(d: DongOutbox): string {
+  const chuoi = (k: string): string | null =>
+    typeof d.du_lieu[k] === 'string' && d.du_lieu[k] !== '' ? d.du_lieu[k] as string : null;
+  return JSON.stringify({
+    su_kien_id: `chamcong-${d.id}`,
+    loai_su_kien: d.loai_su_kien,
+    ma_nv: chuoi('ma_nv'),
+    ma_erp: chuoi('ma_erp'),
+    email: chuoi('email'),
+    ngay_nghi_viec: chuoi('ngay_nghi_viec'),
+    luc: chuoi('luc'),
+  });
+}
+
+/**
+ * Day mot su kien sang ERP1: ERP1 nhan de tu vo hieu hoa tai khoan nhan vien da nghi.
+ * Neu chua khai URL thi NEM loi de dong o lai hop thu cho (khong danh dau da gui).
+ */
+async function gui_sang_erp1(d: DongOutbox): Promise<void> {
+  if (cau_hinh.erp1.webhook_url === '') {
+    throw new Error('Chua khai ERP1_WEBHOOK_URL — su kien erp1 nam lai cho');
+  }
+  const than = dung_than_erp1(d);
+
+  const header: Record<string, string> = { 'content-type': 'application/json' };
+  // Chu ky HMAC de ERP1 xac minh su kien that su den tu he thong cham cong.
+  if (cau_hinh.erp1.webhook_secret !== '') {
+    header['x-cham-cong-signature'] = createHmac('sha256', cau_hinh.erp1.webhook_secret)
+      .update(than)
+      .digest('hex');
+  }
+
+  const res = await fetch(cau_hinh.erp1.webhook_url, {
+    method: 'POST',
+    headers: header,
+    body: than,
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) {
+    const chi_tiet = await res.text().catch(() => '');
+    throw new Error(
+      `ERP1 tra ve HTTP ${res.status}${chi_tiet === '' ? '' : `: ${chi_tiet.slice(0, 200)}`}`,
+    );
   }
 }
 

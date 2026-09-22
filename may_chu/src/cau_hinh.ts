@@ -227,6 +227,16 @@ export const cau_hinh = {
   },
 
   /**
+   * ERP1 (he thong ERP moi) — webhook mot chieu: bao nghiep vu nhan su de ERP1 tu xu ly,
+   * hien tai la "nghi viec -> vo hieu hoa tai khoan". Khai TRONG webhook_url = tat; su kien
+   * nam lai trong hop thu di cho den khi khai. Xem tai_lieu/WEBHOOK-ERP1.md.
+   */
+  erp1: {
+    webhook_url: chu('ERP1_WEBHOOK_URL', ''),
+    webhook_secret: chu('ERP1_WEBHOOK_SECRET', ''),
+  },
+
+  /**
    * DAY su kien nhan su sang cong (kho `phanquyen`). Khac han `cong_sso` o tren.
    *
    * `cong_sso` la chieu VAO: Cham cong nhan token do cong phat va xac minh chu ky.
