@@ -475,6 +475,30 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
+  /**
+   * Dat / xoa ngay chinh thuc cua mot nhan vien.
+   *
+   * Nhan su ghi "chinh thuc tu ngay X" khi het thu viec. Cot `ngay_chinh_thuc` tham gia
+   * tinh quy phep va ho so — tach thanh route rieng de khoi phai gui nguyen ho so qua PUT
+   * (PUT de trang cac truong khong gui).
+   */
+  app.patch('/nhan-vien/:id/ngay-chinh-thuc', { preHandler: can_nhan_su }, async (req) => {
+    const id = lay_id(req);
+    const b = than(req.body ?? {});
+    const ngay_chinh_thuc = ngay(b, 'ngay_chinh_thuc');
+    const kq = await truy_van_mot<{ ma_nv: string; ho_ten: string }>(
+      `update nhan_vien
+          set ngay_chinh_thuc = $2, cap_nhat_luc = now()
+        where id = $1
+        returning ma_nv, ho_ten`,
+      [id, ngay_chinh_thuc],
+    );
+    if (kq === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'sua_ngay_chinh_thuc', 'nhan_vien', id,
+      { ngay_chinh_thuc }, req.ip);
+    return { ok: true };
+  });
+
   // =====================================================================  MA DINH DANH
   //
   // Mot nguoi di qua nhieu he thong va moi he thong goi ho bang mot ma khac. Nhom route nay la
