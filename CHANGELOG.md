@@ -2,6 +2,18 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.105.1] — 2026-09-23
+
+**Cập nhật hồ sơ nhân sự: ngày chính thức + cho nghỉ việc theo ngày cụ thể.**
+
+- Route mới `PATCH /api/nhan-vien/:id/ngay-chinh-thuc` (quyền nhân sự): đặt / xóa cột
+  `ngay_chinh_thuc`, ghi nhật ký `sua_ngay_chinh_thuc`. Tách riêng khỏi `PUT` để khỏi phải gửi
+  nguyên hồ sơ (PUT đè trắng các trường không gửi).
+- Đã áp dụng lên dữ liệu thật ngày 2026-09-23 (theo bảng Excel phòng Kinh doanh): 9 người đặt
+  ngày chính thức (ERP114, ERP115, ERP123, ERP124, ERP125, ERP126, ERP137, ERP144, ERP148) và
+  cho nghỉ việc Nguyễn Quỳnh Anh (ERP153) với `ngay_nghi_viec = 2026-06-20` — sự kiện
+  `nhan_su.nghi_viec` + `erp1.nhan_su.nghi_viec` đã vào hộp thư đi.
+
 ## [1.105.0] — 2026-09-22
 
 **Tạo hồ sơ nhân sự mới: tự cấp PIN, tự tạo tài khoản Microsoft 365, báo cổng + ERP1.**
