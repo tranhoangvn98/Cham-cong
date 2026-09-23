@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.105.2] — 2026-09-24
+
+**Không phụ thuộc mạng ra ngoài khi gọi lại tên miền của chính mình.**
+
+- `docker-compose.yml`: `may_chu` thêm `extra_hosts` trỏ `TEN_MIEN` về gateway của máy VPS —
+  việc nạp JWKS cổng SSO (và mọi lời gọi tới chính tên miền) đi thẳng vào Caddy nội bộ thay
+  vì vòng ra Internet rồi quay lại. Đăng nhập SSO hoạt động cả khi đường mạng ra ngoài của
+  VPS sập (sự cố 2026-09-23).
+
 ## [1.105.1] — 2026-09-23
 
 **Cập nhật hồ sơ nhân sự: ngày chính thức + cho nghỉ việc theo ngày cụ thể.**

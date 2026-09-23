@@ -26,6 +26,12 @@ services:
       # target, compose build nhung stage kiem lam server. Xem ghi chu o Dockerfile.
       target: chay
     restart: unless-stopped
+    # Khi may chu can goi lai chinh ten mien cua minh (vd nap JWKS cua cong SSO), di thang
+    # den Caddy ngay tren may VPS qua cong gateway cua mang Docker thay vi vong ra Internet
+    # roi quay lai: khong phu thuoc duong mang ra ngoai — he thong van dang nhap duoc ca khi
+    # mang ngoai sup (su co 2026-09-23).
+    extra_hosts:
+      - "${TEN_MIEN}:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
