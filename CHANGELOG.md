@@ -2,6 +2,14 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.105.3] — 2026-09-24
+
+**Văn bản yêu cầu Cổng cấp token dịch vụ (`CONG_TOKEN_DICH_VU`).**
+
+- `tai_lieu/YEU-CAU-CAP-TOKEN-DICH-VU-CONG.md`: nêu vấn đề (5 sự kiện nhân sự chờ đẩy), thông
+  số token cần cấp (loại `dv`, RS256, `aud=cong-noi-bo`, dài hạn), hợp đồng endpoint
+  `POST /cong/api/su-kien-nhan-su`, cách bàn giao và tiêu chí chấp nhận.
+
 ## [1.105.2] — 2026-09-24
 
 **Không phụ thuộc mạng ra ngoài khi gọi lại tên miền của chính mình.**
