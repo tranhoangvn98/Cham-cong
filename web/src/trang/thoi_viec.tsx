@@ -88,6 +88,7 @@ const TEN_LOAI_HD: Record<string, string> = {
   thu_viec: 'Thử việc', hoc_viec: 'Học việc', thoi_vu: 'Thời vụ',
   xac_dinh: 'Xác định thời hạn', khong_xac_dinh: 'Không xác định thời hạn',
   cong_tac_vien: 'Cộng tác viên',
+  quan_ly_dn: 'Quản lý doanh nghiệp (Điều 7 NĐ145/2020)',
 };
 
 const NHAN_MUC: Record<string, { nhan: string; mau: 'tot' | 'canh_bao' | 'xau' | 'mo' }> = {
