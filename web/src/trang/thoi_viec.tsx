@@ -314,7 +314,7 @@ function ChiTietQuyTrinh({ id, khi_dong }: { id: string; khi_dong: () => void })
           <h2 className="tv-tua">{d.ho_ten} <span className="mo-ta">{d.ma_nv}</span></h2>
           <div className="mo-ta">
             {d.phong_ban ?? '—'} · {TEN_LOAI_HD[d.loai_hop_dong] ?? d.loai_hop_dong}
-            {d.la_quan_ly_dn ? ' · quản lý DN' : ''} · Đơn thôi việc duyệt lúc {ngay_gio(d.tao_luc)}
+            {d.la_quan_ly_dn ? ' · quản lý DN' : ''} · Quy trình tạo lúc {ngay_gio(d.tao_luc)}
           </div>
         </div>
         <div className="hang-nut">
