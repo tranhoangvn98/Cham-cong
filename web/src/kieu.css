@@ -1638,6 +1638,67 @@ textarea:focus-visible,
   background: var(--chinh-dam); vertical-align: -2px;
   animation: troly-nhap-nhay 0.9s steps(2, start) infinite;
 }
+
+/* -------- tro ly thoi viec: vong tron noi + cham do (REQ-NV-03) -------- */
+/* Nam tren nut tro ly thuong de khong de len nhau. */
+.troly-nut-tv {
+  position: fixed; right: 20px; bottom: 92px; z-index: 60;
+  width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--chinh-dam); color: var(--tren-chinh);
+  font-size: 20px; box-shadow: var(--bong-noi); animation: troly-no 0.22s ease-out both;
+}
+.troly-nut-tv:hover { filter: brightness(1.06); }
+.troly-nut-tv-dem {
+  position: absolute; top: -2px; right: -2px;
+  min-width: 22px; height: 22px; padding: 0 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 11px; font-size: 12px; font-weight: 700;
+  color: var(--tren-chinh); border: 2px solid var(--nen-the);
+}
+.troly-nut-tv-dem.do { background: var(--xau); }
+.troly-nut-tv-dem.xanh { background: var(--tot); }
+.tv-widget-muc {
+  display: flex; gap: 8px; align-items: center;
+  padding: 8px 10px; border: 1px solid var(--vien);
+  border-radius: var(--tron-nho); background: var(--nen-the);
+  font-size: 13px; color: var(--chu);
+}
+.tv-widget-muc i { color: var(--chu-mo); }
+.tv-widget-hang { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* -------- trang Thoi viec -------- */
+.tv-tua { margin: 0 0 4px; font-size: 20px; font-weight: 700; }
+.tv-tua-phu { margin: 20px 0 8px; font-size: 14px; font-weight: 700; color: var(--chu); }
+.tv-ket-qua { margin-top: 2px; }
+.tv-trang-thai { margin-top: 12px; }
+.tv-hang { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.tv-hang .o-nhap { width: 170px; }
+.tv-chon-hang {
+  display: flex; gap: 8px; align-items: center;
+  font-size: 13.5px; color: var(--chu); margin-top: 8px; cursor: pointer;
+}
+.tv-ky-hang { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+.tv-danh-sach { margin: 10px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.tv-danh-sach li { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.tv-muc {
+  margin-bottom: 10px; padding: 12px 14px;
+  border: 1px solid var(--vien); border-radius: var(--tron);
+  background: var(--nen-the);
+}
+.tv-muc-dau { display: flex; gap: 10px; align-items: flex-start; }
+.tv-nut-tep { position: relative; overflow: hidden; cursor: pointer; }
+.tv-nut-tep input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* -------- bang nhac thoi viec tren Trang chu ca nhan -------- */
+.cn-nhac-thoi-viec {
+  display: flex; gap: 12px; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; padding: 12px 14px; margin-top: 12px;
+  border: 1px solid var(--xau); border-radius: var(--tron);
+  background: var(--xau-nen);
+}
+.cn-nhac-thoi-viec.tot { border-color: var(--tot); background: var(--tot-nen); }
+.cn-nhac-thoi-viec b { color: var(--chu); }
+
 @keyframes troly-nhap-nhay { 50% { opacity: 0; } }
 /* Nut va chip phan hoi cham nhe khi bam. */
 .troly-hd-xac-nhan { transition: filter 0.15s ease, transform 0.1s ease; }

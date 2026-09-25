@@ -1,7 +1,7 @@
 // Chuong bao (notification) o header — cho MOI nguoi dung. So chua doc + danh sach, bam vao thi
 // mo dung man va danh dau da doc. Du lieu tu /api/toi/bao (sinh tu gui_ngam moi su kien).
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { goi, la_nhan_su } from '../api.ts';
+import { goi, goc_nhin, la_nhan_su } from '../api.ts';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
 import { dat_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import { khoa_tinh, ngay_gio } from '../thanh_phan.tsx';
@@ -35,6 +35,8 @@ const DUONG_THEO_MAN: Record<string, string> = {
   'vi-pham': '/ca-nhan/don-tu',
   'don-cua-toi': '/ca-nhan/don-tu',
   'ho_so': '/ca-nhan/ca-nhan',
+  // Nhan vien vao trang huong dan cua CHINH minh; nguoi quan tri vao trang quan ly.
+  'thoi-viec': goc_nhin() === 'quan_tri' ? '/thoi-viec' : '/thoi-viec/huong-dan',
 };
 
 function IconChuong(): ReactNode {

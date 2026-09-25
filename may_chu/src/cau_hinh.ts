@@ -511,6 +511,16 @@ export const cau_hinh = {
     dia_chi: chu('CONG_TY_DIA_CHI', ''),
   },
 
+  /**
+   * Quy trinh thoi viec. Email o day la gia tri MAC DINH tu env — admin con sua duoc trong
+   * bang `cau_hinh_thoi_viec` (bang uu tien hon env, khong can deploy de doi).
+   */
+  thoi_viec: {
+    email_dich_vu_bhxh: chu('EMAIL_DICH_VU_BHXH', ''),
+    email_dich_vu_bhxh_cc: chu('EMAIL_DICH_VU_BHXH_CC', ''),
+    email_chung_tu_thue: chu('EMAIL_CHUNG_TU_THUE', ''),
+  },
+
   /** Kich thuoc mot tep dinh kem toi da (byte). Hop dong scan nhieu trang thi nang len. */
   tep_toi_da_byte: so('TEP_TOI_DA_BYTE', 15 * 1024 * 1024),
 } as const;

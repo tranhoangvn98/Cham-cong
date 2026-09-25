@@ -28,7 +28,7 @@ const CAC_LOP_MAU = [
   '.thanh-tab .tab-dang-mo',
   '.cn-tab-ben-chon', '.cn-ben-phu-chon',
   '.dieu-huong a.dang-chon',
-  '.troly-dau .nut-phang', '.troly-hd-xac-nhan', '.troly-chip-mo',
+  '.troly-dau .nut-phang', '.troly-hd-xac-nhan', '.troly-chip-mo', '.troly-nut-tv',
 ];
 
 /** Tim than cac quy tac `selector:hover...` DUNG DAU DONG (bo qua ngữ cảnh khac, vi du

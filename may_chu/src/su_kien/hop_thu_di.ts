@@ -5,6 +5,8 @@ import type { PoolClient } from 'pg';
 import { createHmac } from 'node:crypto';
 import { cau_hinh } from '../cau_hinh.ts';
 import { pool, truy_van, thuc_thi } from '../csdl/ket_noi.ts';
+import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
+import { email_bat, gui_email, type DinhKemMail } from './gui_email.ts';
 import {
   chan_dang_nhap_va_rut_giay_phep,
   tao_tai_khoan_va_cap_giay_phep,
@@ -52,7 +54,15 @@ export type LoaiSuKienCong =
  */
 export type LoaiSuKienMs365 = 'ms365.nghi_viec' | 'ms365.tao_tai_khoan';
 
-export type LoaiSuKien = LoaiSuKienErp | LoaiSuKienErp1 | LoaiSuKienCong | LoaiSuKienMs365;
+/**
+ * Email qua outbox (quy trinh thoi viec: ho so BHXH, chung tu thue...). Ghi cung
+ * transaction voi nghiep vu; tien trinh nen gui sau voi backoff. `du_lieu`:
+ *   { den: string[], cc?: string[], tieu_de, noi_dung (html), tep_ids?: string[] }
+ */
+export type LoaiSuKienGuiEmail = 'gui_email';
+
+export type LoaiSuKien =
+  | LoaiSuKienErp | LoaiSuKienErp1 | LoaiSuKienCong | LoaiSuKienMs365 | LoaiSuKienGuiEmail;
 
 /** Su kien nao di sang cong thay vi sang ERP. */
 function di_sang_cong(loai: string): boolean {
@@ -94,7 +104,8 @@ function co_dich(): boolean {
     || cau_hinh.erp1.webhook_url !== ''
     || cau_hinh.cong_su_kien.goc !== ''
     || cau_hinh.ms365_nghi_viec.bat
-    || cau_hinh.ms365_tao.bat;
+    || cau_hinh.ms365_tao.bat
+    || cau_hinh.mail.nguoi_gui !== '';
 }
 
 /**
@@ -161,7 +172,50 @@ async function gui_mot(d: DongOutbox): Promise<void> {
   if (di_sang_ms365(d.loai_su_kien)) return gui_sang_ms365(d);
   if (di_sang_cong(d.loai_su_kien)) return gui_sang_cong(d);
   if (di_sang_erp1(d.loai_su_kien)) return gui_sang_erp1(d);
+  if (d.loai_su_kien === 'gui_email') return gui_sang_email(d);
   return gui_sang_erp(d);
+}
+
+/**
+ * Gui mot email da xep hang trong outbox. Doc tep dinh kem theo `tep_ids` (id bang
+ * `ho_so_tep`) — tep phai da luu truoc khi ghi su kien. Chua khai MS_MAIL_* thi NEM loi
+ * de dong nam lai cho (cung quy tac nhu cac dich khac).
+ */
+async function gui_sang_email(d: DongOutbox): Promise<void> {
+  if (!email_bat()) {
+    throw new Error('Chua khai MS_MAIL_* — email nam lai cho');
+  }
+  const du = d.du_lieu;
+  const den_tho = Array.isArray(du['den']) ? du['den'] : [];
+  const den = den_tho.filter((x): x is string => typeof x === 'string' && x.includes('@'));
+  if (den.length === 0) throw new Error(`su kien ${d.id} thieu nguoi nhan email`);
+  const cc_tho = Array.isArray(du['cc']) ? du['cc'] : [];
+  const cc = cc_tho.filter((x): x is string => typeof x === 'string' && x.includes('@'));
+  const tieu_de = typeof du['tieu_de'] === 'string' ? du['tieu_de'] : 'Thông báo';
+  const noi_dung = typeof du['noi_dung'] === 'string' ? du['noi_dung'] : '';
+
+  const tep_ids = Array.isArray(du['tep_ids']) ? du['tep_ids'] : [];
+  const dinh_kem: DinhKemMail[] = [];
+  for (const id_tho of tep_ids) {
+    if (typeof id_tho !== 'string') continue;
+    const t = await truy_van<{ ten_goc: string; ten_luu: string; kieu_mime: string }>(
+      'select ten_goc, ten_luu, kieu_mime from ho_so_tep where id = $1', [id_tho]);
+    const hang = t[0];
+    if (hang === undefined) continue;
+    const tep = await doc_tep_ho_so(hang.ten_luu);
+    if (tep === null) continue;
+    dinh_kem.push({ ten: hang.ten_goc, mime: hang.kieu_mime, du_lieu: tep });
+  }
+
+  // Graph nhan CC qua truong rieng; de giu hop dong gui_email don gian, ghep CC vao den
+  // (nguoi nhan van nhan duoc, chi khac o nhan To/Cc).
+  const ok = await gui_email({
+    den: [...den, ...cc],
+    tieu_de,
+    noi_dung_html: noi_dung,
+    dinh_kem: dinh_kem.length > 0 ? dinh_kem : undefined,
+  });
+  if (!ok) throw new Error('Graph khong gui duoc email (gui_email tra false)');
 }
 
 /**
@@ -306,6 +360,9 @@ export function dung_than_erp1(d: DongOutbox): string {
 /**
  * Khuon than cho `erp1.nhan_su.da_tao` — bao tao ho so nhan su moi de ERP1 thiet lap tai
  * khoan. Tach rieng khoi khuon nghi viec: hai nghiep vu khac nhau, moi ben mot hop dong.
+ *
+ * `chuc_danh` + `phong_ban` (ten) kem theo de ERP1 tu phan quyen theo vi tri thay vi cho
+ * nguoi nhan su thiet lap tay.
  */
 export function dung_than_erp1_da_tao(d: DongOutbox): string {
   const chuoi = (k: string): string | null =>
@@ -320,6 +377,8 @@ export function dung_than_erp1_da_tao(d: DongOutbox): string {
     so_dien_thoai: chuoi('so_dien_thoai'),
     ngay_vao: chuoi('ngay_vao'),
     pin_may: chuoi('pin_may'),
+    chuc_danh: chuoi('chuc_danh'),
+    phong_ban: chuoi('phong_ban'),
   });
 }
 

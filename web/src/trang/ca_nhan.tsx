@@ -675,6 +675,35 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
 
 // ==================================================================== man trang chu
 
+/** Bang nhac thoi viec tren Trang chu ca nhan — chi hien khi co quy trinh dang mo. */
+function NhacThoiViec(): ReactNode {
+  const { di_toi } = dung_tuyen();
+  const nap = dung_nap<{
+    trang_thai: string;
+    ngay_lam_viec_cuoi: string | null;
+    muc: { bat_buoc: boolean; trang_thai: string }[];
+  } | null>('/api/toi/thoi-viec');
+  const d = nap.du_lieu;
+  if (d === null || d === undefined) return null;
+  const con = d.muc.filter((m) => m.bat_buoc
+    && (m.trang_thai === 'chua' || m.trang_thai === 'dang')).length;
+  return (
+    <div className={con > 0 ? 'cn-nhac-thoi-viec' : 'cn-nhac-thoi-viec tot'}>
+      <div>
+        <b>Thủ tục thôi việc đang mở</b>
+        <div className="mo-ta">
+          {con > 0
+            ? `Còn ${String(con)} mục bắt buộc chưa xong — hoàn tất để Admin chốt.`
+            : 'Mọi mục đã xong — chờ Admin duyệt cuối ở Cổng 2.'}
+          {d.ngay_lam_viec_cuoi !== null && ` · Lastday: ${ngay_viet(d.ngay_lam_viec_cuoi)}`}
+        </div>
+      </div>
+      <button type="button" className="nut-nho nut-chinh"
+        onClick={() => di_toi('/thoi-viec/huong-dan')}>Mở hướng dẫn</button>
+    </div>
+  );
+}
+
 function ManTrangChu({ hom_nay_nap, di_den, di_duyet }: {
   hom_nay_nap: ReturnType<typeof dung_nap<HomNay>>;
   di_den: (t: Tab, mo?: FormMo | null) => void;
@@ -704,6 +733,8 @@ function ManTrangChu({ hom_nay_nap, di_den, di_duyet }: {
   return (
     <div className="luoi" style={{ marginTop: 16 }}>
       <LoiChao du_lieu={du_lieu} nap_lai={nap_lai} />
+
+      <NhacThoiViec />
 
       <HanhDongNhanh phep={phep} so_don_cho={so(du_lieu.can_chu_y?.don_cua_toi_cho_duyet)} di_den={di_den} />
 

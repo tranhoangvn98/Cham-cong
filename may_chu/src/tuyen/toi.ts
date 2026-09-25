@@ -35,6 +35,12 @@ import {
 import { email_nhan_vien_tra_loi as email_ho_thu_nhan_vien_tra_loi }
   from '../ho_thu_y_kien/email.ts';
 import {
+  dinh_kem_bang_chung, de_nghi_lastday, ky_ban_giao, ky_muc, tick_muc,
+  xac_nhan_ban_giao_muc,
+} from '../thoi_viec/nghiep_vu.ts';
+import { quy_trinh_cua_nhan_vien, quy_trinh_theo_id } from '../thoi_viec/quy_trinh.ts';
+import { tra_loi_huong_dan_thoi_viec } from '../thoi_viec/tro_ly.ts';
+import {
   chi_tiet_ky_luat_theo_phieu, chi_tiet_di_muon_theo_phieu, type DongLietKe,
 } from '../luong/chi_tiet_ky_luat.ts';
 import {
@@ -2080,6 +2086,15 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     const nv_id = nhan_vien_cua_toi(req);
     const q = req.query as Record<string, unknown>;
     const cau_hoi = typeof q['hoi'] === 'string' ? q['hoi'] : '';
+    // Che do rieng cua widget tro ly thoi viec (REQ-NV-03): doc checklist cua chinh nguoi
+    // dung, goi y muc ke tiep — khong tron voi tro ly nhan su thuong.
+    if (q['che_do'] === 'huong_dan_thoi_viec') {
+      return tra_loi_huong_dan_thoi_viec(nv_id, cau_hoi) ?? {
+        tra_loi: 'Bạn chưa có quy trình thôi việc đang mở.',
+        y_dinh: 'huong_dan_thoi_viec',
+        goi_y: [],
+      };
+    }
     return tra_loi_tro_ly(nv_id, cau_hoi, nd.vai_tro);
   });
 
@@ -2206,6 +2221,92 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       [lay_id(req), nv_id],
     );
     if (kq === 0) throw new LoiXungDot('Đề xuất không còn ở trạng thái chờ duyệt.');
+    return { ok: true };
+  });
+
+  // ================================================================ THOI VIEC (ca nhan)
+  // Quy trinh thoi viec cua CHINH minh: doc checklist, tick muc, dinh kem bang chung, ky
+  // dien tu, de nghi lastday, ban giao va ky bien ban hai chieu.
+
+  /** Checklist + ban giao cua chinh minh (quy trinh dang mo moi nhat). */
+  app.get('/thoi-viec', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const ids = await quy_trinh_cua_nhan_vien(nv_id);
+    if (ids.length === 0) return null;
+    return quy_trinh_theo_id(ids[0]!);
+  });
+
+  /** Tick (xong/chua) mot muc `nhan_vien` cua chinh minh. */
+  app.post('/thoi-viec/muc/:id/tick', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body ?? {});
+    const trang_thai = trong_tap(b, 'trang_thai', ['xong', 'chua'] as const,
+      { bat_buoc: true }) as 'xong' | 'chua';
+    const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
+    return tick_muc(lay_id(req), nd, trang_thai, ghi_chu);
+  });
+
+  /** Ky dien tu mot muc cua chinh minh (cam ket bao mat...). */
+  app.post('/thoi-viec/muc/:id/ky', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    return ky_muc(lay_id(req), nd);
+  });
+
+  /** Dinh kem bang chung cho mot muc cua chinh minh. */
+  app.post('/thoi-viec/muc/:id/bang-chung', {
+    bodyLimit: cau_hinh.tep_toi_da_byte + 1024 * 1024,
+  }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const muc_id = lay_id(req);
+    let ten_goc = 'tep';
+    let du_lieu: Buffer | null = null;
+    for await (const phan of req.parts({ limits: { fileSize: cau_hinh.tep_toi_da_byte, files: 1 } })) {
+      if (phan.type === 'file') {
+        if (phan.fieldname !== 'tep') {
+          await phan.toBuffer();
+          continue;
+        }
+        ten_goc = lam_sach_ten(phan.filename ?? 'tep');
+        du_lieu = await phan.toBuffer();
+      }
+    }
+    if (du_lieu === null) throw new LoiDauVao('Thiếu tệp đính kèm.');
+    const kq = await dinh_kem_bang_chung(muc_id, nd, du_lieu, ten_goc);
+    await ghi_nhat_ky(nd.sub, 'thoi_viec_bang_chung', 'muc_checklist', muc_id,
+      { ten_goc: kq.ten_goc }, req.ip);
+    return res.code(201).send(kq);
+  });
+
+  /** Xac nhan / de nghi chinh ngay lam viec cuoi. */
+  app.post('/thoi-viec/lastday', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body ?? {});
+    const ngay_moi = ngay_bat_buoc(b, 'ngay_lam_viec_cuoi');
+    const ids = await quy_trinh_cua_nhan_vien(nd.nv ?? '');
+    if (ids.length === 0) throw new LoiKhongTim('Không tìm thấy quy trình thuộc phạm vi của bạn.');
+    return de_nghi_lastday(ids[0]!, nd, ngay_moi);
+  });
+
+  /** Xac nhan mot muc ban giao (nguoi giao hoac nguoi nhan duoc chi dinh). */
+  app.post('/thoi-viec/ban-giao/:id/muc/:muc_id/xac-nhan', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body ?? {});
+    const trang_thai = trong_tap(b, 'trang_thai', ['da_ban_giao', 'chua'] as const,
+      { bat_buoc: true }) as 'da_ban_giao' | 'chua';
+    const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
+    const p = req.params as Record<string, string>;
+    const muc_id = uuid({ id: p['muc_id'] }, 'id', { bat_buoc: true }) as string;
+    await xac_nhan_ban_giao_muc(muc_id, nd, trang_thai, ghi_chu);
+    return { ok: true };
+  });
+
+  /** Ky bien ban ban giao — `ben` = nguoi_giao | nguoi_nhan (nguoi nhan phai duoc chi dinh). */
+  app.post('/thoi-viec/ban-giao/:id/ky', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body ?? {});
+    const ben = trong_tap(b, 'ben', ['nguoi_giao', 'nguoi_nhan'] as const,
+      { bat_buoc: true }) as 'nguoi_giao' | 'nguoi_nhan';
+    await ky_ban_giao(lay_id(req), nd, ben);
     return { ok: true };
   });
 }

@@ -24,6 +24,9 @@ const { thuc_thi, truy_van, truy_van_mot, dong_pool } = await import('../src/csd
 const { tao_token_truy_cap } = await import('../src/bao_mat/jwt.ts');
 const { bat_soan_van_ban, dung_soan_van_ban } = await import('../src/su_kien/soan_van_ban_day.ts');
 const { nghi_viec_den_han } = await import('../src/su_kien/lich_chay.ts');
+const { quet_quy_trinh_thoi_viec } = await import('../src/thoi_viec/tu_dong.ts');
+const { chay_dung_hoat_dong } = await import('../src/thoi_viec/chay_dung.ts');
+const { dat_cau_hinh_thoi_viec } = await import('../src/thoi_viec/quy_trinh.ts');
 const { cong_ngay, ngay_dia_phuong } = await import('../src/tien_ich/thoi_gian.ts');
 
 const PHONG = '9f0e9a12-0000-4000-8000-0000000000a1';
@@ -312,11 +315,13 @@ test('quyet dinh nghi viec: nhap phai du loai + ngay hop le', async () => {
   assert.equal(qua_khu.ma, 400, 'ngay nghi viec trong qua khu phai bi tu choi');
 });
 
-test('quyet dinh nghi viec: phat hanh gan tep ho so, job dem khoa tai khoan', async () => {
+test('quyet dinh nghi viec: phat hanh gan tep ho so, lich dem hoi to quy trinh, Cong 2 khoa tai khoan', async () => {
   const hom_nay = ngay_dia_phuong(new Date());
 
   // Don du lieu cua lan chay truoc — bo kiem nay chay lai duoc tren cung CSDL test.
   await thuc_thi(`delete from hop_thu_di where du_lieu ->> 'ma_nv' = 'AI-NVB'`);
+  await thuc_thi('delete from quy_trinh_thoi_viec where nhan_vien_id = $1', [NV_B]);
+  await thuc_thi(`delete from don_tu where nhan_vien_id = $1 and loai = 'thoi_viec'`, [NV_B]);
   await thuc_thi('delete from tai_lieu_nhan_vien where nhan_vien_id = $1', [NV_B]);
   await thuc_thi('delete from ho_so_tep where nhan_vien_id = $1', [NV_B]);
   await thuc_thi(
@@ -325,6 +330,7 @@ test('quyet dinh nghi viec: phat hanh gan tep ho so, job dem khoa tai khoan', as
   await thuc_thi('update nguoi_dung set dang_hoat_dong = true where id = $1', [ND_B]);
   await thuc_thi('update nguoi_dung set email_microsoft = $1 where id = $2',
     ['nguyen.van.b@congty.test', ND_B]);
+  await thuc_thi(`update nhan_vien set email = 'nv.b@congty.test' where id = $1`, [NV_B]);
 
   const { id } = await nhap_cho_duyet({
     loai: 'quyet_dinh', pham_vi: 'ca_nhan', quan_he: 'noi_bo', muc_dich: 'yeu_cau',
@@ -358,37 +364,67 @@ test('quyet dinh nghi viec: phat hanh gan tep ho so, job dem khoa tai khoan', as
   );
   assert.equal(tl?.trang_thai, 'da_len_phan_mem', 'checklist QĐ nghỉ việc da len phan mem');
 
-  // Buoc 2-4: job dem chay vao ngay nghi viec.
+  // REQ-G2-05: lich dem KHONG tu khoa nua — thay vao do hoi to thanh quy trinh thoi viec
+  // (lastday chot theo QD, muc nhan_vien bo qua) de ca dang do khong lot.
   await nghi_viec_den_han(hom_nay, () => {});
 
-  const nv = await truy_van_mot<{ dang_hoat_dong: boolean; ngay_nghi_viec: string | null }>(
-    `select dang_hoat_dong, ngay_nghi_viec::text as ngay_nghi_viec
-       from nhan_vien where id = $1`, [NV_B]);
-  assert.equal(nv?.dang_hoat_dong, false, 'nhan vien bi khoa');
-  assert.equal(nv?.ngay_nghi_viec, hom_nay);
+  const nv_con = await truy_van_mot<{ dang_hoat_dong: boolean }>(
+    'select dang_hoat_dong from nhan_vien where id = $1', [NV_B]);
+  assert.equal(nv_con?.dang_hoat_dong, true, 'lich dem khong tu khoa nhan vien');
 
-  const nd = await truy_van_mot<{ dang_hoat_dong: boolean }>(
-    'select dang_hoat_dong from nguoi_dung where id = $1', [ND_B]);
-  assert.equal(nd?.dang_hoat_dong, false, 'tai khoan dang nhap bi vo hieu hoa');
+  const qt = await truy_van_mot<{ id: string; trang_thai: string; lastday_da_chot: boolean }>(
+    `select id::text, trang_thai, lastday_da_chot from quy_trinh_thoi_viec
+      where nhan_vien_id = $1`, [NV_B]);
+  assert.notEqual(qt, null, 'quyet dinh nghi viec duoc hoi to thanh quy trinh');
+  assert.equal(qt?.lastday_da_chot, true, 'lastday chot theo quyet dinh');
 
   const da_chay = await truy_van_mot<{ da_chay: boolean }>(
     'select (nghi_viec_da_chay_luc is not null) as da_chay from thong_bao_nhap_ai where id = $1',
     [id]);
   assert.equal(da_chay?.da_chay, true, 'quyet dinh duoc danh dau da chay');
 
-  // Buoc 4: su kien bao cong phan quyen + buoc 3: su kien bao Microsoft deu nam trong
-  // hop thu di (test khong cau hinh cong/MS thi chung nam lai cho, khong mat).
+  // Muc tu dong chay nen (trong test goi truc tiep thay cho vong lich) -> san sang chot.
+  await quet_quy_trinh_thoi_viec(() => {});
+  const qt2 = await truy_van_mot<{ trang_thai: string; id: string }>(
+    `select id::text, trang_thai from quy_trinh_thoi_viec where nhan_vien_id = $1`, [NV_B]);
+  assert.equal(qt2?.trang_thai, 'san_sang_chot',
+    'moi muc bat buoc xong/bo qua -> tu dong san sang chot');
+
+  // Cong 2: chay dung hoat dong. Khai email dich vu BHXH truoc — REQ-CH-02 chan khi thieu.
+  await dat_cau_hinh_thoi_viec('email_dich_vu_bhxh', 'bhxh@congty.test');
+  const kq = await chay_dung_hoat_dong(qt2!.id, ND_ADMIN, null);
+  assert.equal(kq.ok, true);
+
+  const nv = await truy_van_mot<{ dang_hoat_dong: boolean; ngay_nghi_viec: string | null }>(
+    `select dang_hoat_dong, ngay_nghi_viec::text as ngay_nghi_viec
+       from nhan_vien where id = $1`, [NV_B]);
+  assert.equal(nv?.dang_hoat_dong, false, 'Cong 2 khoa nhan vien');
+  assert.equal(nv?.ngay_nghi_viec, hom_nay);
+
+  const nd = await truy_van_mot<{ dang_hoat_dong: boolean }>(
+    'select dang_hoat_dong from nguoi_dung where id = $1', [ND_B]);
+  assert.equal(nd?.dang_hoat_dong, false, 'tai khoan dang nhap bi vo hieu hoa');
+
+  const qt3 = await truy_van_mot<{ trang_thai: string }>(
+    'select trang_thai from quy_trinh_thoi_viec where id = $1', [qt2!.id]);
+  assert.equal(qt3?.trang_thai, 'da_khoa', 'quy trinh chot da_khoa');
+
+  // Su kien bao cong phan quyen + Microsoft + ERP1 + email BHXH/thue deu nam trong hop thu
+  // di (test khong cau hinh dich thi chung nam lai cho, khong mat).
   const su_kien = await truy_van<{ loai_su_kien: string; du_lieu: Record<string, unknown> }>(
     `select loai_su_kien, du_lieu from hop_thu_di
       where du_lieu ->> 'ma_nv' = 'AI-NVB' order by id`,
   );
   assert.ok(su_kien.some((s) => s.loai_su_kien === 'nhan_su.nghi_viec'), 'co su kien bao cong');
   assert.ok(su_kien.some((s) => s.loai_su_kien === 'ms365.nghi_viec'), 'co su kien bao Microsoft');
+  assert.ok(su_kien.some((s) => s.loai_su_kien === 'erp1.nhan_su.nghi_viec'), 'co su kien ERP1');
+  assert.ok(su_kien.some((s) => s.loai_su_kien === 'gui_email'), 'co email outbox (BHXH/thue...)');
   const ms = su_kien.find((s) => s.loai_su_kien === 'ms365.nghi_viec');
   assert.equal(ms?.du_lieu['upn'], 'nguyen.van.b@congty.test', 'su kien Microsoft co upn');
 
-  // Chay lai lan nua: khong sinh them su kien trung.
-  await nghi_viec_den_han(hom_nay, () => {});
+  // REQ-TEST-07: chay lai lan nua idempotent — khong sinh them su kien trung, khong khoa lai.
+  const kq2 = await chay_dung_hoat_dong(qt2!.id, ND_ADMIN, null);
+  assert.equal(kq2.da_chay, true, 'chay lai tra da_chay, khong lam gi them');
   const dem_cong = await truy_van_mot<{ so: number }>(
     `select count(*)::int as so from hop_thu_di
       where loai_su_kien = 'nhan_su.nghi_viec' and du_lieu ->> 'ma_nv' = 'AI-NVB'`);

@@ -178,6 +178,22 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       'Trưởng phòng chỉ thấy và duyệt đơn của phòng mình. Đây là ràng buộc ở máy chủ, không phải bộ lọc giao diện.',
       'Cảnh báo vượt 40 giờ làm thêm/tháng (BLLĐ Điều 107) và cảnh báo báo trước dưới mức Điều 35.1 là CẢNH BÁO, không chặn — một số trường hợp hợp pháp vẫn vượt. Đọc rồi quyết.',
       'Duyệt đơn nghỉ phép/công tác làm bảng công ngày đó đổi ngay, không cần tính lại tay.',
+      'Duyệt đơn THÔI VIỆC chỉ khởi động quy trình (Cổng 1): hệ thống tự sinh checklist + bàn giao. Việc khóa tài khoản chỉ xảy ra khi Admin chạy Cổng 2 ở trang Thôi việc.',
+    ],
+  },
+  {
+    duong_dan: '/thoi-viec',
+    tom_tat: 'Quy trình thôi việc tự động: duyệt đơn khởi động checklist, nhân viên tự hoàn tất thủ tục, Admin chốt ở Cổng 2.',
+    buoc: [
+      { chu: 'Duyệt đơn xin thôi việc ở trang Duyệt đơn — hệ thống tự sinh quy trình và checklist theo loại hợp đồng.' },
+      { chu: 'Theo dõi quy trình: mục xanh là hệ thống tự tính (lương, phép, trợ cấp, hạn báo trước), mục còn chờ là việc của nhân viên.' },
+      { chu: 'Khi mọi mục bắt buộc xong, quy trình tự chuyển Sẵn sàng chốt — mở chi tiết, chỉ định người nhận bàn giao, chốt lastday, rồi bấm Chạy dừng hoạt động.', vai_tro: NHAN_SU },
+      { chu: 'Cấu hình email dịch vụ BHXH và chứng từ thuế ở tab Cấu hình — thiếu thì Cổng 2 chặn không cho chạy.', vai_tro: ['admin'] },
+    ],
+    luu_y: [
+      'Chạy dừng hoạt động là bước KHÔNG đảo ngược được: khóa tài khoản, thu hồi phiên, báo cổng phân quyền + ERP1 + Microsoft 365, và gửi hồ sơ BHXH/thuế. Hệ thống chỉ chạy được khi mọi mục bắt buộc đã xong và lastday đã chốt.',
+      'Đến ngày nghỉ mà chưa chốt, hệ thống KHÔNG tự khóa — chỉ bắn cảnh báo đỏ. Teardown chỉ đi qua Cổng 2.',
+      'Quyết định nghỉ việc cũ trên hệ văn bản AI được hồi tố thành quy trình — Admin vẫn phải bấm Cổng 2.',
     ],
   },
   {

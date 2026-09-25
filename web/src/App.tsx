@@ -43,7 +43,9 @@ import { TrangVanBan } from './trang/van_ban.tsx';
 import { TrangHoThuYKien } from './trang/ho_thu_y_kien.tsx';
 import { TrangGopYDuThao } from './trang/gop_y_du_thao.tsx';
 import { TrangCongBoPhatHanh } from './trang/cong_bo_phat_hanh.tsx';
+import { TrangThoiViec, TrangHuongDanThoiViec } from './trang/thoi_viec.tsx';
 import { TroLyCaNhan } from './trang/tro_ly.tsx';
+import { TroLyThoiViec } from './trang/tro_ly_thoi_viec.tsx';
 import { TroLyQuanTri } from './trang/tro_ly_quan_tri.tsx';
 import { ChuongBao } from './trang/chuong_bao.tsx';
 import { PopupThongBao } from './trang/popup_thong_bao.tsx';
@@ -112,6 +114,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/quan-ly-phep', ten: 'Quản lý phép', icon: 'sun', nhom: 'Nhân sự', phu: 'Tổng hợp ngày phép từng người', quyen: 'nguoi_duyet' },
   { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
   { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Nhân sự', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
+  { duong_dan: '/thoi-viec', ten: 'Thôi việc', icon: 'logout', nhom: 'Nhân sự', phu: 'Quy trình thôi việc: checklist, bàn giao, chốt', quyen: 'nhan_su' },
 
   // Cong viec & to chuc: ai lam gi, lam toi dau.
   { duong_dan: '/cong-viec', ten: 'Công việc', icon: 'check', nhom: 'Công việc & tổ chức', phu: 'Giao việc, duyệt kết quả, lịch công việc', quyen: 'nguoi_duyet', ca_nhan: true },
@@ -248,6 +251,8 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     case '/gop-y-du-thao': return <TrangGopYDuThao />;
     case '/kpi': return <TrangKpi />;
     case '/hop-dong': return la_nhan_su() ? <TrangHopDong /> : <KhongCoQuyen />;
+    case '/thoi-viec': return la_nhan_su() ? <TrangThoiViec /> : <KhongCoQuyen />;
+    case '/thoi-viec/huong-dan': return <TrangHuongDanThoiViec />;
     default: return <KhongTimThay duong_dan={duong_dan} />;
   }
 }
@@ -404,6 +409,7 @@ function BoCuc(): ReactNode {
         }}
         />
         <TroLyCaNhan />
+        <TroLyThoiViec />
       </>
     );
   }
@@ -546,6 +552,7 @@ function BoCuc(): ReactNode {
         </div>
         {gn === 'ca_nhan' && <TroLyCaNhan />}
         {gn === 'quan_tri' && la_nhan_su() && <TroLyQuanTri />}
+        <TroLyThoiViec />
       </main>
     </div>
   );

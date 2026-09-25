@@ -6,7 +6,8 @@
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { trong_giao_dich, truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { chot_ngay_hom_qua } from '../cong/tinh_cong.ts';
-import { cho_nghi_viec } from '../nhan_su/nghi_viec.ts';
+import { dam_bao_quy_trinh_tu_qd } from '../thoi_viec/quy_trinh.ts';
+import { quet_quy_trinh_thoi_viec } from '../thoi_viec/tu_dong.ts';
 import { don_su_kien_cu } from './hop_thu_di.ts';
 import { ma_viec_nhac_han, quet_nhac_han } from '../hop_dong/nhac_han.ts';
 import { ma_viec_sap_xep, sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
@@ -173,10 +174,12 @@ export async function nghi_viec_den_han(
           'select dang_hoat_dong from nhan_vien where id = $1', [nhan_vien_id])).rows[0];
         if (nv === undefined) return { loai: 'thieu_nhan_vien' as const };
         if (!nv.dang_hoat_dong) return { loai: 'da_chay_truoc' as const };
-        const ket_qua = await cho_nghi_viec(khach, nhan_vien_id, d.ngay_nghi_viec);
-        return ket_qua === null
-          ? { loai: 'thieu_nhan_vien' as const }
-          : { loai: 'da_chay' as const, ma_nv: ket_qua.ma_nv, upn: ket_qua.upn };
+        // REQ-G2-05: lich dem KHONG tu khoa nua — teardown chi di qua Cong 2 cua quy trinh
+        // thoi viec. Thay vao do DAM BAO quy trinh ton tai (hoi to tu QD nghi viec) de ca
+        // dang do khong bi lot; canh bao do cho Admin do tien trinh quet_quy_trinh_thoi_viec
+        // ban moi chu ky (toi da 1 lan/ngay).
+        const qt = await dam_bao_quy_trinh_tu_qd(khach, nhan_vien_id, d.ngay_nghi_viec);
+        return { loai: 'da_tao_quy_trinh' as const, quy_trinh_id: qt.quy_trinh_id };
       });
       await thuc_thi(
         `update thong_bao_nhap_ai
@@ -184,9 +187,9 @@ export async function nghi_viec_den_han(
           where id = $1`,
         [d.id],
       );
-      if (kq.loai === 'da_chay') {
-        ghi_log(`[lich] nghi viec ${d.ma}: da khoa tai khoan ${kq.ma_nv}`
-          + (kq.upn === null ? ' (khong co tai khoan Microsoft)' : ` + bao Microsoft ${kq.upn}`));
+      if (kq.loai === 'da_tao_quy_trinh') {
+        ghi_log(`[lich] nghi viec ${d.ma}: khong tu khoa (Cong 2 quyet dinh) — quy trinh `
+          + `${kq.quy_trinh_id ?? 'khong tao duoc'}`);
       } else if (kq.loai === 'da_chay_truoc') {
         ghi_log(`[lich] nghi viec ${d.ma}: nguoi nay da duoc cho nghi truoc do, bo qua`);
       } else {
@@ -239,6 +242,15 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     if (so > 0) ghi_log(`[lich] cong viec: ${so} viec qua han chuyen thanh khong hoan thanh`);
   } catch (loi) {
     ghi_log(`[lich] LOI khi quet cong viec qua han: ${(loi as Error).message}`);
+  }
+
+  // ------------------------------------------------------------ quy trinh thoi viec
+  // CHAY MOI VONG: muc tu dong (reassign viec, kiem bao truoc, luong/phep/tro cap, moc 14
+  // ngay) + canh bao den han chua khoa. Nhe vi chi quet quy trinh dang thuc hien.
+  try {
+    await quet_quy_trinh_thoi_viec(ghi_log);
+  } catch (loi) {
+    ghi_log(`[lich] LOI khi quet quy trinh thoi viec: ${(loi as Error).message}`);
   }
 
   // ------------------------------------------------------------ email thong bao dang cho

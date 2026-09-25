@@ -108,6 +108,11 @@ services:
       # Nghi viec tu dong: chan dang nhap + rut giay phep Microsoft khi nghi viec.
       # 1 = bat; 0 (mac dinh) = su kien nam lai trong hop_thu_di cho. Xem tai_lieu/NGHI-VIEC.md.
       MS365_NGHI_VIEC_BAT: ${MS365_NGHI_VIEC_BAT:-0}
+      # Quy trinh thoi viec: email nhan ho so BHXH / chung tu thue (mac dinh env — admin con
+      # sua duoc trong app, bang cau_hinh_thoi_viec). Xem tai_lieu/NGHI-VIEC.md.
+      EMAIL_DICH_VU_BHXH: ${EMAIL_DICH_VU_BHXH:-}
+      EMAIL_DICH_VU_BHXH_CC: ${EMAIL_DICH_VU_BHXH_CC:-}
+      EMAIL_CHUNG_TU_THUE: ${EMAIL_CHUNG_TU_THUE:-}
       # Tao tai khoan Microsoft 365 + cap giay phep khi tao ho so nhan su moi.
       # 1 = bat; 0 (mac dinh) = su kien nam lai trong hop_thu_di cho. Xem tai_lieu/TAO-HO-SO-NHAN-SU.md.
       MS365_TAO_TAI_KHOAN_BAT: ${MS365_TAO_TAI_KHOAN_BAT:-0}

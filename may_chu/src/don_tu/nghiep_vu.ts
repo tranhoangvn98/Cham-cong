@@ -3,6 +3,7 @@
 // Tach khoi tang route de kiem duoc bang CSDL that ma khong phai di qua HTTP, va de tang route
 // chi con lam mot viec: doc dau vao roi goi vao day.
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
+import type { PoolClient } from 'pg';
 import { LoiDauVao, LoiKhongTim, LoiXungDot } from '../tien_ich/kiem_tra.ts';
 import {
   canh_bao_bao_truoc, canh_bao_tran_ot, dac_ta, ngay_bao_truoc_toi_thieu, phut_lam_them,
@@ -296,7 +297,7 @@ export interface KetQuaQuyet {
  */
 export async function quyet_don(
   id: string, quyet: 'da_duyet' | 'tu_choi', nguoi_duyet_id: string, ghi_chu: string | null,
-  cap: 1 | 2 = 1,
+  cap: 1 | 2 = 1, khach?: PoolClient,
 ): Promise<KetQuaQuyet> {
   // Moi quyet dinh phai co nguoi duyet ro rang. Duyet tu dong (khong co nguoi bam) phai truyen id
   // tai khoan he thong (id_tai_khoan_he_thong), KHONG duoc de NULL/rong — mot don da_duyet ma
@@ -305,7 +306,16 @@ export async function quyet_don(
     throw new LoiDauVao('Không thể quyết đơn mà không rõ người duyệt. Duyệt tự động phải gán tài '
       + 'khoản hệ thống.');
   }
-  const d = await don_theo_id(id);
+  // `khach` = cung transaction voi nghiep vu goi no (Cong 1 cua quy trinh thoi viec sinh quy
+  // trinh CUNG LUc voi quyet dinh — khong duoc de hai buoc lech nhau).
+  const chay = async (sql: string, ts: readonly unknown[]): Promise<void> => {
+    if (khach !== undefined) await khach.query(sql, [...ts]);
+    else await thuc_thi(sql, [...ts]);
+  };
+  const d = khach !== undefined
+    ? ((await khach.query(`select ${CHON} ${TU_BANG} where d.id = $1`, [id])).rows[0]
+      ?? null) as DongDonTu | null
+    : await don_theo_id(id);
   if (d === null) throw new LoiKhongTim('Không tìm thấy đơn.');
   if (cap === 2 && d.loai !== 'lam_them') {
     throw new LoiDauVao('Chỉ đơn làm thêm giờ mới có bước duyệt cấp hai.');
@@ -316,7 +326,7 @@ export async function quyet_don(
   }
 
   if (cap === 2) {
-    await thuc_thi(
+    await chay(
       `update don_tu
           set trang_thai = $2, nguoi_duyet_2_id = $3, ghi_chu_duyet_2 = $4, quyet_2_luc = now()
         where id = $1 and trang_thai = 'cho_duyet_2'`,
@@ -324,7 +334,7 @@ export async function quyet_don(
     );
   } else if (d.loai === 'lam_them') {
     // Cap 1 cua don OT: duyet nghia la "chuyen len cap 2", chu khong chot.
-    await thuc_thi(
+    await chay(
       `update don_tu
           set trang_thai = case when $2 = 'da_duyet' then 'cho_duyet_2' else $2 end,
               nguoi_duyet_id = $3, ghi_chu_duyet = $4, quyet_luc = now()
@@ -332,7 +342,7 @@ export async function quyet_don(
       [id, quyet, nguoi_duyet_id, ghi_chu],
     );
   } else {
-    await thuc_thi(
+    await chay(
       `update don_tu
           set trang_thai = $2, nguoi_duyet_id = $3, ghi_chu_duyet = $4, quyet_luc = now()
         where id = $1 and trang_thai = 'cho_duyet'`,

@@ -2,6 +2,51 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.108.0] — 2026-09-26
+
+**Quy trình thôi việc tự động theo đặc tả 01/2026/ĐTKT-IT: 2 cổng người + phần giữa tự động.**
+
+- **Cổng 1:** duyệt đơn thôi việc trên trang Duyệt đơn là khởi động quy trình — cùng một
+  transaction sinh `quy_trinh_thoi_viec` (unique theo đơn), chụp loại hợp đồng + chức danh,
+  phát sinh checklist 23 mục theo loại HĐ và bàn giao theo vị trí từ bảng khuôn (migration 090).
+- **Phần giữa:** nhân viên làm mục `nhan_vien` ở trang `/thoi-viec/huong-dan` (đính kèm bằng
+  chứng, ký điện tử trong hệ thống, ký biên bản bàn giao hai chiều); tiến trình nền tự tick
+  mục `tu_dong`: chuyển việc dở sang quản lý, kiểm hạn báo trước (Điều 35/27.2 BLLĐ 2019,
+  Điều 7 NĐ145/2020), quyết toán lương, thanh toán phép (Điều 113.3), trợ cấp thôi việc
+  (Điều 46, trừ thời gian đóng BHTN), mốc quyết toán 14 ngày làm việc (Điều 48.1). Mọi mục
+  bắt buộc xong → tự chuyển `san_sang_chot` + chuông báo Admin. Widget trợ lý đỏ góc
+  phải-dưới mọi trang: chấm đỏ + số mục chưa xong, xong hết chuyển xanh.
+- **Cổng 2:** Admin chốt lastday rồi bấm "Chạy dừng hoạt động" — một transaction đúng thứ tự:
+  kiểm điều kiện (thiếu email BHXH thì chặn), sinh + lưu hồ sơ Quyết định chấm dứt HĐLĐ, xác
+  nhận BHXH-BHTN, báo giảm BHXH, chứng từ thuế TNCN, bảng quyết toán, rồi mới cắt truy cập
+  bằng `cho_nghi_viec()` (tái dùng). Email đi qua outbox `hop_thu_di` loại mới `gui_email`
+  (kèm đính kèm, backoff). Idempotent: chạy lại trả `da_chay`, không trùng sự kiện.
+- **Bỏ tự khóa lịch đêm:** `nghi_viec_den_han` không khóa tài khoản nữa — hồi tố Quyết định
+  nghỉ việc cũ thành quy trình (chốt lastday, bỏ qua mục nhân viên), cảnh báo đỏ Admin mỗi
+  ngày nếu tới lastday mà chưa chốt. Teardown chỉ đi qua Cổng 2.
+- **Cấu hình Admin sửa không cần deploy:** email dịch vụ BHXH/thuế (bảng `cau_hinh_thoi_viec`,
+  ưu tiên hơn env) + ngưỡng báo trước theo loại HĐ (`khuon_han_bao_truoc`) — trang Thôi việc →
+  Cấu hình. Môi trường mới `EMAIL_DICH_VU_BHXH*` đã khai trong compose + .env.example.
+- Test: 17 test đơn vị `thoi_viec.test.ts` khóa các con số pháp lý + điều kiện Cổng 2; e2e
+  `thong_bao_ai_e2e` chuyển sang luồng hồi tố + Cổng 2 (idempotent).
+
+## [1.107.0] — 2026-09-26
+
+**Thêm nhân viên mới: tự cấp tài khoản hệ thống phân quyền theo vị trí + webhook ERP1 kèm chức danh, phòng ban.**
+
+- Ô **Vị trí** (7 bậc chọn sẵn: Tổng Giám Đốc, Giám đốc, Trưởng phòng, Trưởng nhóm
+  (Leader/Chuyên viên), Nhân viên, Thử việc, Học việc (Thực tập sinh)) trên form thêm/sửa
+  nhân viên — migration 091 thêm cột `nhan_vien.vi_tri` (CHECK 7 mã).
+- Tùy chọn **Tạo tài khoản hệ thống** (chế độ "Thêm nhân viên tự động" luôn bật): hệ thống
+  tạo `nguoi_dung` cùng transaction với hồ sơ — tên đăng nhập sinh từ mã NV (vd `NV0156` →
+  `nv0156`), mật khẩu khởi tạo 12 ký tự chỉ hiện một lần cho HR, buộc đổi ở lần đăng nhập đầu.
+  Vai trò tự suy từ vị trí: TGĐ/Giám đốc → `nhan_su`, Trưởng phòng → `truong_phong`, còn lại →
+  `nhan_vien` (quy tắc trong `nhan_su/vi_tri.ts`, có test khóa).
+- Webhook `erp1.nhan_su.da_tao` bổ sung `chuc_danh` + `phong_ban` để ERP1 tự phân quyền theo
+  vị trí thay vì thao tác tay.
+- Test: 4 test đơn vị mới (ánh xạ vị trí) + cập nhật test khuôn ERP1; e2e luồng tạo hồ sơ
+  kiểm thêm tài khoản hệ thống, vai trò và payload mới.
+
 ## [1.106.1] — 2026-09-26
 
 **Công bố phát hành soạn thành văn bản công ty NĐ30 + Hòm thư có Thư đã gửi và popup ý kiến mới.**

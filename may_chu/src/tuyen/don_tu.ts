@@ -15,6 +15,7 @@ import {
   canh_bao_cho_don, dem_cho_duyet, dem_cho_duyet_cap_2, don_cho_nguoi_duyet, don_theo_id,
   quyet_don,
 } from '../don_tu/nghiep_vu.ts';
+import { sinh_quy_trinh_thoi_viec } from '../thoi_viec/quy_trinh.ts';
 import {
   dem_ket_qua_cho_duyet, ket_qua_cho_tbks, quyet_ket_qua,
 } from '../don_tu/ket_qua_ot.ts';
@@ -515,7 +516,16 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
       await bat_buoc_trong_pham_vi(nd, truoc.nhan_vien_id);
     }
 
-    const kq = await quyet_don(id, quyet, nd.sub, ghi_chu, la_cap_2 ? 2 : 1);
+    // Cong 1 cua quy trinh thoi viec (REQ-G1): duyet don THOI VIEC la khoi dong quy trinh.
+    // Sinh quy trinh + phat sinh checklist CUNG MOT transaction voi quyet dinh — khong bao
+    // gio co quyet dinh da duyet ma thieu quy trinh, nguoc lai cung vay.
+    const kq = await trong_giao_dich(async (khach) => {
+      const kq = await quyet_don(id, quyet, nd.sub, ghi_chu, la_cap_2 ? 2 : 1, khach);
+      if (kq.loai === 'thoi_viec' && kq.trang_thai === 'da_duyet') {
+        await sinh_quy_trinh_thoi_viec(khach, id, nd.sub);
+      }
+      return kq;
+    });
 
     let so_ngay_da_tinh_lai = 0;
     if (kq.tinh_lai !== null && kq.trang_thai === 'da_duyet') {
@@ -542,12 +552,15 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
       gui_ngam({
         nguoi_dung_ids: nguoi_lam_don,
         tieu_de: quyet === 'da_duyet'
-          ? (truoc.loai === 'lam_them' ? `${dt.ten} đã được duyệt — hãy nộp kết quả` : `${dt.ten} đã được duyệt`)
+          ? (truoc.loai === 'lam_them' ? `${dt.ten} đã được duyệt — hãy nộp kết quả`
+            : (truoc.loai === 'thoi_viec'
+              ? 'Đơn thôi việc đã duyệt — mở hướng dẫn thủ tục'
+              : `${dt.ten} đã được duyệt`))
           : `${dt.ten} bị từ chối`,
         noi_dung: ghi_chu === null || ghi_chu === ''
           ? `${dt.nhan_tu_ngay}: ${ngay_viet(truoc.tu_ngay)}`
           : `${dt.nhan_tu_ngay}: ${ngay_viet(truoc.tu_ngay)} — ${ghi_chu}`,
-        du_lieu: { man: 'don-tu', loai: kq.loai, don_id: id, quyet_dinh: quyet },
+        du_lieu: { man: 'thoi-viec', loai: kq.loai, don_id: id, quyet_dinh: quyet },
       });
     }
 
