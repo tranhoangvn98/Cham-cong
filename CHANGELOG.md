@@ -2,6 +2,29 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.106.0] — 2026-09-25
+
+**Công bố dự thảo: lấy ý kiến dự thảo, Hòm thư ý kiến và thông báo phát hành.**
+
+- **Lấy ý kiến dự thảo văn bản:** bản nháp văn bản AI ở trạng thái Chờ duyệt có nút
+  "Gửi lấy ý kiến" — hệ thống gửi email tới đúng tập người nhận (theo phạm vi văn bản)
+  kèm link `…/gop-y-du-thao?van_ban_id=…` (đăng nhập bắt buộc, ngoài phạm vi trả 404).
+  Nhân viên góp ý, nhân sự phản hồi qua hội thoại (email hai chiều mỗi lượt) cho tới khi
+  hoàn tất; "Kết thúc lấy ý kiến" đưa văn bản về Chờ duyệt để trình ký / ban hành bình thường.
+- **Hòm thư ý kiến:** bảng `ho_thu_y_kien` (+ bảng hội thoại `ho_thu_y_kien_tra_loi`) tiếp
+  nhận mọi góp ý / phản ánh / yêu cầu / thắc mắc của người lao động — khác đơn từ khiếu nại,
+  đây là kênh lắng nghe và giải đáp. Trang quản trị `/ho-thu-y-kien` (lọc theo loại/trạng
+  thái, trả lời, đóng hoàn tất) + tab `/ca-nhan/y-kien` cho nhân viên gửi và theo dõi. Chuông
+  báo deep-link mở đúng hội thoại.
+- **Công bố phát hành:** trang `/cong-bo-phat-hanh` — mỗi đợt phát hành, hệ thống đọc
+  `CHANGELOG.md` gom các mục chưa công bố, AI (DeepSeek) soạn dự thảo thông báo (fallback
+  deterministic khi thiếu khóa), nhân sự sửa, admin bấm Công bố → tạo thông báo toàn công ty
+  `popup=true` + gửi email toàn công ty. Popup bắt buộc đọc khi đăng nhập dùng cơ chế sẵn có.
+- Migration 086–088: bảng hòm thư ý kiến, trạng thái `dang_lay_y_kien` cho văn bản AI,
+  bảng đợt công bố phát hành. `may_chu/Dockerfile` copy `CHANGELOG.md` vào image.
+- Test: 18 test đơn vị mới (parser CHANGELOG, tổng hợp AI + fallback, khuôn email hòm thư)
+  và 5 test e2e cho cả 3 luồng (lấy ý kiến, hội thoại, công bố → popup).
+
 ## [1.105.3] — 2026-09-24
 
 **Văn bản yêu cầu Cổng cấp token dịch vụ (`CONG_TOKEN_DICH_VU`).**

@@ -87,6 +87,9 @@ COPY --from=build --chown=node:node /app/may_chu/migrations ./may_chu/migrations
 # "Xuat Excel" bao loi 500 (ENOENT). Khong nam trong dist nen phai COPY rieng.
 COPY --from=build --chown=node:node /app/may_chu/mau ./may_chu/mau
 COPY --from=build --chown=node:node /app/may_chu/package.json ./may_chu/
+# Changelog goc repo — nguon "tinh nang moi" cho tinh nang cong bo phat hanh (AI tong hop
+# cac muc moi thanh thong bao gui toan cong ty). Duong dan doc luc chay: ../CHANGELOG.md.
+COPY --chown=node:node CHANGELOG.md ./CHANGELOG.md
 
 USER node
 WORKDIR /app/may_chu
@@ -112,6 +115,8 @@ COPY may_chu/package.json ./may_chu/
 COPY web/package.json ./web/
 RUN npm ci --workspace may_chu --include-workspace-root
 COPY --from=build /app/may_chu ./may_chu
+# Changelog goc repo — e2e cong bo phat hanh doc tep nay that.
+COPY CHANGELOG.md ./CHANGELOG.md
 # Python cho sidecar sinh docx — e2e dung che do tu_soan van phai build duoc docx.
 RUN apk add --no-cache python3 py3-pip \
  && python3 -m venv /opt/venv \

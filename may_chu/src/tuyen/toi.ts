@@ -29,6 +29,11 @@ import { tu_dong_quyet_don, TU_NGAY_AP } from '../don_tu/tu_dong_duyet.ts';
 import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
 import { email_nhan_vien_tra_loi } from '../luong/khieu_nai_email.ts';
 import {
+  CAC_LOAI_GOP_Y, du_thao_cho_gop_y, ho_thu_cua_nhan_vien, tao_ho_thu, tra_loi_ho_thu,
+} from '../ho_thu_y_kien/nghiep_vu.ts';
+import { email_nhan_vien_tra_loi as email_ho_thu_nhan_vien_tra_loi }
+  from '../ho_thu_y_kien/email.ts';
+import {
   chi_tiet_ky_luat_theo_phieu, chi_tiet_di_muon_theo_phieu, type DongLietKe,
 } from '../luong/chi_tiet_ky_luat.ts';
 import {
@@ -1351,6 +1356,114 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       tieu_de: 'Có khiếu nại phiếu lương mới',
       noi_dung: `${await ten_nhan_vien(nv_id)} gửi ${dong?.ma ?? 'khiếu nại'} về phiếu lương.`,
       du_lieu: { man: 'khieu-nai-luong', khieu_nai_id: dong?.id ?? null },
+    });
+    return res.code(201).send({ ...dong, trang_thai: 'moi' });
+  });
+
+  // ================================================================ HO THU Y KIEN CUA TOI
+  /** Ho thu y kien cua chinh minh (kem thread trao doi). */
+  app.get('/ho-thu-y-kien', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return ho_thu_cua_nhan_vien(nv_id);
+  });
+
+  /** Gui gop y chung (gop_y / phan_anh / yeu_cau / thac_mac) — khong gan van ban nao. */
+  app.post('/ho-thu-y-kien', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const b = than(req.body);
+    const loai = trong_tap(b, 'loai', CAC_LOAI_GOP_Y, { bat_buoc: true }) as
+      typeof CAC_LOAI_GOP_Y[number];
+    const tieu_de = chuoi_bat_buoc(b, 'tieu_de', { toi_thieu: 3, toi_da: 300 });
+    const noi_dung = chuoi_bat_buoc(b, 'noi_dung', { toi_thieu: 1, toi_da: 2000 });
+
+    const dong = await tao_ho_thu(
+      { loai, nhan_vien_id: nv_id, nhap_ai_id: null, tieu_de, noi_dung });
+    await ghi_nhat_ky(nd.sub, 'gui_ho_thu_y_kien', 'ho_thu_y_kien', dong.id, { loai }, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: 'Có ý kiến mới trong hòm thư',
+      noi_dung: `${await ten_nhan_vien(nv_id)} gửi ${dong.ma}.`,
+      du_lieu: { man: 'ho-thu-y-kien', ho_thu_id: dong.id },
+    });
+    return res.code(201).send({ ...dong, trang_thai: 'moi' });
+  });
+
+  /** Nhan vien tra loi vao ho thu CUA MINH — chi khi ho thu chua dong. */
+  app.post('/ho-thu-y-kien/:id/tra-loi', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const p = req.params as Record<string, string>;
+    const ht_id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+    const noi_dung = chuoi_bat_buoc(than(req.body), 'noi_dung', { toi_thieu: 1, toi_da: 2000 });
+
+    const ht = await truy_van_mot<{ trang_thai: string }>(
+      'select trang_thai from ho_thu_y_kien where id = $1 and nhan_vien_id = $2',
+      [ht_id, nv_id],
+    );
+    if (ht === null) throw new LoiKhongTim('Không tìm thấy hòm thư của bạn.');
+    if (ht.trang_thai === 'da_dong') {
+      throw new LoiXungDot('Hòm thư đã hoàn tất, không trả lời thêm được.');
+    }
+    await tra_loi_ho_thu(ht_id, 'nhan_vien', nd.sub, noi_dung);
+    await ghi_nhat_ky(nd.sub, 'ho_thu_y_kien.tra_loi', 'ho_thu_y_kien', ht_id, null, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: 'Hòm thư ý kiến có trả lời mới',
+      noi_dung: `${await ten_nhan_vien(nv_id)} vừa trả lời trong hòm thư ý kiến.`,
+      du_lieu: { man: 'ho-thu-y-kien', ho_thu_id: ht_id },
+    });
+    void email_ho_thu_nhan_vien_tra_loi(ht_id, noi_dung);
+    return res.code(201).send({ ok: true });
+  });
+
+  // ================================================================ Y KIEN DU THAO VAN BAN
+  /** Xem ban du thao dang lay y kien (neu trong pham vi) kem y kien cua minh. 404 ngoai pham vi. */
+  app.get('/van-ban-du-thao/:id', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const p = req.params as Record<string, string>;
+    const nhap_id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+    const d = await du_thao_cho_gop_y(nhap_id, nv_id);
+    if (d === null) throw new LoiKhongTim('Không tìm thấy dự thảo đang lấy ý kiến.');
+    const cua_toi = await truy_van(
+      `select h.id, h.ma, h.tieu_de, h.noi_dung, h.trang_thai, h.tao_luc,
+              coalesce((select json_agg(json_build_object('vai', r.vai, 'noi_dung', r.noi_dung,
+                                                          'tao_luc', r.tao_luc) order by r.tao_luc)
+                          from ho_thu_y_kien_tra_loi r
+                         where r.ho_thu_id = h.id), '[]') as tra_loi
+         from ho_thu_y_kien h
+        where h.loai = 'du_thao' and h.nhap_ai_id = $1 and h.nhan_vien_id = $2
+        order by h.tao_luc desc limit 100`,
+      [nhap_id, nv_id],
+    );
+    return { ...d, y_kien_cua_toi: cua_toi };
+  });
+
+  /** Gui y kien cho ban du thao dang lay y kien. Ngoai pham vi / sai trang thai -> 404. */
+  app.post('/y-kien-du-thao', async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const b = than(req.body);
+    const nhap_ai_id = uuid(b, 'nhap_ai_id', { bat_buoc: true }) as string;
+    const noi_dung = chuoi_bat_buoc(b, 'noi_dung', { toi_thieu: 1, toi_da: 2000 });
+
+    const d = await du_thao_cho_gop_y(nhap_ai_id, nv_id);
+    if (d === null) throw new LoiKhongTim('Không tìm thấy dự thảo đang lấy ý kiến.');
+
+    const dong = await tao_ho_thu({
+      loai: 'du_thao',
+      nhan_vien_id: nv_id,
+      nhap_ai_id,
+      tieu_de: `Ý kiến dự thảo ${d.ma}`,
+      noi_dung,
+    });
+    await ghi_nhat_ky(nd.sub, 'gui_y_kien_du_thao', 'ho_thu_y_kien', dong.id,
+      { nhap_ai_id }, req.ip);
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
+      tieu_de: 'Có ý kiến mới cho dự thảo văn bản',
+      noi_dung: `${await ten_nhan_vien(nv_id)} góp ý cho ${d.ma}.`,
+      du_lieu: { man: 'ho-thu-y-kien', ho_thu_id: dong.id },
     });
     return res.code(201).send({ ...dong, trang_thai: 'moi' });
   });

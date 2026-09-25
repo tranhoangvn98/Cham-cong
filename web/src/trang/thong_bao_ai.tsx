@@ -75,6 +75,7 @@ interface ChiTietNhap extends NhapAI {
   can_giai_trinh: boolean;
   het_han: string | null;
   nghi_viec_da_chay_luc: string | null;
+  lay_y_kien_luc: string | null;
   ten_luu_docx: string | null;
   can_hai_cap: boolean;
   da_gui_email: boolean;
@@ -84,7 +85,7 @@ interface ChiTietNhap extends NhapAI {
 
 const NHAN_TRANG_THAI: Record<string, string> = {
   dang_soan: 'Đang soạn', cho_duyet: 'Chờ duyệt', cho_ky: 'Chờ ký', loi: 'Lỗi',
-  da_phat_hanh: 'Đã phát hành', huy: 'Đã hủy',
+  dang_lay_y_kien: 'Đang lấy ý kiến', da_phat_hanh: 'Đã phát hành', huy: 'Đã hủy',
 };
 const NHAN_LOAI: Record<KieuVanBan, string> = {
   thong_bao: 'Thông báo', quyet_dinh: 'Quyết định', cong_van: 'Công văn',
@@ -720,6 +721,25 @@ function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () => void;
             <button className="nut-phang" onClick={chay(`/api/thong-bao/ai/${d.id}/viet-lai`, 'Đã yêu cầu AI viết lại.')}>
               Viết lại bằng AI
             </button>
+          )}
+          {d.trang_thai === 'cho_duyet' && (
+            <button className="nut-phang"
+              onClick={chay(`/api/thong-bao/ai/${d.id}/lay-y-kien`,
+                'Đã mở lấy ý kiến. Email mời đã gửi tới những người trong phạm vi văn bản.')}>
+              Gửi lấy ý kiến
+            </button>
+          )}
+          {d.trang_thai === 'dang_lay_y_kien' && (
+            <>
+              <span className="mo-ta">
+                Đang lấy ý kiến{d.lay_y_kien_luc !== null ? ` từ ${ngay_gio(d.lay_y_kien_luc)}` : ''}. 
+                Ý kiến gửi về nằm trong trang Hòm thư ý kiến.
+              </span>
+              <button onClick={chay(`/api/thong-bao/ai/${d.id}/ket-thuc-y-kien`,
+                'Đã kết thúc lấy ý kiến. Văn bản quay về trạng thái chờ duyệt.')}>
+                Kết thúc lấy ý kiến
+              </button>
+            </>
           )}
           {d.trang_thai === 'cho_duyet' && d.can_hai_cap && (
             <button onClick={chay(`/api/thong-bao/ai/${d.id}/trinh-ky`, 'Đã trình ký.')}>Trình ký</button>

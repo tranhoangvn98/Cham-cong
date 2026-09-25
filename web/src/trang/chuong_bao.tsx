@@ -1,7 +1,7 @@
 // Chuong bao (notification) o header — cho MOI nguoi dung. So chua doc + danh sach, bam vao thi
 // mo dung man va danh dau da doc. Du lieu tu /api/toi/bao (sinh tu gui_ngam moi su kien).
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { goi } from '../api.ts';
+import { goi, la_nhan_su } from '../api.ts';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
 import { dat_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import { khoa_tinh, ngay_gio } from '../thanh_phan.tsx';
@@ -11,7 +11,7 @@ interface Bao {
   tieu_de: string;
   noi_dung: string;
   // Ngoai `man` (di toi dau), thong bao con kem id ban ghi de mo dung khieu nai / don cu the.
-  du_lieu: { man?: string; khieu_nai_id?: string; don_id?: string } | null;
+  du_lieu: { man?: string; khieu_nai_id?: string; don_id?: string; ho_thu_id?: string } | null;
   da_doc: boolean;
   doc_luc: string | null;
   // May chu suy live tu nghiep vu: null = thuần tin, chi co nhan Da xem / Chua xem.
@@ -28,6 +28,7 @@ const DUONG_THEO_MAN: Record<string, string> = {
   'duyet-ket-qua-ot': '/duyet-don',
   'don-tu': '/duyet-don',
   'khieu-nai-luong': '/khieu-nai-luong',
+  'ho-thu-y-kien': '/ca-nhan/y-kien',
   'ra-vao': '/ra-vao',
   'thong-bao': '/thong-bao',
   'ky-luat': '/ca-nhan/don-tu',
@@ -94,11 +95,13 @@ export function ChuongBao({ dieu_huong }: {
     const man = b.du_lieu?.man;
     // Kem id ban ghi (neu co) de man dich mo dung khieu nai / don va dung thao luan, khong chi
     // dung o dau man. Dat truoc khi dieu huong; man dich doc mot lan luc mount.
-    const id_ban_ghi = b.du_lieu?.khieu_nai_id ?? b.du_lieu?.don_id;
+    const id_ban_ghi = b.du_lieu?.khieu_nai_id ?? b.du_lieu?.don_id ?? b.du_lieu?.ho_thu_id;
     if (man !== undefined && id_ban_ghi != null && id_ban_ghi !== '') {
       dat_muc_tieu_bao({ man, id: id_ban_ghi });
     }
     if (dieu_huong !== undefined) { dieu_huong(man); return; }
+    // Hòm thư ý kiến: goc quan tri vao trang quan ly; nhan vien vao tab cua minh.
+    if (man === 'ho-thu-y-kien' && la_nhan_su()) { di_toi('/ho-thu-y-kien'); return; }
     di_toi(man !== undefined ? (DUONG_THEO_MAN[man] ?? '/') : '/');
   };
 

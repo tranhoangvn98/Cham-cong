@@ -40,6 +40,9 @@ import { TrangDashboardCaNhan } from './trang/dashboard_ca_nhan.tsx';
 import { TrangCaNhan } from './trang/ca_nhan.tsx';
 import { TrangThongBaoCaNhan } from './trang/thong_bao_ca_nhan.tsx';
 import { TrangVanBan } from './trang/van_ban.tsx';
+import { TrangHoThuYKien } from './trang/ho_thu_y_kien.tsx';
+import { TrangGopYDuThao } from './trang/gop_y_du_thao.tsx';
+import { TrangCongBoPhatHanh } from './trang/cong_bo_phat_hanh.tsx';
 import { TroLyCaNhan } from './trang/tro_ly.tsx';
 import { TroLyQuanTri } from './trang/tro_ly_quan_tri.tsx';
 import { ChuongBao } from './trang/chuong_bao.tsx';
@@ -118,6 +121,8 @@ const MENU: MucMenu[] = [
   // Truyen thong noi bo: thong bao va van ban ban hanh.
   { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: 'Truyền thông nội bộ', phu: 'Đăng thông báo / gửi email / popup toàn công ty', quyen: 'nhan_su' },
   { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: 'Truyền thông nội bộ', phu: 'Soạn bằng AI, ban hành, tài liệu công ty', quyen: 'nhan_su' },
+  { duong_dan: '/ho-thu-y-kien', ten: 'Hòm thư ý kiến', icon: 'user-check', nhom: 'Truyền thông nội bộ', phu: 'Tiếp nhận phản ánh, góp ý & ý kiến dự thảo', quyen: 'nhan_su' },
+  { duong_dan: '/cong-bo-phat-hanh', ten: 'Công bố phát hành', icon: 'refresh', nhom: 'Truyền thông nội bộ', phu: 'AI tổng hợp tính năng mới, gửi thông báo + popup', quyen: 'nhan_su' },
 
   { duong_dan: '/cai-dat', ten: 'Cài đặt', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp', quyen: 'nhan_su' },
 ];
@@ -238,6 +243,9 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     case '/ra-vao': return la_nhan_su() ? <TrangRaVao /> : <KhongCoQuyen />;
     case '/ky-luat': return la_quan_tri() ? <TrangKyLuatViPham /> : <KhongCoQuyen />;
     case '/khieu-nai-luong': return la_nhan_su() ? <TrangKhieuNaiLuong /> : <KhongCoQuyen />;
+    case '/ho-thu-y-kien': return la_nhan_su() ? <TrangHoThuYKien /> : <KhongCoQuyen />;
+    case '/cong-bo-phat-hanh': return la_nhan_su() ? <TrangCongBoPhatHanh /> : <KhongCoQuyen />;
+    case '/gop-y-du-thao': return <TrangGopYDuThao />;
     case '/kpi': return <TrangKpi />;
     case '/hop-dong': return la_nhan_su() ? <TrangHopDong /> : <KhongCoQuyen />;
     default: return <KhongTimThay duong_dan={duong_dan} />;

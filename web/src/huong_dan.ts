@@ -77,6 +77,33 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/ho-thu-y-kien',
+    tom_tat: 'Hòm thư tiếp nhận mọi phản ánh, yêu cầu, góp ý của nhân sự và ý kiến cho dự thảo văn bản — trao đổi tới khi hoàn tất.',
+    buoc: [
+      { chu: 'Xem danh sách, lọc theo loại (góp ý, phản ánh, yêu cầu, thắc mắc, ý kiến dự thảo) và trạng thái.' },
+      { chu: 'Bấm Xem để đọc nội dung và toàn bộ trao đổi; bấm Gửi trả lời để phản hồi — nhân viên nhận email ngay.' },
+      { chu: 'Giải quyết xong thì bấm Đóng hòm thư (hoàn tất) — nhân viên nhận email báo hoàn tất.' },
+      { chu: 'Ý kiến dự thảo cũng xem được ngay trong popup chi tiết văn bản AI (nút Gửi lấy ý kiến).', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Hòm thư đã đóng thì không trả lời thêm được — nếu còn trao đổi, để nguyên trạng thái Đang xử lý.',
+      'Hòm thư khác với khiếu nại lương/kỷ luật: đây là kênh lắng nghe và giải đáp, không sinh quyết định xử lý.',
+    ],
+  },
+  {
+    duong_dan: '/cong-bo-phat-hanh',
+    tom_tat: 'Mỗi đợt phát hành, AI gom các mục mới trong CHANGELOG thành dự thảo thông báo; admin công bố → email toàn công ty + popup khi đăng nhập.',
+    buoc: [
+      { chu: 'Bấm Tạo dự thảo phát hành; hệ thống đề xuất sẵn khoảng phiên bản chưa từng công bố.' },
+      { chu: 'Đọc và sửa tiêu đề / nội dung do AI soạn (AI chỉ gợi ý, nguồn đúng là CHANGELOG).' },
+      { chu: 'Bấm Công bố để gửi: tạo thông báo toàn công ty, gửi email và hiện popup bắt buộc đọc khi đăng nhập.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Chỉ admin (Giám đốc) bấm được Công bố — thông báo đến toàn công ty nên cần một người chịu trách nhiệm.',
+      'Đã công bố thì không sửa được nữa; nếu sai phải gỡ thông báo ở trang Thông báo.',
+    ],
+  },
+  {
     duong_dan: '/ung-luong',
     tom_tat: 'Tạm ứng lương: tạo khoản, duyệt, đánh dấu đã chi — khoản đã chi tự trừ vào phiếu lương.',
     buoc: [

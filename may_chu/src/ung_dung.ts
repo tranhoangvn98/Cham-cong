@@ -26,6 +26,8 @@ import { tuyen_viec } from './tuyen/viec.ts';
 import { tuyen_to_chuc } from './to_chuc/tuyen.ts';
 import { tuyen_thong_bao } from './tuyen/thong_bao.ts';
 import { tuyen_thong_bao_ai } from './tuyen/thong_bao_ai.ts';
+import { tuyen_ho_thu_y_kien } from './tuyen/ho_thu_y_kien.ts';
+import { tuyen_cong_bo_phat_hanh } from './tuyen/cong_bo_phat_hanh.ts';
 import { tuyen_de_xuat } from './tuyen/de_xuat.ts';
 import { tuyen_nghi_le_luong } from './tuyen/nghi_le_luong.ts';
 import { tuyen_tich_hop } from './tuyen/tich_hop.ts';
@@ -182,6 +184,8 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   await app.register(tuyen_ky_luat, { prefix: '/api' });
   await app.register(tuyen_thong_bao, { prefix: '/api' });
   await app.register(tuyen_thong_bao_ai, { prefix: '/api' });
+  await app.register(tuyen_ho_thu_y_kien, { prefix: '/api' });
+  await app.register(tuyen_cong_bo_phat_hanh, { prefix: '/api' });
   await app.register(tuyen_de_xuat, { prefix: '/api' });
   await app.register(tuyen_nghi_le_luong, { prefix: '/api' });
   await app.register(tuyen_kpi, { prefix: '/api' });

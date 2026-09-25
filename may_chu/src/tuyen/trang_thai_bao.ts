@@ -27,6 +27,7 @@ export const NHAN_TRANG_THAI: Record<string, string> = {
   hoan_thanh: 'Đã hoàn thành',
   khong_hoan_thanh: 'Không hoàn thành',
   huy: 'Đã hủy',
+  da_dong: 'Đã hoàn tất',
 };
 
 /** Trang thai con cho nguoi dung hanh dong — giao dien hien nhan "chua xu ly" mau cam. */
@@ -103,6 +104,10 @@ export function doi_tuong_truy(du_lieu: unknown): DoiTuongTruy | null {
     case 'khieu-nai-luong': {
       const kn = id('khieu_nai_id');
       return kn === null ? null : { bang: 'khieu_nai_luong', id: kn };
+    }
+    case 'ho-thu-y-kien': {
+      const ht = id('ho_thu_id');
+      return ht === null ? null : { bang: 'ho_thu_y_kien', id: ht };
     }
     case 'don-cua-toi': {
       const dx = id('de_xuat_id');

@@ -26,6 +26,7 @@ import { dung_so_ky_hieu } from '../ai/cap_so.ts';
 import { chay_gate, dat_tat_ca, muc_loi } from '../ai/gate_kiem_tra.ts';
 import { bo_sinh_docx } from '../ai/sinh_docx.ts';
 import { nguoi_ky_cua, ben_nhan } from '../su_kien/soan_van_ban_day.ts';
+import { email_moi_y_kien } from '../ho_thu_y_kien/email_du_thao.ts';
 import type {
   KieuVanBan, PhamViNhan, QuanHe, SpecVanBan, TrangThaiNhap, VanXuatAI,
 } from '../ai/kieu.ts';
@@ -53,6 +54,7 @@ interface NhapAi {
   la_qd_nghi_viec: boolean;
   ngay_nghi_viec: string | null;
   nghi_viec_da_chay_luc: Date | null;
+  lay_y_kien_luc: Date | null;
   noi_dung_tho: string;
   che_do: 'ai' | 'tu_soan';
   spec_json: unknown;
@@ -83,7 +85,7 @@ async function doc_nhap(id: string): Promise<NhapAi> {
   const d = await truy_van_mot<NhapAi>(
     `select id, ma, loai, pham_vi, quan_he, phong_ban_id, nhan_vien_id, muc_dich, muc_do,
             can_giai_trinh, het_han, la_qd_nghi_viec, ngay_nghi_viec::text as ngay_nghi_viec,
-            nghi_viec_da_chay_luc, noi_dung_tho, che_do, spec_json, ten_luu_docx, mime,
+            nghi_viec_da_chay_luc, lay_y_kien_luc, noi_dung_tho, che_do, spec_json, ten_luu_docx, mime,
             kich_thuoc, trang_thai, ket_qua_gate, so_lan_thu, so_ban_hanh, so_ky_hieu,
             thong_bao_id, nguoi_tao, tao_luc, cap_nhat_luc,
             (select tb.da_gui_email from thong_bao tb where tb.id = thong_bao_nhap_ai.thong_bao_id) as da_gui_email,
@@ -255,7 +257,7 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
       muc_dich: d.muc_dich, muc_do: d.muc_do, can_giai_trinh: d.can_giai_trinh,
       het_han: d.het_han, che_do: d.che_do, noi_dung_tho: d.noi_dung_tho,
       la_qd_nghi_viec: d.la_qd_nghi_viec, ngay_nghi_viec: d.ngay_nghi_viec,
-      nghi_viec_da_chay_luc: d.nghi_viec_da_chay_luc,
+      nghi_viec_da_chay_luc: d.nghi_viec_da_chay_luc, lay_y_kien_luc: d.lay_y_kien_luc,
       trang_thai: d.trang_thai, ket_qua_gate: d.ket_qua_gate, so_lan_thu: d.so_lan_thu,
       so_ban_hanh: d.so_ban_hanh, so_ky_hieu: d.so_ky_hieu, thong_bao_id: d.thong_bao_id,
       da_gui_email: d.da_gui_email, gui_email_luc: d.gui_email_luc,
@@ -366,10 +368,81 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
     return { ok: true, trang_thai: 'cho_ky' };
   });
 
+  // ------------------------------------------------------------ lay y kien du thao
+  // Mo "lay y kien": gui email toi dung tap nguoi nhan kem link gop y, ban nhap chuyen sang
+  // 'dang_lay_y_kien'. Chi mo duoc tu 'cho_duyet' (ban da qua gate, chua trinh ky).
+  app.post('/thong-bao/ai/:id/lay-y-kien', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const d = await doc_nhap(lay_id(req));
+    if (d.trang_thai !== 'cho_duyet') {
+      throw new LoiXungDot(
+        d.trang_thai === 'dang_lay_y_kien'
+          ? 'Văn bản này đang lấy ý kiến rồi.'
+          : `Trạng thái ${d.trang_thai} không thể mở lấy ý kiến — chỉ mở được khi văn bản chờ duyệt.`,
+      );
+    }
+    await thuc_thi(
+      `update thong_bao_nhap_ai
+          set trang_thai = 'dang_lay_y_kien', lay_y_kien_luc = now(), cap_nhat_luc = now()
+        where id = $1`,
+      [d.id],
+    );
+    await ghi_nhat_ky(nd.sub, 'thong_bao_ai_lay_y_kien', 'thong_bao_nhap_ai', d.id,
+      { pham_vi: d.pham_vi }, req.ip);
+
+    // Email moi gop y — fire-and-forget, khong cho HTTP ra ngoai vao luong request.
+    void email_moi_y_kien(d.id).then((kq) => {
+      if (!kq.ok) {
+        console.warn(`[thong_bao_ai] khong gui duoc email moi y kien ${d.ma}: ${kq.ly_do ?? ''}`);
+      }
+    });
+    return { ok: true, trang_thai: 'dang_lay_y_kien' };
+  });
+
+  // ------------------------------------------------------------ ket thuc lay y kien
+  // Quay ve 'cho_duyet' — luong trinh ky / ban hanh chay nhu cu. Y kien da gui van nam
+  // trong ho thu y kien (khong xoa).
+  app.post('/thong-bao/ai/:id/ket-thuc-y-kien', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const d = await doc_nhap(lay_id(req));
+    if (d.trang_thai !== 'dang_lay_y_kien') {
+      throw new LoiXungDot(`Trạng thái ${d.trang_thai} không phải đang lấy ý kiến.`);
+    }
+    await thuc_thi(
+      `update thong_bao_nhap_ai set trang_thai = 'cho_duyet', cap_nhat_luc = now()
+        where id = $1`,
+      [d.id],
+    );
+    await ghi_nhat_ky(nd.sub, 'thong_bao_ai_ket_thuc_y_kien', 'thong_bao_nhap_ai', d.id,
+      {}, req.ip);
+    return { ok: true, trang_thai: 'cho_duyet' };
+  });
+
+  // ------------------------------------------------------------ danh sach y kien cua ban nhap
+  app.get('/thong-bao/ai/:id/y-kien', { preHandler: can_nhan_su }, async (req) => {
+    const d = await doc_nhap(lay_id(req));
+    return truy_van(
+      `select h.id, h.ma, h.tieu_de, h.trang_thai, h.tao_luc, h.dong_luc,
+              nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+              (select count(*) from ho_thu_y_kien_tra_loi r where r.ho_thu_id = h.id)::int
+                as so_tra_loi
+         from ho_thu_y_kien h
+         join nhan_vien nv on nv.id = h.nhan_vien_id
+         left join phong_ban pb on pb.id = nv.phong_ban_id
+        where h.loai = 'du_thao' and h.nhap_ai_id = $1
+        order by h.tao_luc desc limit 300`,
+      [d.id],
+    );
+  });
+
   // ------------------------------------------------------------ ban hanh (REQ-18..21)
   app.post('/thong-bao/ai/:id/phat-hanh', { preHandler: can_nhan_su }, async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     const d = await doc_nhap(lay_id(req));
+
+    if (d.trang_thai === 'dang_lay_y_kien') {
+      throw new LoiXungDot('Văn bản đang lấy ý kiến — hãy kết thúc lấy ý kiến trước khi ban hành.');
+    }
 
     const hai_cap = can_hai_cap(d.pham_vi, d.quan_he);
     // REQ-12: chan trang thai sai. REQ-17: quyen ban hanh tach khoi quyen soan.

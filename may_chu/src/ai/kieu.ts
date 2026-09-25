@@ -26,7 +26,8 @@ export type MucDich = 'nhac_nho' | 'yeu_cau' | 'pho_bien' | 'moi_hop' | 'phoi_ho
 
 /** Trang thai vong doi cua ban nhap AI. */
 export type TrangThaiNhap =
-  | 'dang_soan' | 'cho_duyet' | 'cho_ky' | 'loi' | 'da_phat_hanh' | 'huy';
+  | 'dang_soan' | 'cho_duyet' | 'cho_ky' | 'dang_lay_y_kien'
+  | 'loi' | 'da_phat_hanh' | 'huy';
 
 /**
  * Van xuat ma AI phai sinh — CHI gom van xuoi.
