@@ -88,7 +88,7 @@ const CHON_QT = `
   qt.lastday_da_chot, qt.khong_can_bao_truoc, qt.la_quan_ly_dn, qt.trang_thai,
   qt.ly_do_nghi, qt.admin_duyet1_id, qt.admin_duyet1_luc,
   qt.admin_duyet2_id, qt.admin_duyet2_luc,
-  to_char(qt.tao_luc, 'YYYY-MM-DD"T"HH24:MI:SSOF') as tao_luc,
+  to_char(qt.tao_luc, 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM') as tao_luc,
   nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
   nd1.ten_dang_nhap as admin_duyet1_ten,
   nd2.ten_dang_nhap as admin_duyet2_ten
@@ -235,9 +235,9 @@ export async function ban_giao_cua_quy_trinh(quy_trinh_id: string): Promise<Dong
     `select bg.id, bg.quy_trinh_id, bg.bien_ban_tep_id, t.ten_goc as bien_ban_ten_goc,
             bg.nguoi_nhan_id, ndn.ten_dang_nhap as nguoi_nhan_ten,
             bg.ky_nguoi_giao_id, ndg.ten_dang_nhap as ky_nguoi_giao_ten,
-            to_char(bg.ky_nguoi_giao_luc, 'YYYY-MM-DD"T"HH24:MI:SSOF') as ky_nguoi_giao_luc,
+            to_char(bg.ky_nguoi_giao_luc, 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM') as ky_nguoi_giao_luc,
             bg.ky_nguoi_nhan_id, ndk.ten_dang_nhap as ky_nguoi_nhan_ten,
-            to_char(bg.ky_nguoi_nhan_luc, 'YYYY-MM-DD"T"HH24:MI:SSOF') as ky_nguoi_nhan_luc
+            to_char(bg.ky_nguoi_nhan_luc, 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM') as ky_nguoi_nhan_luc
        from ban_giao bg
        left join ho_so_tep t on t.id = bg.bien_ban_tep_id
        left join nguoi_dung ndn on ndn.id = bg.nguoi_nhan_id
@@ -251,7 +251,7 @@ export async function ban_giao_cua_quy_trinh(quy_trinh_id: string): Promise<Dong
     const muc = await truy_van<DongBanGiaoMuc>(
       `select bgm.id, bgm.ban_giao_id, bgm.mo_ta, bgm.bat_buoc, bgm.trang_thai,
               bgm.nguoi_xac_nhan_id, nd.ten_dang_nhap as nguoi_xac_nhan_ten,
-              to_char(bgm.xac_nhan_luc, 'YYYY-MM-DD"T"HH24:MI:SSOF') as xac_nhan_luc,
+              to_char(bgm.xac_nhan_luc, 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM') as xac_nhan_luc,
               bgm.ghi_chu
          from ban_giao_muc bgm
          left join nguoi_dung nd on nd.id = bgm.nguoi_xac_nhan_id
