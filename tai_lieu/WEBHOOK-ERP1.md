@@ -93,7 +93,9 @@ Cùng method / URL / headers / chống trùng như trên. Thân:
   "ho_ten": "Trần Thị Bình",
   "so_dien_thoai": "0912345678",
   "ngay_vao": "2026-09-22",
-  "pin_may": "1013"
+  "pin_may": "1013",
+  "chuc_danh": "Trưởng phòng Kinh doanh",
+  "phong_ban": "Kinh doanh"
 }
 ```
 
@@ -108,6 +110,11 @@ Cùng method / URL / headers / chống trùng như trên. Thân:
 | `so_dien_thoai` | string \| null | số điện thoại (nếu có) |
 | `ngay_vao` | string \| null | `YYYY-MM-DD` (nếu khai) |
 | `pin_may` | string \| null | PIN máy chấm công (kể cả PIN vừa tự cấp) |
+| `chuc_danh` | string \| null | chức danh trong hồ sơ (v1.107.0) |
+| `phong_ban` | string \| null | tên phòng ban trong hồ sơ (v1.107.0) |
+
+`chuc_danh` + `phong_ban` kèm theo để ERP1 **tự phân quyền theo vị trí** thay vì chờ nhân sự
+thao tác tay bên ERP1. Trường trống trả `null`.
 
 Điểm ghi: `POST /api/nhan-vien` (`may_chu/src/tuyen/danh_muc.ts`), cùng transaction với dòng
 nhân viên. Chi tiết luồng xem `tai_lieu/TAO-HO-SO-NHAN-SU.md`.

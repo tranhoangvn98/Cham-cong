@@ -166,6 +166,22 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/de-nghi-nhan-su',
+    tom_tat: 'Onboarding: HR đề nghị thêm người, Admin duyệt một bước — hệ thống tự tạo tài khoản Microsoft, ERP1, cổng, cấp PIN máy cửa và giao việc nhập việc.',
+    buoc: [
+      { chu: 'Bấm Đề nghị thêm nhân sự, điền họ tên + chức danh + vị trí; email công ty nếu muốn cấp tài khoản Microsoft.', vai_tro: NHAN_SU },
+      { chu: 'Chọn máy cửa để hệ thống tự cấp PIN theo dải của máy đó (vân tay/khuôn mặt vẫn phải enroll tại máy).', vai_tro: NHAN_SU },
+      { chu: 'Admin mở Duyệt / từ chối: điền mã nhân viên (nếu trống), sửa chức danh nếu cần, rồi bấm Duyệt & khởi tạo.', vai_tro: ['admin'] },
+      { chu: 'Mật khẩu khởi tạo Microsoft chỉ hiện một lần ngay khi duyệt — chép lại để bàn giao.', vai_tro: ['admin'] },
+      { chu: 'Việc Nhập việc + checklist tự giao cho nhân sự phụ trách (đổi người ở Công việc → Workflow hệ thống).', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Không khai email công ty thì không cấp được tài khoản Microsoft — email chính là tên đăng nhập (UPN).',
+      'Chưa khai MS365_SKU_BASIC / MS365_SKU_STANDARD thì Admin bị chặn khi duyệt đề nghị cấp Microsoft — khai xong mới duyệt được.',
+      'Máy cửa offline thì lệnh đẩy PIN nằm chờ, checklist mục PIN chỉ tick khi máy xác nhận — không chặn các việc khác.',
+    ],
+  },
+  {
     duong_dan: '/duyet-don',
     tom_tat: 'Đơn của nhân viên: nghỉ phép, giải trình, làm thêm, đổi ca, công tác, thôi việc.',
     buoc: [

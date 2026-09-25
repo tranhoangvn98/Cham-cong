@@ -28,6 +28,12 @@ export const CAC_SU_KIEN = [
     mo_ta: 'Khi quét nhắc hạn hợp đồng thấy có hợp đồng đến hạn, tạo việc cho người phụ trách hồ sơ.',
     nguoi_nhan_kieu: ['co_dinh'] as const,
   },
+  {
+    ma: 'nhap_viec_nhan_su',
+    ten: 'Nhập việc nhân sự mới',
+    mo_ta: 'Khi Admin duyệt đề nghị thêm nhân sự, hệ thống giao việc "Nhập việc" kèm checklist cho người phụ trách nhân sự (đổi người chỉ sửa một dòng cấu hình này).',
+    nguoi_nhan_kieu: ['co_dinh'] as const,
+  },
 ] as const;
 
 export type MaSuKien = typeof CAC_SU_KIEN[number]['ma'];

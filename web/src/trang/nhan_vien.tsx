@@ -30,6 +30,7 @@ interface NhanVien {
   so_dien_thoai: string | null;
   email: string | null;
   chuc_danh: string | null;
+  vi_tri: string | null;
   duoc_cham_cong_dien_thoai: boolean;
   dang_hoat_dong: boolean;
   phong_ban_id: string | null;
@@ -59,12 +60,31 @@ interface ThietBi {
   pin_den: number | null;
 }
 
-/** Phan hoi cua POST /api/nhan-vien khi co chon tao tai khoan Microsoft. */
+/** Phan hoi cua POST /api/nhan-vien khi co chon tao tai khoan (Microsoft / he thong). */
+interface TaiKhoanMs { upn: string; mat_khau: string; sku_id: string; ghi_chu: string }
+interface TaiKhoanHeThong {
+  ten_dang_nhap: string;
+  mat_khau: string;
+  vai_tro: string;
+  ghi_chu: string;
+}
 interface KetQuaTaoNhanVien {
   id: string;
   canh_bao?: string[];
-  tai_khoan_ms365?: { upn: string; mat_khau: string; sku_id: string; ghi_chu: string };
+  tai_khoan_ms365?: TaiKhoanMs;
+  tai_khoan_he_thong?: TaiKhoanHeThong;
 }
+
+/** Bay bac vi tri chon tren form — dong bo voi may_chu/src/nhan_su/vi_tri.ts. */
+export const CAC_VI_TRI = [
+  { ma: 'tong_giam_doc', nhan: 'Tổng Giám Đốc' },
+  { ma: 'giam_doc', nhan: 'Giám đốc' },
+  { ma: 'truong_phong', nhan: 'Trưởng phòng' },
+  { ma: 'truong_nhom', nhan: 'Trưởng nhóm (Leader/Chuyên viên)' },
+  { ma: 'nhan_vien', nhan: 'Nhân viên' },
+  { ma: 'thu_viec', nhan: 'Thử việc' },
+  { ma: 'hoc_viec', nhan: 'Học việc (Thực tập sinh)' },
+];
 
 export function TrangNhanVien(): ReactNode {
   const [tim, dat_tim] = useState('');
@@ -319,6 +339,7 @@ function FormNhanVien(
     so_dien_thoai: nhan_vien?.so_dien_thoai ?? '',
     email: nhan_vien?.email ?? '',
     chuc_danh: nhan_vien?.chuc_danh ?? '',
+    vi_tri: nhan_vien?.vi_tri ?? '',
     duoc_cham_cong_dien_thoai: nhan_vien?.duoc_cham_cong_dien_thoai ?? false,
     noi_lam_viec_id: nhan_vien?.noi_lam_viec_id ?? '',
     che_do_luong: nhan_vien?.che_do_luong ?? 'vn',
@@ -327,9 +348,9 @@ function FormNhanVien(
   const [tu_cap_pin, dat_tu_cap_pin] = useState(tu_dong);
   const [serial_pin, dat_serial_pin] = useState('');
   const [tao_tk_ms, dat_tao_tk_ms] = useState(tu_dong && ms365_tao_bat);
-  const [ket_qua, dat_ket_qua] = useState<
-    NonNullable<KetQuaTaoNhanVien['tai_khoan_ms365']> | null
-  >(null);
+  const [tao_tk_ht, dat_tao_tk_ht] = useState(true);
+  const [ket_qua, dat_ket_qua] = useState<TaiKhoanMs | null>(null);
+  const [ket_qua_ht, dat_ket_qua_ht] = useState<TaiKhoanHeThong | null>(null);
   const [canh_bao_ket, dat_canh_bao_ket] = useState<string[]>([]);
   const noi = dung_nap<NoiLamViec[]>('/api/noi-lam-viec');
   const khoi = dung_nap<Khoi[]>('/api/khoi');
@@ -352,6 +373,7 @@ function FormNhanVien(
       so_dien_thoai: f.so_dien_thoai.trim() === '' ? null : f.so_dien_thoai.trim(),
       email: f.email.trim() === '' ? null : f.email.trim(),
       chuc_danh: f.chuc_danh.trim() === '' ? null : f.chuc_danh.trim(),
+      vi_tri: f.vi_tri === '' ? null : f.vi_tri,
       duoc_cham_cong_dien_thoai: f.duoc_cham_cong_dien_thoai,
       noi_lam_viec_id: f.noi_lam_viec_id === '' ? null : f.noi_lam_viec_id,
       che_do_luong: f.che_do_luong,
@@ -366,13 +388,15 @@ function FormNhanVien(
             tu_cap_pin,
             thiet_bi_serial: tu_cap_pin ? serial_pin : null,
             tao_tk_ms365: tao_tk_ms,
+            tao_tk_he_thong: tao_tk_ht,
           },
         }),
       );
       if (kq === null) return;
-      if (kq.tai_khoan_ms365 !== undefined) {
+      if (kq.tai_khoan_ms365 !== undefined || kq.tai_khoan_he_thong !== undefined) {
         // Mat khau khoi tao chi hien dung mot lan nay — giu form mo de nhan su chep lai.
-        dat_ket_qua(kq.tai_khoan_ms365);
+        dat_ket_qua(kq.tai_khoan_ms365 ?? null);
+        dat_ket_qua_ht(kq.tai_khoan_he_thong ?? null);
         dat_canh_bao_ket(kq.canh_bao ?? []);
         return;
       }
@@ -414,7 +438,8 @@ function FormNhanVien(
 
         {nhan_vien === null && tu_dong && (
           <div className="hop-thong-bao hop-tin">
-            Chế độ tự động: hệ thống <strong>tự cấp PIN theo dãy của máy bạn chọn</strong>
+            Chế độ tự động: hệ thống <strong>tự cấp PIN theo dãy của máy bạn chọn</strong>,
+            {' '}<strong>tự tạo tài khoản hệ thống</strong> (vai trò theo vị trí)
             {ms365_tao_bat
               ? <> và <strong>tự tạo tài khoản Microsoft 365</strong> — mật khẩu khởi tạo chỉ
                 hiện một lần ngay sau khi lưu.</>
@@ -477,6 +502,18 @@ function FormNhanVien(
           <div className="goi-y">
             Dùng để chọn giấy phép Microsoft khi tạo tài khoản: chức danh chứa
             <strong> trưởng</strong> nhận Standard, còn lại nhận Basic.
+          </div>
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="vtri">Vị trí</label>
+          <Chon gia_tri={f.vi_tri}
+            dat_gia_tri={(ma) => doi('vi_tri', ma)}
+            cac_tuy_chon={CAC_VI_TRI.map((v): TuyChonChon => ({ ma: v.ma, nhan: v.nhan }))}
+            rong="— Chưa chọn —" nhan="Vị trí" />
+          <div className="goi-y">
+            Khi tạo tài khoản hệ thống, vai trò tự suy từ vị trí: Tổng Giám Đốc/Giám đốc nhận
+            vai trò nhân sự, Trưởng phòng nhận trưởng phòng, còn lại nhận nhân viên.
           </div>
         </div>
 
@@ -577,6 +614,20 @@ function FormNhanVien(
 
         {nhan_vien === null && !tu_dong && (
           <div className="o-nhap-ngang" style={{ marginTop: 8 }}>
+            <input id="tkht" type="checkbox" checked={tao_tk_ht}
+              onChange={(e) => dat_tao_tk_ht(e.target.checked)} />
+            <label htmlFor="tkht">Tạo tài khoản hệ thống (đăng nhập app điện thoại)</label>
+          </div>
+        )}
+        {nhan_vien === null && !tu_dong && (
+          <div className="goi-y" style={{ marginTop: -8, marginBottom: 12 }}>
+            Tên đăng nhập sinh từ mã nhân viên, mật khẩu khởi tạo <strong>chỉ hiện một lần</strong>
+            sau khi lưu. Vai trò tự suy từ ô Vị trí ở trên.
+          </div>
+        )}
+
+        {nhan_vien === null && !tu_dong && (
+          <div className="o-nhap-ngang" style={{ marginTop: 8 }}>
             <input id="tkms" type="checkbox" checked={tao_tk_ms} disabled={!ms365_tao_bat}
               onChange={(e) => dat_tao_tk_ms(e.target.checked)} />
             <label htmlFor="tkms">Tạo tài khoản Microsoft 365 + cấp giấy phép</label>
@@ -612,13 +663,15 @@ function FormNhanVien(
           )}
         </div>
       </form>
-      {ket_qua !== null && (
-        <HopThoaiKetQuaMs
+      {(ket_qua !== null || ket_qua_ht !== null) && (
+        <HopThoaiKetQuaTk
           ho_ten={f.ho_ten.trim()}
-          ket_qua={ket_qua}
+          ket_qua_ms={ket_qua}
+          ket_qua_ht={ket_qua_ht}
           canh_bao={canh_bao_ket}
           khi_xong={() => {
             dat_ket_qua(null);
+            dat_ket_qua_ht(null);
             khi_xong();
           }}
         />
@@ -628,36 +681,64 @@ function FormNhanVien(
   );
 }
 
-// ============================================================ ket qua tao tai khoan MS
-function HopThoaiKetQuaMs(
-  { ho_ten, ket_qua, canh_bao, khi_xong }:
+// ============================================================ ket qua tao tai khoan
+function HopThoaiKetQuaTk(
+  { ho_ten, ket_qua_ms, ket_qua_ht, canh_bao, khi_xong }:
   {
     ho_ten: string;
-    ket_qua: { upn: string; mat_khau: string; sku_id: string; ghi_chu: string };
+    ket_qua_ms: TaiKhoanMs | null;
+    ket_qua_ht: TaiKhoanHeThong | null;
     canh_bao: string[];
     khi_xong: () => void;
   },
 ): ReactNode {
   return (
-    <HopThoai tieu_de={`Tài khoản Microsoft 365 — ${ho_ten}`} khi_dong={khi_xong}>
-      <div className="hop-thong-bao hop-tin">
-        {ket_qua.ghi_chu}
-      </div>
-      <div className="o-nhap">
-        <label htmlFor="kq-upn">Tên đăng nhập (UPN)</label>
-        <input id="kq-upn" value={ket_qua.upn} readOnly />
-      </div>
-      <div className="o-nhap">
-        <label htmlFor="kq-mk">Mật khẩu khởi tạo</label>
-        <input id="kq-mk" value={ket_qua.mat_khau} readOnly className="chu-ma" />
-      </div>
+    <HopThoai tieu_de={`Tài khoản mới — ${ho_ten}`} khi_dong={khi_xong}>
+      {ket_qua_ms !== null && <>
+        <div className="hop-thong-bao hop-tin">
+          {ket_qua_ms.ghi_chu}
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="kq-upn">Tên đăng nhập Microsoft (UPN)</label>
+          <input id="kq-upn" value={ket_qua_ms.upn} readOnly />
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="kq-mk">Mật khẩu khởi tạo Microsoft</label>
+          <input id="kq-mk" value={ket_qua_ms.mat_khau} readOnly className="chu-ma" />
+          <div className="hang-nut">
+            <button className="nut-chinh"
+              onClick={() => { void navigator.clipboard.writeText(ket_qua_ms.mat_khau); }}>
+              Sao chép mật khẩu Microsoft
+            </button>
+          </div>
+        </div>
+      </>}
+      {ket_qua_ht !== null && <>
+        <div className="hop-thong-bao hop-tin">
+          {ket_qua_ht.ghi_chu}
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="kq-tdn">Tên đăng nhập hệ thống</label>
+          <input id="kq-tdn" value={ket_qua_ht.ten_dang_nhap} readOnly />
+          <div className="goi-y">
+            Vai trò: {TEN_VAI_TRO[ket_qua_ht.vai_tro] ?? ket_qua_ht.vai_tro} (suy từ vị trí đã chọn).
+          </div>
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="kq-mkh">Mật khẩu khởi tạo hệ thống</label>
+          <input id="kq-mkh" value={ket_qua_ht.mat_khau} readOnly className="chu-ma" />
+          <div className="hang-nut">
+            <button className="nut-chinh"
+              onClick={() => { void navigator.clipboard.writeText(ket_qua_ht.mat_khau); }}>
+              Sao chép mật khẩu hệ thống
+            </button>
+          </div>
+        </div>
+      </>}
       {canh_bao.map((cb) => (
         <div key={cb} className="hop-thong-bao hop-luu-y">{cb}</div>
       ))}
       <div className="hang-nut">
-        <button className="nut-chinh" onClick={() => { void navigator.clipboard.writeText(ket_qua.mat_khau); }}>
-          Sao chép mật khẩu
-        </button>
         <button onClick={khi_xong}>Đã lưu lại</button>
       </div>
     </HopThoai>

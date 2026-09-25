@@ -9,6 +9,7 @@
 // QUAN TRONG: cai dat duoi dang PLUGIN de parser "text tho" chi ap dung trong pham vi
 // /iclock. Neu dang ky parser bat ky ('*') o goc, JSON va multipart cua REST API se hong.
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { PoolClient } from 'pg';
 import { cau_hinh } from '../cau_hinh.ts';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import {
@@ -18,6 +19,7 @@ import {
   dung_phan_hoi_handshake,
 } from './giao_thuc.ts';
 import { tiep_nhan_attlog, tiep_nhan_rtlog, tiep_nhan_userinfo } from './tiep_nhan.ts';
+import { tick_pin_may_cua_nhan } from '../nhan_su/nhap_viec.ts';
 import { ip_duoc_phep } from '../tien_ich/dia_chi_ip.ts';
 
 interface DongThietBi {
@@ -322,6 +324,15 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       );
       if (r.ma_tra_ve !== 0) {
         req.log.warn({ sn, id: r.id, lenh: r.lenh, ma: r.ma_tra_ve }, 'may bao lenh that bai');
+        continue;
+      }
+      // Lenh thanh cong: neu la lenh cap PIN may cua cho nhan vien moi thi tick muc
+      // checklist tuong ung trong cong viec nhap viec (REQ-CL-02 muc 3).
+      const lenh_ok = await truy_van_mot<{ khoa_chong_trung: string | null }>(
+        'select khoa_chong_trung from lenh_thiet_bi where id = $1', [r.id]);
+      const khoa = lenh_ok?.khoa_chong_trung ?? '';
+      if (khoa.startsWith('nhap_viec_pin:')) {
+        await tick_pin_may_cua_nhan(khoa.slice('nhap_viec_pin:'.length));
       }
     }
     await cham_thiet_bi(sn, null, req.ip);
@@ -381,12 +392,27 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
   });
 }
 
-/** Dua mot lenh vao hang doi cho may. Tra ve id lenh de theo dau ket qua. */
-export async function xep_lenh(serial: string, lenh: string): Promise<number> {
-  const dong = await truy_van_mot<{ id: number }>(
-    'insert into lenh_thiet_bi(thiet_bi_serial, lenh) values ($1, $2) returning id',
-    [serial, lenh],
-  );
-  if (dong === null) throw new Error('Không xếp được lệnh vào hàng đợi.');
+/**
+ * Dua mot lenh vao hang doi cho may. Tra ve id lenh de theo dau ket qua.
+ *
+ * `khoa` khong rong = lenh duy nhat theo khoa: `on conflict do nothing`, tra 0 neu da ton
+ * tai (chong day trung, REQ-PIN-02). `khach` de chay trong cung transaction voi nghiep vu.
+ */
+export async function xep_lenh(
+  serial: string,
+  lenh: string,
+  khoa: string | null = null,
+  khach?: PoolClient,
+): Promise<number> {
+  const sql = khoa === null
+    ? 'insert into lenh_thiet_bi(thiet_bi_serial, lenh) values ($1, $2) returning id'
+    : `insert into lenh_thiet_bi(thiet_bi_serial, lenh, khoa_chong_trung) values ($1, $2, $3)
+       on conflict (khoa_chong_trung) where khoa_chong_trung is not null
+       do nothing returning id`;
+  const ts = khoa === null ? [serial, lenh] : [serial, lenh, khoa];
+  const dong = khach === undefined
+    ? await truy_van_mot<{ id: number }>(sql, ts)
+    : (await khach.query<{ id: number }>(sql, ts)).rows[0] ?? null;
+  if (dong === null) return 0;
   return dong.id;
 }

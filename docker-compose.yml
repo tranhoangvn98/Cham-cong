@@ -119,6 +119,11 @@ services:
       # skuId giay phep theo chuc danh: truong phong nhan STANDARD, con lai nhan BASIC.
       MS365_SKU_BASIC: ${MS365_SKU_BASIC:-}
       MS365_SKU_STANDARD: ${MS365_SKU_STANDARD:-}
+      # Onboarding nhan su moi (DTKT 02/2026): nguoi phu trach nhan su nhan viec nhap viec
+      # (uuid nhan_vien hoac ma_nv) + serial may cua mac dinh de day user+PIN xuong may.
+      # Xem tai_lieu/ONBOARDING-NHAN-SU-MOI.md.
+      NHAP_VIEC_NHAN_SU_ID: ${NHAP_VIEC_NHAN_SU_ID:-}
+      SERIAL_MAY_CUA_MAC_DINH: ${SERIAL_MAY_CUA_MAC_DINH:-}
       # Ten & dia chi cong ty in tren dau bang luong xuat Excel (mau ERP). De trong = bo trong.
       CONG_TY_TEN: ${CONG_TY_TEN:-}
       CONG_TY_DIA_CHI: ${CONG_TY_DIA_CHI:-}

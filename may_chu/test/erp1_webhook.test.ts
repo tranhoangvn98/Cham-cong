@@ -70,6 +70,8 @@ test('da_tao: khuon payload du cac dinh danh ERP1 can de thiet lap tai khoan', (
     so_dien_thoai: '0912345678',
     ngay_vao: '2026-09-22',
     pin_may: '1013',
+    chuc_danh: 'Trưởng phòng Kinh doanh',
+    phong_ban: 'Kinh doanh',
   })));
   assert.deepEqual(than, {
     su_kien_id: 'chamcong-21991',
@@ -81,6 +83,8 @@ test('da_tao: khuon payload du cac dinh danh ERP1 can de thiet lap tai khoan', (
     so_dien_thoai: '0912345678',
     ngay_vao: '2026-09-22',
     pin_may: '1013',
+    chuc_danh: 'Trưởng phòng Kinh doanh',
+    phong_ban: 'Kinh doanh',
   });
 });
 
@@ -93,5 +97,7 @@ test('da_tao: truong trong tra null, khong phai chuoi rong', () => {
   assert.equal(than.so_dien_thoai, null);
   assert.equal(than.ngay_vao, null);
   assert.equal(than.pin_may, null);
+  assert.equal(than.chuc_danh, null);
+  assert.equal(than.phong_ban, null);
   assert.equal(than.su_kien_id, 'chamcong-21991');
 });

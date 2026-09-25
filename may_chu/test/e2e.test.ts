@@ -409,6 +409,7 @@ test('tao ho so: tu cap PIN + tao tai khoan Microsoft + su kien ERP1/cong/Graph'
       email: EMAIL_TU_TAO, chuc_danh: 'Trưởng phòng Kinh doanh',
       so_dien_thoai: '0987654321', ngay_vao: '2026-09-22',
       tu_cap_pin: true, thiet_bi_serial: SERIAL, tao_tk_ms365: true,
+      vi_tri: 'truong_phong', tao_tk_he_thong: true,
     },
   });
   assert.equal(r.ma, 201);
@@ -421,13 +422,27 @@ test('tao ho so: tu cap PIN + tao tai khoan Microsoft + su kien ERP1/cong/Graph'
   assert.equal(typeof tk['mat_khau'], 'string');
   assert.equal((tk['mat_khau'] as string).length, 16);
 
+  // Tai khoan he thong duoc tu tao, vai tro suy tu vi tri (truong phong -> truong_phong).
+  const tk_ht = r.body['tai_khoan_he_thong'] as Record<string, unknown>;
+  assert.ok(tk_ht, 'phan hoi phai kem tai_khoan_he_thong');
+  assert.equal(tk_ht['ten_dang_nhap'], 'nvtu-1');
+  assert.equal(tk_ht['vai_tro'], 'truong_phong');
+  assert.equal(typeof tk_ht['mat_khau'], 'string');
+  const nd = await truy_van_mot<{ vai_tro: string; email_microsoft: string | null }>(
+    'select vai_tro, email_microsoft from nguoi_dung where nhan_vien_id = $1', [nv_tu_tao_id],
+  );
+  assert.ok(nd !== null, 'nguoi_dung phai duoc tao cho nhan vien moi');
+  assert.equal(nd?.vai_tro, 'truong_phong');
+  assert.equal(nd?.email_microsoft, EMAIL_TU_TAO);
+
   // PIN duoc he thong cap (theo dai cua may) va ghi vao ca hai noi.
-  const nv = await truy_van_mot<{ pin_may: string | null; chuc_danh: string | null }>(
-    'select pin_may, chuc_danh from nhan_vien where id = $1', [nv_tu_tao_id],
+  const nv = await truy_van_mot<{ pin_may: string | null; chuc_danh: string | null; vi_tri: string | null }>(
+    'select pin_may, chuc_danh, vi_tri from nhan_vien where id = $1', [nv_tu_tao_id],
   );
   assert.ok(nv !== null && nv.pin_may !== null, 'phai co PIN tu cap');
   assert.match(nv.pin_may, /^[0-9]{1,9}$/);
   assert.equal(nv.chuc_danh, 'Trưởng phòng Kinh doanh');
+  assert.equal(nv.vi_tri, 'truong_phong');
   const md = await truy_van_mot<{ so: number }>(
     `select count(*)::int as so from ma_dinh_danh
       where nhan_vien_id = $1 and he_thong = 'may_cham_cong' and hieu_luc_den is null`,
@@ -448,6 +463,7 @@ test('tao ho so: tu cap PIN + tao tai khoan Microsoft + su kien ERP1/cong/Graph'
   assert.equal(erp1?.du_lieu['ho_ten'], 'Nguyễn Tự Tạo');
   assert.equal(erp1?.du_lieu['email'], EMAIL_TU_TAO);
   assert.equal(erp1?.du_lieu['pin_may'], nv?.pin_may);
+  assert.equal(erp1?.du_lieu['chuc_danh'], 'Trưởng phòng Kinh doanh');
 
   const ms = su_kien.find((s) => s.loai_su_kien === 'ms365.tao_tai_khoan');
   assert.equal(ms?.du_lieu['upn'], EMAIL_TU_TAO);

@@ -2,6 +2,29 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.109.0] — 2026-09-26
+
+**Onboarding nhân sự mới tự động (DTKT 02/2026): đề nghị → Admin duyệt 1 bước → tự khởi tạo.**
+
+- Bảng `de_nghi_them_nhan_su` (migration 092): HR/quản lý tạo đề nghị (chưa thành nhân viên),
+  Admin duyệt **một bước** là hệ thống chạy toàn bộ khởi tạo trong **một transaction** —
+  insert `nhan_vien` + cấp PIN + outbox cổng/ERP1/MS365 + tài khoản hệ thống + lệnh đẩy user
+  xuống máy cửa + cập nhật đề nghị. Chống duyệt trùng bằng câu UPDATE `where trang_thai=
+  'cho_duyet'` ngay trong transaction (idempotent).
+- Trước khi chạy: kiểm email/UPN hợp lệ; `cap_ms365=true` mà chưa khai SKU thì **chặn duyệt**
+  (REQ-G-03). Admin sửa được mã NV / PIN / chức danh / SKU ngay khi duyệt (REQ-G-01).
+- Tách khối tạo hồ sơ thành `nhan_su/tao_ho_so.ts` dùng chung cho route thêm nhân viên thủ
+  công và cổng duyệt — cùng một khối, không hai bản sao.
+- Checklist nhập việc 15 mục (REQ-CL-02) giao vào Công việc (`nguon='he_thong'`) cho người
+  phụ trách nhân sự — lấy từ workflow `nhap_viec_nhan_su` (ưu tiên) hoặc env
+  `NHAP_VIEC_NHAN_SU_ID`. Mục hệ thống tick sẵn; mục PIN máy cửa tick khi máy xác nhận.
+- Lệnh `DATA UPDATE USERINFO` (user + PIN) đẩy xuống máy kiểm soát ra vào qua hàng đợi lệnh
+  có `khoa_chong_trung` (không đẩy trùng, nằm chờ khi máy offline).
+- Web: trang `/de-nghi-nhan-su` (HR tạo đề nghị, Admin duyệt/từ chối, mật khẩu khởi tạo hiện
+  một lần) + mục workflow mới trong Cấu hình công việc.
+- Test: 4 test đơn vị mới (checklist, khuôn lệnh máy) + e2e `de_nghi_e2e.test.ts` phủ
+  REQ-TEST-01..06. Tài liệu `tai_lieu/ONBOARDING-NHAN-SU-MOI.md`.
+
 ## [1.108.0] — 2026-09-26
 
 **Quy trình thôi việc tự động theo đặc tả 01/2026/ĐTKT-IT: 2 cổng người + phần giữa tự động.**

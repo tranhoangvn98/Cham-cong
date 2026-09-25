@@ -450,6 +450,19 @@ export const cau_hinh = {
     sku_standard: chu('MS365_SKU_STANDARD', ''),
   },
 
+  /**
+   * Onboarding nhan su moi (DTKT 02/2026): viec nhap viec giao cho nguoi phu trach nhan su
+   * (uuid nhan_vien hoac ma_nv) va email don vi dich vu BHXH nhan bao tang. Cai NHAN_SU_ID
+   * con duoc dung lam mac dinh khi workflow `nhap_viec_nhan_su` chua chon nguoi.
+   */
+  nhap_viec: {
+    nhan_su_id: chu('NHAP_VIEC_NHAN_SU_ID', ''),
+    email_bhxh: chu('EMAIL_DICH_VU_BHXH', ''),
+  },
+
+  /** Serial may kiem soat ra vao dung khi de nghi them nhan su khong chon may cua. */
+  may_cua_mac_dinh: chu('SERIAL_MAY_CUA_MAC_DINH', ''),
+
   /** Quy tac xu ly canh bao ra/vao van phong. */
   ra_vao: {
     /** Cung mot loi >= nguong lan trong thang thi CHUYEN KY LUAT thay vi chi nhac nho. */

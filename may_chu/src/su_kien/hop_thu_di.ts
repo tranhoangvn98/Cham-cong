@@ -360,6 +360,9 @@ export function dung_than_erp1(d: DongOutbox): string {
 /**
  * Khuon than cho `erp1.nhan_su.da_tao` — bao tao ho so nhan su moi de ERP1 thiet lap tai
  * khoan. Tach rieng khoi khuon nghi viec: hai nghiep vu khac nhau, moi ben mot hop dong.
+ *
+ * `chuc_danh` + `phong_ban` (ten) kem theo de ERP1 tu phan quyen theo vi tri thay vi cho
+ * nguoi nhan su thiet lap tay.
  */
 export function dung_than_erp1_da_tao(d: DongOutbox): string {
   const chuoi = (k: string): string | null =>
@@ -374,6 +377,8 @@ export function dung_than_erp1_da_tao(d: DongOutbox): string {
     so_dien_thoai: chuoi('so_dien_thoai'),
     ngay_vao: chuoi('ngay_vao'),
     pin_may: chuoi('pin_may'),
+    chuc_danh: chuoi('chuc_danh'),
+    phong_ban: chuoi('phong_ban'),
   });
 }
 

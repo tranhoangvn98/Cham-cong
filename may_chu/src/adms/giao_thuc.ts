@@ -354,3 +354,27 @@ export function ma_hoa_thoi_gian_zkteco(d: Date, offset_ms: number): number {
 export function lenh_dong_bo_gio(bay_gio: Date, offset_ms: number): string {
   return `SET OPTION DateTime=${ma_hoa_thoi_gian_zkteco(bay_gio, offset_ms)}`;
 }
+
+/**
+ * Lenh tao/cap nhat user tren may kiem soat ra vao (DATA UPDATE USERINFO).
+ *
+ * Dinh dang `Khoa=gia tri` phan tach bang TAB, dong hinh dang bang USERINFO may day len
+ * (xem `doc_userinfo`): Pin, Name, Pri, Passwd, Card, Grp, TZ. May acc (SpeedFace/SenseFace)
+ * nhan duoc ca ten truong Card/CardNo, Pri/Privilege.
+ *
+ * LUU Y: chua doi chieu voi may that — truoc khi bat o production nen xem lai dinh dang
+ * trong `may_du_lieu_tho` (bang user) cua dung dong may dang dung. Ten phai la ASCII
+ * (may cat/bo dau theo bang ma cua no) — ben goi dung `bo_dau()`.
+ */
+export function lenh_cap_nhat_userinfo(pin: string, ten_ascii: string): string {
+  return [
+    'DATA UPDATE USERINFO',
+    `PIN=${pin}`,
+    `Name=${ten_ascii}`,
+    'Pri=0',
+    'Passwd=',
+    'Card=0',
+    'Grp=1',
+    'TZ=0000000000000000',
+  ].join('\t');
+}

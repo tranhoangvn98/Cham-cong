@@ -12,6 +12,7 @@ import { TrangChoDuyet, TrangDangNhap, TrangDoiMatKhau } from './trang/dang_nhap
 import { TrangDashboard } from './trang/dashboard.tsx';
 import { TrangBangCong } from './trang/bang_cong.tsx';
 import { TrangNhanVien } from './trang/nhan_vien.tsx';
+import { TrangDeNghiNhanSu } from './trang/de_nghi_nhan_su.tsx';
 import { TrangThietBi } from './trang/thiet_bi.tsx';
 import { TrangDuyetDon } from './trang/duyet_don.tsx';
 import { TrangQuanLyPhep } from './trang/quan_ly_phep.tsx';
@@ -110,6 +111,7 @@ const MENU: MucMenu[] = [
 
   // Nhan su: con nguoi va quan he lao dong.
   { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
+  { duong_dan: '/de-nghi-nhan-su', ten: 'Đề nghị thêm nhân sự', icon: 'key', nhom: 'Nhân sự', phu: 'HR đề nghị, Admin duyệt một bước — hệ thống tự khởi tạo', quyen: 'nhan_su' },
   { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Nhân sự', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
   { duong_dan: '/quan-ly-phep', ten: 'Quản lý phép', icon: 'sun', nhom: 'Nhân sự', phu: 'Tổng hợp ngày phép từng người', quyen: 'nguoi_duyet' },
   { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
@@ -240,6 +242,7 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     case '/cong-viec': return <TrangViec />;
     case '/to-chuc': return la_nhan_su() ? <TrangToChuc /> : <KhongCoQuyen />;
     case '/nhan-vien': return <TrangNhanVien />;
+    case '/de-nghi-nhan-su': return la_nhan_su() ? <TrangDeNghiNhanSu /> : <KhongCoQuyen />;
     case '/bang-luong': return la_nhan_su() ? <TrangBangLuong /> : <KhongCoQuyen />;
     case '/phu-cap': return la_nhan_su() ? <TrangQuanLyPhuCap /> : <KhongCoQuyen />;
     case '/ung-luong': return la_nhan_su() ? <TrangUngLuong /> : <KhongCoQuyen />;
