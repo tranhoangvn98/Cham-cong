@@ -29,7 +29,8 @@ import { tu_dong_quyet_don, TU_NGAY_AP } from '../don_tu/tu_dong_duyet.ts';
 import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
 import { email_nhan_vien_tra_loi } from '../luong/khieu_nai_email.ts';
 import {
-  CAC_LOAI_GOP_Y, du_thao_cho_gop_y, ho_thu_cua_nhan_vien, tao_ho_thu, tra_loi_ho_thu,
+  CAC_LOAI_GOP_Y, bao_y_kien_moi, du_thao_cho_gop_y, ho_thu_cua_nhan_vien, tao_ho_thu,
+  tra_loi_ho_thu,
 } from '../ho_thu_y_kien/nghiep_vu.ts';
 import { email_nhan_vien_tra_loi as email_ho_thu_nhan_vien_tra_loi }
   from '../ho_thu_y_kien/email.ts';
@@ -1386,6 +1387,8 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       noi_dung: `${await ten_nhan_vien(nv_id)} gửi ${dong.ma}.`,
       du_lieu: { man: 'ho-thu-y-kien', ho_thu_id: dong.id },
     });
+    // Popup cho Nhan su/Admin khi dang nhap — khong bo sot phan anh cua nguoi lao dong.
+    await bao_y_kien_moi(dong.id);
     return res.code(201).send({ ...dong, trang_thai: 'moi' });
   });
 
@@ -1465,6 +1468,8 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       noi_dung: `${await ten_nhan_vien(nv_id)} góp ý cho ${d.ma}.`,
       du_lieu: { man: 'ho-thu-y-kien', ho_thu_id: dong.id },
     });
+    // Popup cho Nhan su/Admin khi dang nhap.
+    await bao_y_kien_moi(dong.id);
     return res.code(201).send({ ...dong, trang_thai: 'moi' });
   });
 

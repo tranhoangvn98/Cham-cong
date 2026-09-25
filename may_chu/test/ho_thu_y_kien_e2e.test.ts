@@ -277,7 +277,7 @@ test('gop y chung: nhan vien gui, chi chu so huu thay trong /toi, nhan su thay h
   assert.equal(cam.ma, 403);
 });
 
-test('cong bo phat hanh: soan (fallback) -> sua -> cong bo -> popup + email', async () => {
+test('cong bo phat hanh: soan thanh van ban NĐ30 -> trinh ky -> cong bo -> van ban cong ty + popup', async () => {
   // Danh sach phien ban doc tu CHANGELOG that (tep duoc COPY vao anh kiem).
   const pb = await goi('GET', '/api/phat-hanh/phien-ban', { token: token_admin });
   assert.equal(pb.ma, 200, `doc phien ban loi: ${pb.tho}`);
@@ -285,46 +285,62 @@ test('cong bo phat hanh: soan (fallback) -> sua -> cong bo -> popup + email', as
   assert.ok(Array.isArray(cac) && cac.length >= 2, 'CHANGELOG phai co it nhat 2 phien ban');
   const den = cac[0] as string;
 
-  // Soan: DEEPSEEK_API_KEY trong -> tom_tat fallback deterministic van tra ban nhap.
+  // Soan: tao ban nhap van ban AI che do tu_soan + dong cong bo gan voi ban nhap do.
   const soan = await goi('POST', '/api/phat-hanh/soan', {
     token: token_admin, body: { den_phien_ban: den },
   });
   assert.equal(soan.ma, 201, `soan loi: ${soan.tho}`);
   const id = soan.body['id'] as string;
+  const nhap_ai_id = soan.body['nhap_ai_id'] as string;
+  assert.ok(typeof nhap_ai_id === 'string' && nhap_ai_id !== '', 'soan tra nhap_ai_id');
+  assert.match(String(soan.body['ma_van_ban']), /^TBN-/);
   assert.match(String(soan.body['tieu_de']), /Cập nhật|phiên bản/i);
 
-  // Khoang phiên ban khong co muc -> 400.
+  // Khoang phiên bản khong co muc -> 400.
   const sai = await goi('POST', '/api/phat-hanh/soan', {
     token: token_admin, body: { tu_phien_ban: den, den_phien_ban: den },
   });
   assert.equal(sai.ma, 400);
 
-  // Sua ban nhap.
-  const sua = await goi('PATCH', `/api/phat-hanh/${id}`, {
-    token: token_admin,
-    body: { tieu_de: 'Cập nhật Chấm công — nhiều tính năng mới', noi_dung: '- Tính năng mới\n- Sửa lỗi' },
-  });
-  assert.equal(sua.ma, 200);
+  // Worker dung docx + gate -> cho_duyet (giong soan van ban cong ty thuong).
+  await cho_trang_thai(nhap_ai_id, 'cho_duyet');
+
+  // Toan cong ty phai trinh ky truoc — cong bo khi cho_duyet bi chan.
+  const som = await goi('POST', `/api/phat-hanh/${id}/cong-bo`, { token: token_admin });
+  assert.equal(som.ma, 409, 'chua trinh ky thi khong cong bo duoc');
 
   // Nhan vien thuong khong duoc cong bo.
   const cam = await goi('POST', `/api/phat-hanh/${id}/cong-bo`, { token: token_a });
   assert.equal(cam.ma, 403);
 
-  // Cong bo: tao thong bao toan cong ty popup=true.
+  const tk = await goi('POST', `/api/thong-bao/ai/${nhap_ai_id}/trinh-ky`, { token: token_admin });
+  assert.equal(tk.ma, 200);
+
+  // Cong bo = ban hanh cap so DUNG luong van ban AI (popup + gui email + DOCX).
   const cb = await goi('POST', `/api/phat-hanh/${id}/cong-bo`, { token: token_admin });
   assert.equal(cb.ma, 200, `cong bo loi: ${cb.tho}`);
   const thong_bao_id = cb.body['thong_bao_id'] as string;
   assert.ok(typeof thong_bao_id === 'string' && thong_bao_id !== '');
+  assert.match(String(cb.body['so_ky_hieu']), /^0?\d+\/2026\/TB-/);
 
-  const tb = await truy_van_mot<{ popup: boolean; gui_email: boolean; pham_vi: string }>(
-    'select popup, gui_email, pham_vi from thong_bao where id = $1', [thong_bao_id],
+  const tb = await truy_van_mot<
+    { popup: boolean; gui_email: boolean; pham_vi: string; ten_luu: string | null }
+  >(
+    'select popup, gui_email, pham_vi, ten_luu from thong_bao where id = $1', [thong_bao_id],
   );
   assert.ok(tb !== null, 'thong bao duoc tao');
   assert.equal(tb?.popup, true);
   assert.equal(tb?.gui_email, true);
   assert.equal(tb?.pham_vi, 'toan_cong_ty');
+  assert.ok(tb?.ten_luu !== null, 'co DOCX chinh thuc');
 
-  // Nhan vien thay popup o duong popup khi dang nhap.
+  // Xuat hien o tab "Van ban ban hanh" cua Van ban cong ty — nhan vien thay duoc.
+  const vbbh = await goi('GET', '/api/toi/van-ban-ban-hanh', { token: token_a });
+  assert.equal(vbbh.ma, 200);
+  const mang_vb = vbbh.body as unknown as { id: string }[];
+  assert.ok(mang_vb.some((v) => v.id === thong_bao_id), 'van ban co trong Van ban ban hanh');
+
+  // Nhan vien thay popup khi dang nhap.
   const popup = await goi('GET', '/api/toi/thong-bao/popup', { token: token_a });
   assert.equal(popup.ma, 200);
   const mang = popup.body as unknown as { id: string }[];
@@ -333,4 +349,47 @@ test('cong bo phat hanh: soan (fallback) -> sua -> cong bo -> popup + email', as
   // Cong bo lai -> 409.
   const lai = await goi('POST', `/api/phat-hanh/${id}/cong-bo`, { token: token_admin });
   assert.equal(lai.ma, 409);
+});
+
+test('thu da gui + popup bao y kien moi cho nhan su', async () => {
+  // Nhan vien gui gop y -> Nhan su/Admin co popup khi dang nhap.
+  const gop = await goi('POST', '/api/toi/ho-thu-y-kien', {
+    token: token_a,
+    body: { loai: 'yeu_cau', tieu_de: 'Đề nghị cấp thêm găng tay', noi_dung: 'Kho còn ít.' },
+  });
+  assert.equal(gop.ma, 201, `gui gop y loi: ${gop.tho}`);
+  const ht_id = gop.body['id'] as string;
+
+  const popup = await goi('GET', '/api/toi/thong-bao/popup', { token: token_admin });
+  assert.equal(popup.ma, 200);
+  const mang = popup.body as unknown as Record<string, unknown>[];
+  const bao = mang.find((t) => String(t['noi_dung']).includes('Đề nghị cấp thêm găng tay'));
+  assert.ok(bao !== undefined, 'co popup bao y kien moi cho nhan su');
+  const tb_id = bao?.['id'] as string;
+
+  // Xac nhan da doc -> popup khong con hien lai.
+  const doc = await goi('POST', `/api/toi/thong-bao/${tb_id}/xac-nhan`,
+    { token: token_admin, body: {} });
+  assert.equal(doc.ma, 200, `xac nhan popup loi: ${doc.tho}`);
+  const popup2 = await goi('GET', '/api/toi/thong-bao/popup', { token: token_admin });
+  const mang2 = popup2.body as unknown as Record<string, unknown>[];
+  assert.equal(mang2.some((t) => t['id'] === tb_id), false,
+    'da xac nhan thi popup khong hien lai');
+
+  // Nhan su tra loi -> thu da gui hien trong trang quan tri.
+  const tl = await goi('POST', `/api/ho-thu-y-kien/${ht_id}/tra-loi`, {
+    token: token_admin, body: { noi_dung: 'Đã duyệt, sẽ cấp tuần này.' },
+  });
+  assert.equal(tl.ma, 200);
+  const di = await goi('GET', '/api/ho-thu-y-kien/thu-da-gui', { token: token_admin });
+  assert.equal(di.ma, 200);
+  const mang_di = di.body as unknown as Record<string, unknown>[];
+  const dong_di = mang_di.find((d) => d['ho_thu_id'] === ht_id);
+  assert.ok(dong_di !== undefined, 'thu da gui co dong vua tra loi');
+  assert.match(String(dong_di['noi_dung']), /Đã duyệt/);
+  assert.match(String(dong_di['nguoi_gui']), /Trần Đức Hoàng/);
+
+  // Nhan vien thuong khong vao duoc thu da gui (can_nhan_su).
+  const cam = await goi('GET', '/api/ho-thu-y-kien/thu-da-gui', { token: token_a });
+  assert.equal(cam.ma, 403);
 });

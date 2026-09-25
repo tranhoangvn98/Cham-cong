@@ -1,15 +1,19 @@
 // Trang CONG BO PHAT HANH (quan tri) — moi dot phat hanh, AI tong hop cac muc moi cua
-// CHANGELOG thanh BAN NHAP thong bao; admin sua roi Cong bo -> thong bao toan cong ty bat
-// popup + gui email. Popup khi dang nhap hien tu dong.
+// CHANGELOG thanh van xuoi roi DUNG THANH VAN BAN CONG TY theo luong NĐ30 (giong het chuc
+// nang soan van ban cong ty: worker dung docx + gate). Nhan su xem truoc / sua van xuoi /
+// trinh ky ngay trong trinh soan van ban; admin CONG BO = ban hanh cap so voi popup + gui
+// email. Van ban xuat hien o tab "Van ban ban hanh" cua trang Van ban cong ty.
 //
-// CHANGELOG la nguon su that; AI chi lam giong noi — khi thieu khoa AI, may chu tu dung ban
+// CHANGELOG la nguon su that; AI chi lam giong noi — thieu khoa AI thi may chu tu dung ban
 // deterministic (danh sach phiên bản gọn).
 import { useState, type ReactNode } from 'react';
 import { goi, la_admin } from '../api.ts';
+import { LienKet } from '../dinh_tuyen.tsx';
 import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
+import { ChiTiet as ChiTietVanBan, NHAN_TRANG_THAI_VB } from './thong_bao_ai.tsx';
 
 interface DongPhatHanh {
   id: string;
@@ -19,6 +23,10 @@ interface DongPhatHanh {
   noi_dung: string | null;
   trang_thai: 'nhap' | 'da_cong_bo';
   thong_bao_id: string | null;
+  nhap_ai_id: string | null;
+  ma_van_ban: string | null;
+  tt_van_ban: string | null;
+  so_ky_hieu: string | null;
   tao_luc: string;
   cap_nhat_luc: string;
 }
@@ -38,21 +46,32 @@ export function TrangCongBoPhatHanh(): ReactNode {
   const pb = dung_nap<PhienBanDS>('/api/phat-hanh/phien-ban');
   const hd = dung_hanh_dong();
   const [soan, dat_soan] = useState(false);
-  const [mo, dat_mo] = useState<string | null>(null);
+  const [xem, dat_xem] = useState<string | null>(null);
+  const la_ad = la_admin();
+
+  const cong_bo = (id: string): void => {
+    void hd.chay(
+      () => goi(`/api/phat-hanh/${id}/cong-bo`, { method: 'POST' }),
+      'Đã công bố — văn bản đã cấp số, gửi email toàn công ty và hiện popup khi đăng nhập.',
+    ).then((ok) => { if (ok) ds.nap_lai(); });
+  };
 
   return (
     <>
       <div className="dau-trang">
         <p className="mo-ta">
           Mỗi đợt phát hành phần mềm, hệ thống gom các mục mới trong CHANGELOG rồi nhờ AI soạn
-          dự thảo thông báo. Nhân sự sửa lại, sau đó Giám đốc (admin) bấm <strong>Công bố</strong> —
-          thông báo gửi email toàn công ty và hiện popup khi mọi người đăng nhập.
+          thành <strong>văn bản công ty đúng thể thức NĐ30</strong> (có số ký hiệu, đính kèm
+          DOCX). Nhân sự soạn lại ngay trong trình soạn văn bản (xem trước, sửa, trình ký);
+          sau đó Giám đốc (admin) bấm <strong>Công bố</strong> — văn bản được lưu vào Văn bản
+          công ty, gửi email toàn công ty và hiện popup khi mọi người đăng nhập.
         </p>
       </div>
 
       <div className="hang-nut">
         <button disabled={pb.dang_tai} onClick={() => dat_soan(true)}>Tạo dự thảo phát hành</button>
       </div>
+      {hd.loi !== null && <HopLoi loi={hd.loi} />}
 
       {ds.dang_tai ? <DangTai /> : ds.loi !== null ? <HopLoi loi={ds.loi} />
         : ds.du_lieu === null || ds.du_lieu.length === 0 ? (
@@ -62,7 +81,8 @@ export function TrangCongBoPhatHanh(): ReactNode {
           <table className="bang-gon" style={{ marginTop: 12 }}>
             <thead>
               <tr>
-                <th>Phiên bản</th><th>Tiêu đề</th><th>Trạng thái</th><th>Cập nhật</th><th></th>
+                <th>Phiên bản</th><th>Tiêu đề</th><th>Văn bản</th><th>Trạng thái</th>
+                <th>Số ký hiệu</th><th>Cập nhật</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -73,15 +93,46 @@ export function TrangCongBoPhatHanh(): ReactNode {
                       ? d.den_phien_ban
                       : `${d.tu_phien_ban} – ${d.den_phien_ban}`}
                   </td>
-                  <td style={{ maxWidth: 420 }}>{d.tieu_de ?? '—'}</td>
+                  <td style={{ maxWidth: 340 }}>{d.tieu_de ?? '—'}</td>
+                  <td className="khong-ngat">
+                    {d.ma_van_ban !== null ? (
+                      <>
+                        {d.ma_van_ban}
+                        {d.tt_van_ban !== null && (
+                          <span className="mo-ma">
+                            {' '}· {NHAN_TRANG_THAI_VB[d.tt_van_ban] ?? d.tt_van_ban}
+                          </span>
+                        )}
+                      </>
+                    ) : '—'}
+                  </td>
                   <td className="khong-ngat">
                     <span className={`nhan ${NHAN_TT[d.trang_thai]?.lop ?? 'nhan-mo'}`}>
                       {NHAN_TT[d.trang_thai]?.ten ?? d.trang_thai}
                     </span>
                   </td>
+                  <td className="mo-ma">{d.so_ky_hieu ?? '—'}</td>
                   <td className="khong-ngat mo-ma">{ngay_gio(d.cap_nhat_luc)}</td>
-                  <td className="canh-phai">
-                    <button className="nut nut-nho" onClick={() => dat_mo(d.id)}>Xem</button>
+                  <td className="canh-phai" style={{ whiteSpace: 'nowrap' }}>
+                    {d.trang_thai === 'da_cong_bo' ? (
+                      <LienKet den="/van-ban/ban-hanh">Xem ở Văn bản công ty</LienKet>
+                    ) : d.nhap_ai_id !== null ? (
+                      <>
+                        <button className="nut nut-nho"
+                          onClick={() => dat_xem(d.nhap_ai_id)}>Soạn văn bản</button>
+                        {la_ad && d.tt_van_ban !== null
+                          && ['cho_duyet', 'cho_ky'].includes(d.tt_van_ban) && (
+                            <button className="nut nut-nho" disabled={hd.dang_chay}
+                              style={{ marginLeft: 6 }}
+                              onClick={() => cong_bo(d.id)}>Công bố</button>
+                          )}
+                        {d.tt_van_ban === 'dang_soan' && (
+                          <span className="mo-ta"> đang soạn…</span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="mo-ta">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -93,20 +144,21 @@ export function TrangCongBoPhatHanh(): ReactNode {
         <HopThoaiSoan
           pb={pb.du_lieu}
           khi_dong={() => dat_soan(false)}
-          khi_xong={(id) => { dat_soan(false); dat_mo(id); ds.nap_lai(); pb.nap_lai(); }}
+          khi_xong={(nhap_ai_id) => { dat_soan(false); dat_xem(nhap_ai_id); ds.nap_lai(); }}
         />
       )}
-      {mo !== null && (
-        <HopThoaiChiTiet id={mo} khi_dong={() => dat_mo(null)} khi_xong={ds.nap_lai} />
+      {xem !== null && (
+        <ChiTietVanBan id={xem}
+          khi_dong={() => { dat_xem(null); ds.nap_lai(); }}
+          khi_xong={ds.nap_lai} />
       )}
-      {hd.loi !== null && <HopLoi loi={hd.loi} />}
     </>
   );
 }
 
 function HopThoaiSoan(
   { pb, khi_dong, khi_xong }:
-  { pb: PhienBanDS; khi_dong: () => void; khi_xong: (id: string) => void },
+  { pb: PhienBanDS; khi_dong: () => void; khi_xong: (nhap_ai_id: string) => void },
 ): ReactNode {
   const hd = dung_hanh_dong();
   const [tu, dat_tu] = useState(pb.de_xuat.tu);
@@ -114,10 +166,10 @@ function HopThoaiSoan(
 
   const tao = (): void => {
     void hd.chay_lay(
-      () => goi<{ id: string }>('/api/phat-hanh/soan',
+      () => goi<{ nhap_ai_id: string }>('/api/phat-hanh/soan',
         { method: 'POST', body: { tu_phien_ban: tu, den_phien_ban: den } }),
-      'Đã soạn dự thảo. Xem và chỉnh sửa trước khi công bố.',
-    ).then((kq) => { if (kq !== null) khi_xong(kq.id); });
+      'Đã soạn xong. Văn bản đang được dựng — chỉnh sửa ngay trong trình soạn.',
+    ).then((kq) => { if (kq !== null && kq.nhap_ai_id !== '') khi_xong(kq.nhap_ai_id); });
   };
 
   const tuy_chon = (): TuyChonChon[] => pb.cac_phien_ban.map((v) => ({ ma: v, nhan: v }));
@@ -147,108 +199,6 @@ function HopThoaiSoan(
         </button>
         <button className="nut-phang" onClick={khi_dong}>Hủy</button>
       </div>
-    </HopThoai>
-  );
-}
-
-function HopThoaiChiTiet(
-  { id, khi_dong, khi_xong }: { id: string; khi_dong: () => void; khi_xong: () => void },
-): ReactNode {
-  const chi = dung_nap<DongPhatHanh>(`/api/phat-hanh/${id}`, [id]);
-  const hd = dung_hanh_dong();
-  const [tieu_de, dat_tieu_de] = useState('');
-  const [noi_dung, dat_noi_dung] = useState('');
-  const [da_nap, dat_da_nap] = useState(false);
-
-  const d = chi.du_lieu;
-  // Nap gia tri vao o soan khi du lieu ve (mot lan) — khong ghi de khi dang sua.
-  if (d !== null && !da_nap) {
-    dat_da_nap(true);
-    dat_tieu_de(d.tieu_de ?? '');
-    dat_noi_dung(d.noi_dung ?? '');
-  }
-
-  if (chi.dang_tai) {
-    return <HopThoai tieu_de="Công bố phát hành" khi_dong={khi_dong}><DangTai /></HopThoai>;
-  }
-  if (chi.loi !== null || d === null) {
-    return <HopThoai tieu_de="Công bố phát hành" khi_dong={khi_dong}>
-      <HopLoi loi={chi.loi ?? 'Không tải được chi tiết.'} />
-    </HopThoai>;
-  }
-
-  const luu = (): void => {
-    void hd.chay(
-      () => goi(`/api/phat-hanh/${d.id}`, { method: 'PATCH', body: { tieu_de, noi_dung } }),
-      'Đã lưu dự thảo.',
-    ).then((ok) => { if (ok) { chi.nap_lai(); khi_xong(); } });
-  };
-  const cong_bo = (): void => {
-    void hd.chay(
-      () => goi(`/api/phat-hanh/${d.id}/cong-bo`, { method: 'POST' }),
-      'Đã công bố. Email đã gửi toàn công ty và popup sẽ hiện khi đăng nhập.',
-    ).then((ok) => { if (ok) { chi.nap_lai(); khi_xong(); khi_dong(); } });
-  };
-
-  const la_ad = la_admin();
-  const xong = d.trang_thai === 'da_cong_bo';
-
-  return (
-    <HopThoai tieu_de={`Công bố phát hành ${d.den_phien_ban}`} khi_dong={khi_dong} rong>
-      {hd.loi !== null && <HopLoi loi={hd.loi} />}
-      <div className="ho-so-chi-so">
-        <div className="o-so">
-          <div className="o-so-nhan">Khoảng phiên bản</div>
-          <div className="o-so-gia-tri" style={{ fontSize: 15 }}>
-            {d.tu_phien_ban === d.den_phien_ban
-              ? d.den_phien_ban
-              : `${d.tu_phien_ban} – ${d.den_phien_ban}`}
-          </div>
-        </div>
-        <div className="o-so">
-          <div className="o-so-nhan">Trạng thái</div>
-          <div className="o-so-gia-tri" style={{ fontSize: 15 }}>
-            <span className={`nhan ${NHAN_TT[d.trang_thai]?.lop ?? 'nhan-mo'}`}>
-              {NHAN_TT[d.trang_thai]?.ten ?? d.trang_thai}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {xong ? (
-        <>
-          <h3>{d.tieu_de}</h3>
-          <div style={{ whiteSpace: 'pre-wrap' }}>{d.noi_dung}</div>
-          <div className="hop-thong-bao hop-tot">
-            Đã công bố — thông báo gửi email toàn công ty và hiện popup khi đăng nhập.
-          </div>
-        </>
-      ) : (
-        <>
-          <label htmlFor="tieu_de">Tiêu đề thông báo</label>
-          <input id="tieu_de" value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)} />
-          <label htmlFor="noi_dung">Nội dung</label>
-          <textarea id="noi_dung" rows={10} value={noi_dung}
-            onChange={(e) => dat_noi_dung(e.target.value)} />
-          <div className="hang-nut" style={{ marginTop: 12 }}>
-            <button className="nut-phang" disabled={hd.dang_chay} onClick={() => { void luu(); }}>
-              Lưu dự thảo
-            </button>
-            {la_ad && (
-              <button disabled={hd.dang_chay || tieu_de.trim().length < 3
-                || noi_dung.trim().length < 1}
-                onClick={() => { void cong_bo(); }}>
-                Công bố (email + popup)
-              </button>
-            )}
-          </div>
-          {!la_ad && (
-            <p className="mo-ta" style={{ marginTop: 8 }}>
-              Chỉ Giám đốc (admin) được bấm Công bố — gửi tới toàn công ty.
-            </p>
-          )}
-        </>
-      )}
     </HopThoai>
   );
 }

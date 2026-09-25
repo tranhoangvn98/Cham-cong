@@ -144,6 +144,40 @@ export async function dong_ho_thu(ho_thu_id: string, nguoi_dung_id: string): Pro
   return doc_ho_thu(ho_thu_id);
 }
 
+/**
+ * Bao popup cho Nhan su / Admin khi co y kien moi: tao mot thong bao ca_nhan bat popup cho
+ * TUNG tai khoan quan tri ho thu (can_nhan_su) co gan ho so nhan vien. Khong gui email, khong
+ * gui chuong (chuong bao da co duong rieng o route). Dung co che popup san co cua thong bao
+ * (popup=true + xac nhan da doc) nen Nhan su dang nhap se thay ngay, khong bo sot phan anh.
+ *
+ * Khong nem loi — thong bao popup la phan phu, y kien da luu roi.
+ */
+export async function bao_y_kien_moi(ho_thu_id: string): Promise<void> {
+  try {
+    const h = await truy_van_mot<{ loai: string; tieu_de: string }>(
+      'select loai, tieu_de from ho_thu_y_kien where id = $1', [ho_thu_id],
+    );
+    if (h === null) return;
+    const quan_tri = await truy_van<{ nhan_vien_id: string }>(
+      `select nhan_vien_id from nguoi_dung
+        where dang_hoat_dong = true and nhan_vien_id is not null
+          and vai_tro in ('admin', 'nhan_su', 'truong_phong_nhan_su')`,
+    );
+    if (quan_tri.length === 0) return;
+    const noi_dung = `${NHAN_LOAI_HO_THU[h.loai as LoaiHoThu] ?? h.loai}: ${h.tieu_de}`;
+    for (const nd of quan_tri) {
+      await thuc_thi(
+        `insert into thong_bao (tieu_de, noi_dung, muc_do, can_giai_trinh, pham_vi,
+                                nhan_vien_id, popup, gui_email)
+         values ('Có ý kiến mới trong Hòm thư', $1, 'thuong', false, 'ca_nhan', $2, true, false)`,
+        [noi_dung, nd.nhan_vien_id],
+      );
+    }
+  } catch (loi) {
+    console.warn(`[ho_thu] khong tao duoc popup bao y kien moi: ${(loi as Error).message}`);
+  }
+}
+
 /** Nhan vien co nam trong pham vi nhan cua ban du thao khong. Khong tim thay du thao -> null. */
 export async function trong_pham_vi_du_thao(
   nhan_vien_id: string, nhap_ai_id: string,

@@ -2,6 +2,25 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.106.1] — 2026-09-26
+
+**Công bố phát hành soạn thành văn bản công ty NĐ30 + Hòm thư có Thư đã gửi và popup ý kiến mới.**
+
+- **Công bố phát hành theo đúng luồng soạn văn bản công ty:** dự thảo phát hành không còn là
+  thông báo thô — AI tóm tắt CHANGELOG thành văn xuôi rồi hệ thống dựng thành bản nháp
+  `thong_bao_nhap_ai` (NĐ30, worker dựng DOCX + cổng kiểm tra G1–G17). Nhân sự mở thẳng trình
+  soạn văn bản (xem trước, sửa văn xuôi, viết lại bằng AI, trình ký). Nút Công bố = ban hành
+  cấp số đúng luồng văn bản AI (tách hàm dùng chung `ban_hanh_nhap_ai`) với `popup=true` +
+  gửi email. Văn bản xuất hiện ở tab **Văn bản ban hành** của trang Văn bản công ty, kèm
+  DOCX chính thức và số ký hiệu. Migration 089: `cong_bo_phat_hanh.nhap_ai_id`.
+- **Hòm thư ý kiến — Thư đã gửi:** trang quản trị thêm tab "Thư đã gửi" liệt kê toàn bộ phản
+  hồi Nhân sự đã gửi đi (người gửi, người nhận, nội dung, trạng thái), bấm dòng mở lại hội thoại.
+- **Hòm thư ý kiến — popup khi có ý kiến mới:** mỗi ý kiến mới gửi về tạo popup bắt buộc đọc
+  cho từng tài khoản Nhân sự/Admin khi đăng nhập (tái dùng cơ chế popup của thông báo) —
+  không bỏ sót phản ánh của người lao động.
+- Test: e2e mới cho luồng soạn → trình ký → công bố → hiện ở Văn bản ban hành, và cho Thư đã
+  gửi + popup; 18 test đơn vị cũ vẫn xanh.
+
 ## [1.106.0] — 2026-09-25
 
 **Công bố dự thảo: lấy ý kiến dự thảo, Hòm thư ý kiến và thông báo phát hành.**

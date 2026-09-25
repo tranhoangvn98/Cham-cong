@@ -437,225 +437,7 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
 
   // ------------------------------------------------------------ ban hanh (REQ-18..21)
   app.post('/thong-bao/ai/:id/phat-hanh', { preHandler: can_nhan_su }, async (req) => {
-    const nd = nguoi_dung_hien_tai(req);
-    const d = await doc_nhap(lay_id(req));
-
-    if (d.trang_thai === 'dang_lay_y_kien') {
-      throw new LoiXungDot('Văn bản đang lấy ý kiến — hãy kết thúc lấy ý kiến trước khi ban hành.');
-    }
-
-    const hai_cap = can_hai_cap(d.pham_vi, d.quan_he);
-    // REQ-12: chan trang thai sai. REQ-17: quyen ban hanh tach khoi quyen soan.
-    const trang_cho_phep = hai_cap ? 'cho_ky' : 'cho_duyet';
-    if (d.trang_thai !== trang_cho_phep) {
-      throw new LoiXungDot(
-        hai_cap
-          ? 'Văn bản này cần được trình ký trước khi ban hành.'
-          : `Trạng thái ${d.trang_thai} không thể ban hành.`,
-      );
-    }
-    if (hai_cap && nd.vai_tro !== 'admin') {
-      throw new LoiXungDot('Chỉ Giám đốc (admin) mới được ban hành văn bản này.');
-    }
-
-    const spec_cu = d.spec_json as SpecVanBan | null;
-    if (spec_cu === null) throw new LoiXungDot('Bản nháp chưa có văn xuôi.');
-    const loi_spec = kiem_tra_spec(spec_cu);
-    if (loi_spec.length > 0) throw new LoiXungDot(`Spec lỗi: ${loi_spec.join(' ')}`);
-
-    // REQ-19: cap so NGUYEN TU. So da cap la vinh vien — neu ban nhap da co so
-    // (lan ban hanh truoc bi loi sau buoc cap so) thi GIU NGUYEN so do.
-    let so_ky_hieu = d.so_ky_hieu;
-    let so_ban_hanh = d.so_ban_hanh;
-    if (so_ky_hieu === null || so_ban_hanh === null) {
-      const nam = Number(ngay_dia_phuong(new Date()).slice(0, 4));
-      await thuc_thi(
-        `insert into bo_dem_so_vb(loai, nam, gia_tri) values ($1,$2,0)
-         on conflict (loai, nam) do nothing`,
-        [d.loai, nam],
-      );
-      const dem = await truy_van_mot<{ gia_tri: number }>(
-        `update bo_dem_so_vb set gia_tri = gia_tri + 1
-          where loai = $1 and nam = $2 returning gia_tri`,
-        [d.loai, nam],
-      );
-      so_ban_hanh = dem?.gia_tri ?? 0;
-      so_ky_hieu = dung_so_ky_hieu(d.loai, so_ban_hanh, nam,
-        cau_hinh.van_ban.ky_hieu_don_vi, cau_hinh.van_ban.ky_hieu_don_vi_soan);
-      // Ghi so ngay — so da cap la vinh vien, huy sau nay chi ghi so, khong cap lai.
-      await thuc_thi(
-        `update thong_bao_nhap_ai set so_ban_hanh = $2, so_ky_hieu = $3, cap_nhat_luc = now()
-          where id = $1`,
-        [d.id, so_ban_hanh, so_ky_hieu],
-      );
-      await ghi_nhat_ky(nd.sub, 'thong_bao_ai_cap_so', 'thong_bao_nhap_ai', d.id,
-        { so_ban_hanh, so_ky_hieu }, req.ip);
-    }
-    if (so_ky_hieu === null || so_ban_hanh === null) {
-      throw new LoiXungDot('Không cấp được số ký hiệu. Thử lại.');
-    }
-
-    // REQ-20: build ban cuoi co so that + gate LAN CUOI tren ban co so.
-    const spec_cuoi: SpecVanBan = { ...spec_cu, so_ky_hieu, du_thao: false };
-    const docx = await bo_sinh_docx.dung(spec_cuoi);
-    const kq_cuoi = await chay_gate(spec_cuoi, docx);
-    if (!dat_tat_ca(kq_cuoi)) {
-      const cac_loi = muc_loi(kq_cuoi).map((k) => `${k.ma_check}: ${k.ly_do}`).join('; ');
-      // So da cap duoc GIU — lan ban hanh sau dung dung so nay.
-      throw new LoiXungDot(`Gate lần cuối chưa đạt: ${cac_loi}`);
-    }
-
-    // Quyet dinh nghi viec: tra cuu TRUOC khi ghi bat ky tep nao — nem loi o day thi
-    // khong de lai tep mo coi tren dia.
-    let da_luu_ho_so: TepDaLuu | null = null;
-    let danh_muc_qd_id: string | null = null;
-    let ten_goc_ho_so = '';
-    let dich_ho_so: { ma_nv: string; ho_ten: string } | null = null;
-    if (d.la_qd_nghi_viec) {
-      if (d.nhan_vien_id === null) {
-        throw new LoiXungDot('Quyết định nghỉ việc phải gửi tới một nhân viên cụ thể.');
-      }
-      dich_ho_so = await truy_van_mot<{ ma_nv: string; ho_ten: string }>(
-        'select ma_nv, ho_ten from nhan_vien where id = $1', [d.nhan_vien_id]);
-      if (dich_ho_so === null) {
-        throw new LoiXungDot('Nhân viên nhận quyết định không còn trong hệ thống.');
-      }
-      const dm_qd = await truy_van_mot<{ id: string }>(
-        `select id from danh_muc_tai_lieu where ma = 'qd_nghi_viec'`);
-      if (dm_qd === null) {
-        throw new LoiXungDot('Danh mục tài liệu "Quyết định nghỉ việc" (mã qd_nghi_viec) '
-          + 'đã bị gỡ. Khôi phục trong danh mục hồ sơ rồi ban hành lại.');
-      }
-      danh_muc_qd_id = dm_qd.id;
-      ten_goc_ho_so = `Quyết định nghỉ việc ${so_ky_hieu}.docx`;
-    }
-
-    // Luu tep ban cuoi truoc transaction (xoa tep mo coi neu CSDL that bai).
-    const da_luu = await luu_van_ban_cong_ty(docx,
-      `${d.ma}_${so_ky_hieu.replace(/\//g, '-')}.docx`, 'khac', ngay_dia_phuong(new Date()));
-
-    // Quyet dinh nghi viec: them mot BAN COPY vao ho so cua nhan vien nhan quyet dinh —
-    // HCNS va chinh nguoi do doc duoc ngay trong tab Ho so, va tep tu dong dong bo sang
-    // SharePoint nhu moi tep ho so khac. Copy RIENG chu khong tro chung ten_luu: ban cong
-    // ty va ban trong ho so co vong doi doc lap (xoa ben nay khong anh huong ben kia).
-    if (dich_ho_so !== null) {
-      try {
-        da_luu_ho_so = await luu_tep_ho_so(docx, ten_goc_ho_so, {
-          ma_nv: dich_ho_so.ma_nv,
-          ho_ten: dich_ho_so.ho_ten,
-          nhom: 'tai_lieu',
-          ngay: ngay_dia_phuong(new Date()),
-        });
-      } catch (loi) {
-        // Ghi copy ho so loi thi don ca ban cong ty vua ghi, tran de lai tep mo coi.
-        await xoa_tep_ho_so(da_luu.ten_luu).catch(() => {});
-        throw loi;
-      }
-    }
-
-    const tieu_de = spec_cuoi.trich_yeu;
-    const noi_dung = noi_dung_hien_thi(spec_cuoi);
-    let thong_bao: { id: string; ma: string };
-    try {
-      // REQ-21: mot transaction — insert thong_bao + danh dau ban nhap da phat hanh.
-      // Tra ve dong vua tao QUA ham de TypeScript khong thay no la `never` o ngoai.
-      thong_bao = await trong_giao_dich(async (khach) => {
-        const kq = await khach.query<{ id: string; ma: string }>(
-          `insert into thong_bao(tieu_de, noi_dung, muc_do, can_giai_trinh, pham_vi,
-                                  phong_ban_id, nhan_vien_id, nguoi_tao, het_han,
-                                  ten_luu, mime, kich_thuoc)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-           returning id, ma`,
-          [tieu_de, noi_dung, d.muc_do, d.can_giai_trinh, d.pham_vi, d.phong_ban_id,
-            d.nhan_vien_id, d.nguoi_tao, d.het_han, da_luu.ten_luu, da_luu.mime,
-            da_luu.kich_thuoc],
-        );
-        const dong = kq.rows[0];
-        if (dong === undefined) throw new LoiXungDot('Không tạo được dòng thông báo.');
-
-        const cap_nhat = await khach.query(
-          `update thong_bao_nhap_ai
-              set trang_thai = 'da_phat_hanh', thong_bao_id = $2,
-                  spec_json = $3::jsonb, ket_qua_gate = $4::jsonb, cap_nhat_luc = now()
-            where id = $1 and thong_bao_id is null`,
-          [d.id, dong.id, JSON.stringify(spec_cuoi), JSON.stringify(kq_cuoi)],
-        );
-        if (cap_nhat.rowCount === 0) {
-          throw new LoiXungDot('Bản nháp này đã được ban hành rồi.');
-        }
-
-        // Gan tep quyet dinh vao ho so nhan vien CUNG transaction voi ban hanh: CSDL loi
-        // thi tep vua ghi tren dia bi xoa o catch ben ngoai, khong de lai dong ho so tro
-        // tep khong con. Ho so hoan chinh = ban hanh hoan chinh.
-        if (da_luu_ho_so !== null && danh_muc_qd_id !== null && d.nhan_vien_id !== null) {
-          await khach.query(
-            `insert into ho_so_tep
-               (id, nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime, kich_thuoc,
-                tai_len_boi)
-             values ($1,$2,'tai_lieu',null,$3,$4,$5,$6,$7)`,
-            [da_luu_ho_so.ma_tep, d.nhan_vien_id, ten_goc_ho_so, da_luu_ho_so.ten_luu,
-              da_luu_ho_so.mime, da_luu_ho_so.kich_thuoc, nd.sub],
-          );
-          await khach.query(
-            `insert into tai_lieu_nhan_vien (nhan_vien_id, danh_muc_id, trang_thai, tep_id)
-             values ($1,$2,'da_len_phan_mem',$3)
-             on conflict (nhan_vien_id, danh_muc_id) do update
-                set trang_thai = 'da_len_phan_mem', tep_id = $3, cap_nhat_luc = now()`,
-            [d.nhan_vien_id, danh_muc_qd_id, da_luu_ho_so.ma_tep],
-          );
-        }
-
-        return dong;
-      });
-    } catch (loi) {
-      // Tep da nam tren dia truoc khi co dong CSDL — xoa tep mo coi.
-      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => {});
-      if (da_luu_ho_so !== null) {
-        await xoa_tep_ho_so(da_luu_ho_so.ten_luu).catch(() => {});
-      }
-      throw loi;
-    }
-
-    // Xoa tep DU THAO (ban chinh thuc da thay no).
-    if (d.ten_luu_docx !== null) {
-      xoa_tep_ho_so(d.ten_luu_docx).catch(() => {});
-    }
-
-    await ghi_nhat_ky(nd.sub, 'thong_bao_ai_phat_hanh', 'thong_bao_nhap_ai', d.id,
-      { thong_bao_id: thong_bao?.id, so_ky_hieu }, req.ip);
-
-    // Chuong bao + push cho dung tap nguoi nhan.
-    const nguoi_nhan = await truy_van<{ id: string }>(
-      `select u.id from nguoi_dung u
-         join nhan_vien nv on nv.id = u.nhan_vien_id
-        where u.dang_hoat_dong = true and nv.dang_hoat_dong = true
-          and ($1 = 'toan_cong_ty'
-               or ($1 = 'phong_ban' and nv.phong_ban_id = $2::uuid)
-               or ($1 = 'ca_nhan' and nv.id = $3::uuid))`,
-      [d.pham_vi, d.phong_ban_id, d.nhan_vien_id],
-    );
-    if (nguoi_nhan.length > 0) {
-      gui_ngam({
-        nguoi_dung_ids: nguoi_nhan.map((n) => n.id),
-        tieu_de: `Thông báo mới: ${tieu_de}`,
-        noi_dung: d.can_giai_trinh
-          ? 'Thông báo này yêu cầu bạn giải trình.' : 'Bấm để xem chi tiết.',
-        du_lieu: { man: 'thong-bao', thong_bao_id: thong_bao?.id ?? null },
-      });
-    }
-
-    // Gui email kem DOCX toi dung tap nguoi nhan. Fire-and-forget: khong cho HTTP ra ngoai
-    // vao luong request — mat giua chung thi vong quet `quet_email_cho` cua lich_chay bu lai.
-    void gui_email_thong_bao(thong_bao.id).catch((loi) => {
-      console.error('[thong_bao_ai] gui email ban hanh loi:', (loi as Error).message);
-    });
-
-    return {
-      ok: true,
-      thong_bao_id: thong_bao?.id ?? null,
-      ma_thong_bao: thong_bao?.ma ?? null,
-      so_ky_hieu,
-    };
+    return ban_hanh_nhap_ai(lay_id(req), nguoi_dung_hien_tai(req), { ip: req.ip });
   });
 
   // ------------------------------------------------------------ huy
@@ -678,4 +460,242 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
       { so_ky_hieu: d.so_ky_hieu }, req.ip);
     return { ok: true };
   });
+}
+
+/**
+ * Ban hanh mot ban nhap van ban AI — DUNG CHUNG cho route /phat-hanh va cong bo phat hanh.
+ *
+ * Luong: kiem trang thai (cho_ky neu 2 cap, cho_duyet neu 1 cap) -> cap so NGUYEN TU ->
+ * build ban cuoi co so + gate lan cuoi -> mot transaction ghi thong_bao (co DOCX chinh thuc)
+ * + danh dau ban nhap da phat hanh -> chuong bao + email fire-and-forget.
+ *
+ * `popup`/`gui_email`: cong bo phat hanh bat ca hai de thong bao hien popup khi dang nhap va
+ * gui email toan cong ty (mac dinh false giong ban hanh thuong).
+ */
+export async function ban_hanh_nhap_ai(
+  id: string,
+  nd: { sub: string; vai_tro: string },
+  tuy_chon: { ip?: string; popup?: boolean; gui_email?: boolean } = {},
+): Promise<{ ok: boolean; thong_bao_id: string | null; ma_thong_bao: string | null; so_ky_hieu: string }> {
+  const ip = tuy_chon.ip ?? '';
+  const d = await doc_nhap(id);
+
+  if (d.trang_thai === 'dang_lay_y_kien') {
+    throw new LoiXungDot('Văn bản đang lấy ý kiến — hãy kết thúc lấy ý kiến trước khi ban hành.');
+  }
+
+  const hai_cap = can_hai_cap(d.pham_vi, d.quan_he);
+  // REQ-12: chan trang thai sai. REQ-17: quyen ban hanh tach khoi quyen soan.
+  const trang_cho_phep = hai_cap ? 'cho_ky' : 'cho_duyet';
+  if (d.trang_thai !== trang_cho_phep) {
+    throw new LoiXungDot(
+      hai_cap
+        ? 'Văn bản này cần được trình ký trước khi ban hành.'
+        : `Trạng thái ${d.trang_thai} không thể ban hành.`,
+    );
+  }
+  if (hai_cap && nd.vai_tro !== 'admin') {
+    throw new LoiXungDot('Chỉ Giám đốc (admin) mới được ban hành văn bản này.');
+  }
+
+  const spec_cu = d.spec_json as SpecVanBan | null;
+  if (spec_cu === null) throw new LoiXungDot('Bản nháp chưa có văn xuôi.');
+  const loi_spec = kiem_tra_spec(spec_cu);
+  if (loi_spec.length > 0) throw new LoiXungDot(`Spec lỗi: ${loi_spec.join(' ')}`);
+
+  // REQ-19: cap so NGUYEN TU. So da cap la vinh vien — neu ban nhap da co so
+  // (lan ban hanh truoc bi loi sau buoc cap so) thi GIU NGUYEN so do.
+  let so_ky_hieu = d.so_ky_hieu;
+  let so_ban_hanh = d.so_ban_hanh;
+  if (so_ky_hieu === null || so_ban_hanh === null) {
+    const nam = Number(ngay_dia_phuong(new Date()).slice(0, 4));
+    await thuc_thi(
+      `insert into bo_dem_so_vb(loai, nam, gia_tri) values ($1,$2,0)
+       on conflict (loai, nam) do nothing`,
+      [d.loai, nam],
+    );
+    const dem = await truy_van_mot<{ gia_tri: number }>(
+      `update bo_dem_so_vb set gia_tri = gia_tri + 1
+        where loai = $1 and nam = $2 returning gia_tri`,
+      [d.loai, nam],
+    );
+    so_ban_hanh = dem?.gia_tri ?? 0;
+    so_ky_hieu = dung_so_ky_hieu(d.loai, so_ban_hanh, nam,
+      cau_hinh.van_ban.ky_hieu_don_vi, cau_hinh.van_ban.ky_hieu_don_vi_soan);
+    // Ghi so ngay — so da cap la vinh vien, huy sau nay chi ghi so, khong cap lai.
+    await thuc_thi(
+      `update thong_bao_nhap_ai set so_ban_hanh = $2, so_ky_hieu = $3, cap_nhat_luc = now()
+        where id = $1`,
+      [d.id, so_ban_hanh, so_ky_hieu],
+    );
+    await ghi_nhat_ky(nd.sub, 'thong_bao_ai_cap_so', 'thong_bao_nhap_ai', d.id,
+      { so_ban_hanh, so_ky_hieu }, ip);
+  }
+  if (so_ky_hieu === null || so_ban_hanh === null) {
+    throw new LoiXungDot('Không cấp được số ký hiệu. Thử lại.');
+  }
+
+  // REQ-20: build ban cuoi co so that + gate LAN CUOI tren ban co so.
+  const spec_cuoi: SpecVanBan = { ...spec_cu, so_ky_hieu, du_thao: false };
+  const docx = await bo_sinh_docx.dung(spec_cuoi);
+  const kq_cuoi = await chay_gate(spec_cuoi, docx);
+  if (!dat_tat_ca(kq_cuoi)) {
+    const cac_loi = muc_loi(kq_cuoi).map((k) => `${k.ma_check}: ${k.ly_do}`).join('; ');
+    // So da cap duoc GIU — lan ban hanh sau dung dung so nay.
+    throw new LoiXungDot(`Gate lần cuối chưa đạt: ${cac_loi}`);
+  }
+
+  // Quyet dinh nghi viec: tra cuu TRUOC khi ghi bat ky tep nao — nem loi o day thi
+  // khong de lai tep mo coi tren dia.
+  let da_luu_ho_so: TepDaLuu | null = null;
+  let danh_muc_qd_id: string | null = null;
+  let ten_goc_ho_so = '';
+  let dich_ho_so: { ma_nv: string; ho_ten: string } | null = null;
+  if (d.la_qd_nghi_viec) {
+    if (d.nhan_vien_id === null) {
+      throw new LoiXungDot('Quyết định nghỉ việc phải gửi tới một nhân viên cụ thể.');
+    }
+    dich_ho_so = await truy_van_mot<{ ma_nv: string; ho_ten: string }>(
+      'select ma_nv, ho_ten from nhan_vien where id = $1', [d.nhan_vien_id]);
+    if (dich_ho_so === null) {
+      throw new LoiXungDot('Nhân viên nhận quyết định không còn trong hệ thống.');
+    }
+    const dm_qd = await truy_van_mot<{ id: string }>(
+      `select id from danh_muc_tai_lieu where ma = 'qd_nghi_viec'`);
+    if (dm_qd === null) {
+      throw new LoiXungDot('Danh mục tài liệu "Quyết định nghỉ việc" (mã qd_nghi_viec) '
+        + 'đã bị gỡ. Khôi phục trong danh mục hồ sơ rồi ban hành lại.');
+    }
+    danh_muc_qd_id = dm_qd.id;
+    ten_goc_ho_so = `Quyết định nghỉ việc ${so_ky_hieu}.docx`;
+  }
+
+  // Luu tep ban cuoi truoc transaction (xoa tep mo coi neu CSDL that bai).
+  const da_luu = await luu_van_ban_cong_ty(docx,
+    `${d.ma}_${so_ky_hieu.replace(/\//g, '-')}.docx`, 'khac', ngay_dia_phuong(new Date()));
+
+  // Quyet dinh nghi viec: them mot BAN COPY vao ho so cua nhan vien nhan quyet dinh —
+  // HCNS va chinh nguoi do doc duoc ngay trong tab Ho so, va tep tu dong dong bo sang
+  // SharePoint nhu moi tep ho so khac. Copy RIENG chu khong tro chung ten_luu: ban cong
+  // ty va ban trong ho so co vong doi doc lap (xoa ben nay khong anh huong ben kia).
+  if (dich_ho_so !== null) {
+    try {
+      da_luu_ho_so = await luu_tep_ho_so(docx, ten_goc_ho_so, {
+        ma_nv: dich_ho_so.ma_nv,
+        ho_ten: dich_ho_so.ho_ten,
+        nhom: 'tai_lieu',
+        ngay: ngay_dia_phuong(new Date()),
+      });
+    } catch (loi) {
+      // Ghi copy ho so loi thi don ca ban cong ty vua ghi, tran de lai tep mo coi.
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => {});
+      throw loi;
+    }
+  }
+
+  const tieu_de = spec_cuoi.trich_yeu;
+  const noi_dung = noi_dung_hien_thi(spec_cuoi);
+  const bat_popup = tuy_chon.popup === true;
+  const bat_gui_email = tuy_chon.gui_email === true;
+  let thong_bao: { id: string; ma: string };
+  try {
+    // REQ-21: mot transaction — insert thong_bao + danh dau ban nhap da phat hanh.
+    // Tra ve dong vua tao QUA ham de TypeScript khong thay no la `never` o ngoai.
+    thong_bao = await trong_giao_dich(async (khach) => {
+      const kq = await khach.query<{ id: string; ma: string }>(
+        `insert into thong_bao(tieu_de, noi_dung, muc_do, can_giai_trinh, pham_vi,
+                                phong_ban_id, nhan_vien_id, nguoi_tao, het_han,
+                                ten_luu, mime, kich_thuoc, popup, gui_email)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+         returning id, ma`,
+        [tieu_de, noi_dung, d.muc_do, d.can_giai_trinh, d.pham_vi, d.phong_ban_id,
+          d.nhan_vien_id, d.nguoi_tao, d.het_han, da_luu.ten_luu, da_luu.mime,
+          da_luu.kich_thuoc, bat_popup, bat_gui_email],
+      );
+      const dong = kq.rows[0];
+      if (dong === undefined) throw new LoiXungDot('Không tạo được dòng thông báo.');
+
+      const cap_nhat = await khach.query(
+        `update thong_bao_nhap_ai
+            set trang_thai = 'da_phat_hanh', thong_bao_id = $2,
+                spec_json = $3::jsonb, ket_qua_gate = $4::jsonb, cap_nhat_luc = now()
+          where id = $1 and thong_bao_id is null`,
+        [d.id, dong.id, JSON.stringify(spec_cuoi), JSON.stringify(kq_cuoi)],
+      );
+      if (cap_nhat.rowCount === 0) {
+        throw new LoiXungDot('Bản nháp này đã được ban hành rồi.');
+      }
+
+      // Gan tep quyet dinh vao ho so nhan vien CUNG transaction voi ban hanh: CSDL loi
+      // thi tep vua ghi tren dia bi xoa o catch ben ngoai, khong de lai dong ho so tro
+      // tep khong con. Ho so hoan chinh = ban hanh hoan chinh.
+      if (da_luu_ho_so !== null && danh_muc_qd_id !== null && d.nhan_vien_id !== null) {
+        await khach.query(
+          `insert into ho_so_tep
+             (id, nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime, kich_thuoc,
+              tai_len_boi)
+           values ($1,$2,'tai_lieu',null,$3,$4,$5,$6,$7)`,
+          [da_luu_ho_so.ma_tep, d.nhan_vien_id, ten_goc_ho_so, da_luu_ho_so.ten_luu,
+            da_luu_ho_so.mime, da_luu_ho_so.kich_thuoc, nd.sub],
+        );
+        await khach.query(
+          `insert into tai_lieu_nhan_vien (nhan_vien_id, danh_muc_id, trang_thai, tep_id)
+           values ($1,$2,'da_len_phan_mem',$3)
+           on conflict (nhan_vien_id, danh_muc_id) do update
+              set trang_thai = 'da_len_phan_mem', tep_id = $3, cap_nhat_luc = now()`,
+          [d.nhan_vien_id, danh_muc_qd_id, da_luu_ho_so.ma_tep],
+        );
+      }
+
+      return dong;
+    });
+  } catch (loi) {
+    // Tep da nam tren dia truoc khi co dong CSDL — xoa tep mo coi.
+    await xoa_tep_ho_so(da_luu.ten_luu).catch(() => {});
+    if (da_luu_ho_so !== null) {
+      await xoa_tep_ho_so(da_luu_ho_so.ten_luu).catch(() => {});
+    }
+    throw loi;
+  }
+
+  // Xoa tep DU THAO (ban chinh thuc da thay no).
+  if (d.ten_luu_docx !== null) {
+    xoa_tep_ho_so(d.ten_luu_docx).catch(() => {});
+  }
+
+  await ghi_nhat_ky(nd.sub, 'thong_bao_ai_phat_hanh', 'thong_bao_nhap_ai', d.id,
+    { thong_bao_id: thong_bao?.id, so_ky_hieu }, ip);
+
+  // Chuong bao + push cho dung tap nguoi nhan.
+  const nguoi_nhan = await truy_van<{ id: string }>(
+    `select u.id from nguoi_dung u
+       join nhan_vien nv on nv.id = u.nhan_vien_id
+      where u.dang_hoat_dong = true and nv.dang_hoat_dong = true
+        and ($1 = 'toan_cong_ty'
+             or ($1 = 'phong_ban' and nv.phong_ban_id = $2::uuid)
+             or ($1 = 'ca_nhan' and nv.id = $3::uuid))`,
+    [d.pham_vi, d.phong_ban_id, d.nhan_vien_id],
+  );
+  if (nguoi_nhan.length > 0) {
+    gui_ngam({
+      nguoi_dung_ids: nguoi_nhan.map((n) => n.id),
+      tieu_de: `Thông báo mới: ${tieu_de}`,
+      noi_dung: d.can_giai_trinh
+        ? 'Thông báo này yêu cầu bạn giải trình.' : 'Bấm để xem chi tiết.',
+      du_lieu: { man: 'thong-bao', thong_bao_id: thong_bao?.id ?? null },
+    });
+  }
+
+  // Gui email kem DOCX toi dung tap nguoi nhan. Fire-and-forget: khong cho HTTP ra ngoai
+  // vao luong request — mat giua chung thi vong quet `quet_email_cho` cua lich_chay bu lai.
+  void gui_email_thong_bao(thong_bao.id).catch((loi) => {
+    console.error('[thong_bao_ai] gui email ban hanh loi:', (loi as Error).message);
+  });
+
+  return {
+    ok: true,
+    thong_bao_id: thong_bao?.id ?? null,
+    ma_thong_bao: thong_bao?.ma ?? null,
+    so_ky_hieu,
+  };
 }

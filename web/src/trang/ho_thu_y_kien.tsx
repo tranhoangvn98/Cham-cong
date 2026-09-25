@@ -47,14 +47,30 @@ interface ChiTiet extends Dong {
   van_ban: { ma: string; trang_thai: string } | null;
 }
 
+interface ThuDaGui {
+  id: string;
+  noi_dung: string;
+  tao_luc: string;
+  nguoi_gui: string;
+  ho_thu_id: string;
+  ma_ho_thu: string | null;
+  tieu_de: string;
+  loai: string;
+  ma_nv: string;
+  ho_ten: string;
+  phong_ban: string | null;
+  trang_thai: string;
+}
+
 export function TrangHoThuYKien(): ReactNode {
+  const [tab, dat_tab] = useState<'den' | 'di'>('den');
   const [loc_loai, dat_loc_loai] = useState('');
   const [loc_tt, dat_loc_tt] = useState('');
   const [dang, dat_dang] = useState<string | null>(() => lay_muc_tieu_bao('ho-thu-y-kien'));
 
   useEffect(() => nghe_muc_tieu_bao(() => {
     const id = lay_muc_tieu_bao('ho-thu-y-kien');
-    if (id !== null) dat_dang(id);
+    if (id !== null) { dat_tab('den'); dat_dang(id); }
   }), []);
 
   const tham = new URLSearchParams();
@@ -62,8 +78,11 @@ export function TrangHoThuYKien(): ReactNode {
   if (loc_tt !== '') tham.set('trang_thai', loc_tt);
   const hoi = tham.toString() === '' ? '' : `?${tham.toString()}`;
   const ds = dung_nap<Dong[]>(`/api/ho-thu-y-kien${hoi}`, [loc_loai, loc_tt]);
+  const tham_di = loc_loai === '' ? '' : `?loai=${loc_loai}`;
+  const ds_di = dung_nap<ThuDaGui[]>(`/api/ho-thu-y-kien/thu-da-gui${tham_di}`, [loc_loai]);
 
   const { ds_xem, bo_phan_trang } = dung_phan_trang(ds.du_lieu ?? []);
+  const { ds_xem: ds_di_xem, bo_phan_trang: bo_di } = dung_phan_trang(ds_di.du_lieu ?? []);
 
   return (
     <>
@@ -75,71 +94,146 @@ export function TrangHoThuYKien(): ReactNode {
         </p>
       </div>
 
-      <div className="bo-loc">
-        <div className="o-nhap">
-          <label htmlFor="loai">Loại</label>
-          <Chon gia_tri={loc_loai} dat_gia_tri={dat_loc_loai}
-            cac_tuy_chon={Object.entries(NHAN_LOAI).map(([ma, nhan]): TuyChonChon => ({
-              ma, nhan,
-            }))}
-            rong="Tất cả" nhan="Lọc theo loại" />
-        </div>
-        <div className="o-nhap">
-          <label htmlFor="tt">Trạng thái</label>
-          <Chon gia_tri={loc_tt} dat_gia_tri={dat_loc_tt}
-            cac_tuy_chon={Object.entries(NHAN_TT).map(([ma, t]): TuyChonChon => ({
-              ma, nhan: t.ten,
-            }))}
-            rong="Tất cả" nhan="Lọc theo trạng thái" />
-        </div>
+      <div className="hang-tab">
+        <button className={tab === 'den' ? 'dang-chon' : ''} onClick={() => dat_tab('den')}>
+          Hòm thư đến
+        </button>
+        <button className={tab === 'di' ? 'dang-chon' : ''} onClick={() => dat_tab('di')}>
+          Thư đã gửi
+        </button>
       </div>
 
-      {ds.dang_tai ? <DangTai /> : ds.loi !== null ? <HopLoi loi={ds.loi} />
-        : ds.du_lieu === null || ds.du_lieu.length === 0 ? (
-          <Trong tieu_de="Hòm thư chưa có ý kiến nào"
-            mo_ta="Khi nhân viên gửi góp ý, phản ánh hoặc ý kiến dự thảo, chúng sẽ hiện ở đây." />
-        ) : (
-          <div className="the the-mong">
-            <div className="vo-bang">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Mã</th><th>Nhân viên</th><th>Phòng ban</th><th>Loại</th><th>Tiêu đề</th>
-                    <th>Trao đổi</th><th>Ngày gửi</th><th>Trạng thái</th><th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ds_xem.map((d) => (
-                    <tr key={d.id}>
-                      <td className="so mo-ma">{d.ma ?? '—'}</td>
-                      <td>
-                        {d.ho_ten}
-                        <span className="mo-ma"> {d.ma_nv}</span>
-                      </td>
-                      <td>{d.phong_ban ?? '—'}</td>
-                      <td className="khong-ngat">
-                        {NHAN_LOAI[d.loai] ?? d.loai}
-                        {d.ma_van_ban !== null && <span className="mo-ma"> · {d.ma_van_ban}</span>}
-                      </td>
-                      <td className="khong-ngat" style={{ maxWidth: 320 }}>{d.tieu_de}</td>
-                      <td className="canh-phai">{d.so_tra_loi}</td>
-                      <td className="khong-ngat mo-ma">{ngay_gio(d.tao_luc)}</td>
-                      <td className="khong-ngat">
-                        <span className={`nhan ${NHAN_TT[d.trang_thai]?.lop ?? 'nhan-mo'}`}>
-                          {NHAN_TT[d.trang_thai]?.ten ?? d.trang_thai}
-                        </span>
-                      </td>
-                      <td className="canh-phai">
-                        <button className="nut nut-nho" onClick={() => dat_dang(d.id)}>Xem</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {bo_phan_trang}
+      {tab === 'den' && (
+        <>
+          <div className="bo-loc">
+            <div className="o-nhap">
+              <label htmlFor="loai">Loại</label>
+              <Chon gia_tri={loc_loai} dat_gia_tri={dat_loc_loai}
+                cac_tuy_chon={Object.entries(NHAN_LOAI).map(([ma, nhan]): TuyChonChon => ({
+                  ma, nhan,
+                }))}
+                rong="Tất cả" nhan="Lọc theo loại" />
+            </div>
+            <div className="o-nhap">
+              <label htmlFor="tt">Trạng thái</label>
+              <Chon gia_tri={loc_tt} dat_gia_tri={dat_loc_tt}
+                cac_tuy_chon={Object.entries(NHAN_TT).map(([ma, t]): TuyChonChon => ({
+                  ma, nhan: t.ten,
+                }))}
+                rong="Tất cả" nhan="Lọc theo trạng thái" />
             </div>
           </div>
-        )}
+
+          {ds.dang_tai ? <DangTai /> : ds.loi !== null ? <HopLoi loi={ds.loi} />
+            : ds.du_lieu === null || ds.du_lieu.length === 0 ? (
+              <Trong tieu_de="Hòm thư chưa có ý kiến nào"
+                mo_ta="Khi nhân viên gửi góp ý, phản ánh hoặc ý kiến dự thảo, chúng sẽ hiện ở đây." />
+            ) : (
+              <div className="the the-mong">
+                <div className="vo-bang">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Mã</th><th>Nhân viên</th><th>Phòng ban</th><th>Loại</th><th>Tiêu đề</th>
+                        <th>Trao đổi</th><th>Ngày gửi</th><th>Trạng thái</th><th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ds_xem.map((d) => (
+                        <tr key={d.id}>
+                          <td className="so mo-ma">{d.ma ?? '—'}</td>
+                          <td>
+                            {d.ho_ten}
+                            <span className="mo-ma"> {d.ma_nv}</span>
+                          </td>
+                          <td>{d.phong_ban ?? '—'}</td>
+                          <td className="khong-ngat">
+                            {NHAN_LOAI[d.loai] ?? d.loai}
+                            {d.ma_van_ban !== null && <span className="mo-ma"> · {d.ma_van_ban}</span>}
+                          </td>
+                          <td className="khong-ngat" style={{ maxWidth: 320 }}>{d.tieu_de}</td>
+                          <td className="canh-phai">{d.so_tra_loi}</td>
+                          <td className="khong-ngat mo-ma">{ngay_gio(d.tao_luc)}</td>
+                          <td className="khong-ngat">
+                            <span className={`nhan ${NHAN_TT[d.trang_thai]?.lop ?? 'nhan-mo'}`}>
+                              {NHAN_TT[d.trang_thai]?.ten ?? d.trang_thai}
+                            </span>
+                          </td>
+                          <td className="canh-phai">
+                            <button className="nut nut-nho" onClick={() => dat_dang(d.id)}>Xem</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {bo_phan_trang}
+                </div>
+              </div>
+            )}
+        </>
+      )}
+
+      {tab === 'di' && (
+        <>
+          <div className="bo-loc">
+            <div className="o-nhap">
+              <label htmlFor="loai-di">Loại</label>
+              <Chon gia_tri={loc_loai} dat_gia_tri={dat_loc_loai}
+                cac_tuy_chon={Object.entries(NHAN_LOAI).map(([ma, nhan]): TuyChonChon => ({
+                  ma, nhan,
+                }))}
+                rong="Tất cả" nhan="Lọc theo loại" />
+            </div>
+          </div>
+
+          {ds_di.dang_tai ? <DangTai /> : ds_di.loi !== null ? <HopLoi loi={ds_di.loi} />
+            : ds_di.du_lieu === null || ds_di.du_lieu.length === 0 ? (
+              <Trong tieu_de="Chưa có thư đã gửi"
+                mo_ta="Mọi phản hồi Nhân sự gửi cho người lao động sẽ hiện ở đây." />
+            ) : (
+              <div className="the the-mong">
+                <div className="vo-bang">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Ngày gửi</th><th>Người gửi</th><th>Nội dung</th>
+                        <th>Hòm thư</th><th>Người nhận</th><th>Trạng thái</th><th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ds_di_xem.map((t) => (
+                        <tr key={t.id}>
+                          <td className="khong-ngat mo-ma">{ngay_gio(t.tao_luc)}</td>
+                          <td>{t.nguoi_gui}</td>
+                          <td className="khong-ngat" style={{ maxWidth: 340 }}>{t.noi_dung}</td>
+                          <td className="khong-ngat">
+                            {t.ma_ho_thu ?? '—'}
+                            <span className="mo-ma"> · {NHAN_LOAI[t.loai] ?? t.loai} · {t.tieu_de}</span>
+                          </td>
+                          <td>
+                            {t.ho_ten}
+                            <span className="mo-ma"> {t.ma_nv}</span>
+                          </td>
+                          <td className="khong-ngat">
+                            <span className={`nhan ${NHAN_TT[t.trang_thai]?.lop ?? 'nhan-mo'}`}>
+                              {NHAN_TT[t.trang_thai]?.ten ?? t.trang_thai}
+                            </span>
+                          </td>
+                          <td className="canh-phai">
+                            <button className="nut nut-nho" onClick={() => dat_dang(t.ho_thu_id)}>
+                              Xem
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {bo_di}
+                </div>
+              </div>
+            )}
+        </>
+      )}
 
       {dang !== null && (
         <HopThoaiChiTiet id={dang} khi_dong={() => dat_dang(null)} khi_xong={ds.nap_lai} />

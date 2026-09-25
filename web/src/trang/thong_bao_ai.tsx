@@ -87,6 +87,8 @@ const NHAN_TRANG_THAI: Record<string, string> = {
   dang_soan: 'Đang soạn', cho_duyet: 'Chờ duyệt', cho_ky: 'Chờ ký', loi: 'Lỗi',
   dang_lay_y_kien: 'Đang lấy ý kiến', da_phat_hanh: 'Đã phát hành', huy: 'Đã hủy',
 };
+
+export { NHAN_TRANG_THAI as NHAN_TRANG_THAI_VB };
 const NHAN_LOAI: Record<KieuVanBan, string> = {
   thong_bao: 'Thông báo', quyet_dinh: 'Quyết định', cong_van: 'Công văn',
 };
@@ -506,7 +508,7 @@ function KetQuaGateBang({ kq }: { kq: KetQuaGate[] }): ReactNode {
   );
 }
 
-function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () => void; khi_xong: () => void }): ReactNode {
+export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () => void; khi_xong: () => void }): ReactNode {
   const { du_lieu: d, dang_tai, loi, nap_lai } = dung_nap<ChiTietNhap>(`/api/thong-bao/ai/${id}`, [id]);
   const hd = dung_hanh_dong();
   const [dang_sua, dat_dang_sua] = useState(false);

@@ -51,6 +51,29 @@ export async function tuyen_ho_thu_y_kien(app: FastifyInstance): Promise<void> {
     );
   });
 
+  // ------------------------------------------------------------ thu da gui (thu di cua Nhan su)
+  // Dang ky TRUOC route /:id de duong tinh khong bi nuot vao tham so :id.
+  app.get('/ho-thu-y-kien/thu-da-gui', { preHandler: can_nhan_su }, async (req) => {
+    const q = than(req.query) as Record<string, unknown>;
+    const loai = trong_tap(q, 'loai', CAC_LOAI_HO_THU) as string | null;
+    return truy_van(
+      `select r.id, r.noi_dung, r.tao_luc,
+              coalesce(nv2.ho_ten, u.ten_dang_nhap) as nguoi_gui,
+              h.id as ho_thu_id, h.ma as ma_ho_thu, h.tieu_de, h.loai, h.trang_thai,
+              nv.ma_nv, nv.ho_ten, pb.ten as phong_ban
+         from ho_thu_y_kien_tra_loi r
+         join ho_thu_y_kien h on h.id = r.ho_thu_id
+         left join nguoi_dung u on u.id = r.nguoi_dung_id
+         left join nhan_vien nv2 on nv2.id = u.nhan_vien_id
+         join nhan_vien nv on nv.id = h.nhan_vien_id
+         left join phong_ban pb on pb.id = nv.phong_ban_id
+        where r.vai = 'nhan_su'
+          and ($1::text is null or h.loai = $1)
+        order by r.tao_luc desc limit 500`,
+      [loai],
+    );
+  });
+
   // ------------------------------------------------------------ chi tiet ho thu
   app.get('/ho-thu-y-kien/:id', { preHandler: can_nhan_su }, async (req) => {
     const id = lay_id(req);
