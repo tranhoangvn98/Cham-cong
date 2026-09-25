@@ -108,7 +108,8 @@ export async function tick_muc(
 async function so_muc_bat_buoc_chua_trong(khach: PoolClient, quy_trinh_id: string): Promise<number> {
   const d = await khach.query<{ so: number }>(
     `select count(*)::int as so from muc_checklist
-      where quy_trinh_id = $1 and bat_buoc and trang_thai not in ('xong','bo_qua')`,
+      where quy_trinh_id = $1 and bat_buoc and loai_tu_dong <> 'script_cuoi'
+        and trang_thai not in ('xong','bo_qua')`,
     [quy_trinh_id],
   );
   return d.rows[0]?.so ?? 0;

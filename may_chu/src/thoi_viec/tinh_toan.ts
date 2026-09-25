@@ -84,15 +84,22 @@ export function tien_phep_chua_nghi(so_ngay_con: number, luong_ngay: number): nu
   return Math.round(Math.max(0, so_ngay_con) * luong_ngay);
 }
 
-/** So muc bat buoc con `chua`/`dang` — con so do cua cham tron widget. */
+/**
+ * So muc bat buoc con `chua`/`dang` — con so do cua cham tron widget.
+ *
+ * KHONG dem muc `script_cuoi`: nhung muc do CHAY TRONG Cong 2 (sinh van ban, khoa tai
+ * khoan...) — no khong phai viec phai xong TRUOC khi den Cong 2.
+ */
 export function so_muc_bat_buoc_chua(mucs: readonly DongMucThoiViec[]): number {
-  return mucs.filter((m) => m.bat_buoc && (m.trang_thai === 'chua' || m.trang_thai === 'dang'))
+  return mucs.filter((m) => m.bat_buoc && m.loai_tu_dong !== 'script_cuoi'
+    && (m.trang_thai === 'chua' || m.trang_thai === 'dang'))
     .length;
 }
 
-/** Tat ca muc bat buoc da `xong` hoac `bo_qua` chua — dieu kien chuyen san_sang_chot. */
+/** Tat ca muc bat buoc DA PHI SCRIPT deu `xong`/`bo_qua` chua — dieu kien san_sang_chot. */
 export function san_sang_chot(mucs: readonly DongMucThoiViec[]): boolean {
-  return mucs.every((m) => !m.bat_buoc || m.trang_thai === 'xong' || m.trang_thai === 'bo_qua');
+  return mucs.every((m) => !m.bat_buoc || m.loai_tu_dong === 'script_cuoi'
+    || m.trang_thai === 'xong' || m.trang_thai === 'bo_qua');
 }
 
 /**

@@ -103,6 +103,13 @@ test('san sang chot khi moi muc bat buoc xong hoac bo qua', () => {
   assert.equal(san_sang_chot(mucs), true);
 });
 
+test('muc script_cuoi khong tinh vao dieu kien san sang chot (chay TRONG Cong 2)', () => {
+  const mucs = [MUC('a', true, 'xong'), { ...MUC('khoa_tai_khoan', true, 'chua'),
+    loai_tu_dong: 'script_cuoi' as const }];
+  assert.equal(so_muc_bat_buoc_chua(mucs), 0);
+  assert.equal(san_sang_chot(mucs), true);
+});
+
 test('kiem dieu kien chay: chan khi chua san sang hoac chua chot lastday', () => {
   const mucs = [MUC('a', true, 'xong')];
   const loi = kiem_dieu_kien_chay(mucs, 'dang_thuc_hien', false, null, 'bhxh@cty.vn', '');

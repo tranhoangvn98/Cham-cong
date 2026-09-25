@@ -385,8 +385,9 @@ export async function dam_bao_quy_trinh_tu_qd(
 }
 
 /**
- * Chuyen `dang_thuc_hien -> san_sang_chot` khi moi muc bat buoc da xong/bo qua.
- * Dieu kien nam trong CHINH CAU SQL (check bat bien REQ-QT-03 o tang CSDL, khong chi code).
+ * Chuyen `dang_thuc_hien -> san_sang_chot` khi moi muc bat buoc PHI SCRIPT da xong/bo_qua.
+ * Muc `script_cuoi` chay TRONG Cong 2 nen khong duoc tinh vao dieu kien nay — no khong
+ * the xong truoc khi Admin bam chay. Bat bien REQ-QT-03 van giu o tang CSDL.
  * Tra true neu da chuyen.
  */
 export async function chuyen_san_sang_chot(khach: PoolClient, quy_trinh_id: string): Promise<boolean> {
@@ -397,6 +398,7 @@ export async function chuyen_san_sang_chot(khach: PoolClient, quy_trinh_id: stri
         and not exists (
           select 1 from muc_checklist m
            where m.quy_trinh_id = qt.id and m.bat_buoc
+             and m.loai_tu_dong <> 'script_cuoi'
              and m.trang_thai not in ('xong','bo_qua')
         )`,
     [quy_trinh_id],
