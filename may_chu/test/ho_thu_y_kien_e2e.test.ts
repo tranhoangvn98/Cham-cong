@@ -94,7 +94,7 @@ before(async () => {
                   restart identity cascade`);
 
   await thuc_thi(
-    `insert into phong_ban(id, ten) values ($1, 'Phòng Kinh doanh')
+    `insert into phong_ban(id, ten) values ($1, 'Phòng Hòm thư')
      on conflict (id) do nothing`, [PHONG],
   );
   for (const [id, ma_nv, ho_ten, chuc_danh, phong] of [
