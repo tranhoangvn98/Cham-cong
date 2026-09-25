@@ -112,7 +112,8 @@ async function doc_qt(khach: PoolClient, id: string): Promise<
 > {
   const d = await khach.query<QtDangChay & { trang_thai: string }>(
     `select qt.id, qt.nhan_vien_id, qt.loai_hop_dong, qt.la_quan_ly_dn, qt.khong_can_bao_truoc,
-            qt.lastday_da_chot, qt.trang_thai, qt.tao_luc,
+            qt.lastday_da_chot, qt.trang_thai,
+            to_char(qt.tao_luc, 'YYYY-MM-DD') as tao_luc,
             to_char(qt.ngay_lam_viec_cuoi, 'YYYY-MM-DD') as ngay_lam_viec_cuoi,
             to_char(nv.ngay_vao, 'YYYY-MM-DD') as ngay_vao,
             nv.ho_ten, nv.ma_nv
