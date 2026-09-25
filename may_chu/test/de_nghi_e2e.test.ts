@@ -205,10 +205,13 @@ test('duyet de nghi: tao nhan_vien + 3 su kien + PIN + lenh may cua + viec nhap 
   assert.equal(dem_lenh?.so, 1, 'lenh khong day trung (khoa chong trung)');
 
   // May cua xac nhan lenh thanh cong -> tick muc 3 (REQ-TEST-01).
-  const bao = await goi('POST', `/iclock/devicecmd?SN=CUATEST01`, {
-    body: `ID=${lenh.id}&Return=0&CMD=DATA UPDATE USERINFO`,
+  // Route /iclock tra text/plain "OK" nen goi inject truc tiep, khong JSON.parse.
+  const bao = await app.inject({
+    method: 'POST',
+    url: '/iclock/devicecmd?SN=CUATEST01',
+    payload: `ID=${lenh.id}&Return=0&CMD=DATA UPDATE USERINFO`,
   });
-  assert.equal(bao.ma, 200);
+  assert.equal(bao.statusCode, 200);
   const muc3 = await truy_van_mot<{ xong: boolean }>(
     `select xong from cong_viec_hanh_dong
       where cong_viec_id = $1 and ten = 'Cấp số PIN + đẩy xuống máy cửa'`, [viec.id]);
