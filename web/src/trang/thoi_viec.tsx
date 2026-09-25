@@ -250,6 +250,13 @@ function ChiTietQuyTrinh({ id, khi_dong }: { id: string; khi_dong: () => void })
   const [ngay_chot, dat_ngay_chot] = useState('');
   const [khong_bao_truoc, dat_khong_bao_truoc] = useState(false);
   const [tep_mo, dat_tep_mo] = useState<{ tep_id: string; ten_goc: string } | null>(null);
+  // Hook phai nam TRUOC cac return som — neu khong so hook thay doi giua cac lan render
+  // (React #310) khi mo chi tiet mot quy trinh dang thuc hien.
+  const ng_cho = dung_nap<{ id: string; ten: string }[]>(
+    ct.du_lieu === null || ct.du_lieu.trang_thai === 'da_khoa'
+      || ct.du_lieu.trang_thai === 'da_huy'
+      ? null : `/api/thoi-viec/quy-trinh/${id}/nguoi-nhan`, [id]);
+  const [nguoi_nhan, dat_nguoi_nhan] = useState('');
 
   if (ct.dang_tai) return <div className="dang-tai">Đang tải…</div>;
   if (ct.loi !== null || ct.du_lieu === null) return <Trong tieu_de="Không tìm thấy quy trình" />;
@@ -293,10 +300,6 @@ function ChiTietQuyTrinh({ id, khi_dong }: { id: string; khi_dong: () => void })
     if (kq !== null) ct.nap_lai();
   };
 
-  const ng_cho = dung_nap<{ id: string; ten: string }[]>(
-    d.trang_thai === 'da_khoa' || d.trang_thai === 'da_huy'
-      ? null : `/api/thoi-viec/quy-trinh/${id}/nguoi-nhan`, [id]);
-  const [nguoi_nhan, dat_nguoi_nhan] = useState('');
   const gan_nhan = async (): Promise<void> => {
     if (nguoi_nhan === '') return;
     if (await hd.chay(() => goi(`/api/thoi-viec/ban-giao/${d.ban_giao[0]?.id}/nguoi-nhan`, {
