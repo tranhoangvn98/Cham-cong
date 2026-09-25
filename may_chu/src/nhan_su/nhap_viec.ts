@@ -76,8 +76,10 @@ export async function nguoi_nhan_nhap_viec(): Promise<string | null> {
   if (wf?.nhan_vien_id !== null && wf?.nhan_vien_id !== undefined) return wf.nhan_vien_id;
   const khai = cau_hinh.nhap_viec.nhan_su_id.trim();
   if (khai !== '') {
+    // Mot tham so so voi HAI cot khac kieu (id uuid, ma_nv text) thi PG khong suy duoc
+    // kieu cua $1 — ep cot uuid ve text truoc.
     const nv = await truy_van_mot<{ id: string }>(
-      'select id from nhan_vien where id = $1 or ma_nv = $1 limit 1', [khai]);
+      'select id from nhan_vien where id::text = $1 or ma_nv = $1 limit 1', [khai]);
     if (nv !== null) return nv.id;
   }
   return null;
