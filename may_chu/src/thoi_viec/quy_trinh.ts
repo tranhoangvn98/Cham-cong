@@ -256,7 +256,7 @@ export async function ban_giao_cua_quy_trinh(quy_trinh_id: string): Promise<Dong
          from ban_giao_muc bgm
          left join nguoi_dung nd on nd.id = bgm.nguoi_xac_nhan_id
         where bgm.ban_giao_id = $1
-        order by bgm.tao_luc, bgm.mo_ta`,
+        order by bgm.mo_ta`,
       [d.id],
     );
     ra.push({ ...d, muc });
