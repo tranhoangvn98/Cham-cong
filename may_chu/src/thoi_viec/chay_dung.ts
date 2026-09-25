@@ -74,7 +74,7 @@ export async function chay_dung_hoat_dong(
          left join phong_ban pb on pb.id = nv.phong_ban_id
          left join ho_so_ca_nhan hscn on hscn.nhan_vien_id = nv.id
         where qt.id = $1
-        for update`,
+        for update of qt`,
       [quy_trinh_id],
     );
     const qtc = hang.rows[0];
