@@ -19,6 +19,7 @@ import { gan_bo_ma_nhan_su, gan_ma, bo_chay_tu } from '../dinh_danh/nghiep_vu.ts
 import { goi_y_pin } from '../dinh_danh/cap_pin.ts';
 import { la_truong_phong, ms365_tao_bat, sinh_mat_khau_khoi_tao } from './ms365.ts';
 import { sinh_ten_dang_nhap, vai_tro_theo_vi_tri } from './vi_tri.ts';
+import { dong_bo_vi_tri_ho_so } from '../to_chuc/ghi.ts';
 
 /** Dau vao tao ho so — da duoc kiem tra dang chuoi/uuid o ben goi. */
 export interface DauVaoTaoHoSo {
@@ -163,6 +164,8 @@ export async function tao_ho_so_nhan_su(
               ghi_chu: `Hệ thống cấp khi tạo hồ sơ cho máy ${goi_y.thiet_bi_ten}`,
             }, bo_chay_tu(khach));
           }
+          // Co cau to chuc: dong bo bac vi tri tu ho so sang bang vi_tri + gan nhan vien.
+          await dong_bo_vi_tri_ho_so(khach, moi.id, v.vi_tri);
           // Cong phan quyen: tu tao ban ghi danh tinh (nhan_su.da_tao da co tu truoc).
           await ghi_su_kien('nhan_su.da_tao', { ma_nv: v.ma_nv, ho_ten: v.ho_ten }, khach);
           // ERP1: thiet lap tai khoan cho nhan su moi. Kem chuc danh + ten phong ban de

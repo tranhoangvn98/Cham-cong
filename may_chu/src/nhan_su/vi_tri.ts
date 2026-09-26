@@ -20,6 +20,30 @@ export const CAC_VI_TRI: readonly ViTri[] = [
 /** Ma vi tri dung de kiem dau vao API (trong_tap). */
 export const MA_VI_TRI: readonly string[] = CAC_VI_TRI.map((v) => v.ma);
 
+/**
+ * Anh xa bac ho so (nhan_vien.vi_tri) sang vi tri trong co cau to chuc (bang vi_tri
+ * cua module to_chuc, migration 084). Ten giu NGUYEN ten hien thi cua bac de hai man
+ * hinh noi cung mot ngon ngu; cap_bac quy ve tap CHECK cua bang vi_tri.
+ */
+export const BAC_VI_TRI_TO_CHUC: readonly {
+  ma: string;
+  ten: string;
+  cap_bac: 'cap_cao' | 'truong_phong' | 'truong_nhom' | 'chuyen_vien' | 'nhan_vien';
+}[] = [
+  { ma: 'tong_giam_doc', ten: 'Tổng Giám Đốc', cap_bac: 'cap_cao' },
+  { ma: 'giam_doc', ten: 'Giám đốc', cap_bac: 'cap_cao' },
+  { ma: 'truong_phong', ten: 'Trưởng phòng', cap_bac: 'truong_phong' },
+  { ma: 'truong_nhom', ten: 'Trưởng nhóm (Leader/Chuyên viên)', cap_bac: 'truong_nhom' },
+  { ma: 'nhan_vien', ten: 'Nhân viên', cap_bac: 'nhan_vien' },
+  { ma: 'thu_viec', ten: 'Thử việc', cap_bac: 'nhan_vien' },
+  { ma: 'hoc_viec', ten: 'Học việc (Thực tập sinh)', cap_bac: 'nhan_vien' },
+];
+
+/** Ma cua vi tri bac trong bang vi_tri (to_chuc) — tien to `bac.` de khong trung ma JD. */
+export function ma_vi_tri_to_chuc(ma: string): string {
+  return `bac.${ma}`;
+}
+
 /** Ten hien thi cua mot ma vi tri; khong co thi tra chuoi rong. */
 export function ten_vi_tri(ma: string | null): string {
   if (ma === null) return '';

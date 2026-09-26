@@ -1,6 +1,6 @@
 # Tổ chức – Vị trí – Trách nhiệm (JD phân tầng 3 cấp + RACI + PDCA)
 
-Phiên bản: 1.101.0 (2026-09-20)
+Phiên bản: 1.110.0 (2026-09-26)
 
 ## 1. Mô hình
 
@@ -22,6 +22,11 @@ Nhóm trách nhiệm (23)          → bảng nhom_trach_nhiem
   (nguồn: file “Sổ làm việc số 01 – Phân tầng 3 cấp trách nhiệm – Task 20.09.2026”).
   Nạp **idempotent** — chạy lại không sinh trùng; muốn nạp lại sạch: xóa các bảng
   `dau_viec*`, `tn_chi_tiet`, `vi_tri`, `nhom_trach_nhiem`, `bao_cao_mau` rồi khởi động lại.
+- **Vị trí bậc đồng bộ từ hồ sơ**: 7 bậc ở màn Nhân viên (`nhan_vien.vi_tri`, migration 091)
+  được tự động phản chiếu thành vị trí mã `bac.*` trong bảng `vi_tri` và gán cho nhân viên
+  (`nhan_vien_vi_tri`) ngay khi tạo/sửa hồ sơ (migration 093 backfill dữ liệu cũ). Đổi bậc
+  thì vị trí bậc cũ bị thay thế, bỏ bậc thì gỡ gán. Vị trí bậc chỉ làm "chính" khi nhân
+  viên chưa có vị trí chính nào và chức danh còn trống — không ghi đè chức danh đã khai.
 
 ## 2. Luồng hoạt động (PDCA)
 

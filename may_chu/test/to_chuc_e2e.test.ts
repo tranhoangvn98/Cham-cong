@@ -244,3 +244,57 @@ test('nhan vien thuong khong sua duoc danh muc (403/401)', async () => {
   });
   assert.notEqual(r.ma, 200);
 });
+
+test('ho so chon bac vi tri -> tu dong hien o co cau to chuc, doi bac, bo bac', async () => {
+  const than_ho_so = {
+    ma_nv: 'NV-BAC-01', ho_ten: 'Nhan Vien Bac Thu', pin_may: null, ma_erp: null,
+    phong_ban_id: null, ca_lam_id: null, ngay_vao: null, so_dien_thoai: null,
+    email: null, duoc_cham_cong_dien_thoai: false, noi_lam_viec_id: null,
+    che_do_luong: 'vn', khoi_id: null, chuc_danh: 'Trưởng phòng thử nghiệm',
+    vi_tri: 'truong_phong', tu_cap_pin: false, thiet_bi_serial: null,
+    tao_tk_ms365: false, tao_tk_he_thong: false,
+  };
+
+  // Tao ho so chon vi tri (bac) truong_phong.
+  const tao = await goi('POST', '/api/nhan-vien', { token: token_admin, body: than_ho_so });
+  assert.equal(tao.ma, 201);
+  const nv_moi = tao.body['id'] as string;
+
+  // Vi tri bac tu dong xuat hien trong danh sach vi tri cua co cau to chuc.
+  const ds = await goi('GET', '/api/to-chuc/vi-tri', { token: token_admin });
+  const bac = ((ds.body as unknown) as {
+    ma: string; ten: string; so_nguoi_gui: number;
+  }[]).find((v) => v.ma === 'bac.truong_phong');
+  assert.ok(bac !== undefined, 'khong co vi tri bac.truong_phong');
+  assert.equal(bac.ten, 'Trưởng phòng');
+  assert.equal(bac.so_nguoi_gui, 1);
+
+  // Nhan vien duoc gan dung vi tri bac; vi da co chuc danh nen khong lam chinh.
+  const gan = await goi('GET', `/api/to-chuc/nhan-vien/${nv_moi}/vi-tri`, { token: token_admin });
+  const cac = (gan.body as unknown) as { ten: string; la_chinh: boolean }[];
+  assert.equal(cac.length, 1);
+  assert.equal(cac[0]?.ten, 'Trưởng phòng');
+  assert.equal(cac[0]?.la_chinh, false);
+
+  // Doi bac trong ho so -> vi tri bac cu bi thay the, khong trung.
+  const doi_bac = await goi('PUT', `/api/nhan-vien/${nv_moi}`, {
+    token: token_admin, body: { ...than_ho_so, vi_tri: 'nhan_vien' },
+  });
+  assert.equal(doi_bac.ma, 200);
+  const gan2 = await goi('GET', `/api/to-chuc/nhan-vien/${nv_moi}/vi-tri`, { token: token_admin });
+  const cac2 = (gan2.body as unknown) as { ten: string }[];
+  assert.equal(cac2.length, 1);
+  assert.equal(cac2[0]?.ten, 'Nhân viên');
+
+  // Bo bac khoi ho so -> khong con giu vi tri bac nao.
+  const bo_bac = await goi('PUT', `/api/nhan-vien/${nv_moi}`, {
+    token: token_admin, body: { ...than_ho_so, vi_tri: null },
+  });
+  assert.equal(bo_bac.ma, 200);
+  const gan3 = await goi('GET', `/api/to-chuc/nhan-vien/${nv_moi}/vi-tri`, { token: token_admin });
+  assert.equal(((gan3.body as unknown) as unknown[]).length, 0);
+
+  // Don dep: xoa ho so thu + vi tri bac da sinh (khong lam lech cac tep e2e sau).
+  await thuc_thi('delete from nhan_vien where id = $1', [nv_moi]);
+  await thuc_thi(`delete from vi_tri where ma like 'bac.%'`);
+});

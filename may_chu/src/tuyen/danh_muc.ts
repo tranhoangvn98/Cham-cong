@@ -27,6 +27,7 @@ import { cap_pin, doc_dai_pin, goi_y_pin } from '../dinh_danh/cap_pin.ts';
 import { doi_chieu_may } from '../dinh_danh/doi_chieu_may.ts';
 import { tao_ho_so_nhan_su } from '../nhan_su/tao_ho_so.ts';
 import { MA_VI_TRI } from '../nhan_su/vi_tri.ts';
+import { dong_bo_vi_tri_ho_so } from '../to_chuc/ghi.ts';
 import { lich_cua_may } from '../ra_vao/khoa_cua.ts';
 
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
@@ -246,6 +247,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const ts = doc_nhan_vien(b, true);
     const ma_moi = String(ts[0]);
     const ten_moi = String(ts[1]);
+    const vi_tri_moi = ts[14] === null ? null : String(ts[14]);
 
     const kq = await ghi_bat_trung(
       () => trong_giao_dich(async (khach) => {
@@ -267,6 +269,9 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
             where id=$1`,
           [id, ...ts],
         );
+
+        // Co cau to chuc: dong bo bac vi tri tu ho so sang bang vi_tri + gan nhan vien.
+        await dong_bo_vi_tri_ho_so(khach, id, vi_tri_moi);
 
         // CHI gui khi ho ten THAT SU doi. Moi lan bam Lưu deu gui mot su kien thi hop thu day
         // nhung dong khong noi len dieu gi, va nguoi doc nhat ky ben cong het nhin ra lan doi

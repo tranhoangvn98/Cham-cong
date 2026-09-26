@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.110.0] — 2026-09-26
+
+**Đồng nhất vị trí (bậc) từ hồ sơ nhân sự với cơ cấu tổ chức.**
+
+- Trước đây chọn bậc (7 bậc) ở màn Nhân viên không xuất hiện ở trang "Cơ cấu tổ chức &
+  trách nhiệm" vì hai bên dùng hai bảng `vi_tri` khác nhau. Nay khi tạo hoặc sửa hồ sơ,
+  hệ thống **tự động** tạo vị trí bậc tương ứng trong bảng `vi_tri` của tổ chức (mã `bac.*`,
+  phạm vi toàn công ty) và gán nhân viên vào `nhan_vien_vi_tri` — đổi bậc thì vị trí bậc cũ
+  bị thay thế, bỏ bậc thì gỡ gán. Chạy trong cùng transaction tạo/sửa hồ sơ.
+- Vị trí bậc chỉ làm "vị trí chính" khi nhân viên chưa có vị trí chính nào khác và chức
+  danh còn trống — không ghi đè chức danh cụ thể đã khai ở hồ sơ.
+- Migration 093 backfill: 7 vị trí bậc + gán cho toàn bộ nhân viên đã có bậc từ trước.
+- Test: 4 test đơn vị mới (ánh xạ bậc) + e2e `to_chuc_e2e.test.ts` phủ tạo hồ sơ → hiện ở
+  cơ cấu → đổi bậc → bỏ bậc.
+
 ## [1.109.0] — 2026-09-26
 
 **Onboarding nhân sự mới tự động (DTKT 02/2026): đề nghị → Admin duyệt 1 bước → tự khởi tạo.**

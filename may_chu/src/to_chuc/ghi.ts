@@ -12,6 +12,7 @@ import { la_vai_tro_nhan_su } from '../bao_mat/quyen_ho_so.ts';
 import type { NguoiXem } from '../viec/quyen.ts';
 import { dau_viec_theo_id } from './doc.ts';
 import { dau_viec_cua_vi_tri, tao_mau_tu_dau_viec, tat_mau_theo_vi_tri } from './sinh_mau.ts';
+import { BAC_VI_TRI_TO_CHUC, ma_vi_tri_to_chuc } from '../nhan_su/vi_tri.ts';
 import type { CapBac, DongBuoc, DongRaci, TanSuat } from './kieu.ts';
 
 // ---------------------------------------------------------------- quyen
@@ -363,6 +364,93 @@ export async function bo_vi_tri(
     await tat_mau_theo_vi_tri(khach, nhan_vien_id, vi_tri_id);
   });
   await dong_bo_chuc_danh(nhan_vien_id);
+}
+
+// ---------------------------------------------------------------- dong bo vi tri ho so
+/**
+ * Dong bo vi tri (bac) tu ho so nhan su (nhan_vien.vi_tri) sang co cau to chuc:
+ * tao vi tri bac tuong ung trong bang `vi_tri` (neu chua co) roi gan nhan vien vao
+ * `nhan_vien_vi_tri`. Nhan vien luon giu DUNG MOT vi tri bac — vi tri bac cu bi thay
+ * the khi doi bac trong ho so, va bi go bo khi bo bac. Chay TRONG transaction cua
+ * nguoi goi (tao ho so / sua nhan vien).
+ *
+ * Vi tri bac chi lam "chinh" khi nhan vien chua co vi tri chinh nao NGOAI bac va chuc
+ * danh con trong — tranh ghi de chuc danh cu the da khai o ho so.
+ */
+export async function dong_bo_vi_tri_ho_so(
+  khach: pg.PoolClient, nhan_vien_id: string, vi_tri_ma: string | null,
+): Promise<void> {
+  if (vi_tri_ma === null) {
+    await khach.query(
+      `delete from nhan_vien_vi_tri where nhan_vien_id = $1
+         and vi_tri_id in (select id from vi_tri where ma like 'bac.%')`,
+      [nhan_vien_id],
+    );
+    await khach.query(
+      `update nhan_vien set vi_tri_chinh_id = null
+        where id = $1 and vi_tri_chinh_id in (select id from vi_tri where ma like 'bac.%')`,
+      [nhan_vien_id],
+    );
+    return;
+  }
+
+  const bac = BAC_VI_TRI_TO_CHUC.find((v) => v.ma === vi_tri_ma);
+  if (bac === undefined) return; // Ma bac khong hop le — khong dong bo.
+
+  // Tao (hoac tim lai) vi tri bac tuong ung trong bang vi_tri cua co cau to chuc.
+  const ma_vt = ma_vi_tri_to_chuc(vi_tri_ma);
+  const tao = await khach.query<{ id: string }>(
+    `insert into vi_tri(ma, ten, cap_bac, pham_vi, phong_ban_id, mo_ta)
+     values ($1, $2, $3, 'toan_cong_ty', null,
+             'Vị trí bậc đồng bộ tự động từ hồ sơ nhân sự — đổi bậc ở màn Nhân viên.')
+     on conflict (ma) do nothing
+     returning id`,
+    [ma_vt, bac.ten, bac.cap_bac],
+  );
+  const vi_tri_id = tao.rows[0]?.id
+    ?? (await khach.query<{ id: string }>('select id from vi_tri where ma = $1', [ma_vt])).rows[0]?.id;
+  if (vi_tri_id === undefined) throw new LoiKhongTim('Không tìm thấy vị trí bậc để đồng bộ.');
+
+  // Nhan vien co vi tri chinh ngoai bac + chuc danh da co chua — de quyet la_chinh.
+  const ht = await khach.query<{ co_chinh: string; chuc_danh: string | null }>(
+    `select
+       (select count(*)::text from nhan_vien_vi_tri c
+         join vi_tri vt2 on vt2.id = c.vi_tri_id
+        where c.nhan_vien_id = $1 and c.la_chinh and vt2.ma not like 'bac.%') as co_chinh,
+       (select chuc_danh from nhan_vien where id = $1) as chuc_danh`,
+    [nhan_vien_id],
+  );
+  const co_chinh_khac = Number(ht.rows[0]?.co_chinh ?? 0) > 0;
+  const chuc_danh_trong = (ht.rows[0]?.chuc_danh ?? '').trim() === '';
+  const la_chinh = !co_chinh_khac && chuc_danh_trong;
+
+  // Xoa cac vi tri bac cu (thay the bang vi tri bac moi), roi them vi tri moi.
+  await khach.query(
+    `delete from nhan_vien_vi_tri where nhan_vien_id = $1
+       and vi_tri_id in (select id from vi_tri where ma like 'bac.%')
+       and vi_tri_id <> $2`,
+    [nhan_vien_id, vi_tri_id],
+  );
+  await khach.query(
+    `update nhan_vien set vi_tri_chinh_id = null
+      where id = $1 and vi_tri_chinh_id in (select id from vi_tri where ma like 'bac.%')
+        and vi_tri_chinh_id <> $2`,
+    [nhan_vien_id, vi_tri_id],
+  );
+  await khach.query(
+    `insert into nhan_vien_vi_tri(nhan_vien_id, vi_tri_id, la_chinh)
+     values ($1, $2, $3)
+     on conflict (nhan_vien_id, vi_tri_id)
+     do update set la_chinh = nhan_vien_vi_tri.la_chinh or excluded.la_chinh`,
+    [nhan_vien_id, vi_tri_id, la_chinh],
+  );
+  if (la_chinh) {
+    await khach.query(
+      `update nhan_vien set vi_tri_chinh_id = $2, chuc_danh = $3, cap_nhat_luc = now()
+        where id = $1`,
+      [nhan_vien_id, vi_tri_id, bac.ten],
+    );
+  }
 }
 
 /** Dong bo nhan_vien.chuc_danh + vi_tri_chinh_id theo cac vi tri dang giu. */
