@@ -18,7 +18,7 @@ test('anh xa du 7 bac, ten giong man Nhan vien, ma tien to bac.', () => {
 });
 
 test('cap bac anh xa nam trong tap cap_bac cua bang vi_tri', () => {
-  const hop_le = new Set(['cap_cao', 'truong_phong', 'truong_nhom', 'chuyen_vien', 'nhan_vien']);
+  const hop_le = new Set(['cap_cao', 'truong_phong', 'truong_nhom', 'nhan_vien']);
   for (const x of BAC_VI_TRI_TO_CHUC) {
     assert.ok(hop_le.has(x.cap_bac), `cap bac ${x.cap_bac} khong hop le (bac ${x.ma})`);
   }

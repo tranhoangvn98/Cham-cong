@@ -28,7 +28,7 @@ export const MA_VI_TRI: readonly string[] = CAC_VI_TRI.map((v) => v.ma);
 export const BAC_VI_TRI_TO_CHUC: readonly {
   ma: string;
   ten: string;
-  cap_bac: 'cap_cao' | 'truong_phong' | 'truong_nhom' | 'chuyen_vien' | 'nhan_vien';
+  cap_bac: 'cap_cao' | 'truong_phong' | 'truong_nhom' | 'nhan_vien';
 }[] = [
   { ma: 'tong_giam_doc', ten: 'Tổng Giám Đốc', cap_bac: 'cap_cao' },
   { ma: 'giam_doc', ten: 'Giám đốc', cap_bac: 'cap_cao' },

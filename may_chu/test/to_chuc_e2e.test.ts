@@ -150,7 +150,7 @@ test('danh sach vi tri + bao phu tra ve du lieu', async () => {
   assert.equal(b.dau_viec, 296);
   assert.equal(b.dau_viec_lo_hong, 296);
   assert.equal(b.theo_nhom.length, 23);
-  assert.equal(b.theo_cap_bac.length, 5);
+  assert.equal(b.theo_cap_bac.length, 4); // chuyen_vien da gop vao truong_nhom (migration 094)
   assert.equal(
     b.theo_cap_bac.reduce((t, c) => t + c.so_vi_tri, 0), 45,
     'phan bo cap bac phai gom du 45 vi tri',

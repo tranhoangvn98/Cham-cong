@@ -83,7 +83,7 @@ interface NhanVienGon {
 
 const NHAN_CAP_BAC: Record<string, string> = {
   cap_cao: 'Cấp cao', truong_phong: 'Trưởng phòng', truong_nhom: 'Trưởng nhóm',
-  chuyen_vien: 'Chuyên viên', nhan_vien: 'Nhân viên',
+  nhan_vien: 'Nhân viên',
 };
 const NHAN_TAN_SUAT: Record<string, string> = {
   hang_ngay: 'Hằng ngày', hang_tuan: 'Hằng tuần', hai_tuan: '2 tuần',

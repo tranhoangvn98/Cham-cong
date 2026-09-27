@@ -1,8 +1,8 @@
 // Kieu du lieu cua module to chuc – vi tri – trach nhiem.
 // Cac kieu doc tu CSDL tra cho giao dien (web / app).
 
-/** Cap bac vi tri theo file JD. */
-export type CapBac = 'cap_cao' | 'truong_phong' | 'truong_nhom' | 'chuyen_vien' | 'nhan_vien';
+/** Cap bac vi tri theo file JD. `chuyen_vien` da gop vao `truong_nhom` (migration 094). */
+export type CapBac = 'cap_cao' | 'truong_phong' | 'truong_nhom' | 'nhan_vien';
 
 /** Tan suat chuan hoa cua dau viec (cot dau_viec.tan_suat). */
 export type TanSuat =

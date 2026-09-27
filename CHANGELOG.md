@@ -2,6 +2,18 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.111.0] — 2026-09-27
+
+**Gộp cấp bậc "Chuyên viên" vào "Trưởng nhóm" trong cơ cấu tổ chức.**
+
+- Theo quyết định công ty: Trưởng nhóm và Chuyên viên là một vị trí. Migration 094 chuyển
+  các vị trí JD cấp `chuyen_vien` (BE, FE, CV-*, KBHQ) sang `truong_nhom` và bỏ giá trị
+  `chuyen_vien` khỏi ràng buộc CHECK — bảng "Vị trí theo cấp bậc" còn 4 cấp (Cấp cao,
+  Trưởng phòng, Trưởng nhóm, Nhân viên).
+- Cập nhật đồng bộ: seed JD (`du_lieu_jd_danh_muc.ts`), kiểu `CapBac`, danh sách cấp bậc
+  API (`CAP_BAC`), nhãn web (`NHAN_CAP_BAC`), sắp xếp tổng quan. Ô Vị trí 7 bậc trong hồ
+  sơ nhân sự giữ nguyên (bậc "Trưởng nhóm (Leader/Chuyên viên)" vốn đã gộp sẵn).
+
 ## [1.110.0] — 2026-09-26
 
 **Đồng nhất vị trí (bậc) từ hồ sơ nhân sự với cơ cấu tổ chức.**

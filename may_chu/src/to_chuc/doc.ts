@@ -441,8 +441,8 @@ export async function tong_quan(): Promise<DongTongQuan> {
           group by vt.cap_bac
           order by case vt.cap_bac
                      when 'cap_cao' then 0 when 'truong_phong' then 1
-                     when 'truong_nhom' then 2 when 'chuyen_vien' then 3
-                     else 4 end`,
+                     when 'truong_nhom' then 2
+                     else 3 end`,
       ),
     ]);
 

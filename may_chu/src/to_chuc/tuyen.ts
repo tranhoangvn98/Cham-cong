@@ -14,7 +14,7 @@ import * as doc from './doc.ts';
 import * as ghi from './ghi.ts';
 import type { CapBac, DongRaci, TanSuat } from './kieu.ts';
 
-const CAP_BAC = ['cap_cao', 'truong_phong', 'truong_nhom', 'chuyen_vien', 'nhan_vien'] as const;
+const CAP_BAC = ['cap_cao', 'truong_phong', 'truong_nhom', 'nhan_vien'] as const;
 const PHAM_VI = ['cu_the', 'toan_cong_ty', 'moi_phong'] as const;
 const TAN_SUAT = ['hang_ngay', 'hang_tuan', 'hai_tuan', 'hang_thang', 'hang_quy',
   'hang_nam', '6_thang', 'phat_sinh', 'lien_tuc'] as const;

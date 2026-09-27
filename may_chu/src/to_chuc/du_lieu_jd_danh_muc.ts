@@ -117,7 +117,7 @@ export const CAC_TN: DongTn[] = [
 export interface DongViTri {
   ma: string;
   ten: string;
-  cap_bac: 'cap_cao' | 'truong_phong' | 'truong_nhom' | 'chuyen_vien' | 'nhan_vien';
+  cap_bac: 'cap_cao' | 'truong_phong' | 'truong_nhom' | 'nhan_vien';
   /** Ten phong; null voi vi tri pham vi toan cong ty / moi phong. */
   phong: string | null;
   pham_vi: 'cu_the' | 'toan_cong_ty' | 'moi_phong';
@@ -142,13 +142,13 @@ export const CAC_VI_TRI: DongViTri[] = [
   { ma: 'TP-LQ', ten: 'Trưởng phòng liên quan', cap_bac: 'truong_phong', phong: null, pham_vi: 'moi_phong' },
   { ma: 'TK-TQ', ten: 'Trưởng kho TQ (anh Liao)', cap_bac: 'truong_nhom', phong: 'Phòng Kho TQ', pham_vi: 'cu_the' },
   { ma: 'TN', ten: 'Trưởng nhóm', cap_bac: 'truong_nhom', phong: null, pham_vi: 'toan_cong_ty' },
-  { ma: 'BE', ten: 'Backend Dev (Middle)', cap_bac: 'chuyen_vien', phong: 'Phòng IT', pham_vi: 'cu_the' },
-  { ma: 'CV-QC', ten: 'CV Quảng cáo (Marketing)', cap_bac: 'chuyen_vien', phong: 'Phòng Marketing', pham_vi: 'cu_the' },
-  { ma: 'CV-CS', ten: 'CV chính sách NK', cap_bac: 'chuyen_vien', phong: 'Phòng XNK', pham_vi: 'cu_the' },
-  { ma: 'CV-NC', ten: 'CV nghiên cứu sản phẩm (Phòng XNK)', cap_bac: 'chuyen_vien', phong: 'Phòng XNK', pham_vi: 'cu_the' },
-  { ma: 'KBHQ', ten: 'Chuyên viên KBHQ', cap_bac: 'chuyen_vien', phong: 'Phòng XNK', pham_vi: 'cu_the' },
-  { ma: 'CV-XNK', ten: 'Chuyên viên XNK', cap_bac: 'chuyen_vien', phong: 'Phòng XNK', pham_vi: 'cu_the' },
-  { ma: 'FE', ten: 'Frontend Dev (Middle)', cap_bac: 'chuyen_vien', phong: 'Phòng IT', pham_vi: 'cu_the' },
+  { ma: 'BE', ten: 'Backend Dev (Middle)', cap_bac: 'truong_nhom', phong: 'Phòng IT', pham_vi: 'cu_the' },
+  { ma: 'CV-QC', ten: 'CV Quảng cáo (Marketing)', cap_bac: 'truong_nhom', phong: 'Phòng Marketing', pham_vi: 'cu_the' },
+  { ma: 'CV-CS', ten: 'CV chính sách NK', cap_bac: 'truong_nhom', phong: 'Phòng XNK', pham_vi: 'cu_the' },
+  { ma: 'CV-NC', ten: 'CV nghiên cứu sản phẩm (Phòng XNK)', cap_bac: 'truong_nhom', phong: 'Phòng XNK', pham_vi: 'cu_the' },
+  { ma: 'KBHQ', ten: 'Chuyên viên KBHQ', cap_bac: 'truong_nhom', phong: 'Phòng XNK', pham_vi: 'cu_the' },
+  { ma: 'CV-XNK', ten: 'Chuyên viên XNK', cap_bac: 'truong_nhom', phong: 'Phòng XNK', pham_vi: 'cu_the' },
+  { ma: 'FE', ten: 'Frontend Dev (Middle)', cap_bac: 'truong_nhom', phong: 'Phòng IT', pham_vi: 'cu_the' },
   { ma: 'KSV', ten: 'Kiểm soát viên (KSV)', cap_bac: 'nhan_vien', phong: 'Ban Kiểm soát', pham_vi: 'cu_the' },
   { ma: 'NV-MOI', ten: 'NV (mỗi phòng)', cap_bac: 'nhan_vien', phong: null, pham_vi: 'moi_phong' },
   { ma: 'NV-CSKH', ten: 'NV CSKH', cap_bac: 'nhan_vien', phong: 'Phòng CSKH', pham_vi: 'cu_the' },
