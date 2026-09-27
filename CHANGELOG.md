@@ -2,6 +2,18 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.111.1] — 2026-09-27
+
+**Sửa lỗi: gán vị trí JD lỗi 500 "no unique or exclusion constraint matching".**
+
+- Migration 084 khai index unique một phần cho `cong_viec_mau_dinh_ky(nhan_vien_id,
+  dau_viec_id)` nhưng production thời điểm chạy chưa có dòng đó (tệp 084 bổ sung sau) →
+  mọi lần gán vị trí JD (sinh mẫu định kỳ) ném 42P10. Migration 095 tạo lại index
+  (`if not exists`, đã kiểm không có dòng trùng).
+- Hậu quả được sửa: gán 25 vị trí JD rõ ràng cho nhân viên (CEO, TP-CSKH, KTT, TBKS,
+  TN ×5, NVKD ×11, KSV, NV-CSKH ×3, NV-HCNS) + chuẩn hóa tên phòng trùng (CSKH, IT,
+  HCNS, Kiểm soát, XNK, Kho TQ) — bảng tổng quan 5/52 → 14/52 vị trí có người giữ.
+
 ## [1.111.0] — 2026-09-27
 
 **Gộp cấp bậc "Chuyên viên" vào "Trưởng nhóm" trong cơ cấu tổ chức.**
