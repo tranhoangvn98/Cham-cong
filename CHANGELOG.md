@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.112.1] — 2026-09-28
+
+**Ghi quy ước "người đã nghỉ phải biến mất khỏi mọi luồng vận hành" vào CLAUDE.md.**
+
+- Chốt thành quy ước toàn dự án để mọi phiên AI triển khai tính năng mới tự kèm theo:
+  mọi endpoint danh sách vận hành phải lọc `dang_hoat_dong` ngay từ đầu, badge đếm cùng
+  điều kiện, thêm trạng thái mới gắn nhân viên phải cập nhật `cho_nghi_viec`, không đặt
+  lọc vào fragment SQL dùng chung, và danh sách ngoại lệ chứng từ/lịch sử giữ nguyên.
+
 ## [1.112.0] — 2026-09-28
 
 **Rà soát logic nghỉ việc: người đã nghỉ không còn lẫn trong các luồng vận hành.**

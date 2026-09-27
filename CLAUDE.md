@@ -83,6 +83,28 @@ Người **vắng cả ngày không có lần quẹt nào**, nên không có gì
 `su_kien/lich_chay.ts` chạy sau 01:00 để chốt ngày hôm trước cho **toàn bộ** nhân viên.
 Đừng bỏ tiến trình này — bỏ là ngày vắng không xuất hiện trên bảng công.
 
+### Người đã nghỉ việc phải biến mất khỏi mọi luồng vận hành (bắt buộc khi thêm code mới)
+
+Đã từng xảy ra: luồng cho nghỉ việc chỉ đổi `dang_hoat_dong` mà hàng loạt màn hình không
+lọc, nên người đã nghỉ vẫn lẫn trong danh sách vận hành (rà soát toàn bộ ở 1.112.0). Từ nay:
+
+- **Mọi endpoint mới hiển thị DANH SÁCH để thao tác/duyệt hằng ngày** (đơn chờ duyệt, kỷ
+  luật, vi phạm, ra/vào, ứng lương, phụ cấp, khiếu nại, KPI, hòm thư, dashboard, badge
+  đếm...) **PHẢI kèm điều kiện `nv.dang_hoat_dong`** ngay từ lúc viết — không chờ "sửa sau".
+- **Badge đếm phải đếm cùng điều kiện với danh sách** — danh sách lọc rồi mà badge không
+  lọc thì số trên giao diện lệch nhau.
+- **Khi thêm trạng thái mới gắn với nhân viên** (mẫu định kỳ, tài khoản, thiết bị, quyền...)
+  phải cập nhật luôn `nhan_su/nghi_viec.ts` (`cho_nghi_viec`) để dọn khi người đó nghỉ —
+  hiện nó khóa tài khoản, thu hồi token, **tắt mẫu việc định kỳ** và ghi sự kiện ra
+  `hop_thu_di`. Quên bước này là hệ thống tiếp tục sinh việc/giữ quyền cho người đã rời.
+- **KHÔNG đặt lọc vào fragment SQL dùng chung** (kiểu `TU_BANG` trong
+  `don_tu/nghiep_vu.ts`, `ket_qua_ot.ts`) vì chi tiết đơn của người đã nghỉ vẫn phải đọc
+  được để xử lý — chỉ lọc ở **hàm danh sách**.
+- **Ngoại lệ giữ nguyên** (chứng từ/lịch sử): bảng công, lịch sử quẹt, phiếu lương, kho hồ
+  sơ, công việc đã giao (phải hiện để điều chuyển việc dở), log người đã đọc thông báo.
+- Khi thêm endpoint danh sách mới: thêm 1 test e2e "người đã nghỉ không hiện" nếu file e2e
+  của module đó đã có sẵn.
+
 ### Bảo mật
 
 - Không bao giờ commit `.env`. Chạy `git status` bằng mắt trước commit đầu.
