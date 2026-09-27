@@ -105,7 +105,7 @@ export async function tuyen_to_chuc(app: FastifyInstance): Promise<void> {
         `select md.id, md.nhan_vien_id, nv.ho_ten, md.quy_tac, md.dang_bat,
                 to_char(md.bat_dau, 'YYYY-MM-DD') as bat_dau
            from cong_viec_mau_dinh_ky md
-           join nhan_vien nv on nv.id = md.nhan_vien_id
+           join nhan_vien nv on nv.id = md.nhan_vien_id and nv.dang_hoat_dong
           where md.dau_viec_id in (select dv.id from dau_viec dv where dv.vi_tri_id = $1)
           order by nv.ho_ten`,
         [id],

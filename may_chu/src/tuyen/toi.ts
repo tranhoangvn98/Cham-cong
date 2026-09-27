@@ -252,15 +252,15 @@ async function viec_can_chu_y(req: FastifyRequest, nv_id: string): Promise<{
   if (la_nguoi_duyet(nd.vai_tro)) {
     const chi_phong_minh = !xem_duoc_tat_ca(nd);
     const r = await truy_van_mot<{ so: string }>(
-      `select (select count(*) from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id
+      `select (select count(*) from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
                 where d.trang_thai = 'cho_duyet' and d.nhan_vien_id <> $2
                   and (not $1::boolean
                        or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)))
-            + (select count(*) from don_giai_trinh d join nhan_vien nv on nv.id = d.nhan_vien_id
+            + (select count(*) from don_giai_trinh d join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
                 where d.trang_thai = 'cho_duyet' and d.nhan_vien_id <> $2
                   and (not $1::boolean
                        or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)))
-            + (select count(*) from don_tu d join nhan_vien nv on nv.id = d.nhan_vien_id
+            + (select count(*) from don_tu d join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
                 where d.trang_thai = 'cho_duyet' and d.nhan_vien_id <> $2
                   and (not $1::boolean
                        or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2))) as so`,

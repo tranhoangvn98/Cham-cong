@@ -254,7 +254,7 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
             tb.ma as ma_thong_bao, tb.tieu_de
        from thong_bao_da_doc dd
        join thong_bao tb on tb.id = dd.thong_bao_id
-       join nhan_vien nv on nv.id = dd.nhan_vien_id
+       join nhan_vien nv on nv.id = dd.nhan_vien_id and nv.dang_hoat_dong
        left join phong_ban pb on pb.id = nv.phong_ban_id
       where dd.giai_trinh is not null
       order by dd.giai_trinh_luc desc limit 300`));

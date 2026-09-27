@@ -427,7 +427,7 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
               (select count(*) from ho_thu_y_kien_tra_loi r where r.ho_thu_id = h.id)::int
                 as so_tra_loi
          from ho_thu_y_kien h
-         join nhan_vien nv on nv.id = h.nhan_vien_id
+         join nhan_vien nv on nv.id = h.nhan_vien_id and nv.dang_hoat_dong
          left join phong_ban pb on pb.id = nv.phong_ban_id
         where h.loai = 'du_thao' and h.nhap_ai_id = $1
         order by h.tao_luc desc limit 300`,

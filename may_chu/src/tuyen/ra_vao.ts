@@ -57,7 +57,7 @@ export async function tuyen_ra_vao(app: FastifyInstance): Promise<void> {
               max(x.ghi_chu) as ghi_chu,
               max(x.cap_nhat_luc) as xu_ly_luc
          from canh_bao_ra_vao cb
-         join nhan_vien nv on nv.id = cb.nhan_vien_id
+         join nhan_vien nv on nv.id = cb.nhan_vien_id and nv.dang_hoat_dong
          left join phong_ban pb on pb.id = nv.phong_ban_id
          left join xu_ly_ra_vao x
            on x.nhan_vien_id = cb.nhan_vien_id and x.ngay = cb.ngay and x.ma_loi = cb.ma_loi
@@ -108,7 +108,7 @@ export async function tuyen_ra_vao(app: FastifyInstance): Promise<void> {
                 count(distinct (cb.ngay, cb.ma_loi))
                   filter (where x.trang_thai is null)::int as chua
            from canh_bao_ra_vao cb
-           join nhan_vien nv on nv.id = cb.nhan_vien_id
+           join nhan_vien nv on nv.id = cb.nhan_vien_id and nv.dang_hoat_dong
            left join phong_ban pb on pb.id = nv.phong_ban_id
            left join xu_ly_ra_vao x on x.nhan_vien_id = cb.nhan_vien_id
                  and x.ngay = cb.ngay and x.ma_loi = cb.ma_loi
@@ -122,7 +122,7 @@ export async function tuyen_ra_vao(app: FastifyInstance): Promise<void> {
                 count(distinct (cb.nhan_vien_id, cb.ngay, cb.ma_loi))::int as so_canh_bao,
                 count(distinct cb.nhan_vien_id)::int as so_nguoi
            from canh_bao_ra_vao cb
-           join nhan_vien nv on nv.id = cb.nhan_vien_id
+           join nhan_vien nv on nv.id = cb.nhan_vien_id and nv.dang_hoat_dong
            left join phong_ban pb on pb.id = nv.phong_ban_id
           where cb.ngay between $1 and $2
           group by pb.ten order by so_canh_bao desc limit 10`,

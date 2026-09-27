@@ -51,6 +51,12 @@ export async function cho_nghi_viec(
     [nhan_vien_id],
   );
 
+  // Tat mau viec dinh ky JD — khong sinh viec moi cho nguoi da roi khoi cong ty.
+  await khach.query(
+    'update cong_viec_mau_dinh_ky set dang_bat = false where nhan_vien_id = $1 and dang_bat = true',
+    [nhan_vien_id],
+  );
+
   // Bao cong phan quyen: ben do doi `nhan_su.trang_thai`, vo hieu hoa tai khoan cong VA
   // thu hoi moi phien dang song. Buoc cuoi la buoc quan trong nhat — `vo_hieu_hoa` chan
   // duoc dang nhap lai nhung khong chan duoc tab dang mo.

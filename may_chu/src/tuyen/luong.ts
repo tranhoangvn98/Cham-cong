@@ -351,7 +351,7 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
               d.don_gia as don_gia_danh_muc, d.dang_dung as khoan_dang_dung,
               u.ten_dang_nhap as nguoi_tao
          from chinh_sach_phu_cap cs
-         join nhan_vien nv on nv.id = cs.nhan_vien_id
+         join nhan_vien nv on nv.id = cs.nhan_vien_id and nv.dang_hoat_dong
          join khoan_luong d on d.ma = cs.khoan_ma
          left join phong_ban pb on pb.id = nv.phong_ban_id
          left join nguoi_dung u on u.id = cs.tao_boi
@@ -1391,7 +1391,7 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
                           from khieu_nai_luong_tra_loi r
                          where r.khieu_nai_id = kn.id), '[]') as tra_loi
          from khieu_nai_luong kn
-         join nhan_vien nv on nv.id = kn.nhan_vien_id
+         join nhan_vien nv on nv.id = kn.nhan_vien_id and nv.dang_hoat_dong
          left join phong_ban pb on pb.id = nv.phong_ban_id
          join phieu_luong p on p.id = kn.phieu_luong_id
          join ky_luong k on k.id = p.ky_luong_id

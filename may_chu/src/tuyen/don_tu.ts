@@ -64,7 +64,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
               d.loai, d.tu_ngay, d.den_ngay, d.nua_ngay, d.ly_do, d.trang_thai,
               d.ghi_chu_duyet, d.tao_luc, d.quyet_luc, nd2.ten_dang_nhap as nguoi_duyet
          from don_nghi_phep d
-         join nhan_vien nv on nv.id = d.nhan_vien_id
+         join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
          left join phong_ban pb  on pb.id = nv.phong_ban_id
          left join nguoi_dung nd2 on nd2.id = d.nguoi_duyet_id
         where ($1::text is null or d.trang_thai = $1)
@@ -294,7 +294,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
               d.ghi_chu_duyet, d.tao_luc, d.quyet_luc,
               bc.gio_vao as gio_vao_thuc, bc.gio_ra as gio_ra_thuc, bc.trang_thai as trang_thai_cong
          from don_giai_trinh d
-         join nhan_vien nv on nv.id = d.nhan_vien_id
+         join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
          left join phong_ban pb on pb.id = nv.phong_ban_id
          left join bang_cong_ngay bc on bc.nhan_vien_id = d.nhan_vien_id and bc.ngay = d.ngay
         where ($1::text is null or d.trang_thai = $1)
@@ -362,7 +362,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
               lq.vi_do, lq.kinh_do, lq.do_chinh_xac_m, lq.khoang_cach_m, lq.gps_gia_lap,
               lq.anh_ten_tep, lq.ghi_chu, lq.trang_thai_duyet, dd.ten as dia_diem
          from lan_quet lq
-         join nhan_vien nv on nv.id = lq.nhan_vien_id
+         join nhan_vien nv on nv.id = lq.nhan_vien_id and nv.dang_hoat_dong
          left join dia_diem dd on dd.id = lq.dia_diem_id
         where lq.nguon = 'dien_thoai' and lq.trang_thai_duyet = 'cho_duyet'
           and ($1::boolean is not true

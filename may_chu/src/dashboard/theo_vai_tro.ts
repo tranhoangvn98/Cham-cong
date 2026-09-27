@@ -214,9 +214,9 @@ export async function phong_cua_toi(
     ),
     truy_van_mot<{ so: number }>(
       `select (
-         (select count(*) from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id
+         (select count(*) from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
            where d.trang_thai = 'cho_duyet' and nv.phong_ban_id = $1)
-       + (select count(*) from don_giai_trinh d join nhan_vien nv on nv.id = d.nhan_vien_id
+       + (select count(*) from don_giai_trinh d join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
            where d.trang_thai = 'cho_duyet' and nv.phong_ban_id = $1)
        )::int as so`,
       [pb.id],
@@ -265,8 +265,10 @@ export async function toan_cong_ty(hom_nay: string): Promise<CongTy> {
     ),
     truy_van_mot<{ nghi_phep: number; giai_trinh: number; quet_mobile: number }>(
       `select
-         (select count(*) from don_nghi_phep  where trang_thai = 'cho_duyet')::int as nghi_phep,
-         (select count(*) from don_giai_trinh where trang_thai = 'cho_duyet')::int as giai_trinh,
+         (select count(*) from don_nghi_phep d join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
+           where d.trang_thai = 'cho_duyet')::int as nghi_phep,
+         (select count(*) from don_giai_trinh d join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
+           where d.trang_thai = 'cho_duyet')::int as giai_trinh,
          (select count(*) from lan_quet where trang_thai_duyet = 'cho_duyet')::int as quet_mobile`,
     ),
     truy_van<{ ngay: string; co_mat: number; di_muon: number; vang: number; phut_ot: number }>(
@@ -434,7 +436,7 @@ export async function ra_vao_hr(hom_nay: string): Promise<RaVaoHR> {
               count(distinct (cb.ngay, cb.ma_loi))
                 filter (where x.trang_thai is null)::int as chua_xu_ly
          from canh_bao_ra_vao cb
-         join nhan_vien nv on nv.id = cb.nhan_vien_id
+         join nhan_vien nv on nv.id = cb.nhan_vien_id and nv.dang_hoat_dong
          left join phong_ban pb on pb.id = nv.phong_ban_id
          left join xu_ly_ra_vao x on x.nhan_vien_id = cb.nhan_vien_id
                and x.ngay = cb.ngay and x.ma_loi = cb.ma_loi

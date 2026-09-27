@@ -51,7 +51,7 @@ export async function tuyen_ky_luat(app: FastifyInstance): Promise<void> {
                 where kn.ho_so_ky_luat_id = h.id
                   and kn.trang_thai in ('moi','dang_xem'))::int as so_khieu_nai
          from ho_so_ky_luat h
-         join nhan_vien nv on nv.id = h.nhan_vien_id
+         join nhan_vien nv on nv.id = h.nhan_vien_id and nv.dang_hoat_dong
          left join phong_ban pb on pb.id = nv.phong_ban_id
         where h.ky = $1
           and ($2::text is null or h.trang_thai = $2)
@@ -94,7 +94,7 @@ export async function tuyen_ky_luat(app: FastifyInstance): Promise<void> {
                 count(*)::int as so_ho_so, sum(h.so_vi_pham)::int as so_vi_pham,
                 coalesce(sum(h.tong_tien),0)::text as tong_tien
            from ho_so_ky_luat h
-           join nhan_vien nv on nv.id = h.nhan_vien_id
+           join nhan_vien nv on nv.id = h.nhan_vien_id and nv.dang_hoat_dong
            left join phong_ban pb on pb.id = nv.phong_ban_id
           where h.ky = $1
           group by h.nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten
@@ -182,7 +182,7 @@ export async function tuyen_ky_luat(app: FastifyInstance): Promise<void> {
               h.ma as ma_ky_luat, h.ky as ky_ky_luat, h.muc_do, h.tong_tien, h.trang_thai as tt_ky_luat,
               v.ngay as ngay_vi_pham, lvp.ten as ten_vi_pham
          from khieu_nai_ky_luat kn
-         join nhan_vien nv on nv.id = kn.nhan_vien_id
+         join nhan_vien nv on nv.id = kn.nhan_vien_id and nv.dang_hoat_dong
          left join phong_ban pb on pb.id = nv.phong_ban_id
          left join ho_so_ky_luat h on h.id = kn.ho_so_ky_luat_id
          left join vi_pham v on v.id = kn.vi_pham_id

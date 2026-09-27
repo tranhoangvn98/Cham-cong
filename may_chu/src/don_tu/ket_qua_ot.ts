@@ -117,7 +117,7 @@ export async function ket_qua_cua_don(don_tu_id: string): Promise<DongKetQuaOt |
 /** Danh sach ket qua cho tbks/admin duyet. Khong pham vi phong. */
 export async function ket_qua_cho_tbks(trang_thai: string): Promise<DongKetQuaOt[]> {
   return truy_van<DongKetQuaOt>(
-    `select ${CHON} ${TU_BANG} where k.trang_thai = $1
+    `select ${CHON} ${TU_BANG} where k.trang_thai = $1 and nv.dang_hoat_dong
       order by case when k.trang_thai = 'cho_duyet' then 0 else 1 end, k.tao_luc desc
       limit 300`,
     [trang_thai],
@@ -127,6 +127,9 @@ export async function ket_qua_cho_tbks(trang_thai: string): Promise<DongKetQuaOt
 /** So ket qua dang cho duyet — cho o dem tren giao dien cua tbks/admin. */
 export async function dem_ket_qua_cho_duyet(): Promise<number> {
   const d = await truy_van_mot<{ so: number }>(
-    `select count(*)::int as so from ket_qua_ot where trang_thai = 'cho_duyet'`);
+    `select count(*)::int as so from ket_qua_ot k
+       join don_tu dt on dt.id = k.don_tu_id
+       join nhan_vien nv on nv.id = dt.nhan_vien_id and nv.dang_hoat_dong
+      where k.trang_thai = 'cho_duyet'`);
   return d?.so ?? 0;
 }

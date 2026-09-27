@@ -47,7 +47,7 @@ export async function tuyen_ung_luong(app: FastifyInstance): Promise<void> {
               u.tao_luc, u.duyet_luc, u.chi_luc,
               nt.ten_dang_nhap as nguoi_tao, nd.ten_dang_nhap as nguoi_duyet
          from ung_luong u
-         join nhan_vien nv on nv.id = u.nhan_vien_id
+         join nhan_vien nv on nv.id = u.nhan_vien_id and nv.dang_hoat_dong
          left join nguoi_dung nt on nt.id = u.nguoi_tao
          left join nguoi_dung nd on nd.id = u.nguoi_duyet
         where ($1::text is null or u.thang = $1)

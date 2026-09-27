@@ -146,7 +146,7 @@ export async function tuyen_kpi(app: FastifyInstance): Promise<void> {
     const ds = await truy_van(
       `select t.*, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban
          from tong_hop_kpi t
-         join nhan_vien nv on nv.id = t.nhan_vien_id
+         join nhan_vien nv on nv.id = t.nhan_vien_id and nv.dang_hoat_dong
          left join phong_ban pb on pb.id = nv.phong_ban_id
         where t.ky_kpi_id = $1
           and ($2::boolean is not true

@@ -2,6 +2,20 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.112.0] — 2026-09-28
+
+**Rà soát logic nghỉ việc: người đã nghỉ không còn lẫn trong các luồng vận hành.**
+
+- Luồng cho nghỉ việc giờ **tắt luôn mẫu việc định kỳ JD** của người đó (không sinh việc
+  mới cho người đã rời công ty).
+- Bổ sung lọc `dang_hoat_dong` cho các luồng hiển thị vận hành: duyệt đơn (nghỉ phép,
+  giải trình, đơn, đề xuất, kết quả OT) + các badge đếm chờ duyệt đi kèm (đồng bộ số
+  hiển thị); kỷ luật, vi phạm, cảnh báo ra/vào + tổng quan, ứng lương, chính sách phụ
+  cấp, khiếu nại lương, KPI, hòm thư ý kiến, giải trình thông báo, ý kiến dự thảo,
+  danh sách mẫu định kỳ của vị trí, dashboard (điểm nóng, đơn chờ duyệt theo phòng).
+- Giữ nguyên các luồng **lịch sử/chứng từ** (bảng công, lịch sử quẹt, phiếu lương, kho
+  hồ sơ) — người đã nghỉ vẫn hiện để đối chiếu, như thiết kế.
+
 ## [1.111.1] — 2026-09-27
 
 **Sửa lỗi: gán vị trí JD lỗi 500 "no unique or exclusion constraint matching".**

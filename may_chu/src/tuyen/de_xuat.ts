@@ -51,7 +51,7 @@ export async function tuyen_de_xuat(app: FastifyInstance): Promise<void> {
                 nv.ma_nv, nv.ho_ten, pb.ten as phong_ban
            from de_xuat d
            join loai_de_xuat l on l.id = d.loai_de_xuat_id
-           join nhan_vien nv on nv.id = d.nhan_vien_id
+           join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
            left join phong_ban pb on pb.id = nv.phong_ban_id
           where d.trang_thai = $1
             and ($2 or (nv.phong_ban_id is not null
@@ -67,7 +67,7 @@ export async function tuyen_de_xuat(app: FastifyInstance): Promise<void> {
     const nd = nguoi_dung_hien_tai(req);
     const tat_ca = xem_duoc_tat_ca(nd);
     const dong = await truy_van_mot<{ so: number }>(
-      `select count(*)::int as so from de_xuat d join nhan_vien nv on nv.id = d.nhan_vien_id
+      `select count(*)::int as so from de_xuat d join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
         where d.trang_thai = 'cho_duyet'
           and ($1 or (nv.phong_ban_id is not null
                       and nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)))`,

@@ -253,6 +253,7 @@ export async function don_cho_nguoi_duyet(
         and ($2::text is null or d.loai = $2)
         and ($3::uuid is null
              or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $3::uuid))
+        and nv.dang_hoat_dong
       order by case when d.trang_thai = 'cho_duyet' then 0 else 1 end, d.tao_luc desc
       limit 300`,
     [trang_thai, loai, chi_phong],
@@ -404,7 +405,7 @@ export async function dem_cho_duyet(chi_phong: string | null): Promise<Record<st
   const dong = await truy_van<{ loai: string; so: number }>(
     `select d.loai, count(*)::int as so
        from don_tu d
-       join nhan_vien nv on nv.id = d.nhan_vien_id
+       join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
       where d.trang_thai = 'cho_duyet'
         and ($1::uuid is null
              or nv.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1::uuid))
@@ -419,6 +420,7 @@ export async function dem_cho_duyet_cap_2(): Promise<Record<string, number>> {
   const dong = await truy_van<{ loai: string; so: number }>(
     `select d.loai, count(*)::int as so
        from don_tu d
+       join nhan_vien nv on nv.id = d.nhan_vien_id and nv.dang_hoat_dong
       where d.trang_thai = 'cho_duyet_2'
       group by d.loai`,
   );

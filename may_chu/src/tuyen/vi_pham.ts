@@ -179,7 +179,7 @@ export async function tuyen_vi_pham(app: FastifyInstance): Promise<void> {
               l.ma as ma_loai, l.ten as ten_loai, l.muc_do, l.diem_tru_kpi, l.muc_tru_tien,
               l.giam_thuong_p3_phan_tram, l.chi_tiet_che_tai, l.can_cu
          from vi_pham v
-         join nhan_vien nv on nv.id = v.nhan_vien_id
+         join nhan_vien nv on nv.id = v.nhan_vien_id and nv.dang_hoat_dong
          join loai_vi_pham l on l.id = v.loai_vi_pham_id
          left join phong_ban pb on pb.id = nv.phong_ban_id
         where ($1::text is null or v.trang_thai = $1)
