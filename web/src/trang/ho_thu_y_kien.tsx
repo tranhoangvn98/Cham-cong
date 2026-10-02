@@ -2,10 +2,11 @@
 // cua nhan su, va ca y kien cho ban du thao van ban AI. Khac voi don tu khieu nai: day la kenh
 // lang nghe + giai dap, hoi thoai hai chieu cho den khi nhan su DONG ho thu.
 import { useEffect, useState, type ReactNode } from 'react';
-import { goi, chi_xem_quan_tri } from '../api.ts';
+import { goi, gui_tep, chi_xem_quan_tri } from '../api.ts';
 import { lay_muc_tieu_bao, nghe_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import {
-  DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap,
+  ngay_gio,
   type TinNhanKN,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
@@ -44,6 +45,7 @@ interface Dong {
 interface ChiTiet extends Dong {
   noi_dung: string;
   tra_loi: TinNhanKN[];
+  anh: { id: string; ten: string }[];
   van_ban: { ma: string; trang_thai: string } | null;
 }
 
@@ -288,6 +290,21 @@ function HopThoaiChiTiet(
     ).then((ok) => { if (ok) { khi_xong(); khi_dong(); } });
   };
 
+  // Them anh minh chung vao ho thu DANG MO (nhan su). Gui LAN LUOT tung anh — moi anh mot
+  // ban ghi tep, khong gioi han so luong.
+  const them_anh = (files: FileList | null): void => {
+    const ds = Array.from(files ?? []);
+    if (ds.length === 0) return;
+    void hd.chay(async () => {
+      for (const f of ds) {
+        const fd = new FormData();
+        fd.append('anh', f);
+        await gui_tep(`/api/ho-thu-y-kien/${d.id}/anh`, fd);
+      }
+      return true;
+    }, `Đã thêm ${ds.length} ảnh.`).then((ok) => { if (ok) { khi_xong(); chi.nap_lai(); } });
+  };
+
   return (
     <HopThoai tieu_de={`Hòm thư ${d.ma ?? ''} — ${d.ho_ten}`} khi_dong={khi_dong} rong>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
@@ -316,10 +333,29 @@ function HopThoaiChiTiet(
       <h3>{d.tieu_de}</h3>
       <ThreadKhieuNai noi_dung={d.noi_dung} tao_luc={d.tao_luc} tra_loi={d.tra_loi} la_admin />
 
+      {d.anh.length > 0 && (
+        <>
+          <h3>Ảnh đính kèm</h3>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            {d.anh.map((a) => (
+              <AnhCoToken key={a.id} duong_dan={`/api/ho-thu-y-kien/anh/${a.id}`} alt={a.ten}
+                cao={120} />
+            ))}
+          </div>
+        </>
+      )}
+
       {!dong && !chi_xem && (
         <div style={{ marginTop: 4, marginBottom: 8 }}>
           <textarea value={tra_loi_nd} onChange={(e) => dat_tra_loi_nd(e.target.value)} rows={2}
             placeholder="Trả lời / nhập kết luận xử lý (nội dung nhập sẽ gửi kèm khi đóng)…" />
+          <div style={{ marginTop: 6 }}>
+            <label className="mo-ta" style={{ display: 'block', marginBottom: 2 }}>
+              Thêm ảnh đính kèm (có thể chọn nhiều):
+            </label>
+            <input type="file" accept="image/*" multiple disabled={hd.dang_chay}
+              onChange={(e) => { them_anh(e.target.files); e.currentTarget.value = ''; }} />
+          </div>
           <div className="hang-nut" style={{ marginTop: 6 }}>
             <button className="nut-phang" disabled={hd.dang_chay || tra_loi_nd.trim().length < 1}
               onClick={gui}>Gửi trả lời</button>

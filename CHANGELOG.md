@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.115.1] — 2026-10-02
+
+**Hòm thư ý kiến: đính kèm ảnh minh chứng khi trả lời.**
+
+- Nhân sự trả lời hòm thư có thể **đính kèm nhiều ảnh** (jpg/png, kiểm magic byte như mọi
+  tệp hồ sơ) — ảnh lưu trong `ho_so_tep` nhom mới `ho_thu_y_kien` (migration 100), hiển thị
+  ngay trong hội thoại ở cả hai phía.
+- Route: `POST /api/ho-thu-y-kien/:id/anh` (quyền nhân sự, chặn khi hòm thư đã đóng) và
+  `GET /api/ho-thu-y-kien/anh/:tep_id` (nhân sự xem hết; người lao động chỉ xem ảnh của hòm
+  thư của mình, người khác nhận 404).
+- Test e2e: nhân sự đính ảnh → chủ hòm thư thấy trong danh sách của mình → chủ xem được,
+  người ngoài 404, tệp không phải ảnh bị chặn, hòm thư đã đóng không đính thêm được.
+
 ## [1.115.0] — 2026-10-02
 
 **Đề nghị thêm nhân sự từ danh sách Microsoft 365 đã có giấy phép.**

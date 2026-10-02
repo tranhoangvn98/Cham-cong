@@ -19,12 +19,13 @@ export type NhomHoSo =
   | 'bhxh'
   | 'don_tu'         // ban don DA DUYET, do he thong sinh ra — xem don_tu/ban_don.ts
   | 'ot_tai_lieu'    // tai lieu dinh kem khi DANG KY don OT (tuy chon)
-  | 'ot_ket_qua';    // anh chup ket qua OT, nhom theo bang ket_qua_ot
+  | 'ot_ket_qua'     // anh chup ket qua OT, nhom theo bang ket_qua_ot
+  | 'ho_thu_y_kien'; // anh dinh kem trong trao doi ho thu y kien (nhan su tra loi)
 
 export const CAC_NHOM: readonly NhomHoSo[] = [
   'thong_tin', 'tai_lieu', 'hop_dong', 'bien_ban', 'luong',
   'nguoi_phu_thuoc', 'bhxh', 'cong_viec', 'bao_cao', 'khieu_nai', 'thiet_bi', 'don_tu',
-  'ot_tai_lieu', 'ot_ket_qua',
+  'ot_tai_lieu', 'ot_ket_qua', 'ho_thu_y_kien',
 ] as const;
 
 export interface NguoiXem {
@@ -126,6 +127,7 @@ export const LY_DO_KHONG_THAY_XOA_DUOC =
  *   don_tu      | co            | co                      | co         | khong
  *   ot_tai_lieu | co            | co                      | co         | khong (tbks: co)
  *   ot_ket_qua  | co            | co                      | co         | khong (tbks: co)
+ *   ho_thu_y_kien|co            | KHONG                   | co         | khong
  *
  * Hai o dang chu y:
  *
@@ -172,6 +174,7 @@ export function doc_duoc(nd: NguoiXem, nhom: NhomHoSo, bc: BoiCanh): boolean {
  *   khieu_nai   | co            | khong                   | co (gui khieu nai cua minh)
  *   thiet_bi    | co            | khong                   | khong (chi doc)
  *   don_tu      | co            | khong                   | khong (chi doc)
+ *   ho_thu_y_kien|co            | khong                   | khong (nhan su dinh kem, nguoi lao dong chi xem)
  *
  * Nhan vien KHONG duoc tu sua hop dong, luong hay danh sach thiet bi cua chinh minh — do
  * la ho so do cong ty lap. Nhung ho PHAI tu gui duoc khieu nai va bao cao, neu khong thi

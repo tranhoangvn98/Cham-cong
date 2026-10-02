@@ -4,7 +4,8 @@
 import { useState, type ReactNode } from 'react';
 import { goi } from '../api.ts';
 import {
-  DangTai, HopLoi, HopTot, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  AnhCoToken, DangTai, HopLoi, HopTot, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap,
+  ngay_gio,
   type TinNhanKN,
 } from '../thanh_phan.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
@@ -32,6 +33,7 @@ interface HoThuToi {
   tao_luc: string;
   dong_luc: string | null;
   tra_loi: TinNhanKN[];
+  anh: { id: string; ten: string }[];
 }
 
 const CAC_LOAI_GUI: { ma: string; nhan: string }[] = [
@@ -119,6 +121,14 @@ export function YKienToi(): ReactNode {
               {mo === h.id ? (
                 <>
                   <ThreadKhieuNai noi_dung={h.noi_dung} tao_luc={h.tao_luc} tra_loi={h.tra_loi} />
+                  {h.anh.length > 0 && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                      {h.anh.map((a) => (
+                        <AnhCoToken key={a.id} duong_dan={`/api/ho-thu-y-kien/anh/${a.id}`}
+                          alt={a.ten} cao={120} />
+                      ))}
+                    </div>
+                  )}
                   {h.trang_thai !== 'da_dong' && (
                     <TraLoi nho={h.id} khi_xong={ds.nap_lai} />
                   )}

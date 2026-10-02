@@ -307,6 +307,82 @@ test('tiep nhan: mo xem chuyen moi -> dang_xem (Da tiep nhan), dong kem ket luan
   assert.equal(dong.ma, 200, `dong loi: ${dong.tho}`);
 });
 
+test('anh dinh kem: nhan su gan anh, chu ho thu xem duoc, nguoi ngoai 404, dong roi khong gan duoc', async () => {
+  const gop = await goi('POST', '/api/toi/ho-thu-y-kien', {
+    token: token_a,
+    body: { loai: 'phan_anh', tieu_de: 'Máy móc thiếu bảo dưỡng', noi_dung: 'Máy may kêu to.' },
+  });
+  assert.equal(gop.ma, 201);
+  const ht_id = gop.body['id'] as string;
+
+  // Nhan su gan mot anh PNG (magic byte that).
+  const rg = '----anh-htyk';
+  const than = Buffer.concat([
+    Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="anh"; `
+      + 'filename="minh-chung.png"\r\nContent-Type: image/png\r\n\r\n'),
+    Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64, 0x20)]),
+    Buffer.from(`\r\n--${rg}--\r\n`),
+  ]);
+  const len = await app.inject({
+    method: 'POST', url: `/api/ho-thu-y-kien/${ht_id}/anh`,
+    headers: {
+      authorization: `Bearer ${token_admin}`,
+      'content-type': `multipart/form-data; boundary=${rg}`,
+    },
+    payload: than,
+  });
+  assert.equal(len.statusCode, 201, `gan anh loi: ${len.body}`);
+  const tep_id = len.json()['id'] as string;
+  assert.ok(typeof tep_id === 'string' && tep_id !== '', 'phai tra ve id tep');
+
+  // Anh xuat hien trong danh sach ho thu cua chu (dung truong `anh`).
+  const toi = await goi('GET', '/api/toi/ho-thu-y-kien', { token: token_a });
+  const cua = (toi.body as unknown as Record<string, unknown>[]).find((d) => d['id'] === ht_id);
+  const anh = (cua?.['anh'] ?? []) as { id: string }[];
+  assert.ok(anh.some((a) => a.id === tep_id), 'chu ho thu phai thay anh trong ho thu cua minh');
+
+  // Xem anh: nhan su duoc, chu ho thu duoc, nguoi KHAC phai 404.
+  const xem_admin = await goi('GET', `/api/ho-thu-y-kien/anh/${tep_id}`, { token: token_admin });
+  assert.equal(xem_admin.ma, 200);
+  const xem_chu = await goi('GET', `/api/ho-thu-y-kien/anh/${tep_id}`, { token: token_a });
+  assert.equal(xem_chu.ma, 200);
+  const xem_la = await goi('GET', `/api/ho-thu-y-kien/anh/${tep_id}`, { token: token_b });
+  assert.equal(xem_la.ma, 404, 'nguoi khong lien quan khong duoc xem anh');
+
+  // Khong phai anh (PDF doi ten thanh .png) bi chan.
+  const gia = '----gia-anh';
+  const than_gia = Buffer.concat([
+    Buffer.from(`--${gia}\r\nContent-Disposition: form-data; name="anh"; `
+      + 'filename="gia.png"\r\nContent-Type: image/png\r\n\r\n'),
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(64, 0x20)]),
+    Buffer.from(`\r\n--${gia}--\r\n`),
+  ]);
+  const len_gia = await app.inject({
+    method: 'POST', url: `/api/ho-thu-y-kien/${ht_id}/anh`,
+    headers: {
+      authorization: `Bearer ${token_admin}`,
+      'content-type': `multipart/form-data; boundary=${gia}`,
+    },
+    payload: than_gia,
+  });
+  assert.equal(len_gia.statusCode, 400, 'tep khong phai anh phai bi chan');
+
+  // Dong ho thu xong thi khong gan anh them duoc.
+  const dong = await goi('POST', `/api/ho-thu-y-kien/${ht_id}/dong`, {
+    token: token_admin, body: { ket_luan: 'Đã xử lý.' },
+  });
+  assert.equal(dong.ma, 200);
+  const len_sau = await app.inject({
+    method: 'POST', url: `/api/ho-thu-y-kien/${ht_id}/anh`,
+    headers: {
+      authorization: `Bearer ${token_admin}`,
+      'content-type': `multipart/form-data; boundary=${rg}`,
+    },
+    payload: than,
+  });
+  assert.equal(len_sau.statusCode, 409, 'ho thu da dong khong gan anh them duoc');
+});
+
 test('cong bo phat hanh: soan thanh van ban NĐ30 -> trinh ky -> cong bo -> van ban cong ty + popup', async () => {
   // Danh sach phien ban doc tu CHANGELOG that (tep duoc COPY vao anh kiem).
   const pb = await goi('GET', '/api/phat-hanh/phien-ban', { token: token_admin });

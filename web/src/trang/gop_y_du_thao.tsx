@@ -8,7 +8,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { goi } from '../api.ts';
 import {
-  DangTai, HopLoi, HopTot, ThreadKhieuNai, dung_hanh_dong, dung_nap, ngay_gio,
+  AnhCoToken, DangTai, HopLoi, HopTot, ThreadKhieuNai, dung_hanh_dong, dung_nap, ngay_gio,
   type TinNhanKN,
 } from '../thanh_phan.tsx';
 
@@ -20,6 +20,7 @@ interface YKCuaToi {
   trang_thai: string;
   tao_luc: string;
   tra_loi: TinNhanKN[];
+  anh: { id: string; ten: string }[];
 }
 
 interface DuThao {
@@ -105,6 +106,14 @@ export function TrangGopYDuThao(): ReactNode {
                 <h4>{y.tieu_de} <span className="mo-ta">{ngay_gio(y.tao_luc)} · {NHAN_TT[y.trang_thai] ?? y.trang_thai}</span></h4>
               </div>
               <ThreadKhieuNai noi_dung={y.noi_dung} tao_luc={y.tao_luc} tra_loi={y.tra_loi} />
+              {y.anh.length > 0 && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '4px 0 8px' }}>
+                  {y.anh.map((a) => (
+                    <AnhCoToken key={a.id} duong_dan={`/api/ho-thu-y-kien/anh/${a.id}`}
+                      alt={a.ten} cao={120} />
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -9,12 +9,16 @@
 // vao luong request.
 import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
-import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
+import { cau_hinh } from '../cau_hinh.ts';
+import { can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
+import { la_vai_tro_nhan_su } from '../bao_mat/quyen_ho_so.ts';
 import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import {
-  chuoi, chuoi_bat_buoc, than, trong_tap, uuid, LoiKhongTim,
+  chuoi, chuoi_bat_buoc, than, trong_tap, uuid, LoiDauVao, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
+import { doc_tep_ho_so, lam_sach_ten, luu_tep_ho_so, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
+import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import {
   CAC_LOAI_HO_THU, CAC_TRANG_THAI_HO_THU, doc_ho_thu, dong_ho_thu, tiep_nhan_ho_thu,
   tra_loi_ho_thu,
@@ -75,6 +79,91 @@ export async function tuyen_ho_thu_y_kien(app: FastifyInstance): Promise<void> {
         order by r.tao_luc desc limit 500`,
       [loai],
     );
+  });
+
+  // ------------------------------------------------------------ anh dinh kem (nhan su)
+  // Nhan su gan ANH minh chung khi tra loi ho thu. Tai dung he thong tep ho so (nhom
+  // 'ho_thu_y_kien', thuoc_id = ho thu). Chi anh; magic byte da kiem trong luu_tep_ho_so,
+  // chan them theo mime. Ho thu da dong thi khong gan them duoc.
+  app.post('/ho-thu-y-kien/:id/anh', {
+    preHandler: can_nhan_su,
+    bodyLimit: cau_hinh.tep_toi_da_byte + 1024 * 1024,
+  }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const ht = await truy_van_mot<{ nhan_vien_id: string | null; trang_thai: string }>(
+      'select nhan_vien_id, trang_thai from ho_thu_y_kien where id = $1', [id],
+    );
+    if (ht === null) throw new LoiKhongTim('Không tìm thấy hòm thư ý kiến.');
+    if (ht.trang_thai === 'da_dong') {
+      throw new LoiXungDot('Hòm thư đã hoàn tất, không đính kèm thêm được.');
+    }
+
+    let du_lieu: Buffer | null = null;
+    let ten_goc = 'anh';
+    for await (const phan of req.parts({ limits: { fileSize: cau_hinh.tep_toi_da_byte } })) {
+      if (phan.type === 'file') {
+        if (phan.fieldname !== 'anh') { await phan.toBuffer(); continue; }
+        ten_goc = lam_sach_ten(phan.filename ?? 'anh');
+        du_lieu = await phan.toBuffer();
+      }
+    }
+    if (du_lieu === null) throw new LoiDauVao('Thiếu ảnh đính kèm.');
+
+    // Thu muc tep mang MA NV + HO TEN cua nguoi lao dong (chu ho thu) — lay tu ban ghi.
+    const nv = ht.nhan_vien_id === null
+      ? null
+      : await truy_van_mot<{ ma_nv: string; ho_ten: string }>(
+        'select ma_nv, ho_ten from nhan_vien where id = $1', [ht.nhan_vien_id]);
+    const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, {
+      ma_nv: nv?.ma_nv ?? 'NV', ho_ten: nv?.ho_ten ?? '',
+      nhom: 'ho_thu_y_kien', ngay: ngay_dia_phuong(new Date()),
+    });
+    if (!da_luu.mime.startsWith('image/')) {
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* da co loi that o tren */ });
+      throw new LoiDauVao('Chỉ đính kèm được tệp ảnh (jpg, png…).');
+    }
+    let moi: Record<string, unknown> | null;
+    try {
+      moi = await truy_van_mot(
+        `insert into ho_so_tep(id, nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
+                               kich_thuoc, tai_len_boi)
+         values ($1,$2,'ho_thu_y_kien',$3,$4,$5,$6,$7,$8)
+         returning id, ten_goc`,
+        [da_luu.ma_tep, ht.nhan_vien_id, id, ten_goc, da_luu.ten_luu, da_luu.mime,
+          da_luu.kich_thuoc, nd.sub],
+      );
+    } catch (loi) {
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* da co loi that o tren */ });
+      throw loi;
+    }
+    await ghi_nhat_ky(nd.sub, 'ho_thu_y_kien.dinh_kem_anh', 'ho_thu_y_kien', id,
+      { tep_id: moi?.['id'] ?? null }, req.ip);
+    return res.code(201).send({ id: moi?.['id'] ?? null, ten: ten_goc });
+  });
+
+  // Dang ky TRUOC route /:id de chuoi 'anh' khong bi nuot vao tham so :id.
+  // Xem anh dinh kem cua mot ho thu: nhan su xem duoc het; nguoi khac chi xem anh cua ho
+  // thu CUA MINH. Tra 404 (khong phai 403) khi khong duoc xem — de khong lo su ton tai.
+  app.get('/ho-thu-y-kien/anh/:tep_id', { preHandler: can_dang_nhap }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const p = req.params as Record<string, string>;
+    const tep_id = uuid({ id: p['tep_id'] }, 'id', { bat_buoc: true }) as string;
+    const t = await truy_van_mot<{ ten_luu: string; kieu_mime: string; nhan_vien_id: string | null }>(
+      `select ten_luu, kieu_mime, nhan_vien_id from ho_so_tep
+        where id = $1 and nhom = 'ho_thu_y_kien'`,
+      [tep_id],
+    );
+    if (t === null) throw new LoiKhongTim('Không tìm thấy ảnh.');
+    if (!la_vai_tro_nhan_su(nd.vai_tro) && !(nd.nv !== null && nd.nv === t.nhan_vien_id)) {
+      throw new LoiKhongTim('Không tìm thấy ảnh.');
+    }
+    const buf = await doc_tep_ho_so(t.ten_luu);
+    if (buf === null) throw new LoiKhongTim('Không tìm thấy tệp ảnh trên đĩa.');
+    return res
+      .header('content-type', t.kieu_mime)
+      .header('cache-control', 'private, max-age=3600')
+      .send(buf);
   });
 
   // ------------------------------------------------------------ chi tiet ho thu

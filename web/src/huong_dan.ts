@@ -82,6 +82,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     buoc: [
       { chu: 'Xem danh sách, lọc theo loại (góp ý, phản ánh, yêu cầu, thắc mắc, ý kiến dự thảo) và trạng thái.' },
       { chu: 'Bấm Xem để đọc nội dung và toàn bộ trao đổi; bấm Gửi trả lời để phản hồi — nhân viên nhận email ngay.' },
+      { chu: 'Có thể đính kèm ảnh minh chứng trong phần trả lời (chọn nhiều ảnh một lúc) — nhân viên xem được ngay trong hòm thư của họ.' },
       { chu: 'Giải quyết xong thì bấm Đóng hòm thư (hoàn tất) — nhân viên nhận email báo hoàn tất.' },
       { chu: 'Tab "Thư đã gửi" xem lại toàn bộ phản hồi Nhân sự đã gửi đi — bấm dòng để mở lại hội thoại.' },
       { chu: 'Ý kiến dự thảo cũng xem được ngay trong popup chi tiết văn bản AI (nút Gửi lấy ý kiến).', vai_tro: NHAN_SU },

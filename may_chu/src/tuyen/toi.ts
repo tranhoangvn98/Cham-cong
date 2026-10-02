@@ -1445,7 +1445,11 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
               coalesce((select json_agg(json_build_object('vai', r.vai, 'noi_dung', r.noi_dung,
                                                           'tao_luc', r.tao_luc) order by r.tao_luc)
                           from ho_thu_y_kien_tra_loi r
-                         where r.ho_thu_id = h.id), '[]') as tra_loi
+                         where r.ho_thu_id = h.id), '[]') as tra_loi,
+              coalesce((select json_agg(json_build_object('id', t.id, 'ten', t.ten_goc)
+                                        order by t.tao_luc)
+                          from ho_so_tep t
+                         where t.nhom = 'ho_thu_y_kien' and t.thuoc_id = h.id), '[]') as anh
          from ho_thu_y_kien h
         where h.loai = 'du_thao' and h.nhap_ai_id = $1 and h.nhan_vien_id = $2
         order by h.tao_luc desc limit 100`,

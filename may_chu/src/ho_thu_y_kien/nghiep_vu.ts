@@ -52,6 +52,7 @@ export interface DongHoThu {
   tao_luc: string;
   cap_nhat_luc: string;
   tra_loi: DongTraLoi[];
+  anh: { id: string; ten: string }[];
 }
 
 const COT = `select h.id, h.ma, h.loai, h.nhan_vien_id, h.nhap_ai_id, h.tieu_de, h.noi_dung,
@@ -60,7 +61,11 @@ const COT = `select h.id, h.ma, h.loai, h.nhan_vien_id, h.nhap_ai_id, h.tieu_de,
                                                   'noi_dung', r.noi_dung, 'tao_luc', r.tao_luc)
                                  order by r.tao_luc)
                    from ho_thu_y_kien_tra_loi r
-                  where r.ho_thu_id = h.id), '[]') as tra_loi
+                  where r.ho_thu_id = h.id), '[]') as tra_loi,
+       coalesce((select json_agg(json_build_object('id', t.id, 'ten', t.ten_goc)
+                                 order by t.tao_luc)
+                   from ho_so_tep t
+                  where t.nhom = 'ho_thu_y_kien' and t.thuoc_id = h.id), '[]') as anh
   from ho_thu_y_kien h`;
 
 /** Doc mot ho thu kem thread. Khong tim thay thi nem LoiKhongTim. */
