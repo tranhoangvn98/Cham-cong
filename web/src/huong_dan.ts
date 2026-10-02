@@ -186,6 +186,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     buoc: [
       { chu: 'Bấm Đề nghị thêm nhân sự, điền họ tên + chức danh + vị trí; email công ty nếu muốn cấp tài khoản Microsoft.', vai_tro: NHAN_SU },
       { chu: 'Nếu người mới ĐÃ CÓ tài khoản Microsoft 365 kèm giấy phép: chọn người đó trong ô "Chọn từ Microsoft 365" — họ tên + email tự điền và hệ thống sẽ không tạo lại tài khoản.', vai_tro: NHAN_SU },
+      { chu: 'Trên trang có bảng "Nhân sự từ Microsoft 365" liệt kê người có giấy phép chưa có hồ sơ — bấm "Đề nghị thêm" cạnh tên là form tự điền sẵn người đó.', vai_tro: NHAN_SU },
       { chu: 'Danh sách Microsoft 365 được quét tự động 08:00 và 13:00 mỗi ngày; bấm "Đồng bộ ngay" cạnh ô chọn để cập nhật lập tức.', vai_tro: NHAN_SU },
       { chu: 'Chọn máy cửa để hệ thống tự cấp PIN theo dải của máy đó (vân tay/khuôn mặt vẫn phải enroll tại máy).', vai_tro: NHAN_SU },
       { chu: 'Admin mở Duyệt / từ chối: điền mã nhân viên (nếu trống), sửa chức danh nếu cần, rồi bấm Duyệt & khởi tạo.', vai_tro: ['admin'] },

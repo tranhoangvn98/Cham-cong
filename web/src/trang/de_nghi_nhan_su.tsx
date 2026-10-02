@@ -42,6 +42,14 @@ interface NguonMs365 { oid: string; ho_ten: string; upn: string }
 /** Anh chup danh sach da cap phep + moc dong bo lan cuoi. */
 interface KqNguonMs365 { danh_sach: NguonMs365[]; dong_bo_luc: string | null }
 
+/** Dien san khi HR bam "Đề nghị thêm" cho mot nguoi M365 ngay tren trang. */
+interface BanDauDeNghi {
+  ho_ten: string;
+  email: string;
+  nguon_ms365: string;
+  ms365_oid: string;
+}
+
 const TT_TEN: Record<string, string> = {
   cho_duyet: 'Chờ duyệt',
   da_khoi_tao: 'Đã khởi tạo',
@@ -77,6 +85,7 @@ export function TrangDeNghiNhanSu(): ReactNode {
   const [bo_loc, dat_bo_loc] = useState('cho_duyet');
   const [dang_tao, dat_dang_tao] = useState(false);
   const [duyet_cho, dat_duyet_cho] = useState<DeNghi | null>(null);
+  const [ban_dau, dat_ban_dau] = useState<BanDauDeNghi | null>(null);
   const url = `/api/de-nghi-nhan-su`
     + (bo_loc === '' ? '' : `?trang_thai=${bo_loc}`);
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<DeNghi[]>(url);
@@ -111,7 +120,8 @@ export function TrangDeNghiNhanSu(): ReactNode {
           </p>
         </div>
         {la_nhan_su() && (
-          <button className="nut-chinh" onClick={() => dat_dang_tao(true)}>
+          <button className="nut-chinh"
+            onClick={() => { dat_ban_dau(null); dat_dang_tao(true); }}>
             Đề nghị thêm nhân sự
           </button>
         )}
@@ -134,6 +144,42 @@ export function TrangDeNghiNhanSu(): ReactNode {
             </span>
           </div>
           {db_trang.loi !== null && <HopLoi loi={db_trang.loi} />}
+        </div>
+      )}
+
+      {la_nhan_su() && (m365.du_lieu?.danh_sach ?? []).length > 0 && (
+        <div className="the the-mong" style={{ marginBottom: 16 }}>
+          <div className="vo-bang">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nhân sự từ Microsoft 365 (chưa có hồ sơ)</th>
+                  <th>Email (tên đăng nhập Microsoft)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {(m365.du_lieu?.danh_sach ?? []).map((u) => (
+                  <tr key={u.oid}>
+                    <td>{u.ho_ten}</td>
+                    <td>{u.upn}</td>
+                    <td className="khong-ngat">
+                      <button type="button" className="nut-nho nut-chinh"
+                        onClick={() => {
+                          dat_ban_dau({
+                            ho_ten: u.ho_ten, email: u.upn,
+                            nguon_ms365: u.oid, ms365_oid: u.oid,
+                          });
+                          dat_dang_tao(true);
+                        }}>
+                        Đề nghị thêm
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -226,6 +272,7 @@ export function TrangDeNghiNhanSu(): ReactNode {
           cac_khoi={(khoi.du_lieu ?? []).filter((k) => k.dang_bat)}
           cac_may={(may.du_lieu ?? []).filter((m) => m.dang_bat)}
           cac_noi={noi.du_lieu ?? []}
+          ban_dau={ban_dau}
           khi_dong={() => dat_dang_tao(false)}
           khi_xong={() => { dat_dang_tao(false); nap_lai(); }}
         />
@@ -244,16 +291,19 @@ export function TrangDeNghiNhanSu(): ReactNode {
 
 // ============================================================ form tao de nghi
 function FormDeNghi(
-  { cac_phong, cac_ca, cac_khoi, cac_may, cac_noi, khi_dong, khi_xong }:
+  { cac_phong, cac_ca, cac_khoi, cac_may, cac_noi, ban_dau, khi_dong, khi_xong }:
   {
     cac_phong: PhongBan[]; cac_ca: CaLam[]; cac_khoi: Khoi[];
     cac_may: ThietBi[]; cac_noi: NoiLamViec[];
+    ban_dau: BanDauDeNghi | null;
     khi_dong: () => void; khi_xong: () => void;
   },
 ): ReactNode {
   const [f, dat_f] = useState({
-    ho_ten: '', ma_nv: '', chuc_danh: '', vi_tri: '', phong_ban_id: '', ca_lam_id: '',
-    khoi_id: '', noi_lam_viec_id: '', ngay_vao: '', so_dien_thoai: '', email: '',
+    ho_ten: ban_dau?.ho_ten ?? '', ma_nv: '', chuc_danh: '', vi_tri: '', phong_ban_id: '',
+    ca_lam_id: '',
+    khoi_id: '', noi_lam_viec_id: '', ngay_vao: '', so_dien_thoai: '',
+    email: ban_dau?.email ?? '',
     ma_erp: '', loai_hop_dong: '',
   });
   const [tu_cap_pin, dat_tu_cap_pin] = useState(true);
@@ -261,9 +311,9 @@ function FormDeNghi(
   const [cap_ms365, dat_cap_ms365] = useState(true);
   const [tao_tk_ht, dat_tao_tk_ht] = useState(true);
   // Chon nguoi co san tai khoan Microsoft 365 (da co giay phep) thay vi nhap tay.
-  const [nguon_ms365, dat_nguon_ms365] = useState('');
-  const [ms365_da_co, dat_ms365_da_co] = useState(false);
-  const [ms365_oid, dat_ms365_oid] = useState('');
+  const [nguon_ms365, dat_nguon_ms365] = useState(ban_dau?.nguon_ms365 ?? '');
+  const [ms365_da_co, dat_ms365_da_co] = useState(ban_dau !== null);
+  const [ms365_oid, dat_ms365_oid] = useState(ban_dau?.ms365_oid ?? '');
   const nguon = dung_nap<KqNguonMs365>('/api/de-nghi-nhan-su/ms365-da-cap-phep');
   const hd = dung_hanh_dong();
   const db = dung_hanh_dong();
