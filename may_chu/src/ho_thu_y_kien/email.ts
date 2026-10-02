@@ -20,12 +20,14 @@ export interface CtxHoThu {
   ma_nv: string;
   email: string | null;
   nhan_vien_id: string;
+  /** Noi dung goc nguoi lao dong gui — de trich lai trong email tiep nhan. */
+  noi_dung: string;
 }
 
 /** Lay du lieu nen cua mot ho thu de dung trong email. Khong tim thay -> null. */
 export async function ctx_ho_thu(ho_thu_id: string): Promise<CtxHoThu | null> {
   return truy_van_mot<CtxHoThu>(
-    `select h.ma, h.tieu_de, nv.ho_ten, nv.ma_nv, nv.email, h.nhan_vien_id
+    `select h.ma, h.tieu_de, nv.ho_ten, nv.ma_nv, nv.email, h.nhan_vien_id, h.noi_dung
        from ho_thu_y_kien h
        join nhan_vien nv on nv.id = h.nhan_vien_id
       where h.id = $1`,
@@ -100,6 +102,23 @@ export function than_email_ho_thu(o: ThanHoThu): string {
 }
 
 /**
+ * Khuon noi dung email hoan tat. Ham THUAN de unit test: co ket luan thi trinh KET LUAN xu
+ * ly, khong thi loi cam on chung.
+ */
+export function noi_dung_hoan_tat(ket_luan: string | null): { loi_dan: string; noi_dung: string } {
+  return ket_luan === null
+    ? {
+        loi_dan: 'Phòng Nhân sự đã tiếp nhận, giải quyết và đóng hòm thư ý kiến này. '
+          + 'Cảm ơn bạn đã chia sẻ để công ty hoàn thiện hơn.',
+        noi_dung: 'Nếu còn băn khoăn, bạn có thể gửi một ý kiến mới từ mục "Hòm thư ý kiến".',
+      }
+    : {
+        loi_dan: 'Phòng Nhân sự đã xử lý xong ý kiến này. Kết luận xử lý:',
+        noi_dung: ket_luan,
+      };
+}
+
+/**
  * Nhan su TRA LOI vao ho thu -> email cho nguoi lao dong.
  * `noi_dung` la noi dung tra loi. Tra ve true neu da gui.
  */
@@ -129,13 +148,27 @@ export async function email_nhan_su_tra_loi(ho_thu_id: string, noi_dung: string)
 }
 
 /**
- * Nhan su DONG ho thu -> email bao hoan tat cho nguoi lao dong.
+ * Nhan su DONG ho thu -> email bao hoan tat cho nguoi lao dong, kem KET LUAN xu ly khi co.
+ * `ket_luan` rong thi lay tra loi cuoi cung cua Nhan su lam ket luan; khong co tra loi nao
+ * thi dung loi cam on chung.
  */
-export async function email_ho_thu_dong(ho_thu_id: string): Promise<boolean> {
+export async function email_ho_thu_dong(
+  ho_thu_id: string, ket_luan: string | null = null,
+): Promise<boolean> {
   if (!email_bat()) return false;
   try {
     const ctx = await ctx_ho_thu(ho_thu_id);
     if (ctx === null || ctx.email === null || !ctx.email.includes('@')) return false;
+    let kl = ket_luan;
+    if (kl === null) {
+      const cuoi = await truy_van_mot<{ noi_dung: string }>(
+        `select noi_dung from ho_thu_y_kien_tra_loi
+          where ho_thu_id = $1 and vai = 'nhan_su' order by tao_luc desc limit 1`,
+        [ho_thu_id],
+      );
+      kl = cuoi?.noi_dung ?? null;
+    }
+    const nd = noi_dung_hoan_tat(kl);
     return await gui_email({
       den: [ctx.email],
       tieu_de: `Hòm thư ý kiến đã hoàn tất${ctx.ma !== null ? ` ${ctx.ma}` : ''}`,
@@ -145,14 +178,43 @@ export async function email_ho_thu_dong(ho_thu_id: string): Promise<boolean> {
         mau_hop: '#059669',
         mau_vien: '#059669',
         ctx,
-        loi_dan: 'Phòng Nhân sự đã tiếp nhận, giải quyết và đóng hòm thư ý kiến này. '
-          + 'Cảm ơn bạn đã chia sẻ để công ty hoàn thiện hơn.',
-        noi_dung: 'Nếu còn băn khoăn, bạn có thể gửi một ý kiến mới từ mục "Hòm thư ý kiến".',
+        loi_dan: nd.loi_dan,
+        noi_dung: nd.noi_dung,
         chan: 'Xem lại nội dung trao đổi trong mục <b>Hòm thư ý kiến</b> của ứng dụng.',
       }),
     });
   } catch (loi) {
     console.error('[ho_thu_email] email_ho_thu_dong loi:', (loi as Error).message);
+    return false;
+  }
+}
+
+/**
+ * Nhan su MO ho thu lan dau (bam "Xem") -> email bao nguoi lao dong rang y kien DA DUOC
+ * TIEP NHAN, kem noi dung goc cua ho thu.
+ */
+export async function email_ho_thu_tiep_nhan(ho_thu_id: string): Promise<boolean> {
+  if (!email_bat()) return false;
+  try {
+    const ctx = await ctx_ho_thu(ho_thu_id);
+    if (ctx === null || ctx.email === null || !ctx.email.includes('@')) return false;
+    return await gui_email({
+      den: [ctx.email],
+      tieu_de: `Hòm thư ý kiến đã được tiếp nhận${ctx.ma !== null ? ` ${ctx.ma}` : ''}`,
+      noi_dung_html: than_email_ho_thu({
+        goc: cau_hinh.api_goc_cong_khai,
+        tieu_de_hop: 'Hòm thư ý kiến đã được tiếp nhận',
+        mau_hop: '#2563EB',
+        mau_vien: '#2563EB',
+        ctx,
+        loi_dan: 'Phòng Nhân sự đã tiếp nhận ý kiến của bạn và sẽ xem xét, phản hồi trong '
+          + 'thời gian sớm nhất:',
+        noi_dung: ctx.noi_dung,
+        chan: 'Bạn có thể theo dõi tiến độ xử lý trong mục <b>Hòm thư ý kiến</b> của ứng dụng.',
+      }),
+    });
+  } catch (loi) {
+    console.error('[ho_thu_email] email_ho_thu_tiep_nhan loi:', (loi as Error).message);
     return false;
   }
 }

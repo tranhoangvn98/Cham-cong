@@ -3,7 +3,7 @@ import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { than_email_ho_thu, type CtxHoThu } from '../src/ho_thu_y_kien/email.ts';
+import { noi_dung_hoan_tat, than_email_ho_thu, type CtxHoThu } from '../src/ho_thu_y_kien/email.ts';
 import { html_email_moi_y_kien } from '../src/ho_thu_y_kien/email_du_thao.ts';
 import { CAC_LOAI_GOP_Y, NHAN_TRANG_THAI_HO_THU } from '../src/ho_thu_y_kien/nghiep_vu.ts';
 
@@ -14,6 +14,7 @@ const CTX: CtxHoThu = {
   ma_nv: 'NVA',
   email: 'a@congty.vn',
   nhan_vien_id: '9f0e9a12-0000-4000-8000-000000000001',
+  noi_dung: 'Phòng họp nóng quá.',
 };
 
 test('than_email_ho_thu thoat HTML de chong injection', () => {
@@ -70,6 +71,15 @@ test('loai gop y chung khong chua du_thao; nhan trang thai du ba gia tri', () =>
   assert.ok(CAC_LOAI_GOP_Y.includes('thac_mac'));
   assert.equal((CAC_LOAI_GOP_Y as readonly string[]).includes('du_thao'), false);
   assert.equal(NHAN_TRANG_THAI_HO_THU.moi, 'Chờ xử lý');
-  assert.equal(NHAN_TRANG_THAI_HO_THU.dang_xem, 'Đang xử lý');
+  assert.equal(NHAN_TRANG_THAI_HO_THU.dang_xem, 'Đã tiếp nhận');
   assert.equal(NHAN_TRANG_THAI_HO_THU.da_dong, 'Đã hoàn tất');
+});
+
+test('noi dung hoan tat: co ket luan thi trinh ket luan, khong thi loi cam on chung', () => {
+  const co = noi_dung_hoan_tat('Đã kiểm tra và sửa xong.');
+  assert.equal(co.loi_dan.includes('Kết luận xử lý'), true);
+  assert.equal(co.noi_dung, 'Đã kiểm tra và sửa xong.');
+  const khong = noi_dung_hoan_tat(null);
+  assert.equal(khong.loi_dan.includes('Kết luận xử lý'), false);
+  assert.ok(khong.noi_dung.length > 0);
 });

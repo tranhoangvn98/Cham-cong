@@ -18,7 +18,7 @@ const NHAN_LOAI: Record<string, string> = {
 };
 
 const NHAN_TT: Record<string, string> = {
-  moi: 'Chờ xử lý', dang_xem: 'Đang xử lý', da_dong: 'Đã hoàn tất',
+  moi: 'Chờ xử lý', dang_xem: 'Đã tiếp nhận', da_dong: 'Đã hoàn tất',
 };
 
 interface HoThuToi {

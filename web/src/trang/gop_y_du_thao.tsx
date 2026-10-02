@@ -36,7 +36,7 @@ const NHAN_LOAI: Record<string, string> = {
 };
 
 const NHAN_TT: Record<string, string> = {
-  moi: 'Chờ phản hồi', dang_xem: 'Đang xử lý', da_dong: 'Đã hoàn tất',
+  moi: 'Chờ phản hồi', dang_xem: 'Đã tiếp nhận', da_dong: 'Đã hoàn tất',
 };
 
 export function TrangGopYDuThao(): ReactNode {

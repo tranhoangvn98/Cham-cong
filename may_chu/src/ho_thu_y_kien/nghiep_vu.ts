@@ -27,7 +27,7 @@ export type TrangThaiHoThu = (typeof CAC_TRANG_THAI_HO_THU)[number];
 
 export const NHAN_TRANG_THAI_HO_THU: Record<TrangThaiHoThu, string> = {
   moi: 'Chờ xử lý',
-  dang_xem: 'Đang xử lý',
+  dang_xem: 'Đã tiếp nhận',
   da_dong: 'Đã hoàn tất',
 };
 
@@ -96,7 +96,7 @@ export async function tao_ho_thu(o: {
 
 /**
  * Tra loi vao ho thu (hai vai). Vai 'nhan_su' tra loi mot ho thu 'moi' thi tu chuyen sang
- * 'dang_xem' trong CUNG transaction. Ho thu da dong thi nem LoiXungDot.
+ * 'dang_xem' (Da tiep nhan) trong CUNG transaction. Ho thu da dong thi nem LoiXungDot.
  */
 export async function tra_loi_ho_thu(
   ho_thu_id: string, vai: 'nhan_vien' | 'nhan_su', nguoi_dung_id: string, noi_dung: string,
@@ -123,6 +123,28 @@ export async function tra_loi_ho_thu(
     }
   });
   return doc_ho_thu(ho_thu_id);
+}
+
+/**
+ * Nhan su MO ho thu lan dau (bam "Xem") — chuyen 'moi' -> 'dang_xem' (Da tiep nhan) va ghi
+ * nguoi xu ly. Dung MOT cau UPDATE nguyen tu (where trang_thai = 'moi') nen hai nguoi cung
+ * mo khong tranh nhau; `vua_chuyen` = true chi dung mot lan de goi email tiep nhan.
+ * Khong tim thay ho thu thi nem LoiKhongTim.
+ */
+export async function tiep_nhan_ho_thu(
+  ho_thu_id: string, nguoi_dung_id: string,
+): Promise<{ ho_thu: DongHoThu; vua_chuyen: boolean }> {
+  const chuyen = await truy_van_mot<{ trang_thai: string }>(
+    `update ho_thu_y_kien
+        set trang_thai = 'dang_xem', nguoi_xu_ly = $2, cap_nhat_luc = now()
+      where id = $1 and trang_thai = 'moi'
+      returning trang_thai`,
+    [ho_thu_id, nguoi_dung_id],
+  );
+  // update ... returning tra 0 dong khi ho thu khong ton tai HOAC da khac 'moi' — doc lai de
+  // phan biet (doc_ho_thu nem LoiKhongTim neu khong ton tai).
+  const ho_thu = await doc_ho_thu(ho_thu_id);
+  return { ho_thu, vua_chuyen: chuyen !== null };
 }
 
 /** Nhan su dong ho thu — het hoi thoai. Chi dong duoc ho thu chua dong. */

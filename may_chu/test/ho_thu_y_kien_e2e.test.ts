@@ -277,6 +277,36 @@ test('gop y chung: nhan vien gui, chi chu so huu thay trong /toi, nhan su thay h
   assert.equal(cam.ma, 403);
 });
 
+test('tiep nhan: mo xem chuyen moi -> dang_xem (Da tiep nhan), dong kem ket luan', async () => {
+  const gop = await goi('POST', '/api/toi/ho-thu-y-kien', {
+    token: token_a,
+    body: { loai: 'gop_y', tieu_de: 'Đề xuất lắp quạt phòng họp', noi_dung: 'Phòng họp rất nóng.' },
+  });
+  assert.equal(gop.ma, 201);
+  assert.equal(gop.body['trang_thai'], 'moi');
+  const ht_id = gop.body['id'] as string;
+
+  // Nhan su mo xem lan dau -> Da tiep nhan.
+  const tp = await goi('POST', `/api/ho-thu-y-kien/${ht_id}/tiep-nhan`, { token: token_admin });
+  assert.equal(tp.ma, 200, `tiep nhan loi: ${tp.tho}`);
+  assert.equal(tp.body['trang_thai'], 'dang_xem');
+
+  // Nhan vien thuong khong tiep nhan duoc.
+  const cam = await goi('POST', `/api/ho-thu-y-kien/${ht_id}/tiep-nhan`, { token: token_a });
+  assert.equal(cam.ma, 403);
+
+  // Tiep nhan lap lai khong loi, trang thai giu nguyen.
+  const lai = await goi('POST', `/api/ho-thu-y-kien/${ht_id}/tiep-nhan`, { token: token_admin });
+  assert.equal(lai.ma, 200);
+  assert.equal(lai.body['trang_thai'], 'dang_xem');
+
+  // Dong kem ket luan xu ly.
+  const dong = await goi('POST', `/api/ho-thu-y-kien/${ht_id}/dong`, {
+    token: token_admin, body: { ket_luan: 'Đã lắp thêm 2 quạt cho phòng họp.' },
+  });
+  assert.equal(dong.ma, 200, `dong loi: ${dong.tho}`);
+});
+
 test('cong bo phat hanh: soan thanh van ban NĐ30 -> trinh ky -> cong bo -> van ban cong ty + popup', async () => {
   // Danh sach phien ban doc tu CHANGELOG that (tep duoc COPY vao anh kiem).
   const pb = await goi('GET', '/api/phat-hanh/phien-ban', { token: token_admin });

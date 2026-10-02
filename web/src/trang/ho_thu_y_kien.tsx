@@ -21,7 +21,7 @@ const NHAN_LOAI: Record<string, string> = {
 
 const NHAN_TT: Record<string, { ten: string; lop: string }> = {
   moi: { ten: 'Chờ xử lý', lop: 'nhan-xau' },
-  dang_xem: { ten: 'Đang xử lý', lop: 'nhan-canh-bao' },
+  dang_xem: { ten: 'Đã tiếp nhận', lop: 'nhan-canh-bao' },
   da_dong: { ten: 'Đã hoàn tất', lop: 'nhan-tot' },
 };
 
@@ -90,7 +90,7 @@ export function TrangHoThuYKien(): ReactNode {
         <p className="mo-ta">
           Nơi tiếp nhận mọi phản ánh, yêu cầu, góp ý và thắc mắc của người lao động — giải đáp
           thắc mắc, lắng nghe góp ý để sớm có điều chỉnh phù hợp hơn. Ý kiến cho dự thảo văn bản
-          cũng tập hợp tại đây. Hàng <strong>Chờ xử lý / Đang xử lý</strong> nằm trên đầu.
+          cũng tập hợp tại đây. Hàng <strong>Chờ xử lý / Đã tiếp nhận</strong> nằm trên đầu.
         </p>
       </div>
 
@@ -248,7 +248,20 @@ function HopThoaiChiTiet(
   const chi = dung_nap<ChiTiet>(`/api/ho-thu-y-kien/${id}`, [id]);
   const hd = dung_hanh_dong();
   const [tra_loi_nd, dat_tra_loi_nd] = useState('');
+  const [da_tiep_nhan, dat_da_tiep_nhan] = useState<string | null>(null);
   const chi_xem = chi_xem_quan_tri();
+
+  // Bam "Xem" mo ho thu 'moi' lan dau -> tiep nhan: chuyen thanh Da tiep nhan + email cho
+  // nguoi lao dong. Chi chay mot lan moi ho thu; che do chi xem thi khong tiep nhan.
+  // Neu API loi thi giu co da gui (khong goi lai lien tuc) — mo lai hop thoai se thu lai.
+  useEffect(() => {
+    const d = chi.du_lieu;
+    if (d === null || d.trang_thai !== 'moi' || chi_xem || da_tiep_nhan === d.id) return;
+    dat_da_tiep_nhan(d.id);
+    void goi(`/api/ho-thu-y-kien/${d.id}/tiep-nhan`, { method: 'POST' })
+      .then(() => { khi_xong(); chi.nap_lai(); })
+      .catch(() => {});
+  }, [chi.du_lieu, chi_xem, da_tiep_nhan, khi_xong]);
 
   if (chi.dang_tai) return <HopThoai tieu_de="Hòm thư ý kiến" khi_dong={khi_dong}><DangTai /></HopThoai>;
   const d = chi.du_lieu;
@@ -266,9 +279,12 @@ function HopThoaiChiTiet(
     ).then((ok) => { if (ok) { dat_tra_loi_nd(''); khi_xong(); khi_dong(); } });
   };
   const dong_lai = (): void => {
+    // Noi dung da nhap (neu co) chinh la KET LUAN xu ly gui cho nguoi lao dong trong email
+    // hoan tat; de trong thi he thong lay tra loi cuoi cua Nhan su lam ket luan.
     void hd.chay(
-      () => goi(`/api/ho-thu-y-kien/${d.id}/dong`, { method: 'POST' }),
-      'Đã đóng hòm thư — người lao động đã nhận thông báo hoàn tất.',
+      () => goi(`/api/ho-thu-y-kien/${d.id}/dong`,
+        { method: 'POST', body: { ket_luan: tra_loi_nd.trim() } }),
+      'Đã hoàn tất — người lao động nhận email kèm kết luận xử lý.',
     ).then((ok) => { if (ok) { khi_xong(); khi_dong(); } });
   };
 
@@ -303,11 +319,11 @@ function HopThoaiChiTiet(
       {!dong && !chi_xem && (
         <div style={{ marginTop: 4, marginBottom: 8 }}>
           <textarea value={tra_loi_nd} onChange={(e) => dat_tra_loi_nd(e.target.value)} rows={2}
-            placeholder="Trả lời / trao đổi với người lao động…" />
+            placeholder="Trả lời / nhập kết luận xử lý (nội dung nhập sẽ gửi kèm khi đóng)…" />
           <div className="hang-nut" style={{ marginTop: 6 }}>
             <button className="nut-phang" disabled={hd.dang_chay || tra_loi_nd.trim().length < 1}
               onClick={gui}>Gửi trả lời</button>
-            <button disabled={hd.dang_chay} onClick={dong_lai}>Đóng hòm thư (hoàn tất)</button>
+            <button disabled={hd.dang_chay} onClick={dong_lai}>Kết luận & đóng hòm thư</button>
           </div>
         </div>
       )}

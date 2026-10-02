@@ -13,12 +13,15 @@ import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import {
-  chuoi_bat_buoc, than, trong_tap, uuid, LoiKhongTim,
+  chuoi, chuoi_bat_buoc, than, trong_tap, uuid, LoiKhongTim,
 } from '../tien_ich/kiem_tra.ts';
 import {
-  CAC_LOAI_HO_THU, CAC_TRANG_THAI_HO_THU, doc_ho_thu, dong_ho_thu, tra_loi_ho_thu,
+  CAC_LOAI_HO_THU, CAC_TRANG_THAI_HO_THU, doc_ho_thu, dong_ho_thu, tiep_nhan_ho_thu,
+  tra_loi_ho_thu,
 } from '../ho_thu_y_kien/nghiep_vu.ts';
-import { email_ho_thu_dong, email_nhan_su_tra_loi } from '../ho_thu_y_kien/email.ts';
+import {
+  email_ho_thu_dong, email_ho_thu_tiep_nhan, email_nhan_su_tra_loi,
+} from '../ho_thu_y_kien/email.ts';
 
 function lay_id(req: { params: unknown }): string {
   const p = req.params as Record<string, string>;
@@ -96,6 +99,32 @@ export async function tuyen_ho_thu_y_kien(app: FastifyInstance): Promise<void> {
     };
   });
 
+  // ------------------------------------------------------------ nhan su tiep nhan (bam Xem)
+  // Mo ho thu 'moi' lan dau -> chuyen thanh 'dang_xem' (Da tiep nhan) + bao email nguoi lao
+  // dong rang y kien da duoc tiep nhan. Web goi ngay khi hop thoai chi tiet mo ra.
+  app.post('/ho-thu-y-kien/:id/tiep-nhan', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const id = lay_id(req);
+    const hien = await truy_van_mot<{ nhan_vien_id: string | null }>(
+      'select nhan_vien_id from ho_thu_y_kien where id = $1', [id]);
+    if (hien === null) throw new LoiKhongTim('Không tìm thấy hòm thư ý kiến.');
+
+    const { ho_thu, vua_chuyen } = await tiep_nhan_ho_thu(id, nd.sub);
+    if (vua_chuyen) {
+      await ghi_nhat_ky(nd.sub, 'ho_thu_y_kien.tiep_nhan', 'ho_thu_y_kien', id, null, req.ip);
+      if (hien.nhan_vien_id !== null) {
+        gui_ngam({
+          nguoi_dung_ids: await tai_khoan_cua_nhan_vien(hien.nhan_vien_id).catch(() => []),
+          tieu_de: 'Hòm thư ý kiến đã được tiếp nhận',
+          noi_dung: 'Phòng Nhân sự đã tiếp nhận ý kiến của bạn và sẽ phản hồi sớm.',
+          du_lieu: { man: 'ho-thu-y-kien', ho_thu_id: id },
+        });
+      }
+      void email_ho_thu_tiep_nhan(id);
+    }
+    return { ok: true, trang_thai: ho_thu.trang_thai };
+  });
+
   // ------------------------------------------------------------ nhan su tra loi
   app.post('/ho-thu-y-kien/:id/tra-loi', { preHandler: can_nhan_su }, async (req) => {
     const nd = nguoi_dung_hien_tai(req);
@@ -126,6 +155,9 @@ export async function tuyen_ho_thu_y_kien(app: FastifyInstance): Promise<void> {
   app.post('/ho-thu-y-kien/:id/dong', { preHandler: can_nhan_su }, async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     const id = lay_id(req);
+    // Ket luan xu ly (tuy chon): de trong thi email lay tra loi cuoi cua Nhan su lam ket luan;
+    // khong co tra loi nao thi dung loi cam on chung.
+    const ket_luan = chuoi(than(req.body) as Record<string, unknown>, 'ket_luan', { toi_da: 2000 });
     const hien = await truy_van_mot<{ nhan_vien_id: string | null }>(
       'select nhan_vien_id from ho_thu_y_kien where id = $1', [id]);
     if (hien === null) throw new LoiKhongTim('Không tìm thấy hòm thư ý kiến.');
@@ -141,7 +173,7 @@ export async function tuyen_ho_thu_y_kien(app: FastifyInstance): Promise<void> {
         du_lieu: { man: 'ho-thu-y-kien', ho_thu_id: id },
       });
     }
-    void email_ho_thu_dong(id);
+    void email_ho_thu_dong(id, ket_luan);
     return { ok: true };
   });
 }
