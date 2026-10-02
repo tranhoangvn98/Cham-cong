@@ -35,6 +35,7 @@ const DUONG_THEO_MAN: Record<string, string> = {
   'vi-pham': '/ca-nhan/don-tu',
   'don-cua-toi': '/ca-nhan/don-tu',
   'ho_so': '/ca-nhan/ca-nhan',
+  'de-nghi-nhan-su': '/de-nghi-nhan-su',
   // Nhan vien vao trang huong dan cua CHINH minh; nguoi quan tri vao trang quan ly.
   'thoi-viec': goc_nhin() === 'quan_tri' ? '/thoi-viec' : '/thoi-viec/huong-dan',
 };

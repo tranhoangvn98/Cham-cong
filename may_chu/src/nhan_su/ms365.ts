@@ -9,6 +9,8 @@
 // Ham thuan `dung_than_*` tach payload ra de unit test ma khong can goi Graph that.
 import { randomInt } from 'node:crypto';
 import { cau_hinh } from '../cau_hinh.ts';
+import { trong_giao_dich } from '../csdl/ket_noi.ts';
+import { gui_ngam, tai_khoan_nhan_su } from '../su_kien/thong_bao_day.ts';
 import { lay_token_graph } from '../su_kien/gui_email.ts';
 
 const HET_GIO_MS = 30_000;
@@ -233,4 +235,165 @@ export async function tao_tai_khoan_va_cap_giay_phep(
   if (!cap.ok) {
     throw new Error(`Graph từ chối cấp giấy phép ${upn} (HTTP ${cap.status})`);
   }
+}
+
+// ------------------------------------------------------------ doc danh sach da cap phep
+
+/**
+ * Graph app-only da cau hinh chua — dung chung creds cua `mail`, nhung KHONG can
+ * `nguoi_gui` vi chi DOC danh sach nguoi dung, khong gui thu.
+ */
+export function graph_da_cau_hinh(): boolean {
+  const m = cau_hinh.mail;
+  return m.tenant_id !== '' && m.client_id !== '' && m.client_secret !== '';
+}
+
+/** Nguoi dung Microsoft 365 da co giay phep, de HR chon khi tao de nghi them nhan su. */
+export interface NguoiMs365DaCapPhep {
+  /** Dinh danh on dinh cua nguoi dung trong Entra (object id). */
+  oid: string;
+  ho_ten: string;
+  /** Email/UPN — email chinh la ten dang nhap Microsoft. */
+  upn: string;
+}
+
+/** Dong nguoi dung Graph tho — chi lay nhung truong can doc giay phep. */
+export interface DongNguoiDungGraph {
+  id?: unknown;
+  displayName?: unknown;
+  userPrincipalName?: unknown;
+  accountEnabled?: unknown;
+  userType?: unknown;
+  assignedLicenses?: unknown;
+}
+
+/**
+ * Loc nhung nguoi dung CON DANG HOAT DONG va DANG CO it nhat mot giay phep.
+ *
+ * Ham THUAN de unit test ma khong can goi Graph that. Loai:
+ *   - Tai khoan da khoa (accountEnabled khac true).
+ *   - Khach moi ngoai tenancy (UPN chua `#EXT#`) — khong phai nhan vien cong ty.
+ *   - Nguoi chua duoc cap giay phep nao.
+ */
+export function loc_nguoi_da_cap_phep(ds: DongNguoiDungGraph[]): NguoiMs365DaCapPhep[] {
+  const kq: NguoiMs365DaCapPhep[] = [];
+  for (const d of ds) {
+    if (d === null || typeof d !== 'object') continue;
+    if (d.accountEnabled !== true) continue;
+    if (!Array.isArray(d.assignedLicenses) || d.assignedLicenses.length === 0) continue;
+    const upn = typeof d.userPrincipalName === 'string' ? d.userPrincipalName.trim() : '';
+    if (upn === '' || upn.toUpperCase().includes('#EXT#')) continue;
+    const oid = typeof d.id === 'string' ? d.id.trim() : '';
+    const ten = typeof d.displayName === 'string' ? d.displayName.trim() : '';
+    if (oid === '' || ten === '') continue;
+    kq.push({ oid, ho_ten: ten, upn });
+  }
+  return kq;
+}
+
+/**
+ * Doc danh sach nguoi dung Entra dang co giay phep qua Graph app-only.
+ *
+ * Quyen can thiet: User.Read.All (nam san trong User.ReadWrite.All da cap cho app).
+ * Doc theo trang `@odata.nextLink`, toi da 5 trang phong ho — cong ty nho, mot trang
+ * `$top=999` la du, nhung khong bao gio gia su the.
+ */
+export async function danh_sach_nguoi_ms365_da_cap_phep(): Promise<NguoiMs365DaCapPhep[]> {
+  const token = await lay_token_graph();
+  let url = `${GOC_GRAPH()}/users`
+    + '?$select=id,displayName,userPrincipalName,accountEnabled,userType,assignedLicenses'
+    + '&$top=999';
+  const tat_ca: NguoiMs365DaCapPhep[] = [];
+  for (let trang = 0; trang < 5 && url !== ''; trang++) {
+    const res = await fetch(url, {
+      headers: { authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(HET_GIO_MS),
+    });
+    if (!res.ok) {
+      throw new Error(`Graph từ chối đọc danh sách người dùng (HTTP ${res.status})`);
+    }
+    const than = (await res.json().catch(() => ({}))) as {
+      value?: DongNguoiDungGraph[];
+      '@odata.nextLink'?: string;
+    };
+    tat_ca.push(...loc_nguoi_da_cap_phep(than.value ?? []));
+    url = than['@odata.nextLink'] ?? '';
+  }
+  return tat_ca;
+}
+
+// ------------------------------------------------------------ dong bo anh chup + bao HR
+
+export interface KetQuaDongBoMs365 {
+  /** Tong so nguoi dang co giay phep (sau lan quet nay). */
+  tong: number;
+  /** So nguoi moi phat hien lan nay (oid chua tung co trong anh chup). */
+  them_moi: number;
+  /** Ho ten nguoi moi phat hien — de bao HR va hien phan hoi. */
+  ten_moi: string[];
+}
+
+/**
+ * Gom ho ten nguoi moi thanh mot cau nguoi doc duoc cho thong bao.
+ *
+ * Ham THUAN de unit test: toi da 3 ten, thua thi "... va N nguoi khac".
+ */
+export function ten_moi_thanh_chu(ten: string[]): string | null {
+  if (ten.length === 0) return null;
+  const dau = ten.slice(0, 3).join(', ');
+  return ten.length > 3 ? `${dau} và ${ten.length - 3} người khác` : dau;
+}
+
+/**
+ * Quet Graph, ghi anh chup danh sach nguoi da co giay phep vao bang
+ * `ms365_nguoi_da_cap_phep`, va bao HR khi co nguoi MOI duoc cap phep.
+ *
+ * Idempotent — chay song song (lich + nut dong bo) cung an toan: insert moi dung
+ * `on conflict do nothing`, cap nhat ten/upn cho oid da biet, xoa oid khong con giay
+ * phep nua. Nem loi khi Graph loi de ben goi quyet dinh nha viec / tra loi.
+ */
+export async function dong_bo_nguoi_ms365_da_cap_phep(): Promise<KetQuaDongBoMs365> {
+  const ds = await danh_sach_nguoi_ms365_da_cap_phep();
+  const oid = ds.map((d) => d.oid);
+  const ten = ds.map((d) => d.ho_ten);
+  const upn = ds.map((d) => d.upn);
+
+  const ten_moi = await trong_giao_dich(async (khach) => {
+    // Nguoi moi: chen (oid moi) va lay ten de bao. `on conflict do nothing` la nguyen
+    // tu — hai lan quet cung luc khong dem trung.
+    const moi = await khach.query<{ ho_ten: string }>(
+      `insert into ms365_nguoi_da_cap_phep(oid, ho_ten, upn)
+       select v.oid, v.ho_ten, v.upn
+         from unnest($1::text[], $2::text[], $3::text[]) as v(oid, ho_ten, upn)
+       on conflict (oid) do nothing
+       returning ho_ten`,
+      [oid, ten, upn],
+    );
+    // Oid da biet nhung ten/upn doi: cap nhat lai, khong doi `phat_hien_luc`.
+    await khach.query(
+      `update ms365_nguoi_da_cap_phep as t
+          set ho_ten = v.ho_ten, upn = v.upn, dong_bo_luc = now()
+         from unnest($1::text[], $2::text[], $3::text[]) as v(oid, ho_ten, upn)
+        where t.oid = v.oid and (t.ho_ten <> v.ho_ten or t.upn <> v.upn)`,
+      [oid, ten, upn],
+    );
+    // Nguoi mat giay phep: ra khoi anh chup de o chon khong con liet ke ho.
+    await khach.query(
+      `delete from ms365_nguoi_da_cap_phep where oid <> all($1::text[])`,
+      [oid],
+    );
+    return moi.rows.map((r) => r.ho_ten);
+  });
+
+  if (ten_moi.length > 0) {
+    const chu = ten_moi_thanh_chu(ten_moi) ?? '';
+    gui_ngam({
+      nguoi_dung_ids: await tai_khoan_nhan_su(),
+      tieu_de: 'Microsoft 365 có tài khoản mới được cấp phép',
+      noi_dung: `${chu} vừa có giấy phép Microsoft 365 — mở "Đề nghị thêm nhân sự" `
+        + 'để tạo đề nghị.',
+      du_lieu: { man: 'de-nghi-nhan-su' },
+    });
+  }
+  return { tong: ds.length, them_moi: ten_moi.length, ten_moi };
 }

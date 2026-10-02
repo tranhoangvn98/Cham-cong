@@ -185,6 +185,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     buoc: [
       { chu: 'Bấm Đề nghị thêm nhân sự, điền họ tên + chức danh + vị trí; email công ty nếu muốn cấp tài khoản Microsoft.', vai_tro: NHAN_SU },
       { chu: 'Nếu người mới ĐÃ CÓ tài khoản Microsoft 365 kèm giấy phép: chọn người đó trong ô "Chọn từ Microsoft 365" — họ tên + email tự điền và hệ thống sẽ không tạo lại tài khoản.', vai_tro: NHAN_SU },
+      { chu: 'Danh sách Microsoft 365 được quét tự động 08:00 và 13:00 mỗi ngày; bấm "Đồng bộ ngay" cạnh ô chọn để cập nhật lập tức.', vai_tro: NHAN_SU },
       { chu: 'Chọn máy cửa để hệ thống tự cấp PIN theo dải của máy đó (vân tay/khuôn mặt vẫn phải enroll tại máy).', vai_tro: NHAN_SU },
       { chu: 'Admin mở Duyệt / từ chối: điền mã nhân viên (nếu trống), sửa chức danh nếu cần, rồi bấm Duyệt & khởi tạo.', vai_tro: ['admin'] },
       { chu: 'Mật khẩu khởi tạo Microsoft chỉ hiện một lần ngay khi duyệt — chép lại để bàn giao.', vai_tro: ['admin'] },
@@ -193,6 +194,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     luu_y: [
       'Không khai email công ty thì không cấp được tài khoản Microsoft — email chính là tên đăng nhập (UPN).',
       'Danh sách Microsoft 365 chỉ hiện người đang bật tài khoản và đã có giấy phép, bỏ người đã có hồ sơ trong hệ thống — không thấy tên thì kiểm tra giấy phép hoặc chọn nhập tay.',
+      'Khi phát hiện tài khoản Microsoft mới được cấp phép, hệ thống báo Nhân sự qua chuông thông báo.',
       'Chưa khai MS365_SKU_BASIC / MS365_SKU_STANDARD thì Admin bị chặn khi duyệt đề nghị cấp Microsoft — khai xong mới duyệt được.',
       'Máy cửa offline thì lệnh đẩy PIN nằm chờ, checklist mục PIN chỉ tick khi máy xác nhận — không chặn các việc khác.',
     ],

@@ -30,6 +30,7 @@ HR/quản lý                                Admin                            H�
 
 | Route | Quyền | Ý nghĩa |
 | --- | --- | --- |
+| `GET /api/de-nghi-nhan-su/ms365-da-cap-phep` | nhân sự | Danh sách người Microsoft 365 đã có giấy phép (Graph app-only) — loại bỏ người đã có hồ sơ và người đã có đề nghị chờ duyệt |
 | `POST /api/de-nghi-nhan-su` | nhân sự | Tạo đề nghị (nhân sự mới chưa được khởi tạo) |
 | `GET /api/de-nghi-nhan-su?trang_thai=` | nhân sự | Danh sách đề nghị |
 | `PATCH /api/de-nghi-nhan-su/:id` | nhân sự | Sửa đề nghị đang chờ duyệt |
@@ -41,6 +42,36 @@ tạo **chỉ hiện một lần**, REQ-SC-07), `tai_khoan_he_thong`, `canh_bao`
 
 Kiểm trước khi chạy (REQ-G-03): email/UPN hợp lệ; `cap_ms365=true` mà chưa khai SKU thì
 **chặn duyệt** với lỗi rõ — khác luồng thêm nhân viên tay (ở đó chỉ cảnh báo).
+
+## 2b. Đề nghị từ danh sách Microsoft 365 đã có giấy phép
+
+HR có thể **chọn người có sẵn tài khoản Microsoft 365 kèm giấy phép** (danh sách đọc từ
+Graph, chỉ gồm tài khoản đang bật + có ≥ 1 giấy phép + không phải guest `#EXT#`, đã loại
+người có hồ sơ / đề nghị chờ duyệt) thay vì nhập tay. Khi chọn, đề nghị lưu kèm
+`ms365_da_co = true` và `ms365_oid` (object id trong Entra để đối soát):
+
+- Khi duyệt, hệ thống **không** gửi sự kiện `ms365.tao_tai_khoan` — tạo lại sẽ đụng độ UPN
+  và có thể cấp nhầm giấy phép cho người khác. Các phần còn lại (ERP1, cổng, PIN, việc
+  nhập việc) chạy bình thường.
+- Mục checklist 1 "Tạo tài khoản MS365 + cấp giấy phép" được **tick sẵn** (không còn việc
+  gì phải làm); phản hồi duyệt trả `ms365_da_co: true`, không có mật khẩu khởi tạo nào.
+- Thiếu email mà `ms365_da_co = true` thì **chặn duyệt** (email chính là UPN để đối chiếu).
+- Route danh sách yêu cầu cấu hình Graph (`MS_MAIL_TENANT_ID` / `CLIENT_ID` /
+  `CLIENT_SECRET`, dùng chung creds với mail — app đã có `User.ReadWrite.All` nên đọc được
+  danh sách). Chưa cấu hình thì trả lỗi rõ ràng, form vẫn nhập tay được.
+
+### Nguồn danh sách: ảnh chụp + quét định kỳ + đồng bộ ngay
+
+Danh sách không đọc Graph mỗi lần mở form nữa — hệ thống giữ **ảnh chụp** trong bảng
+`ms365_nguoi_da_cap_phep` (migration 099) và cập nhật bằng:
+
+- **Lịch quét 08:00 và 13:00** mỗi ngày (giờ máy chấm công, `su_kien/lich_chay.ts`);
+- **Nút "Đồng bộ ngay"** cạnh ô chọn trong form (route
+  `POST /api/de-nghi-nhan-su/ms365-da-cap-phep/dong-bo`, quyền nhân sự).
+
+Khi phát hiện tài khoản **mới được cấp phép** (oid chưa từng có trong ảnh chụp), hệ thống
+báo Nhân sự qua chuông thông báo kèm tên người mới, bấm vào mở thẳng trang đề nghị.
+Lần đầu mở form mà ảnh chụp còn trống thì hệ thống tự quét một lần để khởi danh sách.
 
 ## 3. Cấu hình
 

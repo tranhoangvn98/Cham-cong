@@ -11,7 +11,8 @@ import assert from 'node:assert/strict';
 const {
   dung_than_chan_dang_nhap, dung_than_rut_giay_phep,
   dung_than_tao_tai_khoan, dung_than_cap_giay_phep,
-  la_truong_phong, sinh_mat_khau_khoi_tao,
+  la_truong_phong, sinh_mat_khau_khoi_tao, loc_nguoi_da_cap_phep,
+  ten_moi_thanh_chu,
 } = await import('../src/nhan_su/ms365.ts');
 
 test('chan dang nhap: accountEnabled phai la false', () => {
@@ -68,4 +69,61 @@ test('mat khau khoi tao: du dai, du 4 nhom ky tu', () => {
     assert.match(mk, /[0-9]/);
     assert.match(mk, /[!@#$%^&*\-_=+]/);
   }
+});
+
+test('loc da cap phep: giu nguoi con hoat dong va co giay phep', () => {
+  const kq = loc_nguoi_da_cap_phep([
+    {
+      id: 'oid-1', displayName: 'Nguyễn Văn A',
+      userPrincipalName: 'an.nguyen@tranhoangvietnam.com',
+      accountEnabled: true, userType: 'Member',
+      assignedLicenses: [{ skuId: 'sku-basic' }],
+    },
+  ]);
+  assert.deepEqual(kq, [{
+    oid: 'oid-1', ho_ten: 'Nguyễn Văn A', upn: 'an.nguyen@tranhoangvietnam.com',
+  }]);
+});
+
+test('loc da cap phep: loai tai khoan da khoa, chua co giay phep, guest #EXT#', () => {
+  const kq = loc_nguoi_da_cap_phep([
+    {
+      id: 'oid-khoa', displayName: 'Đã Nghỉ',
+      userPrincipalName: 'nghi@tranhoangvietnam.com',
+      accountEnabled: false, userType: 'Member',
+      assignedLicenses: [{ skuId: 'sku-basic' }],
+    },
+    {
+      id: 'oid-chua', displayName: 'Chưa Cấp',
+      userPrincipalName: 'chua@tranhoangvietnam.com',
+      accountEnabled: true, userType: 'Member',
+      assignedLicenses: [],
+    },
+    {
+      id: 'oid-guest', displayName: 'Khách Bên Ngoài',
+      userPrincipalName: 'khach_outlook.com#EXT#@tranhoangvietnam.com',
+      accountEnabled: true, userType: 'Guest',
+      assignedLicenses: [{ skuId: 'sku-basic' }],
+    },
+    {
+      id: 'oid-thieu', displayName: '',
+      userPrincipalName: '',
+      accountEnabled: true, userType: 'Member',
+      assignedLicenses: [{ skuId: 'sku-basic' }],
+    },
+  ]);
+  assert.deepEqual(kq, []);
+});
+
+test('loc da cap phep: khong chet khi Graph tra thieu truong', () => {
+  const kq = loc_nguoi_da_cap_phep([{}, null as never]);
+  assert.deepEqual(kq, []);
+});
+
+test('ten moi thanh chu: toi da 3 ten, thua thi gom "va N nguoi khac"', () => {
+  assert.equal(ten_moi_thanh_chu([]), null);
+  assert.equal(ten_moi_thanh_chu(['Nguyễn A']), 'Nguyễn A');
+  assert.equal(ten_moi_thanh_chu(['Nguyễn A', 'Trần B']), 'Nguyễn A, Trần B');
+  assert.equal(ten_moi_thanh_chu(['A', 'B', 'C']), 'A, B, C');
+  assert.equal(ten_moi_thanh_chu(['A', 'B', 'C', 'D', 'E']), 'A, B, C và 2 người khác');
 });

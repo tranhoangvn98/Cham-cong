@@ -21,6 +21,7 @@ import { quet_email_cho } from './gui_email_thong_bao.ts';
 import { quet_qua_han } from '../viec/cham_han.ts';
 import { sinh_viec_dinh_ky } from '../viec/dinh_ky.ts';
 import { khi_hop_dong_sap_het, quet_don_cho_duyet } from '../viec/workflow.ts';
+import { dong_bo_nguoi_ms365_da_cap_phep, graph_da_cau_hinh } from '../nhan_su/ms365.ts';
 import { cong_ngay, khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. Khai duoc trong .env. */
@@ -232,6 +233,31 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     if (doi > 0) ghi_log(`[lich] khoa cua: doi trang thai ${doi} may`);
   } catch (loi) {
     ghi_log(`[lich] LOI khi dong bo khoa cua: ${(loi as Error).message}`);
+  }
+
+  // ------------------------------------------------------------ quet giay phep MS365
+  // 08:00 va 13:00 (gio may cham cong): quet Graph xem co tai khoan nao MOI duoc cap
+  // giay phep khong — co thi bao HR de tao de nghi them nhan su. Khoa theo ngay+gio nen
+  // moi cua so chi chay mot lan; may nghi/loop tre thi vong dau tien sau gio do bu duoc.
+  // Chua cau hinh Graph thi bo qua (KHONG nhan viec) de khi cau hinh xong con chay duoc.
+  if (graph_da_cau_hinh()) {
+    for (const gio_quet of [8, 13]) {
+      if (gio_may < gio_quet) continue;
+      const ma_quet = `ms365_quet_giay_phep:${hom_nay}:${gio_quet}`;
+      if (await nhan_viec(ma_quet)) {
+        try {
+          const kq = await dong_bo_nguoi_ms365_da_cap_phep();
+          await ghi_ket_qua(ma_quet,
+            `thay ${String(kq.them_moi)} moi trong ${String(kq.tong)} nguoi da cap phep`);
+          if (kq.them_moi > 0) {
+            ghi_log(`[lich] MS365: ${String(kq.them_moi)} tai khoan moi duoc cap giay phep`);
+          }
+        } catch (loi) {
+          await nha_viec(ma_quet);
+          ghi_log(`[lich] LOI khi quet giay phep MS365: ${(loi as Error).message}`);
+        }
+      }
+    }
   }
 
   // ------------------------------------------------------------ cong viec qua han

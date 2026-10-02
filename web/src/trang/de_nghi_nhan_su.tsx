@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { goi, la_admin, la_nhan_su } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, Trong,
-  dung_hanh_dong, dung_nap, ngay_viet,
+  dung_hanh_dong, dung_nap, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
@@ -22,6 +22,7 @@ interface DeNghi {
   email: string | null;
   loai_hop_dong: string | null;
   cap_ms365: boolean;
+  ms365_da_co: boolean;
   tao_tk_he_thong: boolean;
   tu_cap_pin: boolean;
   serial_may_cua: string | null;
@@ -34,6 +35,12 @@ interface DeNghi {
   nguoi_de_nghi: string | null;
   admin_duyet: string | null;
 }
+
+/** Nguoi Microsoft 365 da co giay phep — HR chon de dien san ho ten + email. */
+interface NguonMs365 { oid: string; ho_ten: string; upn: string }
+
+/** Anh chup danh sach da cap phep + moc dong bo lan cuoi. */
+interface KqNguonMs365 { danh_sach: NguonMs365[]; dong_bo_luc: string | null }
 
 const TT_TEN: Record<string, string> = {
   cho_duyet: 'Chờ duyệt',
@@ -59,6 +66,7 @@ interface KetQuaDuyet {
   pin_may: string | null;
   viec_id: string | null;
   canh_bao?: string[];
+  ms365_da_co?: boolean;
   tai_khoan_ms365?: { upn: string; mat_khau: string; sku_id: string; ghi_chu: string };
   tai_khoan_he_thong?: {
     ten_dang_nhap: string; mat_khau: string; vai_tro: string; ghi_chu: string;
@@ -141,9 +149,11 @@ export function TrangDeNghiNhanSu(): ReactNode {
                     <td>{d.chuc_danh ?? '—'}</td>
                     <td className="khong-ngat">{ngay_viet(d.ngay_vao)}</td>
                     <td className="canh-giua">
-                      {d.cap_ms365
-                        ? <span className="nhan nhan-lanh">có</span>
-                        : <span className="chu-mo">—</span>}
+                      {d.ms365_da_co
+                        ? <span className="nhan nhan-lanh">có sẵn</span>
+                        : d.cap_ms365
+                          ? <span className="nhan nhan-lanh">có</span>
+                          : <span className="chu-mo">—</span>}
                     </td>
                     <td className="khong-ngat">
                       <span className={`nhan ${TT_LOP[d.trang_thai] ?? 'nhan-mo'}`}>
@@ -218,10 +228,49 @@ function FormDeNghi(
   const [serial_cua, dat_serial_cua] = useState('');
   const [cap_ms365, dat_cap_ms365] = useState(true);
   const [tao_tk_ht, dat_tao_tk_ht] = useState(true);
+  // Chon nguoi co san tai khoan Microsoft 365 (da co giay phep) thay vi nhap tay.
+  const [nguon_ms365, dat_nguon_ms365] = useState('');
+  const [ms365_da_co, dat_ms365_da_co] = useState(false);
+  const [ms365_oid, dat_ms365_oid] = useState('');
+  const nguon = dung_nap<KqNguonMs365>('/api/de-nghi-nhan-su/ms365-da-cap-phep');
   const hd = dung_hanh_dong();
+  const db = dung_hanh_dong();
 
   const doi = (khoa: keyof typeof f, gt: string): void =>
     dat_f((cu) => ({ ...cu, [khoa]: gt }));
+
+  const dong_bo_ngay = async (): Promise<void> => {
+    const ok = await db.chay(() => goi('/api/de-nghi-nhan-su/ms365-da-cap-phep/dong-bo', {
+      method: 'POST', body: {},
+    }));
+    if (ok) nguon.nap_lai();
+  };
+
+  /** Sua email tay sau khi da chon tu danh sach thi bo che do "da co" — email moi co the
+   *  chua co tai khoan Microsoft nao, khong duoc bo qua buoc tao tai khoan. */
+  const doi_email = (gt: string): void => {
+    doi('email', gt);
+    const u = (nguon.du_lieu?.danh_sach ?? []).find((x) => x.oid === nguon_ms365);
+    if (u !== undefined && gt.trim().toLowerCase() !== u.upn.toLowerCase()) {
+      dat_nguon_ms365('');
+      dat_ms365_da_co(false);
+      dat_ms365_oid('');
+    }
+  };
+
+  const chon_ms365 = (ma: string): void => {
+    dat_nguon_ms365(ma);
+    if (ma === '') {
+      dat_ms365_da_co(false);
+      dat_ms365_oid('');
+      return;
+    }
+    const u = (nguon.du_lieu?.danh_sach ?? []).find((x) => x.oid === ma);
+    if (u === undefined) return;
+    dat_f((cu) => ({ ...cu, ho_ten: u.ho_ten, email: u.upn }));
+    dat_ms365_da_co(true);
+    dat_ms365_oid(u.oid);
+  };
 
   const gui = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -245,6 +294,8 @@ function FormDeNghi(
         pin_may: null,
         serial_may_cua: serial_cua === '' ? null : serial_cua,
         cap_ms365,
+        ms365_da_co,
+        ms365_oid: ms365_oid === '' ? null : ms365_oid,
         tao_tk_he_thong: tao_tk_ht,
       },
     }));
@@ -257,7 +308,38 @@ function FormDeNghi(
         <HopLoi loi={hd.loi} />
         <div className="hop-thong-bao hop-tin">
           Người mới chỉ được khởi tạo khi <strong>Admin duyệt</strong> — một bước, không cần
-          thao tác tay thêm. Điền email công ty nếu muốn cấp tài khoản Microsoft.
+          thao tác tay thêm. Chọn người từ danh sách Microsoft 365 nếu họ đã có tài khoản và
+          giấy phép; nếu không, nhập tay và hệ thống sẽ tạo tài khoản mới khi duyệt.
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="dn-ms365">Chọn từ Microsoft 365 (đã có giấy phép)</label>
+          <Chon gia_tri={nguon_ms365} dat_gia_tri={chon_ms365}
+            cac_tuy_chon={(nguon.du_lieu?.danh_sach ?? []).map((u): TuyChonChon => ({
+              ma: u.oid, nhan: `${u.ho_ten} — ${u.upn}`,
+            }))}
+            rong="— Nhập tay —" nhan="Người có sẵn tài khoản M365" />
+          {nguon.dang_tai
+            ? <div className="goi-y">Đang tải danh sách Microsoft 365…</div>
+            : nguon.loi !== null
+              ? <div className="goi-y">Không lấy được danh sách Microsoft 365 — nhập tay
+                hoặc thử lại sau.</div>
+              : ms365_da_co
+                ? <div className="goi-y">Họ tên và email đã điền từ danh sách; sửa thêm nếu cần.</div>
+                : null}
+          <div className="hang-nut" style={{ marginTop: 8 }}>
+            <button type="button" className="nut-nho nut-phang"
+              onClick={() => { void dong_bo_ngay(); }} disabled={db.dang_chay}>
+              {db.dang_chay ? 'Đang đồng bộ…' : 'Đồng bộ ngay'}
+            </button>
+            <span className="goi-y">
+              {nguon.du_lieu === null || nguon.du_lieu === undefined
+                || nguon.du_lieu.dong_bo_luc === null
+                ? 'Chưa đồng bộ lần nào'
+                : `Đồng bộ lần cuối: ${ngay_gio(nguon.du_lieu.dong_bo_luc)}`}
+            </span>
+          </div>
+          {db.loi !== null && <HopLoi loi={db.loi} />}
         </div>
 
         <div className="luoi luoi-2">
@@ -342,7 +424,7 @@ function FormDeNghi(
           <div className="o-nhap">
             <label htmlFor="dn-em">Email công ty</label>
             <input id="dn-em" type="email" value={f.email}
-              onChange={(e) => doi('email', e.target.value)} required={cap_ms365} />
+              onChange={(e) => doi_email(e.target.value)} required={cap_ms365} />
           </div>
         </div>
 
@@ -375,6 +457,13 @@ function FormDeNghi(
             onChange={(e) => dat_cap_ms365(e.target.checked)} />
           <label htmlFor="dn-ms">Tạo tài khoản Microsoft 365 + cấp giấy phép</label>
         </div>
+        {ms365_da_co && (
+          <div className="hop-thong-bao hop-tin">
+            Người này đã có tài khoản Microsoft 365 kèm giấy phép — khi duyệt, hệ thống
+            <strong> không tạo lại</strong> tài khoản, chỉ khởi tạo phần còn lại (ERP1, cổng,
+            PIN, việc nhập việc).
+          </div>
+        )}
         <div className="o-nhap-ngang">
           <input id="dn-htk" type="checkbox" checked={tao_tk_ht}
             onChange={(e) => dat_tao_tk_ht(e.target.checked)} />
@@ -439,6 +528,12 @@ function HopDuyet(
           <label htmlFor="dk-pin">PIN máy</label>
           <input id="dk-pin" value={ket_qua.pin_may ?? '—'} readOnly />
         </div>
+        {ket_qua.ms365_da_co === true && (
+          <div className="hop-thong-bao hop-tin">
+            Tài khoản Microsoft 365 của người này đã có sẵn (có giấy phép) — không có mật
+            khẩu khởi tạo nào để bàn giao.
+          </div>
+        )}
         {ket_qua.tai_khoan_ms365 !== undefined && (
           <>
             <div className="o-nhap">
@@ -483,6 +578,12 @@ function HopDuyet(
         Duyệt là hệ thống chạy ngay toàn bộ khởi tạo trong một giao dịch. Kiểm tra mã nhân
         viên và chức danh trước khi bấm.
       </div>
+      {de_nghi.ms365_da_co && (
+        <div className="hop-thong-bao hop-tin">
+          Tài khoản Microsoft 365 <strong>đã có sẵn giấy phép</strong> — hệ thống sẽ không
+          tạo lại, chỉ khởi tạo phần còn lại.
+        </div>
+      )}
       <div className="o-nhap">
         <label htmlFor="dk-manv">Mã nhân viên *</label>
         <input id="dk-manv" value={ma_nv} onChange={(e) => dat_ma_nv(e.target.value)} />

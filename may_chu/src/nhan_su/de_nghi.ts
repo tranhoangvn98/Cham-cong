@@ -16,7 +16,10 @@ import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { bo_dau } from '../tien_ich/ten_tep.ts';
 import { MA_VI_TRI } from './vi_tri.ts';
 import { tao_ho_so_nhan_su, type DauVaoTaoHoSo } from './tao_ho_so.ts';
-import { la_truong_phong } from './ms365.ts';
+import {
+  dong_bo_nguoi_ms365_da_cap_phep, graph_da_cau_hinh, la_truong_phong,
+  type KetQuaDongBoMs365,
+} from './ms365.ts';
 import {
   khoa_lenh_pin, nguoi_nhan_nhap_viec, tao_viec_nhap_viec_trong,
 } from './nhap_viec.ts';
@@ -52,6 +55,8 @@ interface DongDeNghi {
   pin_may: string | null;
   serial_may_cua: string | null;
   cap_ms365: boolean;
+  ms365_da_co: boolean;
+  ms365_oid: string | null;
   tao_tk_he_thong: boolean;
   trang_thai: string;
 }
@@ -89,6 +94,8 @@ function doc_de_nghi(b: Record<string, unknown>, bat_buoc_ho_ten: boolean): Reco
     pin_may: pin,
     serial_may_cua: chuoi(b, 'serial_may_cua', { toi_da: 64 }),
     cap_ms365: luan_ly(b, 'cap_ms365', true),
+    ms365_da_co: luan_ly(b, 'ms365_da_co', false),
+    ms365_oid: chuoi(b, 'ms365_oid', { toi_da: 64 }),
     tao_tk_he_thong: luan_ly(b, 'tao_tk_he_thong', true),
   };
 }
@@ -96,7 +103,8 @@ function doc_de_nghi(b: Record<string, unknown>, bat_buoc_ho_ten: boolean): Reco
 const COT_DE_NGHI = [
   'ho_ten', 'ma_nv', 'chuc_danh', 'vi_tri', 'phong_ban_id', 'ca_lam_id', 'khoi_id',
   'noi_lam_viec_id', 'ngay_vao', 'so_dien_thoai', 'email', 'ma_erp', 'loai_hop_dong',
-  'tu_cap_pin', 'pin_may', 'serial_may_cua', 'cap_ms365', 'tao_tk_he_thong',
+  'tu_cap_pin', 'pin_may', 'serial_may_cua', 'cap_ms365', 'ms365_da_co', 'ms365_oid',
+  'tao_tk_he_thong',
 ] as const;
 
 /**
@@ -115,7 +123,8 @@ export async function chay_khoi_tao_nhan_su(
   const d = await truy_van_mot<DongDeNghi>(
     `select id, ho_ten, ma_nv, chuc_danh, vi_tri, phong_ban_id, ca_lam_id, khoi_id,
             noi_lam_viec_id, ngay_vao, so_dien_thoai, email, ma_erp, loai_hop_dong,
-            tu_cap_pin, pin_may, serial_may_cua, cap_ms365, tao_tk_he_thong, trang_thai
+            tu_cap_pin, pin_may, serial_may_cua, cap_ms365, ms365_da_co, ms365_oid,
+            tao_tk_he_thong, trang_thai
        from de_nghi_them_nhan_su where id = $1`, [de_nghi_id]);
   if (d === null) throw new LoiKhongTim('Không tìm thấy đề nghị thêm nhân sự.');
   if (d.trang_thai !== 'cho_duyet') {
@@ -130,9 +139,17 @@ export async function chay_khoi_tao_nhan_su(
   const cap_ms365 = ghi_de.cap_ms365 ?? d.cap_ms365;
   const email = (d.email ?? '').trim();
 
+  // Nguoi da co tai khoan Microsoft (HR chon tu danh sach da cap giay phep) thi KHONG tao
+  // lai tai khoan: tao lai se dung do UPN va co the cap nham giay phep cho nguoi khac.
+  const tao_tk_ms365 = cap_ms365 && !d.ms365_da_co;
+  if (d.ms365_da_co && !email.includes('@')) {
+    throw new LoiDauVao(
+      'Đề nghị chọn người từ Microsoft 365 nhưng thiếu email — email chính là tên đăng nhập Microsoft (UPN). Sửa đề nghị trước khi duyệt.');
+  }
+
   // Kiem truoc khi chay (REQ-G-03): email/UPN hop le; cap MS365 ma chua khai SKU thi CHAN.
   let sku_id = '';
-  if (cap_ms365) {
+  if (tao_tk_ms365) {
     if (!email.includes('@')) {
       throw new LoiDauVao(
         'Email hồ sơ không hợp lệ — email chính là tên đăng nhập Microsoft (UPN). Sửa đề nghị trước khi duyệt.');
@@ -171,7 +188,7 @@ export async function chay_khoi_tao_nhan_su(
     vi_tri: d.vi_tri,
     tu_cap_pin,
     thiet_bi_serial: serial_cua === '' ? null : serial_cua,
-    tao_tk_ms365: cap_ms365,
+    tao_tk_ms365,
     tao_tk_he_thong: d.tao_tk_he_thong,
     sku_id_tuy_chon: (ghi_de.sku_id ?? '').trim() || null,
   };
@@ -196,9 +213,11 @@ export async function chay_khoi_tao_nhan_su(
       canh_bao.push('Chưa khai NHAP_VIEC_NHAN_SU_ID / workflow nhập việc — chưa giao được việc nhập việc cho nhân sự.');
     } else {
       const han = d.ngay_vao ?? ngay_dia_phuong(new Date());
+      // Tick san muc checklist MS365 khi tai khoan da co san giay phep (khong con viec
+      // gi phai lam) hoac khi he thong vua tu tao xong.
       viec_id = await tao_viec_nhap_viec_trong(
         khach, nguoi_nhan, { id: nv_id, ho_ten: d.ho_ten, ma_nv },
-        han, cap_ms365, d.loai_hop_dong, cau_hinh.nhap_viec.email_bhxh,
+        han, cap_ms365 || d.ms365_da_co, d.loai_hop_dong, cau_hinh.nhap_viec.email_bhxh,
       );
       if (viec_id === null) canh_bao.push('Việc nhập việc đã tồn tại — giữ nguyên bản cũ.');
     }
@@ -224,6 +243,9 @@ export async function chay_khoi_tao_nhan_su(
     nhan_vien_id: kq.id, pin_may: kq.pin_cap, viec_id,
   };
   if (kq.canh_bao.length > 0) ket_qua['canh_bao'] = kq.canh_bao;
+  if (d.ms365_da_co) {
+    ket_qua['ms365_da_co'] = true;
+  }
   if (kq.tai_khoan_ms365 !== null) {
     ket_qua['tai_khoan_ms365'] = {
       ...kq.tai_khoan_ms365,
@@ -240,13 +262,65 @@ export async function chay_khoi_tao_nhan_su(
 }
 
 export async function tuyen_de_nghi(app: FastifyInstance): Promise<void> {
+  // =================================================  NGUON: MS365 DA CO GIay PHEP
+  // Doc ANH CHUP (bang ms365_nguoi_da_cap_phep) thay vi goi Graph moi lan mo form — nhanh,
+  // khong treo form khi Graph cham. Anh chup duoc cap nhat boi lich quet 08:00/13:00 va nut
+  // "Dong bo ngay". Lan dau bang con trong ma Graph da cau hinh thi tu dong quet mot lan.
+  app.get('/de-nghi-nhan-su/ms365-da-cap-phep', { preHandler: can_nhan_su }, async () => {
+    const co = await truy_van_mot<{ so: number }>(
+      'select count(*)::int as so from ms365_nguoi_da_cap_phep');
+    if ((co?.so ?? 0) === 0 && graph_da_cau_hinh()) {
+      try {
+        await dong_bo_nguoi_ms365_da_cap_phep();
+      } catch (loi) {
+        throw new LoiDauVao(`Không đọc được danh sách Microsoft 365: ${(loi as Error).message}`);
+      }
+    }
+    // Loai bo nguoi da co ho so va nguoi da co de nghi dang cho duyet — chi con nhung
+    // nguoi HR co the de nghi them.
+    const da_dung = new Set<string>();
+    for (const d of await truy_van<{ email: string }>(
+      `select lower(email) as email from nhan_vien
+        where email is not null and email <> ''
+       union
+       select lower(email) as email from de_nghi_them_nhan_su
+        where email is not null and email <> '' and trang_thai = 'cho_duyet'`,
+    )) da_dung.add(d.email);
+    const ds = await truy_van<{ oid: string; ho_ten: string; upn: string }>(
+      'select oid, ho_ten, upn from ms365_nguoi_da_cap_phep order by upn');
+    const moc = await truy_van_mot<{ moc: string | null }>(
+      'select max(dong_bo_luc)::text as moc from ms365_nguoi_da_cap_phep');
+    return {
+      danh_sach: ds.filter((u) => !da_dung.has(u.upn.toLowerCase())),
+      dong_bo_luc: moc?.moc ?? null,
+    };
+  });
+
+  // =================================================  DONG BO NGAY (tu nut tren web)
+  app.post('/de-nghi-nhan-su/ms365-da-cap-phep/dong-bo', { preHandler: can_nhan_su }, async (req) => {
+    if (!graph_da_cau_hinh()) {
+      throw new LoiDauVao(
+        'Chưa cấu hình Microsoft Graph (MS_MAIL_TENANT_ID / CLIENT_ID / CLIENT_SECRET) — chưa đọc được danh sách Microsoft 365.');
+    }
+    let kq: KetQuaDongBoMs365;
+    try {
+      kq = await dong_bo_nguoi_ms365_da_cap_phep();
+    } catch (loi) {
+      throw new LoiDauVao(`Không đồng bộ được danh sách Microsoft 365: ${(loi as Error).message}`);
+    }
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'dong_bo_ms365_giay_phep',
+      'ms365_nguoi_da_cap_phep', null, { them_moi: kq.them_moi, tong: kq.tong }, req.ip);
+    return kq;
+  });
+
   // ======================================================================  DANH SACH
   app.get('/de-nghi-nhan-su', { preHandler: can_nhan_su }, async (req) => {
     const q = req.query as Record<string, unknown>;
     const tt = chuoi(q, 'trang_thai', { toi_da: 20 });
     return truy_van(
       `select dn.id, dn.ho_ten, dn.ma_nv, dn.chuc_danh, dn.vi_tri, dn.ngay_vao, dn.email,
-              dn.loai_hop_dong, dn.cap_ms365, dn.tao_tk_he_thong, dn.tu_cap_pin,
+              dn.loai_hop_dong, dn.cap_ms365, dn.ms365_da_co, dn.tao_tk_he_thong,
+              dn.tu_cap_pin,
               dn.serial_may_cua, dn.trang_thai, dn.nhan_vien_id, dn.ly_do_tu_choi,
               dn.admin_duyet_luc, dn.tao_luc,
               nv.ma_nv as ma_nv_da_tao,
@@ -270,7 +344,7 @@ export async function tuyen_de_nghi(app: FastifyInstance): Promise<void> {
     const dong = await truy_van_mot<{ id: string }>(
       `insert into de_nghi_them_nhan_su
          (${COT_DE_NGHI.join(', ')}, nguoi_de_nghi)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        returning id`,
       [...COT_DE_NGHI.map((k) => v[k]), nguoi_dung_hien_tai(req).sub],
     );

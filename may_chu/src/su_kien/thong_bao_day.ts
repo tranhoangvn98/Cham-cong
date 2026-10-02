@@ -195,3 +195,12 @@ export async function tai_khoan_duyet_ot_cap_2(): Promise<string[]> {
   );
   return dong.map((d) => d.id);
 }
+
+/** Tai khoan nhan su (kem admin + truong phong nhan su) dang hoat dong — nguoi nhan bao viec. */
+export async function tai_khoan_nhan_su(): Promise<string[]> {
+  const dong = await truy_van<{ id: string }>(
+    `select id from nguoi_dung
+      where dang_hoat_dong = true and vai_tro in ('nhan_su', 'admin', 'truong_phong_nhan_su')`,
+  );
+  return dong.map((d) => d.id);
+}

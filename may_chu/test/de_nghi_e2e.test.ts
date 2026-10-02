@@ -77,7 +77,8 @@ before(async () => {
   await chay_di_tru(() => {});
 
   await thuc_thi(`truncate table
-    de_nghi_them_nhan_su, cong_viec_hanh_dong, cong_viec, cong_viec_workflow,
+    de_nghi_them_nhan_su, ms365_nguoi_da_cap_phep, cong_viec_hanh_dong, cong_viec,
+    cong_viec_workflow,
     lenh_thiet_bi, hop_thu_di, ma_dinh_danh, may_nguoi_dung,
     nguoi_dung, nhan_vien, phong_ban, thiet_bi, nhat_ky_thao_tac
     restart identity cascade`);
@@ -262,6 +263,91 @@ test('cap_ms365 = false: khong ban su kien MS365, cac nhanh khac van chay', asyn
     `select xong from cong_viec_hanh_dong
       where cong_viec_id = $1 and thu_tu = 0`, [viec.id]);
   assert.equal(muc1?.xong, false, 'khong cap MS365 thi muc 1 khong tick san');
+});
+
+// ================================================================ MS365 DA CO GIay PHEP
+test('ms365_da_co: khong tao lai tai khoan Microsoft, checklist muc 1 tick san', async () => {
+  const dn = await tao_de_nghi({
+    ho_ten: 'Người Đã Có Microsoft', chuc_danh: 'Nhân viên',
+    email: 'da.co@tranhoangvietnam.com', tu_cap_pin: true, serial_may_cua: 'CUATEST01',
+    cap_ms365: true, ms365_da_co: true, ms365_oid: 'oid-da-co-001',
+    tao_tk_he_thong: true,
+  });
+  const r = await goi('POST', `/api/de-nghi-nhan-su/${dn}/duyet`, {
+    token: token_admin, body: { ma_nv: 'DNV-008' },
+  });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+  assert.equal(r.body['ms365_da_co'], true, 'phan hoi phai bao tai khoan da co san');
+  assert.equal(r.body['tai_khoan_ms365'], undefined, 'khong co mat khau khoi tao nao');
+
+  const sk = await su_kien_cua('DNV-008');
+  assert.ok(sk.some((s) => s.loai === 'nhan_su.da_tao'));
+  assert.ok(sk.some((s) => s.loai === 'erp1.nhan_su.da_tao'));
+  assert.ok(!sk.some((s) => s.loai === 'ms365.tao_tai_khoan'),
+    'tai khoan da co thi khong duoc ban su kien tao MS365');
+
+  const nv = await truy_van_mot<{ email: string | null }>(
+    'select email from nhan_vien where ma_nv = $1', ['DNV-008']);
+  assert.equal(nv?.email, 'da.co@tranhoangvietnam.com', 'email ho so giu nguyen UPN');
+
+  const viec = await truy_van_mot<{ id: string }>(
+    `select id from cong_viec where khoa_chong_trung = $1`,
+    [`nhap_viec:${r.body['nhan_vien_id'] as string}`]);
+  assert.ok(viec !== null);
+  const muc1 = await truy_van_mot<{ xong: boolean }>(
+    `select xong from cong_viec_hanh_dong
+      where cong_viec_id = $1 and thu_tu = 0`, [viec.id]);
+  assert.equal(muc1?.xong, true, 'da co san tai khoan thi muc MS365 tick san');
+});
+
+test('ms365_da_co nhung thieu email: chan duyet', async () => {
+  const dn = await tao_de_nghi({
+    ho_ten: 'Đã Có Nhưng Thiếu Email', email: null, cap_ms365: true,
+    ms365_da_co: true, tu_cap_pin: true, serial_may_cua: 'CUATEST01',
+    tao_tk_he_thong: false,
+  });
+  const r = await goi('POST', `/api/de-nghi-nhan-su/${dn}/duyet`, {
+    token: token_admin, body: { ma_nv: 'DNV-009' },
+  });
+  assert.equal(r.ma, 400);
+  assert.match(String(r.body['loi']), /email/i);
+});
+
+test('nguon MS365 khi Graph chua cau hinh: anh chup rong, dong bo ngay tra loi ro', async () => {
+  // Doc anh chup khong can Graph — bang trong thi tra danh sach rong kem moc dong bo.
+  const r = await goi('GET', '/api/de-nghi-nhan-su/ms365-da-cap-phep', { token: token_hr });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+  assert.deepEqual(r.body, { danh_sach: [], dong_bo_luc: null });
+
+  // Dong bo ngay ma Graph chua cau hinh thi tu choi voi loi ro, khong treo.
+  const db = await goi('POST', '/api/de-nghi-nhan-su/ms365-da-cap-phep/dong-bo', {
+    token: token_hr, body: {},
+  });
+  assert.equal(db.ma, 400);
+  assert.match(String(db.body['loi']), /Graph/i);
+});
+
+test('nguon MS365: loai nguoi da co ho so va nguoi da co de nghi cho duyet', async () => {
+  await thuc_thi(
+    `insert into ms365_nguoi_da_cap_phep(oid, ho_ten, upn) values
+       ('oid-da-nv', 'Đã Có Hồ Sơ', 'da.nv@tranhoangvietnam.com'),
+       ('oid-da-dn', 'Đang Chờ Đề Nghị', 'da.dn@tranhoangvietnam.com'),
+       ('oid-moi', 'Người Mới Cấp Phép', 'moi.cap@tranhoangvietnam.com')`);
+  await thuc_thi(
+    `insert into nhan_vien(ma_nv, ho_ten, email)
+     values ('DNV-NGUON', 'Đã Có Hồ Sơ', 'da.nv@tranhoangvietnam.com')`);
+  await thuc_thi(
+    `insert into de_nghi_them_nhan_su(ho_ten, email, trang_thai)
+     values ('Đang Chờ Đề Nghị', 'da.dn@tranhoangvietnam.com', 'cho_duyet')`);
+
+  const r = await goi('GET', '/api/de-nghi-nhan-su/ms365-da-cap-phep', { token: token_hr });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+  const ds = (r.body['danh_sach'] as { oid: string }[]) ?? [];
+  const oid = ds.map((d) => d.oid);
+  assert.ok(oid.includes('oid-moi'), 'nguoi moi cap phep phai con trong danh sach');
+  assert.ok(!oid.includes('oid-da-nv'), 'nguoi da co ho so phai bi loai');
+  assert.ok(!oid.includes('oid-da-dn'), 'nguoi co de nghi cho duyet phai bi loai');
+  assert.equal(typeof r.body['dong_bo_luc'], 'string', 'phai co moc dong bo lan cuoi');
 });
 
 // ================================================================ REQ-TEST-03

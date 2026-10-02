@@ -18,8 +18,14 @@ Theo [SemVer](https://semver.org/lang/vi/).
 - Route mới `GET /api/de-nghi-nhan-su/ms365-da-cap-phep` (quyền nhân sự); chưa cấu hình
   Graph (`MS_MAIL_TENANT_ID/CLIENT_ID/CLIENT_SECRET`) thì trả lỗi rõ ràng, form vẫn nhập tay
   được bình thường.
-- Test: unit cho hàm lọc danh sách Graph (`ms365.test.ts`) + e2e 3 tình huống (không tạo lại
-  tài khoản khi đã có, thiếu email chặn duyệt, route trả lỗi rõ khi Graph chưa cấu hình).
+- Danh sách giữ trong **ảnh chụp** `ms365_nguoi_da_cap_phep` (migration 099) — quét tự động
+  **08:00 và 13:00** mỗi ngày, cộng nút **"Đồng bộ ngay"** trong form
+  (`POST /api/de-nghi-nhan-su/ms365-da-cap-phep/dong-bo`). Phát hiện tài khoản mới được cấp
+  phép thì báo Nhân sự qua chuông thông báo kèm tên người mới; lần đầu mở form mà ảnh chụp
+  trống thì hệ thống tự quét một lần.
+- Test: unit cho hàm lọc danh sách Graph + gom tên người mới (`ms365.test.ts`) + e2e 5 tình
+  huống (không tạo lại tài khoản khi đã có, thiếu email chặn duyệt, ảnh chụp rỗng khi Graph
+  chưa cấu hình, đồng bộ ngay trả lỗi rõ, danh sách loại người đã có hồ sơ/đề nghị chờ duyệt).
 
 ## [1.114.0] — 2026-10-02
 
