@@ -141,7 +141,9 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
               n.tao_luc, n.cap_nhat_luc,
               nv.ho_ten as nhan_vien, pb.ten as phong_ban,
               (n.ten_luu_docx is not null) as co_tep,
-              jsonb_array_length(coalesce(n.ket_qua_gate, '[]'::jsonb)) as so_muc_gate
+              jsonb_array_length(coalesce(n.ket_qua_gate, '[]'::jsonb)) as so_muc_gate,
+              left(coalesce(nullif(n.spec_json->>'trich_yeu', ''), n.noi_dung_tho), 160)
+                as trich_yeu
          from thong_bao_nhap_ai n
          left join nhan_vien nv on nv.id = n.nhan_vien_id
          left join phong_ban pb on pb.id = n.phong_ban_id

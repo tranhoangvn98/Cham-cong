@@ -42,6 +42,7 @@ interface NhapAI {
   cap_nhat_luc: string;
   nhan_vien: string | null;
   phong_ban: string | null;
+  trich_yeu: string | null;
   la_qd_nghi_viec: boolean;
   ngay_nghi_viec: string | null;
   co_tep: boolean;
@@ -866,8 +867,8 @@ export function TabVanBanBanHanh(): ReactNode {
           <table className="bang-gon">
             <thead>
               <tr>
-                <th>Mã</th><th>Loại</th><th>Phạm vi</th><th>Người nhận</th><th>Trạng thái</th>
-                <th>Số ký hiệu</th><th>Cập nhật</th><th></th>
+                <th>Mã</th><th>Loại</th><th>Về việc</th><th>Phạm vi</th><th>Người nhận</th>
+                <th>Trạng thái</th><th>Số ký hiệu</th><th>Cập nhật</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -875,6 +876,13 @@ export function TabVanBanBanHanh(): ReactNode {
                 <tr key={khoa_tinh(d.id, i)}>
                   <td>{d.ma}</td>
                   <td>{d.la_qd_nghi_viec ? 'Quyết định nghỉ việc' : NHAN_LOAI[d.loai]}</td>
+                  <td>
+                    <span className="khong-ngat" style={{
+                      display: 'block', maxWidth: 340, overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>
+                      {d.trich_yeu ?? '—'}
+                    </span>
+                  </td>
                   <td>{NHAN_PHAM_VI[d.pham_vi]}</td>
                   <td>
                     {d.nhan_vien ?? d.phong_ban ?? 'Toàn công ty'}
