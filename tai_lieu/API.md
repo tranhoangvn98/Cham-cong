@@ -168,10 +168,17 @@ Lệnh vào hàng đợi bền vững trong CSDL; máy nhận ở lần poll k�
 | GET | `/ngay-le?nam=2026` | mọi vai trò |
 | POST | `/ngay-le` | nhan_su (tự tính lại ngày đó) |
 | DELETE | `/ngay-le/:ngay` | nhan_su (tự tính lại ngày đó) |
-| GET / POST | `/nguoi-dung` | **admin** |
+| GET / POST | `/ke-hoach-nghi-le` | GET: mọi vai trò · POST: nhan_su (tự tính lại khoảng) |
+| DELETE | `/ke-hoach-nghi-le/:id` | nhan_su (tự tính lại khoảng) |
+| GET | `/nguoi-dung` | **admin** |
 | POST | `/nguoi-dung/:id/dat-lai-mat-khau` | **admin** |
 | PATCH | `/nguoi-dung/:id` | **admin** |
 | GET | `/nhat-ky?gioi_han=100` | **admin** |
+
+`POST /ke-hoach-nghi-le` khai đợt nghỉ theo khoảng
+`{ten, tu_ngay, den_ngay, lich_ma?, huong_luong?, so_ngay_nghi?}`. `so_ngay_nghi` (tùy chọn) ấn
+định **số ngày nghỉ tính từ ngày bắt đầu** — vd khoảng 1/9–3/9 nhập 2 thì nghỉ 1/9 và 2/9, ngày
+3/9 là ngày làm việc bình thường. Thiếu trường này = nghỉ cả khoảng (hành vi cũ).
 
 ## 3. Bảng công — `/api`
 

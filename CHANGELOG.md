@@ -2,6 +2,29 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.113.1] — 2026-10-02
+
+**Quốc khánh 2026: nghỉ 1/9 và 2/9 (ngày liền kề là 1/9, không phải 3/9); đợt nghỉ theo năm có thể ấn định số ngày nghỉ.**
+
+- Sửa dữ liệu ngày lễ trên VPS: thêm ngày lễ 1/9/2026 "Quốc khánh — ngày liền kề" (hưởng
+  lương), bỏ 3/9/2026 khỏi ngày lễ (thành ngày làm việc bình thường), tính lại bảng công
+  khoảng 1/9–3/9 (sao lưu CSDL trước khi sửa). Cập nhật dữ liệu demo cùng quy ước mới.
+- Kế hoạch nghỉ theo năm thêm cột `so_ngay_nghi`: ấn định số ngày nghỉ tính từ ngày bắt đầu
+  (vd khoảng 1/9–3/9 nhập 2 → nghỉ 1/9 và 2/9, 3/9 là ngày làm việc); để trống = nghỉ cả
+  khoảng như cũ. Migration 096, form "Thêm đợt nghỉ" có ô nhập + gợi ý, bảng liệt kê hiển
+  thị "2 / 3" khi nghỉ một phần.
+- Test: unit cho hàm chọn ngày nghỉ (`nghi_le_ke_hoach.test.ts`) + e2e (khai số ngày vượt
+  khoảng bị từ chối, ngày không chọn không thành ngày lễ, GET trả `so_ngay_nghi`).
+
+## [1.113.0] — 2026-10-02
+
+**Hòm thư ý kiến: mở xem là tiếp nhận (nhãn "Đã tiếp nhận"), email báo hai mốc: tiếp nhận và hoàn tất kèm kết luận.**
+
+- Bấm "Xem" một ý kiến Chờ xử lý giờ tự chuyển sang **Đã tiếp nhận** (trạng thái `dang_xem` đổi nhãn, route mới `POST /api/ho-thu-y-kien/:id/tiep-nhan`, lặp lại không lỗi) — người lao động nhận email "ý kiến đã được tiếp nhận" (kèm nội dung gốc) và chuông trong app.
+- Đóng hòm thư gửi email hoàn tất kèm **kết luận xử lý**: lấy từ ô kết luận khi đóng; để trống thì lấy trả lời cuối của Nhân sự; không có thì dùng lời cảm ơn chung.
+- Đồng bộ nhãn "Đã tiếp nhận" ở trang quản trị, Khu vực của tôi, trang góp ý dự thảo, badge thông báo riêng và hướng dẫn trang.
+- Test: unit (nhãn trạng thái + khuôn kết luận email) và e2e (tiếp nhận chuyển trạng thái, chặn nhân viên thường, tiếp nhận lặp lại, đóng kèm kết luận).
+
 ## [1.112.1] — 2026-09-28
 
 **Ghi quy ước "người đã nghỉ phải biến mất khỏi mọi luồng vận hành" vào CLAUDE.md.**

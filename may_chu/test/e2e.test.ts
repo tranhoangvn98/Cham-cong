@@ -893,6 +893,56 @@ test('xoa ngay le -> ngay do tro lai co_mat', async () => {
   assert.equal(bc?.trang_thai, 'co_mat');
 });
 
+// Ke hoach nghi theo nam: an dinh SO NGAY NGHI it hon ca khoang — nhung ngay khong chon la
+// ngay lam viec binh thuong (vd dot Quoc khanh 1/9–3/9 khai 2 -> nghi 1/9 va 2/9, 3/9 di lam).
+test('ke hoach nghi an dinh so ngay -> ngay khong chon la ngay lam viec', async () => {
+  const tu = cong_ngay(NGAY, -10);
+  const den = cong_ngay(NGAY, -8); // khoang 3 ngay lien tiep, chi nghi 2 ngay dau
+
+  // So ngay nghi vuot qua khoang -> tu choi ngay khi khai.
+  const vuot = await goi('POST', '/api/ke-hoach-nghi-le', {
+    token: token_admin,
+    body: { ten: 'Dot nghi kiem thu', tu_ngay: tu, den_ngay: den, so_ngay_nghi: 4 },
+  });
+  assert.equal(vuot.ma, 400);
+
+  const r = await goi('POST', '/api/ke-hoach-nghi-le', {
+    token: token_admin,
+    body: { ten: 'Dot nghi kiem thu', tu_ngay: tu, den_ngay: den, so_ngay_nghi: 2 },
+  });
+  assert.equal(r.ma, 201);
+  const id = r.body['id'] as string;
+
+  // Chi 2 ngay dau khoang vao ngay_le, ngay thu 3 khong phai ngay le.
+  const le = await truy_van<{ ngay: string }>(
+    'select ngay from ngay_le where ke_hoach_id = $1 order by ngay', [id],
+  );
+  assert.deepEqual(le.map((d) => d.ngay), [tu, cong_ngay(tu, 1)]);
+
+  // Bang cong doi theo: 2 ngay dau thanh ngay_le, ngay cuoi KHONG con la ngay le.
+  const bac_dau = await truy_van_mot<{ trang_thai: string }>(
+    'select trang_thai from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+    [nhan_vien_id, tu],
+  );
+  assert.equal(bac_dau?.trang_thai, 'ngay_le');
+  const bac_cuoi = await truy_van_mot<{ trang_thai: string }>(
+    'select trang_thai from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+    [nhan_vien_id, den],
+  );
+  assert.notEqual(bac_cuoi?.trang_thai, 'ngay_le');
+
+  // GET tra ve so_ngay_nghi de giao dien hien thi.
+  const ds = await goi('GET', `/api/ke-hoach-nghi-le?nam=${tu.slice(0, 4)}`, { token: token_admin });
+  const kh = (ds.body as unknown as { id: string; so_ngay: number; so_ngay_nghi: number | null }[])
+    .find((k) => k.id === id);
+  assert.equal(kh?.so_ngay, 3);
+  assert.equal(kh?.so_ngay_nghi, 2);
+
+  // Don dep de cac bai sau khong dinh ngay le.
+  const xoa = await goi('DELETE', `/api/ke-hoach-nghi-le/${id}`, { token: token_admin });
+  assert.equal(xoa.ma, 200);
+});
+
 // Duong duy nhat sinh ra OT sau ban "OT phai dang ky": don `lam_them` qua HAI CAP duyet VA
 // KET QUA duoc tbks/admin duyet. Bai nay di het duong do qua CSDL that — `tinh_cong.ts` doc
 // bang `don_tu` giao voi `ket_qua_ot`, thu ma bai kiem don vi (chay tren du lieu dung san)

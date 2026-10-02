@@ -595,6 +595,7 @@ interface Lich { ma: string; ten: string; quoc_gia: string | null; dang_dung: bo
 interface KeHoach {
   id: string; nam: number; ten: string; tu_ngay: string; den_ngay: string;
   lich_ma: string; huong_luong: boolean; ghi_chu: string | null; lich_ten: string | null; so_ngay: number;
+  so_ngay_nghi: number | null;
 }
 interface NoiLamViec {
   id: string; ten: string; lich_nghi_ma: string; dia_chi: string | null;
@@ -804,9 +805,10 @@ function TabKeHoach(): ReactNode {
   const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   const xoa = async (k: KeHoach): Promise<void> => {
+    const so_nghi = k.so_ngay_nghi ?? k.so_ngay;
     const dong_y = await xn.hoi({
       tieu_de: `Xóa đợt nghỉ "${k.ten}"?`,
-      mo_ta: <>Toàn bộ {k.so_ngay} ngày ({ngay_viet(k.tu_ngay)} – {ngay_viet(k.den_ngay)}) sẽ bị gỡ
+      mo_ta: <>Toàn bộ {so_nghi} ngày nghỉ ({ngay_viet(k.tu_ngay)} – {ngay_viet(k.den_ngay)}) sẽ bị gỡ
         khỏi ngày lễ và <strong>bảng công khoảng đó được tính lại</strong>.</>,
       chu_dong_y: 'Xóa đợt nghỉ',
       nguy_hiem: true,
@@ -822,7 +824,8 @@ function TabKeHoach(): ReactNode {
       <div className="dau-trang">
         <p className="mo-ta">
           Khai cả <strong>đợt nghỉ dài</strong> theo khoảng ngày (vd nghỉ 2/9 từ 29/8 đến 2/9) — hệ
-          thống tự bung ra từng ngày để không bị tính trừ công.
+          thống tự bung ra từng ngày để không bị tính trừ công. Đợt chỉ nghỉ một phần khoảng thì
+          ấn định <strong>số ngày nghỉ</strong>; các ngày còn lại là ngày làm việc bình thường.
         </p>
         {la_nhan_su() && (
           <button className="nut-chinh" onClick={() => dat_dang_them(true)}>+ Thêm đợt nghỉ</button>
@@ -853,7 +856,7 @@ function TabKeHoach(): ReactNode {
             <table>
               <thead>
                 <tr>
-                  <th>Đợt nghỉ</th><th>Từ ngày</th><th>Đến ngày</th><th>Số ngày</th>
+                  <th>Đợt nghỉ</th><th>Từ ngày</th><th>Đến ngày</th><th>Số ngày nghỉ</th>
                   <th>Lịch</th><th>Hưởng lương</th>{la_nhan_su() && <th></th>}
                 </tr>
               </thead>
@@ -863,7 +866,14 @@ function TabKeHoach(): ReactNode {
                     <td>{k.ten}</td>
                     <td className="khong-ngat">{ngay_viet(k.tu_ngay)}</td>
                     <td className="khong-ngat">{ngay_viet(k.den_ngay)}</td>
-                    <td>{k.so_ngay}</td>
+                    <td>
+                      {k.so_ngay_nghi === null || k.so_ngay_nghi === k.so_ngay
+                        ? k.so_ngay
+                        : <>
+                          <strong>{k.so_ngay_nghi}</strong> / {k.so_ngay}{' '}
+                          <span className="nhan nhan-mo">chọn</span>
+                        </>}
+                    </td>
                     <td><NhanLich ma={k.lich_ma} ten={k.lich_ten} /></td>
                     <td>{k.huong_luong
                       ? <span className="nhan nhan-tot">có</span>
@@ -893,16 +903,22 @@ function FormKeHoach({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
   const [ten, dat_ten] = useState('');
   const [tu_ngay, dat_tu] = useState('');
   const [den_ngay, dat_den] = useState('');
+  const [so_nghi, dat_so_nghi] = useState('');
   const [lich_ma, dat_lich] = useState('vn');
   const [huong_luong, dat_huong_luong] = useState(true);
   const { du_lieu: lichs } = dung_nap<Lich[]>('/api/lich-nghi');
   const hd = dung_hanh_dong();
 
+  const so_ngay_khoang = tu_ngay === '' || den_ngay === ''
+    ? null
+    : Math.round((Date.parse(`${den_ngay}T00:00:00Z`) - Date.parse(`${tu_ngay}T00:00:00Z`)) / 86_400_000) + 1;
+
   const gui = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+    const so_ngay_nghi = so_nghi.trim() === '' ? undefined : Number(so_nghi);
     const ok = await hd.chay(() => goi('/api/ke-hoach-nghi-le', {
       method: 'POST',
-      body: { ten: ten.trim(), tu_ngay, den_ngay, lich_ma, huong_luong },
+      body: { ten: ten.trim(), tu_ngay, den_ngay, lich_ma, huong_luong, so_ngay_nghi },
     }));
     if (ok) khi_xong();
   };
@@ -923,6 +939,18 @@ function FormKeHoach({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
         <div className="o-nhap">
           <label htmlFor="denkh">Đến ngày *</label>
           <input id="denkh" type="date" value={den_ngay} onChange={(e) => dat_den(e.target.value)} required />
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="sonkh">Số ngày nghỉ thuộc đợt</label>
+          <input id="sonkh" type="number" min={1}
+            max={so_ngay_khoang !== null && so_ngay_khoang > 0 ? so_ngay_khoang : undefined}
+            value={so_nghi} onChange={(e) => dat_so_nghi(e.target.value)}
+            placeholder={so_ngay_khoang !== null && so_ngay_khoang > 0
+              ? `Cả khoảng (${so_ngay_khoang} ngày)` : 'Cả khoảng'} />
+          <div className="goi-y">
+            Tính từ ngày bắt đầu. Để trống = nghỉ cả khoảng. Ví dụ: khoảng 1/9–3/9 nhập 2 →
+            nghỉ 1/9 và 2/9, ngày 3/9 là ngày làm việc bình thường.
+          </div>
         </div>
         <div className="o-nhap">
           <label htmlFor="lichkh">Lịch áp dụng</label>

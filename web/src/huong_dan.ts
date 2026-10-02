@@ -87,7 +87,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       { chu: 'Ý kiến dự thảo cũng xem được ngay trong popup chi tiết văn bản AI (nút Gửi lấy ý kiến).', vai_tro: NHAN_SU },
     ],
     luu_y: [
-      'Hòm thư đã đóng thì không trả lời thêm được — nếu còn trao đổi, để nguyên trạng thái Đang xử lý.',
+      'Hòm thư đã đóng thì không trả lời thêm được — nếu còn trao đổi, để nguyên trạng thái Đã tiếp nhận.',
       'Hòm thư khác với khiếu nại lương/kỷ luật: đây là kênh lắng nghe và giải đáp, không sinh quyết định xử lý.',
       'Mỗi ý kiến mới đều tạo popup nhắc cho Nhân sự/Admin khi đăng nhập — đóng bằng nút "Đã đọc & hiểu".',
     ],
@@ -391,10 +391,16 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     buoc: [
       { chu: 'Đầu mỗi năm: thêm Tết Nguyên đán và các ngày nghỉ bù theo lịch âm.', vai_tro: NHAN_SU },
       { chu: 'Kiểm lại danh sách trước mỗi kỳ lương có ngày lễ.', vai_tro: NHAN_SU },
+      {
+        chu: 'Đợt chỉ nghỉ một phần khoảng: khai Kế hoạch nghỉ theo năm rồi ấn định số ngày nghỉ — '
+          + 'các ngày còn lại là ngày làm việc bình thường.',
+        vai_tro: NHAN_SU,
+      },
     ],
     luu_y: [
       'Chỉ có sẵn ngày lễ dương lịch cố định. TẾT ÂM LỊCH PHẢI TỰ THÊM MỖI NĂM — quên là cả công ty bị tính vắng những ngày đó.',
       'Làm việc vào ngày lễ: toàn bộ thời gian tính vào tăng ca, và không tính đi muộn.',
+      'Ví dụ đợt Quốc khánh 1/9–3/9 nhập 2 ngày nghỉ: nghỉ 1/9 và 2/9, ngày 3/9 đi làm bình thường.',
     ],
   },
   {

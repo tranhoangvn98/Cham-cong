@@ -86,7 +86,8 @@ const CA = {
 // HAI DIEU PHAI TU DIEU CHINH HANG NAM:
 //  1. Phuong an nghi Tet (chon 5 ngay nao) va ngay lien ke cua Quoc khanh do Chinh phu
 //     thong bao hang nam; doanh nghiep duoc chon phuong an khac nhung phai thong bao
-//     truoc 30 ngay (Dieu 112 khoan 3).
+//     truoc 30 ngay (Dieu 112 khoan 3). Nam 2026 cong ty chon: lien ke TRUOC (nghi 1/9
+//     va 2/9; ngay 3/9 la ngay lam viec binh thuong) — da ap tren VPS 02/10/2026.
 //  2. Nghi bu khi ngay le trung ngay nghi hang tuan (Dieu 111 khoan 3) — o day Gio To
 //     2026 roi vao Chu nhat nen da them ngay nghi bu Thu Hai 27/04/2026.
 const NGAY_LE = [
@@ -101,8 +102,8 @@ const NGAY_LE = [
   { ngay: '2026-04-27', ten: 'Nghỉ bù Giỗ Tổ (trùng Chủ nhật)' },
   { ngay: '2026-04-30', ten: 'Ngày Giải phóng miền Nam' },
   { ngay: '2026-05-01', ten: 'Quốc tế Lao động' },
+  { ngay: '2026-09-01', ten: 'Quốc khánh — ngày liền kề' },
   { ngay: '2026-09-02', ten: 'Quốc khánh' },
-  { ngay: '2026-09-03', ten: 'Quốc khánh — ngày liền kề' },
   // ---- 2027
   { ngay: '2027-01-01', ten: 'Tết Dương lịch' },
   { ngay: '2027-02-05', ten: 'Tết Nguyên đán — 29 tháng Chạp' },

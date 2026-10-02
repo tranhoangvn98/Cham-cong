@@ -11,8 +11,22 @@ import { danh_sach_ngay } from '../tien_ich/thoi_gian.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import {
   chuoi, chuoi_bat_buoc, luan_ly, ngay_bat_buoc, so_nguyen, than, uuid_bat_buoc,
-  LoiKhongTim,
+  LoiDauVao, LoiKhongTim,
 } from '../tien_ich/kiem_tra.ts';
+
+/**
+ * Cac ngay duoc NGHI LE trong mot ke hoach nghi theo nam:
+ *   - `so_ngay_nghi = null`: nghi CA KHOANG (hanh vi cu).
+ *   - `so_ngay_nghi = n`  : chi nghi `n` ngay dau tien cua khoang; cac ngay con lai
+ *                           la ngay lam viec binh thuong (vd khoang 1/9–3/9, khai 2 ->
+ *                           nghi 1/9 va 2/9, ngay 3/9 di lam).
+ */
+export function ngay_nghi_cua_ke_hoach(
+  tu: string, den: string, so_ngay_nghi: number | null,
+): string[] {
+  const cac_ngay = danh_sach_ngay(tu, den);
+  return so_ngay_nghi === null ? cac_ngay : cac_ngay.slice(0, so_ngay_nghi);
+}
 
 export async function tuyen_nghi_le_luong(app: FastifyInstance): Promise<void> {
   // ============================================================  LICH NGHI LE
@@ -87,7 +101,7 @@ export async function tuyen_nghi_le_luong(app: FastifyInstance): Promise<void> {
     return truy_van(
       `select k.id, k.nam, k.ten, to_char(k.tu_ngay,'YYYY-MM-DD') as tu_ngay,
               to_char(k.den_ngay,'YYYY-MM-DD') as den_ngay, k.lich_ma, k.huong_luong, k.ghi_chu,
-              l.ten as lich_ten,
+              k.so_ngay_nghi, l.ten as lich_ten,
               (k.den_ngay - k.tu_ngay + 1) as so_ngay
          from ke_hoach_nghi_le k
          left join lich_nghi_le l on l.ma = k.lich_ma
@@ -97,7 +111,9 @@ export async function tuyen_nghi_le_luong(app: FastifyInstance): Promise<void> {
     );
   });
 
-  // Tao ke hoach + BUNG ra ngay_le cho tung ngay trong khoang. Ca hai trong mot giao dich.
+  // Tao ke hoach + BUNG ra ngay_le cho cac ngay NGHI trong khoang. Ca hai trong mot giao dich.
+  // `so_ngay_nghi` (tuy chon): an dinh so ngay duoc nghi (tinh tu ngay bat dau); vang mat =
+  // nghi ca khoang. Cac ngay con lai cua khoang la ngay lam viec binh thuong.
   app.post('/ke-hoach-nghi-le', { preHandler: can_nhan_su }, async (req, res) => {
     const b = than(req.body);
     const tu = ngay_bat_buoc(b, 'tu_ngay');
@@ -109,19 +125,38 @@ export async function tuyen_nghi_le_luong(app: FastifyInstance): Promise<void> {
     const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 300 });
     const nam = Number(tu.slice(0, 4));
 
+    const cac_ngay = danh_sach_ngay(tu, den);
+    const so_ngay_nghi = so_nguyen(b, 'so_ngay_nghi', { min: 1 });
+    if (so_ngay_nghi !== null && so_ngay_nghi > cac_ngay.length) {
+      throw new LoiDauVao(
+        `Số ngày nghỉ (${so_ngay_nghi}) vượt quá khoảng ${tu}–${den} (${cac_ngay.length} ngày).`,
+      );
+    }
+    const ngay_nghi = ngay_nghi_cua_ke_hoach(tu, den, so_ngay_nghi);
+
     const id = await trong_giao_dich(async (khach) => {
       const kh = (await khach.query<{ id: string }>(
-        `insert into ke_hoach_nghi_le(nam, ten, tu_ngay, den_ngay, lich_ma, huong_luong, ghi_chu, tao_boi)
-         values ($1,$2,$3,$4,$5,$6,$7,$8) returning id`,
-        [nam, ten, tu, den, lich, huong_luong, ghi_chu, nguoi_dung_hien_tai(req).sub],
+        `insert into ke_hoach_nghi_le(nam, ten, tu_ngay, den_ngay, lich_ma, huong_luong, ghi_chu,
+                                     so_ngay_nghi, tao_boi)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id`,
+        [nam, ten, tu, den, lich, huong_luong, ghi_chu, so_ngay_nghi, nguoi_dung_hien_tai(req).sub],
       )).rows[0]!.id;
-      for (const ng of danh_sach_ngay(tu, den)) {
+      for (const ng of ngay_nghi) {
         await khach.query(
           `insert into ngay_le(ngay, ten, huong_luong, lich_ma, ke_hoach_id)
            values ($1,$2,$3,$4,$5)
            on conflict (ngay, lich_ma) do update set
              ten = excluded.ten, huong_luong = excluded.huong_luong, ke_hoach_id = excluded.ke_hoach_id`,
           [ng, ten, huong_luong, lich, kh],
+        );
+      }
+      // Cac ngay trong khoang KHONG duoc chon nghi: neu truoc do thuoc chinh ke hoach nay
+      // (ke hoach duoc tao lai tren cung khoang) thi go bo de tro thanh ngay lam viec.
+      if (ngay_nghi.length < cac_ngay.length) {
+        await khach.query(
+          `delete from ngay_le
+            where ke_hoach_id = $1 and ngay = any($2::date[])`,
+          [kh, cac_ngay.filter((ng) => !ngay_nghi.includes(ng))],
         );
       }
       return kh;
