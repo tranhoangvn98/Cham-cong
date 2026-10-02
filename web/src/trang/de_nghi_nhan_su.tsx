@@ -86,6 +86,18 @@ export function TrangDeNghiNhanSu(): ReactNode {
   const may = dung_nap<ThietBi[]>('/api/thiet-bi');
   const noi = dung_nap<NoiLamViec[]>('/api/noi-lam-viec');
 
+  // Trang thai Microsoft 365 hien NGAY tren trang (khong phai mo form moi thay): bao nhieu
+  // nguoi co giay phep chua co ho so, moc dong bo lan cuoi, va nut dong bo tuc thi.
+  const m365 = dung_nap<KqNguonMs365>(
+    la_nhan_su() ? '/api/de-nghi-nhan-su/ms365-da-cap-phep' : null);
+  const db_trang = dung_hanh_dong();
+  const dong_bo_trang = async (): Promise<void> => {
+    const ok = await db_trang.chay(() => goi('/api/de-nghi-nhan-su/ms365-da-cap-phep/dong-bo', {
+      method: 'POST', body: {},
+    }));
+    if (ok) m365.nap_lai();
+  };
+
   const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
 
   return (
@@ -104,6 +116,26 @@ export function TrangDeNghiNhanSu(): ReactNode {
           </button>
         )}
       </div>
+
+      {la_nhan_su() && (
+        <div className="hop-thong-bao hop-tin">
+          Microsoft 365:{' '}
+          <strong>{(m365.du_lieu?.danh_sach ?? []).length} người có giấy phép chưa có hồ sơ</strong>
+          {' '}— chọn họ trong form đề nghị.
+          <div className="hang-nut" style={{ marginTop: 4 }}>
+            <button type="button" className="nut-nho nut-phang"
+              onClick={() => { void dong_bo_trang(); }} disabled={db_trang.dang_chay}>
+              {db_trang.dang_chay ? 'Đang đồng bộ…' : 'Đồng bộ ngay'}
+            </button>
+            <span className="goi-y">
+              {m365.du_lieu?.dong_bo_luc !== null && m365.du_lieu?.dong_bo_luc !== undefined
+                ? `Đồng bộ lần cuối: ${ngay_gio(m365.du_lieu.dong_bo_luc)}`
+                : 'Chưa đồng bộ lần nào'}
+            </span>
+          </div>
+          {db_trang.loi !== null && <HopLoi loi={db_trang.loi} />}
+        </div>
+      )}
 
       <div className="bo-loc">
         <div className="o-nhap" style={{ minWidth: 240 }}>
