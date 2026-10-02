@@ -33,6 +33,12 @@ export function gop_chinh_sach(
 export interface SoLieuKy {
   /** So ngay cong THUC TE cua nguoi do trong ky. */
   so_cong: number;
+  /**
+   * So ngay co cong DU 1 (so_cong = 1) — dung cho phu cap an trua (chu cong ty chot tu ky
+   * 9/2026: ngay cong la 1 thi tinh an trua, ngay khong du cong (0,5) thi khong).
+   * Bo trong = dung `so_cong` nhu cu (de khong pha cac cho goi khac).
+   */
+  so_ngay_du_cong?: number;
 }
 
 /**
@@ -41,6 +47,9 @@ export interface SoLieuKy {
  * (Chu DN chot: "moi quy phu cap 500.000, chia deu tung thang".)
  */
 const KHOAN_THEO_QUY = new Set(['pc_trang_phuc']);
+
+/** Khoan phu cap an trua — duy nhat doi nguon so luong tu `so_cong` sang so ngay du cong. */
+const PC_AN_TRUA = 'pc_an_trua';
 
 /** Mot dong khoan sap ghi vao `phieu_luong_khoan`. */
 export interface DongKhoanSinhRa {
@@ -80,7 +89,11 @@ export function khoan_tu_chinh_sach(
     }
 
     const so_luong = cs.nguon_so_luong === 'theo_cong'
-      ? so_lieu.so_cong
+      // PC an trua: chi dem ngay cong DU 1 (ngay nua cong khong duoc an trua — chu cong ty
+      // chot tu ky 9/2026). Cac khoan theo cong khac van dung tong so cong nhu cu.
+      ? (cs.khoan_ma === PC_AN_TRUA
+          ? (so_lieu.so_ngay_du_cong ?? so_lieu.so_cong)
+          : so_lieu.so_cong)
       : (cs.so_luong ?? 0);
 
     // Khong di lam ngay nao thi khong co ho tro an trua nao — va khong de lai mot dong 0.

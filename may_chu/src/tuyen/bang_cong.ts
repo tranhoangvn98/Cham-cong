@@ -27,6 +27,7 @@ const NHAN_TRANG_THAI_NGAY: Record<string, string> = {
   nghi_tuan: 'Nghỉ tuần',
   cong_tac: 'Công tác',
   lam_bu: 'Làm bù',
+  ngoai_le: 'Ngoại lệ',
 };
 
 /**

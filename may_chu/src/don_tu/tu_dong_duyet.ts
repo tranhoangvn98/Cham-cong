@@ -19,6 +19,7 @@ import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { gui_email, email_bat } from '../su_kien/gui_email.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { ban_don_am_tham } from './ban_don.ts';
+import { ngay_mien_vang_cua } from '../cong/so_ngoai_le.ts';
 import {
   so_thang_lam_trong_nam, quy_phep_theo_luat, ngay_chot_quy, lay_phep_dau_ky,
 } from './quy_phep_nam.ts';
@@ -96,11 +97,13 @@ async function da_dung_phep(nv_id: string, nam: number, tru_don_id: string): Pro
         and id <> $4 and tu_ngay <= $3 and den_ngay >= $2 and tu_ngay >= $2`,
     [nv_id, dau, cuoi, tru_don_id],
   );
+  // Ngay nam trong so ngoai le (mien_vang, vd ngay bao) KHONG tru vao quy phep.
+  const mien_vang = await ngay_mien_vang_cua(nv_id, dau, cuoi);
   let s = dau_ky?.so_ngay ?? 0;
   for (const d of dons) {
     const tu = d.tu_ngay > dau ? d.tu_ngay : dau;
     const den = d.den_ngay < cuoi ? d.den_ngay : cuoi;
-    const n = danh_sach_ngay(tu, den).length;
+    const n = danh_sach_ngay(tu, den).filter((ng) => !mien_vang.has(ng)).length;
     if (n > 0) s += (d.nua_ngay ? 0.5 : 1) * n;
   }
   return s;

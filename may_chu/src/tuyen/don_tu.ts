@@ -6,6 +6,7 @@ import { can_nguoi_duyet, can_nguoi_duyet_hoac_tbks, can_duyet_ot_cap_2,
   nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
 import { la_quan_tri, la_tbks } from '../bao_mat/quyen_ho_so.ts';
 import { tinh_lai_ngay, tinh_lai_khoang } from '../cong/tinh_cong.ts';
+import { sql_ngay_khong_mien_vang } from '../cong/so_ngoai_le.ts';
 import {
   ban_don_am_tham, ban_don_giai_trinh, ban_don_khac, ban_don_nghi_phep,
 } from '../don_tu/ban_don.ts';
@@ -126,6 +127,8 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
                   select 1 from ngay_le nl
                    where nl.ngay = g::date
                      and nl.lich_ma = coalesce(nlv.lich_nghi_ma, 'vn'))
+                -- Ngay nam trong so ngoai le (mien_vang) khong tru vao quy phep.
+                and ${sql_ngay_khong_mien_vang('g::date', 'nv.id')}
            ) x
           where d.nhan_vien_id = nv.id and d.loai = 'phep_nam'
             and d.trang_thai in ('da_duyet', 'cho_duyet')
@@ -196,6 +199,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
                       select 1 from ngay_le nl
                        where nl.ngay = g::date
                          and nl.lich_ma = coalesce(nlv.lich_nghi_ma, 'vn'))
+                    and ${sql_ngay_khong_mien_vang('g::date', 'd.nhan_vien_id')}
               ) end)::float8 as so_ngay
          from don_nghi_phep d
          join nhan_vien nv on nv.id = d.nhan_vien_id

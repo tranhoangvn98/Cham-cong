@@ -13,6 +13,7 @@ import {
   type KhoangLamThem,
 } from './quy_tac_tinh_cong.ts';
 import { chieu_quet, type ChieuMay } from './chieu_quet.ts';
+import { lay_ngoai_le } from './so_ngoai_le.ts';
 import {
   loc_bam_dup,
   suy_luan_ra_vao,
@@ -217,6 +218,9 @@ export async function tinh_lai_ngay(
     [nhan_vien_id, ngay],
   );
 
+  // So ngoai le trum ngay nay ap dung cho nguoi nay (neu co).
+  const ngoai_le = await lay_ngoai_le(nhan_vien_id, ngay);
+
   const kq = tinh_cong_ngay({
     ngay,
     ca,
@@ -226,6 +230,7 @@ export async function tinh_lai_ngay(
     giai_trinh,
     cong_tac,
     lam_them,
+    ngoai_le,
   });
 
   // --- LAM BU (YC-03): ngay nay la NGAY BU (thu Bay duoc chi dinh bu cho mot ngay nguon)?

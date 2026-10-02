@@ -2,6 +2,50 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.115.0] — 2026-10-02
+
+**Đề nghị thêm nhân sự từ danh sách Microsoft 365 đã có giấy phép.**
+
+- Form "Đề nghị thêm nhân sự" thêm ô **"Chọn từ Microsoft 365"** (đọc qua Graph app-only):
+  chỉ liệt kê tài khoản đang bật + có ít nhất một giấy phép + không phải guest (`#EXT#`),
+  đã loại người có hồ sơ và người có đề nghị đang chờ duyệt. Chọn là họ tên + email (UPN)
+  tự điền.
+- Chọn người đã có tài khoản (migration 098: cột `ms365_da_co` + `ms365_oid`): khi Admin
+  duyệt, hệ thống **không** gửi sự kiện `ms365.tao_tai_khoan` nữa (tạo lại sẽ đụng độ UPN,
+  dễ cấp nhầm giấy phép), mục checklist "Tạo tài khoản MS365 + cấp giấy phép" tick sẵn,
+  phản hồi duyệt trả `ms365_da_co: true` và không có mật khẩu khởi tạo nào. Thiếu email mà
+  `ms365_da_co` thì chặn duyệt với lỗi rõ.
+- Route mới `GET /api/de-nghi-nhan-su/ms365-da-cap-phep` (quyền nhân sự); chưa cấu hình
+  Graph (`MS_MAIL_TENANT_ID/CLIENT_ID/CLIENT_SECRET`) thì trả lỗi rõ ràng, form vẫn nhập tay
+  được bình thường.
+- Test: unit cho hàm lọc danh sách Graph (`ms365.test.ts`) + e2e 3 tình huống (không tạo lại
+  tài khoản khi đã có, thiếu email chặn duyệt, route trả lỗi rõ khi Graph chưa cấu hình).
+
+## [1.114.0] — 2026-10-02
+
+**Chính sách công mới từ kỳ lương tháng 9 (từ 01/09/2026) + Sổ ngoại lệ chấm công.**
+
+- Chính sách mới: đi muộn / về sớm **trong 30 phút** so với giờ ca không bị phạt, không trừ
+  công; **quá 30 phút** (ca 08:00 → từ 08:31; ca tan 17:30 → trước 16:59) mất nửa ngày công
+  tương ứng; vi phạm cả hai buổi → 0 công. Chỉ áp cho ngày hai buổi (có giờ nghỉ trưa); trước
+  01/09 giữ quy tắc cũ. Bỏ hẳn chế độ phạt đi muộn cũ (50k / trừ nửa ngày lương): bản ghi
+  `tham_so_luong` mới hiệu lực 2026-09-01 với `phat_di_muon_bat = false` (kỳ 8 trở về trước
+  không đổi). Áp theo từng ca làm việc (khoan 30 phút tính từ giờ vào / giờ ra của ca).
+- Phụ cấp ăn trưa chỉ tính cho **ngày công đủ 1** — ngày nửa công không được tính ăn trưa
+  (`pc_an_trua` dùng số ngày `so_cong >= 1`; các khoản theo công khác giữ nguyên).
+- **Sổ ngoại lệ** (migration 097, trang web mới "Sổ ngoại lệ" cho Nhân sự): ghi các ngày đặc
+  biệt (bão, sự kiện bất khả kháng) — miễn lỗi đi muộn/về sớm quá 30 phút, và tùy chọn
+  "miễn vắng" (người không quẹt máy tính 1 công, không trừ phép). Áp toàn công ty hoặc chọn
+  riêng nhân viên; lưu/sửa/xóa xong tự tính lại công ngày đó. Ngày thuộc ngoại lệ không bị
+  trừ vào quỹ phép năm.
+- Gieo sẵn ngoại lệ **17/09/2026**: bão tại Hà Nội — toàn công ty không tính đi muộn/về sớm,
+  người vắng hưởng 1 công không trừ phép.
+- Kịch bản áp dụng tháng 9 trên VPS: `trien_khai/ap_chinh_sach_thang_9.mjs` (mở khóa ngày
+  tính tự động, tính lại công + kỳ lương 2026-09, báo cáo đối chiếu 16–18/9).
+- Test: unit cho luật mất nửa ngày công + ngoại lệ (`tinh_cong.test.ts`), ăn trưa theo ngày
+  công đủ (`chinh_sach_phu_cap.test.ts`), e2e sổ ngoại lệ (miễn đi muộn, miễn vắng, xóa thì
+  tính lại như thường).
+
 ## [1.113.1] — 2026-10-02
 
 **Quốc khánh 2026: nghỉ 1/9 và 2/9 (ngày liền kề là 1/9, không phải 3/9); đợt nghỉ theo năm có thể ấn định số ngày nghỉ.**

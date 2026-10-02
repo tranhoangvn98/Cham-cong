@@ -34,6 +34,35 @@ test('nguon "theo cong": so luong bang so ngay cong THUC TE cua ky', () => {
   assert.equal(ra[0]!.so_luong, 23);
 });
 
+test('PC an trua: chi dem ngay cong DU 1 (chu cong ty chot tu ky 9/2026)', () => {
+  // 20 ngay du cong + 2 nua ngay (0,5 x 2 = 1 cong) + 3 ngay nua cong khac.
+  // An trua chi tinh 20 ngay du — khong tinh 1 nua ngay ghep thanh mot bua.
+  const ra = khoan_tu_chinh_sach(
+    [{ ...GOC, khoan_ma: 'pc_an_trua', nguon_so_luong: 'theo_cong' }],
+    { so_cong: 22.5, so_ngay_du_cong: 20 },
+    KHONG_GO_TAY,
+  );
+  assert.equal(ra[0]!.so_luong, 20);
+});
+
+test('PC an trua: khong truyen so_ngay_du_cong thi van dung tong cong (tuong thich cu)', () => {
+  const ra = khoan_tu_chinh_sach(
+    [{ ...GOC, khoan_ma: 'pc_an_trua', nguon_so_luong: 'theo_cong' }],
+    { so_cong: 22.5 },
+    KHONG_GO_TAY,
+  );
+  assert.equal(ra[0]!.so_luong, 22.5);
+});
+
+test('khoan theo cong KHAC an trua van dung tong cong, khong doi sang ngay du', () => {
+  const ra = khoan_tu_chinh_sach(
+    [{ ...GOC, khoan_ma: 'pc_theo_ca', nguon_so_luong: 'theo_cong' }],
+    { so_cong: 22.5, so_ngay_du_cong: 20 },
+    KHONG_GO_TAY,
+  );
+  assert.equal(ra[0]!.so_luong, 22.5);
+});
+
 test('nguon "theo cong": nghi ca thang thi khong sinh dong nao', () => {
   // Khong di lam ngay nao thi khong co ho tro an trua nao — va khong de lai mot dong 0 tren
   // bang luong de nguoi doc phai tu hieu.

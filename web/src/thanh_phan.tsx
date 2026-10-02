@@ -391,6 +391,7 @@ const NHAN_NGAY: Record<string, { chu: string; lop: string }> = {
   nghi_tuan: { chu: 'Nghỉ tuần', lop: 'nhan-mo' },
   cong_tac: { chu: 'Công tác', lop: 'nhan-lanh' },
   lam_bu: { chu: 'Làm bù', lop: 'nhan-tot' },
+  ngoai_le: { chu: 'Ngoại lệ', lop: 'nhan-lanh' },
 };
 
 export function NhanNgay({ trang_thai }: { trang_thai: string }): ReactNode {

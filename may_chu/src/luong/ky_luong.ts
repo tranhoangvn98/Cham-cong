@@ -147,6 +147,8 @@ interface DongNhanVien {
   luong_dong_bh_ql: number | null;
   cac_ngay_lam: number[];
   so_cong: number;
+  /** So ngay co cong DU 1 — dung cho phu cap an trua (xem chinh_sach.ts). */
+  so_ngay_du_cong: number;
   phut_ot: number;
   so_nguoi_phu_thuoc: number;
   loai_hop_dong: string | null;
@@ -210,6 +212,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
             hd.luong_co_ban::float8                                as luong_hd,
             coalesce(cl.cac_ngay_lam, '{1,2,3,4,5}')               as cac_ngay_lam,
             coalesce(bc.so_cong, 0)::float8                        as so_cong,
+            coalesce(bc.so_ngay_du_cong, 0)::int                   as so_ngay_du_cong,
             coalesce(bc.phut_ot, 0)::int                           as phut_ot,
             coalesce(pt.so_nguoi, 0)::int                          as so_nguoi_phu_thuoc,
             hd.loai                                               as loai_hop_dong,
@@ -251,6 +254,8 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
                           then case when kh.t7_nua_cong is null then $3::numeric
                                     when kh.t7_nua_cong then 0.5::numeric else 1 end
                         else 1 end)), 0) as so_cong,
+                -- So ngay cong DU 1 (so_cong = 1): ngay nua cong (0,5) khong duoc tinh an trua.
+                coalesce(count(*) filter (where bang_cong_ngay.so_cong >= 1), 0) as so_ngay_du_cong,
                 coalesce(sum(phut_ot), 0)                                    as phut_ot
            from bang_cong_ngay
           where nhan_vien_id = nv.id and ngay >= $1 and ngay <= $2
@@ -541,7 +546,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
 
       const sinh = khoan_tu_chinh_sach(
         chinh_sach_cua(nv.nhan_vien_id, nv.khoi_id, nv.loai_hop_dong),
-        { so_cong: nv.so_cong },
+        { so_cong: nv.so_cong, so_ngay_du_cong: nv.so_ngay_du_cong },
         go_tay,
       );
 

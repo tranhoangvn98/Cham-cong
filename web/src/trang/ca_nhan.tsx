@@ -1163,6 +1163,7 @@ function nhan_ngay_cong(d: NgayCongNgay): string {
   if (d.trang_thai === 'nghi_phep') return 'Nghỉ phép';
   if (d.trang_thai === 'nghi_khong_luong') return 'Nghỉ không lương';
   if (d.trang_thai === 'lam_bu') return 'Làm bù';
+  if (d.trang_thai === 'ngoai_le') return 'Ngoại lệ';
   if (d.trang_thai === 'vang') return 'Vắng';
   if (d.trang_thai === 'ngay_le') return 'Ngày lễ';
   if (d.trang_thai === 'nghi_tuan') return 'Nghỉ tuần';
@@ -1341,7 +1342,7 @@ function LichThang({ thang, ngay }: { thang: string; ngay: NgayCongNgay[] }): Re
     if (hang !== undefined) {
       chu = nhan_ngay_cong(hang);
       if (hang.trang_thai === 'vang') lop = 'cn-lich-vang';
-      else if (hang.trang_thai === 'nghi_phep') lop = 'cn-lich-phep';
+      else if (hang.trang_thai === 'nghi_phep' || hang.trang_thai === 'ngoai_le') lop = 'cn-lich-phep';
       else if (hang.trang_thai === 'ngay_le') lop = 'cn-lich-le';
       else if (hang.trang_thai === 'nghi_tuan') lop = 'cn-lich-mo';
       else if (hang.gio_vao === null || hang.gio_ra === null) lop = 'cn-lich-thieu';

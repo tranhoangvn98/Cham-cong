@@ -6,6 +6,7 @@ import { can_dang_nhap, nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/
 import { la_nguoi_duyet } from '../bao_mat/quyen_ho_so.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { tinh_lai_khoang, tinh_lai_ngay } from '../cong/tinh_cong.ts';
+import { sql_ngay_khong_mien_vang } from '../cong/so_ngoai_le.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { gui_ngam, tai_khoan_duyet_ot_cap_1, tai_khoan_duyet_ot_cap_2, tai_khoan_nguoi_duyet } from '../su_kien/thong_bao_day.ts';
 import { do_geofence, type DiaDiem } from '../tien_ich/dia_ly.ts';
@@ -29,8 +30,8 @@ import { tu_dong_quyet_don, TU_NGAY_AP } from '../don_tu/tu_dong_duyet.ts';
 import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
 import { email_nhan_vien_tra_loi } from '../luong/khieu_nai_email.ts';
 import {
-  CAC_LOAI_GOP_Y, bao_y_kien_moi, du_thao_cho_gop_y, ho_thu_cua_nhan_vien, tao_ho_thu,
-  tra_loi_ho_thu,
+  CAC_LOAI_GOP_Y, NHAN_TRANG_THAI_HO_THU, bao_y_kien_moi, du_thao_cho_gop_y,
+  ho_thu_cua_nhan_vien, tao_ho_thu, tra_loi_ho_thu,
 } from '../ho_thu_y_kien/nghiep_vu.ts';
 import { email_nhan_vien_tra_loi as email_ho_thu_nhan_vien_tra_loi }
   from '../ho_thu_y_kien/email.ts';
@@ -142,7 +143,10 @@ async function gan_trang_thai_bao(ds: BaoThongBao[], nv: string | null): Promise
     b.trang_thai = trang_thai;
     b.nhan_trang_thai = trang_thai === null
       ? null
-      : (NHAN_TRANG_THAI_BAO[trang_thai] ?? trang_thai);
+      // Ho thu y kien dung nhan rieng (dang_xem = "Da tiep nhan"), khac khieu nai ("Dang xem xet").
+      : dt?.bang === 'ho_thu_y_kien'
+        ? ((NHAN_TRANG_THAI_HO_THU as Record<string, string>)[trang_thai] ?? trang_thai)
+        : (NHAN_TRANG_THAI_BAO[trang_thai] ?? trang_thai);
     b.con_xu_ly = con_xu_ly(trang_thai);
   });
 }
@@ -214,7 +218,9 @@ async function quy_phep(nv_id: string, nam: string, quy: number): Promise<{
                               then (case when nua_ngay then 0.5 else 1 end) end), 0) as da_dung,
             coalesce(sum(case when trang_thai = 'cho_duyet'
                               then (case when nua_ngay then 0.5 else 1 end) end), 0) as cho_duyet
-       from ngay_nghi`,
+       from ngay_nghi
+      -- Ngay nam trong so ngoai le (mien_vang, vd ngay bao) KHONG tru vao quy phep.
+      where ${sql_ngay_khong_mien_vang('ngay_nghi.ngay', '$1')}`,
     [nv_id, nam],
   );
   const da_dung = Number(r?.da_dung ?? 0);

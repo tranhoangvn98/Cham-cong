@@ -21,6 +21,7 @@ import { TrangToChuc } from './trang/to_chuc.tsx';
 import { TrangKhieuNaiLuong } from './trang/khieu_nai_luong.tsx';
 import { TrangCaLam, TrangDiaDiem, TrangNgayLe } from './trang/cai_dat.tsx';
 import { TrangLamBu } from './trang/lam_bu.tsx';
+import { TrangSoNgoaiLe } from './trang/so_ngoai_le.tsx';
 import { TrangLanQuet } from './trang/lan_quet.tsx';
 import { TrangNguoiDung, TrangNhatKy } from './trang/nguoi_dung.tsx';
 import { TrangKhoaApi } from './trang/khoa_api.tsx';
@@ -114,6 +115,7 @@ const MENU: MucMenu[] = [
   { duong_dan: '/de-nghi-nhan-su', ten: 'Đề nghị thêm nhân sự', icon: 'key', nhom: 'Nhân sự', phu: 'HR đề nghị, Admin duyệt một bước — hệ thống tự khởi tạo', quyen: 'nhan_su' },
   { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Nhân sự', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
   { duong_dan: '/quan-ly-phep', ten: 'Quản lý phép', icon: 'sun', nhom: 'Nhân sự', phu: 'Tổng hợp ngày phép từng người', quyen: 'nguoi_duyet' },
+  { duong_dan: '/so-ngoai-le', ten: 'Sổ ngoại lệ', icon: 'circle-x', nhom: 'Nhân sự', phu: 'Ngày bão, sự kiện đặc biệt — miễn đi muộn/về sớm/vắng', quyen: 'nhan_su' },
   { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
   { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Nhân sự', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
   { duong_dan: '/thoi-viec', ten: 'Thôi việc', icon: 'logout', nhom: 'Nhân sự', phu: 'Quy trình thôi việc: checklist, bàn giao, chốt', quyen: 'nhan_su' },
@@ -239,6 +241,7 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     case '/lan-quet': return <TrangLanQuet />;
     case '/duyet-don': return <TrangDuyetDon />;
     case '/quan-ly-phep': return la_nguoi_duyet() ? <TrangQuanLyPhep /> : <KhongCoQuyen />;
+    case '/so-ngoai-le': return la_nhan_su() ? <TrangSoNgoaiLe /> : <KhongCoQuyen />;
     case '/cong-viec': return <TrangViec />;
     case '/to-chuc': return la_nhan_su() ? <TrangToChuc /> : <KhongCoQuyen />;
     case '/nhan-vien': return <TrangNhanVien />;

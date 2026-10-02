@@ -120,6 +120,20 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
   },
   {
+    duong_dan: '/so-ngoai-le',
+    tom_tat: 'Sổ ghi các ngày đặc biệt (bão, sự kiện bất khả kháng): hệ thống miễn đi muộn/về sớm quá 30 phút, và tùy chọn cho người vắng hưởng 1 công không trừ phép.',
+    buoc: [
+      { chu: 'Bấm + Thêm ngoại lệ: chọn ngày, ghi rõ lý do (bắt buộc — đây là sổ đối chiếu).', vai_tro: NHAN_SU },
+      { chu: 'Chọn phạm vi: toàn công ty hoặc chỉ một số nhân viên (tìm theo tên/mã).', vai_tro: NHAN_SU },
+      { chu: 'Tick các loại miễn: đi muộn, về sớm, hoặc miễn vắng (người không quẹt máy được tính 1 công).', vai_tro: NHAN_SU },
+      { chu: 'Lưu xong hệ thống TỰ tính lại công của ngày đó — không cần tính lại cả tháng.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Miễn vắng là quyết định trả lương cho ngày đó: người không quẹt máy được 1 công. Nếu chỉ muốn bỏ phạt đi muộn thì đừng tick miễn vắng.',
+      'Sửa hoặc xóa một mục ngoại lệ thì công ngày đó tính lại theo luật thường — xóa là mất hiệu lực ngay.',
+    ],
+  },
+  {
     duong_dan: '/lan-quet',
     tom_tat: 'Nhật ký thô từ máy chấm công — nguồn sự thật của mọi con số công.',
     buoc: [
@@ -170,6 +184,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     tom_tat: 'Onboarding: HR đề nghị thêm người, Admin duyệt một bước — hệ thống tự tạo tài khoản Microsoft, ERP1, cổng, cấp PIN máy cửa và giao việc nhập việc.',
     buoc: [
       { chu: 'Bấm Đề nghị thêm nhân sự, điền họ tên + chức danh + vị trí; email công ty nếu muốn cấp tài khoản Microsoft.', vai_tro: NHAN_SU },
+      { chu: 'Nếu người mới ĐÃ CÓ tài khoản Microsoft 365 kèm giấy phép: chọn người đó trong ô "Chọn từ Microsoft 365" — họ tên + email tự điền và hệ thống sẽ không tạo lại tài khoản.', vai_tro: NHAN_SU },
       { chu: 'Chọn máy cửa để hệ thống tự cấp PIN theo dải của máy đó (vân tay/khuôn mặt vẫn phải enroll tại máy).', vai_tro: NHAN_SU },
       { chu: 'Admin mở Duyệt / từ chối: điền mã nhân viên (nếu trống), sửa chức danh nếu cần, rồi bấm Duyệt & khởi tạo.', vai_tro: ['admin'] },
       { chu: 'Mật khẩu khởi tạo Microsoft chỉ hiện một lần ngay khi duyệt — chép lại để bàn giao.', vai_tro: ['admin'] },
@@ -177,6 +192,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
     luu_y: [
       'Không khai email công ty thì không cấp được tài khoản Microsoft — email chính là tên đăng nhập (UPN).',
+      'Danh sách Microsoft 365 chỉ hiện người đang bật tài khoản và đã có giấy phép, bỏ người đã có hồ sơ trong hệ thống — không thấy tên thì kiểm tra giấy phép hoặc chọn nhập tay.',
       'Chưa khai MS365_SKU_BASIC / MS365_SKU_STANDARD thì Admin bị chặn khi duyệt đề nghị cấp Microsoft — khai xong mới duyệt được.',
       'Máy cửa offline thì lệnh đẩy PIN nằm chờ, checklist mục PIN chỉ tick khi máy xác nhận — không chặn các việc khác.',
     ],

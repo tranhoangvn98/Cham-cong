@@ -26,6 +26,7 @@ import type pg from 'pg';
 import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { danh_sach_ngay, thu_trong_tuan } from '../tien_ich/thoi_gian.ts';
 import { id_tai_khoan_he_thong } from '../bao_mat/tai_khoan_he_thong.ts';
+import { ngay_mien_vang_cua } from '../cong/so_ngoai_le.ts';
 
 const MARKER = 'auto_quy_phep';
 
@@ -290,9 +291,12 @@ export async function ap_quy_phep_nam(
       [nv.id, dau_nam, cuoi_nam, moc_dem_don],
     );
     // Ngay lam viec cua NGUOI NAY: thu trong `cac_ngay_lam` VA khong phai ngay le cua lich ho theo.
+    // Ngay nam trong so ngoai le (mien_vang, vd ngay bao) cung khong tinh vao quy phep.
     const cac = new Set(nv.cac_ngay_lam);
     const ngay_le_nv = le_cua(nv.lich_nghi_ma);
-    const la_ngay_lam: LaNgayLam = (ng) => cac.has(thu_trong_tuan(ng)) && !ngay_le_nv.has(ng);
+    const ngay_mien_vang = await ngay_mien_vang_cua(nv.id, dau_nam, cuoi_nam);
+    const la_ngay_lam: LaNgayLam = (ng) =>
+      cac.has(thu_trong_tuan(ng)) && !ngay_le_nv.has(ng) && !ngay_mien_vang.has(ng);
 
     const so_thang = so_thang_lam_trong_nam(nv.ngay_vao, nv.ngay_nghi_viec, nam, ngay_chot_quy(nam));
     const quy = quy_phep_theo_luat(nv.base, so_thang);

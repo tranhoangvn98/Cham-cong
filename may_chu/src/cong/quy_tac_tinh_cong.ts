@@ -94,7 +94,7 @@ export function ca_cua_ngay(ca: CaLam | null, ngay: string): CaLam | null {
 
 export type TrangThaiNgay =
   'vang' | 'co_mat' | 'nghi_phep' | 'nghi_khong_luong' | 'ngay_le' | 'nghi_tuan'
-  | 'cong_tac' | 'lam_bu';
+  | 'cong_tac' | 'lam_bu' | 'ngoai_le';
 
 export interface DauVaoTinhCong {
   /** 'YYYY-MM-DD' */
@@ -102,6 +102,21 @@ export interface DauVaoTinhCong {
   ca: CaLam | null;
   /** Cac moc quet HOP LE trong ngay, da sap xep tang dan. */
   quet: Date[];
+  /**
+   * Muc SO NGOAI LE ap dung cho nguoi nay trong ngay nay (neu co).
+   *
+   *  - mien_di_muon / mien_ve_som: bo qua luat mat nua ngay cong khi di muon / ve som qua 30 phut.
+   *  - mien_vang: khong quet may thi khong phai vang — duoc tinh 1 cong, khong bi tru phep.
+   *
+   * Bo trong (undefined) = khong co ngoai le, tinh nhu thuong. Khai RIENG o dau vao chu khong
+   * doc CSDL de ham nay giu nguyen tinh THUAN.
+   */
+  ngoai_le?: {
+    mien_di_muon: boolean;
+    mien_ve_som: boolean;
+    mien_vang: boolean;
+    ghi_chu: string | null;
+  } | null;
   /** Don nghi phep da duyet trum ngay nay (neu co). */
   nghi_phep: { loai: string; nua_ngay: boolean } | null;
   ngay_le: { huong_luong: boolean } | null;
@@ -138,6 +153,18 @@ export interface KetQuaTinhCong {
 const NGAY_LAM_MAC_DINH = [1, 2, 3, 4, 5];
 /** So phut cong chuan mac dinh khi chua gan ca (8h - 1h nghi trua). */
 const PHUT_DU_CONG_MAC_DINH = 420;
+
+/**
+ * Tu ngay nay (ky luong thang 9), di muon / ve som QUA `PHUT_DUNG_SAI_MOI` phut mat nua ngay
+ * cong: sau 08:31 vao lam (ca 08:00) mat buoi sang; ve truoc 16:59 (ca tan 17:30) mat buoi
+ * chieu. Trong 30 phut thi khong anh huong gi. Chi ap cho ngay HAI BUOI (ca co gio nghi trua).
+ *
+ * Viec bo phai di muon cu (50k / tru nua ngay luong) nam ben `tham_so_luong` (phat_di_muon_bat
+ * = false tu 2026-09-01) — o day chi lo phan CONG.
+ */
+const TU_NGAY_MAT_NUA_NGAY = '2026-09-01';
+/** So phut di muon / ve som duoc dung sai theo chinh sach moi. */
+const PHUT_DUNG_SAI_MOI = 30;
 
 /**
  * Khoang thoi gian can lay lan quet cho mot ngay cong.
@@ -270,6 +297,23 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
 
   // OT cua ngay nay, dung chung cho moi nhanh: chi phan da dang ky VA that su co mat.
   const ot_da_duyet = phut_lam_them_da_duyet(gio_vao, gio_ra, dv.ngay, ca, dv.lam_them);
+
+  // --- Ngoai le MIEN VANG (vd ngay bao): khong quet may -> khong phai vang. ---
+  // Duoc tinh 1 cong va khong bi tru phep. Dat TRUOC nhanh nghi phep de mot don phep trum
+  // ngay ngoai le cung duoc tinh thanh ngoai le — cong khong doi (1), nhung quy phep khong
+  // bi tru (quy phep nam loai cac ngay nay ra o tuyen/toi.ts va tuyen/don_tu.ts).
+  if ((dv.ngoai_le?.mien_vang ?? false) && dv.quet.length === 0) {
+    const ly_do = dv.ngoai_le?.ghi_chu ?? null;
+    if (ly_do !== null && ly_do !== '') chu_thich.push(`Ngoại lệ: ${ly_do}`);
+    return {
+      ...RONG,
+      trang_thai: 'ngoai_le',
+      phut_ot: ot_da_duyet,
+      so_cong: 1,
+      co_dieu_chinh,
+      ghi_chu: gop_chu_thich(chu_thich),
+    };
+  }
 
   // --- Nhanh 1: dang nghi phep da duyet ---
   if (dv.nghi_phep !== null) {
@@ -441,6 +485,26 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
   if (muon > 0) chu_thich.push(`Di muon ${muon} phut`);
   if (ve_som > 0) chu_thich.push(`Ve som ${ve_som} phut`);
 
+  // --- Chinh sach moi tu ky luong thang 9 (xem TU_NGAY_MAT_NUA_NGAY o dau tep) ---
+  // Di muon / ve som QUA 30 phut (tinh THO, khong tru dung sai cua ca) thi mat nua ngay cong
+  // tuong ung. Chi ap cho ngay HAI BUOI: ngay mot buoi (vd sang thu Bay) van tinh theo so phut.
+  let cong_cuoi = quy_ra_cong(phut_cong, ca.phut_du_cong);
+  const co_hai_buoi = ca.nghi_tu !== null && ca.nghi_den !== null;
+  if (co_hai_buoi && dv.ngay >= TU_NGAY_MAT_NUA_NGAY) {
+    const muon_tho = Math.max(0, so_phut(ca_bat_dau, gio_vao));
+    const som_tho = Math.max(0, so_phut(gio_ra, ca_ket_thuc));
+    let mat = 0;
+    if (!(dv.ngoai_le?.mien_di_muon ?? false) && muon_tho > PHUT_DUNG_SAI_MOI) {
+      mat += 0.5;
+      chu_thich.push(`Mất nửa ngày công buổi sáng (đi muộn ${muon_tho} phút, quá 30 phút)`);
+    }
+    if (!(dv.ngoai_le?.mien_ve_som ?? false) && som_tho > PHUT_DUNG_SAI_MOI) {
+      mat += 0.5;
+      chu_thich.push(`Mất nửa ngày công buổi chiều (về sớm ${som_tho} phút, quá 30 phút)`);
+    }
+    if (mat > 0) cong_cuoi = Math.min(cong_cuoi, Math.max(0, 1 - mat));
+  }
+
   // O lai ngoai gio ma khong co don thi KHONG tinh OT — nhung cung khong im lang. Nhan su can
   // thay con so nay de di doi chieu, chu khong phai de no bien mat.
   const sau_ca = so_phut(ca_ket_thuc, gio_ra);
@@ -456,7 +520,7 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
     phut_muon: muon,
     phut_ve_som: ve_som,
     phut_ot: ot_da_duyet,
-    so_cong: quy_ra_cong(phut_cong, ca.phut_du_cong),
+    so_cong: cong_cuoi,
     co_dieu_chinh,
     ghi_chu: gop_chu_thich(chu_thich),
   };

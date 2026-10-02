@@ -159,6 +159,7 @@ before(async () => {
   await thuc_thi(`truncate table
     nhat_ky_thao_tac, token_push, token_lam_moi, hop_thu_di, lenh_thiet_bi,
     bang_cong_ngay, don_giai_trinh, don_nghi_phep, ngay_le, lan_quet,
+    so_ngoai_le, so_ngoai_le_nhan_vien,
     ho_so_tep, hop_dong_lao_dong, bien_ban_thoa_thuan, quyet_dinh_luong,
     cong_viec, bao_cao, khieu_nai, thiet_bi_cap_phat,
     ho_so_ca_nhan, tai_lieu_nhan_vien, nguoi_phu_thuoc, bhxh_su_kien,
@@ -1262,6 +1263,89 @@ test('nhan vien gui don giai trinh quen quet, duyet -> bang cong duoc bu gio', a
   );
   assert.equal(sau?.phut_lam, 450, '08:00-17:00 tru 90 phut nghi trua');
   assert.equal(sau?.co_dieu_chinh, true);
+});
+
+// ============================================================ SO NGOAI LE (migration 097)
+//
+// Ngay ghi trong so ngoai le (bao...) duoc mien luat "di muon / ve som qua 30 phut mat nua
+// ngay cong"; mien_vang thi nguoi khong quet may duoc tinh 1 cong, khong bi tru phep.
+
+/** Ngay lam viec (T2-T6) gan nhat DUNG TRUOC ngay cho truoc — e2e co the chay cuoi tuan. */
+function ngay_lam_truoc(ngay: string): string {
+  let ng = cong_ngay(ngay, -1);
+  while ([0, 6].includes(new Date(`${ng}T00:00:00Z`).getUTCDay())) ng = cong_ngay(ng, -1);
+  return ng;
+}
+
+test('so ngoai le: ngay bao mien di muon — khong mat nua ngay cong', async () => {
+  const ngay = ngay_lam_truoc(NGAY);
+  // Di muon 09:00 (qua 30 phut so voi 08:00) -> binh thuong mat nua ngay cong.
+  await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=ATTLOG`,
+    headers: { 'content-type': 'text/plain' },
+    payload: `${PIN}\t${ngay} 09:00:00\t0\t15\t0\n${PIN}\t${ngay} 17:00:00\t1\t15\t0\n`,
+  });
+
+  const truoc = await truy_van_mot<{ so_cong: number; trang_thai: string }>(
+    'select so_cong, trang_thai from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+    [nhan_vien_id, ngay],
+  );
+  assert.equal(truoc?.so_cong, 0.5, 'di muon qua 30 phut -> mat nua ngay cong');
+
+  // Tao muc ngoai le toan cong ty: mien di muon cho ngay do.
+  const tao = await goi('POST', '/api/so-ngoai-le', {
+    token: token_admin,
+    body: {
+      ngay, ghi_chu: 'Bão kiểm thử', loai: 'tat_ca',
+      mien_di_muon: true, mien_ve_som: true, mien_vang: false,
+    },
+  });
+  assert.equal(tao.ma, 201);
+
+  const sau = await truy_van_mot<{ so_cong: number; trang_thai: string }>(
+    'select so_cong, trang_thai from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+    [nhan_vien_id, ngay],
+  );
+  assert.equal(sau?.so_cong, 1, 'ngay ngoai le: di muon qua 30 phut khong mat cong');
+
+  // Mien vang: ngay lam viec lien truoc, khong quet may -> 1 cong, trang thai ngoai_le.
+  const ngay2 = ngay_lam_truoc(ngay);
+  const tao2 = await goi('POST', '/api/so-ngoai-le', {
+    token: token_admin,
+    body: {
+      ngay: ngay2, ghi_chu: 'Bão toàn thành phố', loai: 'tat_ca',
+      mien_di_muon: true, mien_ve_som: true, mien_vang: true,
+    },
+  });
+  assert.equal(tao2.ma, 201);
+  const vang = await truy_van_mot<{ so_cong: number; trang_thai: string }>(
+    'select so_cong, trang_thai from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+    [nhan_vien_id, ngay2],
+  );
+  assert.equal(vang?.trang_thai, 'ngoai_le');
+  assert.equal(vang?.so_cong, 1, 'nguoi vang ngay bao duoc tinh 1 cong, khong tru phep');
+
+  // Xoa muc mien vang -> cong tinh lai theo luat thuong (vang, 0 cong).
+  const xoa = await goi('DELETE', `/api/so-ngoai-le/${tao2.body['id']}`, { token: token_admin });
+  assert.equal(xoa.ma, 200);
+  const tro_lai = await truy_van_mot<{ so_cong: number; trang_thai: string }>(
+    'select so_cong, trang_thai from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+    [nhan_vien_id, ngay2],
+  );
+  assert.equal(tro_lai?.trang_thai, 'vang');
+  assert.equal(tro_lai?.so_cong, 0);
+
+  // Don dep: xoa muc con lai + du lieu hai ngay nay de cac bai sau khong dinh.
+  await goi('DELETE', `/api/so-ngoai-le/${tao.body['id']}`, { token: token_admin });
+  await thuc_thi(
+    `delete from lan_quet where nhan_vien_id = $1 and thoi_diem::date = $2::date`,
+    [nhan_vien_id, ngay],
+  );
+  await thuc_thi(
+    'delete from bang_cong_ngay where nhan_vien_id = $1 and ngay in ($2, $3)',
+    [nhan_vien_id, ngay, ngay2],
+  );
 });
 
 test('chot thang -> khong tinh lai duoc nua', async () => {

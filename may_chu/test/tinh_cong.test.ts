@@ -675,3 +675,101 @@ test('T7 mot buoi (khong gio nghi): nua ngay phep + di lam sang -> giu 0.5, khon
   });
   assert.equal(kq.so_cong, 0.5);
 });
+
+// ==================================================================================
+// CHINH SACH CONG MOI TU 01/09/2026 (migration 097): di muon / ve som QUA 30 phut mat
+// nua ngay cong. Trong 30 phut khong anh huong gi. Chi ap cho ngay HAI BUOI (co gio
+// nghi trua); ngay truoc 01/09 giu quy tac cu. So ngoai le bo qua luat nay.
+// ==================================================================================
+
+const T5_T9 = '2026-09-03'; // Thu Nam, sau ngay ap dung chinh sach moi
+
+test('chinh sach moi: di muon trong 30 phut van du cong', () => {
+  const kq = tinh_cong_ngay(co_ban(T5_T9, CA_HC, q(T5_T9, '08:30', '17:00')));
+  assert.equal(kq.so_cong, 1);
+});
+
+test('chinh sach moi: tu 08:31 vao lam mat nua ngay cong (buoi sang)', () => {
+  const kq = tinh_cong_ngay(co_ban(T5_T9, CA_HC, q(T5_T9, '08:31', '17:00')));
+  assert.equal(kq.so_cong, 0.5);
+  assert.match(kq.ghi_chu ?? '', /Mất nửa ngày công buổi sáng/);
+});
+
+test('chinh sach moi: ve som trong 30 phut van du cong (ca tan 17:00 -> tu 16:30)', () => {
+  const kq = tinh_cong_ngay(co_ban(T5_T9, CA_HC, q(T5_T9, '08:00', '16:30')));
+  assert.equal(kq.so_cong, 1);
+});
+
+test('chinh sach moi: ve som qua 30 phut mat nua ngay cong (buoi chieu)', () => {
+  const kq = tinh_cong_ngay(co_ban(T5_T9, CA_HC, q(T5_T9, '08:00', '16:29')));
+  assert.equal(kq.so_cong, 0.5);
+  assert.match(kq.ghi_chu ?? '', /Mất nửa ngày công buổi chiều/);
+});
+
+test('chinh sach moi: ca tan 17:30 — truoc 16:59 mat nua ngay, dung 17:00 van du (moc chu neu)', () => {
+  const CA_1730 = { ...CA_HC, gio_ra: '17:30' } satisfies CaLam;
+  const du = tinh_cong_ngay(co_ban(T5_T9, CA_1730, q(T5_T9, '08:00', '17:00')));
+  assert.equal(du.so_cong, 1, 've 17:00 = ve som dung 30 phut -> du cong');
+  const mat = tinh_cong_ngay(co_ban(T5_T9, CA_1730, q(T5_T9, '08:00', '16:59')));
+  assert.equal(mat.so_cong, 0.5, 've truoc 16:59 -> mat nua ngay cong');
+});
+
+test('chinh sach moi: vua di muon vua ve som qua 30 phut cung ngay -> 0 cong', () => {
+  const kq = tinh_cong_ngay(co_ban(T5_T9, CA_HC, q(T5_T9, '08:40', '16:20')));
+  assert.equal(kq.so_cong, 0);
+});
+
+test('chinh sach moi: chi ap tu 01/09 — ngay truoc do giu quy tac cu', () => {
+  const kq = tinh_cong_ngay(co_ban(T5, CA_HC, q(T5, '08:40', '17:00')));
+  assert.equal(kq.so_cong, 1, 'truoc 01/09 di muon khong lam tut so cong');
+});
+
+test('chinh sach moi: T7 mot buoi (khong gio nghi trua) khong bi ap luat mat nua ngay', () => {
+  const T7_T9 = '2026-09-05'; // thu Bay
+  const kq = tinh_cong_ngay(co_ban(T7_T9, CA_HD, q(T7_T9, '08:45', '12:00')));
+  assert.equal(kq.so_cong, 0.5, 'ngay mot buoi tinh theo so phut nhu cu');
+});
+
+test('chinh sach moi: ngoai le mien di muon — di muon qua 30 phut khong mat nua ngay', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5_T9, CA_HC, q(T5_T9, '08:45', '17:00')),
+    ngoai_le: { mien_di_muon: true, mien_ve_som: false, mien_vang: false, ghi_chu: 'Bão Hà Nội' },
+  });
+  assert.equal(kq.so_cong, 1);
+});
+
+test('chinh sach moi: ngoai le mien ve som — ve som qua 30 phut khong mat nua ngay', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5_T9, CA_HC, q(T5_T9, '08:00', '16:10')),
+    ngoai_le: { mien_di_muon: false, mien_ve_som: true, mien_vang: false, ghi_chu: null },
+  });
+  assert.equal(kq.so_cong, 1);
+});
+
+test('ngoai le mien vang: khong quet may duoc tinh 1 cong, khong phai vang', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5_T9, CA_HC, []),
+    ngoai_le: { mien_di_muon: true, mien_ve_som: true, mien_vang: true, ghi_chu: 'Bão tại Hà Nội' },
+  });
+  assert.equal(kq.trang_thai, 'ngoai_le');
+  assert.equal(kq.so_cong, 1);
+  assert.match(kq.ghi_chu ?? '', /Bão tại Hà Nội/);
+});
+
+test('ngoai le mien vang khong bat: khong quet may van la vang 0 cong', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5_T9, CA_HC, []),
+    ngoai_le: { mien_di_muon: true, mien_ve_som: true, mien_vang: false, ghi_chu: 'Chỉ miễn đi muộn' },
+  });
+  assert.equal(kq.trang_thai, 'vang');
+  assert.equal(kq.so_cong, 0);
+});
+
+test('ngoai le mien vang: nguoi co quet van tinh cong theo gio quet nhu thuong', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5_T9, CA_HC, q(T5_T9, '08:00', '17:00')),
+    ngoai_le: { mien_di_muon: true, mien_ve_som: true, mien_vang: true, ghi_chu: 'Bão Hà Nội' },
+  });
+  assert.equal(kq.trang_thai, 'co_mat');
+  assert.equal(kq.so_cong, 1);
+});
