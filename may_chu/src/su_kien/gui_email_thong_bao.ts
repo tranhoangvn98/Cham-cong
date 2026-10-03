@@ -63,12 +63,32 @@ export function html_email_thong_bao(t: DongThongBao): string {
     + '</body></html>';
 }
 
-/** Doc docx ban hanh (neu co) de dinh kem vao email. */
+/** Doc docx ban hanh (neu co) + cac tep kem cua van ban de dinh kem vao email. */
 async function dinh_kem_cua(t: DongThongBao): Promise<{ ten: string; mime: string; du_lieu: Buffer }[]> {
-  if (t.ten_luu === null) return [];
-  const du_lieu = await doc_tep_ho_so(t.ten_luu);
-  if (du_lieu === null) return [];
-  return [{ ten: `${t.ma}.docx`, mime: t.mime ?? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', du_lieu }];
+  const ds: { ten: string; mime: string; du_lieu: Buffer }[] = [];
+  if (t.ten_luu !== null) {
+    const du_lieu = await doc_tep_ho_so(t.ten_luu);
+    if (du_lieu !== null) {
+      ds.push({
+        ten: `${t.ma}.docx`,
+        mime: t.mime ?? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        du_lieu,
+      });
+    }
+  }
+  const tep_kem = await truy_van<{ ten_goc: string; ten_luu: string; kieu_mime: string }>(
+    `select ten_goc, ten_luu, kieu_mime from ho_so_tep
+      where nhom = 'thong_bao_tep_kem' and thuoc_id = $1
+      order by tao_luc`,
+    [t.id],
+  );
+  for (const k of tep_kem) {
+    const du_lieu = await doc_tep_ho_so(k.ten_luu);
+    if (du_lieu !== null) {
+      ds.push({ ten: k.ten_goc, mime: k.kieu_mime, du_lieu });
+    }
+  }
+  return ds;
 }
 
 /**

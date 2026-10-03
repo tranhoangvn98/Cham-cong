@@ -2,6 +2,20 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.118.0] — 2026-10-03
+
+**Văn bản AI: đính kèm tệp khi soạn, gửi kèm tệp khi ban hành.**
+
+- Form "Soạn văn bản mới" thêm ô **chọn tệp đính kèm** (tối đa 10, PDF/JPG/PNG/DOCX/XLSX,
+  kiểm magic byte như mọi tệp hồ sơ); mở Chi tiết bản nháp có thể xem/xóa/thêm tệp.
+- **Ban hành**: tệp chuyển sang thông báo trong cùng transaction; **email phát hành gửi kèm
+  DOCX + toàn bộ tệp đính kèm**.
+- Người lao động thấy danh sách tệp ngay trên thông báo và tải từng tệp
+  (`GET /api/toi/thong-bao/:id/tep-kem/:tep_id`, phân quyền theo phạm vi như tải DOCX).
+- Migration 102: nhóm `thong_bao_tep_kem` cho `ho_so_tep`.
+- Test e2e: soạn đính kèm → ban hành → nhân viên trong phạm vi tải được, ngoài phòng 404,
+  đã phát hành không xóa được tệp.
+
 ## [1.117.0] — 2026-10-03
 
 **Sửa: "Lấy log cũ" báo `lỗi -629` trên máy kiểm soát ra vào (dòng acc).**

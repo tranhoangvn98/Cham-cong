@@ -11,7 +11,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_gio,
 } from '../thanh_phan.tsx';
-import { goi, tai_tep, tai_tep_blob } from '../api.ts';
+import { goi, tai_tep, tai_tep_blob, gui_tep } from '../api.ts';
 import { Chon } from '../chon.tsx';
 import { lay_qd_nghi_viec } from '../dieu_huong_sau.ts';
 
@@ -79,6 +79,7 @@ interface ChiTietNhap extends NhapAI {
   nghi_viec_da_chay_luc: string | null;
   lay_y_kien_luc: string | null;
   han_lay_y_kien: string | null;
+  tep_kem: { id: string; ten_goc: string; kich_thuoc: number }[];
   ten_luu_docx: string | null;
   can_hai_cap: boolean;
   da_gui_email: boolean;
@@ -136,6 +137,7 @@ function FormTao(
   const [can_cu, dat_can_cu] = useState('');
   const [dieu, dat_dieu] = useState('');
   const [noi_dung, dat_noi_dung] = useState('');
+  const tep_ref = useRef<HTMLInputElement | null>(null);
   const hd = dung_hanh_dong();
   const [loi_vao, dat_loi_vao] = useState<string | null>(null);
   const nv = dung_nap<NhanVienGon[]>(mo ? '/api/nhan-vien' : null, []);
@@ -190,8 +192,25 @@ function FormTao(
       'Đã tạo bản nháp. Hệ thống đang soạn văn bản…',
     );
     if (kq !== null) {
+      // Tep dinh kem (neu co): tai len tung tep, loi thi giu modal mo de nguoi dung biet.
+      const tep = tep_ref.current?.files;
+      if (tep !== null && tep !== undefined && tep.length > 0) {
+        const ok_tep = await hd.chay(
+          async () => {
+            for (const t of Array.from(tep)) {
+              const fd = new FormData();
+              fd.append('tep', t);
+              await gui_tep(`/api/thong-bao/ai/${kq.id}/tep-kem`, fd);
+            }
+          },
+          'Đã tạo bản nháp và tải tệp đính kèm lên.',
+        );
+        if (!ok_tep) return;
+      }
       dat_tho(''); dat_trich_yeu(''); dat_kinh_gui(''); dat_can_cu(''); dat_dieu('');
-      dat_noi_dung(''); dat_la_qd(false); dat_ngay_nghi(''); dat_mo(false); khi_xong(kq.id);
+      dat_noi_dung(''); dat_la_qd(false); dat_ngay_nghi('');
+      if (tep_ref.current !== null) tep_ref.current.value = '';
+      dat_mo(false); khi_xong(kq.id);
     }
   };
 
@@ -346,6 +365,13 @@ function FormTao(
               <textarea rows={5} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
           </>
         )}
+      </div>
+      <div className="soan-nhom">
+        <div className="soan-tieu-de">Tệp đính kèm (tùy chọn — gửi kèm email khi ban hành)</div>
+        <label className="truong"><span>Tệp (tối đa 10, PDF/JPG/PNG/DOCX/XLSX)</span>
+          <input type="file" multiple ref={tep_ref}
+            accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" />
+        </label>
       </div>
       <div className="hang-nut">
         <button onClick={() => { void gui(); }} disabled={hd.dang_chay || !can_gui}>
@@ -531,6 +557,36 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
   const [t_can_cu, dat_t_can_cu] = useState('');
   const [t_dieu, dat_t_dieu] = useState('');
   const [t_noi_dung, dat_t_noi_dung] = useState('');
+  const o_tep = useRef<HTMLInputElement | null>(null);
+
+  const them_tep = async (): Promise<void> => {
+    if (d === null) return;
+    const tep = o_tep.current?.files;
+    if (tep === null || tep === undefined || tep.length === 0) return;
+    const ok = await hd.chay(
+      async () => {
+        for (const t of Array.from(tep)) {
+          const fd = new FormData();
+          fd.append('tep', t);
+          await gui_tep(`/api/thong-bao/ai/${d.id}/tep-kem`, fd);
+        }
+      },
+      'Đã đính kèm tệp.',
+    );
+    if (ok) {
+      if (o_tep.current !== null) o_tep.current.value = '';
+      nap_lai();
+    }
+  };
+
+  const xoa_tep = async (tep_id: string): Promise<void> => {
+    if (d === null) return;
+    const ok = await hd.chay(
+      () => goi(`/api/thong-bao/ai/${d.id}/tep-kem/${tep_id}`, { method: 'DELETE' }),
+      'Đã xóa tệp đính kèm.',
+    );
+    if (ok) nap_lai();
+  };
 
   useEffect(() => {
     const s = d?.spec_json;
@@ -696,6 +752,37 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
           )}
         </div>
       )}
+
+      <div className="the" style={{ marginTop: 12 }}>
+        <div className="canhan-muc-dau"><h3>Tệp đính kèm ({d.tep_kem.length})</h3></div>
+        {d.tep_kem.length === 0 ? (
+          <p className="mo-ta">Chưa có tệp đính kèm. Tệp đính kèm sẽ được gửi cùng email khi ban hành.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {d.tep_kem.map((t) => (
+              <div key={t.id} className="hang-nut" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+                <button className="nut-phang nut-nho"
+                  onClick={() => { void tai_tep(`/api/thong-bao/ai/${d.id}/tep-kem/${t.id}`, t.ten_goc); }}>
+                  {t.ten_goc}
+                </button>
+                <span className="mo-ta">{Math.max(1, Math.round(t.kich_thuoc / 1024))} KB</span>
+                {!['da_phat_hanh', 'huy'].includes(d.trang_thai) && (
+                  <button className="nut-phang nut-nho" disabled={hd.dang_chay}
+                    onClick={() => { void xoa_tep(t.id); }}>Xóa</button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {!['da_phat_hanh', 'huy'].includes(d.trang_thai) && (
+          <div className="hang-nut" style={{ marginTop: 8 }}>
+            <input type="file" ref={o_tep} accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" />
+            <button className="nut-phang" disabled={hd.dang_chay} onClick={() => { void them_tep(); }}>
+              {hd.dang_chay ? 'Đang tải…' : 'Đính kèm tệp'}
+            </button>
+          </div>
+        )}
+      </div>
 
       {dang_sua && d.spec_json !== null ? (
         <div className="the" style={{ marginTop: 12 }}>

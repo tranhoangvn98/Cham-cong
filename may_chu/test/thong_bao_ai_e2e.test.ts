@@ -43,7 +43,7 @@ let token_a = '';
 let token_b = '';
 
 async function goi(
-  method: 'GET' | 'POST' | 'PATCH',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   url: string,
   tuy_chon: { token?: string; body?: unknown } = {},
 ): Promise<{ ma: number; body: Record<string, unknown>; tho: string; byte: Buffer }> {
@@ -429,4 +429,58 @@ test('quyet dinh nghi viec: phat hanh gan tep ho so, lich dem hoi to quy trinh, 
     `select count(*)::int as so from hop_thu_di
       where loai_su_kien = 'nhan_su.nghi_viec' and du_lieu ->> 'ma_nv' = 'AI-NVB'`);
   assert.equal(dem_cong?.so, 1, 'chay lai khong sinh su kien trung');
+});
+
+test('tep kem: soan dinh kem -> ban hanh chuyen sang thong bao -> nhan vien tai duoc, ngoai phong 404', async () => {
+  const { id } = await nhap_cho_duyet({
+    loai: 'thong_bao', pham_vi: 'phong_ban', quan_he: 'noi_bo', muc_dich: 'pho_bien',
+    che_do: 'tu_soan', phong_ban_id: PHONG,
+    trich_yeu: 'Về việc dùng thẻ đa năng khi ra vào', kinh_gui: [],
+    noi_dung: ['Kèm hướng dẫn sử dụng thẻ.'],
+  });
+
+  // Dinh kem mot tep PDF that (magic byte %PDF).
+  const rg = '----tep-kem-vb';
+  const than = Buffer.concat([
+    Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="tep"; `
+      + 'filename="huong-dan.pdf"\r\nContent-Type: application/pdf\r\n\r\n'),
+    Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(64, 0x20)]),
+    Buffer.from(`\r\n--${rg}--\r\n`),
+  ]);
+  const len = await app.inject({
+    method: 'POST', url: `/api/thong-bao/ai/${id}/tep-kem`,
+    headers: {
+      authorization: `Bearer ${token_admin}`,
+      'content-type': `multipart/form-data; boundary=${rg}`,
+    },
+    payload: than,
+  });
+  assert.equal(len.statusCode, 201, `dinh kem loi: ${len.body}`);
+  const tep_id = len.json()['id'] as string;
+
+  // Hien trong chi tiet ban nhap (truong tep_kem).
+  const d = await goi('GET', `/api/thong-bao/ai/${id}`, { token: token_admin });
+  const tep_kem = (d.body['tep_kem'] ?? []) as { id: string }[];
+  assert.ok(tep_kem.some((t) => t.id === tep_id), 'chi tiet ban nhap phai liet ke tep kem');
+
+  // Ban hanh -> tep chuyen thuoc thong bao (thuoc_id doi trong cung transaction).
+  const p = await goi('POST', `/api/thong-bao/ai/${id}/phat-hanh`, { token: token_admin });
+  assert.equal(p.ma, 200, `phat hanh loi: ${p.tho}`);
+  const tb_id = p.body['thong_bao_id'] as string;
+
+  // Nhan vien cung phong thay tep trong danh sach thong bao va tai duoc.
+  const cua_a = await goi('GET', '/api/toi/thong-bao', { token: token_a });
+  const tb_a = (cua_a.body as unknown as Record<string, unknown>[]).find((v) => v['id'] === tb_id);
+  const kem_a = (tb_a?.['tep_kem'] ?? []) as { id: string }[];
+  assert.ok(kem_a.some((t) => t.id === tep_id), 'nguoi nhan phai thay tep kem');
+  const tai_a = await goi('GET', `/api/toi/thong-bao/${tb_id}/tep-kem/${tep_id}`, { token: token_a });
+  assert.equal(tai_a.ma, 200, `tai tep kem loi: ${tai_a.tho}`);
+
+  // Nguoi ngoai phong 404 (khong lo su ton tai).
+  const tai_b = await goi('GET', `/api/toi/thong-bao/${tb_id}/tep-kem/${tep_id}`, { token: token_b });
+  assert.equal(tai_b.ma, 404);
+
+  // Xoa tep sau khi da phat hanh -> 409.
+  const xoa = await goi('DELETE', `/api/thong-bao/ai/${id}/tep-kem/${tep_id}`, { token: token_admin });
+  assert.equal(xoa.ma, 409, 'da phat hanh khong xoa duoc tep kem');
 });

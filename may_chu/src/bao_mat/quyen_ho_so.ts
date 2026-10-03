@@ -20,12 +20,13 @@ export type NhomHoSo =
   | 'don_tu'         // ban don DA DUYET, do he thong sinh ra — xem don_tu/ban_don.ts
   | 'ot_tai_lieu'    // tai lieu dinh kem khi DANG KY don OT (tuy chon)
   | 'ot_ket_qua'     // anh chup ket qua OT, nhom theo bang ket_qua_ot
-  | 'ho_thu_y_kien'; // anh dinh kem trong trao doi ho thu y kien (nhan su tra loi)
+  | 'ho_thu_y_kien'  // anh dinh kem trong trao doi ho thu y kien (nhan su tra loi)
+  | 'thong_bao_tep_kem'; // tep dinh kem van ban AI (soan -> ban hanh kem thong bao)
 
 export const CAC_NHOM: readonly NhomHoSo[] = [
   'thong_tin', 'tai_lieu', 'hop_dong', 'bien_ban', 'luong',
   'nguoi_phu_thuoc', 'bhxh', 'cong_viec', 'bao_cao', 'khieu_nai', 'thiet_bi', 'don_tu',
-  'ot_tai_lieu', 'ot_ket_qua', 'ho_thu_y_kien',
+  'ot_tai_lieu', 'ot_ket_qua', 'ho_thu_y_kien', 'thong_bao_tep_kem',
 ] as const;
 
 export interface NguoiXem {

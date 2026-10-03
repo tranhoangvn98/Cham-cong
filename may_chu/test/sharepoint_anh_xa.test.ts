@@ -262,7 +262,7 @@ test('chon nhanh: moi nhom trong CAC_NHOM deu co cau tra loi ro rang', () => {
   // CAC_NHOM ma quen khai o day thi test do, thay vi tep cua nhom do im lang khong bao gio
   // duoc day sang.
   const KHONG_DAY: readonly string[] = ['khieu_nai', 'don_tu', 'ot_tai_lieu', 'ot_ket_qua',
-    'ho_thu_y_kien'];
+    'ho_thu_y_kien', 'thong_bao_tep_kem'];
   for (const nhom of CAC_NHOM) {
     const n = chon_nhanh({ nhom });
     if (KHONG_DAY.includes(nhom)) {

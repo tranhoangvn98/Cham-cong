@@ -25,6 +25,7 @@ interface ThongBao {
   da_doc: boolean;
   da_giai_trinh: boolean;
   co_tep: boolean;
+  tep_kem: { id: string; ten_goc: string; kich_thuoc: number }[];
   da_gui_email: boolean;
   gui_email_luc: string | null;
   gui_email_loi: string | null;
@@ -83,6 +84,16 @@ function MotThongBao(
           onClick={() => { void tai_tep(`/api/toi/thong-bao/${tb.id}/tai`, 'van-ban-thong-bao.docx'); }}>
           Tải văn bản (DOCX)
         </button>
+      )}
+      {tb.tep_kem.length > 0 && (
+        <div className="hang-nut" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+          {tb.tep_kem.map((t) => (
+            <button key={t.id} className="nut-nho nut-phang"
+              onClick={() => { void tai_tep(`/api/toi/thong-bao/${tb.id}/tep-kem/${t.id}`, t.ten_goc); }}>
+              Tải: {t.ten_goc}
+            </button>
+          ))}
+        </div>
       )}
       {khi_xem_doc !== undefined && (
         tb.da_gui_email ? (

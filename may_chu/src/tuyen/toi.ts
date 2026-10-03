@@ -1976,7 +1976,13 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
               dd.doc_luc, dd.giai_trinh, dd.giai_trinh_luc, dd.ma as ma_giai_trinh,
               (dd.doc_luc is not null) as da_doc,
               (dd.giai_trinh is not null) as da_giai_trinh,
-              (tb.ten_luu is not null) as co_tep
+              (tb.ten_luu is not null) as co_tep,
+              coalesce((select json_agg(json_build_object(
+                           'id', t.id, 'ten_goc', t.ten_goc, 'kich_thuoc', t.kich_thuoc)
+                           order by t.tao_luc)
+                          from ho_so_tep t
+                         where t.nhom = 'thong_bao_tep_kem' and t.thuoc_id = tb.id), '[]')
+                as tep_kem
          from thong_bao tb
          left join thong_bao_da_doc dd on dd.thong_bao_id = tb.id and dd.nhan_vien_id = $1
         where tb.da_go = false and (tb.het_han is null or tb.het_han > now())
@@ -2045,6 +2051,34 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       .header('x-content-type-options', 'nosniff')
       .header('content-security-policy', "default-src 'none'; sandbox")
       .header('content-disposition', 'attachment; filename*=UTF-8\'\'van-ban-thong-bao.docx')
+      .send(du_lieu);
+  });
+
+  /** Tai tep DINH KEM cua mot thong bao trong pham vi cua toi. Dang ky TRUOC /thong-bao/:id/tai
+   *  de duong dan 2 doan khong bi nuot. */
+  app.get('/thong-bao/:id/tep-kem/:tep_id', async (req, res) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const p = req.params as Record<string, string>;
+    const tb_id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+    const tep_id = uuid({ id: p['tep_id'] }, 'id', { bat_buoc: true }) as string;
+    const tep = await truy_van_mot<{ ten_luu: string; ten_goc: string; kieu_mime: string }>(
+      `select t.ten_luu, t.ten_goc, t.kieu_mime from ho_so_tep t
+        join thong_bao tb on tb.id = t.thuoc_id
+        where t.id = $1 and t.nhom = 'thong_bao_tep_kem' and tb.id = $2 and tb.da_go = false
+          and (tb.pham_vi = 'toan_cong_ty'
+               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $3)
+               or tb.nhan_vien_id = $3)`,
+      [tep_id, tb_id, nv_id],
+    );
+    if (tep === null) throw new LoiKhongTim('Không tìm thấy tệp đính kèm trong phạm vi của bạn.');
+    const du_lieu = await doc_tep_ho_so(tep.ten_luu);
+    if (du_lieu === null) throw new LoiKhongTim('Tệp không còn trên máy chủ.');
+    return res
+      .header('content-type', tep.kieu_mime)
+      .header('x-content-type-options', 'nosniff')
+      .header('content-security-policy', "default-src 'none'; sandbox")
+      .header('content-disposition',
+        `attachment; filename*=UTF-8''${encodeURIComponent(tep.ten_goc)}`)
       .send(du_lieu);
   });
 

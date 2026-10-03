@@ -13,7 +13,7 @@ import { gui_ngam } from '../su_kien/thong_bao_day.ts';
 import { gui_email_thong_bao } from '../su_kien/gui_email_thong_bao.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
-import { doc_tep_ho_so, luu_tep_ho_so, luu_van_ban_cong_ty, xoa_tep_ho_so,
+import { doc_tep_ho_so, lam_sach_ten, luu_tep_ho_so, luu_van_ban_cong_ty, xoa_tep_ho_so,
   type TepDaLuu } from '../tien_ich/luu_tep.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import {
@@ -37,6 +37,9 @@ const CAC_QUAN_HE = ['noi_bo', 'doi_ngoai'] as const;
 const CAC_MUC_DICH = ['nhac_nho', 'yeu_cau', 'pho_bien', 'moi_hop', 'phoi_hop'] as const;
 const CAC_MUC_DO = ['thuong', 'quan_trong', 'khan'] as const;
 const CAC_CHE_DO = ['ai', 'tu_soan'] as const;
+
+/** So tep dinh kem toi da cho mot van ban. */
+const TOI_DA_TEP_KEM = 10;
 
 interface NhapAi {
   id: string;
@@ -258,20 +261,123 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
   // ------------------------------------------------------------ trang thai (REQ-03)
   app.get('/thong-bao/ai/:id', { preHandler: can_nhan_su }, async (req) => {
     const d = await doc_nhap(lay_id(req));
+    const tep_kem = await truy_van(
+      `select id, ten_goc, kich_thuoc from ho_so_tep
+        where nhom = 'thong_bao_tep_kem' and thuoc_id = $1
+        order by tao_luc`,
+      [d.id],
+    );
     return {
       id: d.id, ma: d.ma, loai: d.loai, pham_vi: d.pham_vi, quan_he: d.quan_he,
       muc_dich: d.muc_dich, muc_do: d.muc_do, can_giai_trinh: d.can_giai_trinh,
       het_han: d.het_han, che_do: d.che_do, noi_dung_tho: d.noi_dung_tho,
       la_qd_nghi_viec: d.la_qd_nghi_viec, ngay_nghi_viec: d.ngay_nghi_viec,
       nghi_viec_da_chay_luc: d.nghi_viec_da_chay_luc, lay_y_kien_luc: d.lay_y_kien_luc,
+      han_lay_y_kien: d.han_lay_y_kien,
       trang_thai: d.trang_thai, ket_qua_gate: d.ket_qua_gate, so_lan_thu: d.so_lan_thu,
       so_ban_hanh: d.so_ban_hanh, so_ky_hieu: d.so_ky_hieu, thong_bao_id: d.thong_bao_id,
       da_gui_email: d.da_gui_email, gui_email_luc: d.gui_email_luc,
       gui_email_loi: d.gui_email_loi,
       spec_json: d.spec_json, ten_luu_docx: d.ten_luu_docx, co_tep: d.ten_luu_docx !== null,
+      tep_kem,
       tao_luc: d.tao_luc, cap_nhat_luc: d.cap_nhat_luc,
       can_hai_cap: can_hai_cap(d.pham_vi, d.quan_he),
     };
+  });
+
+  // ------------------------------------------------------------ tep kem van ban
+  /** Tai tep kem cua ban nhap — chi nhan su (route xac thuc + phan quyen). */
+  app.get('/thong-bao/ai/:id/tep-kem/:tep_id', { preHandler: can_nhan_su }, async (req, res) => {
+    const d = await doc_nhap(lay_id(req));
+    const p = req.params as Record<string, string>;
+    const tep_id = uuid({ id: p['tep_id'] }, 'id', { bat_buoc: true }) as string;
+    const tep = await truy_van_mot<{ ten_luu: string; ten_goc: string; kieu_mime: string }>(
+      `select ten_luu, ten_goc, kieu_mime from ho_so_tep
+        where id = $1 and nhom = 'thong_bao_tep_kem' and thuoc_id = $2`,
+      [tep_id, d.id],
+    );
+    if (tep === null) throw new LoiKhongTim('Không tìm thấy tệp đính kèm.');
+    const du_lieu = await doc_tep_ho_so(tep.ten_luu);
+    if (du_lieu === null) throw new LoiKhongTim('Tệp không còn trên máy chủ.');
+    return res
+      .header('content-type', tep.kieu_mime)
+      .header('x-content-type-options', 'nosniff')
+      .header('content-disposition',
+        `attachment; filename*=UTF-8''${encodeURIComponent(tep.ten_goc)}`)
+      .send(du_lieu);
+  });
+
+  /** Dinh kem mot tep (PDF/JPG/PNG/DOCX/XLSX) cho ban nhap. Toi da 10 tep. */
+  app.post('/thong-bao/ai/:id/tep-kem', {
+    preHandler: can_nhan_su,
+    bodyLimit: cau_hinh.tep_toi_da_byte + 1024 * 1024,
+  }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const d = await doc_nhap(lay_id(req));
+    if (d.trang_thai === 'da_phat_hanh' || d.trang_thai === 'huy') {
+      throw new LoiXungDot('Văn bản đã phát hành hoặc đã hủy, không đính kèm thêm được.');
+    }
+    const so = await truy_van_mot<{ so: number }>(
+      `select count(*)::int as so from ho_so_tep
+        where nhom = 'thong_bao_tep_kem' and thuoc_id = $1`, [d.id],
+    );
+    if ((so?.so ?? 0) >= TOI_DA_TEP_KEM) {
+      throw new LoiDauVao(`Mỗi văn bản đính kèm tối đa ${TOI_DA_TEP_KEM} tệp.`);
+    }
+
+    let du_lieu: Buffer | null = null;
+    let ten_goc = 'tep';
+    for await (const phan of req.parts({ limits: { fileSize: cau_hinh.tep_toi_da_byte } })) {
+      if (phan.type === 'file') {
+        if (phan.fieldname !== 'tep') { await phan.toBuffer(); continue; }
+        ten_goc = lam_sach_ten(phan.filename ?? 'tep');
+        du_lieu = await phan.toBuffer();
+      }
+    }
+    if (du_lieu === null) throw new LoiDauVao('Thiếu tệp đính kèm.');
+
+    const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, {
+      ma_nv: 'VB', ho_ten: 'Van-ban',
+      nhom: 'thong_bao_tep_kem', ngay: ngay_dia_phuong(new Date()),
+    });
+    let moi: { id: string; ten_goc: string; kich_thuoc: number } | null;
+    try {
+      moi = await truy_van_mot(
+        `insert into ho_so_tep(id, nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu,
+                               kieu_mime, kich_thuoc, tai_len_boi)
+         values ($1, null, 'thong_bao_tep_kem', $2, $3, $4, $5, $6, $7)
+         returning id, ten_goc, kich_thuoc`,
+        [da_luu.ma_tep, d.id, ten_goc, da_luu.ten_luu, da_luu.mime, da_luu.kich_thuoc, nd.sub],
+      );
+    } catch (loi) {
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* tep mo coi da duoc don */ });
+      throw loi;
+    }
+    await ghi_nhat_ky(nd.sub, 'thong_bao_ai_tep_kem', 'thong_bao_nhap_ai', d.id,
+      { tep_id: moi?.id }, req.ip);
+    return res.code(201).send(moi);
+  });
+
+  /** Xoa mot tep kem cua ban nhap (chi khi chua phat hanh). */
+  app.delete('/thong-bao/ai/:id/tep-kem/:tep_id', { preHandler: can_nhan_su }, async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const d = await doc_nhap(lay_id(req));
+    if (d.trang_thai === 'da_phat_hanh' || d.trang_thai === 'huy') {
+      throw new LoiXungDot('Văn bản đã phát hành hoặc đã hủy, không xóa tệp được.');
+    }
+    const p = req.params as Record<string, string>;
+    const tep_id = uuid({ id: p['tep_id'] }, 'id', { bat_buoc: true }) as string;
+    const tep = await truy_van_mot<{ ten_luu: string }>(
+      `select ten_luu from ho_so_tep
+        where id = $1 and nhom = 'thong_bao_tep_kem' and thuoc_id = $2`,
+      [tep_id, d.id],
+    );
+    if (tep === null) throw new LoiKhongTim('Không tìm thấy tệp đính kèm.');
+    await thuc_thi('delete from ho_so_tep where id = $1', [tep_id]);
+    xoa_tep_ho_so(tep.ten_luu).catch(() => { /* tep da khong con thi bo qua */ });
+    await ghi_nhat_ky(nd.sub, 'thong_bao_ai_xoa_tep_kem', 'thong_bao_nhap_ai', d.id,
+      { tep_id }, req.ip);
+    return { ok: true };
   });
 
   // ------------------------------------------------------------ xem docx (REQ-15)
@@ -462,6 +568,15 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
     if (d.ten_luu_docx !== null) {
       xoa_tep_ho_so(d.ten_luu_docx).catch(() => {});
     }
+    // Don cac tep kem cua ban nhap huy — khong giu tep mo coi tren dia va trong ho_so_tep.
+    const tep_kem = await truy_van<{ ten_luu: string }>(
+      `select ten_luu from ho_so_tep
+        where nhom = 'thong_bao_tep_kem' and thuoc_id = $1`, [d.id],
+    );
+    await thuc_thi(
+      `delete from ho_so_tep where nhom = 'thong_bao_tep_kem' and thuoc_id = $1`, [d.id],
+    );
+    for (const t of tep_kem) xoa_tep_ho_so(t.ten_luu).catch(() => {});
     // So da cap (neu co) la vinh vien — ghi nhat ky de con so so, KHONG cap lai.
     await ghi_nhat_ky(nd.sub, 'thong_bao_ai_huy', 'thong_bao_nhap_ai', d.id,
       { so_ky_hieu: d.so_ky_hieu }, req.ip);
@@ -632,6 +747,14 @@ export async function ban_hanh_nhap_ai(
       if (cap_nhat.rowCount === 0) {
         throw new LoiXungDot('Bản nháp này đã được ban hành rồi.');
       }
+
+      // Chuyen tep kem tu ban nhap sang thong bao da ban hanh — CUNG transaction de tep
+      // khong bao gio o trang thai mo coi (thuoc ban nhap da phat hanh).
+      await khach.query(
+        `update ho_so_tep set thuoc_id = $2
+          where nhom = 'thong_bao_tep_kem' and thuoc_id = $1`,
+        [d.id, dong.id],
+      );
 
       // Gan tep quyet dinh vao ho so nhan vien CUNG transaction voi ban hanh: CSDL loi
       // thi tep vua ghi tren dia bi xoa o catch ben ngoai, khong de lai dong ho so tro
