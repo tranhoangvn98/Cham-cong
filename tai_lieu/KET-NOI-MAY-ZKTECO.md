@@ -471,6 +471,13 @@ Nguyên nhân: PIN trên máy khác PIN khai trong hệ thống. Cách xử lý:
    máy bạn bấm** sang nhân viên, và tính lại bảng công những ngày liên quan. Cùng số PIN ở máy
    khác **không** bị ảnh hưởng: mỗi máy cấp số PIN riêng nên cùng một số có thể là hai người.
 
+> **Mỗi máy có không gian PIN riêng** — cùng một số PIN ở hai máy khác nhau có thể là hai
+> người khác nhau. Từ 1.119.0, lượt quẹt được gán theo **tên tài khoản trên chính máy gửi
+> lên** (bảng `may_nguoi_dung`, xem ở *Thiết bị → Đối chiếu user*): tên máy khớp nguyên văn
+> với **đúng một** nhân viên đang hoạt động thì gán người đó; không khớp thì mới dùng bảng mã
+> định danh chung. Muốn máy gán đúng ngay từ đầu, hãy sửa tên tài khoản trên máy (hoặc ảnh
+> chụp trong hệ thống) cho khớp họ tên nhân viên.
+
 ### Giờ công lệch so với thực tế
 
 Nguyên nhân phổ biến nhất là **đồng hồ máy chạy sai**. Webapp → **Máy chấm công** →

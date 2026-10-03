@@ -798,6 +798,80 @@ test('may acc day querydata transaction -> luu lan quet va chong trung', async (
   assert.equal(lq2!.so, 1, 'day lai cung lo khong duoc sinh them ban ghi');
 });
 
+// Moi may cham cong co KHONG GIAN PIN RIENG: cung so PIN nhung may khac nhau la nguoi khac.
+// Bang ma dinh danh toan cuc khong co chieu may, nen nguon dung la TEN TAI KHOAN tren chinh
+// cai may gui ban ghi len (bang may_nguoi_dung). Ten ghep duoc duy nhat thi map theo ten;
+// khong ghep duoc thi roi xuong bang ma dinh danh nhu cu.
+test('luot quet map theo TEN TREN MAY truoc bang ma dinh danh toan cuc', async () => {
+  // Bang ma dinh danh noi PIN 5001 la nhan vien chinh (PIN). May nay khai PIN 5001 ten
+  // "Tran May Ten" -> luot quet phai ve nguoi do, KHONG ve nhan vien chinh.
+  const nv = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: { ma_nv: 'NV050', ho_ten: 'Trần Máy Tên' },
+  });
+  assert.equal(nv.ma, 201, JSON.stringify(nv.body));
+  const nv_id = nv.body['id'] as string;
+
+  await thuc_thi(
+    `insert into may_nguoi_dung (thiet_bi_serial, pin, ten_may, the, quyen)
+     values ($1, '5001', 'Trần Máy Tên', '', 0)`,
+    [SERIAL],
+  );
+
+  const r = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=rtlog`,
+    headers: { 'content-type': 'text/plain' },
+    payload: `time=${NGAY} 07:59:00\tpin=5001\tinoutstatus=0\tverifytype=15\n`,
+  });
+  assert.equal(r.statusCode, 200);
+  assert.equal(r.body.trim(), 'OK: 1');
+
+  const lq = await truy_van_mot<{ nhan_vien_id: string | null }>(
+    `select nhan_vien_id from lan_quet
+      where thiet_bi_serial = $1 and pin_may = '5001'
+        and (thoi_diem + interval '7 hours')::date = $2
+        and (thoi_diem + interval '7 hours')::time = '07:59:00'`,
+    [SERIAL, NGAY],
+  );
+  assert.notEqual(lq, null, 'phai co ban ghi luc 07:59:00');
+  assert.equal(lq!.nhan_vien_id, nv_id, 'phai ve nguoi theo TEN TREN MAY, khong phai nhan vien chinh');
+  assert.notEqual(lq!.nhan_vien_id, nhan_vien_id);
+
+  // Don dep anh chup ten tren may de cac bai sau cua PIN 5001 khong bi lech sang NV050.
+  await thuc_thi(
+    `delete from may_nguoi_dung where thiet_bi_serial = $1 and pin = '5001'`,
+    [SERIAL],
+  );
+});
+
+test('ten tren may khong khop ai -> roi xuong bang ma dinh danh toan cuc', async () => {
+  await thuc_thi(
+    `insert into may_nguoi_dung (thiet_bi_serial, pin, ten_may, the, quyen)
+     values ($1, '7788', 'Khong Co Ai', '', 0)`,
+    [SERIAL],
+  );
+
+  const r = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=rtlog`,
+    headers: { 'content-type': 'text/plain' },
+    payload: `time=${NGAY} 09:30:00\tpin=7788\tinoutstatus=0\tverifytype=15\n`,
+  });
+  assert.equal(r.statusCode, 200);
+  assert.equal(r.body.trim(), 'OK: 1');
+
+  const lq = await truy_van_mot<{ nhan_vien_id: string | null }>(
+    `select nhan_vien_id from lan_quet
+      where thiet_bi_serial = $1 and pin_may = '7788'
+        and (thoi_diem + interval '7 hours')::date = $2`,
+    [SERIAL, NGAY],
+  );
+  assert.equal(lq!.nhan_vien_id, null, 'bang ma dinh danh khong co 7788 -> de chua gan');
+
+  await thuc_thi(`delete from may_nguoi_dung where thiet_bi_serial = $1 and pin = '7788'`, [SERIAL]);
+});
+
 test('may gui lai cung lo -> chong trung, khong nhan them ban ghi nao', async () => {
   const body = `${PIN}\t${NGAY} 08:12:03\t0\t15\t0\n`;
   const r = await app.inject({

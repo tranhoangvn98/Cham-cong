@@ -4,6 +4,7 @@ import { truy_van } from '../csdl/ket_noi.ts';
 import {
   dung_lich_pin, lich_pin_rong, type KhoangMa, type LichPin, type NguoiMap,
 } from './tra_pin.ts';
+import { map_ten_may, type DongTenMay, type UngVienTen } from './tra_ten_may.ts';
 
 /**
  * Nap LICH SU cua cac PIN: mot cau cho bang `ma_dinh_danh`, mot cau cho cot `nhan_vien.pin_may`.
@@ -40,4 +41,35 @@ export async function nap_lich_pin(cac_pin: string[]): Promise<LichPin> {
   ]);
 
   return dung_lich_pin(dong_bang, dong_cot);
+}
+
+/** Ket qua nap ten tai khoan tren may: map PIN -> nguoi + danh sach ten khop nhieu nguoi. */
+export interface KetQuaTenMay {
+  theo_pin: Map<string, NguoiMap>;
+  trung_ten: string[];
+}
+
+/**
+ * Nap TEN TAI KHOAN tren may (bang `may_nguoi_dung` — anh chup user cua CHINH may do, day len
+ * sau lenh `DATA QUERY USERINFO`) va ghep voi nhan vien DANG HOAT DONG theo ten chuan hoa.
+ *
+ * VI SAO phai hoi may: moi may co khong gian PIN rieng — cung so PIN nhung may khac nhau la
+ * nguoi khac. Bang ma dinh danh toan cuc khong co chieu may nen khong tra loi duoc. Chi ghep
+ * ten khop NGUYEN VAN va DUY NHAT; con lai de lop tren roi xuong bang ma dinh danh nhu cu.
+ */
+export async function nap_ten_may(serial: string): Promise<KetQuaTenMay> {
+  const [dong_may, ung_vien] = await Promise.all([
+    truy_van<DongTenMay>(
+      `select pin, ten_may from may_nguoi_dung
+        where thiet_bi_serial = $1 and ten_may is not null and ten_may <> ''`,
+      [serial],
+    ),
+    // KHONG loc dang_hoat_dong o day la sai: ten tren may noi ve nguoi DANG dung may, khong
+    // phai lich su. Nguoi da nghi khong duoc nhan them luot quet moi.
+    truy_van<UngVienTen>(
+      `select nv.id, nv.ma_nv, nv.ma_erp, nv.ho_ten
+         from nhan_vien nv where nv.dang_hoat_dong = true`,
+    ),
+  ]);
+  return map_ten_may(dong_may, ung_vien);
 }

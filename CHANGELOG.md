@@ -2,6 +2,26 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.119.0] — 2026-10-03
+
+**Lượt quẹt gán theo TÊN TÀI KHOẢN trên chính máy gửi lên — mỗi máy có không gian PIN riêng.**
+
+Mỗi máy chấm công có **không gian PIN riêng**: cùng một số PIN nhưng máy khác nhau có thể là
+hai người khác nhau. Bảng mã định danh toàn cục không có chiều máy nên không trả lời được câu
+đó — nguồn đúng là chính máy: tên tài khoản enroll trên máy (bảng `may_nguoi_dung`, máy đẩy lên
+sau `DATA QUERY USERINFO`).
+
+- **Tra theo tên trên máy trước.** Tiếp nhận lượt quẹt (ATTLOG / rtlog / transaction) giờ gán
+  người theo tên tài khoản trên đúng máy đã gửi bản ghi: tên máy khớp **nguyên văn** (bỏ dấu,
+  thường hóa) với **đúng một** nhân viên đang hoạt động thì gán người đó; không khớp ai hoặc
+  khớp **nhiều** người trùng tên thì **không đoán** — rơi xuống bảng mã định danh theo mốc
+  thời gian như cũ. Log kèm `theo_ten` (số bản ghi gán theo tên máy).
+- Đúng trường hợp đã xảy ra với máy Kho: PIN 6 máy Kho là *"Yenkho"* (Yến) nhưng bảng mã định
+  danh toàn cục còn chỉ ERP2 Tiến đến 01/10 — lượt quẹt tháng 9 phục hồi về bị gán nhầm cho
+  Tiến. Kịch bản sửa dữ liệu đã gán nhầm: `trien_khai/chuyen_quet_phuc_hoi_kho.mjs`.
+- Test: unit `tra_ten_may` (khớp nguyên văn, trùng tên không đoán, tên rỗng) + 2 e2e (tên máy
+  thắng bảng mã định danh; tên không khớp thì rơi xuống bảng). Không có migration.
+
 ## [1.118.0] — 2026-10-03
 
 **Văn bản AI: đính kèm tệp khi soạn, gửi kèm tệp khi ban hành.**

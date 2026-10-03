@@ -5,7 +5,7 @@ import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { tinh_lai_nhieu } from '../cong/tinh_cong.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { cac_pin_lech, tra_pin, type NguoiMap } from '../dinh_danh/tra_pin.ts';
-import { nap_lich_pin } from '../dinh_danh/lich_pin_csdl.ts';
+import { nap_lich_pin, nap_ten_may } from '../dinh_danh/lich_pin_csdl.ts';
 import {
   doc_attlog, doc_rtlog, doc_transaction, doc_userinfo, nhan_cach_xac_thuc, type BanGhiAttlog,
 } from './giao_thuc.ts';
@@ -16,6 +16,8 @@ export interface KetQuaTiepNhan {
   trung: number;
   dong_loi: number;
   chua_map_pin: string[];
+  /** So ban ghi map theo TEN TAI KHOAN tren may (khong qua bang ma dinh danh). */
+  theo_ten: number;
 }
 
 /**
@@ -99,13 +101,21 @@ async function tiep_nhan_ban_ghi(
     trung: 0,
     dong_loi: so_dong_loi,
     chua_map_pin: [],
+    theo_ten: 0,
   };
   if (ban_ghi.length === 0) return kq;
 
   // Nap mot lan toan bo LICH SU cua cac PIN trong lo — ke ca cac dong da dong lai. Tung ban ghi
   // duoc tra theo MOC THOI GIAN cua chinh no, khong phai theo "hom nay ai giu PIN".
   const cac_pin = [...new Set(ban_ghi.map((b) => b.pin))];
-  const lich = await nap_lich_pin(cac_pin);
+  const [lich, ten_may] = await Promise.all([nap_lich_pin(cac_pin), nap_ten_may(serial)]);
+
+  for (const t of ten_may.trung_ten) {
+    console.warn(
+      `[adms] may ${serial}: ten tai khoan "${t}" khop nhieu nhan vien trung ten — `
+      + 'dung bang ma dinh danh thay vi doan.',
+    );
+  }
 
   for (const l of cac_pin_lech(lich)) {
     console.warn(
@@ -118,7 +128,12 @@ async function tiep_nhan_ban_ghi(
   const chua_map = new Set<string>();
 
   for (const b of ban_ghi) {
-    const nguoi = tra_pin(lich, b.pin, b.thoi_diem);
+    // Uu tien TEN TAI KHOAN tren CHINH CAI MAY da gui ban ghi len: moi may co khong gian PIN
+    // rieng nen may la nguon dang tin nhat ve "PIN nay tren may nay la ai". Khong co (hoac
+    // ten khong khop ai) thi roi xuong bang ma dinh danh theo moc thoi gian nhu cu.
+    const theo_may = ten_may.theo_pin.get(b.pin);
+    const nguoi = theo_may ?? tra_pin(lich, b.pin, b.thoi_diem);
+    if (theo_may !== undefined) kq.theo_ten++;
     if (nguoi === null) chua_map.add(b.pin);
 
     const da_them = await luu_mot_lan_quet(serial, b, nguoi);
