@@ -6,15 +6,17 @@
 //   2. Ngay le                            -> ngay_le
 //   3. Khong thuoc cac ngay lam cua ca    -> nghi_tuan
 //   4. Don cong tac DA DUYET trum ngay    -> cong_tac
-//   5. Co lan quet hop le                 -> co_mat
-//   6. Con lai                            -> vang
+//   5. Don lam Remote DA DUYET trum ngay  -> lam_remote
+//   6. Co lan quet hop le                 -> co_mat
+//   7. Con lai                            -> vang
 //
-// VI SAO `cong_tac` DUNG O BUOC 4 chu khong som hon:
+// VI SAO `cong_tac` VA `lam_remote` DUNG O BUOC 4-5 chu khong som hon:
 //   - Sau `nghi_phep`: hai don trum cung mot ngay la du lieu mau thuan, va nghi phep la thu
 //     nguoi lao dong duoc huong — no thang.
-//   - Sau `ngay_le`: cong tac trum mot ngay le thi nguoi do van duoc huong ngay le.
-//   - Sau `nghi_tuan`: cong tac vao ngay nghi tuan khong bien ngay do thanh ngay cong. Neu ho
-//     that su lam viec hom do thi co lan quet, va OT duoc tinh theo don lam them (xem duoi).
+//   - Sau `ngay_le`: cong tac / Remote trum mot ngay le thi nguoi do van duoc huong ngay le.
+//   - Sau `nghi_tuan`: cong tac / Remote vao ngay nghi tuan khong bien ngay do thanh ngay cong.
+//     Neu ho that su lam viec hom do thi co lan quet, va OT duoc tinh theo don lam them
+//     (xem duoi).
 //
 // OT KHONG TU SINH TU GIO QUET. Xem `phut_lam_them_da_duyet`.
 import { moc_thoi_gian, phut_giao_nhau, so_phut, thu_trong_tuan } from '../tien_ich/thoi_gian.ts';
@@ -94,7 +96,7 @@ export function ca_cua_ngay(ca: CaLam | null, ngay: string): CaLam | null {
 
 export type TrangThaiNgay =
   'vang' | 'co_mat' | 'nghi_phep' | 'nghi_khong_luong' | 'ngay_le' | 'nghi_tuan'
-  | 'cong_tac' | 'lam_bu' | 'ngoai_le';
+  | 'cong_tac' | 'lam_remote' | 'lam_bu' | 'ngoai_le';
 
 export interface DauVaoTinhCong {
   /** 'YYYY-MM-DD' */
@@ -129,6 +131,18 @@ export interface DauVaoTinhCong {
    * nhanh nay ho hien la vang — va ke toan nhin bang cong do thi tru cong that.
    */
   cong_tac: { noi_den: string | null } | null;
+  /**
+   * Don lam Remote DA DUYET trum ngay nay (neu co). Giong cong tac: ngay lam tu xa duoc mot
+   * cong tron, khong bi ghi vang vi khong quet may o van phong. Xet SAU cong tac de khi ca hai
+   * don trum cung mot ngay (du lieu mau thuan) thi cong tac thang.
+   */
+  lam_remote?: boolean;
+  /**
+   * Don xin ve som DA DUYET cho dung ngay nay (neu co). Khi do luat "ve som qua 30 phut mat
+   * nua ngay cong buoi chieu" (ap tu 01/09/2026) duoc MIEN — giong muc mien_ve_som cua so
+   * ngoai le. Khong lam thay doi gi khac: gio ra that van duoc ghi nhan nhu thuong.
+   */
+  ve_som?: boolean;
   /**
    * Cac khoang lam them DA DUYET trum ngay nay. Rong = khong dang ky gi, va khi do OT = 0
    * du nguoi do o lai bao lau.
@@ -343,9 +357,14 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
       const ca_ket_thuc_np = moc_thoi_gian(dv.ngay, ca.gio_ra, cong_ngay_ra_np);
       const vao_hl = gio_vao > ca_bat_dau_np ? gio_vao : ca_bat_dau_np;
       const ra_hl = gio_ra < ca_ket_thuc_np ? gio_ra : ca_ket_thuc_np;
-      const cong_buoi_lam = quy_ra_cong(
+      // Nua ngay nghi (phep hay khong luong) chi con MOT buoi de kiem cong -> buoi lam toi da
+      // 0,5. KHONG chap cong_buoi_lam = 1: quy tac "co mat buoi nao tinh tron buoi do" (chot
+      // cho ngay di lam binh thuong) khong duoc xoa nua ngay nghi DA DUYET — quet CHOM sang
+      // buoi kia vai phut ma tinh tron la ca ngay (vd Trần Minh Anh 23/09/2026: nghi khong
+      // luong nua ngay, quet 08:00-13:49 -> phai 0,5 chu khong phai 1).
+      const cong_buoi_lam = Math.min(0.5, quy_ra_cong(
         phut_cong_theo_ca(vao_hl, ra_hl, dv.ngay, ca), ca.phut_du_cong,
-      );
+      ));
       if (cong_buoi_lam > 0) {
         cong = Math.min(1, cong + cong_buoi_lam);
         chu_thich.push(`Nua ngay nghi + di lam nua ngay con lai (+${cong_buoi_lam} cong buoi lam)`);
@@ -434,7 +453,27 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
     };
   }
 
-  // --- Nhanh 5: vang mat ---
+  // --- Nhanh 5: lam Remote da duyet ---
+  //
+  // Giong cong tac: nguoi lam o xa khong quet may o van phong nen khong co gio chuan de doi
+  // chieu — tinh MOT cong tron va khong tinh di muon / ve som. Co quet may thi chi ghi chu,
+  // khong bao loi.
+  if (dv.lam_remote === true) {
+    chu_thich.push('Làm việc từ xa (Remote)');
+    if (phut_co_mat > 0) chu_thich.push('Có quẹt máy trong ngày làm Remote');
+    return {
+      ...RONG,
+      trang_thai: 'lam_remote',
+      gio_vao,
+      gio_ra,
+      phut_ot: ot_da_duyet,
+      co_dieu_chinh,
+      so_cong: 1,
+      ghi_chu: gop_chu_thich(chu_thich),
+    };
+  }
+
+  // --- Nhanh 6: vang mat ---
   if (gio_vao === null || gio_ra === null) {
     return {
       ...RONG,
@@ -445,7 +484,7 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
     };
   }
 
-  // --- Nhanh 6: co mat, chua gan ca -> chi tinh tong thoi gian, khong phat ---
+  // --- Nhanh 7: co mat, chua gan ca -> chi tinh tong thoi gian, khong phat ---
   if (ca === null) {
     chu_thich.push('Nhan vien chua duoc gan ca lam viec');
     return {
@@ -461,7 +500,7 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
     };
   }
 
-  // --- Nhanh 7: co mat, co ca -> tinh day du ---
+  // --- Nhanh 8: co mat, co ca -> tinh day du ---
   const cong_ngay_ra = ca.qua_dem ? 1 : 0;
   const ca_bat_dau = moc_thoi_gian(dv.ngay, ca.gio_vao);
   const ca_ket_thuc = moc_thoi_gian(dv.ngay, ca.gio_ra, cong_ngay_ra);
@@ -488,6 +527,7 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
   // --- Chinh sach moi tu ky luong thang 9 (xem TU_NGAY_MAT_NUA_NGAY o dau tep) ---
   // Di muon / ve som QUA 30 phut (tinh THO, khong tru dung sai cua ca) thi mat nua ngay cong
   // tuong ung. Chi ap cho ngay HAI BUOI: ngay mot buoi (vd sang thu Bay) van tinh theo so phut.
+  // Hai muc mien: so ngoai le (mien_di_muon / mien_ve_som) va DON da duyet (ve_som).
   let cong_cuoi = quy_ra_cong(phut_cong, ca.phut_du_cong);
   const co_hai_buoi = ca.nghi_tu !== null && ca.nghi_den !== null;
   if (co_hai_buoi && dv.ngay >= TU_NGAY_MAT_NUA_NGAY) {
@@ -498,9 +538,13 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
       mat += 0.5;
       chu_thich.push(`Mất nửa ngày công buổi sáng (đi muộn ${muon_tho} phút, quá 30 phút)`);
     }
-    if (!(dv.ngoai_le?.mien_ve_som ?? false) && som_tho > PHUT_DUNG_SAI_MOI) {
+    if (!(dv.ngoai_le?.mien_ve_som ?? false) && dv.ve_som !== true
+      && som_tho > PHUT_DUNG_SAI_MOI) {
       mat += 0.5;
       chu_thich.push(`Mất nửa ngày công buổi chiều (về sớm ${som_tho} phút, quá 30 phút)`);
+    }
+    if (dv.ve_som === true && som_tho > 0) {
+      chu_thich.push(`Về sớm ${som_tho} phút — có đơn xin về sớm đã duyệt, không mất công`);
     }
     if (mat > 0) cong_cuoi = Math.min(cong_cuoi, Math.max(0, 1 - mat));
   }

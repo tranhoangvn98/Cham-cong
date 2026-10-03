@@ -38,6 +38,7 @@ function co_ban(ngay: string, ca: CaLam | null, quet: Date[]) {
   return {
     ngay, ca, quet,
     nghi_phep: null, ngay_le: null, giai_trinh: null, cong_tac: null,
+    lam_remote: false, ve_som: false,
     lam_them: [] as KhoangLamThem[],
   };
 }
@@ -591,6 +592,93 @@ test('cong tac: NGAY NGHI TUAN thang cong tac', () => {
   assert.equal(kq.so_cong, 0);
 });
 
+// ==================================================================== ngay lam Remote
+//
+// Giong cong tac: nguoi lam tu xa khong quet may o van phong, nen khong co don da duyet thi ho
+// hien la VANG ca ngay va ke toan tru cong that. Don duyet phai bien ngay do thanh mot cong tron.
+
+test('lam remote: khong co lan quet nao van duoc mot cong, khong phai vang', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    lam_remote: true,
+  });
+  assert.equal(kq.trang_thai, 'lam_remote');
+  assert.equal(kq.so_cong, 1);
+  assert.equal(kq.phut_muon, 0, 'khong co gio chuan de doi chieu thi khong duoc phat di muon');
+  assert.equal(kq.phut_ve_som, 0);
+  assert.match(kq.ghi_chu ?? '', /Remote/);
+});
+
+test('lam remote: co quet may trong ngay chi ghi chu, khong bao loi', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, q(T5, '08:00', '09:00')),
+    lam_remote: true,
+  });
+  assert.equal(kq.trang_thai, 'lam_remote');
+  assert.equal(kq.so_cong, 1);
+  assert.match(kq.ghi_chu ?? '', /quẹt máy/i);
+});
+
+test('lam remote: NGHI PHEP thang', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    nghi_phep: { loai: 'phep_nam', nua_ngay: false },
+    lam_remote: true,
+  });
+  assert.equal(kq.trang_thai, 'nghi_phep');
+});
+
+test('lam remote: CONG TAC thang (uu tien hon khi ca hai trum cung ngay)', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    cong_tac: { noi_den: 'Hà Nội' },
+    lam_remote: true,
+  });
+  assert.equal(kq.trang_thai, 'cong_tac');
+});
+
+test('lam remote: NGAY NGHI TUAN thang — khong thanh ngay cong', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T7, CA_HC, []),
+    lam_remote: true,
+  });
+  assert.equal(kq.trang_thai, 'nghi_tuan');
+  assert.equal(kq.so_cong, 0);
+});
+
+// ==================================================================== don xin ve som
+//
+// Don `ve_som` DA DUYET mien luat "ve som qua 30 phut mat nua ngay cong" — giong muc
+// mien_ve_som cua so ngoai le. Gio ra that van ghi nhan nhu thuong.
+
+test('don ve som: da duyet thi ve som qua 30 phut khong mat nua ngay cong', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5_T9, CA_HC, q(T5_T9, '08:00', '16:10')),
+    ve_som: true,
+  });
+  assert.equal(kq.so_cong, 1, 'co don da duyet -> khong mat nua ngay cong buoi chieu');
+  assert.match(kq.ghi_chu ?? '', /về sớm đã duyệt/);
+  assert.match(kq.ghi_chu ?? '', /Ve som 45 phut/);
+});
+
+test('don ve som: khong co don thi ve som qua 30 phut van mat nua ngay nhu cu', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5_T9, CA_HC, q(T5_T9, '08:00', '16:10')),
+    ve_som: false,
+  });
+  assert.equal(kq.so_cong, 0.5);
+  assert.match(kq.ghi_chu ?? '', /Mất nửa ngày công buổi chiều/);
+});
+
+test('don ve som: khong mien phat DI MUON — chi mien phan ve som', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5_T9, CA_HC, q(T5_T9, '08:45', '16:10')),
+    ve_som: true,
+  });
+  assert.equal(kq.so_cong, 0.5, 'di muon qua 30 phut van mat buoi sang, don ve som khong cuu duoc');
+  assert.match(kq.ghi_chu ?? '', /Mất nửa ngày công buổi sáng/);
+});
+
 // ================================================================ lam bu (YC-03)
 test('lam bu — di lam CHIEU thu Bay (ra >= 13h) -> duoc 0,5 buoi chieu', () => {
   assert.equal(buoi_lam_bu_da_lam('chieu', 'co_mat', 8, 17, 0.5), true);
@@ -654,6 +742,27 @@ test('nghi KHONG luong nua ngay + KHONG di lam -> 0 (khong tra du - Loi 5 BC-02)
     nghi_phep: { loai: 'khong_luong', nua_ngay: true },
   });
   assert.equal(kq.so_cong, 0);
+});
+
+// Quet CHOM sang buoi kia vai phut khong duoc tinh tron ca buoi do: nua ngay nghi da duyet
+// chi con mot buoi de kiem cong. Truong hop that: Trần Minh Anh 23/09/2026 — nghi khong
+// luong nua ngay, quet 08:00-13:49 (sang tron + 19 phut chom sang buoi chieu) -> 0,5.
+test('nghi khong luong nua ngay + quet chom sang buoi kia -> van 0.5, khong thanh 1', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, q(T5, '08:00', '13:49')),
+    nghi_phep: { loai: 'khong_luong', nua_ngay: true },
+  });
+  assert.equal(kq.trang_thai, 'nghi_khong_luong');
+  assert.equal(kq.so_cong, 0.5);
+});
+
+test('nghi phep co luong nua ngay + di lam CA NGAY -> van chi 1.0 (khong vuot)', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, q(T5, '08:00', '17:00')),
+    nghi_phep: { loai: 'nam', nua_ngay: true },
+  });
+  assert.equal(kq.trang_thai, 'nghi_phep');
+  assert.equal(kq.so_cong, 1);
 });
 
 test('phep ca ngay van 1.0 (fix nua ngay khong dung cham ngay ca ngay)', () => {
