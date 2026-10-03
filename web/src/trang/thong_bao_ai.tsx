@@ -365,13 +365,11 @@ function FormTao(
               <textarea rows={5} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
           </>
         )}
-      </div>
-      <div className="soan-nhom">
-        <div className="soan-tieu-de">Tệp đính kèm (tùy chọn — gửi kèm email khi ban hành)</div>
-        <label className="truong"><span>Tệp (tối đa 10, PDF/JPG/PNG/DOCX/XLSX)</span>
+        <label className="truong"><span>Tệp đính kèm (tùy chọn — gửi kèm email khi ban hành)</span>
           <input type="file" multiple ref={tep_ref}
             accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" />
         </label>
+        <div className="mo-ta" style={{ marginTop: -4 }}>Tối đa 10 tệp (PDF/JPG/PNG/DOCX/XLSX).</div>
       </div>
       <div className="hang-nut">
         <button onClick={() => { void gui(); }} disabled={hd.dang_chay || !can_gui}>

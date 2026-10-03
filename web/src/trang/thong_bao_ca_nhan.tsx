@@ -1,10 +1,10 @@
 // Thong bao (BGD/HR) cho nhan vien: doc, xac nhan da doc, va giai trinh khi thong bao yeu cau.
 // Dong con giai trinh no do (noti do) cho toi khi nhap xong — noi vao muc Khieu nai & giai trinh.
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, type ReactNode } from 'react';
 import {
   DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_gio,
 } from '../thanh_phan.tsx';
-import { goi, la_nhan_su, tai_tep } from '../api.ts';
+import { goi, gui_tep, la_nhan_su, tai_tep } from '../api.ts';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon } from '../chon.tsx';
 
@@ -158,6 +158,7 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
   const [popup, dat_popup] = useState(false);
   const [gui_email, dat_gui_email] = useState(false);
   const [xem_html, dat_xem_html] = useState<string | null>(null);
+  const tep_ref = useRef<HTMLInputElement | null>(null);
   const hd = dung_hanh_dong();
 
   const xem_truoc = async (): Promise<void> => {
@@ -169,19 +170,26 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
   };
 
   const gui = async (): Promise<void> => {
+    const fd = new FormData();
+    fd.append('tieu_de', tieu_de);
+    fd.append('noi_dung', noi_dung);
+    fd.append('muc_do', muc_do);
+    fd.append('can_giai_trinh', String(can_gt));
+    fd.append('pham_vi', 'toan_cong_ty');
+    fd.append('popup', String(popup));
+    fd.append('gui_email', String(gui_email));
+    const tep = tep_ref.current?.files;
+    if (tep !== null && tep !== undefined && tep.length > 0) {
+      fd.append('tep', tep[0] as File);
+    }
     const ok = await hd.chay(
-      () => goi('/api/thong-bao', {
-        method: 'POST',
-        body: {
-          tieu_de, noi_dung, muc_do, can_giai_trinh: can_gt, pham_vi: 'toan_cong_ty',
-          popup, gui_email,
-        },
-      }),
+      () => gui_tep('/api/thong-bao', fd),
       'Đã đăng thông báo.',
     );
     if (ok) {
       dat_tieu_de(''); dat_noi_dung(''); dat_muc_do('thuong'); dat_can_gt(false);
       dat_popup(false); dat_gui_email(false);
+      if (tep_ref.current !== null) tep_ref.current.value = '';
       dat_mo(false); khi_xong();
     }
   };
@@ -202,6 +210,9 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
         <input value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)} /></label>
       <label className="truong"><span>Nội dung</span>
         <textarea rows={6} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
+      <label className="truong"><span>Tệp đính kèm (tùy chọn — PDF/JPG/PNG/DOCX/XLSX, gửi kèm email)</span>
+        <input type="file" ref={tep_ref} accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" />
+      </label>
       <div className="mo-ta" style={{ marginTop: -4 }}>
         Mẹo trình bày email: <code>## Đề mục</code> → tiêu đề có viền xanh · <code>- </code> đầu dòng
         → gạch đầu dòng · <code>**chữ**</code> → in đậm.
