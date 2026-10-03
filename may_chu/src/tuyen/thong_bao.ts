@@ -355,7 +355,7 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
       const dau = [`Số hiệu: ${dong?.ma ?? ''}`,
         nguoi_ban_hanh === '' || nguoi_ban_hanh === null ? '' : `Người ban hành: ${nguoi_ban_hanh}`]
         .filter((x) => x !== '').join('\n');
-      const than_van = [dau, noi_dung ?? '', da_luu === null ? '' : '(Có tệp đính kèm — xem trên hệ thống.)']
+      const than_van = [dau, noi_dung ?? '', da_luu === null ? '' : '(Có tệp đính kèm — gửi kèm email này.)']
         .filter((x) => x !== '').join('\n\n');
 
       if (gui_he_thong && nhan.length > 0) {
@@ -384,6 +384,10 @@ export async function tuyen_thong_bao(app: FastifyInstance): Promise<void> {
             den: dia_chi,
             tieu_de: `[${dong?.ma ?? 'Văn bản'}] ${tieu_de}`,
             noi_dung_html: html_email(tieu_de, than_van),
+            // Van ban co tep dinh kem thi email gui KEM LUON tep do.
+            dinh_kem: da_luu === null || du_lieu === null ? undefined : [{
+              ten: ten_goc, mime: da_luu.mime, du_lieu,
+            }],
           });
         }
       }
