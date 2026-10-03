@@ -701,7 +701,9 @@ function FormLayLog(
         <div className="hop-thong-bao hop-tin">
           Dùng khi máy <strong>không tự đẩy</strong> dữ liệu cũ. Nút <em>Gửi lại log</em> chỉ hỏi
           "còn gì chưa gửi" — mà máy từng nối vào máy chủ khác có thể đã đánh dấu hết là đã gửi.
-          Đường này hỏi thẳng theo khoảng ngày.
+          Đường này hỏi thẳng theo khoảng ngày. Máy <strong>kiểm soát ra vào</strong> (dòng
+          SenseFace/SpeedFace) không hỗ trợ khoảng ngày: nó đẩy các bản ghi chưa đồng bộ của
+          chính nó.
         </div>
 
         <div className="o-nhap">

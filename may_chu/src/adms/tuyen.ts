@@ -18,7 +18,9 @@ import {
   doc_thong_tin_may,
   dung_phan_hoi_handshake,
 } from './giao_thuc.ts';
-import { tiep_nhan_attlog, tiep_nhan_rtlog, tiep_nhan_userinfo } from './tiep_nhan.ts';
+import {
+  tiep_nhan_attlog, tiep_nhan_rtlog, tiep_nhan_transaction, tiep_nhan_userinfo,
+} from './tiep_nhan.ts';
 import { tick_pin_may_cua_nhan } from '../nhan_su/nhap_viec.ts';
 import { ip_duoc_phep } from '../tien_ich/dia_chi_ip.ts';
 
@@ -238,6 +240,15 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       } catch (loi) {
         req.log.warn({ sn, bang, loi: (loi as Error).message }, 'khong luu duoc du lieu tho');
       }
+    }
+
+    // Bang transaction la kho ban ghi CHAM CONG CHUA DONG BO cua may acc (ket qua lenh
+    // `DATA QUERY tablename=transaction`) -> luu vao lan_quet nhu RTLOG. Truoc day chi
+    // luu tho nen duong "Lay log cu" khong co tac dung voi dong may kiem soat ra vao.
+    if (bang === 'transaction' && body.trim().length > 0) {
+      const kq = await tiep_nhan_transaction(sn, body);
+      req.log.info({ sn, bang, ...kq }, 'nhan querydata transaction');
+      return tra_text(res, 'OK\n');
     }
 
     // Bang user chua dinh danh nguoi dung -> parse vao may_nguoi_dung. Cac bang khac chi luu tho.

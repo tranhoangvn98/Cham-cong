@@ -7,7 +7,7 @@ import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { cac_pin_lech, tra_pin, type NguoiMap } from '../dinh_danh/tra_pin.ts';
 import { nap_lich_pin } from '../dinh_danh/lich_pin_csdl.ts';
 import {
-  doc_attlog, doc_rtlog, doc_userinfo, nhan_cach_xac_thuc, type BanGhiAttlog,
+  doc_attlog, doc_rtlog, doc_transaction, doc_userinfo, nhan_cach_xac_thuc, type BanGhiAttlog,
 } from './giao_thuc.ts';
 
 export interface KetQuaTiepNhan {
@@ -45,6 +45,24 @@ export async function tiep_nhan_rtlog(
 ): Promise<KetQuaTiepNhan> {
   const { ban_ghi, so_dong_loi } = doc_rtlog(body);
   return tiep_nhan_ban_ghi(serial, ban_ghi, so_dong_loi);
+}
+
+/**
+ * Tiep nhan ket qua `DATA QUERY tablename=transaction` cua may acc — cung nghiep vu luu
+ * lan quet nhu RTLOG, chi khac cach doc than tin nhan. Day la duong duy nhat "Lay log cu"
+ * dung duoc voi dong may kiem soat ra vao (may acc khong hieu `DATA QUERY ATTLOG`, khong
+ * ho tro khoang ngay — no day kho ban ghi chua dong bo cua chinh no).
+ *
+ * `bo_qua` dem dong la su kien thiet bi (pin=0, eventtype khac cham cong) de ghi log,
+ * khong tinh vao `tong`/`dong_loi`.
+ */
+export async function tiep_nhan_transaction(
+  serial: string,
+  body: string,
+): Promise<KetQuaTiepNhan & { bo_qua: number }> {
+  const { ban_ghi, so_dong_loi, so_dong_bo_qua } = doc_transaction(body);
+  const kq = await tiep_nhan_ban_ghi(serial, ban_ghi, so_dong_loi);
+  return { ...kq, bo_qua: so_dong_bo_qua };
 }
 
 /**

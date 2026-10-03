@@ -751,6 +751,53 @@ test('RTLOG rong (nhip tim) khong sinh ban ghi', async () => {
   assert.equal(r.body.trim(), 'OK: 0');
 });
 
+// Ket qua `DATA QUERY tablename=transaction` cua may acc day vao /iclock/querydata (KHONG
+// phai /cdata). Duong "Lay log cu" xep kem lenh nay cho dong kiem soat ra vao — may acc
+// tu choi DATA QUERY ATTLOG (-629) va day kho ban ghi CHUA DONG BO cua no.
+test('may acc day querydata transaction -> luu lan quet va chong trung', async () => {
+  // PIN 9999 chua map nhan vien nao -> khong cham bang cong cua ai, khong anh huong cac bai sau.
+  const [nam, thang, ng] = NGAY.split('-').map((x) => Number(x)) as [number, number, number];
+  const time_second = ((nam - 2000) * 12 * 31 + (thang - 1) * 31 + (ng - 1)) * 86400
+    + 9 * 3600 + 0 * 60 + 30;
+  const than = 'transaction index=999   cardno=0        pin=9999        verified=1'
+    + '      doorid=1        eventtype=3     inoutstate=1    time_second=' + time_second
+    + '\r\n'
+    + 'transaction index=1000  cardno=0        pin=0   verified=1      doorid=1'
+    + '        eventtype=27    inoutstate=0    time_second=' + time_second + '\r\n';
+
+  const r = await app.inject({
+    method: 'POST',
+    url: `/iclock/querydata?SN=${SERIAL}&tablename=transaction`,
+    headers: { 'content-type': 'text/plain' },
+    payload: than,
+  });
+  assert.equal(r.statusCode, 200);
+  assert.equal(r.body.trim(), 'OK');
+
+  const lq = await truy_van_mot<{ so: number; trang_thai: number }>(
+    `select count(*)::int as so, max(trang_thai)::int as trang_thai from lan_quet
+      where thiet_bi_serial = $1 and pin_may = '9999' and thoi_diem::date = $2`,
+    [SERIAL, NGAY],
+  );
+  assert.equal(lq!.so, 1, 'ban ghi transaction phai vao bang lan_quet (su kien cua bi bo qua)');
+  assert.equal(lq!.trang_thai, 1, 'inoutstate phai tro thanh trang_thai');
+
+  // May day lai cung lo (query bi lap) -> chong trung, khong sinh them ban ghi.
+  const r2 = await app.inject({
+    method: 'POST',
+    url: `/iclock/querydata?SN=${SERIAL}&tablename=transaction`,
+    headers: { 'content-type': 'text/plain' },
+    payload: than,
+  });
+  assert.equal(r2.statusCode, 200);
+  const lq2 = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from lan_quet
+      where thiet_bi_serial = $1 and pin_may = '9999' and thoi_diem::date = $2`,
+    [SERIAL, NGAY],
+  );
+  assert.equal(lq2!.so, 1, 'day lai cung lo khong duoc sinh them ban ghi');
+});
+
 test('may gui lai cung lo -> chong trung, khong nhan them ban ghi nao', async () => {
   const body = `${PIN}\t${NGAY} 08:12:03\t0\t15\t0\n`;
   const r = await app.inject({
@@ -8217,17 +8264,25 @@ test('mot may thoi: gan lai khong can khai serial (giu duong cu)', async () => {
 test('lay log theo khoang ngay: xep dung lenh DATA QUERY ATTLOG', async () => {
   // `CHECK` hoi may "con gi chua gui". Mot may tung noi vao may chu ADMS khac co the da danh
   // dau het la da gui, nen `CHECK` tra 0 ban ghi. Duong nay hoi thang theo khoang ngay.
+  // Dong may khac nhau hieu bo lenh khac nhau nen xep CA HAI (nhu lay-nguoi-dung): may att
+  // thuc thi DATA QUERY ATTLOG, may acc tu choi (-629) va thuc thi DATA QUERY transaction.
   const r = await goi('POST', `/api/thiet-bi/${SERIAL}/lay-log`, {
     token: token_admin,
     body: { tu: '2026-06-01', den: '2026-06-30' },
   });
   assert.equal(r.ma, 200, JSON.stringify(r.body));
+  assert.notEqual(r.body['lenh_id'], 0, 'phai xep lenh att');
+  assert.notEqual(r.body['lenh_id_acc'], 0, 'phai xep kem lenh acc');
 
   // KHONG neo `^`: mot luot poll mang theo den 20 lenh, ke ca lenh con ton tu bai truoc.
   const xuong = await goi('GET', `/iclock/getrequest?SN=${SERIAL}`);
   assert.match(
     xuong.tho,
     /C:\d+:DATA QUERY ATTLOG StartTime=2026-06-01 00:00:00\tEndTime=2026-06-30 23:59:59\n/,
+  );
+  assert.match(
+    xuong.tho,
+    /C:\d+:DATA QUERY tablename=transaction,fielddesc=\*,filter=\*\n/,
   );
 });
 

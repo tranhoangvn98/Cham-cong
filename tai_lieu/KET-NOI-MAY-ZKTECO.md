@@ -371,6 +371,13 @@ vẫn an toàn.
 Hỗ trợ **tùy firmware**. Máy không hiểu thì *Lịch sử lệnh* hiện `lỗi <mã>` — khi đó dùng đường USB
 ở dưới.
 
+> **Máy kiểm soát ra vào (dòng acc — SenseFace/SpeedFace)** không hiểu `DATA QUERY ATTLOG`:
+> nó trả `lỗi -629` cho lệnh đó — **bình thường, không phải hỏng**. Hệ thống xếp **kèm** lệnh
+> `DATA QUERY tablename=transaction,…` (kể từ 1.117.0): máy acc thực thi lệnh này và đẩy các
+> bản ghi **chưa đồng bộ** của nó về `/iclock/querydata`, hệ thống đưa thẳng vào bảng công.
+> Hai lưu ý: máy acc **không hỗ trợ hỏi theo khoảng ngày**, và nó chỉ giữ phần đuôi **chưa
+> đồng bộ** — log cũ hơn con trỏ đồng bộ thì dùng đường USB.
+
 > Không có đường API nào gửi **lệnh tự do** xuống máy, và đó là cố ý: hai mốc ngày đi qua bộ kiểm
 > `YYYY-MM-DD` rồi mới được ghép vào chuỗi lệnh. Một route "gửi lệnh bất kỳ" sẽ tiện hơn nhiều, và
 > cũng là một đường cho phép đặt `CLEAR DATA` xuống máy chấm công. Có bài kiểm soi mã nguồn để

@@ -191,6 +191,76 @@ export function doc_rtlog(body: string): { ban_ghi: BanGhiAttlog[]; so_dong_loi:
   return { ban_ghi, so_dong_loi };
 }
 
+/**
+ * Doc ket qua `DATA QUERY tablename=transaction,...` cua may acc (PUSH 3.x) day vao
+ * /iclock/querydata. Day la kho ban ghi CHAM CONG CHUA DONG BO trong may — ban chat la
+ * phan duoi (tail), khong phai toan bo lich su: may acc khong ho tro hoi theo khoang ngay.
+ *
+ * Moi dong la cap `khoa=gia tri` phan tach bang khoang trang (khong co TAB):
+ *
+ *   transaction index=391   cardno=0        pin=1001        verified=15     doorid=1
+ *             eventtype=3     inoutstate=0    time_second=859535645
+ *
+ * Chi nhan dong eventtype=3 (su kien cham cong). Dong pin=0 hoac eventtype khac (mo cua
+ * bang nut, bao dong...) la su kien thiet bi -> bo qua, khong tinh dong loi.
+ *
+ * `time_second` KHONG phai epoch — la so giay theo cong thuc DateTime cua hang, gio DIA
+ * PHUONG cua may (giai ma bang `giai_ma_thoi_gian_zkteco`). Da doi chieu dung voi bang
+ * lan_quet cua may kho NYU7261300256 (10/2026).
+ */
+export function doc_transaction(body: string): {
+  ban_ghi: BanGhiAttlog[];
+  so_dong_loi: number;
+  so_dong_bo_qua: number;
+} {
+  const ban_ghi: BanGhiAttlog[] = [];
+  let so_dong_loi = 0;
+  let so_dong_bo_qua = 0;
+  if (typeof body !== 'string' || body.trim().length === 0) {
+    return { ban_ghi, so_dong_loi, so_dong_bo_qua };
+  }
+
+  for (const raw of body.split('\n')) {
+    const dong = raw.replace(/\r$/, '');
+    if (dong.trim().length === 0) continue;
+
+    const o: Record<string, string> = {};
+    // Phan tach bang TAB hoac NHIEU khoang trang (may that phan cach bang 3+ khoang trang).
+    // Mot khoang trang DON nam TRONG gia tri (vd `time=2026-10-03 06:21:39`) nen khong duoc
+    // tach theo no; bo token khong phai cap `khoa=gia tri` (vd tien to `transaction`).
+    for (const token of dong.trim().split(/\t|\s{2,}/)) {
+      const vt = token.indexOf('=');
+      if (vt <= 0) continue;
+      o[token.slice(0, vt).trim().toLowerCase()] = token.slice(vt + 1).trim();
+    }
+    if (Object.keys(o).length === 0) { so_dong_loi++; continue; }
+
+    const pin = (o['pin'] ?? '').trim();
+    // Dong pin=0 la su kien cua cua/thiet bi; eventtype khac 3 khong phai cham cong.
+    if (pin === '' || pin === '0' || pin.length > 32 || so_nguyen(o['eventtype'], -1, -9999, 9999) !== 3) {
+      so_dong_bo_qua++;
+      continue;
+    }
+
+    // Firmware khac nhau co the dung time_second (cong thuc DateTime) hoac chuoi `time=`.
+    const thoi_diem = o['time_second'] !== undefined
+      ? giai_ma_thoi_gian_zkteco(Number(o['time_second']))
+      : doc_thoi_diem(o['time'] ?? '');
+    if (thoi_diem === null) { so_dong_bo_qua++; continue; }
+
+    ban_ghi.push({
+      pin,
+      thoi_diem,
+      // inoutstate: 0 vao / 1 ra — trung y nghia voi cot Status cua ATTLOG.
+      trang_thai: so_nguyen(o['inoutstate'] ?? o['inoutstatus'], 0, 0, 5),
+      xac_thuc: so_nguyen(o['verified'] ?? o['verifytype'], 9, 0, 255),
+      ma_cong_viec: 0,
+    });
+  }
+
+  return { ban_ghi, so_dong_loi, so_dong_bo_qua };
+}
+
 /** Mot dong USERINFO may day len: dinh danh nguoi dung ENROLL TREN MAY (khong phai cong). */
 export interface NguoiDungMay {
   pin: string;
@@ -353,6 +423,28 @@ export function ma_hoa_thoi_gian_zkteco(d: Date, offset_ms: number): number {
 
 export function lenh_dong_bo_gio(bay_gio: Date, offset_ms: number): string {
   return `SET OPTION DateTime=${ma_hoa_thoi_gian_zkteco(bay_gio, offset_ms)}`;
+}
+
+/**
+ * Giai ma `time_second` cua bang transaction (may acc) — nguoc cua
+ * `ma_hoa_thoi_gian_zkteco`: so giay = ((nam-2000)*12*31 + (thang-1)*31 + (ngay-1))*86400
+ * + gio*3600 + phut*60 + giay, tinh theo GIO DIA PHUONG cua may. Tra Date tuyet doi
+ * (da tru offset mui gio cua may) hoac null neu so khong hop le.
+ */
+export function giai_ma_thoi_gian_zkteco(so_giay: number): Date | null {
+  if (!Number.isFinite(so_giay) || so_giay < 0) return null;
+  const tong_ngay = Math.floor(so_giay / 86400);
+  const du = so_giay % 86400;
+  const nam = 2000 + Math.floor(tong_ngay / (12 * 31));
+  if (nam > 2100) return null;
+  const con = tong_ngay % (12 * 31);
+  // Cong thuc cua hang: moi thang 31 ngay, moi nam 372 ngay — ngay/thang luon hop le.
+  const thang = Math.floor(con / 31);   // 0..11
+  const ngay = con % 31;                // 0..30
+  const gio = Math.floor(du / 3600);
+  const phut = Math.floor((du % 3600) / 60);
+  const giay = du % 60;
+  return new Date(Date.UTC(nam, thang, ngay + 1, gio, phut, giay) - OFFSET_MAY_MS);
 }
 
 /**

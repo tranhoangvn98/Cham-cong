@@ -811,6 +811,13 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
    * `DATA QUERY ATTLOG` KHONG hoi "con gi chua gui" ma hoi "dua toi log tu ngay A den ngay B".
    * Do la duong duy nhat lay lai du lieu cu qua ADMS khi con tro cua may da chay qua.
    *
+   * HAI DONG MAY DUNG HAI BO LENH: may cham cong (att) hieu `DATA QUERY ATTLOG` kem khoang
+   * ngay; may kiem soat ra vao (acc) tu choi lenh do (ma -629) va chi hieu
+   * `DATA QUERY tablename=transaction,...`. Bang khong luu loai may nen gui CA HAI (giong
+   * `lay-nguoi-dung`): may tu choi lenh khong hieu va thuc thi lenh dung. Bang transaction
+   * cua may acc chi chua ban ghi CHUA DONG BO — no khong ho tro hoi theo khoang ngay — nen
+   * hai moc ngay chi co hieu luc voi may att.
+   *
    * Ho tro TUY FIRMWARE. May khong hieu thi bao loi o *Lich su lenh*, va duong chac chan con lai
    * la xuat ra USB roi nhap tep — xem KET-NOI-MAY-ZKTECO.md.
    *
@@ -827,15 +834,20 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     await bat_buoc_co_may(serial);
 
     // Cac truong cua lenh ADMS phan tach bang TAB, giong `DATA UPDATE USERINFO`.
-    const id = await xep_lenh(
+    const id_att = await xep_lenh(
       serial,
       `DATA QUERY ATTLOG StartTime=${tu} 00:00:00\tEndTime=${den} 23:59:59`,
     );
+    // Cu phap dong acc: may tu choi lenh nay hay lenh att kia tuy dong may (-629), va
+    // thuc thi cai no hieu. Ket qua transaction ve /iclock/querydata roi vao bang cong.
+    const id_acc = await xep_lenh(serial, 'DATA QUERY tablename=transaction,fielddesc=*,filter=*');
     return {
       ok: true,
-      lenh_id: id,
+      lenh_id: id_att,
+      lenh_id_acc: id_acc,
       luu_y: 'Máy nhận lệnh ở lần kết nối kế tiếp. Bản ghi trùng tự bị bỏ qua. '
-        + 'Firmware cũ có thể không hỗ trợ lệnh này — xem kết quả ở Lịch sử lệnh.',
+        + 'Máy kiểm soát ra vào không hỗ trợ khoảng ngày: nó đẩy các bản ghi CHƯA ĐỒNG BỘ '
+        + 'của chính nó. Firmware cũ có thể không hỗ trợ lệnh nào — xem kết quả ở Lịch sử lệnh.',
     };
   });
 

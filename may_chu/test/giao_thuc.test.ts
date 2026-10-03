@@ -7,9 +7,9 @@ process.env['JWT_SECRET'] ??= 'khoa_kiem_thu_du_dai_de_khong_bi_tu_choi_0001';
 process.env['DATABASE_URL'] ??= 'postgres://khong_dung@localhost:5432/khong_dung';
 
 const {
-  doc_attlog, doc_rtlog, doc_ket_qua_lenh, doc_thong_tin_may,
+  doc_attlog, doc_rtlog, doc_transaction, doc_ket_qua_lenh, doc_thong_tin_may,
   dung_phan_hoi_handshake, dinh_dang_lenh, ma_hoa_thoi_gian_zkteco,
-  nhan_cach_xac_thuc, doc_userinfo,
+  giai_ma_thoi_gian_zkteco, nhan_cach_xac_thuc, doc_userinfo,
 } = await import('../src/adms/giao_thuc.ts');
 
 test('doc_userinfo: doc PIN + Name + Card + Pri, bo qua PIN=0', () => {
@@ -215,4 +215,61 @@ test('doc_rtlog: doc nhieu ban ghi trong mot lo', () => {
   );
   assert.equal(kq.ban_ghi.length, 3);
   assert.deepEqual(kq.ban_ghi.map((b) => b.pin), ['1001', '1001', '1002']);
+});
+
+// ================================= TRANSACTION (ket qua DATA QUERY cua may acc)
+//
+// Bang `transaction` la kho ban ghi cham cong CHUA DONG BO cua may acc (PUSH 3.x), day vao
+// /iclock/querydata. `time_second` KHONG phai epoch — dung cong thuc DateTime cua hang theo
+// gio dia phuong cua may. Da doi chieu voi bang lan_quet cua may kho NYU7261300256 (10/2026).
+test('doc_transaction: doc lan quet, bo qua su kien cua va eventtype khac cham cong', () => {
+  const kq = doc_transaction(
+    'transaction index=391   cardno=0        pin=1001        verified=15     doorid=1'
+    + '        eventtype=3     inoutstate=0    time_second=859535645\r\n'
+    + 'transaction index=426   cardno=0        pin=0   verified=1      doorid=1'
+    + '        eventtype=27    inoutstate=0    time_second=859961199\r\n'
+    + 'transaction index=427   cardno=0        pin=1002        verified=1      doorid=1'
+    + '        eventtype=1     inoutstate=0    time_second=859961201\r\n',
+  );
+  assert.equal(kq.so_dong_loi, 0);
+  // pin=0 (mo cua bang nut) va eventtype!=3 khong phai dong loi, chi bo qua.
+  assert.equal(kq.so_dong_bo_qua, 2);
+  assert.equal(kq.ban_ghi.length, 1);
+  const b = kq.ban_ghi[0]!;
+  assert.equal(b.pin, '1001');
+  assert.equal(b.trang_thai, 0);
+  assert.equal(b.xac_thuc, 15);
+  // 859535645 -> 2026-09-29 07:54:05 gio may (+07) = 00:54:05 UTC.
+  assert.equal(b.thoi_diem.toISOString(), '2026-09-29T00:54:05.000Z');
+});
+
+test('giai_ma_thoi_gian_zkteco: nguoc cua ma_hoa_thoi_gian_zkteco', () => {
+  const moc = new Date('2026-10-03T03:21:00.000Z'); // 10:21 gio may +07
+  const ma = ma_hoa_thoi_gian_zkteco(moc, 7 * 3600_000);
+  const doc = giai_ma_thoi_gian_zkteco(ma);
+  assert.equal(doc!.toISOString(), '2026-10-03T03:21:00.000Z');
+  assert.equal(giai_ma_thoi_gian_zkteco(-5), null);
+  assert.equal(giai_ma_thoi_gian_zkteco(Number.NaN), null);
+});
+
+test('doc_transaction: dong khong co cap khoa=gia tri la dong loi, than rong vo hai', () => {
+  const kq = doc_transaction('dong rac khong phai transaction\n');
+  assert.equal(kq.ban_ghi.length, 0);
+  assert.equal(kq.so_dong_loi, 1);
+  for (const than of ['', '   \n']) {
+    const r = doc_transaction(than);
+    assert.equal(r.ban_ghi.length, 0, JSON.stringify(than));
+    assert.equal(r.so_dong_loi, 0, JSON.stringify(than));
+  }
+});
+
+test('doc_transaction: doc ca dang ten truong khac (time= chuoi, inoutstatus, verifytype)', () => {
+  const kq = doc_transaction(
+    'transaction   pin=6   verifytype=1   eventtype=3   inoutstatus=1   time=2026-10-03 06:21:39\n',
+  );
+  assert.equal(kq.so_dong_loi, 0);
+  assert.equal(kq.ban_ghi.length, 1);
+  assert.equal(kq.ban_ghi[0]!.trang_thai, 1);
+  assert.equal(kq.ban_ghi[0]!.xac_thuc, 1);
+  assert.equal(kq.ban_ghi[0]!.thoi_diem.toISOString(), '2026-10-02T23:21:39.000Z');
 });

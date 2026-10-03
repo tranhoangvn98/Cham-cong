@@ -2,6 +2,32 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.117.0] — 2026-10-03
+
+**Sửa: "Lấy log cũ" báo `lỗi -629` trên máy kiểm soát ra vào (dòng acc).**
+
+Máy kho (`NYU7261300256`, SenseFace 2A — PUSH 3.x) từ chối `DATA QUERY ATTLOG` với mã
+`-629`, giống trường hợp kéo danh sách user (1.65.0): dòng acc dùng **bộ lệnh khác** dòng
+chấm công att. Kiểm chứng trực tiếp trên máy thật: `DATA QUERY tablename=attlog` cũng bị
+`-629`, bảng đúng là **`transaction`**. Sửa ba điểm:
+
+- **Lệnh đúng cho máy acc.** `POST /thiet-bi/:serial/lay-log` giờ xếp **cả hai** lệnh:
+  `DATA QUERY ATTLOG StartTime=… EndTime=…` (att) và
+  `DATA QUERY tablename=transaction,fielddesc=*,filter=*` (acc). Máy tự từ chối lệnh
+  không hiểu (`-629`) và thực thi lệnh đúng — cùng kiểu như `lay-nguoi-dung`. Hai mốc ngày
+  chỉ có hiệu lực với máy att: **máy acc không hỗ trợ khoảng ngày**, nó đẩy toàn bộ bản
+  ghi **chưa đồng bộ** của chính nó (bản ghi trùng tự bị bỏ qua).
+- **Bắt bảng transaction.** Kết quả query về `/iclock/querydata` giờ được parse vào
+  `lan_quet` như RTLOG (parser `doc_transaction`): nhận dòng `eventtype=3` có PIN hợp lệ,
+  bỏ qua sự kiện cửa (`pin=0`, eventtype khác).
+- **Giải mã `time_second`.** Trường này **không phải epoch** — nó dùng công thức DateTime
+  của hãng (`((năm-2000)*12*31 + (tháng-1)*31 + (ngày-1))*86400 + giờ*3600 + phút*60 +
+  giây` theo giờ địa phương của máy) — đã đối chiếu khớp từng dòng với bảng `lan_quet` của
+  máy kho. Hàm `giai_ma_thoi_gian_zkteco` là phép ngược của `ma_hoa_thoi_gian_zkteco`.
+
+Kèm test: unit parser transaction + giải mã thời gian; e2e lay-log xếp cả hai lệnh và e2e
+máy acc đẩy `querydata?tablename=transaction` → lưu lượt quẹt + chống trùng. Không có migration.
+
 ## [1.116.0] — 2026-10-03
 
 **Dự thảo văn bản: lấy ý kiến có thời hạn 7 ngày, góp ý chọn mã văn bản, lọc theo mã văn bản.**
