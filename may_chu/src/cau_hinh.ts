@@ -340,6 +340,11 @@ export const cau_hinh = {
      *   hai_cap  = moi van ban deu phai co nguoi co quyen ban hanh (admin) duyet.
      */
     so_cap_duyet: chu('SO_CAP_DUYET', 'tu_dong'),
+    /**
+     * So ngay lay y kien cho ban du thao van ban (mac dinh 7 ngay). Het han thi lich chay
+     * tu dong dua van ban ve 'cho_duyet' de nhan su sua doi hoac ban hanh chinh thuc.
+     */
+    so_ngay_lay_y_kien: so('VAN_BAN_LAY_Y_KIEN_NGAY', 7),
   },
 
   /** Bo sinh docx NĐ30 — Python sidecar (python-docx). Duong dan tu tim theo cwd. */

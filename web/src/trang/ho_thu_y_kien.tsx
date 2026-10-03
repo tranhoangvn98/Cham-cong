@@ -64,10 +64,18 @@ interface ThuDaGui {
   trang_thai: string;
 }
 
+interface VanBanGon {
+  id: string;
+  ma: string;
+  trich_yeu: string;
+  trang_thai: string;
+}
+
 export function TrangHoThuYKien(): ReactNode {
   const [tab, dat_tab] = useState<'den' | 'di'>('den');
   const [loc_loai, dat_loc_loai] = useState('');
   const [loc_tt, dat_loc_tt] = useState('');
+  const [loc_vb, dat_loc_vb] = useState('');
   const [dang, dat_dang] = useState<string | null>(() => lay_muc_tieu_bao('ho-thu-y-kien'));
 
   useEffect(() => nghe_muc_tieu_bao(() => {
@@ -78,8 +86,10 @@ export function TrangHoThuYKien(): ReactNode {
   const tham = new URLSearchParams();
   if (loc_loai !== '') tham.set('loai', loc_loai);
   if (loc_tt !== '') tham.set('trang_thai', loc_tt);
+  if (loc_vb !== '') tham.set('nhap_ai_id', loc_vb);
   const hoi = tham.toString() === '' ? '' : `?${tham.toString()}`;
-  const ds = dung_nap<Dong[]>(`/api/ho-thu-y-kien${hoi}`, [loc_loai, loc_tt]);
+  const ds = dung_nap<Dong[]>(`/api/ho-thu-y-kien${hoi}`, [loc_loai, loc_tt, loc_vb]);
+  const ds_vb = dung_nap<VanBanGon[]>('/api/ho-thu-y-kien/danh-sach-van-ban');
   const tham_di = loc_loai === '' ? '' : `?loai=${loc_loai}`;
   const ds_di = dung_nap<ThuDaGui[]>(`/api/ho-thu-y-kien/thu-da-gui${tham_di}`, [loc_loai]);
 
@@ -123,6 +133,15 @@ export function TrangHoThuYKien(): ReactNode {
                   ma, nhan: t.ten,
                 }))}
                 rong="Tất cả" nhan="Lọc theo trạng thái" />
+            </div>
+            <div className="o-nhap">
+              <label htmlFor="van_ban">Mã văn bản</label>
+              <Chon gia_tri={loc_vb} dat_gia_tri={dat_loc_vb}
+                cac_tuy_chon={(ds_vb.du_lieu ?? []).map((v): TuyChonChon => ({
+                  ma: v.id,
+                  nhan: `${v.ma}${v.trich_yeu !== '' ? ` — ${v.trich_yeu}` : ''}`,
+                }))}
+                rong="Tất cả" nhan="Lọc theo mã văn bản" />
             </div>
           </div>
 

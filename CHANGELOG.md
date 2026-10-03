@@ -2,6 +2,23 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.116.0] — 2026-10-03
+
+**Dự thảo văn bản: lấy ý kiến có thời hạn 7 ngày, góp ý chọn mã văn bản, lọc theo mã văn bản.**
+
+- Mở "lấy ý kiến" giờ đặt **hạn 7 ngày** (`han_lay_y_kien`, migration 101; số ngày cấu hình
+  `VAN_BAN_LAY_Y_KIEN_NGAY`). Email mời ghi rõ hạn; trang góp ý và trang Văn bản AI hiển thị
+  hạn + số ngày còn lại.
+- **Hết hạn: lịch chạy tự đưa văn bản về Chờ duyệt** + popup báo Nhân sự để sửa đổi hoặc ban
+  hành chính thức; endpoint góp ý cũng chặn ngay khi quá hạn (an toàn kép).
+- **Hòm thư ý kiến (nhân viên)**: thêm ô chọn "Mã văn bản dự thảo" — danh sách dự thảo đang
+  lấy ý kiến trong phạm vi (`GET /api/toi/du-thao-dang-lay-y-kien`); gửi kèm mã văn bản tạo
+  hòm thư loại dự thảo (`POST /api/toi/ho-thu-y-kien` nhận thêm `nhap_ai_id`).
+- **Quản trị Hòm thư ý kiến**: bộ lọc "Mã văn bản" (`GET /api/ho-thu-y-kien/danh-sach-van-ban`
+  + tham số `nhap_ai_id` đã có sẵn).
+- Test: email mời có dòng hạn; e2e hạn 7 ngày — mở đặt hạn, trong phạm vi thấy dự thảo,
+  gửi kèm mã, quá hạn 404, tự đóng về Chờ duyệt, lọc theo mã văn bản.
+
 ## [1.115.1] — 2026-10-02
 
 **Hòm thư ý kiến: đính kèm ảnh minh chứng khi trả lời.**

@@ -77,6 +77,7 @@ interface ChiTietNhap extends NhapAI {
   het_han: string | null;
   nghi_viec_da_chay_luc: string | null;
   lay_y_kien_luc: string | null;
+  han_lay_y_kien: string | null;
   ten_luu_docx: string | null;
   can_hai_cap: boolean;
   da_gui_email: boolean;
@@ -100,6 +101,12 @@ const NHAN_MUC_DICH: Record<string, string> = {
   nhac_nho: 'Nhắc nhở', yeu_cau: 'Yêu cầu', pho_bien: 'Phổ biến', moi_hop: 'Mời họp',
   phoi_hop: 'Đề nghị phối hợp',
 };
+
+/** So ngay con lai tu bay gio den han lay y kien (lam tron len, toi thieu 0). */
+function con_ngay(han: string): number {
+  const ms = Date.parse(han) - Date.now();
+  return Math.max(0, Math.ceil(ms / 86_400_000));
+}
 
 interface NhanVienGon { id: string; ho_ten: string; phong_ban: string | null; }
 interface PhongBanGon { id: string; ten: string; }
@@ -728,15 +735,19 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
           {d.trang_thai === 'cho_duyet' && (
             <button className="nut-phang"
               onClick={chay(`/api/thong-bao/ai/${d.id}/lay-y-kien`,
-                'Đã mở lấy ý kiến. Email mời đã gửi tới những người trong phạm vi văn bản.')}>
+                'Đã mở lấy ý kiến trong 7 ngày. Email mời đã gửi tới những người trong phạm vi văn bản.')}>
               Gửi lấy ý kiến
             </button>
           )}
           {d.trang_thai === 'dang_lay_y_kien' && (
             <>
               <span className="mo-ta">
-                Đang lấy ý kiến{d.lay_y_kien_luc !== null ? ` từ ${ngay_gio(d.lay_y_kien_luc)}` : ''}. 
-                Ý kiến gửi về nằm trong trang Hòm thư ý kiến.
+                Đang lấy ý kiến{d.lay_y_kien_luc !== null ? ` từ ${ngay_gio(d.lay_y_kien_luc)}` : ''}.
+                {d.han_lay_y_kien !== null && (
+                  <> Hạn góp ý: {ngay_gio(d.han_lay_y_kien)} (còn {con_ngay(d.han_lay_y_kien)} ngày).</>
+                )}
+                Ý kiến gửi về nằm trong trang Hòm thư ý kiến. Hết hạn, văn bản tự quay về Chờ duyệt
+                để sửa đổi hoặc ban hành chính thức.
               </span>
               <button onClick={chay(`/api/thong-bao/ai/${d.id}/ket-thuc-y-kien`,
                 'Đã kết thúc lấy ý kiến. Văn bản quay về trạng thái chờ duyệt.')}>

@@ -29,6 +29,7 @@ interface DuThao {
   loai: string;
   trich_yeu: string;
   noi_dung: string;
+  han_lay_y_kien: string | null;
   y_kien_cua_toi: YKCuaToi[];
 }
 
@@ -71,8 +72,10 @@ export function TrangGopYDuThao(): ReactNode {
       <div className="dau-trang">
         <h1>Góp ý dự thảo văn bản</h1>
         <p className="mo-ta">
-          {NHAN_LOAI[d.loai] ?? d.loai} · {d.ma}. Đọc nội dung dưới đây và gửi ý kiến của bạn.
-          Mỗi ý kiến là một cuộc trao đổi riêng, Phòng Nhân sự sẽ phản hồi trực tiếp.
+          {NHAN_LOAI[d.loai] ?? d.loai} · {d.ma}
+          {d.han_lay_y_kien !== null && <> · Hạn góp ý: {ngay_gio(d.han_lay_y_kien)}</>}.
+          Đọc nội dung dưới đây và gửi ý kiến của bạn. Mỗi ý kiến là một cuộc trao đổi riêng,
+          Phòng Nhân sự sẽ phản hồi trực tiếp.
         </p>
       </div>
 

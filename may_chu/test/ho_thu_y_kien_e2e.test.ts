@@ -24,6 +24,7 @@ const { chay_di_tru } = await import('../src/csdl/di_tru.ts');
 const { thuc_thi, truy_van_mot, dong_pool } = await import('../src/csdl/ket_noi.ts');
 const { tao_token_truy_cap } = await import('../src/bao_mat/jwt.ts');
 const { bat_soan_van_ban, dung_soan_van_ban } = await import('../src/su_kien/soan_van_ban_day.ts');
+const { dong_y_kien_het_han } = await import('../src/ho_thu_y_kien/nghiep_vu.ts');
 
 const PHONG = '9f0e9a12-1000-4000-8000-0000000000a1';
 const NV_ADMIN = '9f0e9a12-1000-4000-8000-0000000000b1';
@@ -193,6 +194,77 @@ test('nhan vien TRONG pham vi gop y duoc; ngoai pham vi nhan 404', async () => {
   const dong = (ds.body as unknown as Record<string, unknown>[])[0];
   assert.ok(dong !== undefined);
   assert.equal(typeof dong['id'], 'string');
+});
+
+test('han 7 ngay: mo dat han, het han chan gop y va tu dong dong ve cho_duyet', async () => {
+  const id = await nhap_cho_duyet('Về việc sử dụng điện tiết kiệm');
+  const mo = await goi('POST', `/api/thong-bao/ai/${id}/lay-y-kien`, { token: token_admin });
+  assert.equal(mo.ma, 200, `lay y kien loi: ${mo.tho}`);
+
+  // Han = luc mo + 7 ngay.
+  const d = await truy_van_mot<{ han_lay_y_kien: string | null }>(
+    'select han_lay_y_kien::text as han_lay_y_kien from thong_bao_nhap_ai where id = $1', [id],
+  );
+  assert.ok(d !== null && d.han_lay_y_kien !== null, 'mo lay y kien phai co han');
+  const han = Date.parse(d.han_lay_y_kien);
+  assert.ok(han > Date.now() + 6 * 86_400_000 && han < Date.now() + 8 * 86_400_000,
+    `han khong phai 7 ngay: ${String(d?.han_lay_y_kien)}`);
+
+  // Nhan vien TRONG pham vi thay trong danh sach du thao; ngoai pham vi khong thay.
+  const ds = await goi('GET', '/api/toi/du-thao-dang-lay-y-kien', { token: token_a });
+  assert.equal(ds.ma, 200);
+  const tim = (ds.body as unknown as Record<string, unknown>[]).find((v) => v['id'] === id);
+  assert.ok(tim !== undefined, 'nhan vien trong pham vi phai thay du thao');
+  assert.equal(tim['han_lay_y_kien'], d.han_lay_y_kien);
+  const ds_b = await goi('GET', '/api/toi/du-thao-dang-lay-y-kien', { token: token_b });
+  assert.equal(
+    (ds_b.body as unknown as Record<string, unknown>[]).some((v) => v['id'] === id), false,
+  );
+
+  // Gui y kien KEM ma van ban qua ho-thu-y-kien -> loai du_thao, nam trong danh sach cua toi.
+  const gop = await goi('POST', '/api/toi/ho-thu-y-kien', {
+    token: token_a, body: { nhap_ai_id: id, noi_dung: 'Đồng ý, nên tắt máy khi không dùng.' },
+  });
+  assert.equal(gop.ma, 201, `gop kem ma van ban loi: ${gop.tho}`);
+  const cua_toi = await goi('GET', '/api/toi/ho-thu-y-kien', { token: token_a });
+  const ht = (cua_toi.body as unknown as Record<string, unknown>[])
+    .find((v) => v['nhap_ai_id'] === id);
+  assert.ok(ht !== undefined);
+  assert.equal(ht['loai'], 'du_thao');
+
+  // Lui han ve qua khu -> chan gop y moi (404) ngay ca truoc khi lich chay.
+  await thuc_thi(
+    `update thong_bao_nhap_ai set han_lay_y_kien = now() - interval '1 minute' where id = $1`,
+    [id],
+  );
+  const muon = await goi('POST', '/api/toi/ho-thu-y-kien', {
+    token: token_a, body: { nhap_ai_id: id, noi_dung: 'Muộn rồi.' },
+  });
+  assert.equal(muon.ma, 404);
+
+  // Quet dong han (nhu buoc lich chay) -> ve cho_duyet de sua doi / ban hanh chinh thuc.
+  const da_dong = await dong_y_kien_het_han();
+  assert.ok(da_dong.some((v) => v.id === id), 'ban het han phai duoc dong');
+  const tt = await truy_van_mot<{ trang_thai: string }>(
+    'select trang_thai from thong_bao_nhap_ai where id = $1', [id],
+  );
+  assert.equal(tt?.trang_thai, 'cho_duyet');
+
+  // Danh sach du thao khong con ban nay.
+  const ds2 = await goi('GET', '/api/toi/du-thao-dang-lay-y-kien', { token: token_a });
+  assert.equal(
+    (ds2.body as unknown as Record<string, unknown>[]).some((v) => v['id'] === id), false,
+  );
+
+  // Quan tri: danh-sach-van-ban co ban nay; loc ho thu theo nhap_ai_id ra dung y kien.
+  const dsvb = await goi('GET', '/api/ho-thu-y-kien/danh-sach-van-ban', { token: token_admin });
+  assert.equal(dsvb.ma, 200);
+  assert.ok((dsvb.body as unknown as Record<string, unknown>[]).some((v) => v['id'] === id));
+  const lc = await goi('GET', `/api/ho-thu-y-kien?nhap_ai_id=${id}`, { token: token_admin });
+  assert.equal(lc.ma, 200);
+  const dong = lc.body as unknown as Record<string, unknown>[];
+  assert.ok(dong.length >= 1);
+  assert.ok(dong.every((v) => v['nhap_ai_id'] === id));
 });
 
 test('hoi thoai: nhan su tra loi -> nhan vien tra loi -> dong chan tra loi tiep', async () => {

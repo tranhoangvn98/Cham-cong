@@ -58,6 +58,20 @@ export async function tuyen_ho_thu_y_kien(app: FastifyInstance): Promise<void> {
     );
   });
 
+  // ------------------------------------------------------------ danh sach van ban (bo loc)
+  // Cac van ban CO y kien du thao — dung cho bo loc theo MA VAN BAN o trang quan tri.
+  // Dang ky TRUOC route /:id de duong tinh khong bi nuot vao tham so :id.
+  app.get('/ho-thu-y-kien/danh-sach-van-ban', { preHandler: can_nhan_su }, async () => {
+    return truy_van(
+      `select distinct n.id, n.ma, coalesce(n.spec_json->>'trich_yeu', '') as trich_yeu,
+              n.trang_thai
+         from ho_thu_y_kien h
+         join thong_bao_nhap_ai n on n.id = h.nhap_ai_id
+        where h.loai = 'du_thao'
+        order by n.ma`,
+    );
+  });
+
   // ------------------------------------------------------------ thu da gui (thu di cua Nhan su)
   // Dang ky TRUOC route /:id de duong tinh khong bi nuot vao tham so :id.
   app.get('/ho-thu-y-kien/thu-da-gui', { preHandler: can_nhan_su }, async (req) => {

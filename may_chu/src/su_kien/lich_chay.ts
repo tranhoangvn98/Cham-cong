@@ -22,6 +22,7 @@ import { quet_qua_han } from '../viec/cham_han.ts';
 import { sinh_viec_dinh_ky } from '../viec/dinh_ky.ts';
 import { khi_hop_dong_sap_het, quet_don_cho_duyet } from '../viec/workflow.ts';
 import { dong_bo_nguoi_ms365_da_cap_phep, graph_da_cau_hinh } from '../nhan_su/ms365.ts';
+import { bao_het_han_lay_y_kien, dong_y_kien_het_han } from '../ho_thu_y_kien/nghiep_vu.ts';
 import { cong_ngay, khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. Khai duoc trong .env. */
@@ -223,6 +224,30 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
   // thi khong phai: duong dan SharePoint tinh tu `ma_nv` / `ho_ten` va sieu du lieu van ban,
   // con `ten_luu` chi duoc dung de lay DUOI TEP — ma sap xep khong doi duoi tep.
   await dong_bo_sharepoint(bay_gio, ghi_log);
+
+  // ------------------------------------------------------------ dong han lay y kien
+  // CHAY MOI VONG (khong sau cua chan gio cuoi ngay): ban du thao van ban AI qua han lay y kien
+  // (han_lay_y_kien <= bay gio) thi tu dong quay ve 'cho_duyet' de nhan su sua doi hoac ban hanh
+  // chinh thuc, va bao popup cho Nhan su / Admin. Khoa theo NGAY+GIO nen nhieu instance khong
+  // trung, nhung qua moi gio lai quet mot lan de khong truot han ca ngay.
+  try {
+    const ma_dong_han = `dong_han_lay_y_kien:${hom_nay}:${gio_may}`;
+    if (await nhan_viec(ma_dong_han)) {
+      try {
+        const da_dong = await dong_y_kien_het_han();
+        await ghi_ket_qua(ma_dong_han, `da dong ${da_dong.length} van ban`);
+        if (da_dong.length > 0) {
+          ghi_log(`[lich] lay y kien: dong ${da_dong.length} van ban het han`);
+          await bao_het_han_lay_y_kien(da_dong);
+        }
+      } catch (loi) {
+        await nha_viec(ma_dong_han);
+        ghi_log(`[lich] LOI khi dong han lay y kien: ${(loi as Error).message}`);
+      }
+    }
+  } catch (loi) {
+    ghi_log(`[lich] LOI khi dong han lay y kien: ${(loi as Error).message}`);
+  }
 
   // ------------------------------------------------------------ khoa cua theo gio
   // CHAY MOI VONG, ca ngay (khong sau cua chan gio cuoi ngay): trang thai cua doi theo gio hanh

@@ -50,6 +50,7 @@ test('email moi gop y: link kem dung van_ban_id, thoat trich yeu', () => {
     ma: 'TBN-000012',
     van_ban_id: 'abc-123',
     trich_yeu: 'Về việc <b>nội quy</b> lao động',
+    han: '',
   });
   assert.ok(than.includes('/gop-y-du-thao?van_ban_id=abc-123'));
   assert.ok(than.includes('TBN-000012'));
@@ -59,9 +60,21 @@ test('email moi gop y: link kem dung van_ban_id, thoat trich yeu', () => {
 
 test('email moi gop y: khong co goc web thi khong co link', () => {
   const than = html_email_moi_y_kien({
-    goc: '', ma: 'TBN-000012', van_ban_id: 'abc-123', trich_yeu: 'Về việc x',
+    goc: '', ma: 'TBN-000012', van_ban_id: 'abc-123', trich_yeu: 'Về việc x', han: '',
   });
   assert.equal(than.includes('gop-y-du-thao?van_ban_id'), false);
+});
+
+test('email moi gop y: in dong han gop y khi co, khong hien khi rong', () => {
+  const co = html_email_moi_y_kien({
+    goc: '', ma: 'TBN-000012', van_ban_id: 'abc-123', trich_yeu: 'Về việc x',
+    han: '12/10/2026 17:00',
+  });
+  assert.ok(co.includes('Hạn góp ý: 12/10/2026 17:00'));
+  const khong = html_email_moi_y_kien({
+    goc: '', ma: 'TBN-000012', van_ban_id: 'abc-123', trich_yeu: 'Về việc x', han: '',
+  });
+  assert.equal(khong.includes('Hạn góp ý'), false);
 });
 
 test('loai gop y chung khong chua du_thao; nhan trang thai du ba gia tri', () => {

@@ -55,6 +55,8 @@ interface NhapAi {
   ngay_nghi_viec: string | null;
   nghi_viec_da_chay_luc: Date | null;
   lay_y_kien_luc: Date | null;
+  /** Han cuoi cung de gop y (mo lay y kien + so_ngay_lay_y_kien). Qua han thi tu dong dong. */
+  han_lay_y_kien: Date | null;
   noi_dung_tho: string;
   che_do: 'ai' | 'tu_soan';
   spec_json: unknown;
@@ -85,8 +87,9 @@ async function doc_nhap(id: string): Promise<NhapAi> {
   const d = await truy_van_mot<NhapAi>(
     `select id, ma, loai, pham_vi, quan_he, phong_ban_id, nhan_vien_id, muc_dich, muc_do,
             can_giai_trinh, het_han, la_qd_nghi_viec, ngay_nghi_viec::text as ngay_nghi_viec,
-            nghi_viec_da_chay_luc, lay_y_kien_luc, noi_dung_tho, che_do, spec_json, ten_luu_docx, mime,
-            kich_thuoc, trang_thai, ket_qua_gate, so_lan_thu, so_ban_hanh, so_ky_hieu,
+            nghi_viec_da_chay_luc, lay_y_kien_luc, han_lay_y_kien, noi_dung_tho, che_do, spec_json,
+            ten_luu_docx, mime, kich_thuoc, trang_thai, ket_qua_gate, so_lan_thu, so_ban_hanh,
+            so_ky_hieu,
             thong_bao_id, nguoi_tao, tao_luc, cap_nhat_luc,
             (select tb.da_gui_email from thong_bao tb where tb.id = thong_bao_nhap_ai.thong_bao_id) as da_gui_email,
             (select tb.gui_email_luc from thong_bao tb where tb.id = thong_bao_nhap_ai.thong_bao_id) as gui_email_luc,
@@ -385,9 +388,10 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
     }
     await thuc_thi(
       `update thong_bao_nhap_ai
-          set trang_thai = 'dang_lay_y_kien', lay_y_kien_luc = now(), cap_nhat_luc = now()
+          set trang_thai = 'dang_lay_y_kien', lay_y_kien_luc = now(),
+              han_lay_y_kien = now() + make_interval(days => $2), cap_nhat_luc = now()
         where id = $1`,
-      [d.id],
+      [d.id, cau_hinh.van_ban.so_ngay_lay_y_kien],
     );
     await ghi_nhat_ky(nd.sub, 'thong_bao_ai_lay_y_kien', 'thong_bao_nhap_ai', d.id,
       { pham_vi: d.pham_vi }, req.ip);

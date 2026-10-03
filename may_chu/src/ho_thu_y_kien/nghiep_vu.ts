@@ -205,6 +205,52 @@ export async function bao_y_kien_moi(ho_thu_id: string): Promise<void> {
   }
 }
 
+/**
+ * Dong loat cac ban du thao DA HET HAN lay y kien: chuyen 'dang_lay_y_kien' ve 'cho_duyet'
+ * de nhan su sua doi hoac ban hanh chinh thuc. Mot cau UPDATE nguyen tu nen nhieu instance
+ * chay song song cung khong trung; tra danh sach da dong de goi bao popup.
+ */
+export async function dong_y_kien_het_han(): Promise<{ id: string; ma: string }[]> {
+  return truy_van<{ id: string; ma: string }>(
+    `update thong_bao_nhap_ai
+        set trang_thai = 'cho_duyet', cap_nhat_luc = now()
+      where trang_thai = 'dang_lay_y_kien'
+        and han_lay_y_kien is not null
+        and han_lay_y_kien <= now()
+      returning id, ma`,
+  );
+}
+
+/**
+ * Bao popup cho Nhan su / Admin khi mot ban du thao HET HAN lay y kien (tu dong quay ve
+ * cho_duyet): nhac ho sua doi hoac ban hanh chinh thuc. Dung co che popup cua thong bao
+ * (popup=true) nen dang nhap la thay ngay. Khong nem loi — popup la phan phu.
+ */
+export async function bao_het_han_lay_y_kien(ds: { id: string; ma: string }[]): Promise<void> {
+  if (ds.length === 0) return;
+  try {
+    const quan_tri = await truy_van<{ nhan_vien_id: string }>(
+      `select nhan_vien_id from nguoi_dung
+        where dang_hoat_dong = true and nhan_vien_id is not null
+          and vai_tro in ('admin', 'nhan_su', 'truong_phong_nhan_su')`,
+    );
+    if (quan_tri.length === 0) return;
+    for (const d of ds) {
+      const noi_dung = `Văn bản ${d.ma} đã hết thời hạn lấy ý kiến — hãy sửa đổi hoặc ban hành chính thức.`;
+      for (const nd of quan_tri) {
+        await thuc_thi(
+          `insert into thong_bao (tieu_de, noi_dung, muc_do, can_giai_trinh, pham_vi,
+                                  nhan_vien_id, popup, gui_email)
+           values ('Hết hạn lấy ý kiến văn bản', $1, 'thuong', false, 'ca_nhan', $2, true, false)`,
+          [noi_dung, nd.nhan_vien_id],
+        );
+      }
+    }
+  } catch (loi) {
+    console.warn(`[ho_thu] khong tao duoc popup bao het han lay y kien: ${(loi as Error).message}`);
+  }
+}
+
 /** Nhan vien co nam trong pham vi nhan cua ban du thao khong. Khong tim thay du thao -> null. */
 export async function trong_pham_vi_du_thao(
   nhan_vien_id: string, nhap_ai_id: string,
@@ -228,10 +274,16 @@ export async function trong_pham_vi_du_thao(
  */
 export async function du_thao_cho_gop_y(
   nhap_ai_id: string, nhan_vien_id: string,
-): Promise<{ id: string; ma: string; loai: string; trich_yeu: string; noi_dung: string } | null> {
-  const d = await truy_van_mot<{ id: string; ma: string; loai: string; spec_json: unknown }>(
-    `select id, ma, loai, spec_json from thong_bao_nhap_ai
-      where id = $1 and trang_thai = 'dang_lay_y_kien'`,
+): Promise<{
+  id: string; ma: string; loai: string; trich_yeu: string; noi_dung: string;
+  han_lay_y_kien: Date | null;
+} | null> {
+  const d = await truy_van_mot<{
+    id: string; ma: string; loai: string; han_lay_y_kien: Date | null; spec_json: unknown;
+  }>(
+    `select id, ma, loai, han_lay_y_kien, spec_json from thong_bao_nhap_ai
+      where id = $1 and trang_thai = 'dang_lay_y_kien'
+        and (han_lay_y_kien is null or han_lay_y_kien > now())`,
     [nhap_ai_id],
   );
   if (d === null) return null;
@@ -244,5 +296,6 @@ export async function du_thao_cho_gop_y(
     loai: d.loai,
     trich_yeu: spec?.trich_yeu ?? '',
     noi_dung: spec === null ? '' : noi_dung_hien_thi(spec),
+    han_lay_y_kien: d.han_lay_y_kien,
   };
 }

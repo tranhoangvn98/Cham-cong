@@ -43,10 +43,20 @@ const CAC_LOAI_GUI: { ma: string; nhan: string }[] = [
   { ma: 'thac_mac', nhan: 'Thắc mắc' },
 ];
 
+interface DuThaoGon {
+  id: string;
+  ma: string;
+  loai: string;
+  trich_yeu: string;
+  han_lay_y_kien: string | null;
+}
+
 export function YKienToi(): ReactNode {
   const ds = dung_nap<HoThuToi[]>('/api/toi/ho-thu-y-kien');
+  const ds_du_thao = dung_nap<DuThaoGon[]>('/api/toi/du-thao-dang-lay-y-kien');
   const hd = dung_hanh_dong();
   const [loai, dat_loai] = useState('gop_y');
+  const [van_ban_id, dat_van_ban_id] = useState('');
   const [tieu_de, dat_tieu_de] = useState('');
   const [noi_dung, dat_noi_dung] = useState('');
   const [mo, dat_mo] = useState<string | null>(null);
@@ -54,10 +64,12 @@ export function YKienToi(): ReactNode {
   const gui = (): void => {
     void hd.chay(
       () => goi('/api/toi/ho-thu-y-kien',
-        { method: 'POST', body: { loai, tieu_de, noi_dung } }),
-      'Đã gửi. Phòng Nhân sự sẽ tiếp nhận và phản hồi qua đây và qua email của bạn.',
+        { method: 'POST', body: { loai, tieu_de, noi_dung, ...(van_ban_id === '' ? {} : { nhap_ai_id: van_ban_id }) } }),
+      van_ban_id === ''
+        ? 'Đã gửi. Phòng Nhân sự sẽ tiếp nhận và phản hồi qua đây và qua email của bạn.'
+        : 'Đã gửi ý kiến cho dự thảo. Phòng Nhân sự sẽ tiếp nhận và phản hồi.',
     ).then((ok) => {
-      if (ok) { dat_tieu_de(''); dat_noi_dung(''); ds.nap_lai(); }
+      if (ok) { dat_tieu_de(''); dat_noi_dung(''); dat_van_ban_id(''); ds.nap_lai(); }
     });
   };
 
@@ -72,24 +84,38 @@ export function YKienToi(): ReactNode {
         <div className="canhan-muc-dau"><h3>Gửi ý kiến mới</h3></div>
         <div className="bo-loc">
           <div className="o-nhap">
-            <label htmlFor="loai">Loại ý kiến</label>
-            <Chon gia_tri={loai} dat_gia_tri={dat_loai}
-              cac_tuy_chon={CAC_LOAI_GUI.map((c): TuyChonChon => ({ ma: c.ma, nhan: c.nhan }))}
-              nhan="Chọn loại" />
+            <label htmlFor="van_ban">Mã văn bản dự thảo (tùy chọn)</label>
+            <Chon gia_tri={van_ban_id} dat_gia_tri={dat_van_ban_id}
+              cac_tuy_chon={(ds_du_thao.du_lieu ?? []).map((d): TuyChonChon => ({
+                ma: d.id,
+                nhan: `${d.ma} — ${d.trich_yeu !== '' ? d.trich_yeu : 'Dự thảo'}`
+                  + (d.han_lay_y_kien !== null ? ` (hạn ${ngay_gio(d.han_lay_y_kien)})` : ''),
+              }))}
+              rong="Không gắn văn bản (góp ý chung)" nhan="Chọn mã văn bản để góp ý dự thảo" />
           </div>
-          <div className="o-nhap" style={{ flex: 1 }}>
-            <label htmlFor="tieu_de">Tiêu đề</label>
-            <input id="tieu_de" value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)}
-              placeholder="Ví dụ: Đề xuất thêm quạt cho dây chuyền may" />
-          </div>
+          {van_ban_id === '' && (
+            <>
+              <div className="o-nhap">
+                <label htmlFor="loai">Loại ý kiến</label>
+                <Chon gia_tri={loai} dat_gia_tri={dat_loai}
+                  cac_tuy_chon={CAC_LOAI_GUI.map((c): TuyChonChon => ({ ma: c.ma, nhan: c.nhan }))}
+                  nhan="Chọn loại" />
+              </div>
+              <div className="o-nhap" style={{ flex: 1 }}>
+                <label htmlFor="tieu_de">Tiêu đề</label>
+                <input id="tieu_de" value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)}
+                  placeholder="Ví dụ: Đề xuất thêm quạt cho dây chuyền may" />
+              </div>
+            </>
+          )}
         </div>
         <label htmlFor="noi_dung">Nội dung</label>
         <textarea id="noi_dung" rows={4} value={noi_dung}
           onChange={(e) => dat_noi_dung(e.target.value)}
           placeholder="Trình bày rõ ý kiến, băn khoăn hoặc yêu cầu của bạn…" />
         <div className="hang-nut" style={{ marginTop: 8 }}>
-          <button disabled={hd.dang_chay || tieu_de.trim().length < 3
-            || noi_dung.trim().length < 1} onClick={gui}>
+          <button disabled={hd.dang_chay || noi_dung.trim().length < 1
+            || (van_ban_id === '' && tieu_de.trim().length < 3)} onClick={gui}>
             {hd.dang_chay ? 'Đang gửi…' : 'Gửi ý kiến'}
           </button>
         </div>

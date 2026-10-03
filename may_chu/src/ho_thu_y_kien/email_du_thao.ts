@@ -13,6 +13,7 @@ import { gui_email, email_bat } from '../su_kien/gui_email.ts';
 import { lay_dia_chi_nhan } from '../su_kien/gui_email_thong_bao.ts';
 import { truy_van_mot } from '../csdl/ket_noi.ts';
 import { cau_hinh } from '../cau_hinh.ts';
+import { gio_dia_phuong, ngay_dia_phuong, ngay_viet } from '../tien_ich/thoi_gian.ts';
 import type { SpecVanBan } from '../ai/kieu.ts';
 
 /** Cat text de nhet vao email an toan (chan HTML injection). */
@@ -27,6 +28,8 @@ export interface ThongTinMoi {
   /** Id ban nhap — dung trong link ?van_ban_id=. */
   van_ban_id: string;
   trich_yeu: string;
+  /** Han cuoi cung de gop y (da format, 'dd/mm/yyyy hh:mm'). Chuoi rong = khong hien. */
+  han: string;
 }
 
 /**
@@ -56,6 +59,9 @@ export function html_email_moi_y_kien(o: ThongTinMoi): string {
                        padding:12px 14px;font-size:14px">${thoat(o.trich_yeu)}</div>
            <p style="margin:14px 0 0">Xin mời anh/chị đọc bản dự thảo và gửi ý kiến đóng góp.
              Mọi ý kiến đều được Phòng Nhân sự tiếp nhận và phản hồi.</p>`
+    + (o.han === ''
+      ? ''
+      : `<p style="margin:12px 0 0;color:#B45309;font-weight:600">Hạn góp ý: ${thoat(o.han)}</p>`)
     + (o.goc === ''
       ? '<p style="margin:14px 0 0;color:#B45309">Mở ứng dụng Chấm công, đăng nhập rồi vào '
         + 'mục "Hòm thư ý kiến" để góp ý.</p>'
@@ -84,15 +90,18 @@ export async function email_moi_y_kien(nhap_ai_id: string): Promise<KetQuaMoiYKi
     const d = await truy_van_mot<{
       id: string;
       ma: string; pham_vi: string; phong_ban_id: string | null; nhan_vien_id: string | null;
-      spec_json: unknown;
+      spec_json: unknown; han_lay_y_kien: Date | null;
     }>(
-      `select id::text, ma, pham_vi, phong_ban_id, nhan_vien_id, spec_json
+      `select id::text, ma, pham_vi, phong_ban_id, nhan_vien_id, spec_json, han_lay_y_kien
          from thong_bao_nhap_ai where id = $1`,
       [nhap_ai_id],
     );
     if (d === null) return { ok: false, ly_do: 'Không tìm thấy bản nháp.' };
     const spec = d.spec_json as SpecVanBan | null;
     const trich_yeu = spec?.trich_yeu ?? 'văn bản mới';
+    const han = d.han_lay_y_kien === null
+      ? ''
+      : `${ngay_viet(ngay_dia_phuong(d.han_lay_y_kien))} ${gio_dia_phuong(d.han_lay_y_kien)}`;
 
     const den = await lay_dia_chi_nhan(d.pham_vi, d.phong_ban_id, d.nhan_vien_id);
     if (den.length === 0) return { ok: false, ly_do: 'Không có nhân viên nào trong phạm vi có email.' };
@@ -105,6 +114,7 @@ export async function email_moi_y_kien(nhap_ai_id: string): Promise<KetQuaMoiYKi
         ma: d.ma,
         van_ban_id: d.id,
         trich_yeu,
+        han,
       }),
     });
     return gui_duoc

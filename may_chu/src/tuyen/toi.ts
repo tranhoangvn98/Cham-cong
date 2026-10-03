@@ -31,7 +31,7 @@ import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
 import { email_nhan_vien_tra_loi } from '../luong/khieu_nai_email.ts';
 import {
   CAC_LOAI_GOP_Y, NHAN_TRANG_THAI_HO_THU, bao_y_kien_moi, du_thao_cho_gop_y,
-  ho_thu_cua_nhan_vien, tao_ho_thu, tra_loi_ho_thu,
+  ho_thu_cua_nhan_vien, tao_ho_thu, tra_loi_ho_thu, type LoaiHoThu,
 } from '../ho_thu_y_kien/nghiep_vu.ts';
 import { email_nhan_vien_tra_loi as email_ho_thu_nhan_vien_tra_loi }
   from '../ho_thu_y_kien/email.ts';
@@ -1380,23 +1380,61 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     return ho_thu_cua_nhan_vien(nv_id);
   });
 
-  /** Gui gop y chung (gop_y / phan_anh / yeu_cau / thac_mac) — khong gan van ban nao. */
+  /** Danh sach ban du thao DANG lay y kien, chua het han va nguoi dang nhap TRONG pham vi —
+   *  cho nhan vien chon MA VAN BAN khi gop y ngay trong Hòm thư ý kiến. */
+  app.get('/du-thao-dang-lay-y-kien', async (req) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    return truy_van(
+      `select d.id, d.ma, d.loai, coalesce(d.spec_json->>'trich_yeu', '') as trich_yeu,
+              d.han_lay_y_kien
+         from thong_bao_nhap_ai d
+         join nhan_vien nv on nv.id = $1 and nv.dang_hoat_dong = true
+        where d.trang_thai = 'dang_lay_y_kien'
+          and (d.han_lay_y_kien is null or d.han_lay_y_kien > now())
+          and (d.pham_vi = 'toan_cong_ty'
+               or (d.pham_vi = 'phong_ban' and d.phong_ban_id = nv.phong_ban_id)
+               or (d.pham_vi = 'ca_nhan' and d.nhan_vien_id = nv.id))
+        order by d.han_lay_y_kien asc nulls last, d.ma`,
+      [nv_id],
+    );
+  });
+
+  /** Gui y kien: gop y chung (gop_y / phan_anh / yeu_cau / thac_mac), hoac y kien cho ban du
+   *  thao van ban khi kem `nhap_ai_id` (loai 'du_thao'). Du thao phai dang lay y kien, chua het
+   *  han va nguoi gui TRONG pham vi — sai thi 404, khong tiet lo su ton tai. */
   app.post('/ho-thu-y-kien', async (req, res) => {
     const nd = nguoi_dung_hien_tai(req);
     const nv_id = nhan_vien_cua_toi(req);
     const b = than(req.body);
-    const loai = trong_tap(b, 'loai', CAC_LOAI_GOP_Y, { bat_buoc: true }) as
-      typeof CAC_LOAI_GOP_Y[number];
-    const tieu_de = chuoi_bat_buoc(b, 'tieu_de', { toi_thieu: 3, toi_da: 300 });
     const noi_dung = chuoi_bat_buoc(b, 'noi_dung', { toi_thieu: 1, toi_da: 2000 });
+    const nhap_ai_id = uuid(b, 'nhap_ai_id');
+
+    let loai: LoaiHoThu;
+    let tieu_de: string;
+    let ma_du_thao: string | null = null;
+    if (nhap_ai_id !== null) {
+      const d = await du_thao_cho_gop_y(nhap_ai_id, nv_id);
+      if (d === null) throw new LoiKhongTim('Không tìm thấy dự thảo đang lấy ý kiến.');
+      loai = 'du_thao';
+      tieu_de = `Ý kiến dự thảo ${d.ma}`;
+      ma_du_thao = d.ma;
+    } else {
+      loai = trong_tap(b, 'loai', CAC_LOAI_GOP_Y, { bat_buoc: true }) as LoaiHoThu;
+      tieu_de = chuoi_bat_buoc(b, 'tieu_de', { toi_thieu: 3, toi_da: 300 });
+    }
 
     const dong = await tao_ho_thu(
-      { loai, nhan_vien_id: nv_id, nhap_ai_id: null, tieu_de, noi_dung });
-    await ghi_nhat_ky(nd.sub, 'gui_ho_thu_y_kien', 'ho_thu_y_kien', dong.id, { loai }, req.ip);
+      { loai, nhan_vien_id: nv_id, nhap_ai_id, tieu_de, noi_dung });
+    await ghi_nhat_ky(nd.sub,
+      ma_du_thao === null ? 'gui_ho_thu_y_kien' : 'gui_y_kien_du_thao',
+      'ho_thu_y_kien', dong.id, { loai, nhap_ai_id }, req.ip);
     gui_ngam({
       nguoi_dung_ids: await tai_khoan_nguoi_duyet(nv_id),
-      tieu_de: 'Có ý kiến mới trong hòm thư',
-      noi_dung: `${await ten_nhan_vien(nv_id)} gửi ${dong.ma}.`,
+      tieu_de: ma_du_thao === null ? 'Có ý kiến mới trong hòm thư'
+        : 'Có ý kiến mới cho dự thảo văn bản',
+      noi_dung: ma_du_thao === null
+        ? `${await ten_nhan_vien(nv_id)} gửi ${dong.ma}.`
+        : `${await ten_nhan_vien(nv_id)} góp ý cho ${ma_du_thao}.`,
       du_lieu: { man: 'ho-thu-y-kien', ho_thu_id: dong.id },
     });
     // Popup cho Nhan su/Admin khi dang nhap — khong bo sot phan anh cua nguoi lao dong.
