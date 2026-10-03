@@ -926,6 +926,46 @@ test('may bao ket qua lenh -> luu ma tra ve', async () => {
   assert.equal(l?.ma_tra_ve, 0);
 });
 
+// May acc bao lenh DATA QUERY thanh cong bang ma 423 (du lieu ve qua querydata), va tu choi
+// cu phap khong hieu bang -629. Lich su lenh phai hien DUNG nghia: 423 la thanh cong,
+// -629 tren DATA QUERY la bo qua (cap lenh kep), -629 tren lenh khac la loi that.
+test('lich su lenh: 423 cua DATA QUERY la thanh cong, -629 la bo qua', async () => {
+  const q423 = await truy_van_mot<{ id: number }>(
+    `insert into lenh_thiet_bi(thiet_bi_serial, lenh)
+     values ($1, 'DATA QUERY tablename=transaction,fielddesc=*,filter=*') returning id`,
+    [SERIAL],
+  );
+  const q629 = await truy_van_mot<{ id: number }>(
+    `insert into lenh_thiet_bi(thiet_bi_serial, lenh)
+     values ($1, 'DATA QUERY ATTLOG StartTime=2026-06-01 00:00:00\tEndTime=2026-06-30 23:59:59')
+     returning id`,
+    [SERIAL],
+  );
+  const u629 = await truy_van_mot<{ id: number }>(
+    `insert into lenh_thiet_bi(thiet_bi_serial, lenh)
+     values ($1, 'DATA UPDATE USERINFO PIN=7777') returning id`,
+    [SERIAL],
+  );
+  await goi('GET', `/iclock/getrequest?SN=${SERIAL}`);
+
+  await app.inject({
+    method: 'POST',
+    url: `/iclock/devicecmd?SN=${SERIAL}`,
+    headers: { 'content-type': 'text/plain' },
+    payload: `ID=${q423!.id}&Return=423&CMD=DATA QUERY\n`
+      + `ID=${q629!.id}&Return=-629&CMD=DATA QUERY\n`
+      + `ID=${u629!.id}&Return=-629&CMD=DATA UPDATE\n`,
+  });
+
+  const r = await goi('GET', `/api/thiet-bi/${SERIAL}/lenh`, { token: token_admin });
+  assert.equal(r.ma, 200);
+  const ds = r.body as unknown as { id: number; ket_qua: string }[];
+  const tim = (id: number): string => ds.find((d) => d.id === id)!.ket_qua;
+  assert.equal(tim(q423!.id), 'thanh_cong', '423 tren DATA QUERY phai la thanh cong');
+  assert.equal(tim(q629!.id), 'bo_qua', '-629 tren DATA QUERY la may khong hieu lenh (du kien)');
+  assert.equal(tim(u629!.id), 'loi', '-629 tren DATA UPDATE la loi that');
+});
+
 // ============================================================ bang cong & bao cao
 test('bang cong tra ve dong da tinh', async () => {
   const r = await goi('GET', `/api/bang-cong?tu=${NGAY}&den=${NGAY}`, { token: token_admin });

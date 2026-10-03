@@ -5,7 +5,7 @@ import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_n
 import { can_admin, can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { bam_mat_khau, LoiMatKhau } from '../bao_mat/mat_khau.ts';
 import { chan_quan_tri_cua_cu } from '../bao_mat/cong_sso.ts';
-import { lenh_dong_bo_gio } from '../adms/giao_thuc.ts';
+import { ket_qua_lenh_hien_thi, lenh_dong_bo_gio } from '../adms/giao_thuc.ts';
 import { xep_lenh } from '../adms/tuyen.ts';
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
@@ -937,12 +937,18 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
 
   app.get('/thiet-bi/:serial/lenh', { preHandler: can_nhan_su }, async (req) => {
     const serial = lay_serial_param(req);
-    return truy_van(
+    const dong = await truy_van<{
+      id: number; lenh: string; tao_luc: Date; gui_luc: Date | null;
+      ma_tra_ve: number | null; bao_luc: Date | null;
+    }>(
       `select id, lenh, tao_luc, gui_luc, ma_tra_ve, bao_luc
          from lenh_thiet_bi where thiet_bi_serial = $1
         order by id desc limit 100`,
       [serial],
     );
+    // Tinh san phan loai de Lich su lenh hien DUNG nghia ma may tra: 423 cua DATA QUERY la
+    // thanh cong (du lieu ve qua querydata), -629 la may khong hieu lenh (cap lenh kep).
+    return dong.map((d) => ({ ...d, ket_qua: ket_qua_lenh_hien_thi(d.ma_tra_ve, d.lenh) }));
   });
 
   // =====================================================================  DIA DIEM (geofence)

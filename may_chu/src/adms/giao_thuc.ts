@@ -421,6 +421,37 @@ export function ma_hoa_thoi_gian_zkteco(d: Date, offset_ms: number): number {
   );
 }
 
+/**
+ * Lenh co duoc may thuc hien khong. Ma 0 la thanh cong. RIENG dong may acc (PUSH 3.x),
+ * lenh `DATA QUERY` thanh cong duoc bao bang ma **423** — du lieu tra ve qua
+ * /iclock/querydata chu khong qua devicecmd. Da kiem chung tren may kho NYU7261300256
+ * (10/2026): ca `tablename=user` lan `tablename=transaction` deu bao 423 kem du lieu ve du.
+ */
+export function lenh_duoc_thuc_hien(ma_tra_ve: number, lenh: string): boolean {
+  if (ma_tra_ve === 0) return true;
+  return ma_tra_ve === 423 && /^DATA QUERY/i.test(lenh);
+}
+
+/**
+ * Phan loai ket qua mot lenh de Lich su lenh hien dung nghia:
+ *
+ * - `cho`: may chua bao ket qua (ma_tra_ve null).
+ * - `thanh_cong`: ma 0, hoac 423 voi lenh DATA QUERY (du lieu ve qua querydata).
+ * - `bo_qua`: may bao -629 tren lenh DATA QUERY — may KHONG HIEU lenh nay. Voi cap lenh
+ *   kep (lay-log / lay-nguoi-dung gui ca hai cu phap att va acc) thi do la DU KIEN: may
+ *   tu choi cai no khong hieu va thuc thi lenh con lai.
+ * - `loi`: cac ma khac 0 con lai.
+ */
+export function ket_qua_lenh_hien_thi(
+  ma_tra_ve: number | null,
+  lenh: string,
+): 'cho' | 'thanh_cong' | 'bo_qua' | 'loi' {
+  if (ma_tra_ve === null) return 'cho';
+  if (lenh_duoc_thuc_hien(ma_tra_ve, lenh)) return 'thanh_cong';
+  if (ma_tra_ve === -629 && /^DATA QUERY/i.test(lenh)) return 'bo_qua';
+  return 'loi';
+}
+
 export function lenh_dong_bo_gio(bay_gio: Date, offset_ms: number): string {
   return `SET OPTION DateTime=${ma_hoa_thoi_gian_zkteco(bay_gio, offset_ms)}`;
 }

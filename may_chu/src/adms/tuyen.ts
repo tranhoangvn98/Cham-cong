@@ -17,6 +17,7 @@ import {
   doc_ket_qua_lenh,
   doc_thong_tin_may,
   dung_phan_hoi_handshake,
+  lenh_duoc_thuc_hien,
 } from './giao_thuc.ts';
 import {
   tiep_nhan_attlog, tiep_nhan_rtlog, tiep_nhan_transaction, tiep_nhan_userinfo,
@@ -333,9 +334,18 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
           where id = $1 and thiet_bi_serial = $3`,
         [r.id, r.ma_tra_ve, sn],
       );
-      if (r.ma_tra_ve !== 0) {
-        req.log.warn({ sn, id: r.id, lenh: r.lenh, ma: r.ma_tra_ve }, 'may bao lenh that bai');
+      if (!lenh_duoc_thuc_hien(r.ma_tra_ve, r.lenh)) {
+        if (r.ma_tra_ve === -629 && /^DATA QUERY/i.test(r.lenh)) {
+          // May tu choi cu phap no khong hieu cua cap lenh kep (att/acc) — binh thuong,
+          // lenh con lai da chay. Ghi info chu khong warn de log khong day canh bao ao.
+          req.log.info({ sn, id: r.id, lenh: r.lenh }, 'may khong hieu lenh nay (cap lenh kep)');
+        } else {
+          req.log.warn({ sn, id: r.id, lenh: r.lenh, ma: r.ma_tra_ve }, 'may bao lenh that bai');
+        }
         continue;
+      }
+      if (r.ma_tra_ve === 423) {
+        req.log.info({ sn, id: r.id, lenh: r.lenh }, 'DATA QUERY thanh cong — du lieu ve qua querydata');
       }
       // Lenh thanh cong: neu la lenh cap PIN may cua cho nhan vien moi thi tick muc
       // checklist tuong ung trong cong viec nhap viec (REQ-CL-02 muc 3).

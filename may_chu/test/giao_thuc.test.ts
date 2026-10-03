@@ -10,6 +10,7 @@ const {
   doc_attlog, doc_rtlog, doc_transaction, doc_ket_qua_lenh, doc_thong_tin_may,
   dung_phan_hoi_handshake, dinh_dang_lenh, ma_hoa_thoi_gian_zkteco,
   giai_ma_thoi_gian_zkteco, nhan_cach_xac_thuc, doc_userinfo,
+  lenh_duoc_thuc_hien, ket_qua_lenh_hien_thi,
 } = await import('../src/adms/giao_thuc.ts');
 
 test('doc_userinfo: doc PIN + Name + Card + Pri, bo qua PIN=0', () => {
@@ -154,6 +155,29 @@ test('dung_phan_hoi_handshake: bat Realtime va dung mui gio cau hinh', () => {
 
 test('dinh_dang_lenh: dung dinh dang C:<id>:<cmd>', () => {
   assert.equal(dinh_dang_lenh(7, 'CHECK'), 'C:7:CHECK\n');
+});
+
+// ============================================ phan loai ket qua lenh (Lich su lenh)
+//
+// Dong may acc (PUSH 3.x) bao lenh DATA QUERY thanh cong bang ma 423 — du lieu tra ve qua
+// /iclock/querydata chu khong qua devicecmd. Ma -629 la may khong hieu lenh: voi cap lenh
+// kep (lay-log / lay-nguoi-dung gui ca hai cu phap) thi do la du kien, khong phai hong.
+test('lenh_duoc_thuc_hien: 0 luon thanh cong; 423 chi thanh cong voi DATA QUERY', () => {
+  assert.equal(lenh_duoc_thuc_hien(0, 'CHECK'), true);
+  assert.equal(lenh_duoc_thuc_hien(423, 'DATA QUERY tablename=transaction,fielddesc=*,filter=*'), true);
+  assert.equal(lenh_duoc_thuc_hien(423, 'data query tablename=user'), true);
+  assert.equal(lenh_duoc_thuc_hien(423, 'DATA UPDATE USERINFO PIN=1'), false);
+  assert.equal(lenh_duoc_thuc_hien(-629, 'DATA QUERY ATTLOG StartTime=...'), false);
+  assert.equal(lenh_duoc_thuc_hien(6, 'CHECK'), false);
+});
+
+test('ket_qua_lenh_hien_thi: phan loai cho, thanh cong, bo qua, loi', () => {
+  assert.equal(ket_qua_lenh_hien_thi(null, 'CHECK'), 'cho');
+  assert.equal(ket_qua_lenh_hien_thi(0, 'CHECK'), 'thanh_cong');
+  assert.equal(ket_qua_lenh_hien_thi(423, 'DATA QUERY tablename=user'), 'thanh_cong');
+  assert.equal(ket_qua_lenh_hien_thi(-629, 'DATA QUERY ATTLOG'), 'bo_qua');
+  assert.equal(ket_qua_lenh_hien_thi(-629, 'DATA UPDATE USERINFO PIN=1'), 'loi');
+  assert.equal(ket_qua_lenh_hien_thi(6, 'DATA QUERY tablename=user'), 'loi');
 });
 
 test('ma_hoa_thoi_gian_zkteco: dung cong thuc cua hang', () => {

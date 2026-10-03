@@ -2,6 +2,22 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.119.1] — 2026-10-03
+
+**Sửa: Lịch sử lệnh báo "lỗi 423" / "lỗi -629" cho máy kiểm soát ra vào dù lệnh đã chạy.**
+
+Máy acc (PUSH 3.x) báo lệnh `DATA QUERY` thành công bằng mã **423** (dữ liệu về qua
+`/iclock/querydata`, không qua `devicecmd`) — giao diện vẫn sơn đỏ "lỗi". Còn `-629` là máy
+**từ chối lệnh nó không hiểu** — với cặp lệnh kép (Lấy log cũ / Lấy user gửi cả hai cú pháp
+att + acc) thì một nửa bị từ chối là điều dự kiến, nửa còn lại đã chạy.
+
+- `GET /thiet-bi/:serial/lenh` giờ trả thêm trường `ket_qua` (`cho` / `thanh_cong` / `bo_qua` /
+  `loi`) — Lịch sử lệnh hiển thị: **423 trên DATA QUERY = thành công** (xanh); **-629 trên
+  DATA QUERY = bỏ qua** (vàng, máy không hiểu lệnh này); -629 trên lệnh khác vẫn là lỗi (đỏ).
+- Log máy chủ: 423 của DATA QUERY ghi info thay vì cảnh báo lỗi; -629 của DATA QUERY ghi
+  info "máy không hiểu lệnh (cặp lệnh kép)" thay vì cảnh báo.
+- Test: unit phân loại kết quả lệnh + e2e Lịch sử lệnh đủ ba tình huống 423/-629. Không có migration.
+
 ## [1.119.0] — 2026-10-03
 
 **Lượt quẹt gán theo TÊN TÀI KHOẢN trên chính máy gửi lên — mỗi máy có không gian PIN riêng.**

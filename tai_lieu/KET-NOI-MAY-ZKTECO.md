@@ -377,6 +377,11 @@ Hỗ trợ **tùy firmware**. Máy không hiểu thì *Lịch sử lệnh* hiệ
 > bản ghi **chưa đồng bộ** của nó về `/iclock/querydata`, hệ thống đưa thẳng vào bảng công.
 > Hai lưu ý: máy acc **không hỗ trợ hỏi theo khoảng ngày**, và nó chỉ giữ phần đuôi **chưa
 > đồng bộ** — log cũ hơn con trỏ đồng bộ thì dùng đường USB.
+>
+> Trong *Lịch sử lệnh* (từ 1.119.1): lệnh `transaction` hiện **thành công** (mã 423 là mã
+> thành công của DATA QUERY trên dòng acc — dữ liệu về qua querydata), lệnh `DATA QUERY
+> ATTLOG` hiện **bỏ qua** (máy không hiểu cú pháp att, lệnh còn lại đã chạy). Trước 1.119.1
+> hai dòng này bị sơn đỏ "lỗi" dù hệ thống vẫn nhận đủ dữ liệu.
 
 > Không có đường API nào gửi **lệnh tự do** xuống máy, và đó là cố ý: hai mốc ngày đi qua bộ kiểm
 > `YYYY-MM-DD` rồi mới được ghép vào chuỗi lệnh. Một route "gửi lệnh bất kỳ" sẽ tiện hơn nhiều, và

@@ -29,6 +29,7 @@ interface Lenh {
   gui_luc: string | null;
   ma_tra_ve: number | null;
   bao_luc: string | null;
+  ket_qua: 'cho' | 'thanh_cong' | 'bo_qua' | 'loi';
 }
 
 export function TrangThietBi(): ReactNode {
@@ -428,11 +429,16 @@ function LichSuLenh({ thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () =>
                       : ngay_gio(l.gui_luc)}
                   </td>
                   <td>
-                    {l.ma_tra_ve === null
+                    {l.ket_qua === 'cho'
                       ? <span className="chu-mo">—</span>
-                      : l.ma_tra_ve === 0
+                      : l.ket_qua === 'thanh_cong'
                         ? <span className="nhan nhan-tot">thành công</span>
-                        : <span className="nhan nhan-xau">lỗi {l.ma_tra_ve}</span>}
+                        : l.ket_qua === 'bo_qua'
+                          ? <span className="nhan nhan-canh-bao"
+                              title="Máy không hiểu lệnh này — lệnh còn lại trong cặp đã chạy">
+                              bỏ qua
+                            </span>
+                          : <span className="nhan nhan-xau">lỗi {l.ma_tra_ve}</span>}
                   </td>
                 </tr>
               ))}
