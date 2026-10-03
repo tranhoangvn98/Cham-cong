@@ -46,6 +46,7 @@ interface NhapAI {
   la_qd_nghi_viec: boolean;
   ngay_nghi_viec: string | null;
   co_tep: boolean;
+  han_lay_y_kien: string | null;
   so_muc_gate: number;
 }
 
@@ -846,6 +847,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
  */
 export function TabVanBanBanHanh(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<NhapAI[]>('/api/thong-bao/ai');
+  const hd = dung_hanh_dong();
   const [xem, dat_xem] = useState<string | null>(null);
   const [lan, dat_lan] = useState(0);
   // Doc mot lan luc mount: nut o trang ho so dat muc tieu truoc khi dieu huong sang day.
@@ -853,6 +855,15 @@ export function TabVanBanBanHanh(): ReactNode {
 
   const ds = du_lieu ?? [];
   const co_dang_soan = ds.some((d) => d.trang_thai === 'dang_soan');
+  const so_dang_y_kien = ds.filter((d) => d.trang_thai === 'dang_lay_y_kien').length;
+
+  const mo_y_kien = (id: string) => async (): Promise<void> => {
+    const ok = await hd.chay(
+      () => goi(`/api/thong-bao/ai/${id}/lay-y-kien`, { method: 'POST' }),
+      'Đã mở lấy ý kiến trong 7 ngày. Email mời đã gửi tới những người trong phạm vi văn bản.',
+    );
+    if (ok) nap_lai();
+  };
 
   // Poll khi co ban nhap dang soan — worker xu ly mat vai giay.
   useEffect(() => {
@@ -870,6 +881,15 @@ export function TabVanBanBanHanh(): ReactNode {
 
   return (
     <div>
+      <div className="hop-thong-bao hop-luu-y" style={{ marginBottom: 12 }}>
+        <strong>Dự thảo lấy ý kiến:</strong> soạn văn bản rồi bấm <strong>Gửi lấy ý kiến</strong> —
+        người lao động góp ý trong <strong>7 ngày</strong> qua Hòm thư ý kiến (chọn mã văn bản).
+        Hết hạn, văn bản tự quay về Chờ duyệt để sửa đổi hoặc ban hành chính thức; ý kiến xem
+        ở trang Hòm thư ý kiến — lọc theo mã văn bản.
+        {so_dang_y_kien > 0 && ` Đang lấy ý kiến: ${so_dang_y_kien} văn bản.`}
+      </div>
+      <HopLoi loi={hd.loi} />
+      <HopTot chu={hd.tot} />
       <FormTao khi_xong={(id_moi) => { nap_lai(); if (id_moi !== null) dat_xem(id_moi); }} mac_dinh={mac_dinh} />
       {xem !== null && <ChiTiet id={xem} khi_dong={() => dat_xem(null)} khi_xong={nap_lai} />}
       {ds.length === 0
@@ -900,10 +920,23 @@ export function TabVanBanBanHanh(): ReactNode {
                     {d.la_qd_nghi_viec && d.ngay_nghi_viec !== null
                       ? ` · nghỉ ${d.ngay_nghi_viec}` : ''}
                   </td>
-                  <td>{NHAN_TRANG_THAI[d.trang_thai] ?? d.trang_thai}</td>
+                  <td className="khong-ngat">
+                    {NHAN_TRANG_THAI[d.trang_thai] ?? d.trang_thai}
+                    {d.trang_thai === 'dang_lay_y_kien' && d.han_lay_y_kien !== null && (
+                      <span className="mo-ma"> · hạn {ngay_gio(d.han_lay_y_kien)}</span>
+                    )}
+                  </td>
                   <td>{d.so_ky_hieu ?? '—'}</td>
                   <td>{ngay_gio(d.cap_nhat_luc)}</td>
-                  <td><button className="nut-nho nut-phang" onClick={() => dat_xem(d.id)}>Chi tiết</button></td>
+                  <td className="canh-phai">
+                    {d.trang_thai === 'cho_duyet' && (
+                      <button className="nut-nho" onClick={mo_y_kien(d.id)}
+                        disabled={hd.dang_chay}>
+                        Gửi lấy ý kiến
+                      </button>
+                    )}
+                    <button className="nut-nho nut-phang" onClick={() => dat_xem(d.id)}>Chi tiết</button>
+                  </td>
                 </tr>
               ))}
             </tbody>

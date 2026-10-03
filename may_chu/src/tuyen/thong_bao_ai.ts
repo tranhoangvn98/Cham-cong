@@ -141,6 +141,7 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
       `select n.id, n.ma, n.loai, n.pham_vi, n.quan_he, n.muc_dich, n.muc_do, n.che_do,
               n.trang_thai, n.so_lan_thu, n.so_ky_hieu, n.thong_bao_id,
               n.la_qd_nghi_viec, n.ngay_nghi_viec::text as ngay_nghi_viec,
+              n.lay_y_kien_luc, n.han_lay_y_kien,
               n.tao_luc, n.cap_nhat_luc,
               nv.ho_ten as nhan_vien, pb.ten as phong_ban,
               (n.ten_luu_docx is not null) as co_tep,
