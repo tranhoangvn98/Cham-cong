@@ -14,6 +14,7 @@ import {
 import { goi, tai_tep, tai_tep_blob, gui_tep } from '../api.ts';
 import { Chon } from '../chon.tsx';
 import { lay_qd_nghi_viec } from '../dieu_huong_sau.ts';
+import { dung_chuoi, tra_hien_tai, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
 
 type KieuVanBan = 'thong_bao' | 'quyet_dinh' | 'cong_van';
 type PhamVi = 'ca_nhan' | 'phong_ban' | 'toan_cong_ty';
@@ -87,21 +88,26 @@ interface ChiTietNhap extends NhapAI {
   gui_email_loi: string | null;
 }
 
-const NHAN_TRANG_THAI: Record<string, string> = {
-  dang_soan: 'Đang soạn', cho_duyet: 'Chờ duyệt', cho_ky: 'Chờ ký', loi: 'Lỗi',
-  dang_lay_y_kien: 'Đang lấy ý kiến', da_phat_hanh: 'Đã phát hành', huy: 'Đã hủy',
+const KHOA_TRANG_THAI: Record<string, ChuoiKhoa> = {
+  dang_soan: 'vai_dang_soan', cho_duyet: 'vai_cho_duyet', cho_ky: 'vai_cho_ky', loi: 'vai_loi',
+  dang_lay_y_kien: 'vai_dang_lay_y_kien', da_phat_hanh: 'vai_da_phat_hanh', huy: 'vai_da_huy',
 };
 
-export { NHAN_TRANG_THAI as NHAN_TRANG_THAI_VB };
-const NHAN_LOAI: Record<KieuVanBan, string> = {
-  thong_bao: 'Thông báo', quyet_dinh: 'Quyết định', cong_van: 'Công văn',
+/** Nhan trang thai van ban theo ngon ngu hien tai. */
+export function nhan_trang_thai_vb(ma: string): string {
+  const k = KHOA_TRANG_THAI[ma];
+  return k !== undefined ? tra_hien_tai(k) : ma;
+}
+
+const KHOA_LOAI: Record<KieuVanBan, ChuoiKhoa> = {
+  thong_bao: 'vai_loai_thong_bao', quyet_dinh: 'vai_loai_quyet_dinh', cong_van: 'vai_loai_cong_van',
 };
-const NHAN_PHAM_VI: Record<PhamVi, string> = {
-  ca_nhan: 'Cá nhân', phong_ban: 'Phòng ban', toan_cong_ty: 'Toàn công ty',
+const KHOA_PHAM_VI: Record<PhamVi, ChuoiKhoa> = {
+  ca_nhan: 'vb_ca_nhan', phong_ban: 'vb_phong_ban', toan_cong_ty: 'vb_toan_cong_ty',
 };
-const NHAN_MUC_DICH: Record<string, string> = {
-  nhac_nho: 'Nhắc nhở', yeu_cau: 'Yêu cầu', pho_bien: 'Phổ biến', moi_hop: 'Mời họp',
-  phoi_hop: 'Đề nghị phối hợp',
+const KHOA_MUC_DICH: Record<string, ChuoiKhoa> = {
+  nhac_nho: 'vai_md_nhac_nho', yeu_cau: 'vai_md_yeu_cau', pho_bien: 'vai_md_pho_bien',
+  moi_hop: 'vai_md_moi_hop', phoi_hop: 'vai_md_phoi_hop',
 };
 
 /** So ngay con lai tu bay gio den han lay y kien (lam tron len, toi thieu 0). */
@@ -140,6 +146,7 @@ function FormTao(
   const tep_ref = useRef<HTMLInputElement | null>(null);
   const hd = dung_hanh_dong();
   const [loi_vao, dat_loi_vao] = useState<string | null>(null);
+  const { tra } = dung_chuoi();
   const nv = dung_nap<NhanVienGon[]>(mo ? '/api/nhan-vien' : null, []);
   const pb = dung_nap<PhongBanGon[]>(mo ? '/api/phong-ban' : null, []);
 
@@ -158,15 +165,15 @@ function FormTao(
 
   const gui = async (): Promise<void> => {
     if (pham_vi === 'ca_nhan' && nhan_vien_id === '') {
-      dat_loi_vao('Phạm vi cá nhân phải chọn nhân viên nhận.');
+      dat_loi_vao(tra('vai_loi_chon_nhan_vien'));
       return;
     }
     if (pham_vi === 'phong_ban' && phong_ban_id === '') {
-      dat_loi_vao('Phạm vi phòng ban phải chọn phòng ban.');
+      dat_loi_vao(tra('vai_loi_chon_phong_ban'));
       return;
     }
     if (la_qd && ngay_nghi === '') {
-      dat_loi_vao('Quyết định nghỉ việc phải có ngày nghỉ việc.');
+      dat_loi_vao(tra('vai_loi_ngay_nghi_viec'));
       return;
     }
     dat_loi_vao(null);
@@ -189,7 +196,7 @@ function FormTao(
     }
     const kq = await hd.chay_lay<NhapAI>(
       () => goi<NhapAI>('/api/thong-bao/ai/nhap', { method: 'POST', body: than }),
-      'Đã tạo bản nháp. Hệ thống đang soạn văn bản…',
+      tra('vai_da_tao_ban_nhap'),
     );
     if (kq !== null) {
       // Tep dinh kem (neu co): tai len tung tep, loi thi giu modal mo de nguoi dung biet.
@@ -203,7 +210,7 @@ function FormTao(
               await gui_tep(`/api/thong-bao/ai/${kq.id}/tep-kem`, fd);
             }
           },
-          'Đã tạo bản nháp và tải tệp đính kèm lên.',
+          tra('vai_da_tao_va_tai_tep'),
         );
         if (!ok_tep) return;
       }
@@ -217,7 +224,7 @@ function FormTao(
   if (!mo) {
     return (
       <div className="tb-dang-thanh">
-        <button onClick={() => dat_mo(true)}>+ Soạn văn bản bằng AI</button>
+        <button onClick={() => dat_mo(true)}>{tra('vai_soan_bang_ai')}</button>
       </div>
     );
   }
@@ -227,80 +234,80 @@ function FormTao(
     : trich_yeu.trim().length >= 3 && noi_dung.trim().length >= 3;
 
   return (
-    <HopThoai tieu_de="Soạn văn bản mới" khi_dong={() => dat_mo(false)} rong>
+    <HopThoai tieu_de={tra('vai_soan_van_ban_moi')} khi_dong={() => dat_mo(false)} rong>
       <HopLoi loi={loi_vao ?? hd.loi} />
       <HopTot chu={hd.tot} />
       <div className="soan-nhom">
-        <div className="soan-tieu-de">Thông tin cơ bản</div>
+        <div className="soan-tieu-de">{tra('vai_thong_tin_co_ban')}</div>
         <div className="soan-hang soan-hang-4">
-          <label className="truong"><span>Loại văn bản</span>
+          <label className="truong"><span>{tra('vai_loai_van_ban')}</span>
             <Chon gia_tri={loai} dat_gia_tri={(ma) => dat_lo(ma, dat_loai)}
               cac_tuy_chon={[
-                { ma: 'thong_bao', nhan: 'Thông báo' },
-                { ma: 'quyet_dinh', nhan: 'Quyết định' },
-                { ma: 'cong_van', nhan: 'Công văn' },
+                { ma: 'thong_bao', nhan: tra('vai_loai_thong_bao') },
+                { ma: 'quyet_dinh', nhan: tra('vai_loai_quyet_dinh') },
+                { ma: 'cong_van', nhan: tra('vai_loai_cong_van') },
               ]}
-              nhan="Loại văn bản" />
+              nhan={tra('vai_loai_van_ban')} />
           </label>
-          <label className="truong"><span>Phạm vi nhận</span>
+          <label className="truong"><span>{tra('vai_pham_vi_nhan')}</span>
             <Chon gia_tri={pham_vi} dat_gia_tri={(ma) => dat_pham_vi(ma as PhamVi)}
               cac_tuy_chon={[
-                { ma: 'toan_cong_ty', nhan: 'Toàn công ty' },
-                { ma: 'phong_ban', nhan: 'Phòng ban' },
-                { ma: 'ca_nhan', nhan: 'Cá nhân' },
+                { ma: 'toan_cong_ty', nhan: tra('vb_toan_cong_ty') },
+                { ma: 'phong_ban', nhan: tra('vb_phong_ban') },
+                { ma: 'ca_nhan', nhan: tra('vb_ca_nhan') },
               ]}
-              nhan="Phạm vi nhận" />
+              nhan={tra('vai_pham_vi_nhan')} />
           </label>
-          <label className="truong"><span>Quan hệ</span>
+          <label className="truong"><span>{tra('vai_quan_he')}</span>
             <Chon gia_tri={quan_he}
               dat_gia_tri={(ma) => dat_quan_he(ma as 'noi_bo' | 'doi_ngoai')}
               cac_tuy_chon={[
-                { ma: 'noi_bo', nhan: 'Nội bộ' },
-                { ma: 'doi_ngoai', nhan: 'Đối ngoại' },
+                { ma: 'noi_bo', nhan: tra('vai_noi_bo') },
+                { ma: 'doi_ngoai', nhan: tra('vai_doi_ngoai') },
               ]}
-              nhan="Quan hệ văn bản" />
+              nhan={tra('vai_quan_he_van_ban')} />
           </label>
-          <label className="truong"><span>Mục đích</span>
+          <label className="truong"><span>{tra('vai_muc_dich')}</span>
             <Chon gia_tri={muc_dich} dat_gia_tri={dat_muc_dich}
-              cac_tuy_chon={Object.entries(NHAN_MUC_DICH).map(([m, ten]) => ({
-                ma: m, nhan: ten,
+              cac_tuy_chon={Object.entries(KHOA_MUC_DICH).map(([m, khoa]) => ({
+                ma: m, nhan: tra_hien_tai(khoa),
               }))}
-              nhan="Mục đích văn bản" />
+              nhan={tra('vai_muc_dich_van_ban')} />
           </label>
         </div>
       </div>
       {(pham_vi === 'phong_ban' || pham_vi === 'ca_nhan') && (
         <div className="soan-nhom">
-          <div className="soan-tieu-de">Người nhận</div>
+          <div className="soan-tieu-de">{tra('vai_nguoi_nhan')}</div>
           {pham_vi === 'phong_ban' && (
-            <label className="truong"><span>Phòng ban nhận</span>
+            <label className="truong"><span>{tra('vai_phong_ban_nhan')}</span>
               <Chon gia_tri={phong_ban_id} dat_gia_tri={dat_phong_ban_id}
                 cac_tuy_chon={(pb.du_lieu ?? []).map((p) => ({ ma: p.id, nhan: p.ten }))}
-                rong="— Chọn phòng ban —" nhan="Phòng ban nhận" />
+                rong={tra('vai_chon_phong_ban_x')} nhan={tra('vai_phong_ban_nhan')} />
             </label>
           )}
           {pham_vi === 'ca_nhan' && (
-            <label className="truong"><span>Nhân viên nhận</span>
+            <label className="truong"><span>{tra('vai_nhan_vien_nhan')}</span>
               <Chon gia_tri={nhan_vien_id} dat_gia_tri={dat_nhan_vien_id}
                 cac_tuy_chon={(nv.du_lieu ?? []).map((n) => ({
                   ma: n.id, nhan: `${n.ho_ten}${n.phong_ban !== null ? ` — ${n.phong_ban}` : ''}`,
                 }))}
-                rong="— Chọn nhân viên —" nhan="Nhân viên nhận" />
+                rong={tra('vai_chon_nhan_vien_x')} nhan={tra('vai_nhan_vien_nhan')} />
             </label>
           )}
         </div>
       )}
       {loai === 'quyet_dinh' && pham_vi === 'ca_nhan' && (
         <div className="soan-nhom">
-          <div className="soan-tieu-de">Quyết định nghỉ việc</div>
+          <div className="soan-tieu-de">{tra('vai_qd_nghi_viec')}</div>
           <div className="soan-hang soan-hang-2">
             <label className="truong-hang">
               <input type="checkbox" checked={la_qd}
                 onChange={(e) => { dat_la_qd(e.target.checked); if (!e.target.checked) dat_ngay_nghi(''); }} />
-              <span>Đây là quyết định nghỉ việc</span>
+              <span>{tra('vai_la_qd_nghi_viec')}</span>
             </label>
             {la_qd && (
-              <label className="truong"><span>Ngày nghỉ việc (tài khoản tự khóa sau ngày này)</span>
+              <label className="truong"><span>{tra('vai_ngay_nghi_viec')}</span>
                 <input type="date" value={ngay_nghi} onChange={(e) => dat_ngay_nghi(e.target.value)} />
               </label>
             )}
@@ -308,81 +315,81 @@ function FormTao(
         </div>
       )}
       <div className="soan-nhom">
-        <div className="soan-tieu-de">Chế độ soạn</div>
+        <div className="soan-tieu-de">{tra('vai_che_do_soan')}</div>
         <div className="soan-hang soan-hang-4">
-          <label className="truong"><span>Chế độ</span>
+          <label className="truong"><span>{tra('vai_che_do')}</span>
             <Chon gia_tri={che_do}
               dat_gia_tri={(ma) => dat_che_do(ma as 'ai' | 'tu_soan')}
               cac_tuy_chon={[
-                { ma: 'ai', nhan: 'AI soạn (nhập ý vắn tắt)' },
-                { ma: 'tu_soan', nhan: 'Tự soạn (không dùng AI)' },
+                { ma: 'ai', nhan: tra('vai_ai_soan') },
+                { ma: 'tu_soan', nhan: tra('vai_tu_soan') },
               ]}
-              nhan="Chế độ soạn" />
+              nhan={tra('vai_che_do_soan')} />
           </label>
-          <label className="truong"><span>Mức độ</span>
+          <label className="truong"><span>{tra('tb_muc_do')}</span>
             <Chon gia_tri={muc_do}
               dat_gia_tri={(ma) => dat_muc_do(ma as typeof muc_do)}
               cac_tuy_chon={[
-                { ma: 'thuong', nhan: 'Thường' },
-                { ma: 'quan_trong', nhan: 'Quan trọng' },
-                { ma: 'khan', nhan: 'Khẩn' },
+                { ma: 'thuong', nhan: tra('tb_thuong') },
+                { ma: 'quan_trong', nhan: tra('tb_quan_trong') },
+                { ma: 'khan', nhan: tra('tb_khan') },
               ]}
-              nhan="Mức độ" />
+              nhan={tra('tb_muc_do')} />
           </label>
           <label className="truong-hang">
             <input type="checkbox" checked={can_gt} onChange={(e) => dat_can_gt(e.target.checked)} />
-            <span>Bắt buộc giải trình</span>
+            <span>{tra('tb_bat_buoc_giai_trinh')}</span>
           </label>
-          <label className="truong"><span>Hiệu lực đến (bỏ trống = không)</span>
+          <label className="truong"><span>{tra('vai_hieu_luc_den')}</span>
             <input type="date" value={het_han} onChange={(e) => dat_het_han(e.target.value)} />
           </label>
         </div>
       </div>
       <div className="soan-nhom">
-        <div className="soan-tieu-de">Nội dung</div>
+        <div className="soan-tieu-de">{tra('tb_noi_dung')}</div>
         {che_do === 'ai' ? (
-          <label className="truong"><span>Nội dung thô (gạch đầu dòng cũng được)</span>
+          <label className="truong"><span>{tra('vai_noi_dung_tho')}</span>
             <textarea rows={5} value={tho} onChange={(e) => dat_tho(e.target.value)}
-              placeholder={'Ví dụ: Nghỉ lễ 2/9, đi làm bù sáng thứ 7\nĐổi phần mềm chấm công, ra vào phải quét vân tay…'} />
+              placeholder={tra('vai_noi_dung_tho_phu')} />
           </label>
         ) : (
           <>
-            <label className="truong"><span>Trích yếu (công văn bắt đầu "V/v", thông báo/quyết định "Về việc")</span>
+            <label className="truong"><span>{tra('vai_trich_yeu')}</span>
               <input value={trich_yeu} onChange={(e) => dat_trich_yeu(e.target.value)} /></label>
             {loai === 'cong_van' && (
-              <label className="truong"><span>Kính gửi (nhiều nơi cách nhau dấu phẩy)</span>
+              <label className="truong"><span>{tra('vai_kinh_gui')}</span>
                 <input value={kinh_gui} onChange={(e) => dat_kinh_gui(e.target.value)} /></label>
             )}
             {loai === 'quyet_dinh' && (
               <>
-                <label className="truong"><span>Căn cứ (mỗi dòng một căn cứ)</span>
+                <label className="truong"><span>{tra('vai_can_cu')}</span>
                   <textarea rows={2} value={can_cu} onChange={(e) => dat_can_cu(e.target.value)} /></label>
-                <label className="truong"><span>Nội dung các Điều (mỗi dòng một Điều)</span>
+                <label className="truong"><span>{tra('vai_cac_dieu')}</span>
                   <textarea rows={4} value={dieu} onChange={(e) => dat_dieu(e.target.value)} /></label>
               </>
             )}
-            <label className="truong"><span>Nội dung (mỗi đoạn cách nhau một dòng trống)</span>
+            <label className="truong"><span>{tra('vai_noi_dung')}</span>
               <textarea rows={5} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
           </>
         )}
-        <label className="truong"><span>Tệp đính kèm (tùy chọn — gửi kèm email khi ban hành)</span>
+        <label className="truong"><span>{tra('vai_tep_kem')}</span>
           <input type="file" multiple ref={tep_ref}
             accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" />
         </label>
-        <div className="mo-ta" style={{ marginTop: -4 }}>Tối đa 10 tệp (PDF/JPG/PNG/DOCX/XLSX).</div>
+        <div className="mo-ta" style={{ marginTop: -4 }}>{tra('vai_toi_da_10_tep')}</div>
       </div>
       <div className="hang-nut">
         <button onClick={() => { void gui(); }} disabled={hd.dang_chay || !can_gui}>
-          {hd.dang_chay ? 'Đang gửi…' : 'Tạo bản nháp'}
+          {hd.dang_chay ? tra('tb_dang_gui') : tra('vai_tao_ban_nhap')}
         </button>
         {!can_gui && !hd.dang_chay && (
           <span className="mo-ta">
             {che_do === 'ai'
-              ? 'Nội dung thô cần ít nhất 3 ký tự mới tạo được bản nháp.'
-              : 'Trích yếu và nội dung mỗi ô cần ít nhất 3 ký tự.'}
+              ? tra('vai_loi_ngan_ai')
+              : tra('vai_loi_ngan_tu_soan')}
           </span>
         )}
-        <button className="nut-phang" onClick={() => dat_mo(false)}>Hủy</button>
+        <button className="nut-phang" onClick={() => dat_mo(false)}>{tra('cn_huy')}</button>
       </div>
     </HopThoai>
   );
@@ -517,20 +524,21 @@ function XemTruocVanBan({ s }: { s: SpecVanBan }): ReactNode {
 }
 
 function KetQuaGateBang({ kq }: { kq: KetQuaGate[] }): ReactNode {
-  if (kq.length === 0) return <span className="mo-ta">Chưa có kết quả gate.</span>;
+  const { tra } = dung_chuoi();
+  if (kq.length === 0) return <span className="mo-ta">{tra('vai_chua_co_ket_qua_gate')}</span>;
   const loi = kq.filter((k) => !k.dat);
   return (
     <div>
       {loi.length === 0
-        ? <div className="hop-thong-bao hop-tot">Mọi cổng kiểm tra đạt (✓).</div>
+        ? <div className="hop-thong-bao hop-tot">{tra('vai_moi_cong_dat')}</div>
         : (
           <table className="bang-gon">
-            <thead><tr><th>Mã</th><th>Kết quả</th><th>Lý do</th></tr></thead>
+            <thead><tr><th>{tra('vai_ma')}</th><th>{tra('vai_ket_qua')}</th><th>{tra('vai_ly_do')}</th></tr></thead>
             <tbody>
               {loi.map((k) => (
                 <tr key={k.ma_check}>
                   <td>{k.ma_check}</td>
-                  <td>{k.loai_loi === 'llm' ? 'Lỗi AI' : 'Lỗi code'}</td>
+                  <td>{k.loai_loi === 'llm' ? tra('vai_loi_ai') : tra('vai_loi_code')}</td>
                   <td>{k.ly_do}</td>
                 </tr>
               ))}
@@ -544,6 +552,7 @@ function KetQuaGateBang({ kq }: { kq: KetQuaGate[] }): ReactNode {
 export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () => void; khi_xong: () => void }): ReactNode {
   const { du_lieu: d, dang_tai, loi, nap_lai } = dung_nap<ChiTietNhap>(`/api/thong-bao/ai/${id}`, [id]);
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const [dang_sua, dat_dang_sua] = useState(false);
   const [xem_truoc, dat_xem_truoc] = useState(false);
   const [xem_docx, dat_xem_docx] = useState(false);
@@ -569,7 +578,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
           await gui_tep(`/api/thong-bao/ai/${d.id}/tep-kem`, fd);
         }
       },
-      'Đã đính kèm tệp.',
+      tra('vai_da_dinh_kem_tep'),
     );
     if (ok) {
       if (o_tep.current !== null) o_tep.current.value = '';
@@ -581,7 +590,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
     if (d === null) return;
     const ok = await hd.chay(
       () => goi(`/api/thong-bao/ai/${d.id}/tep-kem/${tep_id}`, { method: 'DELETE' }),
-      'Đã xóa tệp đính kèm.',
+      tra('vai_da_xoa_tep'),
     );
     if (ok) nap_lai();
   };
@@ -644,7 +653,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
         }
       }
     } catch (loi) {
-      dat_loi_docx(loi instanceof Error ? loi.message : 'Không mở được tệp DOCX.');
+      dat_loi_docx(loi instanceof Error ? loi.message : tra('vai_khong_mo_docx'));
       dat_xem_docx(false);
     } finally {
       dat_dang_docx(false);
@@ -663,13 +672,13 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
     if (d === null || d.thong_bao_id === null) return;
     const ok = await hd.chay(
       () => goi(`/api/thong-bao/${d.thong_bao_id}/gui-email`, { method: 'POST' }),
-      'Đã gửi email.',
+      tra('tb_da_gui_email_ok'),
     );
     if (ok) { nap_lai(); khi_xong(); }
   };
 
   if (dang_tai) return <DangTai />;
-  if (loi !== null || d === null) return <HopLoi loi={loi ?? 'Không tải được chi tiết.'} />;
+  if (loi !== null || d === null) return <HopLoi loi={loi ?? tra('vai_khong_tai_chi_tiet')} />;
 
   const luu_sua = async (): Promise<void> => {
     const ok = await hd.chay(
@@ -683,7 +692,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
           noi_dung: t_noi_dung.split(/\n\s*\n/).map((s) => s.trim()).filter((s) => s !== ''),
         },
       }),
-      'Đã lưu sửa đổi. Hệ thống đang dựng lại văn bản…',
+      tra('vai_da_luu_sua'),
     );
     if (ok) { dat_dang_sua(false); nap_lai(); khi_xong(); }
   };
@@ -698,24 +707,24 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
     <>
       <div className="tb-dang-hang">
         <span className={`nhan-muc ${d.trang_thai === 'loi' ? 'nhan-muc-khan' : ''}`}>
-          {NHAN_TRANG_THAI[d.trang_thai] ?? d.trang_thai}
+          {nhan_trang_thai_vb(d.trang_thai)}
         </span>
-        <span className="mo-ta">Tạo {ngay_gio(d.tao_luc)}</span>
-        <span className="mo-ta">{d.che_do === 'ai' ? 'AI soạn' : 'Tự soạn'}</span>
+        <span className="mo-ta">{tra('vai_tao_luc', { n: ngay_gio(d.tao_luc) })}</span>
+        <span className="mo-ta">{d.che_do === 'ai' ? tra('vai_ai_soan_ngan') : tra('vai_tu_soan_ngan')}</span>
         <span className="mo-ta">{d.che_do === 'ai'
-          ? `Số lần gọi lại AI: ${d.so_lan_thu}`
+          ? tra('vai_so_lan_goi_ai', { n: d.so_lan_thu })
           : ''}</span>
-        {d.so_ky_hieu !== null && <span className="nhan-muc">Số: {d.so_ky_hieu}</span>}
+        {d.so_ky_hieu !== null && <span className="nhan-muc">{tra('vai_so_x', { n: d.so_ky_hieu })}</span>}
         {d.la_qd_nghi_viec && (
           <span className="nhan-muc nhan-muc-khan">
-            Quyết định nghỉ việc{d.ngay_nghi_viec !== null ? ` — nghỉ ${d.ngay_nghi_viec}` : ''}
+            {tra('vai_qd_nghi_viec')}{d.ngay_nghi_viec !== null ? tra('vai_nghi_x', { n: d.ngay_nghi_viec }) : ''}
           </span>
         )}
         {d.la_qd_nghi_viec && d.trang_thai === 'da_phat_hanh' && (
           <span className="mo-ta">
             {d.nghi_viec_da_chay_luc !== null
-              ? `Đã tự khóa tài khoản lúc ${ngay_gio(d.nghi_viec_da_chay_luc)}`
-              : 'Tài khoản sẽ tự khóa sau ngày nghỉ việc.'}
+              ? tra('vai_da_tu_khoa_x', { n: ngay_gio(d.nghi_viec_da_chay_luc) })
+              : tra('vai_se_tu_khoa')}
           </span>
         )}
       </div>
@@ -733,28 +742,28 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
       {d.spec_json !== null && (
         <div className="hang-nut" style={{ marginTop: 12, flexWrap: 'wrap' }}>
           <button className="nut-phang" onClick={mo_xem_truoc}>
-            {xem_truoc ? 'Ẩn xem trước' : 'Xem trước văn bản'}
+            {xem_truoc ? tra('vai_an_xem_truoc') : tra('vai_xem_truoc')}
           </button>
           {d.co_tep && (
             <button className="nut-phang"
               onClick={() => { void mo_docx(); }}
               disabled={dang_docx}>
-              {dang_docx ? 'Đang mở…' : xem_docx ? 'Đóng DOCX online' : 'Xem DOCX online'}
+              {dang_docx ? tra('vai_dang_mo') : xem_docx ? tra('vai_dong_docx') : tra('vai_xem_docx')}
             </button>
           )}
           {d.co_tep && (
             <button className="nut-phang"
               onClick={() => { void tai_tep(`/api/thong-bao/ai/${d.id}/xem`, `${d.ma}_${d.so_ky_hieu === null ? 'du_thao' : d.so_ky_hieu.replace('/', '-')}.docx`); }}>
-              Tải văn bản (DOCX)
+              {tra('tb_tai_van_ban')}
             </button>
           )}
         </div>
       )}
 
       <div className="the" style={{ marginTop: 12 }}>
-        <div className="canhan-muc-dau"><h3>Tệp đính kèm ({d.tep_kem.length})</h3></div>
+        <div className="canhan-muc-dau"><h3>{tra('vai_tep_kem_x', { n: d.tep_kem.length })}</h3></div>
         {d.tep_kem.length === 0 ? (
-          <p className="mo-ta">Chưa có tệp đính kèm. Tệp đính kèm sẽ được gửi cùng email khi ban hành.</p>
+          <p className="mo-ta">{tra('vai_chua_co_tep')}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {d.tep_kem.map((t) => (
@@ -766,7 +775,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
                 <span className="mo-ta">{Math.max(1, Math.round(t.kich_thuoc / 1024))} KB</span>
                 {!['da_phat_hanh', 'huy'].includes(d.trang_thai) && (
                   <button className="nut-phang nut-nho" disabled={hd.dang_chay}
-                    onClick={() => { void xoa_tep(t.id); }}>Xóa</button>
+                    onClick={() => { void xoa_tep(t.id); }}>{tra('tl_xoa')}</button>
                 )}
               </div>
             ))}
@@ -776,7 +785,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
           <div className="hang-nut" style={{ marginTop: 8 }}>
             <input type="file" ref={o_tep} accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" />
             <button className="nut-phang" disabled={hd.dang_chay} onClick={() => { void them_tep(); }}>
-              {hd.dang_chay ? 'Đang tải…' : 'Đính kèm tệp'}
+              {hd.dang_chay ? tra('vai_dang_tai') : tra('vai_dinh_kem_tep')}
             </button>
           </div>
         )}
@@ -784,94 +793,90 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
 
       {dang_sua && d.spec_json !== null ? (
         <div className="the" style={{ marginTop: 12 }}>
-          <div className="canhan-muc-dau"><h3>Sửa văn xuôi</h3></div>
-          <label className="truong"><span>Trích yếu</span>
+          <div className="canhan-muc-dau"><h3>{tra('vai_sua_van_xuoi')}</h3></div>
+          <label className="truong"><span>{tra('vai_trich_yeu_ngan')}</span>
             <input value={t_yeu} onChange={(e) => dat_t_yeu(e.target.value)} /></label>
           {d.loai === 'cong_van' && (
-            <label className="truong"><span>Kính gửi</span>
+            <label className="truong"><span>{tra('vai_kinh_gui_ngan')}</span>
               <input value={t_kinh} onChange={(e) => dat_t_kinh(e.target.value)} /></label>
           )}
           {d.loai === 'quyet_dinh' && (
             <>
-              <label className="truong"><span>Căn cứ</span>
+              <label className="truong"><span>{tra('vai_can_cu_ngan')}</span>
                 <textarea rows={2} value={t_can_cu} onChange={(e) => dat_t_can_cu(e.target.value)} /></label>
-              <label className="truong"><span>Các Điều</span>
+              <label className="truong"><span>{tra('vai_cac_dieu_ngan')}</span>
                 <textarea rows={4} value={t_dieu} onChange={(e) => dat_t_dieu(e.target.value)} /></label>
             </>
           )}
-          <label className="truong"><span>Nội dung</span>
+          <label className="truong"><span>{tra('tb_noi_dung')}</span>
             <textarea rows={6} value={t_noi_dung} onChange={(e) => dat_t_noi_dung(e.target.value)} /></label>
           <div className="hang-nut">
             <button onClick={() => { void luu_sua(); }} disabled={hd.dang_chay}>
-              {hd.dang_chay ? 'Đang lưu…' : 'Lưu & dựng lại'}
+              {hd.dang_chay ? tra('tb_dang_luu') : tra('vai_luu_dung_lai')}
             </button>
-            <button className="nut-phang" onClick={() => dat_dang_sua(false)}>Hủy</button>
+            <button className="nut-phang" onClick={() => dat_dang_sua(false)}>{tra('cn_huy')}</button>
           </div>
         </div>
       ) : (
         <div className="hang-nut" style={{ marginTop: 12, flexWrap: 'wrap' }}>
           {['cho_duyet', 'cho_ky'].includes(d.trang_thai) && (
-            <button className="nut-phang" onClick={() => dat_dang_sua(true)}>Sửa văn xuôi</button>
+            <button className="nut-phang" onClick={() => dat_dang_sua(true)}>{tra('vai_sua_van_xuoi')}</button>
           )}
           {['cho_duyet', 'cho_ky', 'loi'].includes(d.trang_thai) && (
-            <button className="nut-phang" onClick={chay(`/api/thong-bao/ai/${d.id}/viet-lai`, 'Đã yêu cầu AI viết lại.')}>
-              Viết lại bằng AI
+            <button className="nut-phang" onClick={chay(`/api/thong-bao/ai/${d.id}/viet-lai`, tra('vai_da_yeu_cau_viet_lai'))}>
+              {tra('vai_viet_lai_ai')}
             </button>
           )}
           {d.trang_thai === 'cho_duyet' && (
             <button className="nut-phang"
-              onClick={chay(`/api/thong-bao/ai/${d.id}/lay-y-kien`,
-                'Đã mở lấy ý kiến trong 7 ngày. Email mời đã gửi tới những người trong phạm vi văn bản.')}>
-              Gửi lấy ý kiến
+              onClick={chay(`/api/thong-bao/ai/${d.id}/lay-y-kien`, tra('vai_da_mo_lay_y_kien'))}>
+              {tra('vai_gui_lay_y_kien')}
             </button>
           )}
           {d.trang_thai === 'dang_lay_y_kien' && (
             <>
               <span className="mo-ta">
-                Đang lấy ý kiến{d.lay_y_kien_luc !== null ? ` từ ${ngay_gio(d.lay_y_kien_luc)}` : ''}.
+                {tra('vai_dang_lay_y_kien')}{d.lay_y_kien_luc !== null ? tra('vai_tu_x', { n: ngay_gio(d.lay_y_kien_luc) }) : ''}.
                 {d.han_lay_y_kien !== null && (
-                  <> Hạn góp ý: {ngay_gio(d.han_lay_y_kien)} (còn {con_ngay(d.han_lay_y_kien)} ngày).</>
+                  <>{tra('vai_han_gop_y', { n: ngay_gio(d.han_lay_y_kien), m: con_ngay(d.han_lay_y_kien) })}</>
                 )}
-                Ý kiến gửi về nằm trong trang Hòm thư ý kiến. Hết hạn, văn bản tự quay về Chờ duyệt
-                để sửa đổi hoặc ban hành chính thức.
+                {' '}{tra('vai_y_kien_ve_ho_thu')}
               </span>
-              <button onClick={chay(`/api/thong-bao/ai/${d.id}/ket-thuc-y-kien`,
-                'Đã kết thúc lấy ý kiến. Văn bản quay về trạng thái chờ duyệt.')}>
-                Kết thúc lấy ý kiến
+              <button onClick={chay(`/api/thong-bao/ai/${d.id}/ket-thuc-y-kien`, tra('vai_da_ket_thuc_y_kien'))}>
+                {tra('vai_ket_thuc_y_kien')}
               </button>
             </>
           )}
           {d.trang_thai === 'cho_duyet' && d.can_hai_cap && (
-            <button onClick={chay(`/api/thong-bao/ai/${d.id}/trinh-ky`, 'Đã trình ký.')}>Trình ký</button>
+            <button onClick={chay(`/api/thong-bao/ai/${d.id}/trinh-ky`, tra('vai_da_trinh_ky'))}>{tra('vai_trinh_ky')}</button>
           )}
           {(d.trang_thai === 'cho_duyet' && !d.can_hai_cap) || d.trang_thai === 'cho_ky' ? (
             <button onClick={chay(`/api/thong-bao/ai/${d.id}/phat-hanh`,
               d.la_qd_nghi_viec
-                ? 'Đã ban hành. Quyết định đã lưu vào hồ sơ nhân viên; đến ngày nghỉ việc '
-                  + 'tài khoản sẽ tự động bị khóa.'
-                : 'Đã ban hành. Nhân viên đã nhận thông báo.')}>
-              Ban hành (cấp số)
+                ? tra('vai_da_ban_hanh_qd')
+                : tra('vai_da_ban_hanh'))}>
+              {tra('vai_ban_hanh_cap_so')}
             </button>
           ) : null}
           {d.trang_thai !== 'da_phat_hanh' && d.trang_thai !== 'huy' && (
-            <button className="nut-phang" onClick={chay(`/api/thong-bao/ai/${d.id}/huy`, 'Đã hủy bản nháp.')}>Hủy</button>
+            <button className="nut-phang" onClick={chay(`/api/thong-bao/ai/${d.id}/huy`, tra('vai_da_huy_nhap'))}>{tra('cn_huy')}</button>
           )}
           {d.trang_thai === 'da_phat_hanh' && (
-            <span className="mo-ta">Đã ban hành {d.so_ky_hieu !== null ? `với số ${d.so_ky_hieu}` : ''}.</span>
+            <span className="mo-ta">{tra('vai_da_phat_hanh')}{d.so_ky_hieu !== null ? ` ${tra('vai_voi_so_x', { n: d.so_ky_hieu })}` : ''}.</span>
           )}
           {d.trang_thai === 'da_phat_hanh' && d.thong_bao_id !== null && (
             d.da_gui_email ? (
               <span className="mo-ta">
-                ✉ Đã gửi email{d.gui_email_luc !== null ? ` · ${ngay_gio(d.gui_email_luc)}` : ''}
+                {tra('tb_da_gui_email')}{d.gui_email_luc !== null ? ` · ${ngay_gio(d.gui_email_luc)}` : ''}
               </span>
             ) : (
               <div className="hang-nut" style={{ marginTop: 8 }}>
                 <button className="nut-phang"
                   onClick={() => { void gui_lai_email(); }} disabled={hd.dang_chay}>
-                  {hd.dang_chay ? 'Đang gửi…' : 'Gửi lại email'}
+                  {hd.dang_chay ? tra('tb_dang_gui') : tra('vai_gui_lai_email')}
                 </button>
                 {d.gui_email_loi !== null && (
-                  <span className="mo-ta">Chưa gửi được: {d.gui_email_loi}</span>
+                  <span className="mo-ta">{tra('tb_chua_gui_duoc', { n: d.gui_email_loi })}</span>
                 )}
               </div>
             )
@@ -880,8 +885,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
       )}
       {d.che_do === 'ai' && d.trang_thai === 'loi' && d.spec_json === null && (
         <div className="hop-thong-bao hop-luu-y" style={{ marginTop: 12 }}>
-          AI không soạn được. Hãy bấm "Viết lại bằng AI" để thử lại; nếu vẫn lỗi, hãy tạo bản
-          nháp mới ở chế độ "Tự soạn" và nhập văn xuôi trực tiếp.
+          {tra('vai_ai_khong_soan_duoc')}
         </div>
       )}
     </>
@@ -905,7 +909,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
   // Popup THU GON khi chi xem thong tin + hanh dong; TU MO RONG toan man hinh khi
   // hien thi van ban (xem truoc / docx online) — khoi can mot cua so kich thuoc khung lon.
   return (
-    <HopThoai tieu_de={`${d.ma} — ${NHAN_LOAI[d.loai]} ${NHAN_PHAM_VI[d.pham_vi]}`}
+    <HopThoai tieu_de={`${d.ma} — ${tra_hien_tai(KHOA_LOAI[d.loai])} ${tra_hien_tai(KHOA_PHAM_VI[d.pham_vi])}`}
       khi_dong={khi_dong} rong={!dang_xem} toan_man={dang_xem}>
       <HopLoi loi={hd.loi} />
       <HopTot chu={hd.tot} />
@@ -933,6 +937,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
 export function TabVanBanBanHanh(): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<NhapAI[]>('/api/thong-bao/ai');
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const [xem, dat_xem] = useState<string | null>(null);
   const [lan, dat_lan] = useState(0);
   // Doc mot lan luc mount: nut o trang ho so dat muc tieu truoc khi dieu huong sang day.
@@ -945,7 +950,7 @@ export function TabVanBanBanHanh(): ReactNode {
   const mo_y_kien = (id: string) => async (): Promise<void> => {
     const ok = await hd.chay(
       () => goi(`/api/thong-bao/ai/${id}/lay-y-kien`, { method: 'POST' }),
-      'Đã mở lấy ý kiến trong 7 ngày. Email mời đã gửi tới những người trong phạm vi văn bản.',
+      tra('vai_da_mo_lay_y_kien'),
     );
     if (ok) nap_lai();
   };
@@ -967,31 +972,28 @@ export function TabVanBanBanHanh(): ReactNode {
   return (
     <div>
       <div className="hop-thong-bao hop-luu-y" style={{ marginBottom: 12 }}>
-        <strong>Dự thảo lấy ý kiến:</strong> soạn văn bản rồi bấm <strong>Gửi lấy ý kiến</strong> —
-        người lao động góp ý trong <strong>7 ngày</strong> qua Hòm thư ý kiến (chọn mã văn bản).
-        Hết hạn, văn bản tự quay về Chờ duyệt để sửa đổi hoặc ban hành chính thức; ý kiến xem
-        ở trang Hòm thư ý kiến — lọc theo mã văn bản.
-        {so_dang_y_kien > 0 && ` Đang lấy ý kiến: ${so_dang_y_kien} văn bản.`}
+        {tra('vai_banner_du_thao')}
+        {so_dang_y_kien > 0 && tra('vai_dang_lay_y_kien_x', { n: so_dang_y_kien })}
       </div>
       <HopLoi loi={hd.loi} />
       <HopTot chu={hd.tot} />
       <FormTao khi_xong={(id_moi) => { nap_lai(); if (id_moi !== null) dat_xem(id_moi); }} mac_dinh={mac_dinh} />
       {xem !== null && <ChiTiet id={xem} khi_dong={() => dat_xem(null)} khi_xong={nap_lai} />}
       {ds.length === 0
-        ? <Trong tieu_de="Chưa có văn bản AI" mo_ta="Tạo bản nháp đầu tiên bằng nút phía trên." />
+        ? <Trong tieu_de={tra('vai_chua_co_van_ban_ai')} mo_ta={tra('vai_tao_ban_nhap_dau')} />
         : (
           <table className="bang-gon">
             <thead>
               <tr>
-                <th>Mã</th><th>Loại</th><th>Về việc</th><th>Phạm vi</th><th>Người nhận</th>
-                <th>Trạng thái</th><th>Số ký hiệu</th><th>Cập nhật</th><th></th>
+                <th>{tra('vai_ma')}</th><th>{tra('vai_loai_van_ban')}</th><th>{tra('vai_ve_viec')}</th><th>{tra('vai_pham_vi')}</th><th>{tra('vai_nguoi_nhan')}</th>
+                <th>{tra('vai_trang_thai')}</th><th>{tra('vb_so_ky_hieu')}</th><th>{tra('vai_cap_nhat')}</th><th></th>
               </tr>
             </thead>
             <tbody>
               {ds.map((d, i) => (
                 <tr key={khoa_tinh(d.id, i)}>
                   <td>{d.ma}</td>
-                  <td>{d.la_qd_nghi_viec ? 'Quyết định nghỉ việc' : NHAN_LOAI[d.loai]}</td>
+                  <td>{d.la_qd_nghi_viec ? tra('vai_qd_nghi_viec') : tra_hien_tai(KHOA_LOAI[d.loai])}</td>
                   <td>
                     <span className="khong-ngat" style={{
                       display: 'block', maxWidth: 340, overflow: 'hidden', textOverflow: 'ellipsis',
@@ -999,16 +1001,16 @@ export function TabVanBanBanHanh(): ReactNode {
                       {d.trich_yeu ?? '—'}
                     </span>
                   </td>
-                  <td>{NHAN_PHAM_VI[d.pham_vi]}</td>
+                  <td>{tra_hien_tai(KHOA_PHAM_VI[d.pham_vi])}</td>
                   <td>
-                    {d.nhan_vien ?? d.phong_ban ?? 'Toàn công ty'}
+                    {d.nhan_vien ?? d.phong_ban ?? tra('vb_toan_cong_ty')}
                     {d.la_qd_nghi_viec && d.ngay_nghi_viec !== null
-                      ? ` · nghỉ ${d.ngay_nghi_viec}` : ''}
+                      ? tra('vai_nghi_x', { n: d.ngay_nghi_viec }) : ''}
                   </td>
                   <td className="khong-ngat">
-                    {NHAN_TRANG_THAI[d.trang_thai] ?? d.trang_thai}
+                    {nhan_trang_thai_vb(d.trang_thai)}
                     {d.trang_thai === 'dang_lay_y_kien' && d.han_lay_y_kien !== null && (
-                      <span className="mo-ma"> · hạn {ngay_gio(d.han_lay_y_kien)}</span>
+                      <span className="mo-ma">{tra('vai_han_x', { n: ngay_gio(d.han_lay_y_kien) })}</span>
                     )}
                   </td>
                   <td>{d.so_ky_hieu ?? '—'}</td>
@@ -1017,10 +1019,10 @@ export function TabVanBanBanHanh(): ReactNode {
                     {d.trang_thai === 'cho_duyet' && (
                       <button className="nut-nho" onClick={mo_y_kien(d.id)}
                         disabled={hd.dang_chay}>
-                        Gửi lấy ý kiến
+                        {tra('vai_gui_lay_y_kien')}
                       </button>
                     )}
-                    <button className="nut-nho nut-phang" onClick={() => dat_xem(d.id)}>Chi tiết</button>
+                    <button className="nut-nho nut-phang" onClick={() => dat_xem(d.id)}>{tra('vai_chi_tiet')}</button>
                   </td>
                 </tr>
               ))}

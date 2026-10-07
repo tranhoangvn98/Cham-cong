@@ -93,6 +93,7 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
   const [gui_email, dat_gui_email] = useState(false);
   const tep_ref = useRef<HTMLInputElement>(null);
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
 
   // Chi nap danh sach phong ban / nhan vien khi da mo trinh soan — khong ton mot luot goi
   // cho nguoi chi vao xem.
@@ -122,14 +123,14 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
     fd.append('gui_email', gui_email ? 'true' : 'false');
     if (tep !== undefined) fd.append('tep', tep);
 
-    const ok = await hd.chay(() => gui_tep('/api/van-ban', fd), 'Đã ban hành văn bản.');
+    const ok = await hd.chay(() => gui_tep('/api/van-ban', fd), tra('vb_da_ban_hanh'));
     if (ok) { dat_lai(); dat_mo(false); khi_xong(); }
   };
 
   if (!mo) {
     return (
       <div className="tb-dang-thanh">
-        <button onClick={() => dat_mo(true)}>+ Soạn văn bản</button>
+        <button onClick={() => dat_mo(true)}>{tra('vb_soan_van_ban')}</button>
       </div>
     );
   }
@@ -140,60 +141,60 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
 
   return (
     <div className="the tb-dang">
-      <div className="canhan-muc-dau"><h2>Soạn &amp; ban hành văn bản</h2></div>
+      <div className="canhan-muc-dau"><h2>{tra('vb_soan_va_ban_hanh')}</h2></div>
       <HopLoi loi={hd.loi} />
       <HopTot chu={hd.tot} />
 
-      <p className="mo-ta">Số hiệu được cấp tự động khi ban hành (VB-…).</p>
+      <p className="mo-ta">{tra('vb_so_hieu_tu_cap')}</p>
 
-      <label className="truong"><span>Tiêu đề</span>
+      <label className="truong"><span>{tra('tb_tieu_de')}</span>
         <input value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)} /></label>
 
       <div className="tb-dang-hang">
-        <label className="truong"><span>Loại / hình thức</span>
+        <label className="truong"><span>{tra('vb_loai_hinh_thuc')}</span>
           <Chon gia_tri={danh_muc} dat_gia_tri={dat_danh_muc}
             cac_tuy_chon={DANH_MUC_THU_TU.map((m) => ({
               ma: m, nhan: KHOA_DANH_MUC[m] !== undefined ? tra_hien_tai(KHOA_DANH_MUC[m]) : m,
             }))}
-            nhan="Loại / hình thức văn bản" />
+            nhan={tra('vb_loai_hinh_thuc_phu')} />
         </label>
-        <label className="truong"><span>Người ban hành</span>
-          <input value={nguoi_ban_hanh} placeholder="vd Giám đốc, Phòng HCNS"
+        <label className="truong"><span>{tra('vb_nguoi_ban_hanh')}</span>
+          <input value={nguoi_ban_hanh} placeholder={tra('vb_nguoi_ban_hanh_phu')}
             onChange={(e) => dat_nguoi_ban_hanh(e.target.value)} /></label>
       </div>
 
-      <label className="truong"><span>Nội dung văn bản</span>
-        <textarea rows={8} value={noi_dung} placeholder="Soạn nội dung thông báo / văn bản tại đây…"
+      <label className="truong"><span>{tra('vb_noi_dung_van_ban')}</span>
+        <textarea rows={8} value={noi_dung} placeholder={tra('vb_noi_dung_phu')}
           onChange={(e) => dat_noi_dung(e.target.value)} /></label>
 
-      <label className="truong"><span>Tệp đính kèm (tùy chọn — PDF, DOCX, XLSX, ảnh)</span>
+      <label className="truong"><span>{tra('vb_tep_kem')}</span>
         <input type="file" ref={tep_ref} accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" /></label>
 
       <div className="tb-dang-hang">
-        <label className="truong"><span>Phạm vi</span>
+        <label className="truong"><span>{tra('vb_pham_vi')}</span>
           <Chon gia_tri={pham_vi}
             dat_gia_tri={(ma) => dat_pham_vi(ma as typeof pham_vi)}
             cac_tuy_chon={[
-              { ma: 'toan_cong_ty', nhan: 'Toàn công ty' },
-              { ma: 'phong_ban', nhan: 'Phòng ban' },
-              { ma: 'ca_nhan', nhan: 'Cá nhân' },
+              { ma: 'toan_cong_ty', nhan: tra('vb_toan_cong_ty') },
+              { ma: 'phong_ban', nhan: tra('vb_phong_ban') },
+              { ma: 'ca_nhan', nhan: tra('vb_ca_nhan') },
             ]}
-            nhan="Phạm vi nhận văn bản" />
+            nhan={tra('vb_pham_vi_nhan')} />
         </label>
         {pham_vi === 'phong_ban' && (
-          <label className="truong"><span>Chọn phòng ban</span>
+          <label className="truong"><span>{tra('vb_chon_phong_ban')}</span>
             <Chon gia_tri={phong_ban_id} dat_gia_tri={dat_phong_ban_id}
               cac_tuy_chon={(ds_pb.du_lieu ?? []).map((p) => ({ ma: p.id, nhan: p.ten }))}
-              rong="— Chọn —" nhan="Phòng ban nhận văn bản" />
+              rong={tra('vb_chon')} nhan={tra('vb_phong_ban_nhan')} />
           </label>
         )}
         {pham_vi === 'ca_nhan' && (
-          <label className="truong"><span>Chọn nhân viên</span>
+          <label className="truong"><span>{tra('vb_chon_nhan_vien')}</span>
             <Chon gia_tri={nhan_vien_id} dat_gia_tri={dat_nhan_vien_id}
               cac_tuy_chon={(ds_nv.du_lieu ?? []).map((n) => ({
                 ma: n.id, nhan: `${n.ho_ten} (${n.ma_nv})`,
               }))}
-              rong="— Chọn —" nhan="Nhân viên nhận văn bản" />
+              rong={tra('vb_chon')} nhan={tra('vb_nhan_vien_nhan')} />
           </label>
         )}
       </div>
@@ -201,12 +202,12 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
       <div className="truong-hang">
         <input id="vb-gui-ht" type="checkbox" checked={gui_he_thong}
           onChange={(e) => dat_gui_he_thong(e.target.checked)} />
-        <label htmlFor="vb-gui-ht">Gửi thông báo hệ thống (hiện ở chuông báo, theo dõi đã đọc)</label>
+        <label htmlFor="vb-gui-ht">{tra('vb_gui_he_thong')}</label>
       </div>
       <div className="truong-hang">
         <input id="vb-gui-mail" type="checkbox" checked={gui_email}
           onChange={(e) => dat_gui_email(e.target.checked)} />
-        <label htmlFor="vb-gui-mail">Gửi email (qua Microsoft 365 — bỏ qua nếu chưa cấu hình)</label>
+        <label htmlFor="vb-gui-mail">{tra('vb_gui_email')}</label>
       </div>
 
       <div className="hang-nut">
@@ -214,9 +215,9 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
           onClick={() => { void gui(); }}
           disabled={hd.dang_chay || tieu_de.trim().length < 3 || thieu_muc_tieu || thieu_noi_dung}
         >
-          {hd.dang_chay ? 'Đang ban hành…' : 'Ban hành'}
+          {hd.dang_chay ? tra('vb_dang_ban_hanh') : tra('vb_ban_hanh')}
         </button>
-        <button className="nut-phang" onClick={() => { dat_lai(); dat_mo(false); }}>Hủy</button>
+        <button className="nut-phang" onClick={() => { dat_lai(); dat_mo(false); }}>{tra('cn_huy')}</button>
       </div>
     </div>
   );

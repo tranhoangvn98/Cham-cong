@@ -7,6 +7,7 @@ import { goi, LoiApi } from '../api.ts';
 import { khoa_tinh } from '../thanh_phan.tsx';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
 import { DongBotGo } from './tro_ly_go.tsx';
+import { dung_chuoi } from '../chuoi/chi_muc.tsx';
 
 /** Icon bieu do SVG — khac icon chat cua tro ly ca nhan de phan biet hai kenh. */
 function IconQuanTri(): ReactNode {
@@ -61,6 +62,7 @@ function noi_dung(chu: string): ReactNode {
 
 export function TroLyQuanTri(): ReactNode {
   const { di_toi } = dung_tuyen();
+  const { tra } = dung_chuoi();
   const [mo, dat_mo] = useState(false);
   const [dong, dat_dong] = useState<Dong[]>([]);
   const [goi_y, dat_goi_y] = useState<string[]>([]);
@@ -111,11 +113,11 @@ export function TroLyQuanTri(): ReactNode {
       dat_goi_y(d.goi_y);
       dat_mo_de_xuat(d.mo_de_xuat ?? null);
     } catch (loi) {
-      const chu = loi instanceof LoiApi ? loi.message : 'Không kết nối được máy chủ.';
+      const chu = loi instanceof LoiApi ? loi.message : tra('tl_khong_ket_noi');
       // 5xx thuong la may chu dang ban hoac vua khoi dong lai — bao than thien.
       const loi_than = /50\d|Lỗi 50\d/.test(chu)
-        ? 'Máy chủ đang bận hoặc vừa khởi động lại — bạn bấm lại sau ít phút nhé.' : chu;
-      dat_dong((ds) => [...ds, { ai: 'bot', chu: `Xin lỗi, mình chưa trả lời được lúc này: ${loi_than}` }]);
+        ? tra('tl_may_chu_ban') : chu;
+      dat_dong((ds) => [...ds, { ai: 'bot', chu: tra('tlq_xin_loi', { n: loi_than }) }]);
     } finally {
       dat_dang_hoi(false);
     }
@@ -133,7 +135,7 @@ export function TroLyQuanTri(): ReactNode {
 
   if (!mo) {
     return createPortal(
-      <button className="troly-nut" onClick={() => dat_mo(true)} aria-label="Mở trợ lý quản trị">
+      <button className="troly-nut" onClick={() => dat_mo(true)} aria-label={tra('tlq_mo')}>
         <IconQuanTri />
       </button>,
       document.body,
@@ -141,13 +143,13 @@ export function TroLyQuanTri(): ReactNode {
   }
 
   return createPortal(
-    <div className="troly-panel" role="dialog" aria-label="Trợ lý quản trị">
+    <div className="troly-panel" role="dialog" aria-label={tra('tlq_ten')}>
       <div className="troly-dau">
-        <b>Trợ lý quản trị</b>
+        <b>{tra('tlq_ten')}</b>
         <span>
-          <button className="nut-phang" onClick={xoa_lich_su} aria-label="Xóa lịch sử"
-            title="Xóa toàn bộ lịch sử hội thoại của bạn">Xóa</button>
-          <button className="nut-phang" onClick={() => dat_mo(false)} aria-label="Đóng">✕</button>
+          <button className="nut-phang" onClick={xoa_lich_su} aria-label={tra('tl_xoa_lich_su')}
+            title={tra('tl_xoa_toan_bo')}>{tra('tl_xoa')}</button>
+          <button className="nut-phang" onClick={() => dat_mo(false)} aria-label={tra('tlq_dong')}>✕</button>
         </span>
       </div>
       <div className="troly-than" ref={cuon}>
@@ -159,7 +161,7 @@ export function TroLyQuanTri(): ReactNode {
           </div>
         ))}
         {dang_hoi && (
-          <div className="troly-tn troly-tn-bot" aria-label="Đang trả lời">
+          <div className="troly-tn troly-tn-bot" aria-label={tra('tl_dang_tra_loi')}>
             <span className="troly-ba-cham"><i /><i /><i /></span>
           </div>
         )}
@@ -184,8 +186,8 @@ export function TroLyQuanTri(): ReactNode {
       </div>
       <form className="troly-hang" onSubmit={(e) => { e.preventDefault(); void hoi(nhap); }}>
         <input value={nhap} onChange={(e) => dat_nhap(e.target.value)}
-          placeholder="Hỏi tổng quan, đi muộn, vắng, đơn chờ duyệt…" aria-label="Câu hỏi" />
-        <button type="submit" disabled={dang_hoi || nhap.trim() === ''}>Gửi</button>
+          placeholder={tra('tlq_hoi_phong')} aria-label={tra('tlq_cau_hoi')} />
+        <button type="submit" disabled={dang_hoi || nhap.trim() === ''}>{tra('tl_gui')}</button>
       </form>
     </div>,
     document.body,

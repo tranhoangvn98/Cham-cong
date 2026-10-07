@@ -13,7 +13,7 @@ import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
 } from '../thanh_phan.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
-import { ChiTiet as ChiTietVanBan, NHAN_TRANG_THAI_VB } from './thong_bao_ai.tsx';
+import { ChiTiet as ChiTietVanBan, nhan_trang_thai_vb } from './thong_bao_ai.tsx';
 
 interface DongPhatHanh {
   id: string;
@@ -100,7 +100,7 @@ export function TrangCongBoPhatHanh(): ReactNode {
                         {d.ma_van_ban}
                         {d.tt_van_ban !== null && (
                           <span className="mo-ma">
-                            {' '}· {NHAN_TRANG_THAI_VB[d.tt_van_ban] ?? d.tt_van_ban}
+                            {' '}· {nhan_trang_thai_vb(d.tt_van_ban)}
                           </span>
                         )}
                       </>

@@ -58,9 +58,11 @@ export function PopupThongBao(): ReactNode {
 
   return (
     <HopThoai tieu_de={`📢 ${tb.tieu_de}`} khi_dong={sang_ke_tiep} rong>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
         <span className={`nhan ${md.lop}`}>{tra(md.khoa)}</span>
-        {tb.ma !== null && <span className="mo-ma">{tb.ma}</span>}
+        {tb.ma !== null && (
+          <span className="mo-ma" style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{tb.ma}</span>
+        )}
         <span className="mo-ta">{ngay_gio(tb.tao_luc)}</span>
       </div>
       <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{tb.noi_dung}</div>

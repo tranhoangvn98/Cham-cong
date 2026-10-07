@@ -5,8 +5,9 @@
 // dung va chi chu tai khoan doc/xoa duoc cua minh.
 import type { FastifyInstance } from 'fastify';
 import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
-import { truy_van, thuc_thi } from '../csdl/ket_noi.ts';
+import { truy_van, thuc_thi, truy_van_mot } from '../csdl/ket_noi.ts';
 import { tra_loi_tro_ly_quan_tri } from '../quan_tri/tro_ly.ts';
+import { chuan_ngon_ngu } from '../chuoi/chi_muc.ts';
 
 export async function tuyen_quan_tri(app: FastifyInstance): Promise<void> {
   /** Tro ly quan tri: hoi bang tieng Viet, tra loi tu du lieu quan tri dung theo quyen. */
@@ -14,8 +15,13 @@ export async function tuyen_quan_tri(app: FastifyInstance): Promise<void> {
     const nd = nguoi_dung_hien_tai(req);
     const q = req.query as Record<string, unknown>;
     const cau_hoi = typeof q['hoi'] === 'string' ? q['hoi'] : '';
+    const ngon_ngu = chuan_ngon_ngu(
+      (await truy_van_mot<{ ngon_ngu: string | null }>(
+        'select ngon_ngu from nguoi_dung where id = $1', [nd.sub],
+      ))?.ngon_ngu,
+    );
     return tra_loi_tro_ly_quan_tri(
-      { sub: nd.sub, vai_tro: nd.vai_tro, nv: nd.nv, ten: nd.ten }, cau_hoi,
+      { sub: nd.sub, vai_tro: nd.vai_tro, nv: nd.nv, ten: nd.ten }, cau_hoi, ngon_ngu,
     );
   });
 

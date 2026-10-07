@@ -7,6 +7,8 @@
 //
 // Tep nay la ham THUAN (khong cham CSDL) — test don vi chay duoc trong docker build.
 
+import type { ChuoiKhoa } from '../chuoi/chi_muc.ts';
+
 export const NHAN_TRANG_THAI: Record<string, string> = {
   cho_duyet: 'Chờ duyệt',
   cho_duyet_2: 'Chờ duyệt cấp 2',
@@ -28,6 +30,37 @@ export const NHAN_TRANG_THAI: Record<string, string> = {
   khong_hoan_thanh: 'Không hoàn thành',
   huy: 'Đã hủy',
   da_dong: 'Đã hoàn tất',
+};
+
+/** Khoa tu dien song ngu tuong ung voi NHAN_TRANG_THAI (nguon su that van la NHAN_TRANG_THAI). */
+export const KHOA_TRANG_THAI: Record<string, ChuoiKhoa> = {
+  cho_duyet: 'tt_cho_duyet',
+  cho_duyet_2: 'tt_cho_duyet_2',
+  da_duyet: 'tt_da_duyet',
+  tu_choi: 'tt_tu_choi',
+  da_huy: 'tt_da_huy',
+  moi: 'tt_moi',
+  dang_xem: 'tt_dang_xem',
+  chap_nhan: 'tt_chap_nhan',
+  da_nhac: 'tt_da_nhac',
+  da_ap_dung: 'tt_da_ap_dung',
+  bac_bo: 'tt_bac_bo',
+  mien: 'tt_mien',
+  da_xac_nhan: 'tt_da_xac_nhan',
+  da_xu_ly: 'tt_da_xu_ly',
+  cho_giai_trinh: 'tt_cho_giai_trinh',
+  dang_lam: 'tt_dang_lam',
+  hoan_thanh: 'tt_hoan_thanh',
+  khong_hoan_thanh: 'tt_khong_hoan_thanh',
+  huy: 'tt_huy',
+  da_dong: 'tt_da_dong',
+};
+
+/** Ho thu y kien dung nhan rieng: dang_xem = "Da tiep nhan" (khac khieu nai "Dang xem xet"). */
+export const KHOA_TRANG_THAI_HO_THU: Record<string, ChuoiKhoa> = {
+  moi: 'tt_moi',
+  dang_xem: 'tt_da_tiep_nhan',
+  da_dong: 'tt_da_dong',
 };
 
 /** Trang thai con cho nguoi dung hanh dong — giao dien hien nhan "chua xu ly" mau cam. */
@@ -77,7 +110,7 @@ export function doi_tuong_truy(du_lieu: unknown): DoiTuongTruy | null {
     if (don_id === null) return null;
     if (loai === 'nghi_phep') return { bang: 'don_nghi_phep', id: don_id };
     if (loai === 'giai_trinh') return { bang: 'don_giai_trinh', id: don_id };
-    // lam_them, doi_ca, cong_tac, thoi_viec, di_muon — cung mot bang don_tu.
+    // lam_them, doi_ca, cong_tac, thoi_viec, di_muon, ve_som, lam_remote — cung mot bang don_tu.
     return { bang: 'don_tu', id: don_id };
   };
 

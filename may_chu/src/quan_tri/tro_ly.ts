@@ -18,6 +18,8 @@ import {
 import {
   buoi_trong_ngay, chuan, tra_loi_noi_quy, tra_loi_thong_bao, tra_loi_van_ban,
 } from '../ca_nhan/tro_ly.ts';
+import { dich_tra_loi_llm } from '../ca_nhan/dich_llm.ts';
+import { type NgonNgu } from '../chuoi/chi_muc.ts';
 
 /** Nguoi hoi bot quan tri — lay tu token (khong can nhan_vien_id). */
 export interface NguoiHoiQuanTri {
@@ -136,7 +138,9 @@ async function tro_chuyen_qt(
   if (!llm_qt_san_sang()) return null;
   try {
     const tho = await goi_deepseek(
-      'Ban la tro ly QUAN TRI cua phan he Cham cong, hoi bang tieng Viet, noi chuyen nhu dong nghiep than. '
+      'Ban la tro ly QUAN TRI cua phan he Cham cong, noi chuyen nhu dong nghiep than. Nguoi '
+      + 'dung co the hoi bang tieng Viet HOAC tieng Trung; tra loi LUON bang tieng Viet (may '
+      + 'chu se dich sang ngon ngu nguoi dung khi can). '
       + 'Nguoi dung hoi: '
       + JSON.stringify(cau_hoi_goc)
       + '\n\nCac luot tro chuyen gan nhat cua CUNG nguoi hoi:\n' + (boi_canh === '' ? '(khong co)' : boi_canh)
@@ -499,7 +503,7 @@ function tra_loi_hoi_tham_qt(cau: string): TraLoiTroLyQT {
  * nguoi hoi. Lich su luu theo nguoi dung; cau rong (mo widget) khong luu.
  */
 export async function tra_loi_tro_ly_quan_tri(
-  nd: NguoiHoiQuanTri, cau_hoi_goc: string,
+  nd: NguoiHoiQuanTri, cau_hoi_goc: string, ngon_ngu: NgonNgu = 'vi',
 ): Promise<TraLoiTroLyQT> {
   const cau = chuan(cau_hoi_goc.trim());
   const hom_nay = ngay_dia_phuong(new Date());
@@ -559,8 +563,10 @@ export async function tra_loi_tro_ly_quan_tri(
     }
   }
 
+  const kq_cuoi = await dich_tra_loi_llm(ngon_ngu, kq);
+
   if (cau_hoi_goc.trim() !== '') {
-    await luu_hoi_thoai_qt(nd.sub, cau_hoi_goc, kq.tra_loi, kq.y_dinh);
+    await luu_hoi_thoai_qt(nd.sub, cau_hoi_goc, kq_cuoi.tra_loi, kq_cuoi.y_dinh);
   }
-  return kq;
+  return kq_cuoi;
 }

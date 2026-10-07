@@ -556,11 +556,11 @@ function BoCuc(): ReactNode {
             <button
               className="nut-tron"
               onClick={() => dat_che_do(dang_toi(che_do) ? 'sang' : 'toi')}
-              aria-label={dang_toi(che_do) ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+              aria-label={dang_toi(che_do) ? tra('cd_sang') : tra('cd_toi')}
               title={
                 che_do === 'may'
-                  ? 'Đang theo cài đặt máy — bấm để chọn thủ công'
-                  : che_do === 'toi' ? 'Giao diện tối' : 'Giao diện sáng'
+                  ? tra('cd_theo_may')
+                  : che_do === 'toi' ? tra('cd_ten_toi') : tra('cd_ten_sang')
               }
             >
               <i className={dang_toi(che_do) ? 'bt bt-sun' : 'bt bt-moon'} aria-hidden="true" />

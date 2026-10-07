@@ -13,6 +13,7 @@ import { do_geofence, type DiaDiem } from '../tien_ich/dia_ly.ts';
 import { doc_anh_selfie, luu_anh_selfie } from '../tien_ich/luu_anh.ts';
 import { doc_tep_ho_so, luu_tep_ho_so, lam_sach_ten, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { tra_loi_tro_ly } from '../ca_nhan/tro_ly.ts';
+import { dich_tra_loi_llm } from '../ca_nhan/dich_llm.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import {
   cong_ngay, khoang_thang, ngay_dia_phuong, ngay_viet, thu_trong_tuan,
@@ -20,7 +21,7 @@ import {
 import { NHAN_TRANG_THAI, nhan_cach_xac_thuc } from '../adms/giao_thuc.ts';
 import {
   con_xu_ly, doi_tuong_truy, thong_bao_cong_ty_id, type DoiTuongTruy,
-  NHAN_TRANG_THAI as NHAN_TRANG_THAI_BAO,
+  KHOA_TRANG_THAI, KHOA_TRANG_THAI_HO_THU,
 } from './trang_thai_bao.ts';
 import { CAC_LOAI, MA_LOAI_DON, dac_ta, type MaLoaiDon } from '../don_tu/loai_don.ts';
 import { don_cua_nhan_vien, huy_don, tao_don } from '../don_tu/nghiep_vu.ts';
@@ -30,7 +31,7 @@ import { tu_dong_quyet_don, TU_NGAY_AP } from '../don_tu/tu_dong_duyet.ts';
 import { tu_dong_quyet_di_muon } from '../don_tu/tu_dong_di_muon.ts';
 import { email_nhan_vien_tra_loi } from '../luong/khieu_nai_email.ts';
 import {
-  CAC_LOAI_GOP_Y, NHAN_TRANG_THAI_HO_THU, bao_y_kien_moi, du_thao_cho_gop_y,
+  CAC_LOAI_GOP_Y, bao_y_kien_moi, du_thao_cho_gop_y,
   ho_thu_cua_nhan_vien, tao_ho_thu, tra_loi_ho_thu, type LoaiHoThu,
 } from '../ho_thu_y_kien/nghiep_vu.ts';
 import { email_nhan_vien_tra_loi as email_ho_thu_nhan_vien_tra_loi }
@@ -48,7 +49,7 @@ import {
   chuoi, chuoi_bat_buoc, gio, khoang_ngay, luan_ly, ngay_bat_buoc, than, trong_tap, uuid,
   LoiDauVao, LoiKhongQuyen, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
-import { la_ngon_ngu, tra_chuoi } from '../chuoi/chi_muc.ts';
+import { chuan_ngon_ngu, la_ngon_ngu, tra_chuoi } from '../chuoi/chi_muc.ts';
 
 const LOAI_NGHI = ['phep_nam', 'khong_luong', 'om', 'thai_san', 'ket_hon', 'hieu'] as const;
 
@@ -93,7 +94,9 @@ interface BaoThongBao {
  * nguoi doc; thuần tin (hop dong het han, nhac nho) de null. Mot truy van cho moi bang
  * (id = any(...)), khong phai mot truy van cho moi dong.
  */
-async function gan_trang_thai_bao(ds: BaoThongBao[], nv: string | null): Promise<void> {
+async function gan_trang_thai_bao(
+  ds: BaoThongBao[], nv: string | null, ngon_ngu: 'vi' | 'zh',
+): Promise<void> {
   const theo_bang = new Map<string, string[]>();
   const doi_tuong: (DoiTuongTruy | null)[] = [];
   const tb_ids: string[] = [];
@@ -146,8 +149,14 @@ async function gan_trang_thai_bao(ds: BaoThongBao[], nv: string | null): Promise
       ? null
       // Ho thu y kien dung nhan rieng (dang_xem = "Da tiep nhan"), khac khieu nai ("Dang xem xet").
       : dt?.bang === 'ho_thu_y_kien'
-        ? ((NHAN_TRANG_THAI_HO_THU as Record<string, string>)[trang_thai] ?? trang_thai)
-        : (NHAN_TRANG_THAI_BAO[trang_thai] ?? trang_thai);
+        ? (() => {
+          const k = KHOA_TRANG_THAI_HO_THU[trang_thai];
+          return k !== undefined ? tra_chuoi(ngon_ngu, k) : trang_thai;
+        })()
+        : (() => {
+          const k = KHOA_TRANG_THAI[trang_thai];
+          return k !== undefined ? tra_chuoi(ngon_ngu, k) : trang_thai;
+        })();
     b.con_xu_ly = con_xu_ly(trang_thai);
   });
 }
@@ -2181,18 +2190,25 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
   app.get('/tro-ly', async (req) => {
     const nd = nguoi_dung_hien_tai(req);
     const nv_id = nhan_vien_cua_toi(req);
+    const ngon_ngu = chuan_ngon_ngu(
+      (await truy_van_mot<{ ngon_ngu: string | null }>(
+        'select ngon_ngu from nguoi_dung where id = $1', [nd.sub],
+      ))?.ngon_ngu,
+    );
     const q = req.query as Record<string, unknown>;
     const cau_hoi = typeof q['hoi'] === 'string' ? q['hoi'] : '';
     // Che do rieng cua widget tro ly thoi viec (REQ-NV-03): doc checklist cua chinh nguoi
     // dung, goi y muc ke tiep — khong tron voi tro ly nhan su thuong.
     if (q['che_do'] === 'huong_dan_thoi_viec') {
-      return tra_loi_huong_dan_thoi_viec(nv_id, cau_hoi) ?? {
-        tra_loi: 'Bạn chưa có quy trình thôi việc đang mở.',
+      const kq = await tra_loi_huong_dan_thoi_viec(nv_id, cau_hoi, ngon_ngu);
+      return kq ?? {
+        tra_loi: tra_chuoi(ngon_ngu, 'tl_chua_co_quy_trinh'),
         y_dinh: 'huong_dan_thoi_viec',
         goi_y: [],
       };
     }
-    return tra_loi_tro_ly(nv_id, cau_hoi, nd.vai_tro);
+    const kq = await tra_loi_tro_ly(nv_id, cau_hoi, nd.vai_tro);
+    return dich_tra_loi_llm(ngon_ngu, kq);
   });
 
   /**
@@ -2231,7 +2247,12 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         [nd.sub],
       ),
     ]);
-    await gan_trang_thai_bao(danh_sach, nd.nv);
+    const ngon_ngu = chuan_ngon_ngu(
+      (await truy_van_mot<{ ngon_ngu: string | null }>(
+        'select ngon_ngu from nguoi_dung where id = $1', [nd.sub],
+      ))?.ngon_ngu,
+    );
+    await gan_trang_thai_bao(danh_sach, nd.nv, ngon_ngu);
     return { danh_sach, so_chua_doc: dem?.so ?? 0 };
   });
 

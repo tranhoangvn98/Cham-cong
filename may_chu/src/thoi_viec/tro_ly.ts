@@ -5,6 +5,8 @@ import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
 import { quy_trinh_theo_id } from './quy_trinh.ts';
 import { so_muc_bat_buoc_chua } from './tinh_toan.ts';
 import { ngay_viet } from '../tien_ich/thoi_gian.ts';
+import { dich_tra_loi_llm } from '../ca_nhan/dich_llm.ts';
+import { type NgonNgu } from '../chuoi/chi_muc.ts';
 
 /** Tra loi cung khuon TraLoiTroLy — giao dien widget dung chung mot khuon. */
 export interface TraLoiHuongDanThoiViec {
@@ -33,7 +35,7 @@ const MUC_TICK_NHANH = new Set(['doc_huong_dan', 'sao_luu_du_lieu', 'xac_nhan_la
  * tra ve trang thai checklist + goi y — widget nay chi co mot nhiem vu.
  */
 export async function tra_loi_huong_dan_thoi_viec(
-  nhan_vien_id: string, _cau_hoi: string,
+  nhan_vien_id: string, _cau_hoi: string, ngon_ngu: NgonNgu = 'vi',
 ): Promise<TraLoiHuongDanThoiViec | null> {
   const id = await truy_van_mot<{ id: string }>(
     `select id from quy_trinh_thoi_viec
@@ -90,7 +92,7 @@ export async function tra_loi_huong_dan_thoi_viec(
       bo: 'Bỏ',
     };
   }
-  return ra;
+  return dich_tra_loi_llm(ngon_ngu, ra);
 }
 
 /** Dem muc bat buoc con chua — so do tren cham tron noi cua widget. */
