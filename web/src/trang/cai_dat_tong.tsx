@@ -9,14 +9,19 @@
 import type { ReactNode } from 'react';
 import { LienKet } from '../dinh_tuyen.tsx';
 import { DuongMon, dung_dat_tieu_de } from '../tieu_de_trang.tsx';
+import { dung_chuoi, KHOA_NHOM, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
 
 /** Dung khai bao voi `MucMenu` cua App.tsx — o day chi can phan doc duoc. */
 export interface MucCaiDat {
   duong_dan: string;
   ten: string;
+  /** Khoa chuoi song ngu (web/src/chuoi/vi.ts + zh.ts) thay cho `ten` khi hien thi. */
+  khoa: ChuoiKhoa;
   icon: string;
   nhom: string;
   phu?: string;
+  /** Khoa chuoi song ngu thay cho `phu` khi hien thi. */
+  khoa_phu: ChuoiKhoa;
 }
 
 export function TrangCaiDat(
@@ -28,29 +33,30 @@ export function TrangCaiDat(
     children: ReactNode;
   },
 ): ReactNode {
+  const { tra } = dung_chuoi();
   // Header cua app hien "Cài đặt" (nhan cua muc menu). O trang con, doi thanh ten muc con va
   // gan duong mon de con duong lui — nguoi dung dang o `/cai-dat/khoa-api` phai thay minh o dau.
   dung_dat_tieu_de(muc === null ? null : {
-    tieu_de: muc.ten,
-    ...(muc.phu === undefined ? {} : { phu: muc.phu }),
-    duong_mon: [{ ten: 'Cài đặt', den: '/cai-dat' }, { ten: muc.ten }],
+    tieu_de: tra(muc.khoa),
+    phu: tra(muc.khoa_phu),
+    duong_mon: [{ ten: tra('menu_cai_dat'), den: '/cai-dat' }, { ten: tra(muc.khoa) }],
   });
 
   const nhom = [...new Set(cac_muc.map((m) => m.nhom))];
 
   return (
     <div className="khu-cai-dat">
-      <nav className="cai-dat-ben" aria-label="Mục cài đặt">
+      <nav className="cai-dat-ben" aria-label={tra('muc_cai_dat')}>
         {nhom.map((n) => (
           <div key={n} className="cai-dat-khoi">
-            <div className="cai-dat-nhom">{n}</div>
+            <div className="cai-dat-nhom">{KHOA_NHOM[n] === undefined ? n : tra(KHOA_NHOM[n])}</div>
             {cac_muc.filter((m) => m.nhom === n).map((m) => (
               <LienKet
                 key={m.duong_dan}
                 den={m.duong_dan}
                 lop={duong_dan === m.duong_dan ? 'dang-chon' : undefined}
               >
-                <i className={`bt bt-${m.icon}`} aria-hidden="true" /> {m.ten}
+                <i className={`bt bt-${m.icon}`} aria-hidden="true" /> {tra(m.khoa)}
               </LienKet>
             ))}
           </div>
@@ -59,7 +65,7 @@ export function TrangCaiDat(
 
       <div className="cai-dat-than">
         {muc !== null && (
-          <DuongMon cac_chang={[{ ten: 'Cài đặt', den: '/cai-dat' }, { ten: muc.ten }]} />
+          <DuongMon cac_chang={[{ ten: tra('menu_cai_dat'), den: '/cai-dat' }, { ten: tra(muc.khoa) }]} />
         )}
         {children}
       </div>
@@ -75,23 +81,24 @@ export function TrangCaiDat(
  * duoc cau "o day sua duoc nhung gi".
  */
 export function ChonMucCaiDat({ cac_muc }: { cac_muc: MucCaiDat[] }): ReactNode {
+  const { tra } = dung_chuoi();
   const nhom = [...new Set(cac_muc.map((m) => m.nhom))];
 
   return (
     <>
       <p className="mo-ta">
-        Các mục cấu hình của hệ thống. Chỉ hiện những mục vai trò của bạn được sửa.
+        {tra('cai_dat_mo_ta')}
       </p>
       {nhom.map((n) => (
         <div key={n} className="the">
-          <h3>{n}</h3>
+          <h3>{KHOA_NHOM[n] === undefined ? n : tra(KHOA_NHOM[n])}</h3>
           <div className="luoi-cai-dat">
             {cac_muc.filter((m) => m.nhom === n).map((m) => (
               <LienKet key={m.duong_dan} den={m.duong_dan} lop="o-cai-dat">
                 <i className={`bt bt-${m.icon}`} aria-hidden="true" />
                 <span>
-                  <strong>{m.ten}</strong>
-                  {m.phu !== undefined && <span className="mo-ta">{m.phu}</span>}
+                  <strong>{tra(m.khoa)}</strong>
+                  <span className="mo-ta">{tra(m.khoa_phu)}</span>
                 </span>
               </LienKet>
             ))}

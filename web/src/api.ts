@@ -36,6 +36,8 @@ export interface NguoiDung {
   phai_doi_mat_khau: boolean;
   /** Truong phong duoc admin cap quyen xem man hinh quan tri. Vai tro nhan su luon co. */
   quyen_quan_tri?: boolean;
+  /** Song ngu Viet - Trung (SONG-NGU-TRUNG.md): ngon ngu hien thi cua nguoi dung. */
+  ngon_ngu?: 'vi' | 'zh';
 }
 
 interface Phien {
@@ -333,6 +335,21 @@ export async function lam_moi_phien(): Promise<boolean> {
 
 export function nguoi_dung_hien_tai(): NguoiDung | null {
   return phien?.nguoi_dung ?? null;
+}
+
+/**
+ * Doi ngon ngu hien thi cua nguoi dung (song ngu Viet - Trung). Chua dang nhap thi chi
+ * luu cuc bo (localStorage do <CungCapChuoi> giu); da dang nhap thi PATCH len may chu de
+ * cac thiet bi khac dong bo, roi cap nhat phien dang luu de tai lai trang dung ngon ngu.
+ */
+export async function dat_ngon_ngu(ngon_ngu: 'vi' | 'zh'): Promise<void> {
+  if (phien === null) return;
+  const r = await goi<{ ngon_ngu: 'vi' | 'zh' }>('/api/toi/ngon-ngu', {
+    method: 'PATCH',
+    body: { ngon_ngu },
+  });
+  phien.nguoi_dung.ngon_ngu = r.ngon_ngu;
+  luu_phien(phien);
 }
 
 /**

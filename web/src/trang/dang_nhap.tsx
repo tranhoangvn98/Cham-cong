@@ -4,6 +4,7 @@ import {
   lam_moi_phien, nguoi_dung_hien_tai,
 } from '../api.ts';
 import { dung_hanh_dong, HopLoi, HopTot } from '../thanh_phan.tsx';
+import { dung_chuoi } from '../chuoi/chi_muc.tsx';
 
 interface Props {
   khi_xong: () => void;
@@ -16,6 +17,7 @@ export function TrangDangNhap({ khi_xong, loi_sso }: Props): ReactNode {
   const [mk, dat_mk] = useState('');
   const [co_microsoft, dat_co_microsoft] = useState(false);
   const hd = dung_hanh_dong();
+  const { tra, ngon_ngu, dat } = dung_chuoi();
 
   // May chu quyet dinh co hien nut hay khong: chua khai cau hinh Entra thi an han di,
   // hien mot nut bam vao chi bao loi thi to hon la khong co.
@@ -33,10 +35,18 @@ export function TrangDangNhap({ khi_xong, loi_sso }: Props): ReactNode {
 
   return (
     <div className="vo-dang-nhap">
+      <button
+        type="button"
+        className="nut-ngon-ngu-noi"
+        aria-label={tra('ngon_ngu')}
+        onClick={() => dat(ngon_ngu === 'vi' ? 'zh' : 'vi')}
+      >
+        {ngon_ngu === 'vi' ? '中文' : 'Tiếng Việt'}
+      </button>
       <form className="the-dang-nhap" onSubmit={gui}>
-        <h1>Chấm công</h1>
+        <h1>{tra('menu_cham_cong')}</h1>
         <p className="mo-ta" style={{ marginBottom: 20 }}>
-          Đăng nhập để quản lý chấm công và bảng công.
+          {tra('dang_nhap_mo_ta')}
         </p>
 
         <HopLoi loi={hd.loi ?? loi_sso ?? null} />
@@ -51,14 +61,14 @@ export function TrangDangNhap({ khi_xong, loi_sso }: Props): ReactNode {
               <span className="o-microsoft" aria-hidden="true">
                 <span /><span /><span /><span />
               </span>
-              Đăng nhập bằng Microsoft
+              {tra('dang_nhap_bang_microsoft')}
             </button>
-            <div className="vach-hoac"><span>hoặc</span></div>
+            <div className="vach-hoac"><span>{tra('hoac')}</span></div>
           </>
         )}
 
         <div className="o-nhap">
-          <label htmlFor="ten">Tên đăng nhập</label>
+          <label htmlFor="ten">{tra('ten_dang_nhap')}</label>
           <input
             id="ten"
             value={ten}
@@ -70,7 +80,7 @@ export function TrangDangNhap({ khi_xong, loi_sso }: Props): ReactNode {
         </div>
 
         <div className="o-nhap">
-          <label htmlFor="mk">Mật khẩu</label>
+          <label htmlFor="mk">{tra('mat_khau')}</label>
           <input
             id="mk"
             type="password"
@@ -87,7 +97,7 @@ export function TrangDangNhap({ khi_xong, loi_sso }: Props): ReactNode {
           style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}
           disabled={hd.dang_chay || ten.trim() === '' || mk === ''}
         >
-          {hd.dang_chay ? 'Đang đăng nhập…' : 'Đăng nhập'}
+          {hd.dang_chay ? tra('dang_dang_nhap') : tra('dang_nhap')}
         </button>
       </form>
     </div>
@@ -100,6 +110,7 @@ export function TrangDoiMatKhau({ bat_buoc, khi_xong }: { bat_buoc: boolean; khi
   const [moi, dat_moi] = useState('');
   const [lai, dat_lai] = useState('');
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
 
   const khop = moi !== '' && moi === lai;
 
@@ -108,7 +119,7 @@ export function TrangDoiMatKhau({ bat_buoc, khi_xong }: { bat_buoc: boolean; khi
     if (!khop) return;
     const ok = await hd.chay(
       () => doi_mat_khau(cu, moi),
-      'Đã đổi mật khẩu. Vui lòng đăng nhập lại.',
+      tra('da_doi_mat_khau'),
     );
     if (ok) setTimeout(khi_xong, 1200);
   };
@@ -116,42 +127,42 @@ export function TrangDoiMatKhau({ bat_buoc, khi_xong }: { bat_buoc: boolean; khi
   return (
     <div className="vo-dang-nhap">
       <form className="the-dang-nhap" onSubmit={gui}>
-        <h1>Đổi mật khẩu</h1>
+        <h1>{tra('doi_mat_khau')}</h1>
         <p className="mo-ta" style={{ marginBottom: 20 }}>
           {bat_buoc
-            ? 'Mật khẩu hiện tại do quản trị đặt. Bạn phải đổi trước khi dùng hệ thống.'
-            : 'Đổi mật khẩu sẽ đăng xuất mọi thiết bị khác.'}
+            ? tra('doi_mk_hien_tai_do_admin')
+            : tra('doi_mk_dang_xuat_moi_thiet_bi')}
         </p>
 
         <HopLoi loi={hd.loi} />
         <HopTot chu={hd.tot} />
 
         <div className="o-nhap">
-          <label htmlFor="cu">Mật khẩu hiện tại</label>
+          <label htmlFor="cu">{tra('mat_khau_hien_tai')}</label>
           <input id="cu" type="password" value={cu} onChange={(e) => dat_cu(e.target.value)}
             autoComplete="current-password" required />
         </div>
 
         <div className="o-nhap">
-          <label htmlFor="moi">Mật khẩu mới</label>
+          <label htmlFor="moi">{tra('mat_khau_moi')}</label>
           <input id="moi" type="password" value={moi} onChange={(e) => dat_moi(e.target.value)}
             autoComplete="new-password" required />
-          <div className="goi-y">Tối thiểu 8 ký tự, có cả chữ và số.</div>
+          <div className="goi-y">{tra('mat_khau_yeu_cau')}</div>
         </div>
 
         <div className="o-nhap">
-          <label htmlFor="lai">Nhập lại mật khẩu mới</label>
+          <label htmlFor="lai">{tra('nhap_lai_mat_khau_moi')}</label>
           <input id="lai" type="password" value={lai} onChange={(e) => dat_lai(e.target.value)}
             autoComplete="new-password" required />
           {lai !== '' && !khop && <div className="goi-y chu-xau">
-            Hai lần nhập chưa khớp.
+            {tra('hai_lan_nhap_chua_khop')}
           </div>}
         </div>
 
         <button type="submit" className="nut-chinh"
           style={{ width: '100%', justifyContent: 'center' }}
           disabled={hd.dang_chay || !khop || cu === ''}>
-          {hd.dang_chay ? 'Đang đổi…' : 'Đổi mật khẩu'}
+          {hd.dang_chay ? tra('dang_doi') : tra('doi_mat_khau')}
         </button>
       </form>
     </div>
@@ -169,6 +180,7 @@ export function TrangDoiMatKhau({ bat_buoc, khi_xong }: { bat_buoc: boolean; khi
 export function TrangChoDuyet({ ten, khi_thoat }: { ten: string; khi_thoat: () => void }): ReactNode {
   const [dang_kiem, dat_dang_kiem] = useState(false);
   const [chua_co, dat_chua_co] = useState(false);
+  const { tra } = dung_chuoi();
 
   // Vai tro nam trong token nen sau khi admin cap quyen, token dang cam van la cho_duyet.
   // Nut nay lam moi token de khoi phai dang xuat rooi dang nhap lai.
@@ -185,26 +197,23 @@ export function TrangChoDuyet({ ten, khi_thoat }: { ten: string; khi_thoat: () =
     <div className="vo-dang-nhap">
       <div className="the-dang-nhap" style={{ textAlign: 'center' }}>
         <div className="o-cho-duyet" aria-hidden="true">⏳</div>
-        <h1>Chờ phân quyền</h1>
+        <h1>{tra('cho_phan_quyen')}</h1>
         <p className="mo-ta" style={{ marginBottom: 20 }}>
-          Xin chào <strong>{ten}</strong>. Tài khoản của bạn đã xác thực thành công bằng
-          Microsoft, nhưng <strong>chưa được quản trị viên phân quyền</strong> nên chưa vào
-          được hệ thống.
+          {tra('cho_duyet_mo_ta', { ten })}
         </p>
         <div className="hop-thong-bao hop-luu-y" style={{ textAlign: 'left' }}>
-          Hãy báo bộ phận nhân sự để được cấp quyền. Sau khi được cấp, bạn chỉ cần đăng nhập
-          lại là dùng được ngay.
+          {tra('cho_duyet_luu_y')}
         </div>
         {chua_co && (
           <div className="hop-thong-bao hop-loi" style={{ textAlign: 'left' }}>
-            Vẫn chưa được cấp quyền. Thử lại sau khi nhân sự báo đã xong.
+            {tra('cho_duyet_chua_co')}
           </div>
         )}
         <div className="hang-nut" style={{ justifyContent: 'center' }}>
           <button type="button" className="nut-chinh" onClick={() => void kiem_lai()} disabled={dang_kiem}>
-            {dang_kiem ? 'Đang kiểm tra…' : 'Tôi đã được cấp quyền — kiểm tra lại'}
+            {dang_kiem ? tra('cho_duyet_dang_kiem') : tra('cho_duyet_kiem_lai')}
           </button>
-          <button type="button" onClick={khi_thoat}>Đăng xuất</button>
+          <button type="button" onClick={khi_thoat}>{tra('dang_xuat')}</button>
         </div>
       </div>
     </div>

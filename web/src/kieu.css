@@ -29,10 +29,31 @@ h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
 
 /* ---------------------------------------------------------------- bo cuc */
 .vo-dang-nhap {
+  position: relative;
   min-height: 100vh;
   display: grid;
   place-items: center;
   padding: 24px;
+}
+
+/* Nut doi ngon ngu o trang dang nhap (song ngu Viet - Trung). */
+.nut-ngon-ngu-noi {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--vien);
+  border-radius: 8px;
+  background: var(--nen-the);
+  color: var(--chu-nhat);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.nut-ngon-ngu-noi:hover {
+  background: var(--nen-mo);
+  color: var(--chu);
 }
 
 .the-dang-nhap {

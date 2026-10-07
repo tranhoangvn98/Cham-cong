@@ -1,6 +1,6 @@
 {
   "name": "cham-cong",
-  "version": "1.119.1",
+  "version": "1.120.0",
   "private": true,
   "description": "He thong cham cong tu may ZKTeco: backend ADMS + webapp HR + app dien thoai",
   "workspaces": [
@@ -19,7 +19,7 @@
     "seed": "npm --workspace may_chu run seed",
     "build": "npm --workspace may_chu run build && npm --workspace web run build",
     "sinh_token": "node thiet_ke/sinh_token.mjs",
-    "test": "npm --workspace may_chu test && node --test \"thiet_ke/*.test.mjs\"",
+    "test": "npm --workspace may_chu test && node --test \"thiet_ke/*.test.mjs\" && node --experimental-strip-types --test \"web/test/*.test.ts\"",
     "kiem_tra_kieu": "npm --workspace may_chu run kiem_tra_kieu && npm --workspace web run kiem_tra_kieu && npm --prefix dien_thoai run kiem_tra_kieu",
     "kiem_tra_trien_khai": "node trien_khai/kiem_tra.mjs",
     "gia_lap_may": "node trien_khai/gia_lap_may.mjs",

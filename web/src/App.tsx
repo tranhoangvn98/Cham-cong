@@ -6,7 +6,7 @@ import {
 } from './api.ts';
 import { CungCapTuyen, LienKet, dung_tuyen } from './dinh_tuyen.tsx';
 import { CungCapTieuDe, DuongMon, type TieuDeTrang } from './tieu_de_trang.tsx';
-import { DangTai, TEN_VAI_TRO } from './thanh_phan.tsx';
+import { DangTai } from './thanh_phan.tsx';
 import { ChonMucCaiDat, TrangCaiDat } from './trang/cai_dat_tong.tsx';
 import { TrangChoDuyet, TrangDangNhap, TrangDoiMatKhau } from './trang/dang_nhap.tsx';
 import { TrangDashboard } from './trang/dashboard.tsx';
@@ -51,15 +51,20 @@ import { TroLyThoiViec } from './trang/tro_ly_thoi_viec.tsx';
 import { TroLyQuanTri } from './trang/tro_ly_quan_tri.tsx';
 import { ChuongBao } from './trang/chuong_bao.tsx';
 import { PopupThongBao } from './trang/popup_thong_bao.tsx';
+import { CungCapChuoi, dung_chuoi, KHOA_NHOM, KHOA_VAI_TRO, type ChuoiKhoa } from './chuoi/chi_muc.tsx';
 
 interface MucMenu {
   duong_dan: string;
   ten: string;
+  /** Khoa chuoi song ngu (web/src/chuoi/vi.ts + zh.ts) thay cho `ten` khi hien thi. */
+  khoa: ChuoiKhoa;
   /** Ten icon Tabler (xem web/src/icon.css). */
   icon: string;
   nhom: string;
   /** Dong phu tren header khi o trang nay. */
   phu?: string;
+  /** Khoa chuoi song ngu thay cho `phu` khi hien thi. */
+  khoa_phu: ChuoiKhoa;
   /**
    * Vai tro toi thieu de thay muc nay.
    * - 'quan_tri': nhan su/admin, VA truong phong duoc admin cap quyen xem (view-only, loc theo phong).
@@ -90,48 +95,48 @@ interface MucMenu {
  */
 const MENU: MucMenu[] = [
   // Truy cap nhanh (khong nhom): trang tong quan + cong vao Khu vuc ca nhan.
-  { duong_dan: '/', ten: 'Tổng quan', icon: 'layout-dashboard', nhom: '', phu: 'Tình hình chấm công hôm nay', ca_nhan: true },
+  { duong_dan: '/', ten: 'Tổng quan', khoa: 'menu_tong_quan', icon: 'layout-dashboard', nhom: '', phu: 'Tình hình chấm công hôm nay', khoa_phu: 'menu_tong_quan_phu', ca_nhan: true },
   // "Khu vuc cua toi" chi hien o goc nhin Ca nhan — thanh ben Quan tri thuan quan tri, khong lap
   // lai loi vao giao dien ca nhan (chi_ca_nhan -> an o goc nhin Quan tri).
-  { duong_dan: '/ca-nhan', ten: 'Khu vực của tôi', icon: 'circle-check', nhom: '', phu: 'Chấm công, đơn từ và hồ sơ của bạn', ca_nhan: true, chi_ca_nhan: true },
+  { duong_dan: '/ca-nhan', ten: 'Khu vực của tôi', khoa: 'menu_khu_vuc_cua_toi', icon: 'circle-check', nhom: '', phu: 'Chấm công, đơn từ và hồ sơ của bạn', khoa_phu: 'menu_khu_vuc_cua_toi_phu', ca_nhan: true, chi_ca_nhan: true },
 
   // Cua toi da GOM HET vao "Khu vuc cua toi" (mot vo ca nhan duy nhat) — thanh ben khong lap
   // lai cac muc nay nua. Duong dan cu /don-cua-toi, /phieu-luong-toi, /ho-so-toi van song
   // (bookmark, lien ket ngoai) va chuyen huong vao DUNG TAB trong Khu vuc (xem CHUYEN_HUONG).
 
   // Cham cong: log may + tong hop cong + canh bao ra/vao — tat ca noi ve THOI GIAN LAM VIEC.
-  { duong_dan: '/lan-quet', ten: 'Chấm công', icon: 'fingerprint', nhom: 'Chấm công', phu: 'Log đồng bộ từ máy ADMS', quyen: 'nhan_su' },
-  { duong_dan: '/bang-cong', ten: 'Bảng công', icon: 'calendar-stats', nhom: 'Chấm công', phu: 'Tổng hợp theo tháng', quyen: 'quan_tri' },
-  { duong_dan: '/ra-vao', ten: 'Ra/vào', icon: 'clock-exclamation', nhom: 'Chấm công', phu: 'Cảnh báo ra/vào & xử lý', quyen: 'nhan_su' },
+  { duong_dan: '/lan-quet', ten: 'Chấm công', khoa: 'menu_cham_cong', icon: 'fingerprint', nhom: 'Chấm công', phu: 'Log đồng bộ từ máy ADMS', khoa_phu: 'menu_cham_cong_phu', quyen: 'nhan_su' },
+  { duong_dan: '/bang-cong', ten: 'Bảng công', khoa: 'menu_bang_cong', icon: 'calendar-stats', nhom: 'Chấm công', phu: 'Tổng hợp theo tháng', khoa_phu: 'menu_bang_cong_phu', quyen: 'quan_tri' },
+  { duong_dan: '/ra-vao', ten: 'Ra/vào', khoa: 'menu_ra_vao', icon: 'clock-exclamation', nhom: 'Chấm công', phu: 'Cảnh báo ra/vào & xử lý', khoa_phu: 'menu_ra_vao_phu', quyen: 'nhan_su' },
 
   // Luong: tien luong cua nguoi lao dong — tu thang luong den ung va khieu nai.
-  { duong_dan: '/bang-luong', ten: 'Bảng lương', icon: 'receipt-2', nhom: 'Lương', phu: 'Tính lương, phiếu từng người', quyen: 'nhan_su' },
-  { duong_dan: '/phu-cap', ten: 'Phụ cấp', icon: 'plus', nhom: 'Lương', phu: 'Danh mục khoản · theo khối · cá nhân', quyen: 'nhan_su' },
-  { duong_dan: '/ung-luong', ten: 'Ứng lương', icon: 'download', nhom: 'Lương', phu: 'Tạm ứng · duyệt · đã chi', quyen: 'nhan_su' },
-  { duong_dan: '/khieu-nai-luong', ten: 'Khiếu nại lương', icon: 'file-text', nhom: 'Lương', phu: 'Khiếu nại phiếu lương của nhân viên', quyen: 'nhan_su' },
+  { duong_dan: '/bang-luong', ten: 'Bảng lương', khoa: 'menu_bang_luong', icon: 'receipt-2', nhom: 'Lương', phu: 'Tính lương, phiếu từng người', khoa_phu: 'menu_bang_luong_phu', quyen: 'nhan_su' },
+  { duong_dan: '/phu-cap', ten: 'Phụ cấp', khoa: 'menu_phu_cap', icon: 'plus', nhom: 'Lương', phu: 'Danh mục khoản · theo khối · cá nhân', khoa_phu: 'menu_phu_cap_phu', quyen: 'nhan_su' },
+  { duong_dan: '/ung-luong', ten: 'Ứng lương', khoa: 'menu_ung_luong', icon: 'download', nhom: 'Lương', phu: 'Tạm ứng · duyệt · đã chi', khoa_phu: 'menu_ung_luong_phu', quyen: 'nhan_su' },
+  { duong_dan: '/khieu-nai-luong', ten: 'Khiếu nại lương', khoa: 'menu_khieu_nai_luong', icon: 'file-text', nhom: 'Lương', phu: 'Khiếu nại phiếu lương của nhân viên', khoa_phu: 'menu_khieu_nai_luong_phu', quyen: 'nhan_su' },
 
   // Nhan su: con nguoi va quan he lao dong.
-  { duong_dan: '/nhan-vien', ten: 'Nhân viên', icon: 'users', nhom: 'Nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản', quyen: 'quan_tri' },
-  { duong_dan: '/de-nghi-nhan-su', ten: 'Đề nghị thêm nhân sự', icon: 'key', nhom: 'Nhân sự', phu: 'HR đề nghị, Admin duyệt một bước — hệ thống tự khởi tạo', quyen: 'nhan_su' },
-  { duong_dan: '/duyet-don', ten: 'Duyệt đơn', icon: 'plane-departure', nhom: 'Nhân sự', phu: 'Đơn từ & duyệt', quyen: 'nguoi_duyet', ca_nhan: true },
-  { duong_dan: '/quan-ly-phep', ten: 'Quản lý phép', icon: 'sun', nhom: 'Nhân sự', phu: 'Tổng hợp ngày phép từng người', quyen: 'nguoi_duyet' },
-  { duong_dan: '/so-ngoai-le', ten: 'Sổ ngoại lệ', icon: 'circle-x', nhom: 'Nhân sự', phu: 'Ngày bão, sự kiện đặc biệt — miễn đi muộn/về sớm/vắng', quyen: 'nhan_su' },
-  { duong_dan: '/hop-dong', ten: 'Hợp đồng', icon: 'file-certificate', nhom: 'Nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', quyen: 'nhan_su' },
-  { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', icon: 'alert-triangle', nhom: 'Nhân sự', phu: 'Nội quy, nhắc nhở, giảm thưởng', quyen: 'quan_tri' },
-  { duong_dan: '/thoi-viec', ten: 'Thôi việc', icon: 'logout', nhom: 'Nhân sự', phu: 'Quy trình thôi việc: checklist, bàn giao, chốt', quyen: 'nhan_su' },
+  { duong_dan: '/nhan-vien', ten: 'Nhân viên', khoa: 'menu_nhan_vien', icon: 'users', nhom: 'Nhân sự', phu: 'Hồ sơ, PIN máy, tài khoản', khoa_phu: 'menu_nhan_vien_phu', quyen: 'quan_tri' },
+  { duong_dan: '/de-nghi-nhan-su', ten: 'Đề nghị thêm nhân sự', khoa: 'menu_de_nghi_nhan_su', icon: 'key', nhom: 'Nhân sự', phu: 'HR đề nghị, Admin duyệt một bước — hệ thống tự khởi tạo', khoa_phu: 'menu_de_nghi_nhan_su_phu', quyen: 'nhan_su' },
+  { duong_dan: '/duyet-don', ten: 'Duyệt đơn', khoa: 'menu_duyet_don', icon: 'plane-departure', nhom: 'Nhân sự', phu: 'Đơn từ & duyệt', khoa_phu: 'menu_duyet_don_phu', quyen: 'nguoi_duyet', ca_nhan: true },
+  { duong_dan: '/quan-ly-phep', ten: 'Quản lý phép', khoa: 'menu_quan_ly_phep', icon: 'sun', nhom: 'Nhân sự', phu: 'Tổng hợp ngày phép từng người', khoa_phu: 'menu_quan_ly_phep_phu', quyen: 'nguoi_duyet' },
+  { duong_dan: '/so-ngoai-le', ten: 'Sổ ngoại lệ', khoa: 'menu_so_ngoai_le', icon: 'circle-x', nhom: 'Nhân sự', phu: 'Ngày bão, sự kiện đặc biệt — miễn đi muộn/về sớm/vắng', khoa_phu: 'menu_so_ngoai_le_phu', quyen: 'nhan_su' },
+  { duong_dan: '/hop-dong', ten: 'Hợp đồng', khoa: 'menu_hop_dong', icon: 'file-certificate', nhom: 'Nhân sự', phu: 'Hạn hợp đồng, tìm trong nội dung', khoa_phu: 'menu_hop_dong_phu', quyen: 'nhan_su' },
+  { duong_dan: '/ky-luat', ten: 'Kỷ luật & vi phạm', khoa: 'menu_ky_luat', icon: 'alert-triangle', nhom: 'Nhân sự', phu: 'Nội quy, nhắc nhở, giảm thưởng', khoa_phu: 'menu_ky_luat_phu', quyen: 'quan_tri' },
+  { duong_dan: '/thoi-viec', ten: 'Thôi việc', khoa: 'menu_thoi_viec', icon: 'logout', nhom: 'Nhân sự', phu: 'Quy trình thôi việc: checklist, bàn giao, chốt', khoa_phu: 'menu_thoi_viec_phu', quyen: 'nhan_su' },
 
   // Cong viec & to chuc: ai lam gi, lam toi dau.
-  { duong_dan: '/cong-viec', ten: 'Công việc', icon: 'check', nhom: 'Công việc & tổ chức', phu: 'Giao việc, duyệt kết quả, lịch công việc', quyen: 'nguoi_duyet', ca_nhan: true },
-  { duong_dan: '/to-chuc', ten: 'Tổ chức & trách nhiệm', icon: 'menu-2', nhom: 'Công việc & tổ chức', phu: 'Cơ cấu, vị trí, JD, RACI, bao phủ', quyen: 'nhan_su' },
-  { duong_dan: '/kpi', ten: 'KPI', icon: 'chart-bar', nhom: 'Công việc & tổ chức', phu: 'Chấm điểm từ dữ liệu thật', quyen: 'nhan_su' },
+  { duong_dan: '/cong-viec', ten: 'Công việc', khoa: 'menu_cong_viec', icon: 'check', nhom: 'Công việc & tổ chức', phu: 'Giao việc, duyệt kết quả, lịch công việc', khoa_phu: 'menu_cong_viec_phu', quyen: 'nguoi_duyet', ca_nhan: true },
+  { duong_dan: '/to-chuc', ten: 'Tổ chức & trách nhiệm', khoa: 'menu_to_chuc', icon: 'menu-2', nhom: 'Công việc & tổ chức', phu: 'Cơ cấu, vị trí, JD, RACI, bao phủ', khoa_phu: 'menu_to_chuc_phu', quyen: 'nhan_su' },
+  { duong_dan: '/kpi', ten: 'KPI', khoa: 'menu_kpi', icon: 'chart-bar', nhom: 'Công việc & tổ chức', phu: 'Chấm điểm từ dữ liệu thật', khoa_phu: 'menu_kpi_phu', quyen: 'nhan_su' },
 
   // Truyen thong noi bo: thong bao va van ban ban hanh.
-  { duong_dan: '/thong-bao', ten: 'Thông báo', icon: 'star', nhom: 'Truyền thông nội bộ', phu: 'Đăng thông báo / gửi email / popup toàn công ty', quyen: 'nhan_su' },
-  { duong_dan: '/van-ban', ten: 'Văn bản công ty', icon: 'list-details', nhom: 'Truyền thông nội bộ', phu: 'Soạn bằng AI, ban hành, tài liệu công ty', quyen: 'nhan_su' },
-  { duong_dan: '/ho-thu-y-kien', ten: 'Hòm thư ý kiến', icon: 'user-check', nhom: 'Truyền thông nội bộ', phu: 'Tiếp nhận phản ánh, góp ý & ý kiến dự thảo', quyen: 'nhan_su' },
-  { duong_dan: '/cong-bo-phat-hanh', ten: 'Công bố phát hành', icon: 'refresh', nhom: 'Truyền thông nội bộ', phu: 'AI tổng hợp tính năng mới, gửi thông báo + popup', quyen: 'nhan_su' },
+  { duong_dan: '/thong-bao', ten: 'Thông báo', khoa: 'menu_thong_bao', icon: 'star', nhom: 'Truyền thông nội bộ', phu: 'Đăng thông báo / gửi email / popup toàn công ty', khoa_phu: 'menu_thong_bao_phu', quyen: 'nhan_su' },
+  { duong_dan: '/van-ban', ten: 'Văn bản công ty', khoa: 'menu_van_ban', icon: 'list-details', nhom: 'Truyền thông nội bộ', phu: 'Soạn bằng AI, ban hành, tài liệu công ty', khoa_phu: 'menu_van_ban_phu', quyen: 'nhan_su' },
+  { duong_dan: '/ho-thu-y-kien', ten: 'Hòm thư ý kiến', khoa: 'menu_ho_thu_y_kien', icon: 'user-check', nhom: 'Truyền thông nội bộ', phu: 'Tiếp nhận phản ánh, góp ý & ý kiến dự thảo', khoa_phu: 'menu_ho_thu_y_kien_phu', quyen: 'nhan_su' },
+  { duong_dan: '/cong-bo-phat-hanh', ten: 'Công bố phát hành', khoa: 'menu_cong_bo_phat_hanh', icon: 'refresh', nhom: 'Truyền thông nội bộ', phu: 'AI tổng hợp tính năng mới, gửi thông báo + popup', khoa_phu: 'menu_cong_bo_phat_hanh_phu', quyen: 'nhan_su' },
 
-  { duong_dan: '/cai-dat', ten: 'Cài đặt', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp', quyen: 'nhan_su' },
+  { duong_dan: '/cai-dat', ten: 'Cài đặt', khoa: 'menu_cai_dat', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp', khoa_phu: 'menu_cai_dat_phu', quyen: 'nhan_su' },
 ];
 
 /**
@@ -150,22 +155,24 @@ const MENU: MucMenu[] = [
  * dan. Chuyen no sang tep khac la lam mat cai doi chieu do ma khong co gi bao.
  */
 const MENU_CAI_DAT: MucMenu[] = [
-  { duong_dan: '/cai-dat/thiet-bi', ten: 'Thiết bị', icon: 'device-desktop', nhom: 'Chấm công', phu: 'Máy chấm công ZKTeco', quyen: 'nhan_su' },
-  { duong_dan: '/cai-dat/ca-lam', ten: 'Ca làm việc', icon: 'clock', nhom: 'Chấm công', phu: 'Giờ vào/ra, dung sai, ngưỡng OT' },
-  { duong_dan: '/cai-dat/dia-diem', ten: 'Địa điểm', icon: 'map-pin', nhom: 'Chấm công', phu: 'Đối chiếu GPS khi đi công tác' },
-  { duong_dan: '/cai-dat/ngay-le', ten: 'Ngày lễ', icon: 'star', nhom: 'Chấm công', phu: 'Tết Nguyên đán phải tự thêm mỗi năm' },
-  { duong_dan: '/cai-dat/lam-bu', ten: 'Ngày làm bù', icon: 'calendar-stats', nhom: 'Chấm công', phu: 'Ngày được nghỉ, kiếm công bằng buổi làm bù', quyen: 'nhan_su' },
+  { duong_dan: '/cai-dat/thiet-bi', ten: 'Thiết bị', khoa: 'menu_thiet_bi', icon: 'device-desktop', nhom: 'Chấm công', phu: 'Máy chấm công ZKTeco', khoa_phu: 'menu_thiet_bi_phu', quyen: 'nhan_su' },
+  { duong_dan: '/cai-dat/ca-lam', ten: 'Ca làm việc', khoa: 'menu_ca_lam', icon: 'clock', nhom: 'Chấm công', phu: 'Giờ vào/ra, dung sai, ngưỡng OT', khoa_phu: 'menu_ca_lam_phu' },
+  { duong_dan: '/cai-dat/dia-diem', ten: 'Địa điểm', khoa: 'menu_dia_diem', icon: 'map-pin', nhom: 'Chấm công', phu: 'Đối chiếu GPS khi đi công tác', khoa_phu: 'menu_dia_diem_phu' },
+  { duong_dan: '/cai-dat/ngay-le', ten: 'Ngày lễ', khoa: 'menu_ngay_le', icon: 'star', nhom: 'Chấm công', phu: 'Tết Nguyên đán phải tự thêm mỗi năm', khoa_phu: 'menu_ngay_le_phu' },
+  { duong_dan: '/cai-dat/lam-bu', ten: 'Ngày làm bù', khoa: 'menu_lam_bu', icon: 'calendar-stats', nhom: 'Chấm công', phu: 'Ngày được nghỉ, kiếm công bằng buổi làm bù', khoa_phu: 'menu_lam_bu_phu', quyen: 'nhan_su' },
 
-  { duong_dan: '/cai-dat/tham-so-luong', ten: 'Tham số lương', icon: 'receipt-2', nhom: 'Nhân sự & lương', phu: 'BHXH, thuế TNCN, giảm trừ gia cảnh', quyen: 'nhan_su' },
+  { duong_dan: '/cai-dat/tham-so-luong', ten: 'Tham số lương', khoa: 'menu_tham_so_luong', icon: 'receipt-2', nhom: 'Nhân sự & lương', phu: 'BHXH, thuế TNCN, giảm trừ gia cảnh', khoa_phu: 'menu_tham_so_luong_phu', quyen: 'nhan_su' },
 
-  { duong_dan: '/cai-dat/tai-khoan', ten: 'Tài khoản', icon: 'user-check', nhom: 'Tài khoản & bảo mật', phu: 'Người dùng và vai trò', quyen: 'admin' },
-  { duong_dan: '/cai-dat/khoa-api', ten: 'Khóa API', icon: 'lock', nhom: 'Tài khoản & bảo mật', phu: 'Cho hệ thống ngoài gọi vào', quyen: 'admin' },
-  { duong_dan: '/cai-dat/nhat-ky', ten: 'Nhật ký thao tác', icon: 'list-details', nhom: 'Tài khoản & bảo mật', phu: 'Ai sửa gì, khi nào', quyen: 'admin' },
+  { duong_dan: '/cai-dat/tai-khoan', ten: 'Tài khoản', khoa: 'menu_tai_khoan', icon: 'user-check', nhom: 'Tài khoản & bảo mật', phu: 'Người dùng và vai trò', khoa_phu: 'menu_tai_khoan_phu', quyen: 'admin' },
+  { duong_dan: '/cai-dat/khoa-api', ten: 'Khóa API', khoa: 'menu_khoa_api', icon: 'lock', nhom: 'Tài khoản & bảo mật', phu: 'Cho hệ thống ngoài gọi vào', khoa_phu: 'menu_khoa_api_phu', quyen: 'admin' },
+  { duong_dan: '/cai-dat/nhat-ky', ten: 'Nhật ký thao tác', khoa: 'menu_nhat_ky', icon: 'list-details', nhom: 'Tài khoản & bảo mật', phu: 'Ai sửa gì, khi nào', khoa_phu: 'menu_nhat_ky_phu', quyen: 'admin' },
 
-  { duong_dan: '/cai-dat/dong-bo-erp', ten: 'Đồng bộ ERP', icon: 'refresh', nhom: 'Tích hợp & dữ liệu', phu: 'Kéo người dùng từ ERP cũ', quyen: 'admin' },
-  { duong_dan: '/cai-dat/kho-tep', ten: 'Kho tệp hồ sơ', icon: 'file-text', nhom: 'Tích hợp & dữ liệu', phu: 'Tệp đính kèm và đường dẫn đã lưu', quyen: 'nhan_su' },
-  { duong_dan: '/cai-dat/ma-dinh-danh', ten: 'Mã định danh', icon: 'search', nhom: 'Tích hợp & dữ liệu', phu: 'Tra cứu theo mã, đối soát các nguồn', quyen: 'nhan_su' },
+  { duong_dan: '/cai-dat/dong-bo-erp', ten: 'Đồng bộ ERP', khoa: 'menu_dong_bo_erp', icon: 'refresh', nhom: 'Tích hợp & dữ liệu', phu: 'Kéo người dùng từ ERP cũ', khoa_phu: 'menu_dong_bo_erp_phu', quyen: 'admin' },
+  { duong_dan: '/cai-dat/kho-tep', ten: 'Kho tệp hồ sơ', khoa: 'menu_kho_tep', icon: 'file-text', nhom: 'Tích hợp & dữ liệu', phu: 'Tệp đính kèm và đường dẫn đã lưu', khoa_phu: 'menu_kho_tep_phu', quyen: 'nhan_su' },
+  { duong_dan: '/cai-dat/ma-dinh-danh', ten: 'Mã định danh', khoa: 'menu_ma_dinh_danh', icon: 'search', nhom: 'Tích hợp & dữ liệu', phu: 'Tra cứu theo mã, đối soát các nguồn', khoa_phu: 'menu_ma_dinh_danh_phu', quyen: 'nhan_su' },
 ];
+
+/**
 
 /**
  * Duong dan cu -> duong dan moi.
@@ -307,21 +314,23 @@ function KhungCaiDat({ duong_dan }: { duong_dan: string }): ReactNode {
 }
 
 function KhongCoQuyen(): ReactNode {
+  const { tra } = dung_chuoi();
   return (
     <div className="the">
-      <h1>Không có quyền</h1>
-      <p className="mo-ta">Tài khoản của bạn không được xem trang này.</p>
-      <LienKet den="/" lop="nut">Về tổng quan</LienKet>
+      <h1>{tra('khong_co_quyen')}</h1>
+      <p className="mo-ta">{tra('khong_co_quyen_mo_ta')}</p>
+      <LienKet den="/" lop="nut">{tra('ve_tong_quan')}</LienKet>
     </div>
   );
 }
 
 function KhongTimThay({ duong_dan }: { duong_dan: string }): ReactNode {
+  const { tra } = dung_chuoi();
   return (
     <div className="the">
-      <h1>Không có trang này</h1>
-      <p className="mo-ta">Đường dẫn <code>{duong_dan}</code> không tồn tại.</p>
-      <LienKet den="/" lop="nut">Về tổng quan</LienKet>
+      <h1>{tra('khong_co_trang')}</h1>
+      <p className="mo-ta">{tra('khong_co_trang_mo_ta', { duong_dan })}</p>
+      <LienKet den="/" lop="nut">{tra('ve_tong_quan')}</LienKet>
     </div>
   );
 }
@@ -356,6 +365,7 @@ function dang_toi(c: CheDo): boolean {
 function BoCuc(): ReactNode {
   const { duong_dan, di_toi } = dung_tuyen();
   const nd = nguoi_dung_hien_tai();
+  const { tra, ngon_ngu, dat } = dung_chuoi();
   const [dang_doi_mk, dat_dang_doi_mk] = useState(false);
   const [ben_mo, dat_ben_mo] = useState(false);
   const [che_do, dat_che_do] = useState<CheDo>(doc_che_do);
@@ -433,6 +443,10 @@ function BoCuc(): ReactNode {
   const muc = muc_dang_mo(duong_dan, duoc_thay);
   const chu_dau = (nd?.ho_ten ?? nd?.ten_dang_nhap ?? '?')
     .split(' ').filter((t) => t.length > 0).slice(-2).map((t) => t[0]).join('').toUpperCase();
+  const k_vai_tro = nd === null ? undefined : KHOA_VAI_TRO[nd.vai_tro];
+  // Dong phu tren header: trang co thi theo trang; con lai theo muc menu (da dich song ngu).
+  const phu_header = tieu_de_trang?.phu
+    ?? (muc === null ? undefined : tra(muc.khoa_phu));
 
   return (
     <div className="vo-app">
@@ -442,21 +456,25 @@ function BoCuc(): ReactNode {
           <div className="thuong-hieu-o" aria-hidden="true">TH</div>
           <div>
             <b>Trần Hoàng</b>
-            <span>HR · Chấm công</span>
+            <span>{tra('thuong_hieu_phu')}</span>
           </div>
         </div>
 
         <nav className="dieu-huong">
           {nhom_menu.map((nhom) => (
             <div key={nhom} className="dieu-huong-khoi">
-              {nhom !== '' && <div className="dieu-huong-nhom">{nhom}</div>}
+              {nhom !== '' && (
+                <div className="dieu-huong-nhom">
+                  {KHOA_NHOM[nhom] === undefined ? nhom : tra(KHOA_NHOM[nhom])}
+                </div>
+              )}
               {duoc_thay.filter((m) => m.nhom === nhom).map((m) => (
                 <LienKet
                   key={m.duong_dan}
                   den={m.duong_dan}
                   lop={muc?.duong_dan === m.duong_dan ? 'dang-chon' : undefined}
                 >
-                  <i className={`bt bt-${m.icon}`} aria-hidden="true" /> {m.ten}
+                  <i className={`bt bt-${m.icon}`} aria-hidden="true" /> {tra(m.khoa)}
                 </LienKet>
               ))}
             </div>
@@ -465,20 +483,20 @@ function BoCuc(): ReactNode {
 
         <div className="chan-thanh-ben">
           {la_quan_tri() && (
-            <div className="chuyen-goc-nhin" role="group" aria-label="Chuyển góc nhìn">
+            <div className="chuyen-goc-nhin" role="group" aria-label={tra('chuyen_goc_nhin')}>
               <button className={gn === 'quan_tri' ? 'dang-chon' : undefined}
-                onClick={() => doi_goc_nhin('quan_tri')}>Quản trị</button>
+                onClick={() => doi_goc_nhin('quan_tri')}>{tra('quan_tri')}</button>
               <button className={gn === 'ca_nhan' ? 'dang-chon' : undefined}
-                onClick={() => doi_goc_nhin('ca_nhan')}>Cá nhân</button>
+                onClick={() => doi_goc_nhin('ca_nhan')}>{tra('ca_nhan')}</button>
             </div>
           )}
           <div className="ten-nguoi">{nd?.ho_ten ?? nd?.ten_dang_nhap}</div>
           <div style={{ marginBottom: 8 }}>
-            {nd === null ? '' : (TEN_VAI_TRO[nd.vai_tro] ?? nd.vai_tro)}
+            {k_vai_tro === undefined ? '' : tra(k_vai_tro)}
           </div>
           <div className="hang-nut">
             <button className="nut-nho nut-phang" onClick={() => dat_dang_doi_mk(true)}>
-              Đổi mật khẩu
+              {tra('doi_mat_khau')}
             </button>
             <button
               className="nut-nho nut-phang"
@@ -486,7 +504,7 @@ function BoCuc(): ReactNode {
                 void dang_xuat().then(() => window.location.assign('/'));
               }}
             >
-              Đăng xuất
+              {tra('dang_xuat')}
             </button>
           </div>
         </div>
@@ -495,7 +513,7 @@ function BoCuc(): ReactNode {
       {ben_mo && (
         <button
           className="man-che-ben"
-          aria-label="Đóng thanh điều hướng"
+          aria-label={tra('dong_thanh_dieu_huong')}
           onClick={() => dat_ben_mo(false)}
         />
       )}
@@ -506,7 +524,7 @@ function BoCuc(): ReactNode {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
             <button
               className="nut-tron nut-menu"
-              aria-label="Mở thanh điều hướng"
+              aria-label={tra('mo_thanh_dieu_huong')}
               aria-expanded={ben_mo}
               onClick={() => dat_ben_mo(true)}
             >
@@ -517,15 +535,23 @@ function BoCuc(): ReactNode {
                 <DuongMon cac_chang={tieu_de_trang.duong_mon} />
               )}
               <div className="dau-app-tieu-de">
-                {tieu_de_trang?.tieu_de ?? muc?.ten ?? 'Chấm công'}
+                {tieu_de_trang?.tieu_de ?? (muc === null ? tra('menu_cham_cong') : tra(muc.khoa))}
               </div>
-              {(tieu_de_trang?.phu ?? muc?.phu) !== undefined && (
-                <div className="dau-app-phu">{tieu_de_trang?.phu ?? muc?.phu}</div>
+              {phu_header !== undefined && (
+                <div className="dau-app-phu">{phu_header}</div>
               )}
             </div>
           </div>
 
           <div className="dau-app-nut">
+            <button
+              className="nut-tron"
+              onClick={() => dat(ngon_ngu === 'vi' ? 'zh' : 'vi')}
+              aria-label={tra('ngon_ngu')}
+              title={tra('ngon_ngu')}
+            >
+              {ngon_ngu === 'vi' ? '中' : 'VI'}
+            </button>
             <ChuongBao />
             <button
               className="nut-tron"
@@ -565,6 +591,19 @@ function BoCuc(): ReactNode {
 }
 
 export function App(): ReactNode {
+  // Song ngu Viet - Trung: boc Provider o day de ca trang dang nhap lan phan ung dung deu
+  // doc duoc ngon ngu. `key` theo nguoi dung de sau khi dang nhap Provider duoc tao lai va
+  // doc dung ngon ngu tu phien (thay vi giu nguyen gia tri tu luc chua dang nhap).
+  const nd = nguoi_dung_hien_tai();
+  return (
+    <CungCapChuoi key={nd === null ? 'chua-dang-nhap' : nd.id}>
+      <NoiDungApp />
+    </CungCapChuoi>
+  );
+}
+
+function NoiDungApp(): ReactNode {
+  const { tra } = dung_chuoi();
   // Buoc lai render sau khi dang nhap/dang xuat de doc lai trang thai phien.
   const [lan, dat_lan] = useState(0);
   // Chua doc xong phan neo cua URL thi chua biet da dang nhap hay chua — ve trang dang
@@ -603,15 +642,15 @@ export function App(): ReactNode {
     if (!dang_doc_neo) return;
     void nhan_phien_tu_neo()
       .then((loi) => { dat_loi_sso(loi); })
-      .catch(() => { dat_loi_sso('Không hoàn tất được đăng nhập Microsoft.'); })
+      .catch(() => { dat_loi_sso(tra('loi_khong_hoan_tat_sso')); })
       .finally(() => { dat_dang_doc_neo(false); dat_lan((n) => n + 1); });
   }, [dang_doc_neo]);
 
   const nd = nguoi_dung_hien_tai();
 
-  if (dang_doc_neo) return <div className="dang-tai-toan-trang">Đang hoàn tất đăng nhập…</div>;
+  if (dang_doc_neo) return <div className="dang-tai-toan-trang">{tra('dang_hoan_tat_dang_nhap')}</div>;
   if (dang_hoi_cau_hinh && loi_cong === null) {
-    return <div className="dang-tai-toan-trang">Đang kiểm tra phiên đăng nhập…</div>;
+    return <div className="dang-tai-toan-trang">{tra('dang_kiem_tra_phien')}</div>;
   }
 
   // Da dang nhap o cong nhung chua duoc cap quyen o phan he nay. Man hinh giai thich, KHONG
@@ -620,7 +659,7 @@ export function App(): ReactNode {
     return (
       <div className="vo-dang-nhap">
         <div className="the-dang-nhap">
-          <h1>Chấm công</h1>
+          <h1>{tra('menu_cham_cong')}</h1>
           <div className="hop-luu-y" style={{ marginTop: 16 }}>{loi_cong}</div>
         </div>
       </div>

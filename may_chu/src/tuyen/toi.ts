@@ -48,6 +48,7 @@ import {
   chuoi, chuoi_bat_buoc, gio, khoang_ngay, luan_ly, ngay_bat_buoc, than, trong_tap, uuid,
   LoiDauVao, LoiKhongQuyen, LoiKhongTim, LoiXungDot,
 } from '../tien_ich/kiem_tra.ts';
+import { la_ngon_ngu, tra_chuoi } from '../chuoi/chi_muc.ts';
 
 const LOAI_NGHI = ['phep_nam', 'khong_luong', 'om', 'thai_san', 'ket_hon', 'hieu'] as const;
 
@@ -501,6 +502,20 @@ export async function phieu_luong_cua_toi(
 
 export async function tuyen_toi(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', can_dang_nhap);
+
+  // ================================================================ ngon ngu hien thi
+  // Song ngu Viet - Trung (SONG-NGU-TRUNG.md): nguoi dung tu chon ngon ngu; luu vao CSDL
+  // de moi thiet bi dong bo. Thong bao tra ve bang dung ngon ngu vua chon.
+  app.patch('/ngon-ngu', async (req) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const b = than(req.body);
+    const ngon_ngu = chuoi(b, 'ngon_ngu', { toi_da: 8 });
+    if (!la_ngon_ngu(ngon_ngu)) {
+      throw new LoiDauVao(tra_chuoi('vi', 'ngon_ngu_khong_hop_le'));
+    }
+    await thuc_thi('update nguoi_dung set ngon_ngu = $1 where id = $2', [ngon_ngu, nd.sub]);
+    return { ok: true, ngon_ngu, thong_bao: tra_chuoi(ngon_ngu, 'ngon_ngu_da_doi') };
+  });
 
   // ================================================================ trach nhiem cua toi
   // Tu cac vi tri dang giu (kiem nhiem) suy ra nhom TN -> TN chi tiet -> dau viec,

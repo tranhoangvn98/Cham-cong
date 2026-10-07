@@ -40,6 +40,7 @@ interface DongNguoiDung {
   khoa_den: Date | null;
   ho_ten: string | null;
   quyen_quan_tri?: boolean;
+  ngon_ngu: string | null;
 }
 
 const SO_LAN_SAI_TOI_DA = 8;
@@ -49,7 +50,7 @@ async function nap_nguoi_dung(ten_dang_nhap: string): Promise<DongNguoiDung | nu
   return truy_van_mot<DongNguoiDung>(
     `select nd.id, nd.ten_dang_nhap, nd.mat_khau_hash, nd.vai_tro, nd.nhan_vien_id,
             nd.dang_hoat_dong, nd.phai_doi_mat_khau, nd.so_lan_sai, nd.khoa_den,
-            nd.quyen_quan_tri, nv.ho_ten
+            nd.quyen_quan_tri, nd.ngon_ngu, nv.ho_ten
        from nguoi_dung nd
        left join nhan_vien nv on nv.id = nd.nhan_vien_id
       where lower(nd.ten_dang_nhap) = lower($1)`,
@@ -88,6 +89,8 @@ async function phat_token(nd: DongNguoiDung, mo_ta_thiet_bi: string | null) {
       ho_ten: nd.ho_ten,
       phai_doi_mat_khau: nd.phai_doi_mat_khau,
       quyen_quan_tri: nd.quyen_quan_tri ?? false,
+      // Song ngu Viet - Trung: web/app doc khoa nay de chon tu dien hien thi.
+      ngon_ngu: nd.ngon_ngu === 'zh' ? 'zh' : 'vi',
     },
   };
 }
@@ -576,5 +579,7 @@ export async function tim_hoac_tao_theo_email(
     so_lan_sai: 0,
     khoa_den: null,
     ho_ten: nv?.ho_ten ?? ho_ten,
+    // Tai khoan MS moi mac dinh tieng Viet; nguoi dung tu doi o goc phai man hinh.
+    ngon_ngu: 'vi',
   };
 }
