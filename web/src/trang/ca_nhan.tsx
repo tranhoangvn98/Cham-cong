@@ -482,7 +482,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
   di_duyet?: () => void;
 }): ReactNode {
   const { duong_dan, di_toi } = dung_tuyen();
-  const { tra } = dung_chuoi();
+  const { tra, ngon_ngu, dat } = dung_chuoi();
   // Tab ban dau doc tu duong dan that (tro ly mo `/ca-nhan/luong` thi vao thang tab Luong).
   const [tab, dat_tab] = useState<Tab>(() => DUONG_TAB[duong_dan] ?? 'trang_chu');
   const [mo_form, dat_mo_form] = useState<FormMo | null>(null);
@@ -631,6 +631,15 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
             <b>{tieu_de}</b>
             {phu_de !== '' && <span>{phu_de}</span>}
           </div>
+          <button
+            type="button"
+            className="cn-dau-ngon-ngu"
+            onClick={() => dat(ngon_ngu === 'vi' ? 'zh' : 'vi')}
+            aria-label={tra('ngon_ngu')}
+            title={tra('ngon_ngu')}
+          >
+            {ngon_ngu === 'vi' ? '中' : 'VI'}
+          </button>
           {/* Chuong bao TONG HOP (/api/toi/bao): thong bao cong ty + nhac nho/canh cao ky luat
               + trang thai don... `dieu_huong` mo dung man NGAY TRONG vo ca nhan. */}
           <ChuongBao dieu_huong={dieu_huong_bao} />
