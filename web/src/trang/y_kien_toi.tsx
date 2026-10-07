@@ -9,18 +9,23 @@ import {
   type TinNhanKN,
 } from '../thanh_phan.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
+import { dung_chuoi, tra_hien_tai, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
 
-const NHAN_LOAI: Record<string, string> = {
-  du_thao: 'Ý kiến dự thảo',
-  gop_y: 'Góp ý',
-  phan_anh: 'Phản ánh',
-  yeu_cau: 'Yêu cầu',
-  thac_mac: 'Thắc mắc',
+const KHOA_LOAI: Record<string, ChuoiKhoa> = {
+  du_thao: 'yk_y_kien_du_thao',
+  gop_y: 'yk_gop_y',
+  phan_anh: 'yk_phan_anh',
+  yeu_cau: 'yk_yeu_cau',
+  thac_mac: 'yk_thac_mac',
 };
 
-const NHAN_TT: Record<string, string> = {
-  moi: 'Chờ xử lý', dang_xem: 'Đã tiếp nhận', da_dong: 'Đã hoàn tất',
+const KHOA_TT: Record<string, ChuoiKhoa> = {
+  moi: 'yk_cho_xu_ly', dang_xem: 'yk_da_tiep_nhan', da_dong: 'yk_da_hoan_tat',
 };
+
+/** Dich theo khoa chuoi; khoa khong co trong tu dien thi dung chuoi thay the. */
+const tra_khoa = (k: ChuoiKhoa | undefined, thay: string): string =>
+  k !== undefined ? tra_hien_tai(k) : thay;
 
 interface HoThuToi {
   id: string;
@@ -36,11 +41,11 @@ interface HoThuToi {
   anh: { id: string; ten: string }[];
 }
 
-const CAC_LOAI_GUI: { ma: string; nhan: string }[] = [
-  { ma: 'gop_y', nhan: 'Góp ý' },
-  { ma: 'phan_anh', nhan: 'Phản ánh' },
-  { ma: 'yeu_cau', nhan: 'Yêu cầu' },
-  { ma: 'thac_mac', nhan: 'Thắc mắc' },
+const CAC_LOAI_GUI: { ma: string; khoa: ChuoiKhoa }[] = [
+  { ma: 'gop_y', khoa: 'yk_gop_y' },
+  { ma: 'phan_anh', khoa: 'yk_phan_anh' },
+  { ma: 'yeu_cau', khoa: 'yk_yeu_cau' },
+  { ma: 'thac_mac', khoa: 'yk_thac_mac' },
 ];
 
 interface DuThaoGon {
@@ -55,6 +60,7 @@ export function YKienToi(): ReactNode {
   const ds = dung_nap<HoThuToi[]>('/api/toi/ho-thu-y-kien');
   const ds_du_thao = dung_nap<DuThaoGon[]>('/api/toi/du-thao-dang-lay-y-kien');
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const [loai, dat_loai] = useState('gop_y');
   const [van_ban_id, dat_van_ban_id] = useState('');
   const [tieu_de, dat_tieu_de] = useState('');
@@ -65,9 +71,7 @@ export function YKienToi(): ReactNode {
     void hd.chay(
       () => goi('/api/toi/ho-thu-y-kien',
         { method: 'POST', body: { loai, tieu_de, noi_dung, ...(van_ban_id === '' ? {} : { nhap_ai_id: van_ban_id }) } }),
-      van_ban_id === ''
-        ? 'Đã gửi. Phòng Nhân sự sẽ tiếp nhận và phản hồi qua đây và qua email của bạn.'
-        : 'Đã gửi ý kiến cho dự thảo. Phòng Nhân sự sẽ tiếp nhận và phản hồi.',
+      van_ban_id === '' ? tra('yk_da_gui_ok') : tra('yk_da_gui_dt'),
     ).then((ok) => {
       if (ok) { dat_tieu_de(''); dat_noi_dung(''); dat_van_ban_id(''); ds.nap_lai(); }
     });
@@ -81,49 +85,51 @@ export function YKienToi(): ReactNode {
       <HopTot chu={hd.tot} />
 
       <div className="the">
-        <div className="canhan-muc-dau"><h3>Gửi ý kiến mới</h3></div>
+        <div className="canhan-muc-dau"><h3>{tra('yk_gui_y_kien_moi')}</h3></div>
         <div className="bo-loc">
           <div className="o-nhap">
-            <label htmlFor="van_ban">Mã văn bản dự thảo (tùy chọn)</label>
+            <label htmlFor="van_ban">{tra('yk_ma_vb_du_thao')}</label>
             <Chon gia_tri={van_ban_id} dat_gia_tri={dat_van_ban_id}
               cac_tuy_chon={(ds_du_thao.du_lieu ?? []).map((d): TuyChonChon => ({
                 ma: d.id,
-                nhan: `${d.ma} — ${d.trich_yeu !== '' ? d.trich_yeu : 'Dự thảo'}`
-                  + (d.han_lay_y_kien !== null ? ` (hạn ${ngay_gio(d.han_lay_y_kien)})` : ''),
+                nhan: `${d.ma} — ${d.trich_yeu !== '' ? d.trich_yeu : tra('yk_du_thao')}`
+                  + (d.han_lay_y_kien !== null ? tra('yk_han_x', { n: ngay_gio(d.han_lay_y_kien) }) : ''),
               }))}
-              rong="Không gắn văn bản (góp ý chung)" nhan="Chọn mã văn bản để góp ý dự thảo" />
+              rong={tra('yk_khong_gan_vb')} nhan={tra('yk_chon_ma_vb')} />
           </div>
           {van_ban_id === '' && (
             <>
               <div className="o-nhap">
-                <label htmlFor="loai">Loại ý kiến</label>
+                <label htmlFor="loai">{tra('yk_loai_y_kien')}</label>
                 <Chon gia_tri={loai} dat_gia_tri={dat_loai}
-                  cac_tuy_chon={CAC_LOAI_GUI.map((c): TuyChonChon => ({ ma: c.ma, nhan: c.nhan }))}
-                  nhan="Chọn loại" />
+                  cac_tuy_chon={CAC_LOAI_GUI.map((c): TuyChonChon => ({
+                    ma: c.ma, nhan: tra_hien_tai(c.khoa),
+                  }))}
+                  nhan={tra('yk_chon_loai')} />
               </div>
               <div className="o-nhap" style={{ flex: 1 }}>
-                <label htmlFor="tieu_de">Tiêu đề</label>
+                <label htmlFor="tieu_de">{tra('tb_tieu_de')}</label>
                 <input id="tieu_de" value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)}
-                  placeholder="Ví dụ: Đề xuất thêm quạt cho dây chuyền may" />
+                  placeholder={tra('yk_vi_du_tieu_de')} />
               </div>
             </>
           )}
         </div>
-        <label htmlFor="noi_dung">Nội dung</label>
+        <label htmlFor="noi_dung">{tra('tb_noi_dung')}</label>
         <textarea id="noi_dung" rows={4} value={noi_dung}
           onChange={(e) => dat_noi_dung(e.target.value)}
-          placeholder="Trình bày rõ ý kiến, băn khoăn hoặc yêu cầu của bạn…" />
+          placeholder={tra('yk_trinh_bay_ro')} />
         <div className="hang-nut" style={{ marginTop: 8 }}>
           <button disabled={hd.dang_chay || noi_dung.trim().length < 1
             || (van_ban_id === '' && tieu_de.trim().length < 3)} onClick={gui}>
-            {hd.dang_chay ? 'Đang gửi…' : 'Gửi ý kiến'}
+            {hd.dang_chay ? tra('cn_dang_gui') : tra('yk_gui_y_kien')}
           </button>
         </div>
       </div>
 
       {ds.du_lieu === null ? null : ds.du_lieu.length === 0 ? (
-        <Trong tieu_de="Bạn chưa gửi ý kiến nào"
-          mo_ta="Mọi góp ý, phản ánh, yêu cầu đều được Phòng Nhân sự tiếp nhận và phản hồi." />
+        <Trong tieu_de={tra('yk_chua_gui_y_kien')}
+          mo_ta={tra('yk_moi_gop_y')} />
       ) : (
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {ds.du_lieu.map((h) => (
@@ -131,17 +137,17 @@ export function YKienToi(): ReactNode {
               <div className="canhan-muc-dau">
                 <h4>
                   {h.tieu_de}
-                  <span className="mo-ta"> · {NHAN_LOAI[h.loai] ?? h.loai}</span>
+                  <span className="mo-ta"> · {tra_khoa(KHOA_LOAI[h.loai], h.loai)}</span>
                 </h4>
                 <span className={`nhan ${h.trang_thai === 'da_dong' ? 'nhan-tot'
                   : h.trang_thai === 'dang_xem' ? 'nhan-canh-bao' : 'nhan-xau'}`}>
-                  {NHAN_TT[h.trang_thai] ?? h.trang_thai}
+                  {tra_khoa(KHOA_TT[h.trang_thai], h.trang_thai)}
                 </span>
               </div>
               <p className="mo-ta">
                 {h.ma ?? ''} · {ngay_gio(h.tao_luc)}
                 {h.nhap_ai_id !== null && (
-                  <> · <a href={`/gop-y-du-thao?van_ban_id=${h.nhap_ai_id}`}>mở lại dự thảo</a></>
+                  <> · <a href={`/gop-y-du-thao?van_ban_id=${h.nhap_ai_id}`}>{tra('yk_mo_lai_du_thao')}</a></>
                 )}
               </p>
               {mo === h.id ? (
@@ -158,11 +164,11 @@ export function YKienToi(): ReactNode {
                   {h.trang_thai !== 'da_dong' && (
                     <TraLoi nho={h.id} khi_xong={ds.nap_lai} />
                   )}
-                  <button className="nut-phang nut-nho" onClick={() => dat_mo(null)}>Thu gọn</button>
+                  <button className="nut-phang nut-nho" onClick={() => dat_mo(null)}>{tra('yk_thu_gon')}</button>
                 </>
               ) : (
                 <button className="nut-phang nut-nho" onClick={() => dat_mo(h.id)}>
-                  Xem trao đổi ({h.tra_loi.length})
+                  {tra('yk_xem_trao_doi', { n: h.tra_loi.length })}
                 </button>
               )}
             </div>
@@ -175,13 +181,14 @@ export function YKienToi(): ReactNode {
 
 function TraLoi({ nho, khi_xong }: { nho: string; khi_xong: () => void }): ReactNode {
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const [noi_dung, dat_noi_dung] = useState('');
 
   const gui = (): void => {
     void hd.chay(
       () => goi(`/api/toi/ho-thu-y-kien/${nho}/tra-loi`,
         { method: 'POST', body: { noi_dung } }),
-      'Đã gửi trả lời.',
+      tra('pl_da_gui_tra_loi'),
     ).then((ok) => { if (ok) { dat_noi_dung(''); khi_xong(); } });
   };
 
@@ -189,10 +196,10 @@ function TraLoi({ nho, khi_xong }: { nho: string; khi_xong: () => void }): React
     <div style={{ marginTop: 6 }}>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
       <textarea value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} rows={2}
-        placeholder="Trao đổi thêm với Phòng Nhân sự…" />
+        placeholder={tra('yk_trao_doi_them')} />
       <div className="hang-nut" style={{ marginTop: 6 }}>
         <button className="nut-phang" disabled={hd.dang_chay || noi_dung.trim().length < 1}
-          onClick={gui}>Gửi trả lời</button>
+          onClick={gui}>{tra('pl_gui_tra_loi')}</button>
       </div>
     </div>
   );

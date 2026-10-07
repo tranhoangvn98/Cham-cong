@@ -5,6 +5,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { goi } from '../api.ts';
 import { HopLoi, HopThoai, ngay_gio } from '../thanh_phan.tsx';
+import { dung_chuoi, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
 
 interface PopupTB {
   id: string;
@@ -16,10 +17,10 @@ interface PopupTB {
   tao_luc: string;
 }
 
-const NHAN_MUC_DO: Record<string, { chu: string; lop: string }> = {
-  khan: { chu: 'KHẨN', lop: 'nhan-xau' },
-  quan_trong: { chu: 'Quan trọng', lop: 'nhan-canh-bao' },
-  thuong: { chu: 'Thông báo', lop: 'nhan-mo' },
+const KHOA_MUC_DO: Record<string, { khoa: ChuoiKhoa; lop: string }> = {
+  khan: { khoa: 'pp_khan', lop: 'nhan-xau' },
+  quan_trong: { khoa: 'tb_quan_trong', lop: 'nhan-canh-bao' },
+  thuong: { khoa: 'menu_thong_bao', lop: 'nhan-mo' },
 };
 
 export function PopupThongBao(): ReactNode {
@@ -27,6 +28,7 @@ export function PopupThongBao(): ReactNode {
   const [gt, dat_gt] = useState('');
   const [dang, dat_dang] = useState(false);
   const [loi, dat_loi] = useState<unknown>(null);
+  const { tra } = dung_chuoi();
 
   useEffect(() => {
     void goi<PopupTB[]>('/api/toi/thong-bao/popup')
@@ -36,13 +38,13 @@ export function PopupThongBao(): ReactNode {
 
   const tb = ds[0];
   if (tb === undefined) return null;
-  const md = NHAN_MUC_DO[tb.muc_do] ?? { chu: 'Thông báo', lop: 'nhan-mo' };
+  const md = KHOA_MUC_DO[tb.muc_do] ?? { khoa: 'menu_thong_bao' as ChuoiKhoa, lop: 'nhan-mo' };
 
   const sang_ke_tiep = (): void => { dat_ds((cu) => cu.slice(1)); dat_gt(''); dat_loi(null); };
 
   const xac_nhan = (): void => {
     if (tb.can_giai_trinh && gt.trim().length < 5) {
-      dat_loi(new Error('Thông báo này yêu cầu bạn nhập giải trình (tối thiểu 5 ký tự).'));
+      dat_loi(new Error(tra('pp_yeu_cau_nhap')));
       return;
     }
     dat_dang(true);
@@ -57,7 +59,7 @@ export function PopupThongBao(): ReactNode {
   return (
     <HopThoai tieu_de={`📢 ${tb.tieu_de}`} khi_dong={sang_ke_tiep} rong>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-        <span className={`nhan ${md.lop}`}>{md.chu}</span>
+        <span className={`nhan ${md.lop}`}>{tra(md.khoa)}</span>
         {tb.ma !== null && <span className="mo-ma">{tb.ma}</span>}
         <span className="mo-ta">{ngay_gio(tb.tao_luc)}</span>
       </div>
@@ -67,18 +69,18 @@ export function PopupThongBao(): ReactNode {
 
       {tb.can_giai_trinh && (
         <label className="truong" style={{ marginTop: 12 }}>
-          <span>Giải trình (bắt buộc)</span>
+          <span>{tra('pp_giai_trinh_bat_buoc')}</span>
           <textarea rows={3} value={gt} onChange={(e) => dat_gt(e.target.value)}
-            placeholder="Nhập giải trình của bạn…" />
+            placeholder={tra('pp_nhap_giai_trinh')} />
         </label>
       )}
 
       <div className="hang-nut" style={{ marginTop: 12 }}>
         <button onClick={xac_nhan}
           disabled={dang || (tb.can_giai_trinh && gt.trim().length < 5)}>
-          {dang ? 'Đang lưu…' : tb.can_giai_trinh ? 'Gửi giải trình & xác nhận' : 'Đã đọc & hiểu'}
+          {dang ? tra('tb_dang_luu') : tb.can_giai_trinh ? tra('pp_gui_gt_xac_nhan') : tra('tb_da_doc_hieu')}
         </button>
-        {ds.length > 1 && <span className="mo-ta">Còn {ds.length - 1} thông báo nữa</span>}
+        {ds.length > 1 && <span className="mo-ta">{tra('pp_con_x_tb', { n: ds.length - 1 })}</span>}
       </div>
     </HopThoai>
   );

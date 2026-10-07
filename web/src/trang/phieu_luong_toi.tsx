@@ -10,6 +10,7 @@ import {
   AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap,
   khoa_tinh, ngay_gio, type TinNhanKN,
 } from '../thanh_phan.tsx';
+import { dung_chuoi, tra_hien_tai, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
 
 interface KhoanPhieu {
   khoan_ma: string;
@@ -100,18 +101,21 @@ interface KhieuNai {
   tra_loi: TinNhanKN[];
 }
 
-const NHAN_TT_KN: Record<string, { ten: string; lop: string }> = {
-  moi: { ten: 'Mới', lop: 'nhan-xau' },
-  dang_xem: { ten: 'Đang xem xét', lop: 'nhan-canh-bao' },
-  chap_nhan: { ten: 'Đã chấp nhận', lop: 'nhan-tot' },
-  tu_choi: { ten: 'Đã từ chối', lop: 'nhan-mo' },
+const KHOA_TT_KN: Record<string, { khoa: ChuoiKhoa; lop: string }> = {
+  moi: { khoa: 'pl_tt_moi', lop: 'nhan-xau' },
+  dang_xem: { khoa: 'pl_tt_dang_xem', lop: 'nhan-canh-bao' },
+  chap_nhan: { khoa: 'pl_tt_chap_nhan', lop: 'nhan-tot' },
+  tu_choi: { khoa: 'pl_tt_tu_choi', lop: 'nhan-mo' },
 };
 
 const dinh_dang = new Intl.NumberFormat('vi-VN');
 const tien = (v: unknown): string => dinh_dang.format(Math.round(Number(v) || 0));
+/** Dich theo khoa chuoi; khoa khong co trong tu dien thi dung chuoi thay the. */
+const tra_khoa = (k: ChuoiKhoa | undefined, thay: string): string =>
+  k !== undefined ? tra_hien_tai(k) : thay;
 const thang_viet = (t: string): string => {
   const [n, m] = t.split('-');
-  return `Tháng ${m}/${n}`;
+  return tra_hien_tai('pl_thang_xy', { m: m ?? '', n: n ?? '' });
 };
 /** Phut OT thanh chuoi gio 'Xh' / 'XhYY' — dung nhat quan voi bang cong. */
 const gio_ot = (phut: unknown): string => {
@@ -146,15 +150,16 @@ const mo_ta_khoan = (k: KhoanPhieu): ReactNode => {
   if (ghi) return <span className="mo-ta"> — {k.ghi_chu}</span>;
   return null;
 };
-const TRANG_THAI: Record<string, string> = { da_duyet: 'Đã duyệt', da_tra: 'Đã trả' };
-const LOAI_HD: Record<string, string> = {
-  thu_viec: 'Thử việc', xac_dinh: 'Xác định thời hạn', khong_xac_dinh: 'Không xác định thời hạn',
-  thoi_vu: 'Thời vụ', cong_tac_vien: 'Cộng tác viên', hoc_viec: 'Học việc',
+const TRANG_THAI_KY: Record<string, ChuoiKhoa> = { da_duyet: 'cn_tt_da_duyet', da_tra: 'pl_da_tra' };
+const KHOA_HD: Record<string, ChuoiKhoa> = {
+  thu_viec: 'cn_hd_thu_viec', xac_dinh: 'cn_hd_xac_dinh', khong_xac_dinh: 'cn_hd_kxd',
+  thoi_vu: 'cn_hd_thoi_vu', cong_tac_vien: 'cn_hd_ctv', hoc_viec: 'cn_hd_hoc_viec',
 };
 
 export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<Phieu[]>('/api/toi/phieu-luong');
   const kn = dung_nap<KhieuNai[]>('/api/toi/khieu-nai-luong');
+  const { tra } = dung_chuoi();
   const [chon, dat_chon] = useState(0);
   const [mo_kn, dat_mo_kn] = useState(false);
 
@@ -166,8 +171,8 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
     : (du_lieu ?? []);
   if (ds.length === 0) {
     return (
-      <Trong tieu_de="Chưa có phiếu lương"
-        mo_ta="Phiếu lương hiện sau khi kế toán chốt và duyệt kỳ lương của tháng." />
+      <Trong tieu_de={tra('pl_chua_co_phieu')}
+        mo_ta={tra('pl_phieu_hien_sau')} />
     );
   }
 
@@ -204,23 +209,24 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
   // Tai the CSV cac khoan — dung de nhan vien tu doi chieu. Chong CSV injection.
   const xuat_csv = (): void => {
     const hang: string[][] = [
-      ['Mục', 'Loại', 'Số lượng', 'Đơn giá', 'Thành tiền', 'Ghi chú'],
-      ['Lương theo công', 'thu_nhap', p.so_ngay_cong_thuc, '', tien(p.luong_theo_cong), ''],
+      [tra('pl_csv_muc'), tra('pl_csv_loai'), tra('pl_csv_so_luong'), tra('pl_csv_don_gia'),
+        tra('pl_csv_thanh_tien'), tra('pl_csv_ghi_chu')],
+      [tra('pl_luong_theo_cong'), 'thu_nhap', p.so_ngay_cong_thuc, '', tien(p.luong_theo_cong), ''],
       ...thu_nhap.map((k) => [k.ten, 'thu_nhap', k.so_luong ?? '', k.don_gia ?? '',
         tien(k.thanh_tien), k.ghi_chu ?? '']),
-      ['Làm thêm giờ (OT)', 'thu_nhap', gio_ot(p.phut_ot), '', tien(p.tien_ot), ''],
-      ['Thưởng', 'thu_nhap', '', '', tien(p.thuong), ''],
-      ['Phụ cấp khác', 'thu_nhap', '', '', tien(p.phu_cap_khac), ''],
-      ['Tổng thu nhập', 'tong', '', '', tien(p.tong_thu_nhap), ''],
+      [tra('pl_lam_them_gio'), 'thu_nhap', gio_ot(p.phut_ot), '', tien(p.tien_ot), ''],
+      [tra('pl_thuong'), 'thu_nhap', '', '', tien(p.thuong), ''],
+      [tra('pl_phu_cap_khac'), 'thu_nhap', '', '', tien(p.phu_cap_khac), ''],
+      [tra('pl_tong_thu_nhap'), 'tong', '', '', tien(p.tong_thu_nhap), ''],
       ['BHXH (8%)', 'tru', '', '', tien(p.bhxh_nld), ''],
       ['BHYT (1,5%)', 'tru', '', '', tien(p.bhyt_nld), ''],
       ['BHTN (1%)', 'tru', '', '', tien(p.bhtn_nld), ''],
-      ['Thuế TNCN', 'tru', '', '', tien(p.thue_tncn), ''],
+      [tra('pl_thu_nhap_tinh_thue'), 'tru', '', '', tien(p.thue_tncn), ''],
       ...khau_tru.map((k) => [k.ten, 'tru', k.so_luong ?? '', k.don_gia ?? '',
         tien(k.thanh_tien), k.ghi_chu ?? '']),
-      ['Trừ khác', 'tru', '', '', tien(p.tru_khac), p.ly_do_tru_khac ?? ''],
-      ['Tổng khấu trừ', 'tong', '', '', tien(p.tong_tru), ''],
-      ['Thực nhận', 'thuc_nhan', '', '', tien(p.thuc_linh_lam_tron), ''],
+      [tra('pl_tru_khac'), 'tru', '', '', tien(p.tru_khac), p.ly_do_tru_khac ?? ''],
+      [tra('pl_tong_khau_tru'), 'tong', '', '', tien(p.tong_tru), ''],
+      [tra('pl_csv_thuc_nhan'), 'thuc_nhan', '', '', tien(p.thuc_linh_lam_tron), ''],
     ];
     const noi_dung = '\ufeff' + hang.map((r) => r.map(o_csv).join(',')).join('\r\n');
     const tep = new Blob([noi_dung], { type: 'text/csv;charset=utf-8' });
@@ -237,21 +243,21 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
       {thang_loc == null && (
         <div className="pl-dau">
           <div className="pl-dau-tua">
-            <h2>Phiếu lương</h2>
+            <h2>{tra('pl_phieu_luong')}</h2>
             <span className="mo-ta">
-              Nhân viên: <strong>{p.ho_ten}</strong> — Kỳ tháng {p.thang.slice(5, 7)}/{p.thang.slice(0, 4)}
+              {tra('pl_nhan_vien_x', { n: p.ho_ten })} — {tra('pl_ky_thang_xy', { m: p.thang.slice(5, 7), n: p.thang.slice(0, 4) })}
             </span>
           </div>
           <div className="pl-dau-nut">
-            <div className="pl-thang" role="group" aria-label="Chuyển kỳ lương">
-              <button type="button" className="pl-mui" aria-label="Kỳ trước"
+            <div className="pl-thang" role="group" aria-label={tra('pl_chuyen_ky')}>
+              <button type="button" className="pl-mui" aria-label={tra('pl_ky_truoc')}
                 disabled={chon >= ds.length - 1} onClick={() => dat_chon(chon + 1)}>‹</button>
               <strong>{p.thang.slice(5, 7)}/{p.thang.slice(0, 4)}</strong>
-              <button type="button" className="pl-mui" aria-label="Kỳ sau"
+              <button type="button" className="pl-mui" aria-label={tra('pl_ky_sau')}
                 disabled={chon <= 0} onClick={() => dat_chon(chon - 1)}>›</button>
             </div>
-            <button className="nut-phang" onClick={() => window.print()}>Tải PDF</button>
-            <button className="nut-phang" onClick={xuat_csv}>Xuất file</button>
+            <button className="nut-phang" onClick={() => window.print()}>{tra('pl_tai_pdf')}</button>
+            <button className="nut-phang" onClick={xuat_csv}>{tra('pl_xuat_file')}</button>
           </div>
         </div>
       )}
@@ -259,105 +265,105 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
       <div className="pl-vo">
         <div className="pl-hero">
           <div className="pl-hero-chinh">
-            <span className="pl-o-nhan">Thực nhận</span>
+            <span className="pl-o-nhan">{tra('pl_thuc_nhan')}</span>
             <strong className="pl-tien-lon">{tien(p.thuc_linh_lam_tron)}<em>đ</em></strong>
             <span className="pl-duyet">
               <i className="pl-duyet-o" aria-hidden="true" />
-              {TRANG_THAI[p.trang_thai_ky] ?? p.trang_thai_ky}
-              {' · '}đã làm tròn từ {tien(p.thuc_linh)} đ
+              {tra_khoa(TRANG_THAI_KY[p.trang_thai_ky], p.trang_thai_ky)}
+              {' · '}{tra('pl_da_lam_tron_tu', { n: tien(p.thuc_linh) })}
             </span>
             {(p.loai_hop_dong !== null || p.ep_du_cong || p.mien_phat) && (
               <span className="pl-hero-nhan">
                 {p.loai_hop_dong !== null && (
-                  <span className="nhan nhan-mo">{LOAI_HD[p.loai_hop_dong] ?? p.loai_hop_dong}</span>
+                  <span className="nhan nhan-mo">{tra_khoa(KHOA_HD[p.loai_hop_dong], p.loai_hop_dong)}</span>
                 )}
-                {p.ep_du_cong && <span className="nhan nhan-canh-bao">Đủ công</span>}
-                {p.mien_phat && <span className="nhan nhan-canh-bao">Miễn phạt</span>}
+                {p.ep_du_cong && <span className="nhan nhan-canh-bao">{tra('pl_du_cong')}</span>}
+                {p.mien_phat && <span className="nhan nhan-canh-bao">{tra('pl_mien_phat')}</span>}
               </span>
             )}
           </div>
           <div className="pl-o">
-            <span className="pl-o-nhan">Tổng thu nhập</span>
+            <span className="pl-o-nhan">{tra('pl_tong_thu_nhap')}</span>
             <strong className="pl-xanh">{tien(p.tong_thu_nhap)}</strong>
-            <span className="mo-ta">{so_thu} khoản</span>
+            <span className="mo-ta">{tra('pl_khoan_x', { n: so_thu })}</span>
           </div>
           <div className="pl-o">
-            <span className="pl-o-nhan">Tổng khấu trừ</span>
+            <span className="pl-o-nhan">{tra('pl_tong_khau_tru')}</span>
             <strong className="pl-do">-{tien(p.tong_tru)}</strong>
-            <span className="mo-ta">{so_tru} khoản</span>
+            <span className="mo-ta">{tra('pl_khoan_x', { n: so_tru })}</span>
           </div>
           <div className="pl-o">
-            <span className="pl-o-nhan">Công thực tế</span>
+            <span className="pl-o-nhan">{tra('cn_cong_thuc_te')}</span>
             <strong>{p.so_ngay_cong_thuc} / {p.so_ngay_cong_chuan}</strong>
             <div className="pl-tien-do">
               <div className="pl-tien-do-day" style={{ width: `${ti_le_cong}%` }} />
             </div>
             {cc !== null && (
-              <span className="mo-ta">{cc.so_ngay_co_mat} ngày có dữ liệu</span>
+              <span className="mo-ta">{tra('cn_ngay_da_co_du_lieu', { n: cc.so_ngay_co_mat })}</span>
             )}
           </div>
           <div className="pl-o">
-            <span className="pl-o-nhan">Tỉ trọng</span>
+            <span className="pl-o-nhan">{tra('pl_ti_trong')}</span>
             <div className="pl-dt-thanh">
               {thu_gop > 0 ? <span className="pl-dt-thu" style={{ flexGrow: thu_gop }} /> : null}
               {tru_gop > 0 ? <span className="pl-dt-tru" style={{ flexGrow: tru_gop }} /> : null}
             </div>
-            <span className="mo-ta">Khấu trừ trên tổng thu nhập chiếm {hai_le(ti_le_tru)}%</span>
+            <span className="mo-ta">{tra('pl_khau_tru_chiem', { n: hai_le(ti_le_tru) })}</span>
           </div>
         </div>
 
         <div className="pl-cot">
-          <section className="pl-the" aria-label="Thu nhập">
-              <h3>Thu nhập</h3>
+          <section className="pl-the" aria-label={tra('pl_thu_nhap')}>
+              <h3>{tra('pl_thu_nhap')}</h3>
             {Number(p.phu_cap) > 0 ? (
               <>
                 <div className="pl-dong">
-                  <span className="pl-dong-ten">Lương cơ bản (theo công)
-                    <span className="mo-ta"> {p.so_ngay_cong_thuc}/{p.so_ngay_cong_chuan} công</span></span>
+                  <span className="pl-dong-ten">{tra('pl_luong_cb_theo_cong')}
+                    <span className="mo-ta"> {tra('pl_cong_xy', { n: p.so_ngay_cong_thuc, m: p.so_ngay_cong_chuan })}</span></span>
                   <span className="pl-dong-tien">{tien(luong_cb_theo_cong)}</span>
                 </div>
                 <div className="pl-dong">
-                  <span className="pl-dong-ten">Phụ cấp (theo công)
-                    <span className="mo-ta"> {tien(p.phu_cap)}đ/tháng × {p.so_ngay_cong_thuc}/{p.so_ngay_cong_chuan}</span></span>
+                  <span className="pl-dong-ten">{tra('pl_phu_cap_theo_cong')}
+                    <span className="mo-ta"> {tra('pl_d_thang_xy', { n: tien(p.phu_cap), m: p.so_ngay_cong_thuc, k: p.so_ngay_cong_chuan })}</span></span>
                   <span className="pl-dong-tien">{tien(pc_theo_cong)}</span>
                 </div>
               </>
             ) : (
               <div className="pl-dong">
-                <span className="pl-dong-ten">Lương theo công
-                  <span className="mo-ta"> {p.so_ngay_cong_thuc}/{p.so_ngay_cong_chuan} công</span></span>
+                <span className="pl-dong-ten">{tra('pl_luong_theo_cong')}
+                  <span className="mo-ta"> {tra('pl_cong_xy', { n: p.so_ngay_cong_thuc, m: p.so_ngay_cong_chuan })}</span></span>
                 <span className="pl-dong-tien">{tien(p.luong_theo_cong)}</span>
               </div>
             )}
             {Number(p.tien_ot) > 0 && (
               <>
                 <div className="pl-dong">
-                  <span className="pl-dong-ten"><strong>Làm thêm giờ (OT)</strong>
+                  <span className="pl-dong-ten"><strong>{tra('pl_lam_them_gio')}</strong>
                     <span className="mo-ta"> {gio_ot(p.phut_ot)}</span></span>
                   <span className="pl-dong-tien"><strong>{tien(p.tien_ot)}</strong></span>
                 </div>
                 {Number(p.tien_ot_thuong) > 0 && (
                   <div className="pl-dong pl-dong-con">
-                    <span className="pl-dong-ten">Ngày thường
+                    <span className="pl-dong-ten">{tra('pl_ngay_thuong')}
                       <span className="mo-ta">
                         {' '}{gio_ot(Math.max(0,
                           Number(p.phut_ot) - Number(p.phut_ot_nghi_tuan) - Number(p.phut_ot_le)))}
-                        {' '}× hệ số {he_so(p.he_so_ot)}
+                        {' '}× {tra('pl_he_so_x', { n: he_so(p.he_so_ot) })}
                       </span></span>
                     <span className="pl-dong-tien">{tien(p.tien_ot_thuong)}</span>
                   </div>
                 )}
                 {Number(p.tien_ot_nghi_tuan) > 0 && (
                   <div className="pl-dong pl-dong-con">
-                    <span className="pl-dong-ten">Chủ nhật
-                      <span className="mo-ta"> {gio_ot(p.phut_ot_nghi_tuan)} × hệ số {he_so(p.he_so_ot_nghi_tuan)}</span></span>
+                    <span className="pl-dong-ten">{tra('pl_chu_nhat')}
+                      <span className="mo-ta"> {gio_ot(p.phut_ot_nghi_tuan)} × {tra('pl_he_so_x', { n: he_so(p.he_so_ot_nghi_tuan) })}</span></span>
                     <span className="pl-dong-tien">{tien(p.tien_ot_nghi_tuan)}</span>
                   </div>
                 )}
                 {Number(p.tien_ot_le) > 0 && (
                   <div className="pl-dong pl-dong-con">
-                    <span className="pl-dong-ten">Ngày lễ
-                      <span className="mo-ta"> {gio_ot(p.phut_ot_le)} × hệ số {he_so(p.he_so_ot_le)}</span></span>
+                    <span className="pl-dong-ten">{tra('pl_ngay_le')}
+                      <span className="mo-ta"> {gio_ot(p.phut_ot_le)} × {tra('pl_he_so_x', { n: he_so(p.he_so_ot_le) })}</span></span>
                     <span className="pl-dong-tien">{tien(p.tien_ot_le)}</span>
                   </div>
                 )}
@@ -365,49 +371,49 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
             )}
             {thu_nhap.map((k) => (
               <div className="pl-dong" key={k.khoan_ma}>
-                <span className="pl-dong-ten">{k.ten}{k.chiu_thue ? '' : ' (miễn thuế)'}{mo_ta_khoan(k)}</span>
+                <span className="pl-dong-ten">{k.ten}{k.chiu_thue ? '' : tra('pl_mien_thue')}{mo_ta_khoan(k)}</span>
                 <span className="pl-dong-tien">{tien(k.thanh_tien)}</span>
               </div>
             ))}
             {Number(p.thuong) > 0 && (
               <div className="pl-dong">
-                <span className="pl-dong-ten">Thưởng</span>
+                <span className="pl-dong-ten">{tra('pl_thuong')}</span>
                 <span className="pl-dong-tien">{tien(p.thuong)}</span>
               </div>
             )}
             {Number(p.phu_cap_khac) > 0 && (
               <div className="pl-dong">
-                <span className="pl-dong-ten">Phụ cấp khác</span>
+                <span className="pl-dong-ten">{tra('pl_phu_cap_khac')}</span>
                 <span className="pl-dong-tien">{tien(p.phu_cap_khac)}</span>
               </div>
             )}
             <div className="pl-dong pl-dong-tong pl-tong-xanh">
-              <span className="pl-dong-ten"><strong>Tổng thu nhập</strong></span>
+              <span className="pl-dong-ten"><strong>{tra('pl_tong_thu_nhap')}</strong></span>
               <span className="pl-dong-tien"><strong>{tien(p.tong_thu_nhap)} đ</strong></span>
             </div>
           </section>
 
-          <section className="pl-the" aria-label="Khấu trừ">
-            <h3>Khấu trừ</h3>
+          <section className="pl-the" aria-label={tra('pl_khau_tru')}>
+            <h3>{tra('pl_khau_tru')}</h3>
             <div className="pl-dong">
               <span className="pl-dong-ten">BHXH (8%)
-                <span className="mo-ta">Tiền lương đóng: {tien(p.muc_dong_bh)} đ</span></span>
+                <span className="mo-ta">{tra('pl_tien_luong_dong', { n: tien(p.muc_dong_bh) })}</span></span>
               <span className="pl-dong-tien">-{tien(p.bhxh_nld)}</span>
             </div>
             <div className="pl-dong">
               <span className="pl-dong-ten">BHYT (1,5%)
-                <span className="mo-ta">Tiền lương đóng: {tien(p.muc_dong_bh)} đ</span></span>
+                <span className="mo-ta">{tra('pl_tien_luong_dong', { n: tien(p.muc_dong_bh) })}</span></span>
               <span className="pl-dong-tien">-{tien(p.bhyt_nld)}</span>
             </div>
             <div className="pl-dong">
               <span className="pl-dong-ten">BHTN (1%)
-                <span className="mo-ta">Tiền lương đóng: {tien(p.muc_dong_bh)} đ</span></span>
+                <span className="mo-ta">{tra('pl_tien_luong_dong', { n: tien(p.muc_dong_bh) })}</span></span>
               <span className="pl-dong-tien">-{tien(p.bhtn_nld)}</span>
             </div>
             {Number(p.thue_tncn) > 0 && (
               <div className="pl-dong">
-                <span className="pl-dong-ten">Thuế TNCN
-                  <span className="mo-ta">sau giảm trừ</span></span>
+                <span className="pl-dong-ten">{tra('pl_thu_nhap_tinh_thue')}
+                  <span className="mo-ta">{tra('pl_sau_giam_tru')}</span></span>
                 <span className="pl-dong-tien">-{tien(p.thue_tncn)}</span>
               </div>
             )}
@@ -423,19 +429,19 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
             })}
             {Number(p.tru_khac) > 0 && (
               <div className="pl-dong">
-                <span className="pl-dong-ten">Trừ khác{p.ly_do_tru_khac !== null && p.ly_do_tru_khac !== ''
+                <span className="pl-dong-ten">{tra('pl_tru_khac')}{p.ly_do_tru_khac !== null && p.ly_do_tru_khac !== ''
                   ? <span className="mo-ta"> — {p.ly_do_tru_khac}</span> : null}</span>
                 <span className="pl-dong-tien">-{tien(p.tru_khac)}</span>
               </div>
             )}
             {p.mien_phat && !co_khoan_phat && (
               <div className="mo-ta" style={{ padding: '6px 2px' }}>
-                Đã miễn phạt đi muộn/về sớm kỳ này (không trừ).
+                {tra('pl_da_mien_phat_ky')}
               </div>
             )}
             {chi_tiet_tru.length > 0 && (
               <div className="pl-muon">
-                <strong>Các lần đi muộn về sớm</strong>
+                <strong>{tra('pl_cac_lan_dm_vs')}</strong>
                 <div className="pl-muon-chip">
                   {chi_tiet_tru.flatMap(({ chi }) => chi.cac_lan ?? []).map((mo_ta, i) => (
                     <span className="pl-chip-muon" key={khoa_tinh(mo_ta, i)}>
@@ -446,129 +452,129 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
               </div>
             )}
             <div className="pl-dong pl-dong-tong pl-tong-do">
-              <span className="pl-dong-ten"><strong>Tổng khấu trừ</strong></span>
+              <span className="pl-dong-ten"><strong>{tra('pl_tong_khau_tru')}</strong></span>
               <span className="pl-dong-tien"><strong>-{tien(p.tong_tru)} đ</strong></span>
             </div>
           </section>
 
-          <section className="pl-the" aria-label="Căn cứ tính lương">
-              <h3>Căn cứ tính lương</h3>
+          <section className="pl-the" aria-label={tra('pl_can_cu_tinh_luong')}>
+              <h3>{tra('pl_can_cu_tinh_luong')}</h3>
               <div className="pl-dong">
-                <span className="pl-dong-ten">Công chuẩn</span>
-                <span className="pl-dong-tien"><strong>{p.so_ngay_cong_chuan}</strong> ngày</span>
+                <span className="pl-dong-ten">{tra('pl_cong_chuan')}</span>
+                <span className="pl-dong-tien"><strong>{p.so_ngay_cong_chuan}</strong> {tra('pl_ngay_unit')}</span>
               </div>
               <div className="pl-dong">
-                <span className="pl-dong-ten">Lương cơ bản</span>
+                <span className="pl-dong-ten">{tra('cn_luong_co_ban')}</span>
                 <span className="pl-dong-tien">{tien(p.luong_co_ban)} đ</span>
               </div>
               <div className="pl-dong">
-                <span className="pl-dong-ten">Lương/ngày công</span>
+                <span className="pl-dong-ten">{tra('pl_luong_ngay_cong')}</span>
                 <span className="pl-dong-tien">{tien(p.luong_ngay)} đ</span>
               </div>
               <div className="pl-dong">
-                <span className="pl-dong-ten">Mức đóng BH</span>
+                <span className="pl-dong-ten">{tra('pl_muc_dong_bh')}</span>
                 <span className="pl-dong-tien">{tien(p.muc_dong_bh)} đ</span>
               </div>
               <div className="pl-dong">
-                <span className="pl-dong-ten">Giảm trừ gia cảnh</span>
+                <span className="pl-dong-ten">{tra('pl_giam_tru_gia_canh')}</span>
                 <span className="pl-dong-tien">{tien(p.giam_tru_tong)} đ</span>
               </div>
               <div className="pl-dong">
-                <span className="pl-dong-ten">Người phụ thuộc</span>
+                <span className="pl-dong-ten">{tra('cn_nguoi_phu_thuoc')}</span>
                 <span className="pl-dong-tien"><strong>{p.so_nguoi_phu_thuoc}</strong></span>
               </div>
               <div className="pl-dong">
-                <span className="pl-dong-ten">Thu nhập tính thuế</span>
+                <span className="pl-dong-ten">{tra('pl_thu_nhap_tinh_thue')}</span>
                 <span className="pl-dong-tien">{tien(p.thu_nhap_tinh_thue)} đ</span>
               </div>
               {p.phep !== null && (
                 <div className="pl-phep">
                   <span className="pl-phep-nhan">
-                    <span>Phép năm</span>
-                    <strong>Còn {p.phep.con_lai} / {p.phep.quy} ngày</strong>
+                    <span>{tra('pl_phep_nam')}</span>
+                    <strong>{tra('pl_con_ngay_xy', { n: p.phep.con_lai, m: p.phep.quy })}</strong>
                   </span>
                   <div className="pl-phep-thanh">
                     <div className="pl-phep-day" style={{
                       width: `${Math.min(100, Math.round((p.phep.da_dung / Math.max(p.phep.quy, 1)) * 100))}%`,
                     }} />
                   </div>
-                  <span className="mo-ta">Đã dùng {p.phep.da_dung} ngày{p.phep.cho_duyet > 0
-                    ? ` · ${p.phep.cho_duyet} đang chờ duyệt` : ''}</span>
+                  <span className="mo-ta">{tra('pl_da_dung_x_ngay', { n: p.phep.da_dung })}{p.phep.cho_duyet > 0
+                    ? ` · ${tra('pl_x_dang_cho_duyet', { n: p.phep.cho_duyet })}` : ''}</span>
                 </div>
               )}
           </section>
 
           <div className="pl-cot-phai">
-            <section className="pl-the" aria-label="Cơ sở tính lương (chấm công)">
-              <h3>Cơ sở tính lương (chấm công)</h3>
+            <section className="pl-the" aria-label={tra('pl_co_so_cham_cong')}>
+              <h3>{tra('pl_co_so_cham_cong')}</h3>
               {cc !== null ? (
                 <>
                   <div className="pl-co-so-luoi">
                     <div className="pl-co-so-o">
-                      <span>Công thực tế</span>
+                      <span>{tra('cn_cong_thuc_te')}</span>
                       <strong>{cc.so_ngay_co_mat}</strong>
-                      <span className="mo-ta">{cc.so_ngay_co_mat} ngày có dữ liệu</span>
+                      <span className="mo-ta">{tra('cn_ngay_da_co_du_lieu', { n: cc.so_ngay_co_mat })}</span>
                     </div>
                     <div className="pl-co-so-o">
-                      <span>Giờ công</span>
+                      <span>{tra('pl_gio_cong')}</span>
                       <strong>{gio_phut(cc.tong_phut_lam)}</strong>
-                      <span className="mo-ta">đã trừ giờ nghỉ trưa</span>
+                      <span className="mo-ta">{tra('cn_da_tru_gio_nghi_trua')}</span>
                     </div>
                     <div className="pl-co-so-o">
-                      <span>OT ghi nhận</span>
+                      <span>{tra('cn_ot_ghi_nhan')}</span>
                       <strong>{Number(p.phut_ot) > 0 ? gio_ot(p.phut_ot) : '—'}</strong>
-                      <span className="mo-ta">đã duyệt từ trên</span>
+                      <span className="mo-ta">{tra('pl_da_duyet_tu_tren')}</span>
                     </div>
                     <div className="pl-co-so-o">
-                      <span>Vắng</span>
+                      <span>{tra('cn_tt_vang')}</span>
                       <strong>{cc.so_ngay_vang}</strong>
-                      <span className="mo-ta">không phép</span>
+                      <span className="mo-ta">{tra('cn_khong_phep')}</span>
                     </div>
                   </div>
                   <span className="mo-ta" style={{ paddingTop: 4 }}>
-                    Tổng: {cc.tong_ngay_du_lieu} ngày có dữ liệu
+                    {tra('pl_tong_x_ngay', { n: cc.tong_ngay_du_lieu })}
                   </span>
                 </>
               ) : (
-                <span className="mo-ta">Chưa có dữ liệu chấm công của kỳ này.</span>
+                <span className="mo-ta">{tra('pl_chua_co_du_lieu_ky')}</span>
               )}
             </section>
 
-            <section className="pl-the" aria-label={`Chi tiết kỳ tháng ${p.thang.slice(5, 7)}/${p.thang.slice(0, 4)}`}>
-              <h3>Chi tiết kỳ tháng {p.thang.slice(5, 7)}/{p.thang.slice(0, 4)}</h3>
+            <section className="pl-the" aria-label={tra('pl_chi_tiet_ky', { m: p.thang.slice(5, 7), n: p.thang.slice(0, 4) })}>
+              <h3>{tra('pl_chi_tiet_ky', { m: p.thang.slice(5, 7), n: p.thang.slice(0, 4) })}</h3>
               {cc !== null ? (
                 <>
                   <div className="pl-dong">
-                    <span className="pl-dong-ten">Ngày có mặt</span>
+                    <span className="pl-dong-ten">{tra('cn_ngay_co_mat')}</span>
                     <span className="pl-dong-tien"><strong>{cc.so_ngay_co_mat}</strong></span>
                   </div>
                   <div className="pl-dong">
-                    <span className="pl-dong-ten">Nghỉ phép</span>
+                    <span className="pl-dong-ten">{tra('cn_tt_nghi_phep')}</span>
                     <span className="pl-dong-tien">{cc.so_ngay_nghi_phep}</span>
                   </div>
                   <div className="pl-dong">
-                    <span className="pl-dong-ten">Ngày lễ</span>
+                    <span className="pl-dong-ten">{tra('cn_tt_ngay_le')}</span>
                     <span className="pl-dong-tien">{cc.so_ngay_le}</span>
                   </div>
                   <div className="pl-dong">
-                    <span className="pl-dong-ten">Đi muộn</span>
-                    <span className="pl-dong-tien">{cc.so_lan_di_muon} lần - {gio_phut(cc.tong_phut_muon)}</span>
+                    <span className="pl-dong-ten">{tra('cn_di_muon')}</span>
+                    <span className="pl-dong-tien">{cc.so_lan_di_muon} {tra('pl_lan')} - {gio_phut(cc.tong_phut_muon)}</span>
                   </div>
                   <div className="pl-dong">
-                    <span className="pl-dong-ten">Về sớm</span>
-                    <span className="pl-dong-tien">{cc.so_lan_ve_som} lần - {gio_phut(cc.tong_phut_ve_som)}</span>
+                    <span className="pl-dong-ten">{tra('cn_ve_som')}</span>
+                    <span className="pl-dong-tien">{cc.so_lan_ve_som} {tra('pl_lan')} - {gio_phut(cc.tong_phut_ve_som)}</span>
                   </div>
                   <div className="pl-dong">
-                    <span className="pl-dong-ten">Quên chấm công</span>
-                    <span className="pl-dong-tien">{cc.so_lan_quen_quet ?? 0} lần</span>
+                    <span className="pl-dong-ten">{tra('pl_quen_cham_cong')}</span>
+                    <span className="pl-dong-tien">{cc.so_lan_quen_quet ?? 0} {tra('pl_lan')}</span>
                   </div>
                 </>
               ) : (
-                <span className="mo-ta">Chưa có dữ liệu chấm công của kỳ này.</span>
+                <span className="mo-ta">{tra('pl_chua_co_du_lieu_ky')}</span>
               )}
               <div className="pl-kn-khoi">
-                <span className="mo-ta">Sai số liệu? Gửi khiếu nại. Nhấn sửa để soát trong 3 ngày.</span>
-                <button type="button" className="pl-kn-nut" onClick={() => dat_mo_kn(true)}>Khiếu nại</button>
+                <span className="mo-ta">{tra('pl_sai_so_lieu')}</span>
+                <button type="button" className="pl-kn-nut" onClick={() => dat_mo_kn(true)}>{tra('pl_khieu_nai')}</button>
               </div>
             </section>
           </div>
@@ -582,9 +588,7 @@ export function TrangPhieuLuongToi({ thang_loc }: { thang_loc?: string } = {}): 
 
         {thang_loc == null && (
           <div className="hop-thong-bao hop-luu-y">
-            Phiếu lương chỉ hiện khi kỳ đã được duyệt/trả. Nếu thấy sai, bấm
-            <strong> Khiếu nại phiếu lương này</strong> để gửi Phòng Nhân sự, hoặc gửi giải trình ở mục
-            <strong> Đơn của tôi</strong> — mỗi khoản đều ghi rõ để đối chiếu.
+            {tra('pl_chi_hien_khi_duyet')}
           </div>
         )}
       </div>
@@ -607,6 +611,7 @@ function HopThoaiKhieuNaiLuong(
   const [noi_dung, dat_noi_dung] = useState('');
   const [anh, dat_anh] = useState<File[]>([]);
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
 
   const gui = (): void => {
     void hd.chay(async () => {
@@ -624,32 +629,31 @@ function HopThoaiKhieuNaiLuong(
         }
       }
       return kq;
-    }, 'Đã gửi khiếu nại.').then((ok) => { if (ok) khi_xong(); });
+    }, tra('pl_da_gui_kn')).then((ok) => { if (ok) khi_xong(); });
   };
 
   return (
-    <HopThoai tieu_de={`Khiếu nại phiếu lương ${thang}`} khi_dong={khi_dong}>
+    <HopThoai tieu_de={tra('pl_khieu_nai_phieu_x', { n: thang })} khi_dong={khi_dong}>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
       <p className="mo-ta">
-        Mô tả rõ khoản bạn cho là chưa đúng (công, thưởng, phụ cấp, khấu trừ…) để Phòng Nhân sự
-        đối chiếu và phản hồi.
+        {tra('pl_mo_ta_khoan')}
       </p>
-      <label htmlFor="knnd">Nội dung khiếu nại</label>
+      <label htmlFor="knnd">{tra('pl_noi_dung_kn')}</label>
       <textarea id="knnd" value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)}
         placeholder="Ví dụ: Công thực tế tháng này là 24 nhưng phiếu ghi 22…" rows={4} />
-      <label htmlFor="knanh" style={{ marginTop: 10, display: 'block' }}>Ảnh đính kèm (có thể chọn nhiều ảnh — tùy chọn)</label>
+      <label htmlFor="knanh" style={{ marginTop: 10, display: 'block' }}>{tra('pl_anh_kem')}</label>
       <input id="knanh" type="file" accept="image/*" multiple
         onChange={(e) => dat_anh(Array.from(e.target.files ?? []))} />
       {anh.length > 0 && (
         <div className="mo-ta" style={{ marginTop: 4 }}>
-          Đã chọn {anh.length} ảnh: {anh.map((f) => f.name).join(', ')}
+          {tra('pl_da_chon_x_anh', { n: anh.length, ten: anh.map((f) => f.name).join(', ') })}
         </div>
       )}
       <div className="hang-nut" style={{ marginTop: 12 }}>
         <button className="nut-lanh" disabled={hd.dang_chay || noi_dung.trim().length < 5} onClick={gui}>
-          Gửi khiếu nại
+          {tra('pl_gui_khieu_nai')}
         </button>
-        <button className="nut-phang" onClick={khi_dong}>Đóng</button>
+        <button className="nut-phang" onClick={khi_dong}>{tra('cn_dong')}</button>
       </div>
     </HopThoai>
   );
@@ -659,20 +663,21 @@ function HopThoaiKhieuNaiLuong(
 function OTraLoiKN({ kn_id, khi_gui }: { kn_id: string; khi_gui: () => void }): ReactNode {
   const [noi_dung, dat_noi_dung] = useState('');
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const gui = (): void => {
     void hd.chay(
       () => goi(`/api/toi/khieu-nai-luong/${kn_id}/tra-loi`, { method: 'POST', body: { noi_dung } }),
-      'Đã gửi trả lời.',
+      tra('pl_da_gui_tra_loi'),
     ).then((ok) => { if (ok) { dat_noi_dung(''); khi_gui(); } });
   };
   return (
     <div style={{ marginTop: 8 }}>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
       <textarea value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} rows={2}
-        placeholder="Trả lời / bổ sung thông tin cho Phòng Nhân sự…" />
+        placeholder={tra('pl_tra_loi_bo_sung')} />
       <div className="hang-nut" style={{ marginTop: 6 }}>
         <button className="nut-lanh" disabled={hd.dang_chay || noi_dung.trim().length < 1} onClick={gui}>
-          Gửi trả lời
+          {tra('pl_gui_tra_loi')}
         </button>
       </div>
     </div>
@@ -682,6 +687,7 @@ function OTraLoiKN({ kn_id, khi_gui }: { kn_id: string; khi_gui: () => void }): 
 /** Them nhieu anh minh chung vao mot khieu nai DANG MO (nguoi lao dong). */
 function OThemAnhKN({ kn_id, khi_gui }: { kn_id: string; khi_gui: () => void }): ReactNode {
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const them = (files: FileList | null): void => {
     const ds = Array.from(files ?? []);
     if (ds.length === 0) return;
@@ -692,13 +698,13 @@ function OThemAnhKN({ kn_id, khi_gui }: { kn_id: string; khi_gui: () => void }):
         await gui_tep(`/api/toi/khieu-nai-luong/${kn_id}/anh`, fd);
       }
       return true;
-    }, `Đã thêm ${ds.length} ảnh.`).then((ok) => { if (ok) khi_gui(); });
+    }, tra('pl_da_them_x_anh', { n: ds.length })).then((ok) => { if (ok) khi_gui(); });
   };
   return (
     <div style={{ marginTop: 6 }}>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
       <label className="mo-ta" style={{ display: 'block', marginBottom: 2 }}>
-        Thêm ảnh minh chứng (có thể chọn nhiều):
+        {tra('pl_them_anh_minh_chung')}
       </label>
       <input type="file" accept="image/*" multiple disabled={hd.dang_chay}
         onChange={(e) => { them(e.target.files); e.currentTarget.value = ''; }} />
@@ -736,7 +742,7 @@ export function DanhSachKhieuNai(
 
   return (
     <div className="the">
-      <h3 style={{ marginTop: 0 }}>Khiếu nại phiếu lương của bạn</h3>
+      <h3 style={{ marginTop: 0 }}>{tra_hien_tai('pl_khieu_nai_cua_ban')}</h3>
       {ds.map((x) => {
         const mo = x.trang_thai === 'moi' || x.trang_thai === 'dang_xem';
         return (
@@ -749,10 +755,10 @@ export function DanhSachKhieuNai(
                 : {}),
             }}>
             <div>
-              <span className={`nhan ${NHAN_TT_KN[x.trang_thai]?.lop ?? 'nhan-mo'}`}>
-                {NHAN_TT_KN[x.trang_thai]?.ten ?? x.trang_thai}
+              <span className={`nhan ${KHOA_TT_KN[x.trang_thai]?.lop ?? 'nhan-mo'}`}>
+                {tra_khoa(KHOA_TT_KN[x.trang_thai]?.khoa, x.trang_thai)}
               </span>
-              <span className="mo-ma"> {x.ma ?? ''} · Kỳ {thang_viet(x.thang)} · {ngay_gio(x.tao_luc)}</span>
+              <span className="mo-ma"> {x.ma ?? ''} · {tra_hien_tai('pl_ky_x', { n: thang_viet(x.thang) })} · {ngay_gio(x.tao_luc)}</span>
             </div>
             <ThreadKhieuNai noi_dung={x.noi_dung} tao_luc={x.tao_luc} tra_loi={x.tra_loi} />
             {x.anh.length > 0 && (
@@ -769,7 +775,7 @@ export function DanhSachKhieuNai(
               </>
             ) : (
               <div className="mo-ta" style={{ marginTop: 6 }}>
-                Ticket đã đóng ({NHAN_TT_KN[x.trang_thai]?.ten ?? x.trang_thai}).
+                {tra_hien_tai('pl_ticket_da_dong', { n: tra_khoa(KHOA_TT_KN[x.trang_thai]?.khoa, x.trang_thai) })}
               </div>
             )}
           </div>
@@ -783,6 +789,7 @@ export function DanhSachKhieuNai(
 export function TrangKhieuNaiToi(): ReactNode {
   const phieu = dung_nap<{ id: string; thang: string; trang_thai_ky: string }[]>('/api/toi/phieu-luong');
   const kn = dung_nap<KhieuNai[]>('/api/toi/khieu-nai-luong');
+  const { tra } = dung_chuoi();
   const [chon, dat_chon] = useState(0);
   const [mo, dat_mo] = useState(false);
 
@@ -795,28 +802,28 @@ export function TrangKhieuNaiToi(): ReactNode {
   return (
     <div className="cn-cot-gap" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="the">
-        <h3 style={{ marginTop: 0 }}>Lập khiếu nại phiếu lương</h3>
+        <h3 style={{ marginTop: 0 }}>{tra('pl_lap_khieu_nai')}</h3>
         {ds_phieu.length === 0 ? (
-          <div className="mo-ta">Chưa có phiếu lương đã duyệt nào để khiếu nại.</div>
+          <div className="mo-ta">{tra('pl_chua_co_phieu_kn')}</div>
         ) : (
           <>
-            <label htmlFor="kn_ky">Chọn kỳ lương</label>
+            <label htmlFor="kn_ky">{tra('pl_chon_ky')}</label>
             <Chon gia_tri={String(chon)}
               dat_gia_tri={(ma) => dat_chon(Number(ma))}
               cac_tuy_chon={ds_phieu.map((x, i): TuyChonChon => ({
                 ma: String(i), nhan: thang_viet(x.thang),
               }))}
-              nhan="Chọn kỳ lương" />
+              nhan={tra('pl_chon_ky')} />
             <div className="hang-nut" style={{ marginTop: 8 }}>
-              <button className="nut-lanh" onClick={() => dat_mo(true)}>Lập khiếu nại kỳ này</button>
+              <button className="nut-lanh" onClick={() => dat_mo(true)}>{tra('pl_lap_kn_ky_nay')}</button>
             </div>
           </>
         )}
       </div>
 
       {ds_kn.length === 0 ? (
-        <Trong tieu_de="Chưa có khiếu nại nào"
-          mo_ta="Khi bạn gửi khiếu nại phiếu lương, nó hiện ở đây kèm trạng thái xử lý và trao đổi với Nhân sự." />
+        <Trong tieu_de={tra('pl_chua_co_kn')}
+          mo_ta={tra('pl_kn_mo_ta')} />
       ) : (
         <DanhSachKhieuNai ds={ds_kn} khi_doi={() => kn.nap_lai()} />
       )}

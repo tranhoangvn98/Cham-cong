@@ -17,6 +17,7 @@ import { ViecToi } from './viec_toi.tsx';
 import { TrangVanBan } from './van_ban.tsx';
 import { ChuongBao } from './chuong_bao.tsx';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
+import { dung_chuoi, tra_hien_tai, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
 
 /**
  * Ranh gioi loi: mot man con vo (throw khi render) thi CHI man do bao loi, khong lam trang
@@ -39,10 +40,9 @@ class RanhGioiLoi extends Component<{ children: ReactNode }, { loi: Error | null
     if (this.state.loi !== null) {
       return (
         <div className="the" style={{ margin: 16 }}>
-          <h2>Màn này đang gặp lỗi hiển thị</h2>
+          <h2>{tra_hien_tai('cn_loi_man_hinh')}</h2>
           <p className="mo-ta">
-            Các màn khác vẫn dùng bình thường — bấm sang tab khác rồi quay lại, hoặc tải lại
-            trang. Nếu vẫn lỗi, gửi giúp nhân sự dòng chi tiết dưới đây.
+            {tra_hien_tai('cn_loi_man_hinh_mo_ta')}
           </p>
           <pre className="chu-ma" style={{
             whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12,
@@ -315,35 +315,38 @@ function gio_hh_mm(g: string | null | undefined): string {
   return g.slice(0, 5);
 }
 
-const TEN_QUAN_HE: Record<string, string> = {
-  con: 'Con', vo_chong: 'Vợ / chồng', cha: 'Cha', me: 'Mẹ', anh_chi_em: 'Anh chị em', khac: 'Khác',
+const KHOA_QUAN_HE: Record<string, ChuoiKhoa> = {
+  con: 'cn_qh_con', vo_chong: 'cn_qh_vo_chong', cha: 'cn_qh_cha', me: 'cn_qh_me',
+  anh_chi_em: 'cn_qh_anh_chi_em', khac: 'cn_qh_khac',
 };
 
-const TEN_LOAI_HOP_DONG: Record<string, string> = {
-  thu_viec: 'Thử việc', xac_dinh: 'Xác định thời hạn', khong_xac_dinh: 'Không xác định thời hạn',
-  thoi_vu: 'Thời vụ', cong_tac_vien: 'Cộng tác viên', hoc_viec: 'Học việc',
+const KHOA_LOAI_HOP_DONG: Record<string, ChuoiKhoa> = {
+  thu_viec: 'cn_hd_thu_viec', xac_dinh: 'cn_hd_xac_dinh', khong_xac_dinh: 'cn_hd_kxd',
+  thoi_vu: 'cn_hd_thoi_vu', cong_tac_vien: 'cn_hd_ctv', hoc_viec: 'cn_hd_hoc_viec',
 };
 
-const TEN_HINH_THUC_LUONG: Record<string, string> = {
-  thang: 'Theo tháng', ngay: 'Theo ngày', gio: 'Theo giờ', san_pham: 'Sản phẩm', khoan: 'Khoán',
+const KHOA_HINH_THUC_LUONG: Record<string, ChuoiKhoa> = {
+  thang: 'cn_ht_thang', ngay: 'cn_ht_ngay', gio: 'cn_ht_gio', san_pham: 'cn_ht_san_pham',
+  khoan: 'cn_ht_khoan',
 };
 
-const TEN_TRANG_THAI_BHXH: Record<string, string> = {
-  moi: 'Mới', da_nop: 'Đã nộp', co_quan_duyet: 'Cơ quan duyệt', tu_choi: 'Từ chối', hoan_thanh: 'Hoàn thành',
+const KHOA_TRANG_THAI_BHXH: Record<string, ChuoiKhoa> = {
+  moi: 'cn_bh_moi', da_nop: 'cn_bh_da_nop', co_quan_duyet: 'cn_bh_cq_duyet',
+  tu_choi: 'cn_bh_tu_choi', hoan_thanh: 'cn_bh_hoan_thanh',
 };
 
-const TEN_LOAI_BHXH: Record<string, string> = {
-  bao_tang: 'Báo tăng', bao_giam: 'Báo giảm', dieu_chinh: 'Điều chỉnh', chot_so: 'Chốt sổ',
-  cap_the_bhyt: 'Cấp thẻ BHYT', om_dau: 'Ốm đau', thai_san: 'Thai sản', duong_suc: 'Dưỡng sức',
-  tai_nan_lao_dong: 'Tai nạn lao động',
+const KHOA_LOAI_BHXH: Record<string, ChuoiKhoa> = {
+  bao_tang: 'cn_lbh_bao_tang', bao_giam: 'cn_lbh_bao_giam', dieu_chinh: 'cn_lbh_dieu_chinh',
+  chot_so: 'cn_lbh_chot_so', cap_the_bhyt: 'cn_lbh_cap_the', om_dau: 'cn_lbh_om_dau',
+  thai_san: 'cn_lbh_thai_san', duong_suc: 'cn_lbh_duong_suc', tai_nan_lao_dong: 'cn_lbh_tnld',
 };
 
 /** Nhan trang thai tai lieu ho so. */
-const NHAN_TT_TAI_LIEU: Record<string, { chu: string; lop: string }> = {
-  da_len_phan_mem: { chu: 'Đã lên phần mềm', lop: 'nhan-tot' },
-  da_so_hoa: { chu: 'Đã số hóa', lop: 'nhan-lanh' },
-  da_co_du_lieu: { chu: 'Đã có dữ liệu', lop: 'nhan-lanh' },
-  thieu: { chu: 'Thiếu', lop: 'nhan-xau' },
+const NHAN_TT_TAI_LIEU: Record<string, { khoa: ChuoiKhoa; lop: string }> = {
+  da_len_phan_mem: { khoa: 'cn_tt_da_len_phan_mem', lop: 'nhan-tot' },
+  da_so_hoa: { khoa: 'cn_tt_da_so_hoa', lop: 'nhan-lanh' },
+  da_co_du_lieu: { khoa: 'cn_tt_da_co_du_lieu', lop: 'nhan-lanh' },
+  thieu: { khoa: 'cn_tt_thieu', lop: 'nhan-xau' },
 };
 
 /** Tinh tham nien dang '1 nam 4 thang' tu ngay vao lam. */
@@ -356,14 +359,21 @@ function tham_nien(ngay_vao: string | null): string {
   const thang_tong = Math.max(0, (hien - vao) / (86_400_000 * 30.44));
   const nam = Math.floor(thang_tong / 12);
   const thang = Math.round(thang_tong - nam * 12);
-  if (nam === 0) return `${thang} tháng`;
-  return thang === 0 ? `${nam} năm` : `${nam} năm ${thang} tháng`;
+  if (nam === 0) return tra_hien_tai('cn_x_thang', { n: thang });
+  return thang === 0
+    ? tra_hien_tai('cn_x_nam', { n: nam })
+    : tra_hien_tai('cn_nam_thang_x', { n: nam, m: thang });
 }
 
 /** Chu dau ho ten dung cho avatar. */
 function chu_dau(ho_ten: string | null): string {
   return (ho_ten ?? '?').split(' ').filter((t) => t.length > 0)
     .slice(-2).map((t) => t[0]).join('').toUpperCase();
+}
+
+/** Dich theo khoa chuoi; khoa khong co trong tu dien thi dung chuoi thay the. */
+function tra_khoa(k: ChuoiKhoa | undefined, thay: string): string {
+  return k !== undefined ? tra_hien_tai(k) : thay;
 }
 
 // ==================================================================== trang goc
@@ -374,16 +384,16 @@ type FormMo = 'nghi' | 'giai' | 'khac' | 'ot';
 // Ten icon KHONG kem tien to `bt-` (giong MENU o App.tsx) — noi render tu ghep `bt bt-${icon}`.
 // De ca tien to o day thi bai kiem thiet_ke/icon.test.mjs (doc `icon: '...'`) hieu nham ten icon
 // la `bt-...` va bao thieu, du glyph van hien dung.
-const CAC_TAB: { ma: Tab; ten: string; icon: string }[] = [
-  { ma: 'trang_chu', ten: 'Trang chủ', icon: 'layout-dashboard' },
-  { ma: 'bang_cong', ten: 'Bảng công', icon: 'list-details' },
-  { ma: 'don_tu', ten: 'Đơn từ', icon: 'file-text' },
-  { ma: 'luong', ten: 'Lương', icon: 'receipt-2' },
-  { ma: 'phep', ten: 'Phép', icon: 'calendar-stats' },
-  { ma: 'khieu_nai', ten: 'Khiếu nại', icon: 'alert-triangle' },
-  { ma: 'viec', ten: 'Công việc', icon: 'check' },
-  { ma: 'y_kien', ten: 'Hòm thư ý kiến', icon: 'users' },
-  { ma: 'ca_nhan', ten: 'Cá nhân', icon: 'user-check' },
+const CAC_TAB: { ma: Tab; khoa: ChuoiKhoa; icon: string }[] = [
+  { ma: 'trang_chu', khoa: 'cn_tab_trang_chu', icon: 'layout-dashboard' },
+  { ma: 'bang_cong', khoa: 'menu_bang_cong', icon: 'list-details' },
+  { ma: 'don_tu', khoa: 'cn_tab_don_tu', icon: 'file-text' },
+  { ma: 'luong', khoa: 'cn_tab_luong', icon: 'receipt-2' },
+  { ma: 'phep', khoa: 'cn_tab_phep', icon: 'calendar-stats' },
+  { ma: 'khieu_nai', khoa: 'cn_tab_khieu_nai', icon: 'alert-triangle' },
+  { ma: 'viec', khoa: 'menu_cong_viec', icon: 'check' },
+  { ma: 'y_kien', khoa: 'menu_ho_thu_y_kien', icon: 'users' },
+  { ma: 'ca_nhan', khoa: 'cn_tab_ca_nhan', icon: 'user-check' },
 ];
 
 /**
@@ -416,15 +426,15 @@ const TAB_DUONG: Record<Tab, string> = {
 };
 
 /** Tieu de + phu de cua cac man con, theo mau thiet ke. Trang chu tinh rieng vi co ten. */
-const TEN_MAN: Record<Exclude<Tab, 'trang_chu'>, [string, string]> = {
-  bang_cong: ['Bảng công của tôi', 'Số liệu chấm công theo tháng'],
-  don_tu: ['Nghỉ phép & đơn từ', 'Xin nghỉ, giải trình, theo dõi trạng thái duyệt'],
-  luong: ['Phiếu lương', 'Cơ sở tính lương của kỳ'],
-  phep: ['Quản lý phép', 'Quỹ phép năm & lịch sử nghỉ của bạn'],
-  khieu_nai: ['Khiếu nại lương', 'Lập & theo dõi khiếu nại phiếu lương, trao đổi với Nhân sự'],
-  viec: ['Công việc của tôi', 'Việc được giao, hạn hoàn thành và các bước cần làm'],
-  y_kien: ['Hòm thư ý kiến', 'Gửi góp ý, phản ánh, thắc mắc và theo dõi phản hồi của Nhân sự'],
-  ca_nhan: ['Cá nhân', 'Hồ sơ, tài liệu, hợp đồng, BHXH, cài đặt'],
+const TEN_MAN: Record<Exclude<Tab, 'trang_chu'>, [ChuoiKhoa, ChuoiKhoa]> = {
+  bang_cong: ['cn_ten_man_bang_cong', 'cn_ten_man_bang_cong_phu'],
+  don_tu: ['cn_ten_man_don_tu', 'cn_ten_man_don_tu_phu'],
+  luong: ['cn_ten_man_luong', 'cn_ten_man_luong_phu'],
+  phep: ['cn_ten_man_phep', 'cn_ten_man_phep_phu'],
+  khieu_nai: ['cn_ten_man_khieu_nai', 'cn_ten_man_khieu_nai_phu'],
+  viec: ['cn_ten_man_viec', 'cn_ten_man_viec_phu'],
+  y_kien: ['cn_ten_man_y_kien', 'cn_ten_man_y_kien_phu'],
+  ca_nhan: ['cn_ten_man_ca_nhan', 'cn_ten_man_ca_nhan_phu'],
 };
 
 function dau_de(tab: Tab, nv: HomNay['nhan_vien']): [string, string] {
@@ -433,11 +443,12 @@ function dau_de(tab: Tab, nv: HomNay['nhan_vien']): [string, string] {
       ? ` · ${nv.ca_lam} ${gio_hh_mm(nv.ca_gio_vao)}–${gio_hh_mm(nv.ca_gio_ra)}`
       : '';
     return [
-      `Xin chào, ${nv?.ho_ten ?? 'bạn'}`,
+      tra_hien_tai('cn_xin_chao', { ten: nv?.ho_ten ?? tra_hien_tai('cn_ban') }),
       `${thu_cua_ngay(hom_nay())}, ${ngay_viet(hom_nay())}${ca}`,
     ];
   }
-  return TEN_MAN[tab];
+  const cap = TEN_MAN[tab];
+  return [tra_hien_tai(cap[0]), tra_hien_tai(cap[1])];
 }
 
 /** Theo doi be rong man hinh: hep = duoi 900px thi thanh ben bien thanh tab day duoi. */
@@ -471,6 +482,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
   di_duyet?: () => void;
 }): ReactNode {
   const { duong_dan, di_toi } = dung_tuyen();
+  const { tra } = dung_chuoi();
   // Tab ban dau doc tu duong dan that (tro ly mo `/ca-nhan/luong` thi vao thang tab Luong).
   const [tab, dat_tab] = useState<Tab>(() => DUONG_TAB[duong_dan] ?? 'trang_chu');
   const [mo_form, dat_mo_form] = useState<FormMo | null>(null);
@@ -489,9 +501,9 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
 
   const nv = hom_nay_nap.du_lieu?.nhan_vien ?? null;
   const [tieu_de, phu_de] = man_phu === 'thong_bao'
-    ? ['Thông báo', 'Thông báo từ BGĐ & nhân sự']
+    ? [tra('menu_thong_bao'), tra('cn_thong_bao_phu_de')]
     : man_phu === 'van_ban'
-      ? ['Văn bản công ty', 'Nội quy, biểu mẫu, chính sách']
+      ? [tra('menu_van_ban'), tra('cn_van_ban_phu_de')]
       : dau_de(tab, nv);
 
   // Chuyen man ben trong trang + mo form neu can. Dung callback chu khong phai duong dan vi
@@ -538,12 +550,12 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
   return (
     <div className="cn-vo">
       {!hep && (
-        <nav className="cn-ben" aria-label="Khu vực của tôi">
+        <nav className="cn-ben" aria-label={tra('menu_khu_vuc_cua_toi')}>
           <div className="cn-thuong-hieu">
             <span className="cn-thuong-hieu-o" aria-hidden="true">C</span>
             <span className="cn-thuong-hieu-chu">
-              <b>Chấm công</b>
-              <i>Khu vực của tôi</i>
+              <b>{tra('menu_cham_cong')}</b>
+              <i>{tra('menu_khu_vuc_cua_toi')}</i>
             </span>
           </div>
 
@@ -556,7 +568,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
                 onClick={() => chon_tab(t.ma)}
               >
                 <i className={`bt bt-${t.icon}`} aria-hidden="true" />
-                <span>{t.ten}</span>
+                <span>{tra(t.khoa)}</span>
                 {t.ma === 'don_tu' && so_don_cho > 0 && (
                   <span className="cn-ben-dem">{so_don_cho}</span>
                 )}
@@ -571,7 +583,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
               onClick={() => vao_man_phu('thong_bao')}
             >
               <i className="bt bt-star" aria-hidden="true" />
-              <span>Thông báo</span>
+              <span>{tra('menu_thong_bao')}</span>
               {so_chua_doc > 0 && <span className="cn-ben-dem">{so_chua_doc}</span>}
             </button>
             <button
@@ -580,14 +592,14 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
               onClick={() => vao_man_phu('van_ban')}
             >
               <i className="bt bt-file-text" aria-hidden="true" />
-              <span>Văn bản công ty</span>
+              <span>{tra('menu_van_ban')}</span>
             </button>
           </div>
 
           <div className="cn-ben-chan">
             {ve_quan_tri !== undefined && (
               <button type="button" className="cn-ve-quan-tri" onClick={ve_quan_tri}>
-                ‹ Về góc nhìn Quản trị
+                ‹ {tra('cn_ve_goc_nhin_quan_tri')}
               </button>
             )}
             <span className="cn-ben-ten">
@@ -597,7 +609,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
             <span className="cn-ben-ca">
               {nv?.ca_lam !== null && nv?.ca_lam !== undefined
                 ? `${nv.ca_lam} ${gio_hh_mm(nv.ca_gio_vao)}–${gio_hh_mm(nv.ca_gio_ra)}`
-                : 'Chưa gán ca làm việc'}
+                : tra('cn_chua_gan_ca_lam_viec')}
             </span>
           </div>
         </nav>
@@ -609,7 +621,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
             <button
               type="button"
               className="cn-dau-lui"
-              aria-label={man_phu !== null ? 'Về màn trước' : 'Về Trang chủ'}
+              aria-label={man_phu !== null ? tra('cn_ve_man_truoc') : tra('cn_ve_trang_chu')}
               onClick={() => vao_tab('trang_chu')}
             >
               ‹
@@ -649,7 +661,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
         </main>
 
         {hep && (
-          <nav className="cn-tab-chan" aria-label="Các màn khu vực của tôi">
+          <nav className="cn-tab-chan" aria-label={tra('cn_cac_man_khu_vuc')}>
             {CAC_TAB.map((t) => (
               <button
                 key={t.ma}
@@ -663,7 +675,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
                     <span className="cn-tab-chan-dem">{so_don_cho}</span>
                   )}
                 </span>
-                <span>{t.ten}</span>
+                <span>{tra(t.khoa)}</span>
               </button>
             ))}
           </nav>
@@ -690,16 +702,16 @@ function NhacThoiViec(): ReactNode {
   return (
     <div className={con > 0 ? 'cn-nhac-thoi-viec' : 'cn-nhac-thoi-viec tot'}>
       <div>
-        <b>Thủ tục thôi việc đang mở</b>
+        <b>{tra_hien_tai('cn_thu_tuc_thoi_viec_mo')}</b>
         <div className="mo-ta">
           {con > 0
-            ? `Còn ${String(con)} mục bắt buộc chưa xong — hoàn tất để Admin chốt.`
-            : 'Mọi mục đã xong — chờ Admin duyệt cuối ở Cổng 2.'}
+            ? tra_hien_tai('cn_con_muc_bat_buoc', { n: con })
+            : tra_hien_tai('cn_moi_muc_xong')}
           {d.ngay_lam_viec_cuoi !== null && ` · Lastday: ${ngay_viet(d.ngay_lam_viec_cuoi)}`}
         </div>
       </div>
       <button type="button" className="nut-nho nut-chinh"
-        onClick={() => di_toi('/thoi-viec/huong-dan')}>Mở hướng dẫn</button>
+        onClick={() => di_toi('/thoi-viec/huong-dan')}>{tra_hien_tai('cn_mo_huong_dan')}</button>
     </div>
   );
 }
@@ -710,6 +722,7 @@ function ManTrangChu({ hom_nay_nap, di_den, di_duyet }: {
   di_duyet?: () => void;
 }): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = hom_nay_nap;
+  const { tra } = dung_chuoi();
   const thang_hien = thang_nay();
   // 7 ngay gan nhat co the lot sang thang truoc — nap them thang do de bieu do va can chu y
   // khong trong vao dau thang.
@@ -740,26 +753,26 @@ function ManTrangChu({ hom_nay_nap, di_den, di_duyet }: {
 
       <div className="luoi luoi-4">
         <OSo
-          nhan="Công tháng"
+          nhan={tra('cn_cong_thang')}
           gia_tri={th === null ? '—' : so_viet(th.tong_cong)}
-          phu={`${so(th?.so_ngay_co_du_lieu)} ngày đã có dữ liệu`}
+          phu={tra('cn_ngay_da_co_du_lieu', { n: so(th?.so_ngay_co_du_lieu) })}
         />
         <OSo
-          nhan="Đi muộn"
-          gia_tri={`${so(th?.so_lan_di_muon)} lần`}
-          phu={`tổng ${phut_thanh_chu(so(th?.tong_phut_muon))}`}
+          nhan={tra('cn_di_muon')}
+          gia_tri={tra('cn_lan_x', { n: so(th?.so_lan_di_muon) })}
+          phu={tra('cn_tong_x', { n: phut_thanh_chu(so(th?.tong_phut_muon)) })}
           mau={so(th?.so_lan_di_muon) > 0 ? 'canh_bao' : undefined}
         />
         <OSo
-          nhan="OT ghi nhận"
+          nhan={tra('cn_ot_ghi_nhan')}
           gia_tri={phut_thanh_chu(so(th?.tong_phut_ot))}
-          phu="chưa qua duyệt"
+          phu={tra('cn_chua_qua_duyet')}
           mau={so(th?.tong_phut_ot) > 0 ? 'lanh' : undefined}
         />
         <OSo
-          nhan="Phép còn"
-          gia_tri={phep === null ? '—' : `${so_viet(phep.con_lai)} ngày`}
-          phu={phep !== null && phep.cho_duyet > 0 ? `${so_viet(phep.cho_duyet)} ngày chờ duyệt` : 'không có đơn chờ duyệt'}
+          nhan={tra('cn_phep_con')}
+          gia_tri={phep === null ? '—' : tra('cn_ngay_x', { n: so_viet(phep.con_lai) })}
+          phu={phep !== null && phep.cho_duyet > 0 ? tra('cn_ngay_cho_duyet', { n: so_viet(phep.cho_duyet) }) : tra('cn_khong_co_don_cho_duyet')}
         />
       </div>
 
@@ -775,9 +788,10 @@ function ManTrangChu({ hom_nay_nap, di_den, di_duyet }: {
 
 /** Dai ca lam hom nay — noi dung chinh cua loi chao. */
 function LoiChao({ du_lieu, nap_lai }: { du_lieu: HomNay; nap_lai: () => void }): ReactNode {
+  const { tra } = dung_chuoi();
   const bc = du_lieu.bang_cong;
   const nv = du_lieu.nhan_vien;
-  const ca = nv?.ca_lam ?? 'Chưa gán ca làm việc';
+  const ca = nv?.ca_lam ?? tra('cn_chua_gan_ca_lam_viec');
   const ca_vao = phut_cua_gio(nv?.ca_gio_vao ?? null);
   const ca_ra = phut_cua_gio(nv?.ca_gio_ra ?? null);
 
@@ -802,7 +816,10 @@ function LoiChao({ du_lieu, nap_lai }: { du_lieu: HomNay; nap_lai: () => void })
       phan_tram = Math.round((qua / dai) * 100);
       const con = ca_ra - nay;
       if (con > 0) {
-        con_lai = `còn ${Math.floor(con / 60)}h ${String(con % 60).padStart(2, '0')}′ đến ${gio_hh_mm(nv?.ca_gio_ra)}`;
+        con_lai = tra('cn_con_x_den_gio', {
+          n: `${Math.floor(con / 60)}h ${String(con % 60).padStart(2, '0')}′`,
+          g: gio_hh_mm(nv?.ca_gio_ra),
+        });
       }
     }
   }
@@ -817,33 +834,33 @@ function LoiChao({ du_lieu, nap_lai }: { du_lieu: HomNay; nap_lai: () => void })
     lam_duoc = `${gio}h ${String(phut).padStart(2, '0')}′`;
   }
 
-  const som_muon = bc === null ? 'chưa có dữ liệu chấm công hôm nay'
-    : bc.trang_thai === 'vang' ? 'hôm nay vắng'
-      : bc.trang_thai === 'nghi_phep' ? 'hôm nay nghỉ phép'
-        : bc.phut_muon > 0 ? `đi muộn ${phut_thanh_chu(bc.phut_muon)}`
-          : bc.gio_vao !== null ? 'đúng giờ vào ca' : 'chưa quẹt vào';
+  const som_muon = bc === null ? tra('cn_chua_co_du_lieu_cham_cong')
+    : bc.trang_thai === 'vang' ? tra('cn_hom_nay_vang')
+      : bc.trang_thai === 'nghi_phep' ? tra('cn_hom_nay_nghi_phep')
+        : bc.phut_muon > 0 ? tra('cn_di_muon_x', { n: phut_thanh_chu(bc.phut_muon) })
+          : bc.gio_vao !== null ? tra('cn_dung_gio_vao_ca') : tra('cn_chua_quet_vao');
 
   return (
     <div className="cn-hero">
       <div className="cn-hero-hang">
         <div className="cn-hero-o">
-          <span className="cn-hero-nhan">GIỜ VÀO</span>
+          <span className="cn-hero-nhan">{tra('cn_gio_vao')}</span>
           <span className="cn-hero-gio">{bc?.gio_vao !== null && bc?.gio_vao !== undefined ? gio_ngan(bc.gio_vao) : '--:--'}</span>
           <span className="cn-hero-phu">{som_muon}</span>
         </div>
         <div className="cn-hero-o">
-          <span className="cn-hero-nhan">GIỜ RA</span>
+          <span className="cn-hero-nhan">{tra('cn_gio_ra')}</span>
           <span className="cn-hero-gio">{bc?.gio_ra !== null && bc?.gio_ra !== undefined ? gio_ngan(bc.gio_ra) : '--:--'}</span>
-          <span className="cn-hero-phu">{con_lai ?? (bc?.gio_ra !== null ? 'đã quẹt ra' : 'chưa quẹt ra')}</span>
+          <span className="cn-hero-phu">{con_lai ?? (bc?.gio_ra !== null ? tra('cn_da_quet_ra') : tra('cn_chua_quet_ra'))}</span>
         </div>
         {dang_lam && qua_gio_ra && (
-          <span className="cn-nhan-cam">Quá giờ ra · {lam_duoc}</span>
+          <span className="cn-nhan-cam">{tra('cn_qua_gio_ra', { n: lam_duoc })}</span>
         )}
         {dang_lam && !qua_gio_ra && (
-          <span className="cn-nhan-xanh">Đang làm · {lam_duoc}</span>
+          <span className="cn-nhan-xanh">{tra('cn_dang_lam', { n: lam_duoc })}</span>
         )}
         {!dang_lam && bc?.gio_ra !== null && (
-          <span className="cn-nhan-xam">Đã kết thúc ca hôm nay</span>
+          <span className="cn-nhan-xam">{tra('cn_da_ket_thuc_ca')}</span>
         )}
       </div>
 
@@ -854,8 +871,8 @@ function LoiChao({ du_lieu, nap_lai }: { du_lieu: HomNay; nap_lai: () => void })
             <div className="cn-tien-do-num" style={{ left: `${phan_tram}%` }} />
           </div>
           <div className="cn-tien-do-nhan">
-            <span>{gio_hh_mm(nv?.ca_gio_vao)} vào ca</span>
-            <span>{gio_hh_mm(nv?.ca_gio_ra)} hết ca</span>
+            <span>{gio_hh_mm(nv?.ca_gio_vao)} {tra('cn_vao_ca')}</span>
+            <span>{gio_hh_mm(nv?.ca_gio_ra)} {tra('cn_het_ca')}</span>
           </div>
         </div>
       )}
@@ -863,9 +880,9 @@ function LoiChao({ du_lieu, nap_lai }: { du_lieu: HomNay; nap_lai: () => void })
       <div className="cn-hero-chip-hang">
         <span className="cn-chip-toi">{ca}</span>
         {bc !== null && (
-          <span className="cn-chip-toi">{bc.ghi_chu ?? 'Quẹt tại máy chấm công'}</span>
+          <span className="cn-chip-toi">{bc.ghi_chu ?? tra('cn_quet_tai_may')}</span>
         )}
-        <button className="cn-chip-nut" onClick={nap_lai}>Làm mới</button>
+        <button className="cn-chip-nut" onClick={nap_lai}>{tra('cn_lam_moi')}</button>
       </div>
     </div>
   );
@@ -876,30 +893,31 @@ function HanhDongNhanh({ phep, so_don_cho, di_den }: {
   so_don_cho: number;
   di_den: (t: Tab, mo?: FormMo | null) => void;
 }): ReactNode {
+  const { tra } = dung_chuoi();
   return (
     <div className="cn-hanh-dong">
       <button type="button" className="cn-nut-hanh-dong cn-nut-chinh-dam" onClick={() => di_den('don_tu', 'nghi')}>
         <i className="bt bt-plane-departure" />
         <span>
-          <span className="cn-nut-hanh-dong-ten">Xin nghỉ phép</span>
+          <span className="cn-nut-hanh-dong-ten">{tra('cn_xin_nghi_phep')}</span>
           <span className="cn-nut-hanh-dong-phu">
-            {phep === null ? '' : `Còn ${so_viet(phep.con_lai)} ngày phép`}
+            {phep === null ? '' : tra('cn_con_ngay_phep', { n: so_viet(phep.con_lai) })}
           </span>
         </span>
       </button>
       <button type="button" className="cn-nut-hanh-dong cn-nut-canh-bao" onClick={() => di_den('don_tu', 'giai')}>
         <i className="bt bt-clock-exclamation" />
         <span>
-          <span className="cn-nut-hanh-dong-ten">Giải trình quên quẹt</span>
-          <span className="cn-nut-hanh-dong-phu">Bù giờ vào / ra bị thiếu</span>
+          <span className="cn-nut-hanh-dong-ten">{tra('cn_giai_trinh_quen_quet')}</span>
+          <span className="cn-nut-hanh-dong-phu">{tra('cn_bu_gio_thieu')}</span>
         </span>
       </button>
       <button type="button" className="cn-nut-hanh-dong cn-nut-thuong" onClick={() => di_den('don_tu')}>
         <i className="bt bt-file-text" />
         <span style={{ flex: 1 }}>
-          <span className="cn-nut-hanh-dong-ten">Đơn của tôi</span>
+          <span className="cn-nut-hanh-dong-ten">{tra('cn_don_cua_toi')}</span>
           <span className="cn-nut-hanh-dong-phu">
-            {so_don_cho > 0 ? `${so_don_cho} đơn đang chờ duyệt` : 'Không có đơn chờ duyệt'}
+            {so_don_cho > 0 ? tra('cn_don_dang_cho_duyet', { n: so_don_cho }) : tra('cn_khong_co_don_cho_duyet')}
           </span>
         </span>
         {so_don_cho > 0 && <span className="cn-dem">{so_don_cho}</span>}
@@ -907,8 +925,8 @@ function HanhDongNhanh({ phep, so_don_cho, di_den }: {
       <button type="button" className="cn-nut-hanh-dong cn-nut-thuong" onClick={() => di_den('don_tu', 'ot')}>
         <i className="bt bt-clock" />
         <span>
-          <span className="cn-nut-hanh-dong-ten">Đăng ký OT</span>
-          <span className="cn-nut-hanh-dong-phu">Làm thêm giờ — duyệt 2 cấp</span>
+          <span className="cn-nut-hanh-dong-ten">{tra('cn_dang_ky_ot')}</span>
+          <span className="cn-nut-hanh-dong-phu">{tra('cn_lam_them_gio_duyet_2_cap')}</span>
         </span>
       </button>
     </div>
@@ -922,6 +940,7 @@ function HaiCot({ children }: { children: ReactNode }): ReactNode {
 /** Bieu do gio lam 7 ngay gan nhat. Nhan danh sach ngay da GHEP hai thang de du lieu
    khong trong vao dau thang. */
 function BieuDoBayNgay({ ds_ngay }: { ds_ngay: NgayCongNgay[] }): ReactNode {
+  const { tra } = dung_chuoi();
   const hom = hom_nay();
   const ngay_ds: { ngay: string; gio: number }[] = [];
   for (let i = 6; i >= 0; i -= 1) ngay_ds.push({ ngay: cong_ngay(hom, -i), gio: 0 });
@@ -939,7 +958,7 @@ function BieuDoBayNgay({ ds_ngay }: { ds_ngay: NgayCongNgay[] }): ReactNode {
   return (
     <div className="the">
       <div className="cn-tieu-de-hang">
-        <h2>Giờ làm 7 ngày gần nhất</h2>
+        <h2>{tra('cn_gio_lam_7_ngay')}</h2>
         <span className="cn-phu">TB {tb === 0 ? '—' : `${so_viet(tb.toFixed(1))}h`}</span>
       </div>
       <div className="cn-cot-gio">
@@ -960,18 +979,19 @@ function BieuDoBayNgay({ ds_ngay }: { ds_ngay: NgayCongNgay[] }): ReactNode {
           );
         })}
       </div>
-      <span className="cn-chu-nho">Vạch mờ = 8 giờ chuẩn của ca hành chính.</span>
+      <span className="cn-chu-nho">{tra('cn_vach_mo_8_gio')}</span>
     </div>
   );
 }
 
 /** Dong thoi gian cac lan quet hom nay. */
 function DongThoiQuet({ lan_quet }: { lan_quet: LanQuetToi[] }): ReactNode {
+  const { tra } = dung_chuoi();
   return (
     <div className="the">
-      <h2>Các lần quẹt hôm nay</h2>
+      <h2>{tra('cn_cac_lan_quet')}</h2>
       {lan_quet.length === 0 ? (
-        <Trong tieu_de="Chưa có lần quẹt nào" mo_ta="Dữ liệu hiện ngay sau khi bạn quẹt." />
+        <Trong tieu_de={tra('cn_chua_co_lan_quet')} mo_ta={tra('cn_du_lieu_hien_ngay')} />
       ) : (
         <div className="cn-dong-thoi">
           {lan_quet.map((q, i) => (
@@ -984,7 +1004,7 @@ function DongThoiQuet({ lan_quet }: { lan_quet: LanQuetToi[] }): ReactNode {
                 <span className="cn-gio">{gio_ngan(q.thoi_diem)}</span>
                 <div>
                   <span className="cn-ten">{q.nhan_trang_thai}</span>
-                  <span className="cn-nguon">{TEN_NGUON[q.nguon] ?? q.nguon} · {q.nhan_xac_thuc}</span>
+                  <span className="cn-nguon">{tra_khoa(TEN_NGUON[q.nguon], q.nguon)} · {q.nhan_xac_thuc}</span>
                 </div>
               </div>
             </div>
@@ -997,6 +1017,7 @@ function DongThoiQuet({ lan_quet }: { lan_quet: LanQuetToi[] }): ReactNode {
 
 /** Dai tuan nay T2..CN, ve DU 7 ngay ke ca ngay chua co du lieu. */
 function TuanNay({ tuan, hom_nay: hom }: { tuan: NgayTuan[]; hom_nay: string }): ReactNode {
+  const { tra } = dung_chuoi();
   const bang = new Map(tuan.map((n) => [n.ngay, n]));
   const thu = new Date(`${hom}T00:00:00Z`).getUTCDay();
   const dau_tuan = cong_ngay(hom, -(thu === 0 ? 6 : thu - 1));
@@ -1004,7 +1025,7 @@ function TuanNay({ tuan, hom_nay: hom }: { tuan: NgayTuan[]; hom_nay: string }):
 
   return (
     <div className="the">
-      <h2>Tuần này</h2>
+      <h2>{tra('cn_tuan_nay')}</h2>
       <div className="cn-tuan">
         {ds_ngay.map((ng) => {
           const n = bang.get(ng);
@@ -1038,6 +1059,7 @@ function CotPhai({ th, du_lieu, ds_ngay, di_den, di_duyet }: {
   di_den: (t: Tab, mo?: FormMo | null) => void;
   di_duyet?: () => void;
 }): ReactNode {
+  const { tra } = dung_chuoi();
   const ccy = du_lieu.can_chu_y;
   const hom = hom_nay();
   const da_qua = ds_ngay.filter((d) => d.ngay <= hom);
@@ -1059,7 +1081,7 @@ function CotPhai({ th, du_lieu, ds_ngay, di_den, di_duyet }: {
     <>
       <div className="the">
         <div className="cn-tieu-de-hang">
-          <h2>Chuyên cần tháng này</h2>
+          <h2>{tra('cn_chuyen_can_thang')}</h2>
           <span className="cn-phu">{hien_du}/{hien_phai}</span>
         </div>
         <div className="cn-thanh">
@@ -1067,13 +1089,13 @@ function CotPhai({ th, du_lieu, ds_ngay, di_den, di_duyet }: {
         </div>
         <span className="cn-chu-nho">
           {dung_ds
-            ? 'Số ngày đủ công, không đi muộn — tính đến hôm nay.'
-            : 'Chưa có dữ liệu tháng này, bảng công sẽ xuất hiện khi máy đẩy log về.'}
+            ? tra('cn_so_ngay_du_cong')
+            : tra('cn_chua_co_du_lieu_thang') + ' ' + tra('cn_bang_cong_xuat_hien')}
         </span>
       </div>
 
       <div className="the the-mong">
-        <div className="cn-dau-mong">Cần chú ý & sắp tới</div>
+        <div className="cn-dau-mong">{tra('cn_can_chu_y_sap_toi')}</div>
         <CanChuY ccy={ccy} ds_ngay={ds_ngay} di_den={di_den} di_duyet={di_duyet} />
       </div>
     </>
@@ -1087,6 +1109,7 @@ function CanChuY({ ccy, ds_ngay, di_den, di_duyet }: {
   di_den: (t: Tab, mo?: FormMo | null) => void;
   di_duyet?: () => void;
 }): ReactNode {
+  const { tra } = dung_chuoi();
   const muc: { icon: string; lop: string; ten: string; mo_ta: string; lam: (() => void) | null; nhan: string }[] = [];
 
   // Dem toan bo ngay thieu gio quet da qua (khong chi hom nay).
@@ -1096,34 +1119,34 @@ function CanChuY({ ccy, ds_ngay, di_den, di_duyet }: {
   if (ngay_thieu.length > 0) {
     muc.push({
       icon: 'clock-exclamation', lop: 'cn-o-canh-bao',
-      ten: `${ngay_thieu.length} ngày thiếu giờ quẹt`,
+      ten: tra('cn_ngay_thieu_gio_quet', { n: ngay_thieu.length }),
       mo_ta: ngay_thieu.length === 1
-        ? `ngày ${ngay_viet(ngay_thieu[0]?.ngay ?? '')}`
-        : 'Bổ sung bằng giải trình quên quẹt',
-      lam: () => di_den('don_tu', 'giai'), nhan: 'Giải trình',
+        ? `${tra('cn_ngay')} ${ngay_viet(ngay_thieu[0]?.ngay ?? '')}`
+        : tra('cn_bo_sung_giai_trinh'),
+      lam: () => di_den('don_tu', 'giai'), nhan: tra('cn_giai_trinh'),
     });
   }
   if (so(ccy?.don_cua_toi_cho_duyet) > 0) {
     muc.push({
       icon: 'file-text', lop: 'cn-o-lanh',
-      ten: `${ccy?.don_cua_toi_cho_duyet} đơn đang chờ duyệt`,
-      mo_ta: 'Theo dõi trạng thái ở màn Đơn từ',
-      lam: () => di_den('don_tu'), nhan: 'Xem đơn',
+      ten: tra('cn_don_dang_cho_duyet', { n: ccy?.don_cua_toi_cho_duyet ?? 0 }),
+      mo_ta: tra('cn_theo_doi_don_tu'),
+      lam: () => di_den('don_tu'), nhan: tra('cn_xem_don'),
     });
   }
   if (so(ccy?.don_cho_toi_duyet) > 0 && di_duyet !== undefined) {
     muc.push({
       icon: 'check', lop: 'cn-o-tot',
-      ten: `${ccy?.don_cho_toi_duyet} đơn đang chờ bạn duyệt`,
-      mo_ta: 'Bạn là người duyệt của phòng mình',
-      lam: di_duyet, nhan: 'Đi duyệt',
+      ten: tra('cn_don_cho_ban_duyet', { n: ccy?.don_cho_toi_duyet ?? 0 }),
+      mo_ta: tra('cn_ban_la_nguoi_duyet'),
+      lam: di_duyet, nhan: tra('cn_di_duyet'),
     });
   }
   if (muc.length === 0) {
     muc.push({
       icon: 'circle-check', lop: 'cn-o-tot',
-      ten: 'Không có việc cần chú ý',
-      mo_ta: 'Công hôm nay và đơn từ đều ổn',
+      ten: tra('cn_khong_co_viec_can_chu_y'),
+      mo_ta: tra('cn_cong_va_don_on'),
       lam: () => {}, nhan: '',
     });
   }
@@ -1160,24 +1183,27 @@ function CanChuY({ ccy, ds_ngay, di_den, di_duyet }: {
 
 /** Nhan trang thai mot ngay cong trong danh sach chi tiet. */
 function nhan_ngay_cong(d: NgayCongNgay): string {
-  if (d.trang_thai === 'nghi_phep') return 'Nghỉ phép';
-  if (d.trang_thai === 'nghi_khong_luong') return 'Nghỉ không lương';
-  if (d.trang_thai === 'lam_bu') return 'Làm bù';
-  if (d.trang_thai === 'ngoai_le') return 'Ngoại lệ';
-  if (d.trang_thai === 'vang') return 'Vắng';
-  if (d.trang_thai === 'ngay_le') return 'Ngày lễ';
-  if (d.trang_thai === 'nghi_tuan') return 'Nghỉ tuần';
+  if (d.trang_thai === 'nghi_phep') return tra_hien_tai('cn_tt_nghi_phep');
+  if (d.trang_thai === 'nghi_khong_luong') return tra_hien_tai('cn_tt_nghi_khong_luong');
+  if (d.trang_thai === 'lam_bu') return tra_hien_tai('cn_tt_lam_bu');
+  if (d.trang_thai === 'ngoai_le') return tra_hien_tai('cn_tt_ngoai_le');
+  if (d.trang_thai === 'cong_tac') return tra_hien_tai('cn_tt_cong_tac');
+  if (d.trang_thai === 'lam_remote') return tra_hien_tai('cn_tt_lam_remote');
+  if (d.trang_thai === 'vang') return tra_hien_tai('cn_tt_vang');
+  if (d.trang_thai === 'ngay_le') return tra_hien_tai('cn_tt_ngay_le');
+  if (d.trang_thai === 'nghi_tuan') return tra_hien_tai('cn_tt_nghi_tuan');
   const thieu: string[] = [];
-  if (d.gio_vao === null) thieu.push('thiếu giờ vào');
-  if (d.gio_ra === null) thieu.push('thiếu giờ ra');
-  if (thieu.length > 0) return `Thiếu giờ quẹt (${thieu.join(', ')})`;
-  if (so(d.phut_muon) > 0) return `Đi muộn ${phut_thanh_chu(d.phut_muon)}`;
-  return 'Đủ công';
+  if (d.gio_vao === null) thieu.push(tra_hien_tai('cn_thieu_gio_vao'));
+  if (d.gio_ra === null) thieu.push(tra_hien_tai('cn_thieu_gio_ra'));
+  if (thieu.length > 0) return tra_hien_tai('cn_tt_thieu_gio_quet', { n: thieu.join(', ') });
+  if (so(d.phut_muon) > 0) return tra_hien_tai('cn_tt_di_muon', { n: phut_thanh_chu(d.phut_muon) });
+  return tra_hien_tai('cn_tt_du_cong');
 }
 
 function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void }): ReactNode {
   const [thang, dat_thang] = useState(thang_nay());
   const { du_lieu, dang_tai, loi } = dung_nap<BangCongThang>(`/api/toi/bang-cong?thang=${thang}`, [thang]);
+  const { tra } = dung_chuoi();
 
   if (dang_tai && du_lieu === null) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
@@ -1195,16 +1221,16 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
           <button
             type="button"
             className="cn-nut-vuong"
-            aria-label="Tháng trước"
+            aria-label={tra('cn_thang_truoc')}
             onClick={() => dat_thang(thg === 1 ? `${(nam ?? 0) - 1}-12` : `${nam}-${String((thg ?? 1) - 1).padStart(2, '0')}`)}
           >
             ‹
           </button>
-          <span className="cn-chon-thang-ten">tháng {String(thg).padStart(2, '0')}/{nam}</span>
+          <span className="cn-chon-thang-ten">{tra('cn_thang_x', { n: `${String(thg).padStart(2, '0')}/${nam}` })}</span>
           <button
             type="button"
             className="cn-nut-vuong"
-            aria-label="Tháng sau"
+            aria-label={tra('cn_thang_sau')}
             disabled={thang >= thang_nay()}
             onClick={() => dat_thang(thg === 12 ? `${(nam ?? 0) + 1}-01` : `${nam}-${String((thg ?? 1) + 1).padStart(2, '0')}`)}
           >
@@ -1214,15 +1240,15 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
 
         <div className="the cn-ba-so">
           <div>
-            <span className="cn-ba-so-nhan">TỔNG CÔNG</span>
+            <span className="cn-ba-so-nhan">{tra('cn_tong_cong')}</span>
             <span className="cn-ba-so-gia">{so_viet(t.tong_cong)}</span>
           </div>
           <div>
-            <span className="cn-ba-so-nhan">GIỜ LÀM</span>
+            <span className="cn-ba-so-nhan">{tra('cn_gio_lam')}</span>
             <span className="cn-ba-so-gia">{phut_thanh_chu(so(t.tong_phut_lam))}</span>
           </div>
           <div>
-            <span className="cn-ba-so-nhan">TĂNG CA</span>
+            <span className="cn-ba-so-nhan">{tra('cn_tang_ca')}</span>
             <span className="cn-ba-so-gia cn-ba-so-lanh">{phut_thanh_chu(so(t.tong_phut_ot))}</span>
           </div>
         </div>
@@ -1230,8 +1256,8 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
 
       {!co_du_lieu && (
         <Trong
-          tieu_de="Chưa có dữ liệu tháng này"
-          mo_ta="Bảng công sẽ xuất hiện khi máy chấm công đẩy log về."
+          tieu_de={tra('cn_chua_co_du_lieu_thang')}
+          mo_ta={tra('cn_bang_cong_xuat_hien')}
         />
       )}
 
@@ -1244,12 +1270,12 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             flexWrap: 'wrap', gap: 6,
           }}>
-            <span>Chi tiết từng ngày</span>
+            <span>{tra('cn_chi_tiet_tung_ngay')}</span>
             <span style={{ fontSize: 11, fontWeight: 400, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <span><b style={{ color: '#16A34A' }}>●</b> đủ công</span>
-              <span><b style={{ color: '#F59E0B' }}>●</b> muộn/thiếu giờ</span>
-              <span><b style={{ color: '#DC2626' }}>●</b> vắng</span>
-              <span><b style={{ color: '#0EA5E9' }}>●</b> nghỉ phép</span>
+              <span><b style={{ color: '#16A34A' }}>●</b> {tra('cn_tt_du_cong')}</span>
+              <span><b style={{ color: '#F59E0B' }}>●</b> {tra('cn_muon_thieu_gio')}</span>
+              <span><b style={{ color: '#DC2626' }}>●</b> {tra('cn_tt_vang')}</span>
+              <span><b style={{ color: '#0EA5E9' }}>●</b> {tra('cn_tt_nghi_phep')}</span>
             </span>
           </div>
           <div className="cn-ngay-ds">
@@ -1266,10 +1292,10 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
               : d.trang_thai === 'co_mat' ? (so(d.phut_muon) > 0 || thieu_gio ? 'nhan-canh-bao' : 'nhan-tot')
                 : d.trang_thai === 'nghi_phep' ? 'nhan-lanh' : 'nhan-mo';
             const gio_txt = d.gio_vao === null && d.gio_ra === null ? null
-              : d.gio_vao === null ? `thiếu giờ vào → ${gio_ngan(d.gio_ra)}`
-                : `${gio_ngan(d.gio_vao)} → ${d.gio_ra === null ? 'thiếu giờ ra' : gio_ngan(d.gio_ra)}`;
-            const muon_txt = [so(d.phut_muon) > 0 ? `muộn ${so(d.phut_muon)}′` : null,
-              so(d.phut_ve_som) > 0 ? `về sớm ${so(d.phut_ve_som)}′` : null].filter(Boolean).join(' · ');
+              : d.gio_vao === null ? tra('cn_thieu_gio_vao_mui_ten', { r: gio_ngan(d.gio_ra) })
+                : `${gio_ngan(d.gio_vao)} → ${d.gio_ra === null ? tra('cn_thieu_gio_ra') : gio_ngan(d.gio_ra)}`;
+            const muon_txt = [so(d.phut_muon) > 0 ? tra('cn_muon_phut', { n: so(d.phut_muon) }) : null,
+              so(d.phut_ve_som) > 0 ? tra('cn_ve_som_phut', { n: so(d.phut_ve_som) }) : null].filter(Boolean).join(' · ');
             const la_hom_nay = d.ngay === hom_nay();
             return (
               <div key={d.ngay} style={{
@@ -1299,7 +1325,7 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
                 </div>
                 <div style={{ textAlign: 'right', minWidth: 44, flexShrink: 0 }}>
                   <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1 }}>{so_viet(d.so_cong)}</div>
-                  <div className="mo-ta" style={{ fontSize: 10 }}>công</div>
+                  <div className="mo-ta" style={{ fontSize: 10 }}>{tra('cn_cong')}</div>
                   {so(d.phut_lam) > 0 && (
                     <div className="mo-ta" style={{ fontSize: 10.5, marginTop: 2 }}>{phut_thanh_chu(so(d.phut_lam))}</div>
                   )}
@@ -1310,10 +1336,10 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
           </div>
           <div style={{ display: 'flex', borderTop: '1px solid var(--vien)' }}>
             <button type="button" className="cn-nut-phang-rong" style={{ flex: 1 }} onClick={() => di_den('don_tu', 'ot')}>
-              Đăng ký làm thêm (OT) →
+              {tra('cn_dang_ky_lam_them_ot')}
             </button>
             <button type="button" className="cn-nut-phang-rong" style={{ flex: 1 }} onClick={() => di_den('don_tu', 'giai')}>
-              Thấy sai lệch? Gửi giải trình quên quẹt →
+              {tra('cn_thay_sai_lech')}
             </button>
           </div>
         </div>
@@ -1324,6 +1350,7 @@ function ManBangCong({ di_den }: { di_den: (t: Tab, mo?: FormMo | null) => void 
 
 /** Lich thang mau theo trang thai tung ngay. */
 function LichThang({ thang, ngay }: { thang: string; ngay: NgayCongNgay[] }): ReactNode {
+  const { tra } = dung_chuoi();
   const [nam, thg] = thang.split('-').map(Number);
   const hom = hom_nay();
   const dau_thu = (new Date(Date.UTC(nam ?? 1970, (thg ?? 1) - 1, 1)).getUTCDay() + 6) % 7;
@@ -1338,7 +1365,7 @@ function LichThang({ thang, ngay }: { thang: string; ngay: NgayCongNgay[] }): Re
     const hang = bang.get(ng);
     const tuong_lai = ng > hom;
     let lop = 'cn-lich-mo';
-    let chu = 'Ngày chưa có dữ liệu';
+    let chu = tra('cn_ngay_chua_co_du_lieu');
     if (hang !== undefined) {
       chu = nhan_ngay_cong(hang);
       if (hang.trang_thai === 'vang') lop = 'cn-lich-vang';
@@ -1349,14 +1376,14 @@ function LichThang({ thang, ngay }: { thang: string; ngay: NgayCongNgay[] }): Re
       else if (hang.phut_muon > 0) lop = 'cn-lich-muon';
       else lop = 'cn-lich-tot';
     } else if (tuong_lai) {
-      chu = 'Chưa đến';
+      chu = tra('cn_chua_den');
     }
     o.push({ so: String(d), lop, tieu_de: `${ng}: ${chu}` });
   }
 
   return (
     <div className="the">
-      <h2>Lịch tháng</h2>
+      <h2>{tra('cn_lich_thang')}</h2>
       <div className="cn-lich">
         {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((t) => (
           <span className="cn-lich-thu" key={t}>{t}</span>
@@ -1366,11 +1393,11 @@ function LichThang({ thang, ngay }: { thang: string; ngay: NgayCongNgay[] }): Re
         ))}
       </div>
       <div className="cn-chu-thich">
-        <span className="nhan nhan-tot">Đủ công</span>
-        <span className="nhan nhan-canh-bao">Đi muộn</span>
-        <span className="nhan nhan-lanh">Nghỉ phép</span>
-        <span className="nhan nhan-xau">Vắng</span>
-        <span className="nhan nhan-mo">Nghỉ tuần</span>
+        <span className="nhan nhan-tot">{tra('cn_tt_du_cong')}</span>
+        <span className="nhan nhan-canh-bao">{tra('cn_di_muon')}</span>
+        <span className="nhan nhan-lanh">{tra('cn_tt_nghi_phep')}</span>
+        <span className="nhan nhan-xau">{tra('cn_tt_vang')}</span>
+        <span className="nhan nhan-mo">{tra('cn_tt_nghi_tuan')}</span>
       </div>
     </div>
   );
@@ -1392,26 +1419,28 @@ interface DonGop {
   ghi_chu_duyet: string | null;
 }
 
-const LOAI_NGHI: [string, string][] = [
-  ['phep_nam', 'Phép năm'], ['khong_luong', 'Không lương'], ['om', 'Nghỉ ốm'],
-  ['thai_san', 'Thai sản'], ['ket_hon', 'Kết hôn'], ['hieu', 'Nghỉ hiếu'],
+const LOAI_NGHI: [string, ChuoiKhoa][] = [
+  ['phep_nam', 'cn_loai_phep_nam'], ['khong_luong', 'cn_loai_khong_luong'],
+  ['om', 'cn_loai_om'], ['thai_san', 'cn_loai_thai_san'], ['ket_hon', 'cn_loai_ket_hon'],
+  ['hieu', 'cn_loai_hieu'],
 ];
 
 /** Tieu de don nghi theo loai, dung dung chinh ta chu khong ghep may moc. */
-const TEN_TIEU_DE_NGHI: Record<string, string> = {
-  phep_nam: 'Nghỉ phép năm', khong_luong: 'Nghỉ không lương', om: 'Nghỉ ốm',
-  thai_san: 'Nghỉ thai sản', ket_hon: 'Nghỉ kết hôn', hieu: 'Nghỉ việc hiếu',
+const TEN_TIEU_DE_NGHI: Record<string, ChuoiKhoa> = {
+  phep_nam: 'cn_td_nghi_phep_nam', khong_luong: 'cn_td_nghi_khong_luong', om: 'cn_td_nghi_om',
+  thai_san: 'cn_td_nghi_thai_san', ket_hon: 'cn_td_nghi_ket_hon', hieu: 'cn_td_nghi_hieu',
 };
 
 /** Gom ba nguon don thanh mot danh sach dung de hien thi. */
 function gop_don(nghi: DonNghiPhep[] | null, giai: DonGiaiTrinh[] | null, khac: DonKhac[] | null): DonGop[] {
   const ra: DonGop[] = [];
   for (const d of nghi ?? []) {
+    const k = TEN_TIEU_DE_NGHI[d.loai];
     ra.push({
       id: d.id, nhom: 'nghi_phep', loai: '',
-      tieu_de: TEN_TIEU_DE_NGHI[d.loai] ?? d.loai,
+      tieu_de: k !== undefined ? tra_hien_tai(k) : d.loai,
       chi_tiet: d.tu_ngay === d.den_ngay
-        ? `${ngay_viet(d.tu_ngay)}${d.nua_ngay ? ' · ½ ngày' : ''}`
+        ? `${ngay_viet(d.tu_ngay)}${d.nua_ngay ? tra_hien_tai('cn_nua_ngay_dot') : ''}`
         : `${ngay_viet(d.tu_ngay)} – ${ngay_viet(d.den_ngay)}`,
       ly_do: d.ly_do, trang_thai: d.trang_thai, ghi_chu_duyet: d.ghi_chu_duyet,
     });
@@ -1419,17 +1448,21 @@ function gop_don(nghi: DonNghiPhep[] | null, giai: DonGiaiTrinh[] | null, khac: 
   for (const d of giai ?? []) {
     ra.push({
       id: d.id, nhom: 'giai_trinh', loai: '',
-      tieu_de: 'Giải trình quên quẹt',
-      chi_tiet: `${ngay_viet(d.ngay)} · đề xuất ${gio_ngan(d.gio_vao_de_xuat)} – ${gio_ngan(d.gio_ra_de_xuat)}`,
+      tieu_de: tra_hien_tai('cn_giai_trinh_quen_quet'),
+      chi_tiet: `${ngay_viet(d.ngay)} · ${tra_hien_tai('cn_de_xuat_khoang', {
+        v: gio_ngan(d.gio_vao_de_xuat), r: gio_ngan(d.gio_ra_de_xuat),
+      })}`,
       ly_do: d.ly_do, trang_thai: d.trang_thai, ghi_chu_duyet: d.ghi_chu_duyet,
     });
   }
   for (const d of khac ?? []) {
-    const ct = d.gio_bat_dau !== null
-      ? `${ngay_viet(d.tu_ngay)} · ${d.gio_bat_dau} – ${d.gio_ket_thuc ?? ''}`
-      : d.den_ngay !== null && d.den_ngay !== d.tu_ngay
-        ? `${ngay_viet(d.tu_ngay)} – ${ngay_viet(d.den_ngay)}${d.noi_den !== null ? ` · ${d.noi_den}` : ''}`
-        : ngay_viet(d.tu_ngay);
+    const ct = d.loai === 've_som' && d.gio_bat_dau !== null
+      ? `${ngay_viet(d.tu_ngay)} · ${tra_hien_tai('cn_ra_ve_x', { n: d.gio_bat_dau })}`
+      : d.gio_bat_dau !== null
+        ? `${ngay_viet(d.tu_ngay)} · ${d.gio_bat_dau} – ${d.gio_ket_thuc ?? ''}`
+        : d.den_ngay !== null && d.den_ngay !== d.tu_ngay
+          ? `${ngay_viet(d.tu_ngay)} – ${ngay_viet(d.den_ngay)}${d.noi_den !== null ? ` · ${d.noi_den}` : ''}`
+          : ngay_viet(d.tu_ngay);
     ra.push({
       id: d.id, nhom: 'khac', loai: d.loai, tieu_de: ten_loai_khac(d.loai),
       chi_tiet: ct, ly_do: d.ly_do, trang_thai: d.trang_thai, ghi_chu_duyet: d.ghi_chu_duyet,
@@ -1440,10 +1473,13 @@ function gop_don(nghi: DonNghiPhep[] | null, giai: DonGiaiTrinh[] | null, khac: 
 
 /** Ten loai don khac, lay tu danh muc may chu. */
 function ten_loai_khac(ma: string): string {
-  const TEN: Record<string, string> = {
-    lam_them: 'Làm thêm giờ', doi_ca: 'Đổi ca', cong_tac: 'Công tác', thoi_viec: 'Thôi việc',
+  const TEN: Record<string, ChuoiKhoa> = {
+    lam_them: 'cn_loai_lam_them', doi_ca: 'cn_loai_doi_ca', cong_tac: 'cn_loai_cong_tac',
+    thoi_viec: 'cn_loai_thoi_viec', di_muon: 'cn_loai_di_muon', ve_som: 'cn_loai_ve_som',
+    lam_remote: 'cn_loai_lam_remote',
   };
-  return TEN[ma] ?? ma;
+  const k = TEN[ma];
+  return k !== undefined ? tra_hien_tai(k) : ma;
 }
 
 function ManDonTu({ hom_nay_nap, mo_form, dat_mo_form }: {
@@ -1452,6 +1488,7 @@ function ManDonTu({ hom_nay_nap, mo_form, dat_mo_form }: {
   dat_mo_form: (m: FormMo | null) => void;
 }): ReactNode {
   const [loc, dat_loc] = useState<'tat_ca' | 'cho_duyet' | 'da_duyet' | 'tu_choi'>('tat_ca');
+  const { tra } = dung_chuoi();
 
   const nghi = dung_nap<DonNghiPhep[]>('/api/toi/nghi-phep');
   const giai = dung_nap<DonGiaiTrinh[]>('/api/toi/giai-trinh');
@@ -1478,29 +1515,29 @@ function ManDonTu({ hom_nay_nap, mo_form, dat_mo_form }: {
         <button type="button" className="cn-nut-hanh-dong cn-nut-chinh-dam" onClick={() => dat_mo_form('nghi')}>
           <i className="bt bt-plane-departure" />
           <span>
-            <span className="cn-nut-hanh-dong-ten">Xin nghỉ phép</span>
-            <span className="cn-nut-hanh-dong-phu">Phép năm, không lương, ốm…</span>
+            <span className="cn-nut-hanh-dong-ten">{tra('cn_xin_nghi_phep')}</span>
+            <span className="cn-nut-hanh-dong-phu">{tra('cn_nghi_phep_phu')}</span>
           </span>
         </button>
         <button type="button" className="cn-nut-hanh-dong cn-nut-canh-bao" onClick={() => dat_mo_form('giai')}>
           <i className="bt bt-clock-exclamation" />
           <span>
-            <span className="cn-nut-hanh-dong-ten">Giải trình quên quẹt</span>
-            <span className="cn-nut-hanh-dong-phu">Bù giờ vào / ra bị thiếu</span>
+            <span className="cn-nut-hanh-dong-ten">{tra('cn_giai_trinh_quen_quet')}</span>
+            <span className="cn-nut-hanh-dong-phu">{tra('cn_bu_gio_thieu')}</span>
           </span>
         </button>
         <button type="button" className="cn-nut-hanh-dong cn-nut-thuong" onClick={() => dat_mo_form('khac')}>
           <i className="bt bt-plus" />
           <span>
-            <span className="cn-nut-hanh-dong-ten">Đơn khác</span>
-            <span className="cn-nut-hanh-dong-phu">Làm thêm, đổi ca, công tác, thôi việc</span>
+            <span className="cn-nut-hanh-dong-ten">{tra('cn_don_khac')}</span>
+            <span className="cn-nut-hanh-dong-phu">{tra('cn_don_khac_phu')}</span>
           </span>
         </button>
         <button type="button" className="cn-nut-hanh-dong cn-nut-thuong" onClick={() => dat_mo_form('ot')}>
           <i className="bt bt-clock" />
           <span>
-            <span className="cn-nut-hanh-dong-ten">Đăng ký OT</span>
-            <span className="cn-nut-hanh-dong-phu">Làm thêm giờ — duyệt 2 cấp</span>
+            <span className="cn-nut-hanh-dong-ten">{tra('cn_dang_ky_ot')}</span>
+            <span className="cn-nut-hanh-dong-phu">{tra('cn_lam_them_gio_duyet_2_cap')}</span>
           </span>
         </button>
       </div>
@@ -1508,8 +1545,8 @@ function ManDonTu({ hom_nay_nap, mo_form, dat_mo_form }: {
       {phep !== null && (
         <div className="the">
           <div className="cn-tieu-de-hang">
-            <h2>Quỹ phép năm {thang_nay().slice(0, 4)}</h2>
-            <span className="cn-phu">còn {so_viet(phep.con_lai)}/{so_viet(phep.quy)} ngày</span>
+            <h2>{tra('cn_quy_phep_nam_x', { n: thang_nay().slice(0, 4) })}</h2>
+            <span className="cn-phu">{tra('cn_con')} {so_viet(phep.con_lai)}/{so_viet(phep.quy)} {tra('pl_ngay_unit')}</span>
           </div>
           <div className="cn-thanh">
             <div
@@ -1518,14 +1555,14 @@ function ManDonTu({ hom_nay_nap, mo_form, dat_mo_form }: {
             />
           </div>
           <span className="cn-chu-nho">
-            Đã dùng {so_viet(phep.da_dung)} ngày
-            {phep.cho_duyet > 0 && <> · chưa trừ {so_viet(phep.cho_duyet)} ngày đang chờ duyệt</>}.
+            {tra('cn_da_dung_x_ngay', { n: so_viet(phep.da_dung) })}
+            {phep.cho_duyet > 0 && <> · {tra('cn_chua_tru_x_ngay', { n: so_viet(phep.cho_duyet) })}</>}.
           </span>
         </div>
       )}
 
       <div className="hang-nut">
-        {([['tat_ca', 'Tất cả'], ['cho_duyet', `Đang chờ (${so_cho})`], ['da_duyet', 'Đã duyệt'], ['tu_choi', 'Từ chối']] as const)
+        {([['tat_ca', tra('cn_tat_ca')], ['cho_duyet', tra('cn_dang_cho', { n: so_cho })], ['da_duyet', tra('cn_da_duyet')], ['tu_choi', tra('cn_tu_choi')]] as const)
           .map(([ma, ten]) => (
             <button
               type="button"
@@ -1544,8 +1581,8 @@ function ManDonTu({ hom_nay_nap, mo_form, dat_mo_form }: {
 
       {ds.length === 0 ? (
         <Trong
-          tieu_de="Không có đơn nào ở bộ lọc này"
-          mo_ta="Chọn “Tất cả” để xem toàn bộ đơn đã gửi."
+          tieu_de={tra('cn_khong_co_don_o_loc')}
+          mo_ta={tra('cn_chon_tat_ca_xem')}
         />
       ) : (
         ds.map((d) => (
@@ -1580,7 +1617,7 @@ function ManDonTu({ hom_nay_nap, mo_form, dat_mo_form }: {
 
 /** Ba buoc duyet don: Da gui -> Nguoi duyet -> Hoan tat. */
 function buoc_don(d: DonGop): { ten: string; lop: string }[] {
-  const buocs = ['Đã gửi', 'Người duyệt', 'Hoàn tất'];
+  const buocs = [tra_hien_tai('cn_da_gui'), tra_hien_tai('cn_nguoi_duyet'), tra_hien_tai('cn_hoan_tat')];
   return buocs.map((ten, i) => {
     if (d.trang_thai === 'da_huy') return { ten, lop: 'cn-buoc-mo' };
     if (d.trang_thai === 'tu_choi' && i === 1) return { ten, lop: 'cn-buoc-xau' };
@@ -1595,6 +1632,7 @@ function TheDon({ d, khi_huy }: { d: DonGop; khi_huy: () => void }): ReactNode {
   const hd = dung_hanh_dong();
   const xac_nhan = dung_xac_nhan();
   const [mo_kq, dat_mo_kq] = useState(false);
+  const { tra } = dung_chuoi();
 
   // Don giai trinh KHONG co duong huy tu phia nhan vien (xem may_chu/src/tuyen/toi.ts) —
   // muon rut lai thi nho nhan su xu ly.
@@ -1602,16 +1640,16 @@ function TheDon({ d, khi_huy }: { d: DonGop; khi_huy: () => void }): ReactNode {
 
   const huy = async (): Promise<void> => {
     const dong_y = await xac_nhan.hoi({
-      tieu_de: 'Hủy đơn này?',
-      mo_ta: `${d.tieu_de} · ${d.chi_tiet}. Đơn sẽ được đánh dấu đã hủy và người duyệt không cần xử lý nữa.`,
-      chu_dong_y: 'Hủy đơn',
+      tieu_de: tra('cn_huy_don_nay'),
+      mo_ta: `${d.tieu_de} · ${d.chi_tiet}. ${tra('cn_huy_don_mo_ta')}`,
+      chu_dong_y: tra('cn_huy_don'),
       nguy_hiem: true,
     });
     if (!dong_y) return;
     const duong = d.nhom === 'nghi_phep'
       ? `/api/toi/nghi-phep/${d.id}/huy`
       : `/api/toi/don/${d.id}/huy`;
-    const ok = await hd.chay(() => goi(duong, { method: 'POST', body: {} }), 'Đã hủy đơn.');
+    const ok = await hd.chay(() => goi(duong, { method: 'POST', body: {} }), tra('cn_da_huy_don'));
     if (ok) khi_huy();
   };
 
@@ -1623,7 +1661,7 @@ function TheDon({ d, khi_huy }: { d: DonGop; khi_huy: () => void }): ReactNode {
         <div className="cn-don-tua">
           <span className="cn-don-tieu-de">{d.tieu_de}</span>
           <span className="cn-don-chi-tiet">{d.chi_tiet}</span>
-          {d.ly_do !== null && d.ly_do !== '' && <span className="cn-don-ly-do">Lý do: {d.ly_do}</span>}
+          {d.ly_do !== null && d.ly_do !== '' && <span className="cn-don-ly-do">{tra('cn_ly_do_x', { n: d.ly_do })}</span>}
         </div>
         <NhanDon trang_thai={d.trang_thai} />
       </div>
@@ -1648,24 +1686,23 @@ function TheDon({ d, khi_huy }: { d: DonGop; khi_huy: () => void }): ReactNode {
 
       {d.loai === 'lam_them' && d.trang_thai === 'cho_duyet_2' && (
         <div className="hop-thong-bao hop-tin">
-          Đã duyệt cấp 1 (trưởng phòng) — đang chờ TBKS/Admin duyệt cấp 2.
-          Duyệt xong, bạn nộp kết quả OT bằng ảnh.
+          {tra('cn_duyet_cap_1')}
         </div>
       )}
 
       {d.loai === 'lam_them' && d.trang_thai === 'da_duyet' && (
         <button type="button" className="nut nut-nho" onClick={() => dat_mo_kq(true)}>
-          Nộp kết quả OT
+          {tra('cn_nop_ket_qua_ot')}
         </button>
       )}
 
       {d.trang_thai === 'cho_duyet' && d.nhom === 'giai_trinh' && (
-        <span className="cn-chu-nho">Đơn giải trình không tự hủy được — nhờ nhân sự xử lý.</span>
+        <span className="cn-chu-nho">{tra('cn_don_giai_trinh_khong_huy')}</span>
       )}
 
       {huy_duoc && (
         <button type="button" className="nut nut-nho cn-nut-huy" onClick={() => void huy()}>
-          Hủy đơn
+          {tra('cn_huy_don')}
         </button>
       )}
 
@@ -1703,6 +1740,7 @@ function SheetNghiPhep({ phep, khi_dong, khi_xong }: {
   khi_xong: () => void;
 }): ReactNode {
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const [loai, dat_loai] = useState('phep_nam');
   const [tu_ngay, dat_tu] = useState(hom_nay());
   const [den_ngay, dat_den] = useState(hom_nay());
@@ -1716,67 +1754,67 @@ function SheetNghiPhep({ phep, khi_dong, khi_xong }: {
     const ok = await hd.chay(() => goi('/api/toi/nghi-phep', {
       method: 'POST',
       body: { loai, tu_ngay, den_ngay: nua_ngay ? tu_ngay : den_ngay, nua_ngay, ly_do },
-    }), 'Đã gửi đơn. Người duyệt sẽ nhận thông báo ngay.');
+    }), tra('cn_da_gui_don'));
     if (ok) khi_xong();
   };
 
   return (
-    <HopThoai tieu_de="Xin nghỉ phép" khi_dong={khi_dong}>
+    <HopThoai tieu_de={tra('cn_xin_nghi_phep')} khi_dong={khi_dong}>
       <CotForm>
-        <NhanO nhan="LOẠI NGHỈ">
+        <NhanO nhan={tra('cn_loai_nghi')}>
           <div className="cn-chip-hang">
-            {LOAI_NGHI.map(([ma, ten]) => (
+            {LOAI_NGHI.map(([ma, khoa]) => (
               <button
                 type="button"
                 key={ma}
                 className={`cn-chip ${loai === ma ? 'cn-chip-chon' : ''}`}
                 onClick={() => dat_loai(ma)}
               >
-                {ten}
+                {tra(khoa)}
               </button>
             ))}
           </div>
         </NhanO>
 
-        <NhanO nhan="THỜI GIAN NGHỈ">
+        <NhanO nhan={tra('cn_thoi_gian_nghi')}>
           <div className="cn-chip-hang">
             <button type="button" className={`cn-chip ${!nua_ngay ? 'cn-chip-chon' : ''}`} onClick={() => dat_nua(false)}>
-              Cả ngày
+              {tra('cn_ca_ngay')}
             </button>
             <button type="button" className={`cn-chip ${nua_ngay ? 'cn-chip-chon' : ''}`} onClick={() => dat_nua(true)}>
-              ½ ngày
+              {tra('cn_nua_ngay')}
             </button>
           </div>
           <div className="cn-hai-o">
-            <NhanO nhan="Từ ngày">
+            <NhanO nhan={tra('cn_tu_ngay')}>
               <input type="date" className="cn-nhap" value={tu_ngay} onChange={(e) => {
                 dat_tu(e.target.value);
                 if (e.target.value > den_ngay) dat_den(e.target.value);
               }} />
             </NhanO>
             {!nua_ngay && (
-              <NhanO nhan="Đến ngày">
+              <NhanO nhan={tra('cn_den_ngay')}>
                 <input type="date" className="cn-nhap" value={den_ngay} onChange={(e) => dat_den(e.target.value)} />
               </NhanO>
             )}
           </div>
           <div className="hop-thong-bao hop-tin">
-            {nua_ngay ? `Nghỉ ½ ngày ${ngay_viet(tu_ngay)}`
-              : `${so_ngay} ngày nghỉ, ${ngay_viet(tu_ngay)} → ${ngay_viet(den_ngay)}`}
+            {nua_ngay ? tra('cn_nghi_nua_ngay_x', { n: ngay_viet(tu_ngay) })
+              : tra('cn_ngay_nghi_khoang', { n: so_ngay, tu: ngay_viet(tu_ngay), den: ngay_viet(den_ngay) })}
             {phep !== null && loai === 'phep_nam' && (
-              <> · còn lại {so_viet(Math.max(0, so(phep.con_lai) - so_ngay))} ngày phép</>
+              <> · {tra('cn_con_lai_ngay_phep', { n: so_viet(Math.max(0, so(phep.con_lai) - so_ngay)) })}</>
             )}
           </div>
         </NhanO>
 
-        <NhanO nhan="Lý do">
-          <textarea className="cn-nhap" rows={3} value={ly_do} placeholder="Việc gia đình…" onChange={(e) => dat_ly_do(e.target.value)} />
+        <NhanO nhan={tra('cn_ly_do')}>
+          <textarea className="cn-nhap" rows={3} value={ly_do} placeholder={tra('cn_viec_gia_dinh')} onChange={(e) => dat_ly_do(e.target.value)} />
         </NhanO>
 
         <div className="cn-form-nut">
-          <button type="button" className="nut" onClick={khi_dong}>Hủy</button>
+          <button type="button" className="nut" onClick={khi_dong}>{tra('cn_huy')}</button>
           <button type="button" className="nut nut-chinh" disabled={hd.dang_chay} onClick={() => void gui()}>
-            Gửi đơn
+            {tra('cn_gui_don')}
           </button>
         </div>
         <HopLoi loi={hd.loi} />
@@ -1795,6 +1833,7 @@ function ngay_thieu_gio(ds: NgayCongNgay[]): NgayCongNgay[] {
 
 function SheetGiaiTrinh({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: () => void }): ReactNode {
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   // Ghep ca thang truoc de cac ngay thieu gio dau thang khong bien mat.
   const thang_hien = thang_nay();
   const thang_dau_7 = cong_ngay(hom_nay(), -6).slice(0, 7);
@@ -1824,15 +1863,15 @@ function SheetGiaiTrinh({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong
         gio_ra_de_xuat: gio_ra === '' ? null : gio_ra,
         ly_do,
       },
-    }), 'Đã gửi giải trình. Nhân sự duyệt xong, bảng công sẽ tự tính lại.');
+    }), tra('cn_da_gui_giai_trinh'));
     if (ok) khi_xong();
   };
 
   return (
-    <HopThoai tieu_de="Giải trình quên quẹt" khi_dong={khi_dong} rong>
+    <HopThoai tieu_de={tra('cn_giai_trinh_quen_quet')} khi_dong={khi_dong} rong>
       <CotForm>
         {ds_thieu.length > 0 && (
-          <NhanO nhan="NGÀY THIẾU GIỜ — HỆ THỐNG PHÁT HIỆN">
+          <NhanO nhan={tra('cn_ngay_thieu_gio_he_thong')}>
             <div className="cn-chip-hang">
               {ds_thieu.slice(0, 6).map((d) => (
                 <button
@@ -1843,7 +1882,7 @@ function SheetGiaiTrinh({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong
                 >
                   <span className="cn-chip-dai-ten">{thu_cua_ngay(d.ngay)}, {ngay_viet(d.ngay)}</span>
                   <span className="cn-chip-dai-phu">
-                    {d.gio_vao === null ? 'thiếu giờ vào' : 'thiếu giờ ra'}
+                    {d.gio_vao === null ? tra('cn_thieu_gio_vao') : tra('cn_thieu_gio_ra')}
                   </span>
                 </button>
               ))}
@@ -1851,40 +1890,40 @@ function SheetGiaiTrinh({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong
           </NhanO>
         )}
 
-        <NhanO nhan="Ngày">
+        <NhanO nhan={tra('cn_ngay')}>
           <input type="date" className="cn-nhap" value={ngay} onChange={(e) => dat_ngay(e.target.value)} />
         </NhanO>
 
         <div className="cn-hai-o">
-          <NhanO nhan="Giờ vào đề xuất">
+          <NhanO nhan={tra('cn_gio_vao_de_xuat')}>
             <input type="time" className="cn-nhap" value={gio_vao} onChange={(e) => dat_gio_vao(e.target.value)} />
           </NhanO>
-          <NhanO nhan="Giờ ra đề xuất">
+          <NhanO nhan={tra('cn_gio_ra_de_xuat')}>
             <input type="time" className="cn-nhap" value={gio_ra} onChange={(e) => dat_gio_ra(e.target.value)} />
           </NhanO>
         </div>
 
-        <NhanO nhan="Lý do (bắt buộc)">
+        <NhanO nhan={tra('cn_ly_do_bat_buoc')}>
           <textarea
             className="cn-nhap"
             rows={3}
             value={ly_do}
-            placeholder="Máy không nhận khuôn mặt, đi họp ngoài…"
+            placeholder={tra('cn_may_khong_nhan_khuon_mat')}
             onChange={(e) => dat_ly_do(e.target.value)}
           />
         </NhanO>
 
-        <span className="cn-chu-nho">Chỉ điền mốc giờ bị thiếu. Nhân sự duyệt xong, bảng công sẽ tự tính lại.</span>
+        <span className="cn-chu-nho">{tra('cn_chi_dien_moc_thieu')}</span>
 
         <div className="cn-form-nut">
-          <button type="button" className="nut" onClick={khi_dong}>Hủy</button>
+          <button type="button" className="nut" onClick={khi_dong}>{tra('cn_huy')}</button>
           <button
             type="button"
             className="nut nut-chinh"
             disabled={hd.dang_chay || !du_ly_do || ngay === ''}
             onClick={() => void gui()}
           >
-            Gửi giải trình
+            {tra('cn_gui_giai_trinh')}
           </button>
         </div>
         <HopLoi loi={hd.loi} />
@@ -1899,6 +1938,7 @@ function SheetDonKhac({ loai_don, khi_dong, khi_xong }: {
   khi_xong: () => void;
 }): ReactNode {
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const [loai, dat_loai] = useState('lam_them');
   const [tu_ngay, dat_tu] = useState(hom_nay());
   const [den_ngay, dat_den] = useState(hom_nay());
@@ -1910,12 +1950,16 @@ function SheetDonKhac({ loai_don, khi_dong, khi_xong }: {
   const dt = loai_don?.find((l) => l.ma === loai) ?? null;
 
   const luu_y = loai === 'doi_ca'
-    ? 'Đổi ca cần nhân sự chọn ca mới trên hồ sơ. Đơn ở đây là đề nghị, không tự đổi ca của bạn.'
+    ? tra('cn_luu_y_doi_ca')
     : loai === 'thoi_viec'
-      ? 'Đơn thôi việc phải báo trước theo hợp đồng: 30 ngày với hợp đồng xác định thời hạn, 45 ngày với hợp đồng không xác định thời hạn.'
+      ? tra('cn_luu_y_thoi_viec')
       : loai === 'lam_them'
-        ? 'Tổng làm thêm không vượt 40 giờ/tháng. Hệ thống sẽ cảnh báo khi đơn vượt trần.'
-        : '';
+        ? tra('cn_luu_y_lam_them')
+        : loai === 've_som'
+          ? tra('cn_luu_y_ve_som')
+          : loai === 'lam_remote'
+            ? tra('cn_luu_y_lam_remote')
+            : '';
 
   const gui = async (): Promise<void> => {
     const ok = await hd.chay(() => goi('/api/toi/don', {
@@ -1924,19 +1968,19 @@ function SheetDonKhac({ loai_don, khi_dong, khi_xong }: {
         loai,
         tu_ngay,
         den_ngay: dt?.co_khoang_ngay === true ? den_ngay : null,
-        gio_bat_dau: loai === 'lam_them' ? gio_bat_dau : null,
+        gio_bat_dau: loai === 'lam_them' || loai === 've_som' ? gio_bat_dau : null,
         gio_ket_thuc: loai === 'lam_them' ? gio_ket_thuc : null,
         noi_den: loai === 'cong_tac' ? noi_den : null,
         ly_do,
       },
-    }), 'Đã gửi đơn. Người duyệt sẽ nhận thông báo ngay.');
+    }), tra('cn_da_gui_don'));
     if (ok) khi_xong();
   };
 
   return (
-    <HopThoai tieu_de="Làm đơn" khi_dong={khi_dong} rong>
+    <HopThoai tieu_de={tra('cn_lam_don')} khi_dong={khi_dong} rong>
       <CotForm>
-        <NhanO nhan="LOẠI ĐƠN">
+        <NhanO nhan={tra('cn_loai_don')}>
           <div className="cn-chip-hang">
             {(loai_don ?? []).map((l) => (
               <button
@@ -1952,14 +1996,14 @@ function SheetDonKhac({ loai_don, khi_dong, khi_xong }: {
         </NhanO>
 
         <div className="cn-hai-o">
-          <NhanO nhan={dt?.nhan_tu_ngay ?? 'Ngày'}>
+          <NhanO nhan={dt?.nhan_tu_ngay ?? tra('cn_ngay')}>
             <input type="date" className="cn-nhap" value={tu_ngay} onChange={(e) => {
               dat_tu(e.target.value);
               if (e.target.value > den_ngay) dat_den(e.target.value);
             }} />
           </NhanO>
           {dt?.co_khoang_ngay === true && (
-            <NhanO nhan="Đến ngày">
+            <NhanO nhan={tra('cn_den_ngay')}>
               <input type="date" className="cn-nhap" value={den_ngay} onChange={(e) => dat_den(e.target.value)} />
             </NhanO>
           )}
@@ -1967,31 +2011,37 @@ function SheetDonKhac({ loai_don, khi_dong, khi_xong }: {
 
         {loai === 'lam_them' && (
           <div className="cn-hai-o">
-            <NhanO nhan="Từ giờ">
+            <NhanO nhan={tra('cn_tu_gio')}>
               <input type="time" className="cn-nhap" value={gio_bat_dau} onChange={(e) => dat_gio_bat_dau(e.target.value)} />
             </NhanO>
-            <NhanO nhan="Đến giờ">
+            <NhanO nhan={tra('cn_den_gio')}>
               <input type="time" className="cn-nhap" value={gio_ket_thuc} onChange={(e) => dat_gio_ket_thuc(e.target.value)} />
             </NhanO>
           </div>
         )}
 
+        {loai === 've_som' && (
+          <NhanO nhan={tra('cn_gio_du_kien_ra_ve')}>
+            <input type="time" className="cn-nhap" value={gio_bat_dau} onChange={(e) => dat_gio_bat_dau(e.target.value)} />
+          </NhanO>
+        )}
+
         {loai === 'cong_tac' && (
-          <NhanO nhan="Nơi đến">
+          <NhanO nhan={tra('cn_noi_den')}>
             <input type="text" className="cn-nhap" value={noi_den} placeholder="Đà Nẵng" onChange={(e) => dat_noi_den(e.target.value)} />
           </NhanO>
         )}
 
-        <NhanO nhan={loai === 'cong_tac' ? 'Nội dung công tác' : 'Lý do'}>
+        <NhanO nhan={loai === 'cong_tac' ? tra('cn_noi_dung_cong_tac') : tra('cn_ly_do')}>
           <textarea className="cn-nhap" rows={3} value={ly_do} onChange={(e) => dat_ly_do(e.target.value)} />
         </NhanO>
 
         {luu_y !== '' && <div className="hop-thong-bao hop-luu-y">{luu_y}</div>}
 
         <div className="cn-form-nut">
-          <button type="button" className="nut" onClick={khi_dong}>Hủy</button>
+          <button type="button" className="nut" onClick={khi_dong}>{tra('cn_huy')}</button>
           <button type="button" className="nut nut-chinh" disabled={hd.dang_chay} onClick={() => void gui()}>
-            Gửi đơn
+            {tra('cn_gui_don')}
           </button>
         </div>
         <HopLoi loi={hd.loi} />
@@ -2006,6 +2056,7 @@ function SheetDangKyOt({ khi_dong, khi_xong }: {
   khi_xong: () => void;
 }): ReactNode {
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const [tu_ngay, dat_tu] = useState(hom_nay());
   const [gio_bat_dau, dat_gio_bat_dau] = useState('17:30');
   const [gio_ket_thuc, dat_gio_ket_thuc] = useState('20:00');
@@ -2029,27 +2080,27 @@ function SheetDangKyOt({ khi_dong, khi_xong }: {
         fd.append('tep', tep);
         await gui_tep(`/api/toi/don/${don.id}/tai-lieu`, fd);
       }
-    }, 'Đã gửi đơn làm thêm giờ. Người duyệt sẽ nhận thông báo ngay.');
+    }, tra('cn_da_gui_don'));
     if (ok) khi_xong();
   };
 
   return (
-    <HopThoai tieu_de="Đăng ký làm thêm giờ (OT)" khi_dong={khi_dong} rong>
+    <HopThoai tieu_de={tra('cn_dang_ky_lam_them_tieu_de')} khi_dong={khi_dong} rong>
       <CotForm>
-        <NhanO nhan="NGÀY LÀM THÊM">
+        <NhanO nhan={tra('cn_ngay_lam_them')}>
           <input type="date" className="cn-nhap" value={tu_ngay} onChange={(e) => dat_tu(e.target.value)} />
         </NhanO>
 
         <div className="cn-hai-o">
-          <NhanO nhan="Từ giờ">
+          <NhanO nhan={tra('cn_tu_gio')}>
             <input type="time" className="cn-nhap" value={gio_bat_dau} onChange={(e) => dat_gio_bat_dau(e.target.value)} />
           </NhanO>
-          <NhanO nhan="Đến giờ">
+          <NhanO nhan={tra('cn_den_gio')}>
             <input type="time" className="cn-nhap" value={gio_ket_thuc} onChange={(e) => dat_gio_ket_thuc(e.target.value)} />
           </NhanO>
         </div>
 
-        <NhanO nhan="Lý do">
+        <NhanO nhan={tra('cn_ly_do')}>
           <textarea
             className="cn-nhap"
             rows={3}
@@ -2059,29 +2110,28 @@ function SheetDangKyOt({ khi_dong, khi_xong }: {
           />
         </NhanO>
 
-        <NhanO nhan="Tài liệu đính kèm (không bắt buộc — 1 tệp PDF/JPG/PNG)">
+        <NhanO nhan={tra('cn_tai_lieu_kem')}>
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
             onChange={(e) => dat_tep(e.target.files?.[0] ?? null)}
           />
-          {tep !== null && <span className="cn-chu-nho">Đã chọn: {tep.name}</span>}
+          {tep !== null && <span className="cn-chu-nho">{tra('cn_da_chon_tep', { n: tep.name })}</span>}
         </NhanO>
 
         <div className="hop-thong-bao hop-tin">
-          Đơn OT duyệt qua hai cấp: trưởng phòng rồi TBKS/Admin. Duyệt xong, bạn nộp kết quả
-          bằng ảnh thì OT mới được tính công. Tổng làm thêm không vượt 40 giờ/tháng.
+          {tra('cn_hop_ot_2_cap')}
         </div>
 
         <div className="cn-form-nut">
-          <button type="button" className="nut" onClick={khi_dong}>Hủy</button>
+          <button type="button" className="nut" onClick={khi_dong}>{tra('cn_huy')}</button>
           <button
             type="button"
             className="nut nut-chinh"
             disabled={hd.dang_chay || !du || tu_ngay === ''}
             onClick={() => void gui()}
           >
-            Gửi đơn
+            {tra('cn_gui_don')}
           </button>
         </div>
         <HopLoi loi={hd.loi} />
@@ -2107,6 +2157,7 @@ function SheetKetQuaOt({ don, khi_dong, khi_xong }: {
   const hd = dung_hanh_dong();
   const { du_lieu, nap_lai } = dung_nap<{ ket_qua: KetQuaOtToi | null }>(
     `/api/toi/don/${don.id}/ket-qua`);
+  const { tra } = dung_chuoi();
   const [anh, dat_anh] = useState<File[]>([]);
   const [ghi_chu, dat_ghi_chu] = useState('');
   const kq = du_lieu?.ket_qua ?? null;
@@ -2117,7 +2168,7 @@ function SheetKetQuaOt({ don, khi_dong, khi_xong }: {
     fd.append('ghi_chu', ghi_chu);
     const ok = await hd.chay(
       () => gui_tep(`/api/toi/don/${don.id}/ket-qua`, fd),
-      'Đã nộp kết quả OT. TBKS/Admin sẽ duyệt và OT được tính vào bảng công.',
+      tra('cn_da_nop_kq_ot'),
     );
     if (ok) {
       nap_lai();
@@ -2128,31 +2179,30 @@ function SheetKetQuaOt({ don, khi_dong, khi_xong }: {
   };
 
   return (
-    <HopThoai tieu_de={`Kết quả OT · ${don.chi_tiet}`} khi_dong={khi_dong} rong>
+    <HopThoai tieu_de={tra('cn_ket_qua_ot', { n: don.chi_tiet })} khi_dong={khi_dong} rong>
       <CotForm>
         {kq === null && (
           <div className="hop-thong-bao hop-tin">
-            Đơn đã duyệt xong — gửi 1 đến 5 ảnh chụp kết quả làm việc để TBKS duyệt
-            và OT được tính công.
+            {tra('cn_ket_qua_ot_huong_dan')}
           </div>
         )}
         {kq !== null && kq.trang_thai === 'cho_duyet' && (
           <div className="hop-thong-bao hop-tin">
-            Kết quả đã nộp — đang chờ TBKS duyệt. Nộp lại sẽ thay thế bản cũ.
+            {tra('cn_kq_da_nop')}
           </div>
         )}
         {kq !== null && kq.trang_thai === 'da_duyet' && (
-          <div className="hop-thong-bao hop-tot">Kết quả đã được duyệt — OT đã được tính công.</div>
+          <div className="hop-thong-bao hop-tot">{tra('cn_kq_da_duyet')}</div>
         )}
         {kq !== null && kq.trang_thai === 'tu_choi' && (
           <div className="hop-thong-bao hop-loi">
-            Kết quả bị từ chối
-            {kq.ghi_chu_duyet !== null && kq.ghi_chu_duyet !== ''
-              ? `: ${kq.ghi_chu_duyet}` : ''}. Bạn có thể nộp lại.
+            {tra('cn_kq_tu_choi', {
+              n: kq.ghi_chu_duyet !== null && kq.ghi_chu_duyet !== '' ? `: ${kq.ghi_chu_duyet}` : '',
+            })}
           </div>
         )}
 
-        <NhanO nhan="Ảnh kết quả (1–5 ảnh JPG/PNG)">
+        <NhanO nhan={tra('cn_anh_ket_qua')}>
           <input
             type="file"
             multiple
@@ -2161,24 +2211,24 @@ function SheetKetQuaOt({ don, khi_dong, khi_xong }: {
           />
           {anh.length > 0 && (
             <span className="cn-chu-nho">
-              Đã chọn {anh.length} ảnh: {anh.map((a) => a.name).join(', ')}
+              {tra('cn_da_chon_x_anh', { n: anh.length, ten: anh.map((a) => a.name).join(', ') })}
             </span>
           )}
         </NhanO>
 
-        <NhanO nhan="Ghi chú (không bắt buộc)">
+        <NhanO nhan={tra('cn_ghi_chu_khong_bat_buoc')}>
           <textarea className="cn-nhap" rows={2} value={ghi_chu} onChange={(e) => dat_ghi_chu(e.target.value)} />
         </NhanO>
 
         <div className="cn-form-nut">
-          <button type="button" className="nut" onClick={khi_dong}>Đóng</button>
+          <button type="button" className="nut" onClick={khi_dong}>{tra('cn_dong')}</button>
           <button
             type="button"
             className="nut nut-chinh"
             disabled={hd.dang_chay || anh.length === 0}
             onClick={() => void gui()}
           >
-            {hd.dang_chay ? 'Đang gửi…' : 'Nộp kết quả'}
+            {hd.dang_chay ? tra('cn_dang_gui') : tra('cn_nop_ket_qua')}
           </button>
         </div>
         <HopLoi loi={hd.loi} />
@@ -2193,6 +2243,7 @@ function ManLuong(): ReactNode {
   // Mặc định mở KỲ LƯƠNG MỚI NHẤT ĐÃ CÓ (có kỳ nào hiện kỳ đó), KHÔNG phải tháng lịch hiện tại —
   // tháng chưa có kỳ mà mở ra "chưa có phiếu" gây hiểu nhầm. Người dùng vẫn bấm ‹ › để xem tháng khác.
   const phieu = dung_nap<{ thang: string }[]>('/api/toi/phieu-luong');
+  const { tra } = dung_chuoi();
   const [thang_chon, dat_thang] = useState<string | null>(null);
   const ky_moi_nhat = (phieu.du_lieu ?? [])[0]?.thang ?? null;
   const thang = thang_chon ?? ky_moi_nhat ?? thang_nay();
@@ -2214,16 +2265,16 @@ function ManLuong(): ReactNode {
         <button
           type="button"
           className="cn-nut-vuong"
-          aria-label="Kỳ trước"
+          aria-label={tra('cn_ky_truoc')}
           onClick={() => dat_thang(thg === 1 ? `${(nam ?? 0) - 1}-12` : `${nam}-${String((thg ?? 1) - 1).padStart(2, '0')}`)}
         >
           ‹
         </button>
-        <span className="cn-chon-thang-ten">Kỳ tháng {String(thg).padStart(2, '0')}/{nam}</span>
+        <span className="cn-chon-thang-ten">{tra('cn_ky_thang_x', { n: `${String(thg).padStart(2, '0')}/${nam}` })}</span>
         <button
           type="button"
           className="cn-nut-vuong"
-          aria-label="Kỳ sau"
+          aria-label={tra('cn_ky_sau')}
           disabled={thang >= thang_nay()}
           onClick={() => dat_thang(thg === 12 ? `${(nam ?? 0) + 1}-01` : `${nam}-${String((thg ?? 1) + 1).padStart(2, '0')}`)}
         >
@@ -2233,8 +2284,8 @@ function ManLuong(): ReactNode {
 
       {du_lieu.phieu_luong === null && (
         <div className="hop-thong-bao hop-tin">
-          <strong>Kỳ này chưa có phiếu lương.</strong> {du_lieu.ly_do_chua_co_phieu_luong}
-          {' '}Dưới đây là dữ liệu chấm công sẽ được dùng làm căn cứ — kiểm tra sớm để phát hiện sai lệch trước khi chốt.
+          <strong>{tra('cn_ky_chua_co_phieu')}</strong> {du_lieu.ly_do_chua_co_phieu_luong}
+          {' '}{tra('cn_duoi_day_du_lieu_cham_cong')}
         </div>
       )}
       {du_lieu.phieu_luong !== null && <TrangPhieuLuongToi thang_loc={thang} />}
@@ -2245,18 +2296,18 @@ function ManLuong(): ReactNode {
       <div className="cn-luong-luoi">
         <div className="cn-cot-gap">
           {du_lieu.phieu_luong !== null && (
-            <div className="cn-dau-mong">Cơ sở tính lương (chấm công)</div>
+            <div className="cn-dau-mong">{tra('pl_co_so_cham_cong')}</div>
           )}
           <div className="luoi luoi-4">
-            <OSo nhan="Công thực tế" gia_tri={so_viet(t.tong_cong)} phu={`${so(t.so_ngay_co_du_lieu)} ngày đã có dữ liệu`} />
-            <OSo nhan="Giờ làm" gia_tri={phut_thanh_chu(so(t.tong_phut_lam))} phu="đã trừ giờ nghỉ trưa" />
-            <OSo nhan="OT ghi nhận" gia_tri={phut_thanh_chu(so(t.tong_phut_ot))} phu="chưa duyệt trả thêm" mau="lanh" />
-            <OSo nhan="Vắng" gia_tri={`${so(t.so_ngay_vang)} ngày`} phu="không phép" mau={so(t.so_ngay_vang) > 0 ? 'xau' : undefined} />
+            <OSo nhan={tra('cn_cong_thuc_te')} gia_tri={so_viet(t.tong_cong)} phu={tra('cn_ngay_da_co_du_lieu', { n: so(t.so_ngay_co_du_lieu) })} />
+            <OSo nhan={tra('cn_gio_lam')} gia_tri={phut_thanh_chu(so(t.tong_phut_lam))} phu={tra('cn_da_tru_gio_nghi_trua')} />
+            <OSo nhan={tra('cn_ot_ghi_nhan')} gia_tri={phut_thanh_chu(so(t.tong_phut_ot))} phu={tra('cn_chua_duyet_tra_them')} mau="lanh" />
+            <OSo nhan={tra('cn_tt_vang')} gia_tri={tra('cn_ngay_x', { n: so(t.so_ngay_vang) })} phu={tra('cn_khong_phep')} mau={so(t.so_ngay_vang) > 0 ? 'xau' : undefined} />
           </div>
 
           <div className="the">
             <div className="cn-tieu-de-hang">
-              <h2>Công thực tế / công chuẩn</h2>
+              <h2>{tra('cn_cong_thuc_te_chuan')}</h2>
               <span className="cn-phu">{so_viet(t.tong_cong)}/{so_ngay_phai}</span>
             </div>
             <div className="cn-thanh">
@@ -2267,13 +2318,13 @@ function ManLuong(): ReactNode {
 
         <div className="cn-cot-gap">
           <div className="the the-mong">
-            <div className="cn-dau-mong">Chi tiết kỳ tháng {String(thg).padStart(2, '0')}/{nam}</div>
+            <div className="cn-dau-mong">{tra('cn_chi_tiet_ky_thang', { n: `${String(thg).padStart(2, '0')}/${nam}` })}</div>
             {[
-              ['Ngày có mặt', `${so(t.so_ngay_co_mat)}`],
-              ['Nghỉ phép', `${so(t.so_ngay_nghi_phep)}`],
-              ['Ngày lễ', `${so(t.so_ngay_le)}`],
-              ['Đi muộn', `${so(t.so_lan_di_muon)} lần · ${phut_thanh_chu(so(t.tong_phut_muon))}`],
-              ['Về sớm', `${so(t.so_lan_ve_som)} lần · ${phut_thanh_chu(so(t.tong_phut_ve_som))}`],
+              [tra('cn_ngay_co_mat'), `${so(t.so_ngay_co_mat)}`],
+              [tra('cn_tt_nghi_phep'), `${so(t.so_ngay_nghi_phep)}`],
+              [tra('cn_tt_ngay_le'), `${so(t.so_ngay_le)}`],
+              [tra('cn_di_muon'), `${so(t.so_lan_di_muon)} ${tra('pl_lan')} · ${phut_thanh_chu(so(t.tong_phut_muon))}`],
+              [tra('cn_ve_som'), `${so(t.so_lan_ve_som)} ${tra('pl_lan')} · ${phut_thanh_chu(so(t.tong_phut_ve_som))}`],
             ].map(([ten, gia]) => (
               <div className="cn-hang-don" key={ten}>
                 <span>{ten}</span>
@@ -2285,8 +2336,8 @@ function ManLuong(): ReactNode {
           {phep !== null && (
             <div className="the">
               <div className="cn-tieu-de-hang">
-                <h2>Quỹ phép năm {thang.slice(0, 4)}</h2>
-                <span className="cn-phu">còn {so_viet(phep.con_lai)}/{so_viet(phep.quy)} ngày</span>
+                <h2>{tra('cn_quy_phep_nam_x', { n: thang.slice(0, 4) })}</h2>
+                <span className="cn-phu">{tra('cn_con')} {so_viet(phep.con_lai)}/{so_viet(phep.quy)} {tra('pl_ngay_unit')}</span>
               </div>
               <div className="cn-thanh">
                 <div
@@ -2295,15 +2346,15 @@ function ManLuong(): ReactNode {
                 />
               </div>
               {phep.cho_duyet > 0 && (
-                <span className="cn-chu-nho">Chưa trừ {so_viet(phep.cho_duyet)} ngày đang chờ duyệt.</span>
+                <span className="cn-chu-nho">{tra('cn_chua_tru_x_ngay', { n: so_viet(phep.cho_duyet) })}</span>
               )}
             </div>
           )}
 
           <div className="hop-thong-bao hop-luu-y">
             {du_lieu.da_chot
-              ? 'Kỳ công này đã chốt — số liệu dưới đây là căn cứ cuối cùng.'
-              : 'Kỳ này chưa chốt. Một lần quẹt về muộn hoặc một đơn được duyệt vẫn có thể làm số liệu thay đổi.'}
+              ? tra('cn_chot_roi')
+              : tra('cn_chua_chot')}
             {' '}{du_lieu.ghi_chu_ot}
           </div>
         </div>
@@ -2314,8 +2365,8 @@ function ManLuong(): ReactNode {
       {du_lieu.phieu_luong !== null && (
         <div className="hop-thong-bao hop-luu-y">
           {du_lieu.da_chot
-            ? 'Kỳ công này đã chốt — số liệu trên phiếu là căn cứ cuối cùng.'
-            : 'Kỳ này chưa chốt — số liệu trên phiếu vẫn có thể thay đổi.'}
+            ? tra('cn_chot_roi_phieu')
+            : tra('cn_chua_chot_phieu')}
           {' '}{du_lieu.ghi_chu_ot}
         </div>
       )}
@@ -2340,21 +2391,22 @@ interface LuongToi {
 type TabCN = 'chung' | 'tai_lieu' | 'hop_dong' | 'luong' | 'phu_thuoc' | 'bhxh'
   | 'cong_viec' | 'thiet_bi' | 'cai_dat';
 
-const CAC_TAB_CN: { ma: TabCN; ten: string }[] = [
-  { ma: 'chung', ten: 'Thông tin chung' },
-  { ma: 'tai_lieu', ten: 'Tài liệu' },
-  { ma: 'hop_dong', ten: 'Hợp đồng' },
-  { ma: 'luong', ten: 'Lương' },
-  { ma: 'phu_thuoc', ten: 'Người phụ thuộc' },
-  { ma: 'bhxh', ten: 'BHXH – BHYT' },
-  { ma: 'cong_viec', ten: 'Công việc' },
-  { ma: 'thiet_bi', ten: 'Thiết bị' },
-  { ma: 'cai_dat', ten: 'Cài đặt' },
+const CAC_TAB_CN: { ma: TabCN; khoa: ChuoiKhoa }[] = [
+  { ma: 'chung', khoa: 'cn_thong_tin_chung' },
+  { ma: 'tai_lieu', khoa: 'cn_tai_lieu' },
+  { ma: 'hop_dong', khoa: 'cn_hop_dong' },
+  { ma: 'luong', khoa: 'cn_luong' },
+  { ma: 'phu_thuoc', khoa: 'cn_nguoi_phu_thuoc' },
+  { ma: 'bhxh', khoa: 'cn_bhxh_bhyt' },
+  { ma: 'cong_viec', khoa: 'cn_cong_viec' },
+  { ma: 'thiet_bi', khoa: 'cn_thiet_bi' },
+  { ma: 'cai_dat', khoa: 'cn_cai_dat' },
 ];
 
 function ManCaNhan(): ReactNode {
   const [tab, dat_tab] = useState<TabCN>('chung');
   const { du_lieu, dang_tai, loi } = dung_nap<HoSoToi>('/api/toi/ho-so');
+  const { tra } = dung_chuoi();
 
   if (dang_tai && du_lieu === null) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
@@ -2366,8 +2418,8 @@ function ManCaNhan(): ReactNode {
   if (nv == null) {
     return (
       <Trong
-        tieu_de="Tài khoản chưa nối với hồ sơ nhân viên"
-        mo_ta="Nhờ nhân sự gán tài khoản này vào hồ sơ của bạn thì thông tin cá nhân mới hiện ra ở đây."
+        tieu_de={tra('cn_tk_chua_noi_ho_so')}
+        mo_ta={tra('cn_nho_nhan_su_gan')}
       />
     );
   }
@@ -2389,18 +2441,18 @@ function ManCaNhan(): ReactNode {
         <div className="cn-hs-chinh">
           <span className="cn-hs-ten">{nv.ho_ten}</span>
           <span className="cn-hs-phu">
-            {nv.ma_nv} · vào làm {ngay_viet(nv.ngay_vao)}
-            {nv.ngay_vao !== null && tham_nien(nv.ngay_vao) !== '' && <> · thâm niên {tham_nien(nv.ngay_vao)}</>}
+            {nv.ma_nv} · {tra('cn_vao_lam_x', { n: ngay_viet(nv.ngay_vao) })}
+            {nv.ngay_vao !== null && tham_nien(nv.ngay_vao) !== '' && <> · {tra('cn_tham_nien_x', { n: tham_nien(nv.ngay_vao) })}</>}
           </span>
           <div className="cn-hs-chip-hang">
-            <span className="cn-hs-chip-xanh">{nv.chuc_danh ?? 'Nhân viên'}</span>
+            <span className="cn-hs-chip-xanh">{nv.chuc_danh ?? tra('vai_tro_nhan_vien')}</span>
             {nv.phong_ban !== null && <span className="cn-hs-chip">{nv.phong_ban}</span>}
             {nv.ca_lam !== null && (
               <span className="cn-hs-chip">
                 {nv.ca_lam} {nv.gio_vao !== null && `· ${gio_hh_mm(nv.gio_vao)}–${gio_hh_mm(nv.gio_ra)}`}
               </span>
             )}
-            {du_lieu.hop_dong === null && <span className="cn-hs-chip-canh-bao">Chưa có hợp đồng hiệu lực</span>}
+            {du_lieu.hop_dong === null && <span className="cn-hs-chip-canh-bao">{tra('cn_chua_co_hop_dong_hieu_luc')}</span>}
           </div>
         </div>
         <div className="cn-hs-tl">
@@ -2411,10 +2463,10 @@ function ManCaNhan(): ReactNode {
             <span className="cn-hs-vong-so">{tl_du}/{tl_bat_buoc.length}</span>
           </div>
           <div className="cn-hs-tl-phai">
-            <span className="cn-hs-tl-ten">Hồ sơ tài liệu</span>
-            <span className="cn-hs-tl-phu">{tl_thieu === 0 ? 'Đủ tài liệu bắt buộc' : `còn thiếu ${tl_thieu} tài liệu bắt buộc`}</span>
+            <span className="cn-hs-tl-ten">{tra('cn_ho_so_tai_lieu')}</span>
+            <span className="cn-hs-tl-phu">{tl_thieu === 0 ? tra('cn_du_tai_lieu_bat_buoc') : tra('cn_con_thieu_tai_lieu', { n: tl_thieu })}</span>
             {tl_thieu > 0 && (
-              <button type="button" className="cn-hs-tl-nut" onClick={() => dat_tab('tai_lieu')}>Xem chi tiết</button>
+              <button type="button" className="cn-hs-tl-nut" onClick={() => dat_tab('tai_lieu')}>{tra('cn_xem_chi_tiet')}</button>
             )}
           </div>
         </div>
@@ -2422,18 +2474,18 @@ function ManCaNhan(): ReactNode {
 
       {/* o chi so ho so */}
       <div className="luoi luoi-4">
-        <OSo nhan="PIN máy" gia_tri={nv.pin_may ?? '—'} phu="số trên máy chấm công" />
-        <OSo nhan="Ngày vào" gia_tri={ngay_viet(nv.ngay_vao)} phu={nv.ngay_chinh_thuc !== null ? `chính thức ${ngay_viet(nv.ngay_chinh_thuc)}` : 'chưa có ngày chính thức'} />
+        <OSo nhan={tra('cn_pin_may')} gia_tri={nv.pin_may ?? '—'} phu={tra('cn_so_tren_may')} />
+        <OSo nhan={tra('cn_ngay_vao')} gia_tri={ngay_viet(nv.ngay_vao)} phu={nv.ngay_chinh_thuc !== null ? tra('cn_chinh_thuc_x', { n: ngay_viet(nv.ngay_chinh_thuc) }) : tra('cn_chua_co_ngay_chinh_thuc')} />
         <OSo
-          nhan="Hợp đồng hiện tại"
-          gia_tri={du_lieu.hop_dong === null ? '—' : TEN_LOAI_HOP_DONG[du_lieu.hop_dong.loai] ?? du_lieu.hop_dong.loai}
-          phu={du_lieu.hop_dong === null ? 'chưa có hợp đồng hiệu lực' : du_lieu.hop_dong.hieu_luc_den !== null ? `đến ${ngay_viet(du_lieu.hop_dong.hieu_luc_den)}` : 'không xác định thời hạn'}
+          nhan={tra('cn_hop_dong_hien_tai')}
+          gia_tri={du_lieu.hop_dong === null ? '—' : tra_khoa(KHOA_LOAI_HOP_DONG[du_lieu.hop_dong.loai], du_lieu.hop_dong.loai)}
+          phu={du_lieu.hop_dong === null ? tra('cn_chua_co_hop_dong_hieu_luc') : du_lieu.hop_dong.hieu_luc_den !== null ? tra('cn_den_x', { n: ngay_viet(du_lieu.hop_dong.hieu_luc_den) }) : tra('cn_kxd_thoi_han')}
           mau={du_lieu.hop_dong === null ? 'xau' : undefined}
         />
         <OSo
-          nhan="Lương hiện tại"
+          nhan={tra('cn_luong_hien_tai')}
           gia_tri={du_lieu.luong === null ? '—' : `${so_viet(du_lieu.luong.luong_co_ban)} ₫`}
-          phu={du_lieu.luong === null ? 'chưa có quyết định lương' : `phụ cấp ${so_viet(du_lieu.luong.phu_cap)} ₫ · ${TEN_HINH_THUC_LUONG[du_lieu.luong.hinh_thuc] ?? du_lieu.luong.hinh_thuc}`}
+          phu={du_lieu.luong === null ? tra('cn_chua_co_qd_luong') : tra('cn_phu_cap_x_dong', { n: so_viet(du_lieu.luong.phu_cap), m: tra_khoa(KHOA_HINH_THUC_LUONG[du_lieu.luong.hinh_thuc], du_lieu.luong.hinh_thuc) })}
         />
       </div>
 
@@ -2445,7 +2497,7 @@ function ManCaNhan(): ReactNode {
             className={tab === t.ma ? 'dang-chon' : ''}
             onClick={() => dat_tab(t.ma)}
           >
-            {t.ten}
+            {tra(t.khoa)}
             {t.ma === 'tai_lieu' && tl_thieu > 0 && <span className="dem-tab">{tl_thieu}</span>}
           </button>
         ))}
@@ -2497,35 +2549,36 @@ function Khoi({ ten, phu, dong }: { ten: string; phu?: string; dong: DongKhoi[] 
 function NoiDungChung({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
   const nv = du_lieu.nhan_vien;
   const cn = du_lieu.ca_nhan;
+  const { tra } = dung_chuoi();
   if (nv === null) return null;
 
-  const gt = cn?.gioi_tinh === 'nam' ? 'Nam' : cn?.gioi_tinh === 'nu' ? 'Nữ' : '—';
+  const gt = cn?.gioi_tinh === 'nam' ? tra('cn_nam') : cn?.gioi_tinh === 'nu' ? tra('cn_nu') : '—';
 
   return (
     <div className="luoi luoi-2">
       <Khoi
-        ten="Thông tin cá nhân"
-        phu="Sai thông tin? Gửi yêu cầu sửa cho nhân sự — bạn không tự sửa được hồ sơ gốc."
+        ten={tra('cn_thong_tin_ca_nhan')}
+        phu={tra('cn_sai_thong_tin')}
         dong={[
-          { nhan: 'Họ và tên', gia_tri: nv.ho_ten },
-          { nhan: 'Ngày sinh', gia_tri: ngay_viet(cn?.ngay_sinh ?? null) },
-          { nhan: 'Giới tính', gia_tri: gt },
+          { nhan: tra('cn_ho_va_ten'), gia_tri: nv.ho_ten },
+          { nhan: tra('cn_ngay_sinh'), gia_tri: ngay_viet(cn?.ngay_sinh ?? null) },
+          { nhan: tra('cn_gioi_tinh'), gia_tri: gt },
           { nhan: 'CCCD', gia_tri: cn?.cccd_so ?? '—' },
-          { nhan: 'Điện thoại', gia_tri: nv.so_dien_thoai ?? '—' },
-          { nhan: 'Email công ty', gia_tri: nv.email ?? '—' },
-          { nhan: 'Nơi ở hiện tại', gia_tri: cn?.dia_chi_hien_tai ?? '—' },
-          { nhan: 'Mã số thuế', gia_tri: cn?.ma_so_thue ?? '—' },
+          { nhan: tra('cn_dien_thoai'), gia_tri: nv.so_dien_thoai ?? '—' },
+          { nhan: tra('cn_email_cong_ty'), gia_tri: nv.email ?? '—' },
+          { nhan: tra('cn_noi_o_hien_tai'), gia_tri: cn?.dia_chi_hien_tai ?? '—' },
+          { nhan: tra('cn_ma_so_thue'), gia_tri: cn?.ma_so_thue ?? '—' },
         ]}
       />
       <Khoi
-        ten="Tài khoản & chấm công"
+        ten={tra('cn_tk_va_cham_cong')}
         dong={[
-          { nhan: 'Mã nhân viên', gia_tri: nv.ma_nv },
-          { nhan: 'Tên đăng nhập', gia_tri: du_lieu.ten_dang_nhap },
-          { nhan: 'PIN trên máy chấm công', gia_tri: nv.pin_may ?? 'Chưa cấp' },
-          { nhan: 'Chấm công bằng điện thoại', gia_tri: nv.duoc_cham_cong_dien_thoai ? 'Được phép' : 'Không — quẹt tại máy', mau: nv.duoc_cham_cong_dien_thoai ? 'tot' : undefined },
-          { nhan: 'Múi giờ tính công', gia_tri: `UTC+${mui_gio_offset_gio()}` },
-          { nhan: 'Trạng thái', gia_tri: nv.dang_hoat_dong ? 'Đang làm việc' : 'Đã nghỉ việc', mau: nv.dang_hoat_dong ? 'tot' : 'xau' },
+          { nhan: tra('cn_ma_nhan_vien'), gia_tri: nv.ma_nv },
+          { nhan: tra('ten_dang_nhap'), gia_tri: du_lieu.ten_dang_nhap },
+          { nhan: tra('cn_pin_tren_may'), gia_tri: nv.pin_may ?? tra('cn_chua_cap') },
+          { nhan: tra('cn_cham_cong_dt'), gia_tri: nv.duoc_cham_cong_dien_thoai ? tra('cn_duoc_phep') : tra('cn_khong_quet_tai_may'), mau: nv.duoc_cham_cong_dien_thoai ? 'tot' : undefined },
+          { nhan: tra('cn_mui_gio_tinh_cong'), gia_tri: `UTC+${mui_gio_offset_gio()}` },
+          { nhan: tra('cn_trang_thai'), gia_tri: nv.dang_hoat_dong ? tra('cn_dang_lam_viec') : tra('cn_da_nghi_viec'), mau: nv.dang_hoat_dong ? 'tot' : 'xau' },
         ]}
       />
     </div>
@@ -2535,22 +2588,23 @@ function NoiDungChung({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
 function NoiDungTaiLieu({ du_lieu, ty_le_tl }: { du_lieu: HoSoToi; ty_le_tl: number }): ReactNode {
   const tl_bat_buoc = du_lieu.tai_lieu.filter((t) => t.bat_buoc && !t.chi_khi_nghi_viec);
   const tl_du = tl_bat_buoc.filter((t) => t.trang_thai === 'da_len_phan_mem').length;
+  const { tra } = dung_chuoi();
   return (
     <div className="cn-cot-gap">
       <div className="the">
         <div className="cn-tieu-de-hang">
-          <h2>Tiến độ hồ sơ bắt buộc</h2>
+          <h2>{tra('cn_tien_do_ho_so')}</h2>
           <span className="cn-phu">{tl_du}/{tl_bat_buoc.length}</span>
         </div>
         <div className="cn-thanh">
           <div className="cn-thanh-day" style={{ width: `${ty_le_tl}%` }} />
         </div>
-        <span className="cn-chu-nho">Chỉ tính là đủ khi tài liệu ở mức “Đã lên phần mềm”. Tài liệu chỉ phát sinh khi nghỉ việc được tạm miễn.</span>
+        <span className="cn-chu-nho">{tra('cn_chi_tinh_du_khi')}</span>
       </div>
 
       <div className="the the-mong">
         {du_lieu.tai_lieu.map((t, i) => {
-          const n = NHAN_TT_TAI_LIEU[t.trang_thai] ?? { chu: t.trang_thai, lop: 'nhan-mo' };
+          const n = NHAN_TT_TAI_LIEU[t.trang_thai] ?? { khoa: 'cn_tt_thieu' as ChuoiKhoa, lop: 'nhan-mo' };
           const thieu = t.trang_thai === 'thieu' && t.bat_buoc && !t.chi_khi_nghi_viec;
           return (
             <div className={`cn-tl-dong ${i === 0 ? '' : 'cn-tl-vien'} ${thieu ? 'cn-tl-thieu' : ''}`} key={t.ma}>
@@ -2558,14 +2612,14 @@ function NoiDungTaiLieu({ du_lieu, ty_le_tl }: { du_lieu: HoSoToi; ty_le_tl: num
                 <span className="cn-tl-ten-chinh">{t.ten}</span>
                 <span className="cn-tl-mo-ta">{t.mo_ta ?? ''}</span>
               </div>
-              <span className={`nhan ${n.lop}`}>{n.chu}</span>
+              <span className={`nhan ${n.lop}`}>{tra(n.khoa)}</span>
               <span className="cn-tl-tep">{t.ten_tep ?? '—'}</span>
             </div>
           );
         })}
       </div>
       <span className="cn-chu-nho" style={{ padding: '0 4px' }}>
-        Tài liệu do nhân sự đăng và cập nhật. Thiếu tài liệu nào, nhờ nhân sự bổ sung.
+        {tra('cn_tai_lieu_do_nhan_su')}
       </span>
     </div>
   );
@@ -2573,27 +2627,28 @@ function NoiDungTaiLieu({ du_lieu, ty_le_tl }: { du_lieu: HoSoToi; ty_le_tl: num
 
 function NoiDungHopDong({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
   const hd = du_lieu.hop_dong;
+  const { tra } = dung_chuoi();
   if (du_lieu.nhan_vien === null) return null;
   return (
     <Khoi
-      ten="Hợp đồng hiện tại"
+      ten={tra('cn_hop_dong_hien_tai')}
       phu={hd === null
-        ? 'Chưa có hợp đồng hiệu lực trong hệ thống. Bản giấy đã ký vẫn có giá trị — nhắc nhân sự đăng lên để hồ sơ đủ.'
+        ? tra('cn_hop_dong_hd_null')
         : undefined}
       dong={hd === null
         ? [
-          { nhan: 'Loại hợp đồng', gia_tri: '—', mau: 'xau' },
-          { nhan: 'Thời hạn', gia_tri: '—' },
-          { nhan: 'Ngày ký', gia_tri: '—' },
+          { nhan: tra('cn_loai_hop_dong'), gia_tri: '—', mau: 'xau' },
+          { nhan: tra('cn_thoi_han'), gia_tri: '—' },
+          { nhan: tra('cn_ngay_ky'), gia_tri: '—' },
         ]
         : [
-          { nhan: 'Số hợp đồng', gia_tri: hd.so_hd ?? '—' },
-          { nhan: 'Loại hợp đồng', gia_tri: TEN_LOAI_HOP_DONG[hd.loai] ?? hd.loai },
-          { nhan: 'Chức danh', gia_tri: hd.chuc_danh ?? '—' },
-          { nhan: 'Nơi làm việc', gia_tri: hd.noi_lam_viec ?? '—' },
-          { nhan: 'Ngày ký', gia_tri: ngay_viet(hd.ngay_ky) },
-          { nhan: 'Hiệu lực', gia_tri: hd.hieu_luc_den !== null ? `${ngay_viet(hd.hieu_luc_tu)} → ${ngay_viet(hd.hieu_luc_den)}` : `từ ${ngay_viet(hd.hieu_luc_tu)} · không xác định thời hạn` },
-          { nhan: 'Lương cơ bản', gia_tri: `${so_viet(hd.luong_co_ban)} ₫` },
+          { nhan: tra('cn_so_hop_dong'), gia_tri: hd.so_hd ?? '—' },
+          { nhan: tra('cn_loai_hop_dong'), gia_tri: tra_khoa(KHOA_LOAI_HOP_DONG[hd.loai], hd.loai) },
+          { nhan: tra('cn_chuc_danh'), gia_tri: hd.chuc_danh ?? '—' },
+          { nhan: tra('cn_noi_lam_viec'), gia_tri: hd.noi_lam_viec ?? '—' },
+          { nhan: tra('cn_ngay_ky'), gia_tri: ngay_viet(hd.ngay_ky) },
+          { nhan: tra('cn_hieu_luc'), gia_tri: hd.hieu_luc_den !== null ? `${ngay_viet(hd.hieu_luc_tu)} → ${ngay_viet(hd.hieu_luc_den)}` : tra('cn_tu_x', { n: `${ngay_viet(hd.hieu_luc_tu)} · ${tra('cn_kxd_thoi_han')}` }) },
+          { nhan: tra('cn_luong_co_ban'), gia_tri: `${so_viet(hd.luong_co_ban)} ₫` },
         ]}
     />
   );
@@ -2601,32 +2656,33 @@ function NoiDungHopDong({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
 
 function NoiDungLuongCN({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
   const l = du_lieu.luong;
+  const { tra } = dung_chuoi();
   return (
     <Khoi
-      ten="Lương & phụ cấp"
-      phu="Số liệu do nhân sự chốt. Phiếu lương từng kỳ xem ở màn Lương."
+      ten={tra('cn_luong_phu_cap')}
+      phu={tra('cn_so_lieu_do_nhan_su')}
       dong={l === null
-        ? [{ nhan: 'Mức lương', gia_tri: 'Chưa có quyết định lương', mau: 'xau' }]
+        ? [{ nhan: tra('cn_muc_luong'), gia_tri: tra('cn_chua_co_qd_luong'), mau: 'xau' }]
         : [
-          { nhan: 'Lương cơ bản', gia_tri: `${so_viet(l.luong_co_ban)} ₫` },
-          { nhan: 'Phụ cấp', gia_tri: `${so_viet(l.phu_cap)} ₫` },
-          { nhan: 'Hình thức trả', gia_tri: TEN_HINH_THUC_LUONG[l.hinh_thuc] ?? l.hinh_thuc },
-          { nhan: 'Số quyết định', gia_tri: l.so_quyet_dinh ?? '—' },
-          { nhan: 'Hiệu lực từ', gia_tri: ngay_viet(l.hieu_luc_tu) },
+          { nhan: tra('cn_luong_co_ban'), gia_tri: `${so_viet(l.luong_co_ban)} ₫` },
+          { nhan: tra('menu_phu_cap'), gia_tri: `${so_viet(l.phu_cap)} ₫` },
+          { nhan: tra('cn_hinh_thuc_tra'), gia_tri: tra_khoa(KHOA_HINH_THUC_LUONG[l.hinh_thuc], l.hinh_thuc) },
+          { nhan: tra('cn_so_quyet_dinh'), gia_tri: l.so_quyet_dinh ?? '—' },
+          { nhan: tra('cn_hieu_luc_tu'), gia_tri: ngay_viet(l.hieu_luc_tu) },
         ]}
     />
   );
 }
 
-const TEN_LOAI_NGHI: Record<string, string> = {
-  phep_nam: 'Phép năm', khong_luong: 'Không lương', om: 'Nghỉ ốm',
-  thai_san: 'Thai sản', ket_hon: 'Kết hôn', hieu: 'Việc riêng (hiếu)',
+const KHOA_LOAI_NGHI_PHEP: Record<string, ChuoiKhoa> = {
+  phep_nam: 'cn_loai_phep_nam', khong_luong: 'cn_loai_khong_luong', om: 'cn_loai_om',
+  thai_san: 'cn_loai_thai_san', ket_hon: 'cn_loai_ket_hon', hieu: 'cn_loai_hieu',
 };
-const TEN_TT_NGHI: Record<string, { ten: string; lop: string }> = {
-  cho_duyet: { ten: 'Chờ duyệt', lop: 'nhan-canh-bao' },
-  da_duyet: { ten: 'Đã duyệt', lop: 'nhan-tot' },
-  tu_choi: { ten: 'Từ chối', lop: 'nhan-xau' },
-  da_huy: { ten: 'Đã hủy', lop: 'nhan-mo' },
+const KHOA_TT_NGHI: Record<string, { khoa: ChuoiKhoa; lop: string }> = {
+  cho_duyet: { khoa: 'cn_tt_cho_duyet', lop: 'nhan-canh-bao' },
+  da_duyet: { khoa: 'cn_tt_da_duyet', lop: 'nhan-tot' },
+  tu_choi: { khoa: 'cn_tt_tu_choi', lop: 'nhan-xau' },
+  da_huy: { khoa: 'cn_tt_da_huy', lop: 'nhan-mo' },
 };
 
 interface LanNghi {
@@ -2644,6 +2700,7 @@ function NoiDungPhep(): ReactNode {
   const nam_nay = new Date().getFullYear();
   const [nam, dat_nam] = useState(nam_nay);
   const { du_lieu, dang_tai, loi } = dung_nap<PhepData>(`/api/toi/phep?nam=${nam}`, [nam]);
+  const { tra } = dung_chuoi();
   if (dang_tai && du_lieu === null) return <XuongDanhSach />;
   if (loi !== null) return <HopLoi loi={loi} />;
   if (du_lieu === null) return null;
@@ -2654,38 +2711,38 @@ function NoiDungPhep(): ReactNode {
   return (
     <div className="cn-cot-gap">
       <div className="cn-chon-thang">
-        <button type="button" className="cn-nut-vuong" aria-label="Năm trước"
+        <button type="button" className="cn-nut-vuong" aria-label={tra('cn_nam_truoc')}
           onClick={() => dat_nam(nam - 1)}>‹</button>
-        <span className="cn-chon-thang-ten">Phép năm {nam}</span>
-        <button type="button" className="cn-nut-vuong" aria-label="Năm sau"
+        <span className="cn-chon-thang-ten">{tra('cn_phep_nam_x', { n: nam })}</span>
+        <button type="button" className="cn-nut-vuong" aria-label={tra('cn_nam_sau')}
           disabled={nam >= nam_nay} onClick={() => dat_nam(nam + 1)}>›</button>
       </div>
 
       <Khoi
-        ten="Quỹ phép năm"
-        phu="Chỉ nghỉ PHÉP NĂM đã duyệt mới trừ vào quỹ. Nghỉ ốm / không lương không trừ phép."
+        ten={tra('cn_quy_phep_nam')}
+        phu={tra('cn_chi_nghi_phep_tru')}
         dong={[
-          { nhan: 'Tổng quỹ phép', gia_tri: `${so_viet(q.quy)} ngày` },
-          { nhan: 'Đã dùng', gia_tri: `${so_viet(q.da_dung)} ngày` },
-          { nhan: 'Còn lại', gia_tri: `${so_viet(q.con_lai)} ngày`, mau: q.con_lai <= 0 ? 'xau' : 'tot' },
-          { nhan: 'Đang chờ duyệt', gia_tri: `${so_viet(q.cho_duyet)} ngày`, mau: q.cho_duyet > 0 ? 'lanh' : undefined },
+          { nhan: tra('cn_tong_quy_phep'), gia_tri: tra('cn_ngay_x', { n: so_viet(q.quy) }) },
+          { nhan: tra('cn_da_dung'), gia_tri: tra('cn_ngay_x', { n: so_viet(q.da_dung) }) },
+          { nhan: tra('cn_con_lai'), gia_tri: tra('cn_ngay_x', { n: so_viet(q.con_lai) }), mau: q.con_lai <= 0 ? 'xau' : 'tot' },
+          { nhan: tra('cn_dang_cho_duyet'), gia_tri: tra('cn_ngay_x', { n: so_viet(q.cho_duyet) }), mau: q.cho_duyet > 0 ? 'lanh' : undefined },
         ]}
       />
 
       <div className="the the-mong">
-        <div className="cn-dau-mong">Chi tiết các lần nghỉ (năm {nam})</div>
+        <div className="cn-dau-mong">{tra('cn_chi_tiet_cac_lan_nghi', { n: nam })}</div>
         {du_lieu.cac_lan.length === 0 && (
-          <div className="cn-hang-don"><span className="mo-ta">Chưa có lần nghỉ nào trong năm.</span></div>
+          <div className="cn-hang-don"><span className="mo-ta">{tra('cn_chua_co_lan_nghi')}</span></div>
         )}
         {du_lieu.cac_lan.map((x) => (
           <div className="cn-hang-don" key={x.id}>
             <div>
               <strong>{khoang(x)}</strong>
-              <span className="mo-ta"> · {TEN_LOAI_NGHI[x.loai] ?? x.loai} · {so_viet(x.so_ngay)} ngày{x.nua_ngay ? ' (nửa ngày)' : ''}</span>
+              <span className="mo-ta"> · {tra_khoa(KHOA_LOAI_NGHI_PHEP[x.loai], x.loai)} · {so_viet(x.so_ngay)} {tra('pl_ngay_unit')}{x.nua_ngay ? tra('cn_nua_ngay_suffix') : ''}</span>
               {x.ly_do !== null && x.ly_do !== '' && <div className="mo-ta">{x.ly_do}</div>}
             </div>
-            <span className={`nhan ${TEN_TT_NGHI[x.trang_thai]?.lop ?? 'nhan-mo'}`}>
-              {TEN_TT_NGHI[x.trang_thai]?.ten ?? x.trang_thai}
+            <span className={`nhan ${KHOA_TT_NGHI[x.trang_thai]?.lop ?? 'nhan-mo'}`}>
+              {tra_khoa(KHOA_TT_NGHI[x.trang_thai]?.khoa, x.trang_thai)}
             </span>
           </div>
         ))}
@@ -2695,11 +2752,12 @@ function NoiDungPhep(): ReactNode {
 }
 
 function NoiDungPhuThuoc({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
+  const { tra } = dung_chuoi();
   if (du_lieu.nguoi_phu_thuoc.length === 0) {
     return (
       <Trong
-        tieu_de="Chưa khai người phụ thuộc"
-        mo_ta="Người phụ thuộc dùng để giảm trừ thuế TNCN. Gửi giấy tờ chứng minh cho nhân sự để đăng ký."
+        tieu_de={tra('cn_chua_khai_pt')}
+        mo_ta={tra('cn_pt_mo_ta')}
       />
     );
   }
@@ -2708,12 +2766,12 @@ function NoiDungPhuThuoc({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
       {du_lieu.nguoi_phu_thuoc.map((p, i) => (
         <Khoi
           key={`${p.ho_ten}-${i}`}
-          ten={`${p.ho_ten} · ${TEN_QUAN_HE[p.quan_he] ?? p.quan_he}`}
+          ten={`${p.ho_ten} · ${tra_khoa(KHOA_QUAN_HE[p.quan_he], p.quan_he)}`}
           dong={[
-            { nhan: 'Ngày sinh', gia_tri: ngay_viet(p.ngay_sinh) },
-            { nhan: 'Mã số thuế', gia_tri: p.ma_so_thue ?? '—' },
-            { nhan: 'Giảm trừ', gia_tri: p.tu_thang !== null ? `từ ${ngay_viet(p.tu_thang)}${p.den_thang !== null ? ` đến ${ngay_viet(p.den_thang)}` : ' · còn hiệu lực'}` : 'chưa có khoảng áp dụng' },
-            { nhan: 'Trạng thái', gia_tri: p.da_dang_ky ? 'Đã đăng ký' : 'Chưa đăng ký', mau: p.da_dang_ky ? 'tot' : undefined },
+            { nhan: tra('cn_ngay_sinh'), gia_tri: ngay_viet(p.ngay_sinh) },
+            { nhan: tra('cn_ma_so_thue'), gia_tri: p.ma_so_thue ?? '—' },
+            { nhan: tra('cn_giam_tru'), gia_tri: p.tu_thang !== null ? tra('cn_tu_x', { n: `${ngay_viet(p.tu_thang)}${p.den_thang !== null ? tra('cn_den_x_khoang', { n: ngay_viet(p.den_thang) }) : tra('cn_con_hieu_luc')}` }) : tra('cn_chua_co_khoang') },
+            { nhan: tra('cn_trang_thai'), gia_tri: p.da_dang_ky ? tra('cn_da_dang_ky') : tra('cn_chua_dang_ky'), mau: p.da_dang_ky ? 'tot' : undefined },
           ]}
         />
       ))}
@@ -2723,34 +2781,35 @@ function NoiDungPhuThuoc({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
 
 function NoiDungBhxh({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
   const cn = du_lieu.ca_nhan;
+  const { tra } = dung_chuoi();
   return (
     <div className="cn-cot-gap">
       <Khoi
-        ten="BHXH – BHYT"
+        ten={tra('cn_bhxh_bhyt')}
         dong={[
-          { nhan: 'Số sổ BHXH', gia_tri: cn?.so_bhxh ?? 'Chưa có', mau: cn?.so_bhxh === null ? 'xau' : undefined },
-          { nhan: 'Mã thẻ BHYT', gia_tri: cn?.so_the_bhyt ?? 'Chưa có', mau: cn?.so_the_bhyt === null ? 'xau' : undefined },
-          { nhan: 'Cơ quan BHXH', gia_tri: cn?.co_quan_bhxh ?? '—' },
-          { nhan: 'Nơi khám chữa bệnh ban đầu', gia_tri: cn?.noi_kham_chua_benh ?? '—' },
+          { nhan: tra('cn_so_so_bhxh'), gia_tri: cn?.so_bhxh ?? tra('cn_chua_co'), mau: cn?.so_bhxh === null ? 'xau' : undefined },
+          { nhan: tra('cn_ma_the_bhyt'), gia_tri: cn?.so_the_bhyt ?? tra('cn_chua_co'), mau: cn?.so_the_bhyt === null ? 'xau' : undefined },
+          { nhan: tra('cn_co_quan_bhxh'), gia_tri: cn?.co_quan_bhxh ?? '—' },
+          { nhan: tra('cn_noi_kcb_bd'), gia_tri: cn?.noi_kham_chua_benh ?? '—' },
         ]}
       />
       {du_lieu.bhxh.length > 0 && (
         <div className="the the-mong">
-          <div className="cn-dau-mong">Các sự kiện gần đây</div>
+          <div className="cn-dau-mong">{tra('cn_cac_su_kien_gan_day')}</div>
           {du_lieu.bhxh.map((s, i) => (
             <div className="cn-bhxh-dong" key={`${s.loai}-${s.thang}-${i}`}>
               <div className="cn-bhxh-trai">
-                <span className="cn-bhxh-loai">{TEN_LOAI_BHXH[s.loai] ?? s.loai}</span>
-                <span className="cn-bhxh-thang">tháng {s.thang.slice(0, 7)}</span>
+                <span className="cn-bhxh-loai">{tra_khoa(KHOA_LOAI_BHXH[s.loai], s.loai)}</span>
+                <span className="cn-bhxh-thang">{tra('cn_thang_x', { n: s.thang.slice(0, 7) })}</span>
               </div>
               <div className="cn-bhxh-giua">
-                {s.muc_dong !== null && <span>mức đóng {so_viet(s.muc_dong)} ₫</span>}
+                {s.muc_dong !== null && <span>{tra('cn_muc_dong_x', { n: so_viet(s.muc_dong) })}</span>}
                 {s.ty_le_phan_tram !== null && <span> · {so_viet(s.ty_le_phan_tram)}%</span>}
-                {s.so_ho_so !== null && <span> · hồ sơ {s.so_ho_so}</span>}
+                {s.so_ho_so !== null && <span>{tra('cn_ho_so_x', { n: s.so_ho_so })}</span>}
               </div>
               <span className={`nhan ${s.trang_thai === 'hoan_thanh' || s.trang_thai === 'co_quan_duyet' ? 'nhan-tot'
                 : s.trang_thai === 'tu_choi' ? 'nhan-xau' : 'nhan-canh-bao'}`}>
-                {TEN_TRANG_THAI_BHXH[s.trang_thai] ?? s.trang_thai}
+                {tra_khoa(KHOA_TRANG_THAI_BHXH[s.trang_thai], s.trang_thai)}
               </span>
             </div>
           ))}
@@ -2762,25 +2821,26 @@ function NoiDungBhxh({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
 
 function NoiDungCongViec({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
   const nv = du_lieu.nhan_vien;
+  const { tra } = dung_chuoi();
   if (nv === null) return null;
-  const quan_ly = nv.nguoi_quan_ly ?? 'Chưa gán';
+  const quan_ly = nv.nguoi_quan_ly ?? tra('cn_chua_gan_ca');
   return (
     <div className="luoi luoi-2">
       <Khoi
-        ten="Vị trí hiện tại"
+        ten={tra('cn_vi_tri_hien_tai')}
         dong={[
-          { nhan: 'Chức danh', gia_tri: nv.chuc_danh ?? '—' },
-          { nhan: 'Phòng ban', gia_tri: nv.phong_ban ?? '—' },
-          { nhan: 'Quản lý trực tiếp', gia_tri: quan_ly },
-          { nhan: 'Ca làm việc', gia_tri: nv.ca_lam !== null ? `${nv.ca_lam} · ${gio_hh_mm(nv.gio_vao)}–${gio_hh_mm(nv.gio_ra)}` : 'Chưa gán ca' },
-          { nhan: 'Nơi làm việc', gia_tri: du_lieu.hop_dong?.noi_lam_viec ?? '—' },
+          { nhan: tra('cn_chuc_danh'), gia_tri: nv.chuc_danh ?? '—' },
+          { nhan: tra('cn_phong_ban'), gia_tri: nv.phong_ban ?? '—' },
+          { nhan: tra('cn_quan_ly_truc_tiep'), gia_tri: quan_ly },
+          { nhan: tra('cn_ca_lam_viec'), gia_tri: nv.ca_lam !== null ? `${nv.ca_lam} · ${gio_hh_mm(nv.gio_vao)}–${gio_hh_mm(nv.gio_ra)}` : tra('cn_chua_gan_ca') },
+          { nhan: tra('cn_noi_lam_viec'), gia_tri: du_lieu.hop_dong?.noi_lam_viec ?? '—' },
         ]}
       />
       <Khoi
-        ten="Lịch sử công việc"
+        ten={tra('cn_lich_su_cong_viec')}
         dong={[
-          { nhan: ngay_viet(nv.ngay_vao), gia_tri: nv.chuc_danh !== null ? `Tiếp nhận · ${nv.chuc_danh}` : 'Tiếp nhận' },
-          { nhan: nv.ngay_chinh_thuc !== null ? ngay_viet(nv.ngay_chinh_thuc) : 'Chưa có', gia_tri: nv.ngay_chinh_thuc !== null ? 'Kết thúc thử việc' : 'Chưa xác nhận kết thúc thử việc' },
+          { nhan: ngay_viet(nv.ngay_vao), gia_tri: nv.chuc_danh !== null ? `${tra('cn_tiep_nhan')} · ${nv.chuc_danh}` : tra('cn_tiep_nhan') },
+          { nhan: nv.ngay_chinh_thuc !== null ? ngay_viet(nv.ngay_chinh_thuc) : tra('cn_chua_co'), gia_tri: nv.ngay_chinh_thuc !== null ? tra('cn_ket_thuc_thu_viec') : tra('cn_chua_xac_nhan_tt') },
         ]}
       />
     </div>
@@ -2788,11 +2848,12 @@ function NoiDungCongViec({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
 }
 
 function NoiDungThietBi({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
+  const { tra } = dung_chuoi();
   if (du_lieu.thiet_bi.length === 0) {
     return (
       <Trong
-        tieu_de="Chưa có thiết bị cấp phát"
-        mo_ta="Laptop, thẻ từ… do nhân sự ghi vào hồ sơ khi bàn giao."
+        tieu_de={tra('cn_chua_co_thiet_bi')}
+        mo_ta={tra('cn_thiet_bi_mo_ta')}
       />
     );
   }
@@ -2803,11 +2864,11 @@ function NoiDungThietBi({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
           key={`${tb.ten}-${i}`}
           ten={`${tb.ten}${tb.model !== null ? ` · ${tb.model}` : ''}`}
           dong={[
-            { nhan: 'Loại', gia_tri: tb.loai },
-            { nhan: 'Hãng', gia_tri: tb.hang ?? '—' },
-            { nhan: 'Số seri', gia_tri: tb.so_seri ?? '—' },
-            { nhan: 'Ngày nhận', gia_tri: ngay_viet(tb.ngay_cap) },
-            { nhan: 'Tình trạng', gia_tri: tb.tinh_trang === 'dang_dung' ? 'Đang dùng' : tb.tinh_trang, mau: tb.tinh_trang === 'dang_dung' ? 'tot' : undefined },
+            { nhan: tra('cn_loai'), gia_tri: tb.loai },
+            { nhan: tra('cn_hang'), gia_tri: tb.hang ?? '—' },
+            { nhan: tra('cn_so_seri'), gia_tri: tb.so_seri ?? '—' },
+            { nhan: tra('cn_ngay_nhan'), gia_tri: ngay_viet(tb.ngay_cap) },
+            { nhan: tra('cn_tinh_trang'), gia_tri: tb.tinh_trang === 'dang_dung' ? tra('cn_dang_dung') : tb.tinh_trang, mau: tb.tinh_trang === 'dang_dung' ? 'tot' : undefined },
           ]}
         />
       ))}
@@ -2818,11 +2879,12 @@ function NoiDungThietBi({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
 function NoiDungCaiDat(): ReactNode {
   const [mo_mk, dat_mo_mk] = useState(false);
   const xac_nhan = dung_xac_nhan();
+  const { tra } = dung_chuoi();
 
   return (
     <div className="cn-cot-gap">
       <button type="button" className="cn-nut-rong" onClick={() => dat_mo_mk(true)}>
-        <span style={{ flex: 1 }}>Đổi mật khẩu</span>
+        <span style={{ flex: 1 }}>{tra('doi_mat_khau')}</span>
         <span className="cn-mui">›</span>
       </button>
 
@@ -2831,9 +2893,9 @@ function NoiDungCaiDat(): ReactNode {
         className="cn-nut-rong cn-nut-dang-xuat"
         onClick={() => void (async () => {
           const dong_y = await xac_nhan.hoi({
-            tieu_de: 'Đăng xuất khỏi ứng dụng?',
-            mo_ta: 'Bạn sẽ phải đăng nhập lại bằng tên đăng nhập và mật khẩu. Dữ liệu chấm công không bị ảnh hưởng.',
-            chu_dong_y: 'Đăng xuất',
+            tieu_de: tra('cn_dx_khoi_ung_dung'),
+            mo_ta: tra('cn_dx_mo_ta'),
+            chu_dong_y: tra('dang_xuat'),
             nguy_hiem: true,
           });
           if (dong_y) {
@@ -2842,12 +2904,12 @@ function NoiDungCaiDat(): ReactNode {
           }
         })()}
       >
-        Đăng xuất
+        {tra('dang_xuat')}
       </button>
 
       <div className="cn-chan-trang">
-        <span>Máy chủ nội bộ · {goc_api_tuyet_doi()}</span>
-        <span>Múi giờ tính công UTC+{mui_gio_offset_gio()}</span>
+        <span>{tra('cn_may_chu_noi_bo', { n: goc_api_tuyet_doi() })}</span>
+        <span>{tra('cn_mui_gio_tinh_cong_utc', { n: mui_gio_offset_gio() })}</span>
       </div>
 
       {mo_mk && <SheetDoiMatKhau khi_dong={() => dat_mo_mk(false)} />}
@@ -2858,6 +2920,7 @@ function NoiDungCaiDat(): ReactNode {
 
 function SheetDoiMatKhau({ khi_dong }: { khi_dong: () => void }): ReactNode {
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const [cu, dat_cu] = useState('');
   const [moi, dat_moi] = useState('');
   const [nhap_lai, dat_nhap_lai] = useState('');
@@ -2865,7 +2928,7 @@ function SheetDoiMatKhau({ khi_dong }: { khi_dong: () => void }): ReactNode {
   const gui = async (): Promise<void> => {
     if (moi !== nhap_lai) {
       // Bao loi truc tiep de nguoi dung thay ngay, khong can may chu.
-      hd.chay(async () => { throw new Error('Mật khẩu nhập lại không khớp.'); });
+      hd.chay(async () => { throw new Error(tra('cn_mk_nhap_lai_khong_khop')); });
       return;
     }
     const ok = await hd.chay(async () => {
@@ -2878,30 +2941,30 @@ function SheetDoiMatKhau({ khi_dong }: { khi_dong: () => void }): ReactNode {
   };
 
   return (
-    <HopThoai tieu_de="Đổi mật khẩu" khi_dong={khi_dong}>
+    <HopThoai tieu_de={tra('doi_mat_khau')} khi_dong={khi_dong}>
       <CotForm>
-        <NhanO nhan="Mật khẩu hiện tại">
+        <NhanO nhan={tra('mat_khau_hien_tai')}>
           <input type="password" className="cn-nhap" value={cu} onChange={(e) => dat_cu(e.target.value)} />
         </NhanO>
-        <NhanO nhan="Mật khẩu mới">
+        <NhanO nhan={tra('mat_khau_moi')}>
           <input type="password" className="cn-nhap" value={moi} onChange={(e) => dat_moi(e.target.value)} />
         </NhanO>
-        <NhanO nhan="Nhập lại mật khẩu mới">
+        <NhanO nhan={tra('nhap_lai_mat_khau_moi')}>
           <input type="password" className="cn-nhap" value={nhap_lai} onChange={(e) => dat_nhap_lai(e.target.value)} />
         </NhanO>
         <div className="cn-form-nut">
-          <button type="button" className="nut" onClick={khi_dong}>Hủy</button>
+          <button type="button" className="nut" onClick={khi_dong}>{tra('cn_huy')}</button>
           <button
             type="button"
             className="nut nut-chinh"
             disabled={hd.dang_chay || cu === '' || moi === '' || nhap_lai === ''}
             onClick={() => void gui()}
           >
-            Đổi mật khẩu
+            {tra('doi_mat_khau')}
           </button>
         </div>
         <HopLoi loi={hd.loi} />
-        {hd.tot !== null && <div className="hop-thong-bao hop-tot">Đã đổi mật khẩu. Đang chuyển về trang đăng nhập…</div>}
+        {hd.tot !== null && <div className="hop-thong-bao hop-tot">{tra('cn_da_doi_mk_chuyen')}</div>}
       </CotForm>
     </HopThoai>
   );

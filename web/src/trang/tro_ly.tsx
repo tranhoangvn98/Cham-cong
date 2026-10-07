@@ -11,6 +11,7 @@ import { goi, LoiApi } from '../api.ts';
 import { khoa_tinh } from '../thanh_phan.tsx';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
 import { DongBotGo } from './tro_ly_go.tsx';
+import { dung_chuoi } from '../chuoi/chi_muc.tsx';
 
 /** Icon chat SVG — net sach, khong phu thuoc emoji cua he dieu hanh. */
 function IconChat(): ReactNode {
@@ -90,6 +91,7 @@ interface LuotLichSu {
 
 export function TroLyCaNhan(): ReactNode {
   const { di_toi } = dung_tuyen();
+  const { tra } = dung_chuoi();
   const [mo, dat_mo] = useState(false);
   const [dong, dat_dong] = useState<Dong[]>([]);
   const [goi_y, dat_goi_y] = useState<string[]>([]);
@@ -145,7 +147,7 @@ export function TroLyCaNhan(): ReactNode {
       if (d.hanh_dong !== undefined) dat_hanh_dong(d.hanh_dong);
       dat_mo_de_xuat(d.mo_de_xuat ?? null);
     } catch {
-      dat_dong((ds) => [...ds, { ai: 'bot', chu: 'Xin lỗi, mình chưa trả lời được lúc này.' }]);
+      dat_dong((ds) => [...ds, { ai: 'bot', chu: tra('tl_xin_loi') }]);
     } finally {
       dat_dang_hoi(false);
     }
@@ -156,7 +158,7 @@ export function TroLyCaNhan(): ReactNode {
     const hd = hanh_dong;
     if (hd === null || dang_gui) return;
     if (!duong_an_toan(hd)) {
-      dat_dong((ds) => [...ds, { ai: 'bot', chu: 'Yêu cầu này không hợp lệ, mình không gửi được.' }]);
+      dat_dong((ds) => [...ds, { ai: 'bot', chu: tra('tl_yeu_cau_khong_hop_le') }]);
       dat_hanh_dong(null);
       return;
     }
@@ -171,16 +173,15 @@ export function TroLyCaNhan(): ReactNode {
       const cb = kq?.['canh_bao'];
       if (Array.isArray(cb)) {
         const dong_cb = cb.filter((x): x is string => typeof x === 'string' && x.trim() !== '');
-        if (dong_cb.length > 0) them = `\n\nLưu ý:\n• ${dong_cb.join('\n• ')}`;
+        if (dong_cb.length > 0) them = `\n\n${tra('tl_luu_y')}\n• ${dong_cb.join('\n• ')}`;
       }
-      dat_dong((ds) => [...ds, { ai: 'bot', chu: `Đã gửi thành công: ${hd.tieu_de}. ` +
-        `Bạn xem trạng thái ở tab "Đơn của tôi".${them}` }]);
+      dat_dong((ds) => [...ds, { ai: 'bot', chu: tra('tl_da_gui_thanh_cong', { n: hd.tieu_de, them }) }]);
     } catch (loi) {
-      const chu = loi instanceof LoiApi ? loi.message : 'Không kết nối được máy chủ.';
+      const chu = loi instanceof LoiApi ? loi.message : tra('tl_khong_ket_noi');
       // 5xx thuong la may chu dang ban hoac vua khoi dong lai sau khi cap nhat — bao than thien.
       const loi_than = /50\d|Lỗi 50\d/.test(chu)
-        ? 'Máy chủ đang bận hoặc vừa khởi động lại — bạn bấm lại sau ít phút nhé.' : chu;
-      dat_dong((ds) => [...ds, { ai: 'bot', chu: `Chưa gửi được: ${loi_than}` }]);
+        ? tra('tl_may_chu_ban') : chu;
+      dat_dong((ds) => [...ds, { ai: 'bot', chu: tra('tl_chua_gui_duoc', { n: loi_than }) }]);
     } finally {
       dat_dang_gui(false);
     }
@@ -190,7 +191,7 @@ export function TroLyCaNhan(): ReactNode {
     const hd = hanh_dong;
     dat_hanh_dong(null);
     if (hd !== null) {
-      dat_dong((ds) => [...ds, { ai: 'bot', chu: 'Đã bỏ qua — không có gì được gửi đi.' }]);
+      dat_dong((ds) => [...ds, { ai: 'bot', chu: tra('tl_da_bo_qua') }]);
     }
   };
 
@@ -210,7 +211,7 @@ export function TroLyCaNhan(): ReactNode {
   // neu mot to tien co transform/overflow). Bam chac cho nut noi luon tron day o goc phai.
   if (!mo) {
     return createPortal(
-      <button className="troly-nut" onClick={() => dat_mo(true)} aria-label="Mở trợ lý">
+      <button className="troly-nut" onClick={() => dat_mo(true)} aria-label={tra('tl_mo_tro_ly')}>
         <IconChat />
       </button>,
       document.body,
@@ -218,13 +219,13 @@ export function TroLyCaNhan(): ReactNode {
   }
 
   return createPortal(
-    <div className="troly-panel" role="dialog" aria-label="Trợ lý nhân sự">
+    <div className="troly-panel" role="dialog" aria-label={tra('tl_tro_ly_nhan_su')}>
       <div className="troly-dau">
-        <b>Trợ lý nhân sự</b>
+        <b>{tra('tl_tro_ly_nhan_su')}</b>
         <span>
-          <button className="nut-phang" onClick={xoa_lich_su} aria-label="Xóa lịch sử"
-            title="Xóa toàn bộ lịch sử hội thoại của bạn">Xóa</button>
-          <button className="nut-phang" onClick={() => dat_mo(false)} aria-label="Đóng">✕</button>
+          <button className="nut-phang" onClick={xoa_lich_su} aria-label={tra('tl_xoa_lich_su')}
+            title={tra('tl_xoa_toan_bo')}>{tra('tl_xoa')}</button>
+          <button className="nut-phang" onClick={() => dat_mo(false)} aria-label={tra('cn_dong')}>✕</button>
         </span>
       </div>
       <div className="troly-than" ref={cuon}>
@@ -236,12 +237,12 @@ export function TroLyCaNhan(): ReactNode {
           </div>
         ))}
         {dang_hoi && (
-          <div className="troly-tn troly-tn-bot" aria-label="Đang trả lời">
+          <div className="troly-tn troly-tn-bot" aria-label={tra('tl_dang_tra_loi')}>
             <span className="troly-ba-cham"><i /><i /><i /></span>
           </div>
         )}
         {hanh_dong !== null && !dang_hoi && (
-          <div className="troly-hd" role="group" aria-label="Chờ xác nhận">
+          <div className="troly-hd" role="group" aria-label={tra('tl_cho_xac_nhan')}>
             <div className="troly-hd-b">{hanh_dong.tieu_de}</div>
             {hanh_dong.chi_tiet.map((d, i) => (
               <div key={khoa_tinh(d, i)} className="troly-hd-dong">{d}</div>
@@ -249,7 +250,7 @@ export function TroLyCaNhan(): ReactNode {
             <div className="troly-hd-nut">
               <button className="troly-hd-xac-nhan" onClick={() => { void xac_nhan(); }}
                 disabled={dang_gui} aria-label={hanh_dong.nhan}>
-                {dang_gui ? 'Đang gửi…' : hanh_dong.nhan}
+                {dang_gui ? tra('cn_dang_gui') : hanh_dong.nhan}
               </button>
               <button className="troly-hd-bo" onClick={bo_qua} disabled={dang_gui}
                 aria-label={hanh_dong.bo}>
@@ -279,8 +280,8 @@ export function TroLyCaNhan(): ReactNode {
       </div>
       <form className="troly-hang" onSubmit={(e) => { e.preventDefault(); void hoi(nhap); }}>
         <input value={nhap} onChange={(e) => dat_nhap(e.target.value)}
-          placeholder="Hỏi phép, công, OT, đổi ca, nội quy…" aria-label="Câu hỏi" />
-        <button type="submit" disabled={dang_hoi || nhap.trim() === ''}>Gửi</button>
+          placeholder={tra('tl_hoi_phong')} aria-label={tra('tl_cau_hoi')} />
+        <button type="submit" disabled={dang_hoi || nhap.trim() === ''}>{tra('tl_gui')}</button>
       </form>
     </div>,
     document.body,

@@ -4,10 +4,10 @@
 // gan" (top 5 + xem tat ca), phai bang log cuon NOI BO trong the. Man hep xep doc.
 import { useState, type ReactNode } from 'react';
 import { goi, la_nhan_su, tai_tep } from '../api.ts';
-import {
-  DangTai, HopLoi, HopTot, HopThoai, HopThoaiNhap, NhanDon, TEN_NGUON, Trong,
+import { DangTai, HopLoi, HopTot, HopThoai, HopThoaiNhap, NhanDon, TEN_NGUON, Trong,
   dung_hanh_dong, dung_nap, hom_nay, ngay_gio,
 } from '../thanh_phan.tsx';
+import { tra_hien_tai } from '../chuoi/chi_muc.tsx';
 import { BoPhanTrang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
@@ -280,7 +280,7 @@ export function TrangLanQuet(): ReactNode {
                       <td className="khong-ngat">{q.nhan_trang_thai}</td>
                       <td className="khong-ngat chu-nho">{q.nhan_xac_thuc}</td>
                       <td className="chu-nho">
-                        {TEN_NGUON[q.nguon] ?? q.nguon}
+                        {(() => { const k = TEN_NGUON[q.nguon]; return k !== undefined ? tra_hien_tai(k) : q.nguon; })()}
                         {q.thiet_bi !== null && <div className="o-so-phu">{q.thiet_bi}</div>}
                         {q.dia_diem !== null && (
                           <div className="o-so-phu">

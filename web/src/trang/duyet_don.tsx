@@ -4,6 +4,7 @@ import {
   DangTai, HopLoi, HopTot, HopThoai, NhanDon, TEN_LOAI_NGHI, Trong,
   dung_hanh_dong, dung_nap, dung_nhap_chu, gio_ngan, khoa_tinh, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
+import { tra_hien_tai } from '../chuoi/chi_muc.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 
 type Tab = 'nghi_phep' | 'giai_trinh' | 'quet_dien_thoai' | 'don_khac' | 'de_xuat'
@@ -489,7 +490,7 @@ function BangNghiPhep({ kq, quyet, dang_chay }: BangProps<DonNghiPhep>): ReactNo
                   <div className="o-so-phu">{d.ma_nv}{d.phong_ban === null ? '' : ` · ${d.phong_ban}`}</div>
                 </td>
                 <td className="khong-ngat">
-                  {TEN_LOAI_NGHI[d.loai] ?? d.loai}
+                  {(() => { const k = TEN_LOAI_NGHI[d.loai]; return k !== undefined ? tra_hien_tai(k) : d.loai; })()}
                   {d.nua_ngay && <span className="nhan nhan-mo" style={{ marginLeft: 4 }}>½ ngày</span>}
                 </td>
                 <td className="khong-ngat">{ngay_viet(d.tu_ngay)}</td>
@@ -763,6 +764,11 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
     if (d.loai === 'di_muon') {
       return d.gio_bat_dau !== null
         ? <>dự kiến có mặt {d.gio_bat_dau.slice(0, 5)}</>
+        : <span className="mo-ta">—</span>;
+    }
+    if (d.loai === 've_som') {
+      return d.gio_bat_dau !== null
+        ? <>dự kiến ra về {d.gio_bat_dau.slice(0, 5)}</>
         : <span className="mo-ta">—</span>;
     }
     return <span className="mo-ta">—</span>;

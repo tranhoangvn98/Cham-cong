@@ -19,6 +19,18 @@ export type { ChuoiKhoa, NgonNgu };
 
 const KHOA_LUU = 'cham_cong_ngon_ngu';
 
+/**
+ * Ngon ngu HIEU LUC o cap module — cho cac helper NAM NGOAI React (vi du nhan trang thai
+ * trong ca_nhan.tsx). <CungCapChuoi> cap nhat moi khi doi ngon ngu; cac component dung hook
+ * `dung_chuoi()` se render lai va helper doc gia tri moi.
+ */
+let ngon_ngu_dang: NgonNgu = 'vi';
+
+/** Dich chuoi theo ngon ngu hien hanh — dung trong helper khong truy cap duoc hook. */
+export function tra_hien_tai(khoa: ChuoiKhoa, tham_so?: Record<string, string | number>): string {
+  return tra_chuoi(ngon_ngu_dang, khoa, tham_so);
+}
+
 function doc_luu(): NgonNgu {
   try {
     return chuan_ngon_ngu(localStorage.getItem(KHOA_LUU));
@@ -38,11 +50,14 @@ const NguCanhChuoi = createContext<GiaTriChuoi | null>(null);
 export function CungCapChuoi({ children }: { children: ReactNode }): ReactNode {
   const [ngon_ngu, dat_nn] = useState<NgonNgu>(() => {
     const tu_phien = nguoi_dung_hien_tai()?.ngon_ngu;
-    return la_vi_hoac_zh(tu_phien) ? tu_phien : doc_luu();
+    const ban_dau = la_vi_hoac_zh(tu_phien) ? tu_phien : doc_luu();
+    ngon_ngu_dang = ban_dau;
+    return ban_dau;
   });
 
   const dat = useCallback((moi: NgonNgu) => {
     dat_nn(moi);
+    ngon_ngu_dang = moi;
     try {
       localStorage.setItem(KHOA_LUU, moi);
     } catch {

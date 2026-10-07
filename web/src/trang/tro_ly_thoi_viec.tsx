@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { goi } from '../api.ts';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
 import { ngay_viet } from '../thanh_phan.tsx';
+import { dung_chuoi } from '../chuoi/chi_muc.tsx';
 
 interface MucW {
   id: string;
@@ -28,6 +29,7 @@ const MUC_TICK_NHANH = new Set(['doc_huong_dan', 'sao_luu_du_lieu', 'xac_nhan_la
 
 export function TroLyThoiViec(): ReactNode {
   const { di_toi } = dung_tuyen();
+  const { tra } = dung_chuoi();
   const [qt, dat_qt] = useState<QtW | null>(null);
   const [dang_nap, dat_dang_nap] = useState(true);
   const [mo, dat_mo] = useState(false);
@@ -73,7 +75,7 @@ export function TroLyThoiViec(): ReactNode {
       <button
         type="button"
         className="troly-nut-tv"
-        aria-label="Trợ lý thủ tục thôi việc"
+        aria-label={tra('tv_tro_ly_thoi_viec')}
         onClick={() => dat_mo(!mo)}
       >
         <i className="bt bt-logout" aria-hidden="true" />
@@ -84,18 +86,18 @@ export function TroLyThoiViec(): ReactNode {
       {mo && (
         <div className="troly-panel">
           <div className="troly-dau">
-            <span><i className="bt bt-logout" aria-hidden="true" /> Thủ tục thôi việc</span>
-            <button type="button" className="nut-phang" aria-label="Đóng"
+            <span><i className="bt bt-logout" aria-hidden="true" /> {tra('tv_thu_tuc_thoi_viec')}</span>
+            <button type="button" className="nut-phang" aria-label={tra('cn_dong')}
               onClick={() => dat_mo(false)}><i className="bt bt-x" aria-hidden="true" /></button>
           </div>
           <div className="troly-than">
             <div className="troly-tn troly-tn-bot">
               {so_chua === 0
-                ? 'Bạn đã xong mọi mục bắt buộc — chờ Admin duyệt cuối ở Cổng 2.'
-                : `Còn ${String(so_chua)} mục bắt buộc chưa xong.`
-                  + (tiep !== null ? `\nMục kế tiếp: ${tiep.tieu_de}.` : '')}
+                ? tra('cn_moi_muc_xong')
+                : tra('tv_con_x_muc', { n: so_chua })
+                  + (tiep !== null ? `\n${tra('tv_muc_ke_tiep', { n: tiep.tieu_de })}` : '')}
               {qt.ngay_lam_viec_cuoi !== null
-                && `\nNgày làm việc cuối: ${ngay_viet(qt.ngay_lam_viec_cuoi)}`}
+                && `\n${tra('tv_ngay_lv_cuoi', { n: ngay_viet(qt.ngay_lam_viec_cuoi) })}`}
             </div>
             {qt.muc.filter((m) => m.bat_buoc && m.loai_tu_dong === 'nhan_vien'
               && m.trang_thai !== 'xong' && m.trang_thai !== 'bo_qua')
@@ -110,12 +112,12 @@ export function TroLyThoiViec(): ReactNode {
               {tiep !== null && MUC_TICK_NHANH.has(tiep.ma_muc) && (
                 <button type="button" className="troly-hd-xac-nhan" disabled={dang_tick}
                   onClick={() => void tick_nhanh()}>
-                  Xác nhận: {tiep.tieu_de}
+                  {tra('tv_xac_nhan_x', { n: tiep.tieu_de })}
                 </button>
               )}
               <button type="button" className="troly-chip-mo"
                 onClick={() => { dat_mo(false); di_toi('/thoi-viec/huong-dan'); }}>
-                Mở hướng dẫn thủ tục
+                {tra('tv_mo_huong_dan_tv')}
               </button>
             </div>
           </div>

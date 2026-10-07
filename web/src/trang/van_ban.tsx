@@ -17,13 +17,14 @@ import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon } from '../chon.tsx';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
 import { TabVanBanBanHanh } from './thong_bao_ai.tsx';
+import { dung_chuoi, tra_hien_tai, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
 
 export type TabVanBan = 'thong_bao' | 'ban_hanh' | 'tai_lieu';
 
-const CAC_TAB: { ma: TabVanBan; ten: string; den: string }[] = [
-  { ma: 'thong_bao', ten: 'Thông báo', den: '/van-ban' },
-  { ma: 'ban_hanh', ten: 'Văn bản ban hành', den: '/van-ban/ban-hanh' },
-  { ma: 'tai_lieu', ten: 'Tài liệu công ty', den: '/van-ban/tai-lieu' },
+const CAC_TAB: { ma: TabVanBan; khoa: ChuoiKhoa; den: string }[] = [
+  { ma: 'thong_bao', khoa: 'menu_thong_bao', den: '/van-ban' },
+  { ma: 'ban_hanh', khoa: 'vb_van_ban_ban_hanh', den: '/van-ban/ban-hanh' },
+  { ma: 'tai_lieu', khoa: 'dcn_tai_lieu_cty', den: '/van-ban/tai-lieu' },
 ];
 
 interface VanBan {
@@ -55,16 +56,20 @@ interface PhongBan { id: string; ten: string }
 interface NhanVienGon { id: string; ma_nv: string; ho_ten: string }
 
 /** Loai / hinh thuc van ban. Thu tu tu "van ban hanh chinh" xuong "kho tai lieu". */
-const NHAN_DANH_MUC: Record<string, string> = {
-  thong_bao: 'Thông báo', quyet_dinh: 'Quyết định', cong_van: 'Công văn',
-  noi_quy: 'Nội quy', bieu_mau: 'Biểu mẫu', chinh_sach: 'Chính sách',
-  huong_dan: 'Hướng dẫn', khac: 'Khác',
+const KHOA_DANH_MUC: Record<string, ChuoiKhoa> = {
+  thong_bao: 'menu_thong_bao', quyet_dinh: 'vb_dm_quyet_dinh', cong_van: 'vb_dm_cong_van',
+  noi_quy: 'vb_dm_noi_quy', bieu_mau: 'vb_dm_bieu_mau', chinh_sach: 'vb_dm_chinh_sach',
+  huong_dan: 'vb_dm_huong_dan', khac: 'vb_dm_khac',
 };
-const DANH_MUC_THU_TU = Object.keys(NHAN_DANH_MUC);
+const DANH_MUC_THU_TU = Object.keys(KHOA_DANH_MUC);
 
-const NHAN_LOAI: Record<string, string> = {
-  thong_bao: 'Thông báo', quyet_dinh: 'Quyết định', cong_van: 'Công văn',
+const KHOA_LOAI: Record<string, ChuoiKhoa> = {
+  thong_bao: 'menu_thong_bao', quyet_dinh: 'vb_dm_quyet_dinh', cong_van: 'vb_dm_cong_van',
 };
+
+/** Dich theo khoa chuoi; khoa khong co trong tu dien thi dung chuoi thay the. */
+const tra_khoa = (k: ChuoiKhoa | undefined, thay: string): string =>
+  k !== undefined ? tra_hien_tai(k) : thay;
 
 function co_MB(byte: number | null): string {
   if (byte === null || byte === 0) return '';
@@ -148,7 +153,7 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
         <label className="truong"><span>Loại / hình thức</span>
           <Chon gia_tri={danh_muc} dat_gia_tri={dat_danh_muc}
             cac_tuy_chon={DANH_MUC_THU_TU.map((m) => ({
-              ma: m, nhan: NHAN_DANH_MUC[m] ?? m,
+              ma: m, nhan: KHOA_DANH_MUC[m] !== undefined ? tra_hien_tai(KHOA_DANH_MUC[m]) : m,
             }))}
             nhan="Loại / hình thức văn bản" />
         </label>
@@ -222,6 +227,7 @@ function TabTaiLieu({ chi_doc = false }: { chi_doc?: boolean }): ReactNode {
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<VanBan[]>('/api/toi/van-ban');
   const hd = dung_hanh_dong();
   const hr = la_nhan_su();
+  const { tra } = dung_chuoi();
 
   if (dang_tai) return <DangTai />;
   if (loi !== null) return <HopLoi loi={loi} />;
@@ -237,10 +243,10 @@ function TabTaiLieu({ chi_doc = false }: { chi_doc?: boolean }): ReactNode {
       <HopLoi loi={hd.loi} />
       {hr && !chi_doc && <SoanVanBan khi_xong={nap_lai} />}
       {ds.length === 0
-        ? <Trong tieu_de="Chưa có văn bản" mo_ta="Nhân sự sẽ đăng thông báo, nội quy, biểu mẫu tại đây." />
+        ? <Trong tieu_de={tra('vb_chua_co_van_ban')} mo_ta={tra('vb_nhan_su_se_dang')} />
         : nhom.map((dm, i) => (
           <div className="the vb-nhom" key={khoa_tinh(dm, i)}>
-            <div className="canhan-muc-dau"><h2>{NHAN_DANH_MUC[dm] ?? dm}</h2></div>
+            <div className="canhan-muc-dau"><h2>{tra_khoa(KHOA_DANH_MUC[dm], dm)}</h2></div>
             <ul className="vb-danh-sach">
               {ds.filter((v) => v.danh_muc === dm).map((v, j) => (
                 <li key={khoa_tinh(v.id, j)} className="vb-dong">
@@ -260,7 +266,7 @@ function TabTaiLieu({ chi_doc = false }: { chi_doc?: boolean }): ReactNode {
                   </div>
                   {v.co_tep && (
                     <button className="nut-nho" onClick={() => tai(v)} disabled={hd.dang_chay}>
-                      <i className="bt bt-download" aria-hidden="true" /> Tải
+                      <i className="bt bt-download" aria-hidden="true" /> {tra('vb_tai')}
                     </button>
                   )}
                 </li>
@@ -278,6 +284,7 @@ function TabTaiLieu({ chi_doc = false }: { chi_doc?: boolean }): ReactNode {
 function DsVanBanBanHanh(): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<VanBanBanHanh[]>('/api/toi/van-ban-ban-hanh');
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const ds = du_lieu ?? [];
   // Hook phan trang phai chay moi lan render: dat truoc cac return som.
   const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
@@ -286,8 +293,8 @@ function DsVanBanBanHanh(): ReactNode {
   if (loi !== null) return <HopLoi loi={loi} />;
 
   if (ds.length === 0) {
-    return <Trong tieu_de="Chưa có văn bản ban hành"
-      mo_ta="Văn bản có số ký hiệu phát hành cho bạn sẽ hiện ở đây." />;
+    return <Trong tieu_de={tra('vb_chua_co_vb_ban_hanh')}
+      mo_ta={tra('vb_van_ban_cho_ban')} />;
   }
   return (
     <div>
@@ -295,14 +302,14 @@ function DsVanBanBanHanh(): ReactNode {
       <table className="bang-gon">
         <thead>
           <tr>
-            <th>Số ký hiệu</th><th>Loại</th><th>Trích yếu</th><th>Phát hành</th><th></th>
+            <th>{tra('vb_so_ky_hieu')}</th><th>{tra('vb_loai')}</th><th>{tra('vb_trich_yeu')}</th><th>{tra('vb_phat_hanh')}</th><th></th>
           </tr>
         </thead>
         <tbody>
           {ds_xem.map((v, i) => (
             <tr key={khoa_tinh(v.id, i)}>
               <td><b>{v.so_ky_hieu ?? '—'}</b></td>
-              <td>{NHAN_LOAI[v.loai] ?? v.loai}</td>
+              <td>{tra_khoa(KHOA_LOAI[v.loai], v.loai)}</td>
               <td>{v.tieu_de}</td>
               <td>{ngay_gio(v.tao_luc)}</td>
               <td>
@@ -315,7 +322,7 @@ function DsVanBanBanHanh(): ReactNode {
                       ));
                     }}
                     disabled={hd.dang_chay}>
-                    Tải DOCX
+                    {tra('vb_tai_docx')}
                   </button>
                 )}
               </td>
@@ -340,6 +347,7 @@ function DsVanBanBanHanh(): ReactNode {
 export function TrangVanBan({ tab = 'thong_bao', chi_doc = false }:
   { tab?: TabVanBan; chi_doc?: boolean }): ReactNode {
   const hr = la_nhan_su();
+  const { tra } = dung_chuoi();
   const tab_dung: TabVanBan = CAC_TAB.some((t) => t.ma === tab) ? tab : 'thong_bao';
 
   let noi_dung: ReactNode;
@@ -354,16 +362,16 @@ export function TrangVanBan({ tab = 'thong_bao', chi_doc = false }:
   return (
     <div className="canhan">
       <div className="canhan-hero">
-        <div className="canhan-hero-chao">Văn bản công ty</div>
+        <div className="canhan-hero-chao">{tra('menu_van_ban')}</div>
         <div className="canhan-hero-phu">
-          Thông báo, văn bản ban hành có số hiệu và tài liệu công ty — một nơi duy nhất.
+          {tra('vb_van_ban_cong_ty_phu')}
         </div>
       </div>
-      <div className="hang-tab" role="tablist" aria-label="Các mục văn bản công ty">
+      <div className="hang-tab" role="tablist" aria-label={tra('vb_cac_muc_vb')}>
         {CAC_TAB.map((t) => (
           <LienKet key={t.ma} den={t.den}
             lop={tab_dung === t.ma ? 'dang-chon' : ''}>
-            {t.ten}
+            {tra(t.khoa)}
           </LienKet>
         ))}
       </div>

@@ -5,6 +5,7 @@ import { goi, goc_nhin, la_nhan_su } from '../api.ts';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
 import { dat_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import { khoa_tinh, ngay_gio } from '../thanh_phan.tsx';
+import { dung_chuoi } from '../chuoi/chi_muc.tsx';
 
 interface Bao {
   id: string;
@@ -59,6 +60,7 @@ export function ChuongBao({ dieu_huong }: {
   dieu_huong?: (man: string | undefined) => void;
 } = {}): ReactNode {
   const { di_toi } = dung_tuyen();
+  const { tra } = dung_chuoi();
   const [mo, dat_mo] = useState(false);
   const [ds, dat_ds] = useState<Bao[]>([]);
   const [so, dat_so] = useState(0);
@@ -133,35 +135,35 @@ export function ChuongBao({ dieu_huong }: {
   return (
     <div className="chuong-vo" ref={vo}>
       <button className="nut-tron" onClick={() => { if (!mo) nap(); dat_mo(!mo); }}
-        aria-label={`Thông báo${so > 0 ? ` (${so} chưa đọc)` : ''}`} aria-expanded={mo}>
+        aria-label={`${tra('menu_thong_bao')}${so > 0 ? tra('cb_chua_doc_x', { n: so }) : ''}`} aria-expanded={mo}>
         <IconChuong />
         {so > 0 && <span className="chuong-dot">{so > 9 ? '9+' : so}</span>}
       </button>
       {mo && (
-        <div className="chuong-bang" role="dialog" aria-label="Thông báo">
+        <div className="chuong-bang" role="dialog" aria-label={tra('menu_thong_bao')}>
           <div className="chuong-dau">
-            <b>Thông báo</b>
-            {so > 0 && <button className="nut-nho nut-phang" onClick={doc_het}>Đánh dấu đã đọc</button>}
+            <b>{tra('menu_thong_bao')}</b>
+            {so > 0 && <button className="nut-nho nut-phang" onClick={doc_het}>{tra('cb_danh_dau_da_doc')}</button>}
           </div>
-          <div className="chuong-tabs" role="tablist" aria-label="Lọc thông báo">
+          <div className="chuong-tabs" role="tablist" aria-label={tra('tb_loc_thong_bao')}>
             <button type="button" role="tab" aria-selected={tab === 'tat_ca'}
               className={tab === 'tat_ca' ? 'chuong-tab dang-chon' : 'chuong-tab'}
-              onClick={() => dat_tab('tat_ca')}>Tất cả</button>
+              onClick={() => dat_tab('tat_ca')}>{tra('cb_tat_ca')}</button>
             <button type="button" role="tab" aria-selected={tab === 'chua_xem'}
               className={tab === 'chua_xem' ? 'chuong-tab dang-chon' : 'chuong-tab'}
-              onClick={() => dat_tab('chua_xem')}>Chưa xem</button>
+              onClick={() => dat_tab('chua_xem')}>{tra('cb_chua_xem')}</button>
             <button type="button" role="tab" aria-selected={tab === 'cho_duyet'}
               className={tab === 'cho_duyet' ? 'chuong-tab dang-chon' : 'chuong-tab'}
-              onClick={() => dat_tab('cho_duyet')}>Chờ duyệt</button>
+              onClick={() => dat_tab('cho_duyet')}>{tra('cb_cho_duyet')}</button>
           </div>
           <div className="chuong-ds">
             {hien.length === 0
               ? <div className="chuong-trong">
                   {tab === 'chua_xem'
-                    ? 'Không còn thông báo chưa xem.'
+                    ? tra('cb_khong_con_chua_xem')
                     : tab === 'cho_duyet'
-                      ? 'Không có thông báo nào đang chờ duyệt.'
-                      : 'Chưa có thông báo nào.'}
+                      ? tra('cb_khong_co_cho_duyet')
+                      : tra('cb_chua_co_thong_bao')}
                 </div>
               : hien.map((b, i) => (
                 <button key={khoa_tinh(b.id, i)}
@@ -172,10 +174,10 @@ export function ChuongBao({ dieu_huong }: {
                   <div className="chuong-meta">
                     {b.da_doc ? (
                       <span className="nhan nhan-mo">
-                        Đã xem{b.doc_luc !== null ? ` · ${ngay_gio(b.doc_luc)}` : ''}
+                        {tra('cb_da_xem')}{b.doc_luc !== null ? ` · ${ngay_gio(b.doc_luc)}` : ''}
                       </span>
                     ) : (
-                      <span className="nhan nhan-lanh">Chưa xem</span>
+                      <span className="nhan nhan-lanh">{tra('cb_chua_xem')}</span>
                     )}
                     {b.nhan_trang_thai !== null && (
                       <span className={`nhan ${b.con_xu_ly ? 'nhan-canh-bao' : 'nhan-mo'}`}>

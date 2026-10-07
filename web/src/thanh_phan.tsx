@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { goi, tai_anh_tu, tai_blob, tai_tep, LoiApi, mui_gio_offset_gio } from './api.ts';
 import { dung_phan_trang } from './phan_trang.tsx';
 import { Chon, type TuyChonChon } from './chon.tsx';
+import { tra_hien_tai, type ChuoiKhoa } from './chuoi/chi_muc.tsx';
 
 /**
  * Khoa React cho mot danh sach CHI DOC, sinh lai toan bo moi lan.
@@ -382,44 +383,49 @@ export function dung_nhap_chu(): KetQuaNhapChu {
 }
 
 // ============================================================ nhan trang thai
-const NHAN_NGAY: Record<string, { chu: string; lop: string }> = {
-  co_mat: { chu: 'Có mặt', lop: 'nhan-tot' },
-  vang: { chu: 'Vắng', lop: 'nhan-xau' },
-  nghi_phep: { chu: 'Nghỉ phép', lop: 'nhan-lanh' },
-  nghi_khong_luong: { chu: 'Nghỉ không lương', lop: 'nhan-canh-bao' },
-  ngay_le: { chu: 'Ngày lễ', lop: 'nhan-canh-bao' },
-  nghi_tuan: { chu: 'Nghỉ tuần', lop: 'nhan-mo' },
-  cong_tac: { chu: 'Công tác', lop: 'nhan-lanh' },
-  lam_bu: { chu: 'Làm bù', lop: 'nhan-tot' },
-  ngoai_le: { chu: 'Ngoại lệ', lop: 'nhan-lanh' },
+const NHAN_NGAY: Record<string, { khoa: ChuoiKhoa; lop: string }> = {
+  co_mat: { khoa: 'cn_tt_co_mat', lop: 'nhan-tot' },
+  vang: { khoa: 'cn_tt_vang', lop: 'nhan-xau' },
+  nghi_phep: { khoa: 'cn_tt_nghi_phep', lop: 'nhan-lanh' },
+  nghi_khong_luong: { khoa: 'cn_tt_nghi_khong_luong', lop: 'nhan-canh-bao' },
+  ngay_le: { khoa: 'cn_tt_ngay_le', lop: 'nhan-canh-bao' },
+  nghi_tuan: { khoa: 'cn_tt_nghi_tuan', lop: 'nhan-mo' },
+  cong_tac: { khoa: 'cn_tt_cong_tac', lop: 'nhan-lanh' },
+  lam_remote: { khoa: 'cn_tt_lam_remote', lop: 'nhan-lanh' },
+  lam_bu: { khoa: 'cn_tt_lam_bu', lop: 'nhan-tot' },
+  ngoai_le: { khoa: 'cn_tt_ngoai_le', lop: 'nhan-lanh' },
 };
 
 export function NhanNgay({ trang_thai }: { trang_thai: string }): ReactNode {
-  const n = NHAN_NGAY[trang_thai] ?? { chu: trang_thai, lop: 'nhan-mo' };
-  return <span className={`nhan ${n.lop}`}>{n.chu}</span>;
+  const n = NHAN_NGAY[trang_thai];
+  return <span className={`nhan ${n?.lop ?? 'nhan-mo'}`}>
+    {n !== undefined ? tra_hien_tai(n.khoa) : trang_thai}
+  </span>;
 }
 
-const NHAN_DON: Record<string, { chu: string; lop: string }> = {
-  cho_duyet: { chu: 'Chờ duyệt', lop: 'nhan-canh-bao' },
-  cho_duyet_2: { chu: 'Chờ TBKS/Admin', lop: 'nhan-canh-bao' },
-  da_duyet: { chu: 'Đã duyệt', lop: 'nhan-tot' },
-  tu_choi: { chu: 'Từ chối', lop: 'nhan-xau' },
-  da_huy: { chu: 'Đã hủy', lop: 'nhan-mo' },
-  tu_dong: { chu: 'Tự động', lop: 'nhan-tot' },
+const NHAN_DON: Record<string, { khoa: ChuoiKhoa; lop: string }> = {
+  cho_duyet: { khoa: 'cn_tt_cho_duyet', lop: 'nhan-canh-bao' },
+  cho_duyet_2: { khoa: 'thp_cho_duyet_2', lop: 'nhan-canh-bao' },
+  da_duyet: { khoa: 'cn_tt_da_duyet', lop: 'nhan-tot' },
+  tu_choi: { khoa: 'cn_tt_tu_choi', lop: 'nhan-xau' },
+  da_huy: { khoa: 'cn_tt_da_huy', lop: 'nhan-mo' },
+  tu_dong: { khoa: 'thp_tu_dong', lop: 'nhan-tot' },
 };
 
 export function NhanDon({ trang_thai }: { trang_thai: string }): ReactNode {
-  const n = NHAN_DON[trang_thai] ?? { chu: trang_thai, lop: 'nhan-mo' };
-  return <span className={`nhan ${n.lop}`}>{n.chu}</span>;
+  const n = NHAN_DON[trang_thai];
+  return <span className={`nhan ${n?.lop ?? 'nhan-mo'}`}>
+    {n !== undefined ? tra_hien_tai(n.khoa) : trang_thai}
+  </span>;
 }
 
-export const TEN_LOAI_NGHI: Record<string, string> = {
-  phep_nam: 'Phép năm',
-  khong_luong: 'Không lương',
-  om: 'Nghỉ ốm',
-  thai_san: 'Thai sản',
-  ket_hon: 'Kết hôn',
-  hieu: 'Nghỉ hiếu',
+export const TEN_LOAI_NGHI: Record<string, ChuoiKhoa> = {
+  phep_nam: 'cn_loai_phep_nam',
+  khong_luong: 'cn_loai_khong_luong',
+  om: 'cn_loai_om',
+  thai_san: 'cn_loai_thai_san',
+  ket_hon: 'cn_loai_ket_hon',
+  hieu: 'cn_loai_hieu',
 };
 
 export const TEN_VAI_TRO: Record<string, string> = {
@@ -432,10 +438,10 @@ export const TEN_VAI_TRO: Record<string, string> = {
   tbks: 'Trưởng ban kiểm soát',
 };
 
-export const TEN_NGUON: Record<string, string> = {
-  may: 'Máy chấm công',
-  dien_thoai: 'Điện thoại',
-  thu_cong: 'Nhập tay',
+export const TEN_NGUON: Record<string, ChuoiKhoa> = {
+  may: 'thp_nguon_may',
+  dien_thoai: 'thp_nguon_dien_thoai',
+  thu_cong: 'thp_nguon_thu_cong',
 };
 
 // ============================================================ o so

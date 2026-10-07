@@ -7,6 +7,7 @@ import {
 import { goi, gui_tep, la_nhan_su, tai_tep } from '../api.ts';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon } from '../chon.tsx';
+import { dung_chuoi, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
 
 interface ThongBao {
   id: string;
@@ -31,8 +32,8 @@ interface ThongBao {
   gui_email_loi: string | null;
 }
 
-const NHAN_MUC_DO: Record<ThongBao['muc_do'], string> = {
-  thuong: 'Thường', quan_trong: 'Quan trọng', khan: 'Khẩn',
+const KHOA_MUC_DO: Record<ThongBao['muc_do'], ChuoiKhoa> = {
+  thuong: 'tb_thuong', quan_trong: 'tb_quan_trong', khan: 'tb_khan',
 };
 
 function MotThongBao(
@@ -41,6 +42,7 @@ function MotThongBao(
 ): ReactNode {
   const [gt, dat_gt] = useState('');
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   // Con no khi: thong bao bat giai trinh nhung chua giai trinh.
   const con_no = tb.can_giai_trinh && !tb.da_giai_trinh;
 
@@ -49,7 +51,7 @@ function MotThongBao(
       () => goi(`/api/toi/thong-bao/${tb.id}/xac-nhan`, {
         method: 'POST', body: kem_gt ? { giai_trinh: gt } : {},
       }),
-      kem_gt ? 'Đã gửi giải trình.' : 'Đã xác nhận đã đọc.',
+      kem_gt ? tra('tb_da_gui_gt_ok') : tra('tb_da_xac_nhan_doc'),
     );
     if (ok) khi_xong();
   };
@@ -58,7 +60,7 @@ function MotThongBao(
   const gui_lai_email = async (): Promise<void> => {
     const ok = await hd.chay(
       () => goi(`/api/thong-bao/${tb.id}/gui-email`, { method: 'POST' }),
-      'Đã gửi email.',
+      tra('tb_da_gui_email_ok'),
     );
     if (ok) khi_xong();
   };
@@ -67,8 +69,8 @@ function MotThongBao(
     <div className={con_no ? 'the tb-the tb-no' : 'the tb-the'}>
       <div className="tb-dau">
         <div>
-          <span className={`nhan-muc nhan-muc-${tb.muc_do}`}>{NHAN_MUC_DO[tb.muc_do]}</span>
-          {con_no && <span className="nhan-muc nhan-muc-no">Cần giải trình</span>}
+          <span className={`nhan-muc nhan-muc-${tb.muc_do}`}>{tra(KHOA_MUC_DO[tb.muc_do])}</span>
+          {con_no && <span className="nhan-muc nhan-muc-no">{tra('tb_can_giai_trinh')}</span>}
           <span className="tb-ma">{tb.ma}</span>
         </div>
         <span className="mo-ta">{ngay_gio(tb.tao_luc)}</span>
@@ -77,12 +79,12 @@ function MotThongBao(
       <p className="tb-noi-dung">{tb.noi_dung}</p>
 
       {khi_xem_doc !== undefined && (
-        <button className="nut-nho nut-phang" onClick={khi_xem_doc}>Xem ai đã đọc</button>
+        <button className="nut-nho nut-phang" onClick={khi_xem_doc}>{tra('tb_xem_ai_da_doc')}</button>
       )}
       {tb.co_tep && (
         <button className="nut-nho nut-phang"
           onClick={() => { void tai_tep(`/api/toi/thong-bao/${tb.id}/tai`, 'van-ban-thong-bao.docx'); }}>
-          Tải văn bản (DOCX)
+          {tra('tb_tai_van_ban')}
         </button>
       )}
       {tb.tep_kem.length > 0 && (
@@ -90,7 +92,7 @@ function MotThongBao(
           {tb.tep_kem.map((t) => (
             <button key={t.id} className="nut-nho nut-phang"
               onClick={() => { void tai_tep(`/api/toi/thong-bao/${tb.id}/tep-kem/${t.id}`, t.ten_goc); }}>
-              Tải: {t.ten_goc}
+              {tra('tb_tai_x', { n: t.ten_goc })}
             </button>
           ))}
         </div>
@@ -98,16 +100,16 @@ function MotThongBao(
       {khi_xem_doc !== undefined && (
         tb.da_gui_email ? (
           <div className="mo-ta">
-            ✉ Đã gửi email{tb.gui_email_luc !== null ? ` · ${ngay_gio(tb.gui_email_luc)}` : ''}
+            {tra('tb_da_gui_email')}{tb.gui_email_luc !== null ? ` · ${ngay_gio(tb.gui_email_luc)}` : ''}
           </div>
         ) : (
           <div className="hang-nut" style={{ marginTop: 8 }}>
             <button className="nut-nho nut-phang"
               onClick={() => { void gui_lai_email(); }} disabled={hd.dang_chay}>
-              {hd.dang_chay ? 'Đang gửi…' : 'Gửi email'}
+              {hd.dang_chay ? tra('tb_dang_gui') : tra('tb_gui_email')}
             </button>
             {tb.gui_email_loi !== null && (
-              <span className="mo-ta">Chưa gửi được: {tb.gui_email_loi}</span>
+              <span className="mo-ta">{tra('tb_chua_gui_duoc', { n: tb.gui_email_loi })}</span>
             )}
           </div>
         )
@@ -117,26 +119,29 @@ function MotThongBao(
 
       {tb.da_giai_trinh ? (
         <div className="hop-thong-bao hop-tot">
-          Đã giải trình {tb.ma_giai_trinh !== null ? `(${tb.ma_giai_trinh})` : ''}
-          {tb.giai_trinh_luc !== null ? ` · ${ngay_gio(tb.giai_trinh_luc)}` : ''}: {tb.giai_trinh}
+          {tra('tb_da_giai_trinh', {
+            ma: tb.ma_giai_trinh !== null ? ` (${tb.ma_giai_trinh})` : '',
+            luc: tb.giai_trinh_luc !== null ? ` · ${ngay_gio(tb.giai_trinh_luc)}` : '',
+            nd: tb.giai_trinh ?? '',
+          })}
         </div>
       ) : tb.can_giai_trinh ? (
         <div className="tb-gt">
           <label className="truong">
-            <span>Giải trình của bạn (bắt buộc)</span>
+            <span>{tra('tb_giai_trinh_cua_ban')}</span>
             <textarea rows={3} value={gt} onChange={(e) => dat_gt(e.target.value)}
-              placeholder="Nhập giải trình / cam kết…" />
+              placeholder={tra('tb_nhap_giai_trinh')} />
           </label>
           <button onClick={() => { void xac_nhan(true); }}
             disabled={hd.dang_chay || gt.trim().length < 5}>
-            {hd.dang_chay ? 'Đang gửi…' : 'Gửi giải trình'}
+            {hd.dang_chay ? tra('tb_dang_gui') : tra('tb_gui_giai_trinh')}
           </button>
         </div>
       ) : tb.da_doc ? (
-        <div className="mo-ta">✓ Đã đọc {tb.doc_luc !== null ? ngay_gio(tb.doc_luc) : ''}</div>
+        <div className="mo-ta">{tra('tb_da_doc_x', { n: tb.doc_luc !== null ? ngay_gio(tb.doc_luc) : '' })}</div>
       ) : (
         <button onClick={() => { void xac_nhan(false); }} disabled={hd.dang_chay}>
-          {hd.dang_chay ? 'Đang lưu…' : 'Đã đọc & hiểu'}
+          {hd.dang_chay ? tra('tb_dang_luu') : tra('tb_da_doc_hieu')}
         </button>
       )}
     </div>
@@ -160,6 +165,7 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
   const [xem_html, dat_xem_html] = useState<string | null>(null);
   const tep_ref = useRef<HTMLInputElement | null>(null);
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
 
   const xem_truoc = async (): Promise<void> => {
     try {
@@ -184,7 +190,7 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
     }
     const ok = await hd.chay(
       () => gui_tep('/api/thong-bao', fd),
-      'Đã đăng thông báo.',
+      tra('tb_da_dang_thong_bao'),
     );
     if (ok) {
       dat_tieu_de(''); dat_noi_dung(''); dat_muc_do('thuong'); dat_can_gt(false);
@@ -197,71 +203,70 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
   if (!mo) {
     return (
       <div className="tb-dang-thanh">
-        <button onClick={() => dat_mo(true)}>+ Đăng thông báo</button>
+        <button onClick={() => dat_mo(true)}>{tra('tb_dang_thong_bao')}</button>
       </div>
     );
   }
   return (
     <div className="the tb-dang">
-      <div className="canhan-muc-dau"><h2>Đăng thông báo mới</h2></div>
+      <div className="canhan-muc-dau"><h2>{tra('tb_dang_thong_bao_moi')}</h2></div>
       <HopLoi loi={hd.loi} />
       <HopTot chu={hd.tot} />
-      <label className="truong"><span>Tiêu đề</span>
+      <label className="truong"><span>{tra('tb_tieu_de')}</span>
         <input value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)} /></label>
-      <label className="truong"><span>Nội dung</span>
+      <label className="truong"><span>{tra('tb_noi_dung')}</span>
         <textarea rows={6} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
-      <label className="truong"><span>Tệp đính kèm (tùy chọn — PDF/JPG/PNG/DOCX/XLSX, gửi kèm email)</span>
+      <label className="truong"><span>{tra('tb_tep_kem_tuy_chon')}</span>
         <input type="file" ref={tep_ref} accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" />
       </label>
       <div className="mo-ta" style={{ marginTop: -4 }}>
-        Mẹo trình bày email: <code>## Đề mục</code> → tiêu đề có viền xanh · <code>- </code> đầu dòng
-        → gạch đầu dòng · <code>**chữ**</code> → in đậm.
+        {tra('tb_meo_trinh_bay', { a: '## Đề mục', b: '- ', c: '**chữ**' })}
       </div>
       <div className="tb-dang-hang">
-        <label className="truong"><span>Mức độ</span>
+        <label className="truong"><span>{tra('tb_muc_do')}</span>
           <Chon gia_tri={muc_do} dat_gia_tri={dat_muc_do}
             cac_tuy_chon={[
-              { ma: 'thuong', nhan: 'Thường' },
-              { ma: 'quan_trong', nhan: 'Quan trọng' },
-              { ma: 'khan', nhan: 'Khẩn' },
+              { ma: 'thuong', nhan: tra('tb_thuong') },
+              { ma: 'quan_trong', nhan: tra('tb_quan_trong') },
+              { ma: 'khan', nhan: tra('tb_khan') },
             ]}
-            nhan="Mức độ" />
+            nhan={tra('tb_muc_do')} />
         </label>
         <label className="truong-hang">
           <input type="checkbox" checked={can_gt} onChange={(e) => dat_can_gt(e.target.checked)} />
-          <span>Bắt buộc giải trình</span>
+          <span>{tra('tb_bat_buoc_giai_trinh')}</span>
         </label>
       </div>
       <div className="tb-dang-hang">
         <label className="truong-hang">
           <input type="checkbox" checked={popup} onChange={(e) => dat_popup(e.target.checked)} />
-          <span>Hiện popup khi mở app (bắt buộc đọc)</span>
+          <span>{tra('tb_hien_popup')}</span>
         </label>
         <label className="truong-hang">
           <input type="checkbox" checked={gui_email}
             onChange={(e) => dat_gui_email(e.target.checked)} />
-          <span>Gửi email tới toàn công ty</span>
+          <span>{tra('tb_gui_email_toan_cty')}</span>
         </label>
       </div>
       <div className="hang-nut">
         <button onClick={() => { void gui(); }}
           disabled={hd.dang_chay || tieu_de.trim().length < 3 || noi_dung.trim().length < 3}>
-          {hd.dang_chay ? 'Đang đăng…' : 'Đăng'}
+          {hd.dang_chay ? tra('tb_dang_dang') : tra('tb_dang')}
         </button>
         <button type="button" className="nut-phang" onClick={() => { void xem_truoc(); }}
           disabled={tieu_de.trim() === '' && noi_dung.trim() === ''}>
-          Xem trước email
+          {tra('tb_xem_truoc_email')}
         </button>
-        <button className="nut-phang" onClick={() => dat_mo(false)}>Hủy</button>
+        <button className="nut-phang" onClick={() => dat_mo(false)}>{tra('cn_huy')}</button>
       </div>
 
       {xem_html !== null && (
         <div style={{ marginTop: 12 }}>
           <div className="mo-ta" style={{ marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
-            <span>Xem trước email (bấm "Xem trước email" lại để cập nhật)</span>
-            <button type="button" className="nut-nho nut-phang" onClick={() => dat_xem_html(null)}>Đóng</button>
+            <span>{tra('tb_xem_truoc_email_cn')}</span>
+            <button type="button" className="nut-nho nut-phang" onClick={() => dat_xem_html(null)}>{tra('cn_dong')}</button>
           </div>
-          <iframe title="Xem trước email" srcDoc={xem_html}
+          <iframe title={tra('tb_xem_truoc_email')} srcDoc={xem_html}
             style={{ width: '100%', height: 540, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff' }} />
         </div>
       )}
@@ -273,14 +278,18 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
 function AiDaDoc({ tb, khi_dong }: { tb: ThongBao; khi_dong: () => void }): ReactNode {
   const { du_lieu, dang_tai, loi } = dung_nap<DaDoc[]>(`/api/thong-bao/${tb.id}/da-doc`);
   const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
+  const { tra } = dung_chuoi();
   return (
-    <HopThoai tieu_de={`Đã đọc — ${tb.tieu_de}`} khi_dong={khi_dong} rong>
+    <HopThoai tieu_de={tra('tb_da_doc_tua', { n: tb.tieu_de })} khi_dong={khi_dong} rong>
       {dang_tai ? <DangTai /> : loi !== null ? <HopLoi loi={loi} /> : (du_lieu ?? []).length === 0
-        ? <Trong tieu_de="Chưa ai xác nhận đọc" />
+        ? <Trong tieu_de={tra('tb_chua_ai_xac_nhan')} />
         : (
           <>
             <table className="bang-gon">
-              <thead><tr><th>Nhân viên</th><th>Phòng</th><th>Đọc lúc</th><th>Giải trình</th></tr></thead>
+              <thead><tr>
+                <th>{tra('tb_nhan_vien')}</th><th>{tra('tb_phong')}</th>
+                <th>{tra('tb_doc_luc')}</th><th>{tra('tb_giai_trinh_cot')}</th>
+              </tr></thead>
               <tbody>
                 {ds_xem.map((d, i) => (
                   <tr key={khoa_tinh(d.ma_nv, i)}>
@@ -310,6 +319,7 @@ export function TrangThongBaoCaNhan(): ReactNode {
   const [xem_doc, dat_xem_doc] = useState<ThongBao | null>(null);
   const [loc, dat_loc] = useState<'toan_cong_ty' | 'tat_ca'>('toan_cong_ty');
   const hr = la_nhan_su();
+  const { tra } = dung_chuoi();
 
   // Tinh danh sach da loc truoc roi goi hook — hook phai chay truoc cac return som.
   const ds = du_lieu ?? [];
@@ -324,20 +334,20 @@ export function TrangThongBaoCaNhan(): ReactNode {
     <div>
       {hr && <DangThongBao khi_xong={nap_lai} />}
       {xem_doc !== null && <AiDaDoc tb={xem_doc} khi_dong={() => dat_xem_doc(null)} />}
-      <div className="hang-tab" role="tablist" aria-label="Lọc thông báo">
+      <div className="hang-tab" role="tablist" aria-label={tra('tb_loc_thong_bao')}>
         <button type="button"
           className={loc === 'toan_cong_ty' ? 'dang-chon' : ''}
           onClick={() => dat_loc('toan_cong_ty')}>
-          Toàn công ty ({ds.filter((t) => t.pham_vi === 'toan_cong_ty').length})
+          {tra('tb_toan_cong_ty_x', { n: ds.filter((t) => t.pham_vi === 'toan_cong_ty').length })}
         </button>
         <button type="button"
           className={loc === 'tat_ca' ? 'dang-chon' : ''}
           onClick={() => dat_loc('tat_ca')}>
-          Tất cả ({ds.length})
+          {tra('tb_tat_ca_x', { n: ds.length })}
         </button>
       </div>
       {ds_loc.length === 0
-        ? <Trong tieu_de="Chưa có thông báo" mo_ta="Khi công ty đăng thông báo, nó sẽ hiện ở đây." />
+        ? <Trong tieu_de={tra('tb_chua_co_thong_bao')} mo_ta={tra('tb_khi_dang_thi_hien')} />
         : (
           <>
             <div className="tb-danh-sach">
