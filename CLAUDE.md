@@ -19,7 +19,8 @@ tai_lieu/     Tài liệu vận hành
   (`tinh_cong.ts`, `bang_cong_ngay`, `phut_ve_som`).
 - **Comment trong code**: tiếng Việt **không dấu**.
 - **Chuỗi hiển thị cho người dùng** (thông báo lỗi API, nhãn giao diện, tiêu đề CSV):
-  tiếng Việt **có dấu, đúng chính tả**. Nhân viên đọc những chuỗi này.
+  tiếng Việt **có dấu, đúng chính tả** và **bắt buộc có bản tiếng Trung Giản thể** —
+  xem mục *Song ngữ Việt – Trung* bên dưới. Nhân viên đọc những chuỗi này.
 - Giữ tên chuẩn quốc tế: `README.md`, `CHANGELOG.md`, `CLAUDE.md`, `Dockerfile`, `.gitignore`.
 - Ngoại lệ: định danh do framework/giao thức quy định giữ nguyên
   (`onPress`, `className`, `SN`, `ATTLOG`, `PIN`, `Status`, `Verify`).
@@ -36,6 +37,24 @@ Toàn hệ thống neo theo **múi giờ nơi đặt máy chấm công** (`DEVIC
 
 Đây là lỗi đã từng xảy ra: dùng `toLocaleTimeString()` làm bảng công hiển thị 01:00 thay
 vì 08:00 khi xem từ máy đặt múi giờ khác.
+
+### Song ngữ Việt – Trung (bắt buộc từ 10/2026)
+
+Toàn hệ thống là **song ngữ Việt – Trung**. Mọi tính năng — cũ và mới — đều phải phục vụ
+đủ hai ngôn ngữ. Tài liệu chuẩn + bảng thuật ngữ: **`tai_lieu/SONG-NGU-TRUNG.md`**.
+
+- **Chuỗi người dùng đọc** (UI web, app, thông báo, email, nhãn trạng thái, DOCX, tiêu đề
+  CSV) **PHẢI có đủ hai khóa `vi` + `zh`** trong từ điển tập trung
+  (`web/src/chuoi/`, `dien_thoai/nguon/chuoi/`, `may_chu/src/chuoi/`). Chuỗi chỉ có tiếng
+  Việt, hoặc hardcode trong component, là **lỗi** — test khóa đối xứng bắt.
+- **Tiếng Trung: Giản thể, thương mại chuyên nghiệp, dùng đúng từ trong bảng thuật ngữ**
+  của tài liệu trên — không dịch máy, không dịch word-by-word. Từ ngoài bảng phải đối
+  chiếu cách dùng chuẩn của doanh nghiệp Trung Quốc.
+- Ngôn ngữ hiển thị theo **người dùng** (cột `ngon_ngu`, mặc định `'vi'`); email/thông
+  báo gửi theo ngôn ngữ **người nhận**; DOCX in theo ngôn ngữ **chủ thể**.
+- CSDL vẫn lưu mã trạng thái tiếng Việt không dấu — dịch ở lớp hiển thị, không lưu chữ
+  TQ xuống bảng.
+- Comment code, định danh, tên bảng/cột: giữ nguyên quy ước tiếng Việt không dấu.
 
 ### Màu, font, bo góc
 
