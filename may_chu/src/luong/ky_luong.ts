@@ -135,6 +135,23 @@ export function ngay_cong_chuan(
   return so;
 }
 
+/**
+ * Cong chuan CO DINH theo thu tu uu tien: NGUOI > KHOI > tham so chung > dem theo lich.
+ * 0 hoac null = khong ghi de o cap do (YC HR 07/10/2026: Kho 25 cong/thang, mot so nguoi
+ * 30 cong/thang theo quyet dinh rieng).
+ */
+export function cong_chuan_ap_dung(
+  rieng: number | null,
+  khoi: number | null,
+  tham_so: number,
+  theo_lich: number,
+): number {
+  if (rieng !== null && rieng > 0) return rieng;
+  if (khoi !== null && khoi > 0) return khoi;
+  if (tham_so > 0) return tham_so;
+  return theo_lich;
+}
+
 interface DongNhanVien {
   nhan_vien_id: string;
   /** Luong co ban theo quyet dinh luong (chinh thuc). Null = chua co quyet dinh. */
@@ -166,6 +183,10 @@ interface DongNhanVien {
   t7_nua_cong_khoi: boolean | null;
   /** Ghi de he so OT ngay thuong theo khoi (ngoai le da duyet). Null = theo tham so chung. */
   he_so_ot_thuong_khoi: string | null;
+  /** Cong chuan co dinh RIENG cua nguoi nay. 0/null = theo khoi > tham so > lich. */
+  cong_chuan_rieng: number | null;
+  /** Cong chuan co dinh cua khoi. 0/null = theo tham so > lich. */
+  cong_chuan_khoi: number | null;
 }
 
 /**
@@ -222,7 +243,9 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
             nv.luong_net                                          as luong_net,
             nv.khoi_id::text                                      as khoi_id,
             kh.t7_nua_cong                                        as t7_nua_cong_khoi,
-            kh.he_so_ot_ngay_thuong::text                         as he_so_ot_thuong_khoi
+            kh.he_so_ot_ngay_thuong::text                         as he_so_ot_thuong_khoi,
+            nv.cong_chuan_thang::float8                           as cong_chuan_rieng,
+            kh.cong_chuan_thang::float8                           as cong_chuan_khoi
        from nhan_vien nv
        left join ca_lam cl on cl.id = nv.ca_lam_id
        left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
@@ -276,9 +299,11 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
   // lich nghi cua tung nguoi. Doc mot lan cho ca cong ty, khong phai mot truy van moi nguoi.
   const ot_theo_nguoi = new Map<string, NgayOt[]>();
   for (const r of await truy_van<{ nhan_vien_id: string; ngay: string; phut_ot: number }>(
-    `select nhan_vien_id, to_char(ngay, 'YYYY-MM-DD') as ngay, phut_ot
-       from bang_cong_ngay
-      where ngay >= $1 and ngay <= $2 and phut_ot > 0`,
+    `select bc.nhan_vien_id, to_char(bc.ngay, 'YYYY-MM-DD') as ngay, bc.phut_ot
+       from bang_cong_ngay bc
+       join nhan_vien nv on nv.id = bc.nhan_vien_id
+      where bc.ngay >= $1 and bc.ngay <= $2 and bc.phut_ot > 0
+        and (nv.ngay_vao is null or bc.ngay >= nv.ngay_vao)`,
     [tu, den],
   )) {
     const ds_ot = ot_theo_nguoi.get(r.nhan_vien_id);
@@ -469,13 +494,11 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
     );
 
     for (const nv of ds) {
-      // Cong chuan CO DINH neu cong ty da khai; khong khai thi dem theo lich that CUA LICH
-      // NGHI LE tuong ung noi lam viec (VN/TQ).
-      // He so thu Bay CUA NGUOI NAY: khoi ghi de (ngoai le da duyet) de len tham so chung.
       const he_so_t7_cua = (nv.t7_nua_cong_khoi ?? ts.cs.t7_nua_cong) ? HE_SO_T7_NUA_CONG : 1;
-      const chuan = ts.cs.cong_chuan_thang > 0
-        ? ts.cs.cong_chuan_thang
-        : ngay_cong_chuan(tu, den, nv.cac_ngay_lam, le_cua(nv.lich_nghi_ma), he_so_t7_cua);
+      const chuan = cong_chuan_ap_dung(
+        nv.cong_chuan_rieng, nv.cong_chuan_khoi, ts.cs.cong_chuan_thang,
+        ngay_cong_chuan(tu, den, nv.cac_ngay_lam, le_cua(nv.lich_nghi_ma), he_so_t7_cua),
+      );
 
       // Muc luong ap dung. Thu viec (BLLD 2019 D.26): LUON huong 85% luong cung (P1 luong co
       // ban + P2 phu cap), lay tu quyet_dinh_luong. Chinh sach cong ty: MOI thu viec deu 85%
@@ -727,4 +750,26 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
   });
 
   return ds.length;
+}
+
+/** Ket qua cua `tinh_lai_ky_luong_cua_ngay`. */
+export type KetQuaTinhLaiKyCuaNgay = 'da_tinh' | 'khong_co_ky' | 'ky_da_khoa';
+
+/**
+ * Tinh lai ky luong cua thang chua mot ngay — neu ky do con o trang thai 'nhap'.
+ *
+ * Dung khi cham cong doi SAU khi da tinh luong (vd duyet ket qua OT muon, duyet giai trinh,
+ * sua tay bang cong): phieu luong phai tu theo, khong de ke toan quen bam "Tinh lương"
+ * (Loi 2, BC so 02). Ky da gui duyet / duyet xong thi KHONG tu dong cham vao — tra ve
+ * 'ky_da_khoa' de tuyen nhan su canh bao thu hoi duyet roi tinh lai.
+ */
+export async function tinh_lai_ky_luong_cua_ngay(ngay: string): Promise<KetQuaTinhLaiKyCuaNgay> {
+  const thang = ngay.slice(0, 7);
+  const ky = await truy_van_mot<{ id: string; trang_thai: string }>(
+    'select id, trang_thai from ky_luong where thang = $1', [thang],
+  );
+  if (ky === null) return 'khong_co_ky';
+  if (ky.trang_thai !== 'nhap') return 'ky_da_khoa';
+  await tinh_ky_luong(ky.id, thang);
+  return 'da_tinh';
 }

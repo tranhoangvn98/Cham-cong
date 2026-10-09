@@ -10,7 +10,7 @@ process.env['DEVICE_TZ_OFFSET_HOURS'] ??= '7';
 // vi module cau_hinh doc bien moi truong khi nap.
 import type { CaLam, KhoangLamThem } from '../src/cong/quy_tac_tinh_cong.ts';
 
-const { tinh_cong_ngay, khoang_lay_quet, ca_cua_ngay, buoi_lam_bu_da_lam } = await import('../src/cong/quy_tac_tinh_cong.ts');
+const { tinh_cong_ngay, khoang_lay_quet, ca_cua_ngay, buoi_lam_bu_da_lam, ngay_ngoai_thoi_gian_lam_viec } = await import('../src/cong/quy_tac_tinh_cong.ts');
 const { moc_thoi_gian } = await import('../src/tien_ich/thoi_gian.ts');
 
 /** Ca hanh chinh 08:00-17:00, nghi trua 12:00-13:30, T2-T6. */
@@ -273,6 +273,26 @@ test('ngay le huong luong: 1 cong du khong di lam', () => {
   });
   assert.equal(kq.trang_thai, 'ngay_le');
   assert.equal(kq.so_cong, 1);
+});
+
+// ----------------------------------------------------------------------------------
+// Nguoi vao sau mot ngay (vd sau ngay nghi le) KHONG duoc cong cua ngay do — Loi 4 BC 02.
+
+test('ngay_ngoai_thoi_gian_lam_viec: truoc ngay vao thi loai, sau ngay vao thi tinh', () => {
+  assert.equal(ngay_ngoai_thoi_gian_lam_viec('2026-09-01', '2026-09-05', null), true);
+  assert.equal(ngay_ngoai_thoi_gian_lam_viec('2026-09-05', '2026-09-05', null), false);
+  assert.equal(ngay_ngoai_thoi_gian_lam_viec('2026-09-06', '2026-09-05', null), false);
+});
+
+test('ngay_ngoai_thoi_gian_lam_viec: sau ngay nghi viec thi loai', () => {
+  assert.equal(ngay_ngoai_thoi_gian_lam_viec('2026-09-20', '2026-09-01', '2026-09-18'), true);
+  assert.equal(ngay_ngoai_thoi_gian_lam_viec('2026-09-18', '2026-09-01', '2026-09-18'), false);
+});
+
+test('ngay_ngoai_thoi_gian_lam_viec: ngay vao/nghi trong thi khong chan gi', () => {
+  assert.equal(ngay_ngoai_thoi_gian_lam_viec('2026-09-10', null, null), false);
+  assert.equal(ngay_ngoai_thoi_gian_lam_viec('2026-09-10', '', ''), false);
+  assert.equal(ngay_ngoai_thoi_gian_lam_viec('2026-09-10', '2026-09-01', '2026-09-30'), false);
 });
 
 test('lam viec ngay le KHONG co don: 0 OT, ghi chu noi ro', () => {

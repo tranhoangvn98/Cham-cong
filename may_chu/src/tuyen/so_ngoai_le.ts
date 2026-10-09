@@ -7,6 +7,7 @@ import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
+import { tinh_lai_ky_luong_cua_ngay } from '../luong/ky_luong.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import {
   chuoi, than, trong_tap, uuid, ngay_bat_buoc, luan_ly,
@@ -85,6 +86,8 @@ export function tuyen_so_ngoai_le(app: FastifyInstance): void {
 
     // Ap dung ngay: tinh lai cong cua dung ngay do cho toan cong ty (idempotent).
     await tinh_lai_khoang(ngay, ngay);
+    // Cong doi thi ky luong con 'nhap' cung phai theo (Loi 2, BC so 02).
+    await tinh_lai_ky_luong_cua_ngay(ngay);
     await ghi_nhat_ky(nd.sub, 'tao_so_ngoai_le', 'so_ngoai_le', id,
       { ngay, loai, so_nhan_vien: nhan_vien_ids.length }, req.ip);
     return res.code(201).send({ id });
@@ -130,6 +133,7 @@ export function tuyen_so_ngoai_le(app: FastifyInstance): void {
     });
 
     await tinh_lai_khoang(cu.ngay, cu.ngay);
+    await tinh_lai_ky_luong_cua_ngay(cu.ngay);
     await ghi_nhat_ky(nd.sub, 'sua_so_ngoai_le', 'so_ngoai_le', id,
       { ngay: cu.ngay, loai, so_nhan_vien: nhan_vien_ids.length }, req.ip);
     return { ok: true };
@@ -148,6 +152,7 @@ export function tuyen_so_ngoai_le(app: FastifyInstance): void {
     if (kq === 0) throw new LoiKhongTim('Không tìm thấy mục ngoại lệ.');
 
     await tinh_lai_khoang(cu.ngay, cu.ngay);
+    await tinh_lai_ky_luong_cua_ngay(cu.ngay);
     await ghi_nhat_ky(nd.sub, 'xoa_so_ngoai_le', 'so_ngoai_le', id, { ngay: cu.ngay }, req.ip);
     return { ok: true };
   });

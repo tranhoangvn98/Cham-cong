@@ -178,6 +178,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
               nv.ca_lam_id, cl.ten as ca_lam,
               nv.noi_lam_viec_id, nlv.ten as noi_lam_viec, nlv.lich_nghi_ma,
               nv.che_do_luong, nv.khoi_id, k.ten as khoi,
+              nv.cong_chuan_thang,
               (nd.id is not null) as co_tai_khoan
          from nhan_vien nv
          left join phong_ban pb on pb.id = nv.phong_ban_id
@@ -214,6 +215,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       khoi_id: ts[12] === null ? null : String(ts[12]),
       chuc_danh: ts[13] === null ? null : String(ts[13]),
       vi_tri: ts[14] === null ? null : String(ts[14]),
+      cong_chuan_thang: ts[15] === null ? null : Number(ts[15]),
       tu_cap_pin: luan_ly(b, 'tu_cap_pin', false) === true,
       thiet_bi_serial: chuoi(b, 'thiet_bi_serial', { toi_da: 64 }),
       tao_tk_ms365: luan_ly(b, 'tao_tk_ms365', false) === true,
@@ -265,7 +267,8 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
           `update nhan_vien set ma_nv=$2, ho_ten=$3, pin_may=$4, ma_erp=$5, phong_ban_id=$6,
                   ca_lam_id=$7, ngay_vao=$8, so_dien_thoai=$9, email=$10,
                   duoc_cham_cong_dien_thoai=$11, noi_lam_viec_id=$12, che_do_luong=$13,
-                  khoi_id=$14, chuc_danh=$15, vi_tri=$16, cap_nhat_luc=now()
+                  khoi_id=$14, chuc_danh=$15, vi_tri=$16, cong_chuan_thang=$17,
+                  cap_nhat_luc=now()
             where id=$1`,
           [id, ...ts],
         );
@@ -1487,6 +1490,7 @@ function doc_nhan_vien(b: Record<string, unknown>, bat_buoc: boolean): unknown[]
     uuid(b, 'khoi_id'),
     chuoi(b, 'chuc_danh', { toi_da: 200 }),
     trong_tap(b, 'vi_tri', MA_VI_TRI, { bat_buoc: false }),
+    so_thuc(b, 'cong_chuan_thang', { min: 0, max: 31 }),
   ];
 }
 

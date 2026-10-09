@@ -978,6 +978,33 @@ test('bang cong tra ve dong da tinh', async () => {
   assert.equal(ds[0]!.phut_lam, 450);
 });
 
+test('nhan vien vao sau ngay le KHONG duoc cong ngay truoc khi vao (Loi 4)', async () => {
+  const tao = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: { ma_nv: 'NV-LOI4', ho_ten: 'Nguoi Vao Sau Le', ngay_vao: '2026-09-22' },
+  });
+  assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+  const id = tao.body['id'] as string;
+
+  // Gia lap du lieu cu sinh nham: o ngay_le 1/9 cho nguoi vao 22/9.
+  await thuc_thi(
+    `insert into bang_cong_ngay (nhan_vien_id, ngay, trang_thai, so_cong)
+     values ($1, '2026-09-01', 'ngay_le', 1)`,
+    [id],
+  );
+
+  await goi('POST', '/api/bang-cong/tinh-lai', {
+    token: token_admin, body: { tu: '2026-09-01', den: '2026-09-03', nhan_vien_id: id },
+  });
+
+  const so = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from bang_cong_ngay
+      where nhan_vien_id = $1 and ngay between '2026-09-01' and '2026-09-03'`,
+    [id],
+  );
+  assert.equal(so?.so, 0, 'ngay truoc ngay_vao phai bi xoa va khong duoc tao lai');
+});
+
 test('tu choi khoang ngay qua dai (chong truy van keo sap CSDL)', async () => {
   const r = await goi('GET', '/api/bang-cong?tu=2020-01-01&den=2026-12-31', { token: token_admin });
   assert.equal(r.ma, 400);
@@ -3530,6 +3557,53 @@ test('luong: tinh ky -> sinh phieu cho moi nhan vien dang lam viec', async () =>
   assert.ok(chuan >= 18 && chuan <= 23, `ngay cong chuan ${chuan} khong hop ly`);
 });
 
+test('luong: duyet ket qua OT tu cap nhat phieu luong dang nhap (Loi 2)', async () => {
+  const don = await truy_van_mot<{ id: string }>(
+    `insert into don_tu (nhan_vien_id, loai, tu_ngay, gio_bat_dau, gio_ket_thuc, ly_do)
+     values ($1, 'lam_them', $2, '17:00', '18:00', 'Chot so lieu thang')
+     returning id`,
+    [nhan_vien_id, NGAY],
+  );
+  assert.notEqual(don, null);
+  await thuc_thi(
+    `update don_tu set trang_thai = 'cho_duyet_2', quyet_luc = now() where id = $1`,
+    [don!.id],
+  );
+
+  const d2 = await goi('POST', `/api/duyet/don/${don!.id}/quyet`, {
+    token: token_admin, body: { quyet_dinh: 'da_duyet' },
+  });
+  assert.equal(d2.ma, 200, JSON.stringify(d2.body));
+
+  const kq = await truy_van_mot<{ id: string }>(
+    `insert into ket_qua_ot(don_tu_id, ghi_chu) values ($1, 'Da hoan thanh') returning id`,
+    [don!.id],
+  );
+  assert.notEqual(kq, null);
+
+  const dk = await goi('POST', `/api/duyet/ot-ket-qua/${kq!.id}/quyet`, {
+    token: token_admin, body: { quyet_dinh: 'da_duyet' },
+  });
+  assert.equal(dk.ma, 200, JSON.stringify(dk.body));
+  assert.equal(dk.body['da_tinh_lai'], true);
+  assert.equal(dk.body['da_tinh_lai_ky_luong'], true,
+    'ky luong dang nhap phai tu tinh lai sau khi OT vao bang cong');
+
+  const p = await truy_van_mot<{ phut_ot: number }>(
+    'select phut_ot from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2',
+    [ky_luong_id, nhan_vien_id],
+  );
+  assert.equal(p?.phut_ot, 60, 'phieu phai co 60 phut OT ma khong can bam "Tinh luong"');
+
+  // Don dep: bo don + ket qua roi tra bang cong va ky ve trang thai truoc.
+  await thuc_thi('delete from ket_qua_ot where don_tu_id = $1', [don!.id]);
+  await thuc_thi('delete from don_tu where id = $1', [don!.id]);
+  await goi('POST', '/api/bang-cong/tinh-lai', {
+    token: token_admin, body: { tu: NGAY, den: NGAY, nhan_vien_id },
+  });
+  await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+});
+
 test('luong: bao cao lech luong chay duoc (khong 500 vi lech tham so uuid/date)', async () => {
   // Hoi quy: truy van lech_luong_ky tung so hieu_luc_den (date) voi ky_luong_id (uuid) —
   // Postgres nem "operator does not exist: uuid = date" o luc PHAN TICH, nen ca buoc Duyet
@@ -3843,6 +3917,46 @@ test('khoan: canh bao Dieu 127 di kem hai khoan tru vi di muon', async () => {
     assert.ok((k!['canh_bao'] ?? '').includes('127'),
       `khoan ${ma} phai mang canh bao dan Dieu 127`);
   }
+});
+
+test('khoan: chi tiet RONG phai giu so tien gop, khong xoa ve 0 (Loi 3)', async () => {
+  const id = await phieu_cua_nv001();
+
+  // Go tay mot khoan nhap tay 750.000 ma khong co dong chi tiet nao.
+  await goi('PUT', `/api/phieu-luong/${id}/khoan`, {
+    token: token_admin,
+    body: { khoan: [{ ma: 'pc_gui_xe', so_tien: 750_000 }] },
+  });
+
+  // Man hinh "Cac khoan" luon gui chi-tiet (rong) cho moi khoan nhap tay dang sua — truoc
+  // day route nay ghi de thanh_tien = 0 nen so tien vua nhap bien mat ngay khi luu.
+  const r = await goi('PUT', `/api/phieu-luong/${id}/khoan/pc_gui_xe/chi-tiet`, {
+    token: token_admin, body: { dong: [] },
+  });
+  assert.equal(r.ma, 200);
+
+  const k = await truy_van_mot<{ thanh_tien: string }>(
+    `select thanh_tien from phieu_luong_khoan
+      where phieu_luong_id = $1 and khoan_ma = 'pc_gui_xe'`,
+    [id],
+  );
+  assert.equal(Number(k!.thanh_tien), 750_000, 'chi tiet rong phai giu nguyen so tien gop');
+
+  // Co dong chi tiet thi thanh tien la TONG cac dong — can cu nguoi lao dong se thay.
+  const r2 = await goi('PUT', `/api/phieu-luong/${id}/khoan/pc_gui_xe/chi-tiet`, {
+    token: token_admin,
+    body: {
+      dong: [
+        { ly_do: 'Thỏa thuận gửi xe', so_tien: 500_000 },
+        { ly_do: 'Bổ sung tháng này', so_tien: 250_000 },
+      ],
+    },
+  });
+  assert.equal(r2.ma, 200);
+  assert.equal(r2.body['tong'], 750_000);
+
+  // Don dep de cac bai sau khong bi anh huong.
+  await goi('PUT', `/api/phieu-luong/${id}/khoan`, { token: token_admin, body: { khoan: [] } });
 });
 
 // ---------------------------------------------------------------- chinh sach phu cap

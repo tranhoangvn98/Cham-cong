@@ -181,6 +181,25 @@ const TU_NGAY_MAT_NUA_NGAY = '2026-09-01';
 const PHUT_DUNG_SAI_MOI = 30;
 
 /**
+ * Ngay co nam NGOAI khoang lam viec cua nhan vien khong.
+ *
+ * Nhan vien vao lam SAU mot ngay (vi du sau ngay nghi le) thi khong duoc cong cua ngay do;
+ * nguoi da nghi viec truoc ngay do cung vay. Truoc day `tinh_lai_ngay` khong kiem dieu nay
+ * nen nguoi moi vao van duoc ghi cong cho ngay le truoc khi ho vao (Loi 4, BC so 02).
+ *
+ * `ngay_vao` / `ngay_nghi_viec` null hoac rong = khong biet -> khong chan gi (hanh vi cu).
+ */
+export function ngay_ngoai_thoi_gian_lam_viec(
+  ngay: string,
+  ngay_vao: string | null,
+  ngay_nghi_viec: string | null,
+): boolean {
+  if (ngay_vao !== null && ngay_vao !== '' && ngay < ngay_vao) return true;
+  if (ngay_nghi_viec !== null && ngay_nghi_viec !== '' && ngay > ngay_nghi_viec) return true;
+  return false;
+}
+
+/**
  * Khoang thoi gian can lay lan quet cho mot ngay cong.
  *
  * Ca thuong: dung dung ngay theo lich (00:00 -> 24:00 gio may).

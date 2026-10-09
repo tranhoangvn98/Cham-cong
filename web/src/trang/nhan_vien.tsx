@@ -7,6 +7,7 @@ import {
 import { LienKet } from '../dinh_tuyen.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
+import { tra_hien_tai } from '../chuoi/chi_muc.tsx';
 
 /**
  * Tieu de tep mau nhap nhan vien.
@@ -43,6 +44,7 @@ interface NhanVien {
   che_do_luong: 'vn' | 'tq';
   khoi_id: string | null;
   khoi: string | null;
+  cong_chuan_thang: string | null;
   co_tai_khoan: boolean;
 }
 
@@ -344,6 +346,7 @@ function FormNhanVien(
     noi_lam_viec_id: nhan_vien?.noi_lam_viec_id ?? '',
     che_do_luong: nhan_vien?.che_do_luong ?? 'vn',
     khoi_id: nhan_vien?.khoi_id ?? '',
+    cong_chuan_thang: nhan_vien?.cong_chuan_thang ?? '',
   });
   const [tu_cap_pin, dat_tu_cap_pin] = useState(tu_dong);
   const [serial_pin, dat_serial_pin] = useState('');
@@ -378,6 +381,7 @@ function FormNhanVien(
       noi_lam_viec_id: f.noi_lam_viec_id === '' ? null : f.noi_lam_viec_id,
       che_do_luong: f.che_do_luong,
       khoi_id: f.khoi_id === '' ? null : f.khoi_id,
+      cong_chuan_thang: f.cong_chuan_thang === '' ? null : Number(f.cong_chuan_thang),
     };
     if (nhan_vien === null) {
       const kq = await hd.chay_lay<KetQuaTaoNhanVien>(() =>
@@ -576,6 +580,14 @@ function FormNhanVien(
             Gán khối để người này <strong>tự hưởng phụ cấp mặc định của khối</strong> (VP, Kho HN,
             VP Lạng Sơn, Kho TQ). Phụ cấp cá nhân (nếu có) vẫn <strong>đè lên</strong> mức của khối.
           </div>
+        </div>
+
+        <div className="o-nhap">
+          <label htmlFor="ccr">{tra_hien_tai('nv_cong_chuan_rieng')}</label>
+          <input id="ccr" type="number" min="0" max="31" step="0.5"
+            value={f.cong_chuan_thang} onChange={(e) => doi('cong_chuan_thang', e.target.value)}
+            placeholder="—" />
+          <div className="goi-y">{tra_hien_tai('nv_cong_chuan_rieng_phu')}</div>
         </div>
 
         <div className="luoi luoi-2">

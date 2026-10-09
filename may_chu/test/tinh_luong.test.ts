@@ -501,7 +501,7 @@ test('khong co khoan nao thi moi tong ve 0 — bang luong cu tinh ra dung so cu'
 });
 
 // ---------------------------------------------------------------- nua cong thu Bay
-const { ngay_cong_chuan } = await import('../src/luong/ky_luong.ts');
+const { ngay_cong_chuan, cong_chuan_ap_dung } = await import('../src/luong/ky_luong.ts');
 
 // Thang 8/2025: thu Bay roi vao 2, 9, 16, 23, 30 (5 thu Bay). Ca lam T2-T7.
 const LAM_T2_T7 = [1, 2, 3, 4, 5, 6];
@@ -524,4 +524,13 @@ test('cong chuan: khong lam thu Bay thi he so T7 khong anh huong', () => {
   const a = ngay_cong_chuan('2025-08-01', '2025-08-31', lam_t2_t6, new Set(), 1);
   const b = ngay_cong_chuan('2025-08-01', '2025-08-31', lam_t2_t6, new Set(), 0.5);
   assert.equal(a, b);
+});
+
+test('cong chuan ap dung: NGUOI > KHOI > tham so > dem theo lich', () => {
+  // Rieng thang het: nguoi 30, khoi 25, tham so 24, lich 22.
+  assert.equal(cong_chuan_ap_dung(30, 25, 24, 22), 30, 'muc rieng cua nguoi thang het');
+  assert.equal(cong_chuan_ap_dung(null, 25, 24, 22), 25, 'khong co muc rieng thi theo khoi');
+  assert.equal(cong_chuan_ap_dung(0, 25, 24, 22), 25, '0 = khong ghi de o cap nguoi');
+  assert.equal(cong_chuan_ap_dung(null, null, 24, 22), 24, 'khong co khoi thi theo tham so');
+  assert.equal(cong_chuan_ap_dung(null, null, 0, 22), 22, 'khong khai gi thi dem theo lich');
 });

@@ -279,6 +279,10 @@ export const CHUOI_ZH = {
   cn_thang_sau: '下个月',
   cn_thang_x: '月 {n}',
   cn_tong_cong: '总出勤',
+  pc_canh_bao_ngay_hl: '生效日期不在任何开放结算的工资期内——计算工资时该款项不会计入工资单。',
+  nv_cong_chuan_rieng: '个人应出勤天数',
+  nv_cong_chuan_rieng_phu:
+    '此人每月固定的应出勤天数。留空 = 按部门，其次按通用参数，最后按日历计算。用于已批准的特例（例如每月 30 天）。',
   cn_gio_lam: '工作时长',
   cn_tang_ca: '加班',
   cn_chi_tiet_tung_ngay: '每日明细',

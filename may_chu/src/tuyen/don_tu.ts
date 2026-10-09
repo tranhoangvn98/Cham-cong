@@ -6,6 +6,7 @@ import { can_nguoi_duyet, can_nguoi_duyet_hoac_tbks, can_duyet_ot_cap_2,
   nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
 import { la_quan_tri, la_tbks } from '../bao_mat/quyen_ho_so.ts';
 import { tinh_lai_ngay, tinh_lai_khoang } from '../cong/tinh_cong.ts';
+import { tinh_lai_ky_luong_cua_ngay } from '../luong/ky_luong.ts';
 import { sql_ngay_khong_mien_vang } from '../cong/so_ngoai_le.ts';
 import {
   ban_don_am_tham, ban_don_giai_trinh, ban_don_khac, ban_don_nghi_phep,
@@ -337,6 +338,9 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     // Don da duyet ghi de gio vao/ra -> phai tinh lai ngay do.
     const kq = await tinh_lai_ngay(don.nhan_vien_id, don.ngay);
 
+    // Cham cong doi thi ky luong con o trang thai nhap phai tu tinh lai (Loi 2, BC so 02).
+    const ky_luong = kq !== null ? await tinh_lai_ky_luong_cua_ngay(don.ngay) : null;
+
     if (quyet === 'da_duyet') await ban_don_am_tham('giai_trinh', id);
 
     await ghi_nhat_ky(nd.sub, `giai_trinh_${quyet}`, 'don_giai_trinh', id, { ghi_chu }, req.ip);
@@ -353,6 +357,10 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     return {
       ok: true,
       da_tinh_lai: kq !== null,
+      da_tinh_lai_ky_luong: ky_luong === 'da_tinh',
+      canh_bao_ky_luong: ky_luong === 'ky_da_khoa'
+        ? 'Kỳ lương tháng này đã gửi duyệt/chốt nên phiếu chưa cập nhật. Hãy thu hồi duyệt rồi bấm "Tính lương".'
+        : null,
       luu_y: kq === null ? 'Ngày này đã chốt bảng công nên không tính lại. Hãy mở chốt trước.' : undefined,
     };
   });
@@ -537,6 +545,27 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
         kq.tinh_lai.tu_ngay, kq.tinh_lai.den_ngay, truoc.nhan_vien_id);
     }
 
+    // Cham cong doi thi ky luong cua cac thang lien quan (con o 'nhap') phai tu tinh lai —
+    // duyet don lam them / cong tac / remote lam doi so cong va phut OT (Loi 2, BC so 02).
+    let da_tinh_lai_ky_luong = false;
+    let canh_bao_ky_luong: string | null = null;
+    if (kq.tinh_lai !== null && kq.trang_thai === 'da_duyet') {
+      let nam = Number(kq.tinh_lai.tu_ngay.slice(0, 4));
+      let thang_so = Number(kq.tinh_lai.tu_ngay.slice(5, 7));
+      const nam_cuoi = Number(kq.tinh_lai.den_ngay.slice(0, 4));
+      const thang_cuoi = Number(kq.tinh_lai.den_ngay.slice(5, 7));
+      while (nam < nam_cuoi || (nam === nam_cuoi && thang_so <= thang_cuoi)) {
+        const thang = `${nam}-${String(thang_so).padStart(2, '0')}`;
+        const k = await tinh_lai_ky_luong_cua_ngay(`${thang}-01`);
+        if (k === 'da_tinh') da_tinh_lai_ky_luong = true;
+        else if (k === 'ky_da_khoa') {
+          canh_bao_ky_luong = canh_bao_ky_luong
+            ?? `Kỳ lương tháng ${thang} đã gửi duyệt/chốt nên phiếu chưa cập nhật. Hãy thu hồi duyệt rồi bấm "Tính lương".`;
+        }
+        if (thang_so === 12) { thang_so = 1; nam += 1; } else thang_so += 1;
+      }
+    }
+
     if (kq.trang_thai === 'da_duyet') await ban_don_am_tham('khac', id);
 
     await ghi_nhat_ky(nd.sub, `don_${kq.loai}_${quyet}_cap_${la_cap_2 ? '2' : '1'}`,
@@ -568,7 +597,8 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
       });
     }
 
-    return { ok: true, so_ngay_da_tinh_lai, trang_thai: kq.trang_thai };
+    return { ok: true, so_ngay_da_tinh_lai, trang_thai: kq.trang_thai,
+             da_tinh_lai_ky_luong, canh_bao_ky_luong };
   });
 
   // ================================================================ KET QUA OT (tbks/admin)
@@ -631,6 +661,9 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
       da_tinh_lai = await tinh_lai_ngay(kq.nhan_vien_id, kq.tu_ngay) !== null;
     }
 
+    // OT da duyet vao bang cong thi ky luong con 'nhap' phai tu tinh lai (Loi 2, BC so 02).
+    const ky_luong = da_tinh_lai ? await tinh_lai_ky_luong_cua_ngay(truoc.tu_ngay) : null;
+
     await ghi_nhat_ky(nd.sub, `ot_ket_qua_${quyet}`, 'ket_qua_ot', id, { ghi_chu }, req.ip);
 
     const nguoi_lam_don = await tai_khoan_cua_nhan_vien(truoc.nhan_vien_id);
@@ -648,6 +681,10 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     return {
       ok: true,
       da_tinh_lai,
+      da_tinh_lai_ky_luong: ky_luong === 'da_tinh',
+      canh_bao_ky_luong: ky_luong === 'ky_da_khoa'
+        ? 'Kỳ lương tháng này đã gửi duyệt/chốt nên phiếu chưa cập nhật tiền OT. Hãy thu hồi duyệt rồi bấm "Tính lương".'
+        : null,
       loi_chot: kq !== null && !da_tinh_lai
         ? 'Ngày làm thêm đã chốt bảng công nên không tính lại được. Liên hệ nhân sự nếu cần điều chỉnh.'
         : null,

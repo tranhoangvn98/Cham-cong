@@ -6,6 +6,7 @@ import {
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
+import { tra_hien_tai } from '../chuoi/chi_muc.tsx';
 
 interface DongTongHop {
   nhan_vien_id: string;
@@ -20,6 +21,7 @@ interface DongTongHop {
   so_ngay_co_mat: number;
   so_ngay_vang: number;
   so_ngay_nghi_phep: number;
+  so_ngay_le: number;
   so_lan_di_muon: number;
   so_lan_muon_duoi_30: number;
   so_lan_muon_tu_30: number;
@@ -161,6 +163,7 @@ export function TrangBangCong(): ReactNode {
                   <th rowSpan={2}>Họ tên</th>
                   <th rowSpan={2}>Phòng ban</th>
                   <th rowSpan={2} className="canh-phai">Tổng công</th>
+                  <th rowSpan={2} className="canh-phai">{tra_hien_tai('cn_tt_ngay_le')}</th>
                   <th rowSpan={2} className="canh-phai">Giờ làm</th>
                   <th rowSpan={2} className="canh-phai">OT</th>
                   <th colSpan={4} style={{ textAlign: 'center' }}>Đi muộn</th>
@@ -200,6 +203,7 @@ export function TrangBangCong(): ReactNode {
                     <td className="canh-phai so manh">
                       {Number(d.tong_cong).toFixed(1)}
                     </td>
+                    <td className="canh-phai so">{Number(d.so_ngay_le) || '—'}</td>
                     <td className="canh-phai so">{phut_thanh_chu(Number(d.tong_phut_lam))}</td>
                     <td className="canh-phai so">{phut_thanh_chu(Number(d.tong_phut_ot))}</td>
                     <td className="canh-phai so">{Number(d.so_lan_di_muon) || '—'}</td>

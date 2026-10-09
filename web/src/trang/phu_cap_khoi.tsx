@@ -16,6 +16,7 @@ import {
 } from './phu_cap.tsx';
 import { Chon } from '../chon.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { tra_hien_tai } from '../chuoi/chi_muc.tsx';
 
 interface Khoi {
   id: string;
@@ -183,6 +184,8 @@ function HopThoaiGanKhoi(
 ): ReactNode {
   const dm = dung_nap<KhoanDanhMuc[]>('/api/khoan-luong');
   const kh = dung_nap<Khoi[]>('/api/khoi');
+  // Danh sach ky luong — de canh bao khi ngay hieu luc khong nam trong ky nao dang mo.
+  const ky = dung_nap<{ thang: string; trang_thai: string }[]>('/api/ky-luong');
   const [khoan_ma, dat_khoan_ma] = useState('');
   const [chon, dat_chon] = useState<Set<string>>(new Set());
   const [f, dat_f] = useState({
@@ -193,7 +196,7 @@ function HopThoaiGanKhoi(
   const dat = (k: keyof typeof f) => (e: { target: { value: string } }) =>
     dat_f({ ...f, [k]: e.target.value });
 
-  if (dm.dang_tai || kh.dang_tai) {
+  if (dm.dang_tai || kh.dang_tai || ky.dang_tai) {
     return <HopThoai tieu_de="Gán phụ cấp khối" khi_dong={khi_dong}><DangTai /></HopThoai>;
   }
   if (dm.loi !== null || kh.loi !== null) {
@@ -208,6 +211,12 @@ function HopThoaiGanKhoi(
   const k = danh_muc.find((x) => x.ma === khoan_ma) ?? null;
   const go_tien = k !== null && k.cach_tinh === 'nhap_tay';
   const cac_khoi = (kh.du_lieu ?? []).filter((x) => x.dang_bat);
+
+  // Canh bao khi ngay hieu luc khong nam trong ky luong nao dang mo.
+  const cac_ky_nhap = (ky.du_lieu ?? [])
+    .filter((x) => x.trang_thai === 'nhap').map((x) => x.thang);
+  const ngay_hl_ngoai_ky_mo = f.hieu_luc_tu !== '' && cac_ky_nhap.length > 0
+    && !cac_ky_nhap.includes(f.hieu_luc_tu.slice(0, 7));
 
   const bat_tat = (id: string): void => {
     dat_chon((truoc) => {
@@ -279,6 +288,9 @@ function HopThoaiGanKhoi(
 
       <label htmlFor="pck-tu">Hiệu lực từ ngày</label>
       <input id="pck-tu" type="date" value={f.hieu_luc_tu} onChange={dat('hieu_luc_tu')} />
+      {ngay_hl_ngoai_ky_mo && (
+        <div className="hop-luu-y">{tra_hien_tai('pc_canh_bao_ngay_hl')}</div>
+      )}
 
       <label htmlFor="pck-lydo">Lý do / căn cứ</label>
       <input id="pck-lydo" value={f.ly_do} onChange={dat('ly_do')}

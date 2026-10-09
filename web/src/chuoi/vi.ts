@@ -276,6 +276,11 @@ export const CHUOI_VI = {
   cn_thang_sau: 'Tháng sau',
   cn_thang_x: 'tháng {n}',
   cn_tong_cong: 'TỔNG CÔNG',
+  pc_canh_bao_ngay_hl:
+    'Ngày hiệu lực không nằm trong kỳ lương đang mở nào — khoản sẽ không vào phiếu lương khi bấm "Tính lương".',
+  nv_cong_chuan_rieng: 'Công chuẩn riêng',
+  nv_cong_chuan_rieng_phu:
+    'Số công chuẩn cố định mỗi tháng của riêng người này. Để trống = theo khối, rồi tham số chung, rồi đếm theo lịch. Dùng cho ngoại lệ đã duyệt (ví dụ 30 công/tháng).',
   cn_gio_lam: 'GIỜ LÀM',
   cn_tang_ca: 'TĂNG CA',
   cn_chi_tiet_tung_ngay: 'Chi tiết từng ngày',

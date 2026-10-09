@@ -5,6 +5,7 @@ import { can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai, xem_duoc_tat_ca } from
 import { cau_hinh, OFFSET_MAY_MS } from '../cau_hinh.ts';
 import { dashboard_cho } from '../dashboard/theo_vai_tro.ts';
 import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
+import { tinh_lai_ky_luong_cua_ngay } from '../luong/ky_luong.ts';
 import { ky_da_chot_luong } from '../luong/ban_chot.ts';
 import { khoang_cua_nguoi } from '../dinh_danh/tra_pin.ts';
 import { nap_lich_pin } from '../dinh_danh/lich_pin_csdl.ts';
@@ -172,7 +173,7 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
 
     return truy_van(
       `select nv.id as nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
-              coalesce(sum(bc.so_cong), 0)                                  as tong_cong,
+              coalesce(sum(bc.so_cong) filter (where bc.trang_thai <> 'ngay_le'), 0) as tong_cong,
               coalesce(sum(bc.phut_lam), 0)::int                            as tong_phut_lam,
               coalesce(sum(bc.phut_ot), 0)::int                             as tong_phut_ot,
               coalesce(sum(bc.phut_muon), 0)::int                           as tong_phut_muon,
@@ -180,6 +181,7 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
               count(*) filter (where bc.trang_thai = 'co_mat')::int         as so_ngay_co_mat,
               count(*) filter (where bc.trang_thai = 'vang')::int           as so_ngay_vang,
               count(*) filter (where bc.trang_thai = 'nghi_phep')::int      as so_ngay_nghi_phep,
+              count(*) filter (where bc.trang_thai = 'ngay_le')::int        as so_ngay_le,
               count(*) filter (where bc.phut_muon > 0)::int                 as so_lan_di_muon,
               count(*) filter (where bc.phut_muon > 0 and bc.phut_muon < 30)::int as so_lan_muon_duoi_30,
               count(*) filter (where bc.phut_muon >= 30)::int               as so_lan_muon_tu_30
@@ -390,7 +392,16 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'sua_bang_cong', 'bang_cong_ngay',
       `${nhan_vien_id}|${ng}`, { so_cong, phut_ot, da_chot, ghi_chu }, req.ip);
-    return { ok: true };
+
+    // Cong / OT sua tay doi thi ky luong con 'nhap' phai tu tinh lai (Loi 2, BC so 02).
+    const ky_luong = await tinh_lai_ky_luong_cua_ngay(ng);
+    return {
+      ok: true,
+      da_tinh_lai_ky_luong: ky_luong === 'da_tinh',
+      canh_bao_ky_luong: ky_luong === 'ky_da_khoa'
+        ? 'Kỳ lương tháng này đã gửi duyệt/chốt nên phiếu chưa cập nhật. Hãy thu hồi duyệt rồi bấm "Tính lương".'
+        : null,
+    };
   });
 
   // ============================================================ chot ca thang
@@ -762,7 +773,8 @@ async function xuat_tong_hop_thang(
 ): Promise<unknown> {
   const dong = await truy_van<Record<string, unknown>>(
     `select nv.ma_nv, nv.ho_ten, pb.ten as phong_ban, cl.ten as ca_lam,
-            coalesce(sum(bc.so_cong), 0)                             as tong_cong,
+            coalesce(sum(bc.so_cong) filter (where bc.trang_thai <> 'ngay_le'), 0)
+                                                                          as tong_cong,
             coalesce(sum(bc.phut_lam), 0)::int                       as tong_phut_lam,
             coalesce(sum(bc.phut_ot), 0)::int                        as tong_phut_ot,
             coalesce(sum(bc.phut_muon), 0)::int                      as tong_phut_muon,

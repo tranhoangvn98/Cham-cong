@@ -1297,14 +1297,18 @@ function HopThoaiKhoan(
                 })),
               },
             });
-            // Chi tiet tung dong cho cac khoan NHAP TAY vua luu (rong = bo chi tiet).
+            // Chi tiet tung dong cho cac khoan NHAP TAY vua luu. Khong nhap dong chi tiet
+            // nao thi dung goi xuong may chu — may chu giu nguyen so tien gop vua nhap
+            // (goi xong voi danh sach rong truoc day lam so tien ve 0).
             for (const [ma] of Object.entries(dong)) {
               const d = tat_ca.find((x) => x.ma === ma);
               if (d === undefined || d.cach_tinh !== 'nhap_tay') continue;
+              const ds_ct = ct[ma] ?? [];
+              if (ds_ct.length === 0) continue;
               await goi(`/api/phieu-luong/${phieu.id}/khoan/${ma}/chi-tiet`, {
                 method: 'PUT',
                 body: {
-                  dong: (ct[ma] ?? []).map((c) => ({
+                  dong: ds_ct.map((c) => ({
                     ly_do: c.ly_do,
                     so_tien: Number(c.so_tien) || 0,
                   })),

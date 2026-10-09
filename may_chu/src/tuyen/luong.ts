@@ -1273,10 +1273,16 @@ export async function tuyen_luong(app: FastifyInstance): Promise<void> {
           [id, ma, d.ly_do, d.so_tien, nd.sub],
         );
       }
-      await khach.query(
-        'update phieu_luong_khoan set thanh_tien = $3 where phieu_luong_id = $1 and khoan_ma = $2',
-        [id, ma, tong],
-      );
+      // Chi ghi de thanh_tien khi CO dong chi tiet. Danh sach RONG nghia la "bo chi tiet,
+      // tro lai mot dong gop" — so tien gop dang co tren dong khoan CHA phai duoc GIU NGUYEN.
+      // Truoc day luon dat thanh_tien = tong (bang 0 khi rong) lam so tien nguoi dung vua
+      // nhap bien mat ngay khi luu (Loi 3, BC so 02).
+      if (dong.length > 0) {
+        await khach.query(
+          'update phieu_luong_khoan set thanh_tien = $3 where phieu_luong_id = $1 and khoan_ma = $2',
+          [id, ma, tong],
+        );
+      }
     });
 
     const k = await lay_ky(p.ky_luong_id);

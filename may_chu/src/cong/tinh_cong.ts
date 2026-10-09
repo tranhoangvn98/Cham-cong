@@ -7,6 +7,7 @@ import {
   khoang_lay_quet,
   tinh_cong_ngay,
   buoi_lam_bu_da_lam,
+  ngay_ngoai_thoi_gian_lam_viec,
   type CaLam,
   type CaTheoThu,
   type KetQuaTinhCong,
@@ -35,6 +36,9 @@ interface DongNhanVien {
   lich_nghi_ma: string;
   /** Ghi de T7 theo khoi: true = nua cong, false = du cong, null = theo tham so chung. */
   t7_nua_cong_khoi: boolean | null;
+  /** Ngay vao lam / ngay nghi viec ('YYYY-MM-DD') — chan tinh cong ngoai khoang lam viec. */
+  ngay_vao: string | null;
+  ngay_nghi_viec: string | null;
 }
 
 async function nap_ca(ca_lam_id: string | null): Promise<CaLam | null> {
@@ -70,7 +74,9 @@ export async function tinh_lai_ngay(
   const nv = await truy_van_mot<DongNhanVien>(
     `select nv.id, nv.ma_nv, nv.ma_erp, nv.ca_lam_id,
             coalesce(nlv.lich_nghi_ma, 'vn') as lich_nghi_ma,
-            kh.t7_nua_cong as t7_nua_cong_khoi
+            kh.t7_nua_cong as t7_nua_cong_khoi,
+            to_char(nv.ngay_vao, 'YYYY-MM-DD') as ngay_vao,
+            to_char(nv.ngay_nghi_viec, 'YYYY-MM-DD') as ngay_nghi_viec
        from nhan_vien nv
        left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
        left join khoi kh on kh.id = nv.khoi_id
@@ -78,6 +84,19 @@ export async function tinh_lai_ngay(
     [nhan_vien_id],
   );
   if (nv === null) return null;
+
+  // Ngay nam NGOAI khoang lam viec cua nhan vien (truoc ngay vao / sau ngay nghi viec):
+  // khong duoc co o cong. Xoa o cu neu du lieu truoc day sinh nham — nhu loi "nhan vien vao
+  // sau ngay nghi le van duoc tinh cong 2 ngay le" (Loi 4, BC so 02).
+  if (ngay_ngoai_thoi_gian_lam_viec(ngay, nv.ngay_vao, nv.ngay_nghi_viec)) {
+    await trong_giao_dich(async (khach) => {
+      await khach.query(
+        'delete from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+        [nhan_vien_id, ngay],
+      );
+    });
+    return null;
+  }
 
   // --- LAM BU (YC-03): ngay nay la NGAY NGUON duoc nghi? Cong cua no = 0 — da PHAN BO ve cac
   // BUOI lam bu tren cac ngay_bu (vd 31/8 phan ve chieu T7 22/8 + 29/8). Khong tu cong o day,

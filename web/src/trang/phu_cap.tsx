@@ -15,6 +15,7 @@ import {
 } from '../thanh_phan.tsx';
 import { Chon } from '../chon.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { tra_hien_tai } from '../chuoi/chi_muc.tsx';
 
 export interface KhoanDanhMuc {
   ma: string;
@@ -272,6 +273,8 @@ function HopThoaiGan(
 ): ReactNode {
   const dm = dung_nap<KhoanDanhMuc[]>('/api/khoan-luong');
   const nv = dung_nap<NhanVienGon[]>('/api/nhan-vien');
+  // Danh sach ky luong — de canh bao khi ngay hieu luc khong nam trong ky nao dang mo.
+  const ky = dung_nap<{ thang: string; trang_thai: string }[]>('/api/ky-luong');
   const [khoan_ma, dat_khoan_ma] = useState('');
   const [chon, dat_chon] = useState<Set<string>>(new Set());
   const [tim, dat_tim] = useState('');
@@ -283,7 +286,7 @@ function HopThoaiGan(
   const dat = (k: keyof typeof f) => (e: { target: { value: string } }) =>
     dat_f({ ...f, [k]: e.target.value });
 
-  if (dm.dang_tai || nv.dang_tai) {
+  if (dm.dang_tai || nv.dang_tai || ky.dang_tai) {
     return <HopThoai tieu_de="Gán phụ cấp" khi_dong={khi_dong}><DangTai /></HopThoai>;
   }
   if (dm.loi !== null || nv.loi !== null) {
@@ -297,6 +300,13 @@ function HopThoaiGan(
   const danh_muc = dm.du_lieu ?? [];
   const k = danh_muc.find((x) => x.ma === khoan_ma) ?? null;
   const go_tien = k !== null && k.cach_tinh === 'nhap_tay';
+
+  // Canh bao khi ngay hieu luc khong nam trong ky luong nao dang mo (vd gan cho ky 9 vao
+  // thang 10) — khoan se khong bao gio vao phieu neu khong bat lai ngay.
+  const cac_ky_nhap = (ky.du_lieu ?? [])
+    .filter((x) => x.trang_thai === 'nhap').map((x) => x.thang);
+  const ngay_hl_ngoai_ky_mo = f.hieu_luc_tu !== '' && cac_ky_nhap.length > 0
+    && !cac_ky_nhap.includes(f.hieu_luc_tu.slice(0, 7));
 
   const moi_nguoi = (nv.du_lieu ?? []).filter((x) => x.dang_hoat_dong);
   const loc = tim.trim().toLowerCase();
@@ -383,6 +393,9 @@ function HopThoaiGan(
 
       <label htmlFor="pc-tu">Hiệu lực từ ngày</label>
       <input id="pc-tu" type="date" value={f.hieu_luc_tu} onChange={dat('hieu_luc_tu')} />
+      {ngay_hl_ngoai_ky_mo && (
+        <div className="hop-luu-y">{tra_hien_tai('pc_canh_bao_ngay_hl')}</div>
+      )}
       <p className="mo-ta">
         Kỳ lương nào có ngày giao với khoảng hiệu lực thì được hưởng — người vào làm giữa tháng
         vẫn tính đúng.

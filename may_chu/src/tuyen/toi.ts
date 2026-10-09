@@ -171,7 +171,8 @@ async function gan_trang_thai_bao(
 async function tong_hop_thang(nv_id: string, thang: string): Promise<unknown> {
   const { tu, den } = khoang_thang(thang);
   return truy_van_mot(
-    `select coalesce(sum(so_cong), 0)        as tong_cong,
+    `select coalesce(sum(so_cong) filter (where trang_thai <> 'ngay_le'), 0)
+                                                                          as tong_cong,
             coalesce(sum(phut_lam), 0)::int  as tong_phut_lam,
             coalesce(sum(phut_ot), 0)::int   as tong_phut_ot,
             coalesce(sum(phut_muon), 0)::int as tong_phut_muon,
@@ -187,7 +188,10 @@ async function tong_hop_thang(nv_id: string, thang: string): Promise<unknown> {
             count(*) filter (where da_chot)::int                  as so_ngay_da_chot,
             count(*)::int                                         as so_ngay_co_du_lieu
        from bang_cong_ngay
-      where nhan_vien_id = $1 and ngay >= $2 and ngay <= $3`,
+      where nhan_vien_id = $1 and ngay >= $2 and ngay <= $3
+        -- Nguoi vao sau mot ngay khong duoc cong cua ngay do (Loi 4, BC so 02).
+        and (exists (select 1 from nhan_vien nv
+                      where nv.id = $1 and (nv.ngay_vao is null or ngay >= nv.ngay_vao)))`,
     [nv_id, tu, den],
   );
 }

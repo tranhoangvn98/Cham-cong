@@ -6,7 +6,7 @@
 import { truy_van, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { khoang_thang } from '../tien_ich/thoi_gian.ts';
 import {
-  HE_SO_T7_NUA_CONG, ngay_cong_chuan, tham_so_cho_thang,
+  HE_SO_T7_NUA_CONG, cong_chuan_ap_dung, ngay_cong_chuan, tham_so_cho_thang,
 } from './ky_luong.ts';
 
 /** Lam tron ve 2 chu so thap phan (CNY co jiao/fen). */
@@ -23,6 +23,10 @@ interface DongNhanVienCny {
   lich_nghi_ma: string;
   /** Ghi de T7 theo khoi: true = nua cong, false = du cong, null = theo tham so chung. */
   t7_nua_cong_khoi: boolean | null;
+  /** Cong chuan co dinh RIENG cua nguoi nay. 0/null = theo khoi > tham so > lich. */
+  cong_chuan_rieng: number | null;
+  /** Cong chuan co dinh cua khoi. 0/null = theo tham so > lich. */
+  cong_chuan_khoi: number | null;
 }
 
 /**
@@ -62,7 +66,9 @@ export async function tinh_ky_luong_cny(ky_luong_id: string, thang: string): Pro
             coalesce(cl.cac_ngay_lam, '{1,2,3,4,5}')             as cac_ngay_lam,
             coalesce(bc.so_cong, 0)::float8                       as so_cong,
             coalesce(nlv.lich_nghi_ma, 'vn')                     as lich_nghi_ma,
-            kh.t7_nua_cong                                        as t7_nua_cong_khoi
+            kh.t7_nua_cong                                        as t7_nua_cong_khoi,
+            nv.cong_chuan_thang::float8                           as cong_chuan_rieng,
+            kh.cong_chuan_thang::float8                           as cong_chuan_khoi
        from nhan_vien nv
        left join ca_lam cl on cl.id = nv.ca_lam_id
        left join noi_lam_viec nlv on nlv.id = nv.noi_lam_viec_id
@@ -85,10 +91,12 @@ export async function tinh_ky_luong_cny(ky_luong_id: string, thang: string): Pro
   await trong_giao_dich(async (khach) => {
     for (const nv of ds) {
       // He so thu Bay CUA NGUOI NAY: khoi ghi de (ngoai le da duyet) de len tham so chung.
+      // Cong chuan co dinh: NGUOI > KHOI > tham so chung > dem theo lich (YC HR 07/10/2026).
       const he_so_t7_cua = (nv.t7_nua_cong_khoi ?? ts.cs.t7_nua_cong) ? HE_SO_T7_NUA_CONG : 1;
-      const chuan = ts.cs.cong_chuan_thang > 0
-        ? ts.cs.cong_chuan_thang
-        : ngay_cong_chuan(tu, den, nv.cac_ngay_lam, le_cua(nv.lich_nghi_ma), he_so_t7_cua);
+      const chuan = cong_chuan_ap_dung(
+        nv.cong_chuan_rieng, nv.cong_chuan_khoi, ts.cs.cong_chuan_thang,
+        ngay_cong_chuan(tu, den, nv.cac_ngay_lam, le_cua(nv.lich_nghi_ma), he_so_t7_cua),
+      );
 
       // Giu lai dieu chinh tay cua nguoi dung.
       const cu = await khach.query<{

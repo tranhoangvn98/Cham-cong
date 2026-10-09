@@ -128,6 +128,8 @@ export async function tinh_ky_kpi(ky_id: string, thang: string): Promise<number>
                 count(*) filter (where phut_ve_som > 0)          as so_lan_ve_som
            from bang_cong_ngay
           where nhan_vien_id = nv.id and ngay >= $1 and ngay <= $2
+            -- Nguoi vao sau mot ngay khong duoc cong cua ngay do (vd ngay le truoc khi vao).
+            and (nv.ngay_vao is null or ngay >= nv.ngay_vao)
        ) bc on true
        left join lateral (
          -- Chi tinh vi pham DA XAC NHAN hoac DA XU LY. Vi pham con o 'moi' la may vua
