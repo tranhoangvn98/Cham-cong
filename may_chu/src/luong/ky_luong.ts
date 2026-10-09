@@ -260,6 +260,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
             coalesce(cl.cac_ngay_lam, '{1,2,3,4,5}')               as cac_ngay_lam,
             coalesce(bc.so_cong, 0)::float8                        as so_cong,
             coalesce(bc.so_ngay_du_cong, 0)::int                   as so_ngay_du_cong,
+            coalesce(bc.so_cong_le, 0)::float8                     as so_cong_le,
             coalesce(bc.phut_ot, 0)::int                           as phut_ot,
             coalesce(pt.so_nguoi, 0)::int                          as so_nguoi_phu_thuoc,
             hd.loai                                               as loai_hop_dong,
