@@ -501,7 +501,7 @@ test('khong co khoan nao thi moi tong ve 0 — bang luong cu tinh ra dung so cu'
 });
 
 // ---------------------------------------------------------------- nua cong thu Bay
-const { ngay_cong_chuan, cong_chuan_ap_dung } = await import('../src/luong/ky_luong.ts');
+const { ngay_cong_chuan, cong_chuan_ap_dung, cong_hien_thi } = await import('../src/luong/ky_luong.ts');
 
 // Thang 8/2025: thu Bay roi vao 2, 9, 16, 23, 30 (5 thu Bay). Ca lam T2-T7.
 const LAM_T2_T7 = [1, 2, 3, 4, 5, 6];
@@ -533,4 +533,38 @@ test('cong chuan ap dung: NGUOI > KHOI > tham so > dem theo lich', () => {
   assert.equal(cong_chuan_ap_dung(0, 25, 24, 22), 25, '0 = khong ghi de o cap nguoi');
   assert.equal(cong_chuan_ap_dung(null, null, 24, 22), 24, 'khong co khoi thi theo tham so');
   assert.equal(cong_chuan_ap_dung(null, null, 0, 22), 22, 'khong khai gi thi dem theo lich');
+});
+
+// ---------------------------------------------------------------- cong hien thi gom ngay le
+// YC HR 09/10/2026: thang co ngay le huong luong thi cong tren phieu phai CONG CA NGAY LE
+// (thang 9/2026: 22 lam + 2 le = 24, khop bang cong). Tien luong van tinh theo ngay lam that
+// nen khong doi — chi con so in ra doi.
+
+test('cong hien thi: thang co 2 ngay le, du cong -> 24/24 (khong con 22/22)', () => {
+  // so_cong 24 = 22 ngay lam + 2 ngay le (bang_cong_ngay ghi so_cong=1 cho ngay le).
+  const kq = cong_hien_thi(24, 22, 2, false, false);
+  assert.deepEqual(kq, { chuan_hien_thi: 24, thuc_hien_thi: 24 });
+});
+
+test('cong hien thi: nghi 1 ngay thi hien 23/24 — le khong bu cho ngay nghi', () => {
+  // 21 ngay lam + 2 ngay le = 23.
+  const kq = cong_hien_thi(23, 22, 2, false, false);
+  assert.deepEqual(kq, { chuan_hien_thi: 24, thuc_hien_thi: 23 });
+});
+
+test('cong hien thi: ghi de (khoi 25 / nguoi 30) la so CO DINH — khong cong them ngay le', () => {
+  const kho = cong_hien_thi(22, 25, 2, true, false);
+  assert.deepEqual(kho, { chuan_hien_thi: 25, thuc_hien_thi: 22 });
+});
+
+test('cong hien thi: thang KHONG co ngay le giu nguyen nhu cu', () => {
+  assert.deepEqual(
+    cong_hien_thi(21, 22, 0, false, false),
+    { chuan_hien_thi: 22, thuc_hien_thi: 21 },
+  );
+});
+
+test('cong hien thi: ep du cong thi thuc = chuan hien thi (24), tien van du', () => {
+  const kq = cong_hien_thi(20, 22, 2, false, true);
+  assert.deepEqual(kq, { chuan_hien_thi: 24, thuc_hien_thi: 24 });
 });

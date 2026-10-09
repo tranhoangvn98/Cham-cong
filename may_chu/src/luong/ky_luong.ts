@@ -152,6 +152,30 @@ export function cong_chuan_ap_dung(
   return theo_lich;
 }
 
+/**
+ * Cong CHUAN va cong THUC hien thi tren phieu luong (man hinh, email, xuat XLSX/ERP).
+ *
+ * YC HR 09/10/2026: thang co ngay le huong luong thi cong phai CONG CA NGAY LE — vi du thang
+ * 9/2026: 22 ngay lam + 2 ngay le = 24, khop voi tong cong tren bang cong. Khong duoc hien 22.
+ *
+ * - Cong chuan RIENG / KHOI / tham so chung la con so CO DINH (VD Kho 25, mot so nguoi 30)
+ *   — KHONG cong them ngay le. Chi con so dem THEO LICH (da tru ngay le) moi cong lai `so_cong_le`.
+ * - `so_cong` truyen vao da gom cong ngay le (bang_cong_ngay ghi so_cong=1 cho ngay le).
+ * - Tien luong KHONG dung ham nay: tinh toan tien van dung `chuan` va `min(so_cong, chuan)`
+ *   nhu cu, nen luong cua moi nguoi khong doi — chi con so in ra doi cho dung voi bang cong.
+ */
+export function cong_hien_thi(
+  so_cong: number,
+  chuan: number,
+  so_cong_le: number,
+  co_ghi_de: boolean,
+  ep_du_cong: boolean,
+): { chuan_hien_thi: number; thuc_hien_thi: number } {
+  const chuan_hien_thi = co_ghi_de ? chuan : chuan + so_cong_le;
+  const thuc_hien_thi = ep_du_cong ? chuan_hien_thi : Math.min(so_cong, chuan_hien_thi);
+  return { chuan_hien_thi, thuc_hien_thi };
+}
+
 interface DongNhanVien {
   nhan_vien_id: string;
   /** Luong co ban theo quyet dinh luong (chinh thuc). Null = chua co quyet dinh. */
@@ -166,6 +190,8 @@ interface DongNhanVien {
   so_cong: number;
   /** So ngay co cong DU 1 — dung cho phu cap an trua (xem chinh_sach.ts). */
   so_ngay_du_cong: number;
+  /** Tong cong cua cac ngay le huong luong trong ky (hien thi, khong dung tinh tien). */
+  so_cong_le: number;
   phut_ot: number;
   so_nguoi_phu_thuoc: number;
   loai_hop_dong: string | null;
@@ -279,7 +305,11 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
                         else 1 end)), 0) as so_cong,
                 -- So ngay cong DU 1 (so_cong = 1): ngay nua cong (0,5) khong duoc tinh an trua.
                 coalesce(count(*) filter (where bang_cong_ngay.so_cong >= 1), 0) as so_ngay_du_cong,
-                coalesce(sum(phut_ot), 0)                                    as phut_ot
+                coalesce(sum(phut_ot), 0)                                    as phut_ot,
+                -- So cong cua NGAY LE HUONG LUONG trong ky — cong vao chuan/thuc HIEN THI
+                -- tren phieu (YC HR 09/10/2026: thang co le phai hien 24 = 22 lam + 2 le).
+                coalesce(sum(bang_cong_ngay.so_cong)
+                           filter (where bang_cong_ngay.trang_thai = 'ngay_le'), 0) as so_cong_le
            from bang_cong_ngay
           where nhan_vien_id = nv.id and ngay >= $1 and ngay <= $2
        ) bc on true
@@ -495,10 +525,16 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
 
     for (const nv of ds) {
       const he_so_t7_cua = (nv.t7_nua_cong_khoi ?? ts.cs.t7_nua_cong) ? HE_SO_T7_NUA_CONG : 1;
-      const chuan = cong_chuan_ap_dung(
-        nv.cong_chuan_rieng, nv.cong_chuan_khoi, ts.cs.cong_chuan_thang,
-        ngay_cong_chuan(tu, den, nv.cac_ngay_lam, le_cua(nv.lich_nghi_ma), he_so_t7_cua),
+      const theo_lich = ngay_cong_chuan(
+        tu, den, nv.cac_ngay_lam, le_cua(nv.lich_nghi_ma), he_so_t7_cua,
       );
+      const chuan = cong_chuan_ap_dung(
+        nv.cong_chuan_rieng, nv.cong_chuan_khoi, ts.cs.cong_chuan_thang, theo_lich,
+      );
+      // Cong chuan co ghi de (rieng/khoi/tham so) la so CO DINH — khong cong ngay le vao.
+      const co_ghi_de_chuan = (nv.cong_chuan_rieng !== null && nv.cong_chuan_rieng > 0)
+        || (nv.cong_chuan_khoi !== null && nv.cong_chuan_khoi > 0)
+        || ts.cs.cong_chuan_thang > 0;
 
       // Muc luong ap dung. Thu viec (BLLD 2019 D.26): LUON huong 85% luong cung (P1 luong co
       // ban + P2 phu cap), lay tu quyet_dinh_luong. Chinh sach cong ty: MOI thu viec deu 85%
@@ -538,6 +574,11 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
       // Cong thuc KHONG BAO GIO vuot cong chuan (lam them ngay/gio ngoai chuan la OT, khong phai
       // cong). SQL da cap tung ngay; chan tran o day mot lan nua cho moi truong hop (vd lam CN/le).
       const cong_thuc = ep_du_cong ? chuan : Math.min(nv.so_cong, chuan);
+      // Cong HIEN THI gom ca ngay le huong luong (24 = 22 lam + 2 le) — khop tong cong tren bang
+      // cong. Tien van tinh theo `chuan`/`cong_thuc` (ngay lam that) nen luong khong doi.
+      const { chuan_hien_thi, thuc_hien_thi } = cong_hien_thi(
+        nv.so_cong, chuan, nv.so_cong_le, co_ghi_de_chuan, ep_du_cong,
+      );
       // Admin tich "mien thue" / "mien BH": bo thue TNCN / mien dong bao hiem cho phieu nay.
       const mien_thue = Boolean(phieu_cu?.mien_thue ?? false);
       const mien_bh = Boolean(phieu_cu?.mien_bh ?? false);
@@ -681,6 +722,7 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
         dong_bao_hiem,
         mien_thue,
         luong_net,
+        // Tien tinh theo ngay lam THAT (khong cong ngay le) — luong khong doi so voi truoc.
         so_ngay_cong_chuan: chuan,
         so_ngay_cong_thuc: cong_thuc,
         phut_ot: nv.phut_ot,
@@ -715,7 +757,8 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
          where id = $1`,
         [
           phieu_id, luong_co_ban, phu_cap,
-          chuan, cong_thuc, nv.phut_ot, he_so_ot_thuong,
+          // Ghi cong HIEN THI (gom ngay le) xuong phieu; tien da tinh o tren theo cong lam that.
+          chuan_hien_thi, thuc_hien_thi, nv.phut_ot, he_so_ot_thuong,
           kq.luong_theo_cong, kq.tien_ot, thuong, phu_cap_khac,
           kq.tong_thu_nhap, kq.muc_dong_bh,
           kq.bhxh_nld, kq.bhyt_nld, kq.bhtn_nld,
