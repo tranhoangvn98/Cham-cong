@@ -8,6 +8,7 @@ export const CHUOI_ZH = {
   ngon_ngu_khong_hop_le: '语言无效。',
   ngon_ngu_tieng_viet: '越南语',
   ngon_ngu_tieng_trung: '中文',
+  khong_duoc_tu_duyet: '您不能审批本人提交的申请。',
 
   // ================================ 通知铃状态标签
   tt_cho_duyet: '待审批',

@@ -25,6 +25,8 @@ import { giai_ma_token, type NoiDungToken, type VaiTro } from './jwt.ts';
 import { bat_cong_sso, xac_minh_token_cong } from './cong_sso.ts';
 import { phien_tu_token_cong } from './cong_phien.ts';
 import { truy_van_mot } from '../csdl/ket_noi.ts';
+import { LoiKhongQuyen } from '../tien_ich/kiem_tra.ts';
+import { chuan_ngon_ngu, tra_chuoi } from '../chuoi/chi_muc.ts';
 
 // Gan nguoi dung da xac thuc vao request de cac route dung lai.
 declare module 'fastify' {
@@ -169,4 +171,36 @@ export function nguoi_dung_hien_tai(req: FastifyRequest): NoiDungToken {
 /** true neu vai tro duoc xem du lieu cua moi nhan vien. */
 export function xem_duoc_tat_ca(nd: { vai_tro: string }): boolean {
   return la_vai_tro_nhan_su(nd.vai_tro);
+}
+
+/**
+ * Quy tac TU DUYET (YC HR 09/10/2026): khong ai duoc duyet cho chinh minh, TRU admin.
+ *
+ * `nhan_vien_id` la chu the bi duyet (nguoi lam don, nguoi bi vi pham...). Neu tai khoan
+ * dang thao tac gan voi CHINH nhan vien do (`nd.nv === nhan_vien_id`) thi chan. Tai khoan
+ * admin / nhan su KHONG gan ho so ca nhan co `nv = null` nen khong bao gio vuong — nhung
+ * van kiem `vai_tro` de admin gan ho so van duoc ngoai le.
+ *
+ * Ham thuần này trả true = phải chặn; phần tiếng Việt/Trung nằm ở `chan_tu_duyet` bên dưới.
+ */
+export function chan_tu_duyet_ap_dung(
+  nd: Pick<NoiDungToken, 'vai_tro' | 'nv'>,
+  nhan_vien_id: string | null,
+): boolean {
+  return nhan_vien_id !== null && nd.vai_tro !== 'admin' && nd.nv === nhan_vien_id;
+}
+
+/**
+ * Chặn tự duyệt bằng 403 với thông báo theo ngôn ngữ của người duyệt.
+ * Gọi ở MỌI route quyết định gắn với một nhân viên cụ thể (đơn, giải trình, kết quả OT...).
+ */
+export async function chan_tu_duyet(
+  nd: Pick<NoiDungToken, 'sub' | 'vai_tro' | 'nv'>,
+  nhan_vien_id: string | null,
+): Promise<void> {
+  if (!chan_tu_duyet_ap_dung(nd, nhan_vien_id)) return;
+  const nguoi = await truy_van_mot<{ ngon_ngu: string | null }>(
+    'select ngon_ngu from nguoi_dung where id = $1', [nd.sub],
+  );
+  throw new LoiKhongQuyen(tra_chuoi(chuan_ngon_ngu(nguoi?.ngon_ngu), 'khong_duoc_tu_duyet'));
 }

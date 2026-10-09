@@ -147,3 +147,27 @@ test('geofence: chua khai dia diem nao thi khong the xac minh', () => {
   assert.equal(kq.trong_pham_vi, false);
   assert.equal(kq.khoang_cach_m, null);
 });
+
+// ================================================================ chan tu duyet
+// YC HR 09/10/2026: khong ai duoc duyet cho chinh minh, TRU admin.
+const { chan_tu_duyet_ap_dung } = await import('../src/bao_mat/xac_thuc.ts');
+
+test('tu duyet: nguoi duyet chinh la chu the thi chan — moi vai tro tru admin', () => {
+  assert.equal(chan_tu_duyet_ap_dung({ vai_tro: 'nhan_su', nv: 'nv1' }, 'nv1'), true);
+  assert.equal(chan_tu_duyet_ap_dung({ vai_tro: 'truong_phong', nv: 'nv1' }, 'nv1'), true);
+  assert.equal(chan_tu_duyet_ap_dung({ vai_tro: 'truong_phong_nhan_su', nv: 'nv1' }, 'nv1'), true);
+  assert.equal(chan_tu_duyet_ap_dung({ vai_tro: 'tbks', nv: 'nv1' }, 'nv1'), true);
+  assert.equal(chan_tu_duyet_ap_dung({ vai_tro: 'nhan_vien', nv: 'nv1' }, 'nv1'), true);
+});
+
+test('tu duyet: admin duoc ngoai le ke ca khi tai khoan gan ho so cua chinh minh', () => {
+  assert.equal(chan_tu_duyet_ap_dung({ vai_tro: 'admin', nv: 'nv1' }, 'nv1'), false);
+});
+
+test('tu duyet: duyet cho nguoi khac, tai khoan khong gan ho so, hoac chu the null thi KHONG chan', () => {
+  assert.equal(chan_tu_duyet_ap_dung({ vai_tro: 'nhan_su', nv: 'nv2' }, 'nv1'), false);
+  assert.equal(chan_tu_duyet_ap_dung({ vai_tro: 'truong_phong', nv: null }, 'nv1'), false);
+  assert.equal(chan_tu_duyet_ap_dung({ vai_tro: 'nhan_su', nv: 'nv1' }, null), false);
+  assert.equal(chan_tu_duyet_ap_dung({ vai_tro: 'admin', nv: null }, null), false);
+});
+

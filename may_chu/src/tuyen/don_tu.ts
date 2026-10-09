@@ -3,7 +3,7 @@
 import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { can_nguoi_duyet, can_nguoi_duyet_hoac_tbks, can_duyet_ot_cap_2,
-  nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
+  chan_tu_duyet, nguoi_dung_hien_tai, xem_duoc_tat_ca } from '../bao_mat/xac_thuc.ts';
 import { la_quan_tri, la_tbks } from '../bao_mat/quyen_ho_so.ts';
 import { tinh_lai_ngay, tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { tinh_lai_ky_luong_cua_ngay } from '../luong/ky_luong.ts';
@@ -233,6 +233,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     if (don.trang_thai !== 'cho_duyet') {
       throw new LoiDauVao(`Đơn đã ở trạng thái "${don.trang_thai}", không thể quyết lại.`);
     }
+    await chan_tu_duyet(nd, don.nhan_vien_id);
     await bat_buoc_trong_pham_vi(nd, don.nhan_vien_id);
 
     await trong_giao_dich(async (khach) => {
@@ -326,6 +327,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     if (don.trang_thai !== 'cho_duyet') {
       throw new LoiDauVao(`Đơn đã ở trạng thái "${don.trang_thai}", không thể quyết lại.`);
     }
+    await chan_tu_duyet(nd, don.nhan_vien_id);
     await bat_buoc_trong_pham_vi(nd, don.nhan_vien_id);
 
     await truy_van(
@@ -399,6 +401,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     if (lq.trang_thai_duyet !== 'cho_duyet') {
       throw new LoiDauVao('Lần quẹt này đã được xử lý.');
     }
+    await chan_tu_duyet(nd, lq.nhan_vien_id);
     await bat_buoc_trong_pham_vi(nd, lq.nhan_vien_id);
 
     await truy_van(
@@ -509,6 +512,9 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
 
     const truoc = await don_theo_id(id);
     if (truoc === null) throw new LoiKhongTim('Không tìm thấy đơn.');
+
+    // Khong ai duoc TU DUYET don cua chinh minh, tru admin (YC HR 09/10/2026).
+    await chan_tu_duyet(nd, truoc.nhan_vien_id);
 
     const la_cap_2 = truoc.trang_thai === 'cho_duyet_2';
     if (la_cap_2) {
@@ -653,6 +659,9 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
       [id],
     );
     if (truoc === null) throw new LoiKhongTim('Không tìm thấy kết quả OT.');
+
+    // Khong ai duoc TU DUYET ket qua OT cua chinh minh, tru admin (YC HR 09/10/2026).
+    await chan_tu_duyet(nd, truoc.nhan_vien_id);
 
     const kq = await quyet_ket_qua(id, quyet, nd.sub, ghi_chu);
 

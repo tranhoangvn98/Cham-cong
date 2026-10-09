@@ -6,6 +6,7 @@ export const CHUOI_VI = {
   ngon_ngu_khong_hop_le: 'Ngôn ngữ không hợp lệ.',
   ngon_ngu_tieng_viet: 'Tiếng Việt',
   ngon_ngu_tieng_trung: 'Tiếng Trung',
+  khong_duoc_tu_duyet: 'Bạn không được tự duyệt cho chính mình.',
 
   // ================================ nhan trang thai trong chuong bao
   tt_cho_duyet: 'Chờ duyệt',

@@ -6,7 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import {
-  can_nguoi_duyet, can_nhan_su, nguoi_dung_hien_tai, xem_duoc_tat_ca,
+  can_nguoi_duyet, can_nhan_su, chan_tu_duyet, nguoi_dung_hien_tai, xem_duoc_tat_ca,
 } from '../bao_mat/xac_thuc.ts';
 import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
@@ -90,6 +90,7 @@ export async function tuyen_de_xuat(app: FastifyInstance): Promise<void> {
     );
     if (truoc === null) throw new LoiKhongTim('Không tìm thấy đề xuất.');
     if (truoc.trang_thai !== 'cho_duyet') throw new LoiDauVao('Đề xuất đã được xử lý.');
+    await chan_tu_duyet(nd, truoc.nhan_vien_id);
     await trong_pham_vi(nd, truoc.nhan_vien_id);
 
     await thuc_thi(

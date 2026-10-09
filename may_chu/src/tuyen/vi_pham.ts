@@ -8,7 +8,8 @@
 import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import {
-  can_dang_nhap, can_nhan_su, can_nguoi_duyet, nguoi_dung_hien_tai, xem_duoc_tat_ca,
+  can_dang_nhap, can_nhan_su, can_nguoi_duyet, chan_tu_duyet, nguoi_dung_hien_tai,
+  xem_duoc_tat_ca,
 } from '../bao_mat/xac_thuc.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
@@ -244,6 +245,9 @@ export async function tuyen_vi_pham(app: FastifyInstance): Promise<void> {
     if (vp.trang_thai === 'da_xu_ly') {
       throw new LoiXungDot('Vi phạm đã xử lý xong, không quyết lại được.');
     }
+
+    // Khong ai duoc TU XU LY vi pham cua chinh minh, tru admin (YC HR 09/10/2026).
+    await chan_tu_duyet(nd, vp.nhan_vien_id);
 
     // Hai hinh thuc nang nhat bat buoc phai co bien ban hop.
     if (ky_luat !== null && ky_luat !== 'nhac_nho' && bien_ban_id === null) {
