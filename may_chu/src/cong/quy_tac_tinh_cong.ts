@@ -223,13 +223,18 @@ export function khoang_lay_quet(ngay: string, ca_goc: CaLam | null): { tu: Date;
 
 /**
  * So phut LAM THEM DUOC TINH: phan GIAO giua thoi gian co mat that va cac khoang da dang ky
- * trong don `lam_them` DA DUYET, DA TRU GIO NGHI.
+ * trong don `lam_them` DA DUYET (kem ket qua OT da duyet — loc o tinh_cong.ts), DA TRU GIO NGHI.
  *
  * GIAO chu khong phai mot trong hai, va ca hai chieu deu co ly do:
  *   - Dang ky ma khong lam thi khong duoc tra. Don la KE HOACH, khong phai ket qua.
  *   - Lam ma khong dang ky thi khong duoc tra. Day la yeu cau nghiep vu, va no cung dung
  *     BLLD 2019 Dieu 107: lam them gio phai co su dong y cua nguoi lao dong — mot he thong tu
  *     ket luan "o lai muon = lam them" la tu tao ra nghia vu tra tien tu mot lan quet the.
+ *
+ * NGOAI LE (YC 09/10/2026): khi KHONG CO LUOT QUET nao trong ngay (OT ngoai van phong, may
+ * hong, ngay le khong quet the) thi tinh theo GIO DANG KY — vi ket qua OT da duyet kem anh
+ * chup minh chung CHINH LA bang chung lam viec. Van tru gio nghi trua de khong tra tien cho
+ * buoi nghi.
  *
  * TRU GIO NGHI tren dung doan da kep. Voi OT sau gio tan ca thi khong khac gi (17:30-19:00
  * khong cham gio nghi trua), nhung mot don lam them CA NGAY le hay CA NGAY Chu nhat ma khong
@@ -245,7 +250,7 @@ function phut_lam_them_da_duyet(
   ca: CaLam | null,
   lam_them: readonly KhoangLamThem[],
 ): number {
-  if (vao === null || ra === null || lam_them.length === 0) return 0;
+  if (lam_them.length === 0) return 0;
 
   const khoang: { tu: number; den: number }[] = [];
   for (const d of lam_them) {
@@ -268,6 +273,16 @@ function phut_lam_them_da_duyet(
   }
 
   let tong = 0;
+  if (vao === null || ra === null) {
+    // Ket qua OT DA DUYET nhung khong co luot quet trong ngay — tinh theo gio dang ky, tru
+    // gio nghi trua. (YC 09/10/2026: duyet ket qua OT phai nhay vao bang luong.)
+    for (const k of hop_nhat) {
+      const a = new Date(k.tu);
+      const b = new Date(k.den);
+      tong += Math.max(0, so_phut(a, b) - phut_nghi_giao(a, b, ngay, ca));
+    }
+    return tong;
+  }
   for (const k of hop_nhat) {
     // Kep vao thoi gian co mat that, roi tru gio nghi TREN DUNG DOAN DA KEP.
     const a = new Date(Math.max(vao.getTime(), k.tu));
@@ -498,6 +513,9 @@ export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
       ...RONG,
       trang_thai: 'vang',
       so_cong: 0,
+      // Ket qua OT da duyet kem anh minh chung van duoc tinh OT ke ca ngay khong quet
+      // (YC 09/10/2026) — xem phut_lam_them_da_duyet.
+      phut_ot: ot_da_duyet,
       co_dieu_chinh,
       ghi_chu: gop_chu_thich(chu_thich),
     };

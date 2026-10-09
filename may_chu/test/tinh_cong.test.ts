@@ -186,6 +186,39 @@ test('OT: don trum gio nghi trua phai TRU gio nghi', () => {
   assert.equal(kq.phut_ot, 450, 'khong duoc tra tien cho 90 phut nghi trua');
 });
 
+test('OT: ket qua duyet nhung KHONG co luot quet -> tinh theo gio dang ky (YC 09/10/2026)', () => {
+  // Nguoi lam OT ngay le ma khong quet the (may hong / lam ngoai van phong). Ket qua OT
+  // da duyet kem anh minh chung -> phut OT = gio dang ky, tru gio nghi trua.
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    ngay_le: { huong_luong: true },
+    lam_them: ot(['08:00', '17:00']),
+  });
+  assert.equal(kq.trang_thai, 'ngay_le');
+  assert.equal(kq.phut_ot, 450, '08:00-17:00 tru 90 phut nghi trua');
+  assert.equal(kq.so_cong, 1, 'ngay le huong luong van 1 cong');
+});
+
+test('OT: khong quet ca ngay thuong -> van vang, nhung OT theo gio dang ky duoc tinh', () => {
+  const kq = tinh_cong_ngay({
+    ...co_ban(T5, CA_HC, []),
+    lam_them: ot(['17:00', '19:00']),
+  });
+  assert.equal(kq.trang_thai, 'vang');
+  assert.equal(kq.so_cong, 0);
+  assert.equal(kq.phut_ot, 120, 'ket qua duyet la bang chung lam viec');
+});
+
+test('OT: khong quet nhung dang ky ngoai gio nghi trua thi khong tru gi', () => {
+  // Thu Bay: khoang OT 08:00-12:00 nam TRUOC gio nghi trua -> khong tru phut nao.
+  const kq = tinh_cong_ngay({
+    ...co_ban(T7, CA_HC, []),
+    lam_them: ot(['08:00', '12:00']),
+  });
+  assert.equal(kq.trang_thai, 'nghi_tuan');
+  assert.equal(kq.phut_ot, 240);
+});
+
 test('nhieu lan quet trong ngay: lay som nhat va muon nhat', () => {
   const kq = tinh_cong_ngay(co_ban(T5, CA_HC, q(T5, '08:00', '12:01', '13:29', '17:02')));
   assert.equal(kq.gio_vao?.getTime(), moc_thoi_gian(T5, '08:00').getTime());
