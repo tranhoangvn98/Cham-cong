@@ -173,7 +173,7 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
 
     return truy_van(
       `select nv.id as nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
-              coalesce(sum(bc.so_cong) filter (where bc.trang_thai <> 'ngay_le'), 0) as tong_cong,
+              coalesce(sum(bc.so_cong), 0)                                  as tong_cong,
               coalesce(sum(bc.phut_lam), 0)::int                            as tong_phut_lam,
               coalesce(sum(bc.phut_ot), 0)::int                             as tong_phut_ot,
               coalesce(sum(bc.phut_muon), 0)::int                           as tong_phut_muon,
@@ -773,8 +773,7 @@ async function xuat_tong_hop_thang(
 ): Promise<unknown> {
   const dong = await truy_van<Record<string, unknown>>(
     `select nv.ma_nv, nv.ho_ten, pb.ten as phong_ban, cl.ten as ca_lam,
-            coalesce(sum(bc.so_cong) filter (where bc.trang_thai <> 'ngay_le'), 0)
-                                                                          as tong_cong,
+            coalesce(sum(bc.so_cong), 0)                             as tong_cong,
             coalesce(sum(bc.phut_lam), 0)::int                       as tong_phut_lam,
             coalesce(sum(bc.phut_ot), 0)::int                        as tong_phut_ot,
             coalesce(sum(bc.phut_muon), 0)::int                      as tong_phut_muon,

@@ -171,8 +171,7 @@ async function gan_trang_thai_bao(
 async function tong_hop_thang(nv_id: string, thang: string): Promise<unknown> {
   const { tu, den } = khoang_thang(thang);
   return truy_van_mot(
-    `select coalesce(sum(so_cong) filter (where trang_thai <> 'ngay_le'), 0)
-                                                                          as tong_cong,
+    `select coalesce(sum(so_cong), 0)        as tong_cong,
             coalesce(sum(phut_lam), 0)::int  as tong_phut_lam,
             coalesce(sum(phut_ot), 0)::int   as tong_phut_ot,
             coalesce(sum(phut_muon), 0)::int as tong_phut_muon,
