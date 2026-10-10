@@ -215,7 +215,7 @@ export function TrangGopYDuThao(): ReactNode {
       )}
 
       {tep_mo !== null && (
-        <HopThoai tieu_de={tep_mo.ten} khi_dong={dong_xem} rong>
+        <HopThoai tieu_de={tep_mo.ten} khi_dong={dong_xem} toan_man>
           {loi_xem !== null && <HopLoi loi={loi_xem} />}
           <div className="hang-nut" style={{ marginBottom: 8, justifyContent: 'flex-start', gap: 10 }}>
             <button className="nut"

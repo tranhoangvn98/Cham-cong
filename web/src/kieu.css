@@ -845,6 +845,9 @@ input[type="checkbox"] {
   max-width: 520px;
   max-height: 88vh;
   overflow-y: auto;
+  /* Khong bao gio cho thanh cuon NGANG trong hop thoai: noi dung rong (bang, docx) phai
+     tu co lai trong khung, khong day ngang man hinh. */
+  overflow-x: hidden;
   padding: 20px;
 }
 .hop-thoai-rong { max-width: 760px; }
