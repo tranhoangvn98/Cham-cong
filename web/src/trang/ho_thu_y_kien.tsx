@@ -5,8 +5,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { goi, gui_tep, chi_xem_quan_tri } from '../api.ts';
 import { lay_muc_tieu_bao, nghe_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import {
-  AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap,
-  ngay_gio,
+  AnhCoToken, DangTai, HopLoi, HopThoai, OKeoTep, ThreadKhieuNai, Trong, dung_hanh_dong,
+  dung_nap, ngay_gio,
   type TinNhanKN,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
@@ -372,8 +372,14 @@ function HopThoaiChiTiet(
             <label className="mo-ta" style={{ display: 'block', marginBottom: 2 }}>
               Thêm ảnh đính kèm (có thể chọn nhiều):
             </label>
-            <input type="file" accept="image/*" multiple disabled={hd.dang_chay}
-              onChange={(e) => { them_anh(e.target.files); e.currentTarget.value = ''; }} />
+            <OKeoTep
+              ma={`htyk-anh-${d.id}`}
+              accept="image/*"
+              nhieu
+              vo_hieu={hd.dang_chay}
+              gui_ngay
+              khi_nhan={(ds) => them_anh(ds)}
+            />
           </div>
           <div className="hang-nut" style={{ marginTop: 6 }}>
             <button className="nut-phang" disabled={hd.dang_chay || tra_loi_nd.trim().length < 1}

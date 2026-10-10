@@ -1,8 +1,9 @@
 // Thong bao (BGD/HR) cho nhan vien: doc, xac nhan da doc, va giai trinh khi thong bao yeu cau.
 // Dong con giai trinh no do (noti do) cho toi khi nhap xong — noi vao muc Khieu nai & giai trinh.
-import { useState, useRef, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
-  DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_gio,
+  DangTai, HopLoi, HopTot, HopThoai, OKeoTep, Trong, dung_hanh_dong, dung_nap, khoa_tinh,
+  ngay_gio,
 } from '../thanh_phan.tsx';
 import { goi, gui_tep, la_nhan_su, tai_tep } from '../api.ts';
 import { dung_phan_trang } from '../phan_trang.tsx';
@@ -163,7 +164,7 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
   const [popup, dat_popup] = useState(false);
   const [gui_email, dat_gui_email] = useState(false);
   const [xem_html, dat_xem_html] = useState<string | null>(null);
-  const tep_ref = useRef<HTMLInputElement | null>(null);
+  const [tep, dat_tep] = useState<File[]>([]);
   const hd = dung_hanh_dong();
   const { tra } = dung_chuoi();
 
@@ -184,8 +185,7 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
     fd.append('pham_vi', 'toan_cong_ty');
     fd.append('popup', String(popup));
     fd.append('gui_email', String(gui_email));
-    const tep = tep_ref.current?.files;
-    if (tep !== null && tep !== undefined && tep.length > 0) {
+    if (tep.length > 0) {
       fd.append('tep', tep[0] as File);
     }
     const ok = await hd.chay(
@@ -194,8 +194,7 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
     );
     if (ok) {
       dat_tieu_de(''); dat_noi_dung(''); dat_muc_do('thuong'); dat_can_gt(false);
-      dat_popup(false); dat_gui_email(false);
-      if (tep_ref.current !== null) tep_ref.current.value = '';
+      dat_popup(false); dat_gui_email(false); dat_tep([]);
       dat_mo(false); khi_xong();
     }
   };
@@ -216,9 +215,13 @@ function DangThongBao({ khi_xong }: { khi_xong: () => void }): ReactNode {
         <input value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)} /></label>
       <label className="truong"><span>{tra('tb_noi_dung')}</span>
         <textarea rows={6} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
-      <label className="truong"><span>{tra('tb_tep_kem_tuy_chon')}</span>
-        <input type="file" ref={tep_ref} accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" />
-      </label>
+      <div className="truong"><span>{tra('tb_tep_kem_tuy_chon')}</span>
+        <OKeoTep
+          ma="tb-tep-kem"
+          accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
+          khi_nhan={(ds) => dat_tep(Array.from(ds ?? []))}
+        />
+      </div>
       <div className="mo-ta" style={{ marginTop: -4 }}>
         {tra('tb_meo_trinh_bay', { a: '## Đề mục', b: '- ', c: '**chữ**' })}
       </div>

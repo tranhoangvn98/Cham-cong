@@ -870,6 +870,9 @@ export const CHUOI_VI = {
   thp_nguon_may: 'Máy chấm công',
   thp_nguon_dien_thoai: 'Điện thoại',
   thp_nguon_thu_cong: 'Nhập tay',
+  tep_keo_tha: 'Kéo thả tệp vào đây hoặc bấm để chọn',
+  tep_bo_chon: 'Bỏ chọn',
+  tep_chon_csv: 'Chọn tệp CSV',
 
   // ================================ soan van ban thu cong (van_ban.tsx)
   vb_soan_van_ban: '+ Soạn văn bản',

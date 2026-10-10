@@ -7,8 +7,8 @@ import { goi, gui_tep } from '../api.ts';
 import { lay_muc_tieu_bao, nghe_muc_tieu_bao } from '../dieu_huong_sau.ts';
 import { Chon, type TuyChonChon } from '../chon.tsx';
 import {
-  AnhCoToken, DangTai, HopLoi, HopThoai, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap,
-  khoa_tinh, ngay_gio, type TinNhanKN,
+  AnhCoToken, DangTai, HopLoi, HopThoai, OKeoTep, ThreadKhieuNai, Trong, dung_hanh_dong,
+  dung_nap, khoa_tinh, ngay_gio, type TinNhanKN,
 } from '../thanh_phan.tsx';
 import { dung_chuoi, tra_hien_tai, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
 
@@ -642,8 +642,12 @@ function HopThoaiKhieuNaiLuong(
       <textarea id="knnd" value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)}
         placeholder="Ví dụ: Công thực tế tháng này là 24 nhưng phiếu ghi 22…" rows={4} />
       <label htmlFor="knanh" style={{ marginTop: 10, display: 'block' }}>{tra('pl_anh_kem')}</label>
-      <input id="knanh" type="file" accept="image/*" multiple
-        onChange={(e) => dat_anh(Array.from(e.target.files ?? []))} />
+      <OKeoTep
+        ma="knanh"
+        nhieu
+        accept="image/*"
+        khi_nhan={(ds) => dat_anh(Array.from(ds ?? []))}
+      />
       {anh.length > 0 && (
         <div className="mo-ta" style={{ marginTop: 4 }}>
           {tra('pl_da_chon_x_anh', { n: anh.length, ten: anh.map((f) => f.name).join(', ') })}
@@ -706,8 +710,14 @@ function OThemAnhKN({ kn_id, khi_gui }: { kn_id: string; khi_gui: () => void }):
       <label className="mo-ta" style={{ display: 'block', marginBottom: 2 }}>
         {tra('pl_them_anh_minh_chung')}
       </label>
-      <input type="file" accept="image/*" multiple disabled={hd.dang_chay}
-        onChange={(e) => { them(e.target.files); e.currentTarget.value = ''; }} />
+      <OKeoTep
+        ma={`them-anh-kn-${kn_id}`}
+        accept="image/*"
+        nhieu
+        vo_hieu={hd.dang_chay}
+        gui_ngay
+        khi_nhan={(ds) => them(ds)}
+      />
     </div>
   );
 }

@@ -320,7 +320,7 @@ blockquote {
 .xem-truoc-van-ban .xvt-dong-dau {
   display: flex; justify-content: space-between; gap: 16px; margin-bottom: 18px;
 }
-.xem-truoc-van-ban .xvt-ngay { text-align: right; }
+.xem-truoc-van-ban .xvt-ngay { text-align: center; }
 .xem-truoc-van-ban .xvt-du-thao {
   border: 1px solid var(--canh-bao); color: var(--canh-bao);
   border-radius: var(--tron); padding: 1px 8px; font-weight: 700; letter-spacing: 1px;
@@ -338,12 +338,13 @@ blockquote {
 /* ND30: chuc vu + ho ten nguoi ky nam LECH PHAI, khong can giua. */
 .xem-truoc-van-ban .xvt-nguoi-ky { text-align: right; font-size: 13px; }
 .xem-truoc-van-ban .xvt-nguoi-ky > div { margin-bottom: 2px; }
-/* Hai cot dau thu (mau THVN): ten co quan ben TRAI + quoc hieu ben PHAI. */
-.xem-truoc-van-ban .xvt-cot-trai { flex: 0 0 42%; min-width: 0; }
-.xem-truoc-van-ban .xvt-cot-phai { flex: 1; text-align: right; min-width: 0; }
+/* Hai cot dau thu (mau THVN): ten co quan ben TRAI + quoc hieu ben PHAI;
+   noi dung MOI COT can GIUA trong cot cua minh (thang voi gach ngang). */
+.xem-truoc-van-ban .xvt-cot-trai { flex: 0 0 42%; min-width: 0; text-align: center; }
+.xem-truoc-van-ban .xvt-cot-phai { flex: 1; text-align: center; min-width: 0; }
 .xem-truoc-van-ban .xvt-gach-cot-trai,
 .xem-truoc-van-ban .xvt-gach-cot-phai { border-bottom: 1px solid var(--chu); margin: 6px 0; }
-.xem-truoc-van-ban .xvt-gach-cot-trai { width: 80%; }
+.xem-truoc-van-ban .xvt-gach-cot-trai { width: 80%; margin: 6px auto; }
 .xem-truoc-van-ban .xvt-gach-cot-phai { width: 100%; }
 .xem-truoc-van-ban .xvt-so { font-size: 13px; margin-top: 4px; }
 /* D-09: trich yeu cong van sat trai, khong dam. */
@@ -1227,6 +1228,47 @@ input[type="checkbox"] {
   background: var(--nen-mo);
   color: var(--chinh-dam);
 }
+
+/* ---------------------------------------------------------------- o chon tep (OKeoTep) */
+.o-tep { display: block; }
+.o-tep .o-keo-tha { width: 100%; }
+.o-tep .o-keo-tha .bt { color: var(--chinh-dam); }
+.o-tep .o-tep-chu { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.o-tep-vo-hieu .o-keo-tha { opacity: 0.55; cursor: not-allowed; }
+.o-tep-vo-hieu .o-keo-tha .bt { color: var(--chu-mo); }
+.o-tep-da-chon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  background: var(--nen-mo);
+  font-size: 12.5px;
+  color: var(--chu);
+}
+.o-tep-da-chon .bt { font-size: 15px; color: var(--chinh-dam); }
+.o-tep-ten {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.o-tep-xoa {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  padding: 3px 6px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--xau);
+  cursor: pointer;
+}
+.o-tep-xoa .bt { font-size: 12px; color: inherit; }
+.o-tep-xoa:hover { background: var(--xau-nen); }
 
 /* ---------------------------------------------------------------- xem nhanh tệp */
 .khung-xem-tep {

@@ -6,7 +6,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { goi, gui_tep, la_nhan_su, tai_tep } from '../api.ts';
 import {
-  DangTai, HopLoi, HopThoai, HopThoaiXemTep, HopTot, OSo, Trong,
+  DangTai, HopLoi, HopThoai, HopThoaiXemTep, HopTot, OKeoTep, OSo, Trong,
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet, ngay_gio,
 } from '../thanh_phan.tsx';
 import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
@@ -919,8 +919,11 @@ function FormTep(
         <HopTot chu={hd.tot} />
         <div className="o-nhap">
           <label htmlFor="tep_hs">Chọn tệp *</label>
-          <input id="tep_hs" type="file" accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
-            onChange={(e) => dat_tep(e.target.files?.[0] ?? null)} required />
+          <OKeoTep
+            ma="tep_hs"
+            accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
+            khi_nhan={(ds) => dat_tep(ds?.[0] ?? null)}
+          />
           <div className="goi-y">
             Nhận PDF, JPG, PNG, DOCX, XLSX — tối đa 15 MB. Loại tệp được nhận diện bằng nội dung
             thật, đổi đuôi tên không qua được. Tệp luôn được tải về chứ không mở trong trình duyệt.
@@ -1541,11 +1544,15 @@ function PanelTaiLieu(
                         />
                         {thay_xoa_duoc && (
                           <div className="hang-nut" style={{ marginTop: 6, gap: 6 }}>
-                            <OKeoTha
-                              khi_nhan={(tep) => void nhan_tep(d, tep)}
+                            <OKeoTep
                               ma={`${d.ma}-thay`}
                               nhan="Thay tệp khác"
                               gon
+                              gui_ngay
+                              khi_nhan={(ds) => {
+                                const tep = ds?.[0];
+                                if (tep !== undefined) void nhan_tep(d, tep);
+                              }}
                             />
                             <button
                               className="nut-nho nut-nguy"
@@ -1557,7 +1564,14 @@ function PanelTaiLieu(
                         )}
                       </>
                     ) : sua_duoc ? (
-                      <OKeoTha khi_nhan={(tep) => void nhan_tep(d, tep)} ma={d.ma} />
+                      <OKeoTep
+                        ma={d.ma}
+                        gui_ngay
+                        khi_nhan={(ds) => {
+                          const tep = ds?.[0];
+                          if (tep !== undefined) void nhan_tep(d, tep);
+                        }}
+                      />
                     ) : '—'}
                   </td>
                   {sua_duoc && (
@@ -1611,49 +1625,11 @@ function TepDaNop(
   );
 }
 
-/** Ô kéo-thả cho từng dòng tài liệu, đúng như bản demo. */
-function OKeoTha(
-  { khi_nhan, ma, nhan, gon }: {
-    khi_nhan: (tep: File) => void;
-    ma: string;
-    /** Chu trong o. Mac dinh la loi moi tai len lan dau. */
-    nhan?: string;
-    /** Ban gon, dung khi o nam canh mot tep da co chu khong phai thay cho no. */
-    gon?: boolean;
-  },
-): ReactNode {
-  const [dang_ke, dat_dang_ke] = useState(false);
-
-  return (
-    <label
-      htmlFor={`tep_${ma}`}
-      className={
-        `${dang_ke ? 'o-keo-tha dang-ke' : 'o-keo-tha'}${gon === true ? ' o-keo-tha-gon' : ''}`
-      }
-      onDragOver={(e) => { e.preventDefault(); dat_dang_ke(true); }}
-      onDragLeave={() => dat_dang_ke(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        dat_dang_ke(false);
-        const tep = e.dataTransfer.files?.[0];
-        if (tep !== undefined) khi_nhan(tep);
-      }}
-    >
-      {nhan ?? 'Kéo thả hoặc bấm để tải lên'}
-      <input
-        id={`tep_${ma}`}
-        type="file"
-        accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          const tep = e.target.files?.[0];
-          if (tep !== undefined) khi_nhan(tep);
-          e.target.value = '';
-        }}
-      />
-    </label>
-  );
-}
+/**
+ * O keo-tha cho tung dong tai lieu da duoc go lai thanh component dung chung
+ * `OKeoTep` trong thanh_phan.tsx — khong giu ban cuoc bo nua de moi cho tai tep
+ * len trong app co CUNG mot kieu (xem dau file thanh_phan.tsx).
+ */
 
 function FormDongTaiLieu(
   { nhan_vien_id, dong, khi_dong, khi_xong }: {

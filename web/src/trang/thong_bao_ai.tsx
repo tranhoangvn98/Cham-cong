@@ -9,7 +9,8 @@
 //     trinh ky, ban hanh (cap so), huy.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  DangTai, HopLoi, HopTot, HopThoai, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_gio,
+  DangTai, HopLoi, HopTot, HopThoai, OKeoTep, Trong, dung_hanh_dong, dung_nap, khoa_tinh,
+  ngay_gio,
 } from '../thanh_phan.tsx';
 import { goi, tai_tep, tai_tep_blob, gui_tep } from '../api.ts';
 import { Chon } from '../chon.tsx';
@@ -143,7 +144,7 @@ function FormTao(
   const [can_cu, dat_can_cu] = useState('');
   const [dieu, dat_dieu] = useState('');
   const [noi_dung, dat_noi_dung] = useState('');
-  const tep_ref = useRef<HTMLInputElement | null>(null);
+  const [tep, dat_tep] = useState<File[]>([]);
   const hd = dung_hanh_dong();
   const [loi_vao, dat_loi_vao] = useState<string | null>(null);
   const { tra } = dung_chuoi();
@@ -200,11 +201,10 @@ function FormTao(
     );
     if (kq !== null) {
       // Tep dinh kem (neu co): tai len tung tep, loi thi giu modal mo de nguoi dung biet.
-      const tep = tep_ref.current?.files;
-      if (tep !== null && tep !== undefined && tep.length > 0) {
+      if (tep.length > 0) {
         const ok_tep = await hd.chay(
           async () => {
-            for (const t of Array.from(tep)) {
+            for (const t of tep) {
               const fd = new FormData();
               fd.append('tep', t);
               await gui_tep(`/api/thong-bao/ai/${kq.id}/tep-kem`, fd);
@@ -215,8 +215,7 @@ function FormTao(
         if (!ok_tep) return;
       }
       dat_tho(''); dat_trich_yeu(''); dat_kinh_gui(''); dat_can_cu(''); dat_dieu('');
-      dat_noi_dung(''); dat_la_qd(false); dat_ngay_nghi('');
-      if (tep_ref.current !== null) tep_ref.current.value = '';
+      dat_noi_dung(''); dat_la_qd(false); dat_ngay_nghi(''); dat_tep([]);
       dat_mo(false); khi_xong(kq.id);
     }
   };
@@ -372,10 +371,14 @@ function FormTao(
               <textarea rows={5} value={noi_dung} onChange={(e) => dat_noi_dung(e.target.value)} /></label>
           </>
         )}
-        <label className="truong"><span>{tra('vai_tep_kem')}</span>
-          <input type="file" multiple ref={tep_ref}
-            accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" />
-        </label>
+        <div className="truong"><span>{tra('vai_tep_kem')}</span>
+          <OKeoTep
+            ma="vai-soan-tep"
+            nhieu
+            accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
+            khi_nhan={(ds) => dat_tep(Array.from(ds ?? []))}
+          />
+        </div>
         <div className="mo-ta" style={{ marginTop: -4 }}>{tra('vai_toi_da_10_tep')}</div>
       </div>
       <div className="hang-nut">
@@ -564,15 +567,14 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
   const [t_can_cu, dat_t_can_cu] = useState('');
   const [t_dieu, dat_t_dieu] = useState('');
   const [t_noi_dung, dat_t_noi_dung] = useState('');
-  const o_tep = useRef<HTMLInputElement | null>(null);
+  const [tep_cho, dat_tep_cho] = useState<File[]>([]);
 
   const them_tep = async (): Promise<void> => {
     if (d === null) return;
-    const tep = o_tep.current?.files;
-    if (tep === null || tep === undefined || tep.length === 0) return;
+    if (tep_cho.length === 0) return;
     const ok = await hd.chay(
       async () => {
-        for (const t of Array.from(tep)) {
+        for (const t of tep_cho) {
           const fd = new FormData();
           fd.append('tep', t);
           await gui_tep(`/api/thong-bao/ai/${d.id}/tep-kem`, fd);
@@ -581,7 +583,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
       tra('vai_da_dinh_kem_tep'),
     );
     if (ok) {
-      if (o_tep.current !== null) o_tep.current.value = '';
+      dat_tep_cho([]);
       nap_lai();
     }
   };
@@ -782,11 +784,18 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
           </div>
         )}
         {!['da_phat_hanh', 'huy'].includes(d.trang_thai) && (
-          <div className="hang-nut" style={{ marginTop: 8 }}>
-            <input type="file" ref={o_tep} accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" />
-            <button className="nut-phang" disabled={hd.dang_chay} onClick={() => { void them_tep(); }}>
-              {hd.dang_chay ? tra('vai_dang_tai') : tra('vai_dinh_kem_tep')}
-            </button>
+          <div style={{ marginTop: 8 }}>
+            <OKeoTep
+              ma="vai-chi-tiet-tep"
+              accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
+              khi_nhan={(ds) => dat_tep_cho(Array.from(ds ?? []))}
+            />
+            <div className="hang-nut" style={{ marginTop: 8 }}>
+              <button className="nut-phang" disabled={hd.dang_chay || tep_cho.length === 0}
+                onClick={() => { void them_tep(); }}>
+                {hd.dang_chay ? tra('vai_dang_tai') : tra('vai_dinh_kem_tep')}
+              </button>
+            </div>
           </div>
         )}
       </div>

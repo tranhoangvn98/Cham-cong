@@ -872,6 +872,9 @@ export const CHUOI_ZH = {
   thp_nguon_may: '考勤机',
   thp_nguon_dien_thoai: '手机',
   thp_nguon_thu_cong: '手工录入',
+  tep_keo_tha: '拖放文件到此处，或点击选择',
+  tep_bo_chon: '移除',
+  tep_chon_csv: '选择 CSV 文件',
 
   // ================================ 手动起草文件（van_ban.tsx）
   vb_soan_van_ban: '+ 起草制度',

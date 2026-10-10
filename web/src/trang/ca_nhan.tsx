@@ -55,7 +55,7 @@ class RanhGioiLoi extends Component<{ children: ReactNode }, { loi: Error | null
   }
 }
 import {
-  HopLoi, HopThoai, OSo, Trong, XuongDanhSach,
+  HopLoi, HopThoai, OSo, Trong, XuongDanhSach, OKeoTep,
   dung_hanh_dong, dung_nap, dung_xac_nhan,
   gio_ngan, hom_nay, ngay_viet, phut_thanh_chu, thang_nay, thu_cua_ngay,
   NhanDon, TEN_NGUON,
@@ -2119,14 +2119,15 @@ function SheetDangKyOt({ khi_dong, khi_xong }: {
           />
         </NhanO>
 
-        <NhanO nhan={tra('cn_tai_lieu_kem')}>
-          <input
-            type="file"
+        <div className="cn-o">
+          <span className="cn-o-nhan">{tra('cn_tai_lieu_kem')}</span>
+          <OKeoTep
+            ma="ot-tai-lieu"
             accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-            onChange={(e) => dat_tep(e.target.files?.[0] ?? null)}
+            khi_nhan={(ds) => dat_tep(ds?.[0] ?? null)}
           />
           {tep !== null && <span className="cn-chu-nho">{tra('cn_da_chon_tep', { n: tep.name })}</span>}
-        </NhanO>
+        </div>
 
         <div className="hop-thong-bao hop-tin">
           {tra('cn_hop_ot_2_cap')}
@@ -2211,19 +2212,20 @@ function SheetKetQuaOt({ don, khi_dong, khi_xong }: {
           </div>
         )}
 
-        <NhanO nhan={tra('cn_anh_ket_qua')}>
-          <input
-            type="file"
-            multiple
+        <div className="cn-o">
+          <span className="cn-o-nhan">{tra('cn_anh_ket_qua')}</span>
+          <OKeoTep
+            ma="ot-ket-qua-anh"
+            nhieu
             accept="image/jpeg,image/png"
-            onChange={(e) => dat_anh(Array.from(e.target.files ?? []).slice(0, 5))}
+            khi_nhan={(ds) => dat_anh(Array.from(ds ?? []).slice(0, 5))}
           />
           {anh.length > 0 && (
             <span className="cn-chu-nho">
               {tra('cn_da_chon_x_anh', { n: anh.length, ten: anh.map((a) => a.name).join(', ') })}
             </span>
           )}
-        </NhanO>
+        </div>
 
         <NhanO nhan={tra('cn_ghi_chu_khong_bat_buoc')}>
           <textarea className="cn-nhap" rows={2} value={ghi_chu} onChange={(e) => dat_ghi_chu(e.target.value)} />

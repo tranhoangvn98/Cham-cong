@@ -215,6 +215,92 @@ export function dung_nap<T>(duong_dan: string | null, khoa: unknown[] = []): Ket
 }
 
 // ============================================================ hop thoai
+// ============================================================ o chon tep hien dai
+//
+// Thay cho <input type="file"> goc cua trinh duyet ("Choose file / No file chosen") — nut
+// khong theo font, mau hay bo goc cua app, va khong the lam dep duoc. O nay la mot hop
+// keo-tha dung token thiet ke (`o-keo-tha`), hien ten tep da chon kem nut bo chon.
+export interface TuyChonOKeoTep {
+  /** Ma duy nhat trong trang — sinh id cho o va input an. */
+  ma: string;
+  /** Goi moi lan nguoi dung chon xong; bo chon thi nhan danh sach rong (null). */
+  khi_nhan: (ds: FileList | null) => void;
+  /** Chu hien trong o. Mac dinh lay khoa 'tep_keo_tha' tu tu dien song ngu. */
+  nhan?: string;
+  /** Dong chu nho hien duoi o (gioi han loai tep, so luong...). */
+  nhan_phu?: string;
+  /** Cho phep chon nhieu tep mot luc. */
+  nhieu?: boolean;
+  accept?: string;
+  vo_hieu?: boolean;
+  /** Ban gon — dung khi o nam CANH mot tep da co, khong phai thay cho no. */
+  gon?: boolean;
+  /**
+   * Luong "chon la gui ngay": sau khi goi `khi_nhan`, o tro ve trang thai rong de nguoi
+   * dung chon lai duoc chinh tep vua chon.
+   */
+  gui_ngay?: boolean;
+}
+
+export function OKeoTep(
+  { ma, khi_nhan, nhan, nhan_phu, nhieu = false, accept, vo_hieu = false, gon = false,
+    gui_ngay = false }: TuyChonOKeoTep,
+): ReactNode {
+  const [ds, dat_ds] = useState<FileList | null>(null);
+  const [dang_ke, dat_dang_ke] = useState(false);
+
+  const nhan_ds = (m: FileList | null): void => {
+    dat_ds(gui_ngay ? null : m);
+    khi_nhan(m);
+  };
+
+  const ten = ds === null ? [] : Array.from(ds).map((f) => f.name);
+
+  return (
+    <div className={vo_hieu ? 'o-tep o-tep-vo-hieu' : 'o-tep'}>
+      <label
+        htmlFor={`o-tep-${ma}`}
+        className={`o-keo-tha${gon ? ' o-keo-tha-gon' : ''}${dang_ke && !vo_hieu ? ' dang-ke' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); if (!vo_hieu) dat_dang_ke(true); }}
+        onDragLeave={() => dat_dang_ke(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          dat_dang_ke(false);
+          if (vo_hieu) return;
+          if (e.dataTransfer.files.length > 0) nhan_ds(e.dataTransfer.files);
+        }}
+      >
+        <i className="bt bt-plus" aria-hidden="true" />
+        <span className="o-tep-chu">{nhan ?? tra_hien_tai('tep_keo_tha')}</span>
+      </label>
+      <input
+        id={`o-tep-${ma}`}
+        type="file"
+        accept={accept}
+        multiple={nhieu}
+        disabled={vo_hieu}
+        style={{ display: 'none' }}
+        onChange={(e) => { nhan_ds(e.target.files); e.target.value = ''; }}
+      />
+      {nhan_phu !== undefined && nhan_phu !== '' && <div className="goi-y">{nhan_phu}</div>}
+      {ten.length > 0 && (
+        <div className="o-tep-da-chon">
+          <i className="bt bt-file-text" aria-hidden="true" />
+          <span className="o-tep-ten">{ten.join(' · ')}</span>
+          <button
+            type="button"
+            className="o-tep-xoa"
+            title={tra_hien_tai('tep_bo_chon')}
+            onClick={() => nhan_ds(null)}
+          >
+            <i className="bt bt-x" aria-hidden="true" /> {tra_hien_tai('tep_bo_chon')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface HopThoaiProps {
   tieu_de: string;
   children: ReactNode;
@@ -582,7 +668,6 @@ export function HopThoaiNhap(
   },
 ): ReactNode {
   const [noi_dung, dat_noi_dung] = useState('');
-  const [ten_tep, dat_ten_tep] = useState('');
   const [xem, dat_xem] = useState<TomTatNhap | null>(null);
   const [da_nhap, dat_da_nhap] = useState(false);
   const hd = dung_hanh_dong();
@@ -596,10 +681,7 @@ export function HopThoaiNhap(
     dat_da_nhap(false);
   }, [khoa_tuy_chon]);
 
-  const chon_tep = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
-    const f = e.target.files?.[0];
-    if (f === undefined) return;
-    dat_ten_tep(f.name);
+  const chon_tep = async (f: File): Promise<void> => {
     dat_xem(null);
     dat_da_nhap(false);
     dat_noi_dung(await f.text());
@@ -652,10 +734,15 @@ export function HopThoaiNhap(
       {tuy_chon}
 
       <div className="o-nhap">
-        <label htmlFor="tep">Chọn tệp CSV</label>
-        <input id="tep" type="file" accept=".csv,.txt,.dat,text/csv,text/plain"
-          onChange={(e) => void chon_tep(e)} />
-        {ten_tep !== '' && <div className="goi-y">{ten_tep}</div>}
+        <OKeoTep
+          ma="nhap-csv"
+          accept=".csv,.txt,.dat,text/csv,text/plain"
+          nhan={tra_hien_tai('tep_chon_csv')}
+          khi_nhan={(ds) => {
+            const f = ds?.[0];
+            if (f !== undefined) void chon_tep(f);
+          }}
+        />
       </div>
 
       {xem !== null && (

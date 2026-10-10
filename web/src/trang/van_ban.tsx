@@ -6,9 +6,9 @@
 //
 // Mot duong dan con cho moi tab (bookmark / nut Lui chay duoc): /van-ban, /van-ban/ban-hanh,
 // /van-ban/tai-lieu. Khong con trang "Van ban AI" hay "Thong bao" dung rieng.
-import { useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
-  DangTai, HopLoi, HopTot, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_gio,
+  DangTai, HopLoi, HopTot, OKeoTep, Trong, dung_hanh_dong, dung_nap, khoa_tinh, ngay_gio,
   ngay_viet,
 } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
@@ -91,7 +91,7 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
   const [nhan_vien_id, dat_nhan_vien_id] = useState('');
   const [gui_he_thong, dat_gui_he_thong] = useState(true);
   const [gui_email, dat_gui_email] = useState(false);
-  const tep_ref = useRef<HTMLInputElement>(null);
+  const [tep, dat_tep] = useState<File | null>(null);
   const hd = dung_hanh_dong();
   const { tra } = dung_chuoi();
 
@@ -104,13 +104,12 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
     dat_tieu_de(''); dat_noi_dung(''); dat_nguoi_ban_hanh(''); dat_danh_muc('thong_bao');
     dat_pham_vi('toan_cong_ty'); dat_phong_ban_id(''); dat_nhan_vien_id('');
     dat_gui_he_thong(true); dat_gui_email(false);
-    if (tep_ref.current !== null) tep_ref.current.value = '';
+    dat_tep(null);
   };
 
   const gui = async (): Promise<void> => {
     if (pham_vi === 'phong_ban' && phong_ban_id === '') return;
     if (pham_vi === 'ca_nhan' && nhan_vien_id === '') return;
-    const tep = tep_ref.current?.files?.[0];
     const fd = new FormData();
     fd.append('tieu_de', tieu_de);
     fd.append('danh_muc', danh_muc);
@@ -121,7 +120,7 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
     if (pham_vi === 'ca_nhan') fd.append('nhan_vien_id', nhan_vien_id);
     fd.append('gui_he_thong', gui_he_thong ? 'true' : 'false');
     fd.append('gui_email', gui_email ? 'true' : 'false');
-    if (tep !== undefined) fd.append('tep', tep);
+    if (tep !== null) fd.append('tep', tep);
 
     const ok = await hd.chay(() => gui_tep('/api/van-ban', fd), tra('vb_da_ban_hanh'));
     if (ok) { dat_lai(); dat_mo(false); khi_xong(); }
@@ -137,7 +136,7 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
 
   const thieu_muc_tieu = (pham_vi === 'phong_ban' && phong_ban_id === '')
     || (pham_vi === 'ca_nhan' && nhan_vien_id === '');
-  const thieu_noi_dung = noi_dung.trim() === '' && (tep_ref.current?.files?.length ?? 0) === 0;
+  const thieu_noi_dung = noi_dung.trim() === '' && tep === null;
 
   return (
     <div className="the tb-dang">
@@ -167,8 +166,13 @@ function SoanVanBan({ khi_xong }: { khi_xong: () => void }): ReactNode {
         <textarea rows={8} value={noi_dung} placeholder={tra('vb_noi_dung_phu')}
           onChange={(e) => dat_noi_dung(e.target.value)} /></label>
 
-      <label className="truong"><span>{tra('vb_tep_kem')}</span>
-        <input type="file" ref={tep_ref} accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" /></label>
+      <div className="truong"><span>{tra('vb_tep_kem')}</span>
+        <OKeoTep
+          ma="vb-tep-kem"
+          accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
+          khi_nhan={(ds) => dat_tep(ds?.[0] ?? null)}
+        />
+      </div>
 
       <div className="tb-dang-hang">
         <label className="truong"><span>{tra('vb_pham_vi')}</span>

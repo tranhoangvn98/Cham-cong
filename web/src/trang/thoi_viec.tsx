@@ -9,7 +9,7 @@
 import { useState, type ReactNode } from 'react';
 import { goi, gui_tep, tai_tep, la_nhan_su } from '../api.ts';
 import {
-  dung_nap, dung_hanh_dong, dung_xac_nhan, Trong, HopThoaiXemTep,
+  dung_nap, dung_hanh_dong, dung_xac_nhan, Trong, HopThoaiXemTep, OKeoTep,
   ngay_viet, ngay_gio, hom_nay,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
@@ -719,14 +719,17 @@ export function TrangHuongDanThoiViec(): ReactNode {
               : <button type="button" className="nut-chinh" onClick={() => void tick(m)}>
                   Xác nhận đã xong
                 </button>}
-            <label className="nut-phang tv-nut-tep">
-              <i className="bt bt-download" aria-hidden="true" /> Đính kèm bằng chứng
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
-                onChange={(e) => {
-                  const tep = e.target.files?.[0];
-                  if (tep !== undefined) void len_tep(m, tep);
-                }} />
-            </label>
+            <OKeoTep
+              ma={`tv-bang-chung-${m.id}`}
+              accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
+              nhan="Đính kèm bằng chứng"
+              gon
+              gui_ngay
+              khi_nhan={(ds) => {
+                const tep = ds?.[0];
+                if (tep !== undefined) void len_tep(m, tep);
+              }}
+            />
             {m.ma_muc === 'ky_cam_ket_bao_mat' && (
               <button type="button" className="nut-lanh" onClick={() => void ky(m)}>
                 Ký cam kết bảo mật
