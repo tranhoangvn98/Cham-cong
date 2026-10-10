@@ -74,8 +74,29 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   await app.register(cors, {
     origin: cau_hinh.cors_origin.length === 0 ? false : cau_hinh.cors_origin,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['content-type', 'authorization'],
+    allowedHeaders: ['content-type', 'authorization', 'x-web-phien-ban'],
     maxAge: 86400,
+  });
+
+  // -------------------------------------------------------------------- chan web ban cu
+  //
+  // Ban web CU — tab dang mo tu truoc luc trien khai, bo nho dem giu bundle cu — khong gui
+  // header `x-web-phien-ban` (web/src/api.ts). Chan bang 426 kem loi noi nguoi dung tai lai
+  // trang: nho vay "giao dien cu bi loi" khong the song lai du tab van de mo.
+  //
+  // Chi chan khi chac chan request den TU TRINH DUYET WEBAPP: Referer chua tien to trien
+  // khai (/chamcong...). App dien thoai (fetch goc, khong Referer), tich hop ERP (goi may
+  // chu), MCP va may ADMS deu khong co Referer nen khong bao gio bi chan.
+  const WEB_TIEN_TO = '/chamcong';
+  app.addHook('onRequest', async (req, res) => {
+    if (req.method === 'OPTIONS') return;
+    if (!req.url.startsWith('/api/')) return;
+    const ref = req.headers.referer;
+    if (typeof ref !== 'string' || !ref.includes(WEB_TIEN_TO)) return;
+    if (typeof req.headers['x-web-phien-ban'] === 'string') return;
+    return res.code(426).header('content-type', 'application/json; charset=utf-8').send({
+      loi: 'Giao diện đã cập nhật phiên bản mới. Vui lòng tải lại trang (F5).',
+    });
   });
 
   // -------------------------------------------------------------------- rate limit

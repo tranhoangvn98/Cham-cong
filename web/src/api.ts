@@ -1,5 +1,11 @@
 // Lop goi API. Giu token trong bo nho + localStorage, tu lam moi khi 401.
 
+// Ma phien ban do vite.config.ts nhung luc build (define __PHIEN_BAN__). Gui kem moi
+// request de may chu NHA RA ban web cu (tab dang chay ma cu khong co header nay) va chan
+// lai 426 — nho vay giao dien cu khong the song lai du tab dang mo tu truoc.
+declare const __PHIEN_BAN__: string;
+const DAU_PB = { 'x-web-phien-ban': __PHIEN_BAN__ };
+
 /**
  * Goc cua API.
  *
@@ -96,7 +102,7 @@ export async function nhan_phien_tu_neo(): Promise<string | null> {
   don_dia_chi();
   // Chua co thong tin nguoi dung — lay bang chinh token vua nhan.
   const res = await fetch(`${GOC}/api/xac-thuc/toi`, {
-    headers: { authorization: `Bearer ${truy_cap}` },
+    headers: { authorization: `Bearer ${truy_cap}`, ...DAU_PB },
   });
   if (!res.ok) return 'Không lấy được thông tin tài khoản sau khi đăng nhập.';
   const nd = (await res.json()) as NguoiDung & { mui_gio_offset_gio?: number };
@@ -299,7 +305,9 @@ export async function nap_phien_cong(): Promise<string | null> {
   if (t === null) return null;
   let res: Response;
   try {
-    res = await fetch(`${GOC}/api/xac-thuc/toi`, { headers: { authorization: `Bearer ${t}` } });
+    res = await fetch(`${GOC}/api/xac-thuc/toi`, {
+      headers: { authorization: `Bearer ${t}`, ...DAU_PB },
+    });
   } catch {
     return 'Không kết nối được máy chủ chấm công.';
   }
@@ -444,7 +452,7 @@ async function lam_moi_token(): Promise<boolean> {
     try {
       const res = await fetch(`${GOC}/api/xac-thuc/lam-moi`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...DAU_PB },
         body: JSON.stringify({ token_lam_moi: phien?.token_lam_moi }),
       });
       if (!res.ok) {
@@ -473,7 +481,7 @@ interface TuyChonGoi {
 export async function goi<T = unknown>(duong_dan: string, tc: TuyChonGoi = {}): Promise<T> {
   let token_da_gui: string | null = null;
   const gui = async (): Promise<Response> => {
-    const header: Record<string, string> = {};
+    const header: Record<string, string> = { ...DAU_PB };
     if (tc.body !== undefined) header['content-type'] = 'application/json';
     // O che do cong: DOC LAI token moi lan goi. Cong xoay token trong tab khac hay o khung
     // ngoai thi ta nhan duoc ban moi ngay, khong phai tai lai trang.
@@ -547,7 +555,7 @@ export async function dang_xuat(): Promise<void> {
     try {
       await fetch(`${GOC}/api/xac-thuc/dang-xuat`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...DAU_PB },
         body: JSON.stringify({ token_lam_moi: tlm }),
       });
     } catch {
@@ -574,7 +582,9 @@ export async function doi_mat_khau(mat_khau_cu: string, mat_khau_moi: string): P
 export async function gui_tep<T = unknown>(duong_dan: string, du_lieu: FormData): Promise<T> {
   const res = await fetch(`${GOC}${duong_dan}`, {
     method: 'POST',
-    headers: phien === null ? {} : { authorization: `Bearer ${phien.token_truy_cap}` },
+    headers: phien === null
+      ? { ...DAU_PB }
+      : { authorization: `Bearer ${phien.token_truy_cap}`, ...DAU_PB },
     body: du_lieu,
   });
   const than: unknown = await res.json().catch(() => null);
@@ -598,7 +608,7 @@ async function fetch_xac_thuc(duong_dan: string): Promise<Response> {
     const t = dung_cong_sso() ? doc_token_cong() : phien?.token_truy_cap ?? null;
     token_da_gui = t;
     return fetch(`${GOC}${duong_dan}`, {
-      headers: t === null ? {} : { authorization: `Bearer ${t}` },
+      headers: t === null ? { ...DAU_PB } : { authorization: `Bearer ${t}`, ...DAU_PB },
     });
   };
   let res = await gui();
@@ -636,7 +646,9 @@ export async function tai_tep(duong_dan: string, ten_tep: string): Promise<void>
 /** Tai tep nhi phan co xac thuc ve Blob thuong — cho render docx online. */
 export async function tai_tep_blob(duong_dan: string): Promise<Blob> {
   const res = await fetch(`${GOC}${duong_dan}`, {
-    headers: phien === null ? {} : { authorization: `Bearer ${phien.token_truy_cap}` },
+    headers: phien === null
+      ? { ...DAU_PB }
+      : { authorization: `Bearer ${phien.token_truy_cap}`, ...DAU_PB },
   });
   if (!res.ok) {
     const than: unknown = await res.json().catch(() => null);

@@ -406,11 +406,12 @@ function BoCuc(): ReactNode {
     );
   }
 
-  // Trang "Khu vuc cua toi" chiem TOAN MAN HINH bang vo rieng cua mau thiet ke (thanh ben
-  // toi + 5 tab + tab duoi tren man hep). O goc nhin Ca nhan, Trang chu CHINH LA trang nay —
-  // khong con vo chung co thanh ben quan tri. Nguoi co quyen quan tri co nut quay lai.
-  // Duong dan con `/ca-nhan/...` mo dung tab tuong ung (tro ly, chuong bao, lien ket ngoai).
-  if (duong_dan.startsWith('/ca-nhan') || (gn === 'ca_nhan' && duong_dan === '/')) {
+  // Goc nhin Ca nhan: MOI duong dan deu nam trong vo ca nhan (TrangCaNhan) — ke ca cac route
+  // ngoai `/ca-nhan/*` (gop y du thao mo tu email, ho thu y kien, cong viec, duyet don...).
+  // TrangCaNhan tu map cac route do vao dung tab / man phu, hoac chuyen han sang vo quan tri
+  // voi cac trang quan tri. Nho vay nguoi dung o goc nhin Ca nhan KHONG BAO GIO thay vo quan
+  // tri cu (thanh ben "Khu vuc cua toi") — khong con "quay lai giao dien cu".
+  if (gn === 'ca_nhan' || duong_dan.startsWith('/ca-nhan')) {
     return (
       <>
         <PopupThongBao />
@@ -484,10 +485,9 @@ function BoCuc(): ReactNode {
         <div className="chan-thanh-ben">
           {la_quan_tri() && (
             <div className="chuyen-goc-nhin" role="group" aria-label={tra('chuyen_goc_nhin')}>
-              <button className={gn === 'quan_tri' ? 'dang-chon' : undefined}
+              <button className="dang-chon"
                 onClick={() => doi_goc_nhin('quan_tri')}>{tra('quan_tri')}</button>
-              <button className={gn === 'ca_nhan' ? 'dang-chon' : undefined}
-                onClick={() => doi_goc_nhin('ca_nhan')}>{tra('ca_nhan')}</button>
+              <button onClick={() => doi_goc_nhin('ca_nhan')}>{tra('ca_nhan')}</button>
             </div>
           )}
           <div className="ten-nguoi">{nd?.ho_ten ?? nd?.ten_dang_nhap}</div>
@@ -579,11 +579,10 @@ function BoCuc(): ReactNode {
           */}
           {duong_dan !== '/' && <KhungHuongDan key={duong_dan} duong_dan={duong_dan} />}
           <CungCapTieuDe dat={dat_tieu_de_trang}>
-            <NoiDung duong_dan={duong_dan} ca_nhan={gn === 'ca_nhan'} />
+            <NoiDung duong_dan={duong_dan} ca_nhan={false} />
           </CungCapTieuDe>
         </div>
-        {gn === 'ca_nhan' && <TroLyCaNhan />}
-        {gn === 'quan_tri' && la_nhan_su() && <TroLyQuanTri />}
+        {la_nhan_su() && <TroLyQuanTri />}
         <TroLyThoiViec />
       </main>
     </div>

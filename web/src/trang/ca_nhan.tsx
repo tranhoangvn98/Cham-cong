@@ -15,6 +15,9 @@ import { TrangPhieuLuongToi, TrangKhieuNaiToi } from './phieu_luong_toi.tsx';
 import { YKienToi } from './y_kien_toi.tsx';
 import { ViecToi } from './viec_toi.tsx';
 import { TrangVanBan } from './van_ban.tsx';
+import { TrangGopYDuThao } from './gop_y_du_thao.tsx';
+import { TrangDuyetDon } from './duyet_don.tsx';
+import { TrangHuongDanThoiViec } from './thoi_viec.tsx';
 import { ChuongBao } from './chuong_bao.tsx';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
 import { dung_chuoi, tra_hien_tai, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
@@ -381,6 +384,14 @@ function tra_khoa(k: ChuoiKhoa | undefined, thay: string): string {
 type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'phep' | 'khieu_nai' | 'viec' | 'y_kien' | 'ca_nhan';
 type FormMo = 'nghi' | 'giai' | 'khac' | 'ot';
 
+/**
+ * Man phu nam ngoai 9 tab chinh, mo NGAY TRONG vo ca nhan chu khong dieu huong ra route
+ * rieng — dieu huong ra se roi ve vo quan tri cu ("quay lai giao dien cu"). Gom: Thong bao,
+ * Van ban cong ty, Gop y du thao (mo tu email / nut Gop y), Duyet don (truong phong khong
+ * co quyen quan tri), Huong dan thoi viec.
+ */
+type ManPhu = 'thong_bao' | 'van_ban' | 'gop_y_du_thao' | 'duyet_don' | 'thoi_viec' | null;
+
 // Ten icon KHONG kem tien to `bt-` (giong MENU o App.tsx) — noi render tu ghep `bt bt-${icon}`.
 // De ca tien to o day thi bai kiem thiet_ke/icon.test.mjs (doc `icon: '...'`) hieu nham ten icon
 // la `bt-...` va bao thieu, du glyph van hien dung.
@@ -484,13 +495,18 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
   const { duong_dan, di_toi } = dung_tuyen();
   const { tra, ngon_ngu, dat } = dung_chuoi();
   // Tab ban dau doc tu duong dan that (tro ly mo `/ca-nhan/luong` thi vao thang tab Luong).
-  const [tab, dat_tab] = useState<Tab>(() => DUONG_TAB[duong_dan] ?? 'trang_chu');
+  const [tab, dat_tab] = useState<Tab>(() => DUONG_TAB[duong_dan]
+    ?? (duong_dan === '/gop-y-du-thao' ? 'y_kien' : 'trang_chu'));
   const [mo_form, dat_mo_form] = useState<FormMo | null>(null);
   // Man PHU nam ngoai 5 tab chinh (Thong bao, Van ban cong ty): mo ngay TRONG vo ca nhan chu
   // khong dieu huong ra route rieng — dieu huong ra se roi ve vo quan tri cu ("quay lai giao
-  // dien cu"). null = dang xem mot trong 5 tab.
-  const [man_phu, dat_man_phu] = useState<'thong_bao' | 'van_ban' | null>(
-    duong_dan === '/ca-nhan/thong-bao' ? 'thong_bao' : duong_dan === '/ca-nhan/van-ban' ? 'van_ban' : null);
+  // dien cu"). null = dang xem mot trong 9 tab.
+  const [man_phu, dat_man_phu] = useState<ManPhu>(
+    duong_dan === '/ca-nhan/thong-bao' ? 'thong_bao'
+    : duong_dan === '/ca-nhan/van-ban' ? 'van_ban'
+    : duong_dan === '/gop-y-du-thao' ? 'gop_y_du_thao'
+    : duong_dan === '/thoi-viec/huong-dan' ? 'thoi_viec'
+    : null);
   const hep = dung_hep();
   const hom_nay_nap = dung_nap<HomNay>('/api/toi/hom-nay');
   const thong_bao_nap = dung_nap<ThongBaoToi[]>('/api/toi/thong-bao');
@@ -504,7 +520,13 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
     ? [tra('menu_thong_bao'), tra('cn_thong_bao_phu_de')]
     : man_phu === 'van_ban'
       ? [tra('menu_van_ban'), tra('cn_van_ban_phu_de')]
-      : dau_de(tab, nv);
+      : man_phu === 'gop_y_du_thao'
+        ? [tra('ht_gop_y_du_thao'), '']
+        : man_phu === 'duyet_don'
+          ? [tra('menu_duyet_don'), '']
+          : man_phu === 'thoi_viec'
+            ? [tra('menu_thoi_viec'), '']
+            : dau_de(tab, nv);
 
   // Chuyen man ben trong trang + mo form neu can. Dung callback chu khong phai duong dan vi
   // bo dinh tuyen cua app khong mang theo chuoi truy van. Luon dong man phu khi ve 5 tab.
@@ -523,13 +545,47 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
     di_toi(m === 'thong_bao' ? '/ca-nhan/thong-bao' : '/ca-nhan/van-ban', true);
   };
 
-  // Dong bo khi duong dan thay doi TU NGOAI (tro ly, chuong bao, nut Lui/Tien cua trinh duyet).
+  // Dong bo khi duong dan thay doi TU NGOAI (tro ly, chuong bao, nut Lui/Tien cua trinh duyet,
+  // lien ket email). Goc nhin Ca nhan nhan MOI duong dan (xem App.tsx) nen day la cho DUY NHAT
+  // giai quyet cac route khong thuoc vo ca nhan: map vao dung tab / man phu, hoac chuyen han
+  // sang goc nhin Quan tri voi trang quan tri — KHONG duoc de roi ve vo quan tri cu.
   useEffect(() => {
     if (duong_dan === '/') { vao_tab('trang_chu'); return; }
-    if (duong_dan === '/ca-nhan/thong-bao') { vao_man_phu('thong_bao'); return; }
-    if (duong_dan === '/ca-nhan/van-ban') { vao_man_phu('van_ban'); return; }
+    if (duong_dan === '/ca-nhan/thong-bao' || duong_dan === '/thong-bao') {
+      vao_man_phu('thong_bao'); return;
+    }
+    if (duong_dan === '/ca-nhan/van-ban' || duong_dan === '/van-ban') {
+      vao_man_phu('van_ban'); return;
+    }
+    // Email moi lay y kien / nut Gop y: mo man gop y NGAY TRONG vo ca nhan (giu duong dan vi
+    // TrangGopYDuThao doc van_ban_id tu chuoi truy van cua URL).
+    if (duong_dan === '/gop-y-du-thao') {
+      dat_tab('y_kien'); dat_mo_form(null); dat_man_phu('gop_y_du_thao'); return;
+    }
+    if (duong_dan === '/duyet-don') {
+      // Duyet don la viec quan tri: nguoi co quyen quan tri doi han sang vo quan tri; truong
+      // phong khong co quyen quan tri van vao duoc — mo man phu ngay trong vo ca nhan.
+      if (di_duyet !== undefined) { di_duyet(); return; }
+      dat_tab('trang_chu'); dat_mo_form(null); dat_man_phu('duyet_don'); return;
+    }
+    if (duong_dan === '/ho-thu-y-kien') { vao_tab('y_kien'); return; }
+    if (duong_dan === '/cong-viec') { vao_tab('viec'); return; }
+    if (duong_dan === '/khieu-nai-luong') { vao_tab('khieu_nai'); return; }
+    if (duong_dan === '/thoi-viec/huong-dan') {
+      dat_tab('trang_chu'); dat_mo_form(null); dat_man_phu('thoi_viec'); return;
+    }
+    // Lien ket toi ho so nhan vien (trang quan tri) tu goc nhin Ca nhan: doi han sang Quan tri.
+    if (duong_dan.startsWith('/nhan-vien/') && ve_quan_tri !== undefined) {
+      ve_quan_tri(); return;
+    }
     const t = DUONG_TAB[duong_dan];
     if (t !== undefined) vao_tab(t);
+    else if (ve_quan_tri !== undefined && duong_dan !== '/ca-nhan'
+      && !duong_dan.startsWith('/ca-nhan/')) {
+      // Trang quan tri duoc mo tu lien ket cu (bookmark, tro ly) trong goc nhin Ca nhan:
+      // chuyen han sang vo quan tri — nguoi xem khong bao gio thay thanh ben quan tri cu.
+      ve_quan_tri();
+    }
   }, [duong_dan]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const di_den = (t: Tab, mo: FormMo | null = null): void => vao_tab(t, mo);
@@ -622,7 +678,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
               type="button"
               className="cn-dau-lui"
               aria-label={man_phu !== null ? tra('cn_ve_man_truoc') : tra('cn_ve_trang_chu')}
-              onClick={() => vao_tab('trang_chu')}
+              onClick={() => vao_tab(man_phu === 'gop_y_du_thao' ? 'y_kien' : 'trang_chu')}
             >
               ‹
             </button>
@@ -650,6 +706,9 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
             <RanhGioiLoi key={man_phu ?? tab}>
               {man_phu === 'thong_bao' && <TrangThongBaoCaNhan />}
               {man_phu === 'van_ban' && <TrangVanBan chi_doc />}
+              {man_phu === 'gop_y_du_thao' && <TrangGopYDuThao />}
+              {man_phu === 'duyet_don' && <TrangDuyetDon />}
+              {man_phu === 'thoi_viec' && <TrangHuongDanThoiViec />}
               {man_phu === null && (
                 <>
                   {tab === 'trang_chu' && <ManTrangChu hom_nay_nap={hom_nay_nap} di_den={di_den} di_duyet={di_duyet} />}
