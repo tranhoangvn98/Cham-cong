@@ -150,7 +150,9 @@ export async function tuyen_thong_bao_ai(app: FastifyInstance): Promise<void> {
               (n.ten_luu_docx is not null) as co_tep,
               jsonb_array_length(coalesce(n.ket_qua_gate, '[]'::jsonb)) as so_muc_gate,
               left(coalesce(nullif(n.spec_json->>'trich_yeu', ''), n.noi_dung_tho), 160)
-                as trich_yeu
+                as trich_yeu,
+              (select count(*)::int from ho_thu_y_kien h
+                where h.loai = 'du_thao' and h.nhap_ai_id = n.id) as so_y_kien
          from thong_bao_nhap_ai n
          left join nhan_vien nv on nv.id = n.nhan_vien_id
          left join phong_ban pb on pb.id = n.phong_ban_id

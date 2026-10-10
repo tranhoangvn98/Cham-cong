@@ -3,6 +3,7 @@
 // du thao van ban cung nam o day (kem link mo lai ban du thao neu con dang lay y kien).
 import { useState, type ReactNode } from 'react';
 import { goi } from '../api.ts';
+import { LienKet } from '../dinh_tuyen.tsx';
 import {
   AnhCoToken, DangTai, HopLoi, HopTot, ThreadKhieuNai, Trong, dung_hanh_dong, dung_nap,
   ngay_gio,
@@ -56,13 +57,18 @@ interface DuThaoGon {
   han_lay_y_kien: string | null;
 }
 
+const KHOA_LOAI_VB: Record<string, ChuoiKhoa> = {
+  thong_bao: 'vai_loai_thong_bao',
+  quyet_dinh: 'vai_loai_quyet_dinh',
+  cong_van: 'vai_loai_cong_van',
+};
+
 export function YKienToi(): ReactNode {
   const ds = dung_nap<HoThuToi[]>('/api/toi/ho-thu-y-kien');
   const ds_du_thao = dung_nap<DuThaoGon[]>('/api/toi/du-thao-dang-lay-y-kien');
   const hd = dung_hanh_dong();
   const { tra } = dung_chuoi();
   const [loai, dat_loai] = useState('gop_y');
-  const [van_ban_id, dat_van_ban_id] = useState('');
   const [tieu_de, dat_tieu_de] = useState('');
   const [noi_dung, dat_noi_dung] = useState('');
   const [mo, dat_mo] = useState<string | null>(null);
@@ -70,10 +76,10 @@ export function YKienToi(): ReactNode {
   const gui = (): void => {
     void hd.chay(
       () => goi('/api/toi/ho-thu-y-kien',
-        { method: 'POST', body: { loai, tieu_de, noi_dung, ...(van_ban_id === '' ? {} : { nhap_ai_id: van_ban_id }) } }),
-      van_ban_id === '' ? tra('yk_da_gui_ok') : tra('yk_da_gui_dt'),
+        { method: 'POST', body: { loai, tieu_de, noi_dung } }),
+      tra('yk_da_gui_ok'),
     ).then((ok) => {
-      if (ok) { dat_tieu_de(''); dat_noi_dung(''); dat_van_ban_id(''); ds.nap_lai(); }
+      if (ok) { dat_tieu_de(''); dat_noi_dung(''); ds.nap_lai(); }
     });
   };
 
@@ -85,43 +91,60 @@ export function YKienToi(): ReactNode {
       <HopTot chu={hd.tot} />
 
       <div className="the">
+        <div className="canhan-muc-dau"><h3>{tra('ht_gop_y_du_thao')}</h3></div>
+        {ds_du_thao.dang_tai ? <DangTai /> : ds_du_thao.loi !== null
+          ? <HopLoi loi={ds_du_thao.loi} />
+          : ds_du_thao.du_lieu === null || ds_du_thao.du_lieu.length === 0 ? (
+            <p className="mo-ta">{tra('ht_khong_co_du_thao')}</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {ds_du_thao.du_lieu.map((d) => {
+                const khoa_loai = KHOA_LOAI_VB[d.loai];
+                return (
+                  <div key={d.id} className="hang-nut" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+                    <span className="mo-ta khong-ngat" style={{ minWidth: 96 }}>{d.ma}</span>
+                    <span className="khong-ngat" style={{ flex: 1, minWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {khoa_loai !== undefined ? tra_hien_tai(khoa_loai) : d.loai}
+                      {d.trich_yeu !== '' ? ` — ${d.trich_yeu}` : ''}
+                    </span>
+                    <span className="mo-ta khong-ngat">
+                      {d.han_lay_y_kien !== null
+                        ? tra('ht_han_x', { n: ngay_gio(d.han_lay_y_kien) }) : ''}
+                    </span>
+                    <LienKet den={`/gop-y-du-thao?van_ban_id=${d.id}`} lop="nut nut-nho">
+                      {tra('ht_gop_y_ngay')}
+                    </LienKet>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+      </div>
+
+      <div className="the" style={{ marginTop: 12 }}>
         <div className="canhan-muc-dau"><h3>{tra('yk_gui_y_kien_moi')}</h3></div>
         <div className="bo-loc">
           <div className="o-nhap">
-            <label htmlFor="van_ban">{tra('yk_ma_vb_du_thao')}</label>
-            <Chon gia_tri={van_ban_id} dat_gia_tri={dat_van_ban_id}
-              cac_tuy_chon={(ds_du_thao.du_lieu ?? []).map((d): TuyChonChon => ({
-                ma: d.id,
-                nhan: `${d.ma} — ${d.trich_yeu !== '' ? d.trich_yeu : tra('yk_du_thao')}`
-                  + (d.han_lay_y_kien !== null ? tra('yk_han_x', { n: ngay_gio(d.han_lay_y_kien) }) : ''),
+            <label htmlFor="loai">{tra('yk_loai_y_kien')}</label>
+            <Chon gia_tri={loai} dat_gia_tri={dat_loai}
+              cac_tuy_chon={CAC_LOAI_GUI.map((c): TuyChonChon => ({
+                ma: c.ma, nhan: tra_hien_tai(c.khoa),
               }))}
-              rong={tra('yk_khong_gan_vb')} nhan={tra('yk_chon_ma_vb')} />
+              nhan={tra('yk_chon_loai')} />
           </div>
-          {van_ban_id === '' && (
-            <>
-              <div className="o-nhap">
-                <label htmlFor="loai">{tra('yk_loai_y_kien')}</label>
-                <Chon gia_tri={loai} dat_gia_tri={dat_loai}
-                  cac_tuy_chon={CAC_LOAI_GUI.map((c): TuyChonChon => ({
-                    ma: c.ma, nhan: tra_hien_tai(c.khoa),
-                  }))}
-                  nhan={tra('yk_chon_loai')} />
-              </div>
-              <div className="o-nhap" style={{ flex: 1 }}>
-                <label htmlFor="tieu_de">{tra('tb_tieu_de')}</label>
-                <input id="tieu_de" value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)}
-                  placeholder={tra('yk_vi_du_tieu_de')} />
-              </div>
-            </>
-          )}
+          <div className="o-nhap" style={{ flex: 1 }}>
+            <label htmlFor="tieu_de">{tra('tb_tieu_de')}</label>
+            <input id="tieu_de" value={tieu_de} onChange={(e) => dat_tieu_de(e.target.value)}
+              placeholder={tra('yk_vi_du_tieu_de')} />
+          </div>
         </div>
         <label htmlFor="noi_dung">{tra('tb_noi_dung')}</label>
         <textarea id="noi_dung" rows={4} value={noi_dung}
           onChange={(e) => dat_noi_dung(e.target.value)}
           placeholder={tra('yk_trinh_bay_ro')} />
         <div className="hang-nut" style={{ marginTop: 8 }}>
-          <button disabled={hd.dang_chay || noi_dung.trim().length < 1
-            || (van_ban_id === '' && tieu_de.trim().length < 3)} onClick={gui}>
+          <button disabled={hd.dang_chay || noi_dung.trim().length < 1 || tieu_de.trim().length < 3}
+            onClick={gui}>
             {hd.dang_chay ? tra('cn_dang_gui') : tra('yk_gui_y_kien')}
           </button>
         </div>

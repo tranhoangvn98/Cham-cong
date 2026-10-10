@@ -82,6 +82,30 @@ interface DuThaoGon {
   han_lay_y_kien: string | null;
 }
 
+/** Du thao trong danh sach admin — kem so y kien de tab gop y cua nhan su hien thi. */
+interface DuThaoAdminGon {
+  id: string;
+  ma: string;
+  loai: string;
+  trich_yeu: string;
+  trang_thai: string;
+  han_lay_y_kien: string | null;
+  so_y_kien: number;
+}
+
+/** Mot y kien gui cho du thao (api admin /thong-bao/ai/:id/y-kien). */
+interface YKienDuThao {
+  id: string;
+  ma: string | null;
+  tieu_de: string;
+  trang_thai: string;
+  tao_luc: string;
+  ma_nv: string;
+  ho_ten: string;
+  phong_ban: string | null;
+  so_tra_loi: number;
+}
+
 /** Nhan loai van ban cua du thao (khong phai loai hom thu). */
 const KHOA_LOAI_VB: Record<string, ChuoiKhoa> = {
   thong_bao: 'vai_loai_thong_bao',
@@ -113,6 +137,17 @@ export function TrangHoThuYKien({ chi_doc = false }: { chi_doc?: boolean }): Rea
   const tham_di = loc_loai === '' ? '' : `?loai=${loc_loai}`;
   const ds_di = dung_nap<ThuDaGui[]>(chi_doc ? '' : `/api/ho-thu-y-kien/thu-da-gui${tham_di}`, [loc_loai]);
   const ds_dt = dung_nap<DuThaoGon[]>('/api/toi/du-thao-dang-lay-y-kien');
+  // Admin: danh sach van ban AI (kem so_y_kien) de tab gop y liet ke du thao dang mo.
+  const ds_dt_admin = dung_nap<DuThaoAdminGon[]>(chi_doc ? '' : '/api/thong-bao/ai');
+  const [xem_yk, dat_xem_yk] = useState<string | null>(null);
+
+  const ds_dt_mo = chi_doc
+    ? ds_dt
+    : {
+        du_lieu: (ds_dt_admin.du_lieu ?? []).filter((d) => d.trang_thai === 'dang_lay_y_kien'),
+        dang_tai: ds_dt_admin.dang_tai,
+        loi: ds_dt_admin.loi,
+      };
 
   const { ds_xem, bo_phan_trang } = dung_phan_trang(ds.du_lieu ?? []);
   const { ds_xem: ds_di_xem, bo_phan_trang: bo_di } = dung_phan_trang(ds_di.du_lieu ?? []);
@@ -145,8 +180,8 @@ export function TrangHoThuYKien({ chi_doc = false }: { chi_doc?: boolean }): Rea
 
       {tab === 'gop_y' && (
         <>
-          {ds_dt.dang_tai ? <DangTai /> : ds_dt.loi !== null ? <HopLoi loi={ds_dt.loi} />
-            : ds_dt.du_lieu === null || ds_dt.du_lieu.length === 0 ? (
+          {ds_dt_mo.dang_tai ? <DangTai /> : ds_dt_mo.loi !== null ? <HopLoi loi={ds_dt_mo.loi} />
+            : ds_dt_mo.du_lieu === null || ds_dt_mo.du_lieu.length === 0 ? (
               <Trong tieu_de={tra('ht_gop_y_du_thao')} mo_ta={tra('ht_khong_co_du_thao')} />
             ) : (
               <div className="the the-mong">
@@ -157,11 +192,12 @@ export function TrangHoThuYKien({ chi_doc = false }: { chi_doc?: boolean }): Rea
                       <th style={{ width: 120 }}>{tra('vai_loai_van_ban')}</th>
                       <th>{tra('vai_ve_viec')}</th>
                       <th style={{ width: 150 }}>{tra('ht_han_gop_y')}</th>
-                      <th style={{ width: 88 }}></th>
+                      {!chi_doc && <th style={{ width: 72 }}>{tra('ht_so_y_kien')}</th>}
+                      <th style={{ width: chi_doc ? 88 : 110 }}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {ds_dt.du_lieu.map((d) => {
+                    {ds_dt_mo.du_lieu.map((d) => {
                       const khoa_loai = KHOA_LOAI_VB[d.loai];
                       return (
                       <tr key={d.id}>
@@ -178,10 +214,19 @@ export function TrangHoThuYKien({ chi_doc = false }: { chi_doc?: boolean }): Rea
                         </td>
                         <td className="khong-ngat">{d.han_lay_y_kien === null
                           ? '—' : ngay_gio(d.han_lay_y_kien)}</td>
+                        {!chi_doc && (
+                          <td className="canh-phai">{(d as DuThaoAdminGon).so_y_kien}</td>
+                        )}
                         <td className="canh-phai">
-                          <LienKet den={`/gop-y-du-thao?van_ban_id=${d.id}`} lop="nut nut-nho">
-                            {tra('ht_gop_y_ngay')}
-                          </LienKet>
+                          {chi_doc ? (
+                            <LienKet den={`/gop-y-du-thao?van_ban_id=${d.id}`} lop="nut nut-nho">
+                              {tra('ht_gop_y_ngay')}
+                            </LienKet>
+                          ) : (
+                            <button className="nut nut-nho" onClick={() => dat_xem_yk(d.id)}>
+                              {tra('ht_xem_y_kien')}
+                            </button>
+                          )}
                         </td>
                       </tr>
                       );
@@ -337,7 +382,60 @@ export function TrangHoThuYKien({ chi_doc = false }: { chi_doc?: boolean }): Rea
       {dang !== null && (
         <HopThoaiChiTiet id={dang} khi_dong={() => dat_dang(null)} khi_xong={ds.nap_lai} />
       )}
+
+      {xem_yk !== null && (
+        <HopThoaiYienDuThao id={xem_yk} khi_dong={() => dat_xem_yk(null)}
+          khi_xem={(ho_thu_id) => { dat_dang(ho_thu_id); }} />
+      )}
     </>
+  );
+}
+
+/** Hop thoai xem DANH SACH y kien gui cho mot du thao (admin) — moi dong mo duoc ho thu. */
+function HopThoaiYienDuThao(
+  { id, khi_dong, khi_xem }: { id: string; khi_dong: () => void; khi_xem: (ho_thu_id: string) => void },
+): ReactNode {
+  const chi = dung_nap<YKienDuThao[]>(`/api/thong-bao/ai/${id}/y-kien`, [id]);
+  const { tra } = dung_chuoi();
+  return (
+    <HopThoai tieu_de={tra('ht_gop_y_du_thao')} khi_dong={khi_dong} rong>
+      {chi.dang_tai ? <DangTai /> : chi.loi !== null ? <HopLoi loi={chi.loi} />
+        : chi.du_lieu === null || chi.du_lieu.length === 0 ? (
+          <p className="mo-ta">{tra('ht_chua_co_y_kien')}</p>
+        ) : (
+          <div className="vo-bang">
+            <table>
+              <thead>
+                <tr>
+                  <th>{tra('ht_nhan_vien')}</th><th>{tra('ht_phong_ban')}</th>
+                  <th>{tra('ht_ngay_gui')}</th><th>{tra('vai_trang_thai')}</th>
+                  <th>{tra('ht_trao_doi')}</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {chi.du_lieu.map((y) => (
+                  <tr key={y.id}>
+                    <td>{y.ho_ten}<span className="mo-ma"> {y.ma_nv}</span></td>
+                    <td>{y.phong_ban ?? '—'}</td>
+                    <td className="khong-ngat mo-ma">{ngay_gio(y.tao_luc)}</td>
+                    <td className="khong-ngat">
+                      <span className={`nhan ${NHAN_TT[y.trang_thai]?.lop ?? 'nhan-mo'}`}>
+                        {NHAN_TT[y.trang_thai]?.ten ?? y.trang_thai}
+                      </span>
+                    </td>
+                    <td className="canh-phai">{y.so_tra_loi}</td>
+                    <td className="canh-phai">
+                      <button className="nut nut-nho" onClick={() => { khi_dong(); khi_xem(y.id); }}>
+                        {tra('ht_xem')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+    </HopThoai>
   );
 }
 

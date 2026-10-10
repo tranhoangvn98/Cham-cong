@@ -762,6 +762,15 @@ export const CHUOI_ZH = {
   ht_han_gop_y: '截止时间',
   ht_khong_co_du_thao: '当前没有开放征求意见的草案。',
   ht_gop_y_ngay: '提出意见',
+  ht_han_x: ' · 截止 {n}',
+  ht_so_y_kien: '意见',
+  ht_xem_y_kien: '查看意见',
+  ht_chua_co_y_kien: '该草案还没有意见。',
+  ht_ngay_gui: '发送日期',
+  ht_trao_doi: '交流',
+  ht_xem: '查看',
+  ht_nhan_vien: '员工',
+  ht_phong_ban: '部门',
   ht_gop_y_mo_ta: '以下是在您范围内正在征求意见的草案。打开草案可阅读内容、查看附件并提交您的意见。',
 
   // ================================ 我的工作

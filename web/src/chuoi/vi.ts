@@ -760,6 +760,15 @@ export const CHUOI_VI = {
   ht_han_gop_y: 'Hạn góp ý',
   ht_khong_co_du_thao: 'Không có dự thảo nào đang mở để góp ý.',
   ht_gop_y_ngay: 'Góp ý',
+  ht_han_x: ' · hạn {n}',
+  ht_so_y_kien: 'Ý kiến',
+  ht_xem_y_kien: 'Xem ý kiến',
+  ht_chua_co_y_kien: 'Chưa có ý kiến nào cho dự thảo này.',
+  ht_ngay_gui: 'Ngày gửi',
+  ht_trao_doi: 'Trao đổi',
+  ht_xem: 'Xem',
+  ht_nhan_vien: 'Nhân viên',
+  ht_phong_ban: 'Phòng ban',
   ht_gop_y_mo_ta: 'Danh sách các dự thảo văn bản đang mở lấy ý kiến trong phạm vi của bạn. Mở một dự thảo để đọc nội dung, xem tệp đính kèm và gửi ý kiến của mình.',
 
   // ================================ cong viec cua toi
