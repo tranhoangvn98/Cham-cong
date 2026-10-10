@@ -567,16 +567,14 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
   const [t_can_cu, dat_t_can_cu] = useState('');
   const [t_dieu, dat_t_dieu] = useState('');
   const [t_noi_dung, dat_t_noi_dung] = useState('');
-  const [tep_cho, dat_tep_cho] = useState<File[]>([]);
-  // Tang sau moi lan tai len xong de lam moi OKeoTep (xoa danh sach ten tep hien thi cu).
-  const [lan_tep, dat_lan_tep] = useState(0);
 
-  const them_tep = async (): Promise<void> => {
+  /** Dinh kem ngay khi nguoi dung chon xong — khong can nut trung gian. */
+  const them_tep = async (chon: File[]): Promise<void> => {
     if (d === null) return;
-    if (tep_cho.length === 0) return;
-    const ok = await hd.chay(
+    if (chon.length === 0) return;
+    await hd.chay(
       async () => {
-        for (const t of tep_cho) {
+        for (const t of chon) {
           const fd = new FormData();
           fd.append('tep', t);
           await gui_tep(`/api/thong-bao/ai/${d.id}/tep-kem`, fd);
@@ -584,10 +582,6 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
       },
       tra('vai_da_dinh_kem_tep'),
     );
-    if (ok) {
-      dat_tep_cho([]);
-      dat_lan_tep((n) => n + 1);
-    }
     // Cap nhat danh sach ca khi loi giua chung: mot vai tep truoc do co the da len duoc.
     nap_lai();
   };
@@ -626,7 +620,12 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
 
   /** Xem docx ngay tren web — render bang docx-preview vao the chua. */
   const mo_docx = async (): Promise<void> => {
-    if (xem_docx) { dat_xem_docx(false); return; }
+    if (xem_docx) {
+      dat_xem_docx(false);
+      // Dong DOCX online thi hien LAI ban xem truoc (neu co spec) — tranh man hinh trong.
+      dat_xem_truoc(d !== null && d.spec_json !== null && d.spec_json !== undefined);
+      return;
+    }
     dat_dang_docx(true);
     dat_loi_docx(null);
     dat_xem_docx(true);
@@ -790,19 +789,18 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
         {!['da_phat_hanh', 'huy'].includes(d.trang_thai) && (
           <div style={{ marginTop: 8 }}>
             <OKeoTep
-              key={lan_tep}
               ma="vai-chi-tiet-tep"
               nhieu
+              gui_ngay
+              vo_hieu={hd.dang_chay}
               accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
               nhan_phu={tra('vai_toi_da_10_tep')}
-              khi_nhan={(ds) => dat_tep_cho(Array.from(ds ?? []))}
+              khi_nhan={(ds) => {
+                const m = Array.from(ds ?? []);
+                if (m.length > 0) void them_tep(m);
+              }}
             />
-            <div className="hang-nut" style={{ marginTop: 8 }}>
-              <button className="nut-phang" disabled={hd.dang_chay || tep_cho.length === 0}
-                onClick={() => { void them_tep(); }}>
-                {hd.dang_chay ? tra('vai_dang_tai') : tra('vai_dinh_kem_tep')}
-              </button>
-            </div>
+            {hd.dang_chay && <span className="mo-ta">{tra('vai_dang_tai')}</span>}
           </div>
         )}
       </div>
@@ -998,7 +996,8 @@ export function TabVanBanBanHanh(): ReactNode {
       {ds.length === 0
         ? <Trong tieu_de={tra('vai_chua_co_van_ban_ai')} mo_ta={tra('vai_tao_ban_nhap_dau')} />
         : (
-          <table className="bang-gon">
+          <div className="vo-bang">
+            <table className="bang-gon">
             <thead>
               <tr>
                 <th>{tra('vai_ma')}</th><th>{tra('vai_loai_van_ban')}</th><th>{tra('vai_ve_viec')}</th><th>{tra('vai_pham_vi')}</th><th>{tra('vai_nguoi_nhan')}</th>
@@ -1044,6 +1043,7 @@ export function TabVanBanBanHanh(): ReactNode {
               ))}
             </tbody>
           </table>
+          </div>
         )}
     </div>
   );
