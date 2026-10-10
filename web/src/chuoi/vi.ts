@@ -771,6 +771,9 @@ export const CHUOI_VI = {
   ht_xem: 'Xem',
   ht_nhan_vien: 'Nhân viên',
   ht_phong_ban: 'Phòng ban',
+  ht_xem_tep: 'Xem nhanh',
+  ht_tai_tep: 'Tải về',
+  ht_tep_khong_xem_nhanh: 'Định dạng này chưa hỗ trợ xem nhanh — bấm Tải về để mở trên máy.',
   ht_gop_y_mo_ta: 'Danh sách các dự thảo văn bản đang mở lấy ý kiến trong phạm vi của bạn. Mở một dự thảo để đọc nội dung, xem tệp đính kèm và gửi ý kiến của mình.',
 
   // ================================ cong viec cua toi

@@ -5,12 +5,14 @@
 // Chi hien du thao khi no DANG lay y kien va nguoi dang nhap TRONG pham vi van ban; con lai
 // may chu tra 404 ("Không tìm thấy"). Chua dang nhap thi app tu chuyen sang man dang nhap —
 // dung yeu cau "dang nhap vao he thong va tai khoan co trong he thong".
-import { useMemo, useState, type ReactNode } from 'react';
-import { goi, tai_tep } from '../api.ts';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { goi, tai_blob, tai_tep, tai_tep_blob } from '../api.ts';
 import {
-  AnhCoToken, DangTai, HopLoi, HopTot, ThreadKhieuNai, dung_hanh_dong, dung_nap, ngay_gio,
+  AnhCoToken, DangTai, HopLoi, HopThoai, HopTot, ThreadKhieuNai, dung_hanh_dong, dung_nap,
+  ngay_gio,
   type TinNhanKN,
 } from '../thanh_phan.tsx';
+import { dung_chuoi } from '../chuoi/chi_muc.tsx';
 
 interface YKCuaToi {
   id: string;
@@ -49,7 +51,74 @@ export function TrangGopYDuThao(): ReactNode {
   const chi = dung_nap<DuThao>(
     van_ban_id === '' ? '' : `/api/toi/van-ban-du-thao/${van_ban_id}`, [van_ban_id]);
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
   const [y_kien, dat_y_kien] = useState('');
+
+  // Popup XEM NHANH tep dinh kem: docx render bang docx-preview, pdf nhung iframe san
+  // sandbox (giong ho so), con lai chi hien thong bao + nut tai ve.
+  const [tep_mo, dat_tep_mo] = useState<{ id: string; ten: string } | null>(null);
+  const [url_pdf, dat_url_pdf] = useState<string | null>(null);
+  const [dang_docx, dat_dang_docx] = useState(false);
+  const [loi_xem, dat_loi_xem] = useState<string | null>(null);
+  const o_docx = useRef<HTMLDivElement | null>(null);
+  // Id cua tep DANG mo — dung trong ham bat dong bo (state trong closure luon cu).
+  const tep_mo_ref = useRef<string | null>(null);
+
+  const duoi_tep = (ten: string): string => (ten.split('.').pop() ?? '').toLowerCase();
+
+  const dong_xem = (): void => {
+    tep_mo_ref.current = null;
+    if (url_pdf !== null) URL.revokeObjectURL(url_pdf);
+    dat_url_pdf(null);
+    dat_tep_mo(null);
+    dat_loi_xem(null);
+    if (o_docx.current !== null) o_docx.current.innerHTML = '';
+  };
+
+  const mo_xem_nhanh = (t: { id: string; ten_goc: string }): void => {
+    const duoi = duoi_tep(t.ten_goc);
+    dat_tep_mo({ id: t.id, ten: t.ten_goc });
+    tep_mo_ref.current = t.id;
+    dat_loi_xem(null);
+    dat_url_pdf(null);
+    if (duoi === 'docx') {
+      dat_dang_docx(true);
+      void (async () => {
+        try {
+          const blob = await tai_tep_blob(
+            `/api/toi/van-ban-du-thao/${van_ban_id}/tep-kem/${t.id}`);
+          const { renderAsync } = await import('docx-preview');
+          if (o_docx.current === null) return;
+          o_docx.current.innerHTML = '';
+          await renderAsync(blob, o_docx.current);
+          // Co trang docx cho VUA khung de khong phai cuon ngang (giong ban thao van ban AI).
+          const khung = o_docx.current;
+          const trang = khung.querySelector<HTMLElement>('section.docx');
+          if (trang !== null) {
+            const rong = khung.clientWidth - 48;
+            if (rong > 0) {
+              trang.style.width = `${rong}px`;
+              trang.style.minWidth = `${rong}px`;
+            }
+          }
+        } catch (loi) {
+          dat_loi_xem(loi instanceof Error ? loi.message : tra('vai_khong_mo_docx'));
+        } finally {
+          dat_dang_docx(false);
+        }
+      })();
+    } else if (duoi === 'pdf') {
+      void (async () => {
+        try {
+          const b = await tai_blob(`/api/toi/van-ban-du-thao/${van_ban_id}/tep-kem/${t.id}`);
+          if (tep_mo_ref.current === t.id) dat_url_pdf(b.url);
+          else URL.revokeObjectURL(b.url);
+        } catch {
+          dat_loi_xem(tra('vai_khong_mo_docx'));
+        }
+      })();
+    }
+  };
 
   const gui = (): void => {
     void hd.chay(
@@ -92,10 +161,15 @@ export function TrangGopYDuThao(): ReactNode {
             {d.tep_kem.map((t) => (
               <div key={t.id} className="hang-nut" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
                 <button className="nut-phang nut-nho tep-ten-nut"
-                  onClick={() => { void tai_tep(`/api/toi/van-ban-du-thao/${d.id}/tep-kem/${t.id}`, t.ten_goc); }}>
+                  title={tra('ht_xem_tep')}
+                  onClick={() => mo_xem_nhanh(t)}>
                   {t.ten_goc}
                 </button>
                 <span className="mo-ta">{Math.max(1, Math.round(t.kich_thuoc / 1024))} KB</span>
+                <button className="nut-phang nut-nho"
+                  onClick={() => { void tai_tep(`/api/toi/van-ban-du-thao/${d.id}/tep-kem/${t.id}`, t.ten_goc); }}>
+                  {tra('ht_tai_tep')}
+                </button>
               </div>
             ))}
           </div>
@@ -138,6 +212,26 @@ export function TrangGopYDuThao(): ReactNode {
             </div>
           ))}
         </div>
+      )}
+
+      {tep_mo !== null && (
+        <HopThoai tieu_de={tep_mo.ten} khi_dong={dong_xem} rong>
+          {loi_xem !== null && <HopLoi loi={loi_xem} />}
+          <div className="hang-nut" style={{ marginBottom: 8, justifyContent: 'flex-start', gap: 10 }}>
+            <button className="nut"
+              onClick={() => { void tai_tep(`/api/toi/van-ban-du-thao/${van_ban_id}/tep-kem/${tep_mo.id}`, tep_mo.ten); }}>
+              {tra('ht_tai_tep')}
+            </button>
+            {dang_docx && <span className="mo-ta">{tra('vai_dang_mo')}</span>}
+          </div>
+          {duoi_tep(tep_mo.ten) === 'docx' && <div className="o-xem-docx" ref={o_docx} />}
+          {duoi_tep(tep_mo.ten) === 'pdf' && (url_pdf !== null
+            ? <iframe src={url_pdf} title={tep_mo.ten} className="khung-pdf" />
+            : <DangTai />)}
+          {duoi_tep(tep_mo.ten) !== 'docx' && duoi_tep(tep_mo.ten) !== 'pdf' && (
+            <p className="mo-ta">{tra('ht_tep_khong_xem_nhanh')}</p>
+          )}
+        </HopThoai>
       )}
     </>
   );

@@ -773,6 +773,9 @@ export const CHUOI_ZH = {
   ht_xem: '查看',
   ht_nhan_vien: '员工',
   ht_phong_ban: '部门',
+  ht_xem_tep: '快速预览',
+  ht_tai_tep: '下载',
+  ht_tep_khong_xem_nhanh: '该格式暂不支持在线预览——请下载后在本地打开。',
   ht_gop_y_mo_ta: '以下是在您范围内正在征求意见的草案。打开草案可阅读内容、查看附件并提交您的意见。',
 
   // ================================ 我的工作
