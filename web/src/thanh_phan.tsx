@@ -246,15 +246,18 @@ export function OKeoTep(
   { ma, khi_nhan, nhan, nhan_phu, nhieu = false, accept, vo_hieu = false, gon = false,
     gui_ngay = false }: TuyChonOKeoTep,
 ): ReactNode {
-  const [ds, dat_ds] = useState<FileList | null>(null);
+  // Kieu FileList la THAM CHIEU SONG toi danh sach tep cua input: khi onChange xoa input
+  // bang `e.target.value = ''` thi FileList luu trong state cung bi rong theo, ten tep
+  // khong bao gio hien ra. Phai chep sang mang File ngay luc nhan.
+  const [ds, dat_ds] = useState<File[] | null>(null);
   const [dang_ke, dat_dang_ke] = useState(false);
 
   const nhan_ds = (m: FileList | null): void => {
-    dat_ds(gui_ngay ? null : m);
+    dat_ds(gui_ngay ? null : m === null ? null : Array.from(m));
     khi_nhan(m);
   };
 
-  const ten = ds === null ? [] : Array.from(ds).map((f) => f.name);
+  const ten = ds === null ? [] : ds.map((f) => f.name);
 
   return (
     <div className={vo_hieu ? 'o-tep o-tep-vo-hieu' : 'o-tep'}>
