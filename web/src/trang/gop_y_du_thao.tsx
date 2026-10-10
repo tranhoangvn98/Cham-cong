@@ -6,7 +6,7 @@
 // may chu tra 404 ("Không tìm thấy"). Chua dang nhap thi app tu chuyen sang man dang nhap —
 // dung yeu cau "dang nhap vao he thong va tai khoan co trong he thong".
 import { useMemo, useState, type ReactNode } from 'react';
-import { goi } from '../api.ts';
+import { goi, tai_tep } from '../api.ts';
 import {
   AnhCoToken, DangTai, HopLoi, HopTot, ThreadKhieuNai, dung_hanh_dong, dung_nap, ngay_gio,
   type TinNhanKN,
@@ -30,6 +30,7 @@ interface DuThao {
   trich_yeu: string;
   noi_dung: string;
   han_lay_y_kien: string | null;
+  tep_kem: { id: string; ten_goc: string; kich_thuoc: number }[];
   y_kien_cua_toi: YKCuaToi[];
 }
 
@@ -83,6 +84,23 @@ export function TrangGopYDuThao(): ReactNode {
         <div className="canhan-muc-dau"><h3>{d.trich_yeu}</h3></div>
         <div style={{ whiteSpace: 'pre-wrap' }}>{d.noi_dung}</div>
       </div>
+
+      {d.tep_kem.length > 0 && (
+        <div className="the" style={{ marginTop: 12 }}>
+          <div className="canhan-muc-dau"><h3>Tệp đính kèm ({d.tep_kem.length})</h3></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {d.tep_kem.map((t) => (
+              <div key={t.id} className="hang-nut" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+                <button className="nut-phang nut-nho tep-ten-nut"
+                  onClick={() => { void tai_tep(`/api/toi/van-ban-du-thao/${d.id}/tep-kem/${t.id}`, t.ten_goc); }}>
+                  {t.ten_goc}
+                </button>
+                <span className="mo-ta">{Math.max(1, Math.round(t.kich_thuoc / 1024))} KB</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
       <HopTot chu={hd.tot} />

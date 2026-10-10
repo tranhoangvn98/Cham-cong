@@ -173,6 +173,54 @@ test('nhan vien TRONG pham vi gop y duoc; ngoai pham vi nhan 404', async () => {
   assert.match(String(xem.body['trich_yeu']), /chỗ để xe/);
   assert.ok(Array.isArray(xem.body['y_kien_cua_toi']));
 
+  // Tep dinh kem cua du thao: nhan su tai len, nhan vien TRONG pham vi tai duoc, ngoai 404.
+  const pdf = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(64, 0x20)]);
+  const rg = '----gop-y-tep';
+  const than = Buffer.concat([
+    Buffer.from(`--${rg}\r\nContent-Disposition: form-data; name="tep"; `
+      + `filename="du-thao-mau.pdf"\r\nContent-Type: application/pdf\r\n\r\n`),
+    pdf,
+    Buffer.from(`\r\n--${rg}--\r\n`),
+  ]);
+  const len = await app.inject({
+    method: 'POST', url: `/api/thong-bao/ai/${id}/tep-kem`,
+    headers: {
+      authorization: `Bearer ${token_admin}`,
+      'content-type': `multipart/form-data; boundary=${rg}`,
+    },
+    payload: than,
+  });
+  assert.equal(len.statusCode, 201, len.body);
+  const tep_id = (len.json() as Record<string, unknown>)['id'] as string;
+  assert.ok(typeof tep_id === 'string' && tep_id.length > 0);
+
+  const xem2 = await goi('GET', `/api/toi/van-ban-du-thao/${id}`, { token: token_a });
+  const tep_kem = xem2.body['tep_kem'] as unknown as { id: string; ten_goc: string }[];
+  assert.ok(Array.isArray(tep_kem) && tep_kem.length === 1, 'du thao phai kem danh sach tep');
+  assert.equal(tep_kem[0]?.['ten_goc'], 'du-thao-mau.pdf');
+
+  const tai = await app.inject({
+    method: 'GET', url: `/api/toi/van-ban-du-thao/${id}/tep-kem/${tep_id}`,
+    headers: { authorization: `Bearer ${token_a}` },
+  });
+  assert.equal(tai.statusCode, 200, tai.body);
+  assert.ok(tai.body.includes('PDF'), 'noi dung tai ve phai la tep PDF da len');
+
+  // Ngoai pham vi khong tai duoc tep (404).
+  const tai_b = await app.inject({
+    method: 'GET', url: `/api/toi/van-ban-du-thao/${id}/tep-kem/${tep_id}`,
+    headers: { authorization: `Bearer ${token_b}` },
+  });
+  assert.equal(tai_b.statusCode, 404);
+
+  // Tep khong thuoc du thao nay cung 404.
+  const tai_lac = await app.inject({
+    method: 'GET',
+    url: `/api/toi/van-ban-du-thao/${id}/tep-kem/9f0e9a12-1000-4000-8000-0000000000ff`,
+    headers: { authorization: `Bearer ${token_a}` },
+  });
+  assert.equal(tai_lac.statusCode, 404);
+
   const gop = await goi('POST', '/api/toi/y-kien-du-thao', {
     token: token_a, body: { nhap_ai_id: id, noi_dung: 'Nên bổ sung chỗ để xe cho khách.' },
   });

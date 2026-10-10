@@ -1523,6 +1523,32 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     return { ...d, y_kien_cua_toi: cua_toi };
   });
 
+  /** Tai tep DINH KEM cua ban du thao dang lay y kien (neu trong pham vi).
+   *  Ngoai pham vi / sai trang thai -> 404, giong route xem du thao. */
+  app.get('/van-ban-du-thao/:id/tep-kem/:tep_id', async (req, res) => {
+    const nv_id = nhan_vien_cua_toi(req);
+    const p = req.params as Record<string, string>;
+    const nhap_id = uuid({ id: p['id'] }, 'id', { bat_buoc: true }) as string;
+    const tep_id = uuid({ id: p['tep_id'] }, 'id', { bat_buoc: true }) as string;
+    const d = await du_thao_cho_gop_y(nhap_id, nv_id);
+    if (d === null) throw new LoiKhongTim('Không tìm thấy dự thảo đang lấy ý kiến.');
+    const tep = await truy_van_mot<{ ten_luu: string; ten_goc: string; kieu_mime: string }>(
+      `select ten_luu, ten_goc, kieu_mime from ho_so_tep
+        where id = $1 and nhom = 'thong_bao_tep_kem' and thuoc_id = $2`,
+      [tep_id, nhap_id],
+    );
+    if (tep === null) throw new LoiKhongTim('Không tìm thấy tệp đính kèm.');
+    const du_lieu = await doc_tep_ho_so(tep.ten_luu);
+    if (du_lieu === null) throw new LoiKhongTim('Tệp không còn trên máy chủ.');
+    return res
+      .header('content-type', tep.kieu_mime)
+      .header('x-content-type-options', 'nosniff')
+      .header('content-security-policy', "default-src 'none'; sandbox")
+      .header('content-disposition',
+        `attachment; filename*=UTF-8''${encodeURIComponent(tep.ten_goc)}`)
+      .send(du_lieu);
+  });
+
   /** Gui y kien cho ban du thao dang lay y kien. Ngoai pham vi / sai trang thai -> 404. */
   app.post('/y-kien-du-thao', async (req, res) => {
     const nd = nguoi_dung_hien_tai(req);

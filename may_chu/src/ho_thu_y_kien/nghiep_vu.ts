@@ -277,6 +277,7 @@ export async function du_thao_cho_gop_y(
 ): Promise<{
   id: string; ma: string; loai: string; trich_yeu: string; noi_dung: string;
   han_lay_y_kien: Date | null;
+  tep_kem: { id: string; ten_goc: string; kich_thuoc: number }[];
 } | null> {
   const d = await truy_van_mot<{
     id: string; ma: string; loai: string; han_lay_y_kien: Date | null; spec_json: unknown;
@@ -290,6 +291,11 @@ export async function du_thao_cho_gop_y(
   const trong = await trong_pham_vi_du_thao(nhan_vien_id, nhap_ai_id);
   if (trong !== true) return null;
   const spec = d.spec_json as SpecVanBan | null;
+  const tep_kem = await truy_van<{ id: string; ten_goc: string; kich_thuoc: number }>(
+    `select id::text as id, ten_goc, kich_thuoc from ho_so_tep
+      where nhom = 'thong_bao_tep_kem' and thuoc_id = $1 order by tao_luc`,
+    [nhap_ai_id],
+  );
   return {
     id: d.id,
     ma: d.ma,
@@ -297,5 +303,6 @@ export async function du_thao_cho_gop_y(
     trich_yeu: spec?.trich_yeu ?? '',
     noi_dung: spec === null ? '' : noi_dung_hien_thi(spec),
     han_lay_y_kien: d.han_lay_y_kien,
+    tep_kem,
   };
 }
