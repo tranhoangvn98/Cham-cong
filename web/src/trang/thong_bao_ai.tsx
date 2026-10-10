@@ -773,7 +773,7 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {d.tep_kem.map((t) => (
               <div key={t.id} className="hang-nut" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-                <button className="nut-phang nut-nho"
+                <button className="nut-phang nut-nho tep-ten-nut"
                   onClick={() => { void tai_tep(`/api/thong-bao/ai/${d.id}/tep-kem/${t.id}`, t.ten_goc); }}>
                   {t.ten_goc}
                 </button>

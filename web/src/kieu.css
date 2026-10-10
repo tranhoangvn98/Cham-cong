@@ -619,6 +619,16 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .nut-nho { padding: 4px 9px; font-size: 12px; }
 .nut-phang { border-color: transparent; background: transparent; color: var(--chinh-dam); }
 .nut-phang:hover:not(:disabled) { background: var(--chinh-nhat); }
+/* Nut ten tep kem: ten dai PHAI xuong dong trong khung chu khong tran ra ngoai
+   (flex item mac dinh khong co xuong dong — da tung tran 200px+ o danh sach tep kem). */
+.tep-ten-nut {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
 .nut-lanh { background: var(--lanh); border-color: var(--lanh); color: #fff; }
 .nut-lanh:hover:not(:disabled) { filter: brightness(0.94); }
 
