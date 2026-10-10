@@ -200,7 +200,8 @@ def _them_so_vao_doan(p, spec):
 
 
 def viet_dau_thu(doc, co_quan, spec):
-    """Mau dau thu THVN (bang 2 cot x 4 dong):
+    """Mau dau thu THVN (bang 2 cot x 4 dong) — noi dung MOI COT can GIUA
+    trong cot cua minh, thang voi gach ngang cua cot do:
     trai: ten co quan 2 dong can bang + duong ke dai bang dong ten + Số;
     phai: quoc hieu + tieu ngu + duong ke HET chieu ngang cot + dia danh/ngay."""
     bang = doc.add_table(rows=4, cols=2)
@@ -227,25 +228,26 @@ def viet_dau_thu(doc, co_quan, spec):
         hang.cells[0].width = Cm(7.0)
         hang.cells[1].width = Cm(9.5)
 
-    # --- cot trai: ten co quan 2 dong + ke + Số ---
+    # --- cot trai: ten co quan 2 dong + ke + Số — can GIUA trong cot ---
     cac_dong = _chia_dong_ten(co_quan)
     for i, dong_ten in enumerate(cac_dong):
-        p = _o_phang(bang.rows[i].cells[0])
+        p = _o_phang(bang.rows[i].cells[0], WD_ALIGN_PARAGRAPH.CENTER)
         _dinh_run(p.add_run(dong_ten), dam=True)
-    p_ke = _o_phang(bang.rows[2].cells[0])
-    # Duong ke dai bang dong ten THU NHAT (mau THVN: "____" duoi ten cong ty).
-    _them_gach_ngang(p_ke, 0.2, 7.0 - 0.2 - 5.6)
-    p_so = _o_phang(bang.rows[3].cells[0])
+    p_ke = _o_phang(bang.rows[2].cells[0], WD_ALIGN_PARAGRAPH.CENTER)
+    # Duong ke dai bang dong ten THU NHAT (mau THVN: "____" duoi ten cong ty),
+    # le trai/phai BANG NHAU (0.7 cm) de ke nam GIUA cot.
+    _them_gach_ngang(p_ke, 0.7, 0.7)
+    p_so = _o_phang(bang.rows[3].cells[0], WD_ALIGN_PARAGRAPH.CENTER)
     _them_so_vao_doan(p_so, spec)
 
-    # --- cot phai: quoc hieu + tieu ngu + ke het ngang cot + dia danh/ngay ---
-    p1 = _o_phang(bang.rows[0].cells[1], WD_ALIGN_PARAGRAPH.RIGHT)
+    # --- cot phai: quoc hieu + tieu ngu + ke het ngang cot + dia danh/ngay — can GIUA ---
+    p1 = _o_phang(bang.rows[0].cells[1], WD_ALIGN_PARAGRAPH.CENTER)
     _dinh_run(p1.add_run("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"), co=CO_QUOC_HIEU, dam=True)
-    p2 = _o_phang(bang.rows[1].cells[1], WD_ALIGN_PARAGRAPH.RIGHT)
+    p2 = _o_phang(bang.rows[1].cells[1], WD_ALIGN_PARAGRAPH.CENTER)
     _dinh_run(p2.add_run("Độc lập - Tự do - Hạnh phúc"), co=CO_TIEU_NGU, dam=True)
-    p_ke2 = _o_phang(bang.rows[2].cells[1], WD_ALIGN_PARAGRAPH.RIGHT)
+    p_ke2 = _o_phang(bang.rows[2].cells[1], WD_ALIGN_PARAGRAPH.CENTER)
     _them_gach_ngang(p_ke2, 0.0, 0.0)  # mau THVN: ke HET chieu ngang cot phai
-    p_ngay = _o_phang(bang.rows[3].cells[1], WD_ALIGN_PARAGRAPH.RIGHT)
+    p_ngay = _o_phang(bang.rows[3].cells[1], WD_ALIGN_PARAGRAPH.CENTER)
     _dinh_run(p_ngay.add_run("%s, %s" % (dong(spec, "dia_danh"), ngay_viet(dong(spec, "ngay")))),
               nghieng=True)
 
