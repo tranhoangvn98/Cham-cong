@@ -568,6 +568,8 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
   const [t_dieu, dat_t_dieu] = useState('');
   const [t_noi_dung, dat_t_noi_dung] = useState('');
   const [tep_cho, dat_tep_cho] = useState<File[]>([]);
+  // Tang sau moi lan tai len xong de lam moi OKeoTep (xoa danh sach ten tep hien thi cu).
+  const [lan_tep, dat_lan_tep] = useState(0);
 
   const them_tep = async (): Promise<void> => {
     if (d === null) return;
@@ -584,8 +586,10 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
     );
     if (ok) {
       dat_tep_cho([]);
-      nap_lai();
+      dat_lan_tep((n) => n + 1);
     }
+    // Cap nhat danh sach ca khi loi giua chung: mot vai tep truoc do co the da len duoc.
+    nap_lai();
   };
 
   const xoa_tep = async (tep_id: string): Promise<void> => {
@@ -786,8 +790,11 @@ export function ChiTiet({ id, khi_dong, khi_xong }: { id: string; khi_dong: () =
         {!['da_phat_hanh', 'huy'].includes(d.trang_thai) && (
           <div style={{ marginTop: 8 }}>
             <OKeoTep
+              key={lan_tep}
               ma="vai-chi-tiet-tep"
+              nhieu
               accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
+              nhan_phu={tra('vai_toi_da_10_tep')}
               khi_nhan={(ds) => dat_tep_cho(Array.from(ds ?? []))}
             />
             <div className="hang-nut" style={{ marginTop: 8 }}>
