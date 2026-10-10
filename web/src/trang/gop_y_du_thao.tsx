@@ -224,7 +224,10 @@ export function TrangGopYDuThao(): ReactNode {
             </button>
             {dang_docx && <span className="mo-ta">{tra('vai_dang_mo')}</span>}
           </div>
-          {duoi_tep(tep_mo.ten) === 'docx' && <div className="o-xem-docx" ref={o_docx} />}
+          {duoi_tep(tep_mo.ten) === 'docx' && (
+            <div className="o-xem-docx" ref={o_docx}
+              style={{ maxHeight: 'none', overflow: 'visible' }} />
+          )}
           {duoi_tep(tep_mo.ten) === 'pdf' && (url_pdf !== null
             ? <iframe src={url_pdf} title={tep_mo.ten} className="khung-pdf" />
             : <DangTai />)}
