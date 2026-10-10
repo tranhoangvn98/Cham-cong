@@ -277,7 +277,7 @@ export async function cau_hinh_dang_nhap(): Promise<CauHinhDangNhap> {
     dang_nhap_rieng: true, dang_nhap_microsoft: false, cong_sso: null,
   };
   try {
-    const res = await fetch(`${GOC}/api/xac-thuc/cau-hinh`);
+    const res = await fetch(`${GOC}/api/xac-thuc/cau-hinh`, { headers: { ...DAU_PB } });
     if (!res.ok) return mac_dinh;
     const kq = (await res.json()) as Partial<CauHinhDangNhap>;
     // Ban may chu cu khong co truong `dang_nhap_rieng` -> coi nhu con duong rieng.
