@@ -67,11 +67,15 @@ export function CungCapTuyen({ children }: { children: ReactNode }): ReactNode {
   }, []);
 
   const di_toi = (dich: string, thay_the = false): void => {
+    // Trang thai router chi giu DUONG DAN, khong giu chuoi truy van: cac trang doc tham so
+    // truc tiep tu window.location.search (vi du /gop-y-du-thao?van_ban_id=...). Giu ca chuoi
+    // truy van thi switch trang khong khop tuyen nao -> "khong co trang nay".
+    const dich_sach = dich.split('?')[0] ?? dich;
     const that = duong_dan_that(dich);
-    if (that === window.location.pathname) return;
+    if (that === window.location.pathname + window.location.search) return;
     if (thay_the) window.history.replaceState(null, '', that);
     else window.history.pushState(null, '', that);
-    dat_duong_dan(dich);
+    dat_duong_dan(dich_sach);
     window.scrollTo(0, 0);
   };
 

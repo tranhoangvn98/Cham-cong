@@ -150,44 +150,44 @@ export function TrangHoThuYKien({ chi_doc = false }: { chi_doc?: boolean }): Rea
               <Trong tieu_de={tra('ht_gop_y_du_thao')} mo_ta={tra('ht_khong_co_du_thao')} />
             ) : (
               <div className="the the-mong">
-                <div className="vo-bang">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>{tra('vai_ma')}</th><th>{tra('vai_loai_van_ban')}</th>
-                        <th>{tra('vai_ve_viec')}</th><th>{tra('ht_han_gop_y')}</th><th></th>
+                <table className="bang-gon" style={{ tableLayout: 'fixed', width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 110 }}>{tra('vai_ma')}</th>
+                      <th style={{ width: 120 }}>{tra('vai_loai_van_ban')}</th>
+                      <th>{tra('vai_ve_viec')}</th>
+                      <th style={{ width: 150 }}>{tra('ht_han_gop_y')}</th>
+                      <th style={{ width: 88 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ds_dt.du_lieu.map((d) => {
+                      const khoa_loai = KHOA_LOAI_VB[d.loai];
+                      return (
+                      <tr key={d.id}>
+                        <td className="khong-ngat">{d.ma}</td>
+                        <td className="khong-ngat">
+                          {khoa_loai !== undefined ? tra_hien_tai(khoa_loai) : d.loai}
+                        </td>
+                        <td title={d.trich_yeu}>
+                          <span className="khong-ngat" style={{
+                            display: 'block', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>
+                            {d.trich_yeu !== '' ? d.trich_yeu : '—'}
+                          </span>
+                        </td>
+                        <td className="khong-ngat">{d.han_lay_y_kien === null
+                          ? '—' : ngay_gio(d.han_lay_y_kien)}</td>
+                        <td className="canh-phai">
+                          <LienKet den={`/gop-y-du-thao?van_ban_id=${d.id}`} lop="nut nut-nho">
+                            {tra('ht_gop_y_ngay')}
+                          </LienKet>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {ds_dt.du_lieu.map((d) => {
-                        const khoa_loai = KHOA_LOAI_VB[d.loai];
-                        return (
-                        <tr key={d.id}>
-                          <td className="khong-ngat">{d.ma}</td>
-                          <td className="khong-ngat">
-                            {khoa_loai !== undefined ? tra_hien_tai(khoa_loai) : d.loai}
-                          </td>
-                          <td>
-                            <span className="khong-ngat" style={{
-                              display: 'block', maxWidth: 380, overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}>
-                              {d.trich_yeu !== '' ? d.trich_yeu : '—'}
-                            </span>
-                          </td>
-                          <td className="khong-ngat">{d.han_lay_y_kien === null
-                            ? '—' : ngay_gio(d.han_lay_y_kien)}</td>
-                          <td className="canh-phai">
-                            <LienKet den={`/gop-y-du-thao?van_ban_id=${d.id}`} lop="nut nut-nho">
-                              {tra('ht_gop_y_ngay')}
-                            </LienKet>
-                          </td>
-                        </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
         </>
