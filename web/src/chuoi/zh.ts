@@ -762,6 +762,8 @@ export const CHUOI_ZH = {
   ht_han_gop_y: '截止时间',
   ht_khong_co_du_thao: '当前没有开放征求意见的草案。',
   ht_gop_y_ngay: '提出意见',
+  yk_dong_gop_chinh_sach: '制度建言',
+  yk_cong_gop_y_mo_ta: '对开放征求意见的制度草案提出意见——全体员工均可提交。',
   ht_han_x: ' · 截止 {n}',
   ht_so_y_kien: '意见',
   ht_xem_y_kien: '查看意见',

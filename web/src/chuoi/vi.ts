@@ -760,6 +760,8 @@ export const CHUOI_VI = {
   ht_han_gop_y: 'Hạn góp ý',
   ht_khong_co_du_thao: 'Không có dự thảo nào đang mở để góp ý.',
   ht_gop_y_ngay: 'Góp ý',
+  yk_dong_gop_chinh_sach: 'Đóng góp Chính sách',
+  yk_cong_gop_y_mo_ta: 'Góp ý cho các dự thảo chính sách đang mở — toàn thể nhân viên đều có thể gửi ý kiến.',
   ht_han_x: ' · hạn {n}',
   ht_so_y_kien: 'Ý kiến',
   ht_xem_y_kien: 'Xem ý kiến',

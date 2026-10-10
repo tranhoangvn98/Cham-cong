@@ -72,6 +72,7 @@ export function YKienToi(): ReactNode {
   const [tieu_de, dat_tieu_de] = useState('');
   const [noi_dung, dat_noi_dung] = useState('');
   const [mo, dat_mo] = useState<string | null>(null);
+  const [tab, dat_tab] = useState<'tat_ca' | 'chinh_sach'>('tat_ca');
 
   const gui = (): void => {
     void hd.chay(
@@ -90,8 +91,20 @@ export function YKienToi(): ReactNode {
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
       <HopTot chu={hd.tot} />
 
-      <div className="the">
+      <div className="hang-tab">
+        <button className={tab === 'tat_ca' ? 'dang-chon' : ''} onClick={() => dat_tab('tat_ca')}>
+          {tra('cn_tat_ca')}
+        </button>
+        <button className={tab === 'chinh_sach' ? 'dang-chon' : ''}
+          onClick={() => dat_tab('chinh_sach')}>
+          {tra('yk_dong_gop_chinh_sach')}
+        </button>
+      </div>
+
+      {tab === 'chinh_sach' && (
+      <div className="the" style={{ marginTop: 12 }}>
         <div className="canhan-muc-dau"><h3>{tra('ht_gop_y_du_thao')}</h3></div>
+        <p className="mo-ta">{tra('yk_cong_gop_y_mo_ta')}</p>
         {ds_du_thao.dang_tai ? <DangTai /> : ds_du_thao.loi !== null
           ? <HopLoi loi={ds_du_thao.loi} />
           : ds_du_thao.du_lieu === null || ds_du_thao.du_lieu.length === 0 ? (
@@ -120,7 +133,10 @@ export function YKienToi(): ReactNode {
             </div>
           )}
       </div>
+      )}
 
+      {tab === 'tat_ca' && (
+      <>
       <div className="the" style={{ marginTop: 12 }}>
         <div className="canhan-muc-dau"><h3>{tra('yk_gui_y_kien_moi')}</h3></div>
         <div className="bo-loc">
@@ -197,6 +213,8 @@ export function YKienToi(): ReactNode {
             </div>
           ))}
         </div>
+      )}
+      </>
       )}
     </>
   );
