@@ -319,7 +319,15 @@ export function HopThoai({ tieu_de, children, khi_dong, rong, toan_man }: HopTho
       if (e.key === 'Escape') khi_dong();
     };
     window.addEventListener('keydown', khi_bam);
-    return () => window.removeEventListener('keydown', khi_bam);
+    // Khoa cuon trang phia sau khi hop thoai mo — neu khong nguoi dung thay HAI thanh cuon
+    // trong mot man hinh (trang dang cuon + thanh cuon cua hop thoai). Luu gia tri cu de
+    // khoi phuc khi dong, va de cac hop thoai long nhau khong mo khoa som.
+    const overflow_cu = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', khi_bam);
+      document.body.style.overflow = overflow_cu;
+    };
   }, [khi_dong]);
 
   return (
