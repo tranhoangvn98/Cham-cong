@@ -133,7 +133,7 @@ const MENU: MucMenu[] = [
   // Truyen thong noi bo: thong bao va van ban ban hanh.
   { duong_dan: '/thong-bao', ten: 'Thông báo', khoa: 'menu_thong_bao', icon: 'star', nhom: 'Truyền thông nội bộ', phu: 'Đăng thông báo / gửi email / popup toàn công ty', khoa_phu: 'menu_thong_bao_phu', quyen: 'nhan_su' },
   { duong_dan: '/van-ban', ten: 'Văn bản công ty', khoa: 'menu_van_ban', icon: 'list-details', nhom: 'Truyền thông nội bộ', phu: 'Soạn bằng AI, ban hành, tài liệu công ty', khoa_phu: 'menu_van_ban_phu', quyen: 'nhan_su' },
-  { duong_dan: '/ho-thu-y-kien', ten: 'Hòm thư ý kiến', khoa: 'menu_ho_thu_y_kien', icon: 'user-check', nhom: 'Truyền thông nội bộ', phu: 'Tiếp nhận phản ánh, góp ý & ý kiến dự thảo', khoa_phu: 'menu_ho_thu_y_kien_phu', quyen: 'nhan_su' },
+  { duong_dan: '/ho-thu-y-kien', ten: 'Hòm thư ý kiến', khoa: 'menu_ho_thu_y_kien', icon: 'user-check', nhom: 'Truyền thông nội bộ', phu: 'Tiếp nhận phản ánh, góp ý & ý kiến dự thảo', khoa_phu: 'menu_ho_thu_y_kien_phu' },
   { duong_dan: '/cong-bo-phat-hanh', ten: 'Công bố phát hành', khoa: 'menu_cong_bo_phat_hanh', icon: 'refresh', nhom: 'Truyền thông nội bộ', phu: 'AI tổng hợp tính năng mới, gửi thông báo + popup', khoa_phu: 'menu_cong_bo_phat_hanh_phu', quyen: 'nhan_su' },
 
   { duong_dan: '/cai-dat', ten: 'Cài đặt', khoa: 'menu_cai_dat', icon: 'settings', nhom: 'Hệ thống', phu: 'Chấm công, lương, tài khoản, tích hợp', khoa_phu: 'menu_cai_dat_phu', quyen: 'nhan_su' },
@@ -259,7 +259,7 @@ function NoiDung({ duong_dan, ca_nhan }: { duong_dan: string; ca_nhan: boolean }
     case '/ra-vao': return la_nhan_su() ? <TrangRaVao /> : <KhongCoQuyen />;
     case '/ky-luat': return la_quan_tri() ? <TrangKyLuatViPham /> : <KhongCoQuyen />;
     case '/khieu-nai-luong': return la_nhan_su() ? <TrangKhieuNaiLuong /> : <KhongCoQuyen />;
-    case '/ho-thu-y-kien': return la_nhan_su() ? <TrangHoThuYKien /> : <KhongCoQuyen />;
+    case '/ho-thu-y-kien': return <TrangHoThuYKien chi_doc={!la_nhan_su()} />;
     case '/cong-bo-phat-hanh': return la_nhan_su() ? <TrangCongBoPhatHanh /> : <KhongCoQuyen />;
     case '/gop-y-du-thao': return <TrangGopYDuThao />;
     case '/kpi': return <TrangKpi />;

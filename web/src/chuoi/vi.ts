@@ -755,6 +755,13 @@ export const CHUOI_VI = {
   yk_da_gui_ok: 'Đã gửi. Phòng Nhân sự sẽ tiếp nhận và phản hồi qua đây và qua email của bạn.',
   yk_da_gui_dt: 'Đã gửi ý kiến cho dự thảo. Phòng Nhân sự sẽ tiếp nhận và phản hồi.',
 
+  // ================================ hom thu y kien — tab gop y du thao
+  ht_gop_y_du_thao: 'Góp ý dự thảo',
+  ht_han_gop_y: 'Hạn góp ý',
+  ht_khong_co_du_thao: 'Không có dự thảo nào đang mở để góp ý.',
+  ht_gop_y_ngay: 'Góp ý',
+  ht_gop_y_mo_ta: 'Danh sách các dự thảo văn bản đang mở lấy ý kiến trong phạm vi của bạn. Mở một dự thảo để đọc nội dung, xem tệp đính kèm và gửi ý kiến của mình.',
+
   // ================================ cong viec cua toi
   vt_khong_con_viec: 'Không còn việc nào đang chờ bạn.',
   vt_con_viec_x: 'Bạn đang còn {n} việc chưa xong.',
