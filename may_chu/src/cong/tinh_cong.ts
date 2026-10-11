@@ -202,6 +202,26 @@ export async function tinh_lai_ngay(
     [nhan_vien_id, ngay],
   );
 
+  // Don lam Remote DA DUYET trum ngay nay: ngay lam tu xa duoc mot cong tron, khong phai vang.
+  const lam_remote = await truy_van_mot<{ id: string }>(
+    `select id
+       from don_tu
+      where nhan_vien_id = $1 and loai = 'lam_remote' and trang_thai = 'da_duyet'
+        and tu_ngay <= $2 and coalesce(den_ngay, tu_ngay) >= $2
+      order by tao_luc desc limit 1`,
+    [nhan_vien_id, ngay],
+  );
+
+  // Don xin ve som DA DUYET dung ngay nay: mien luat "ve som qua 30 phut mat nua ngay cong".
+  const ve_som = await truy_van_mot<{ id: string }>(
+    `select id
+       from don_tu
+      where nhan_vien_id = $1 and loai = 've_som' and trang_thai = 'da_duyet'
+        and tu_ngay = $2
+      order by tao_luc desc limit 1`,
+    [nhan_vien_id, ngay],
+  );
+
   // Don LAM THEM DA DUYET trum ngay nay. Khong co don thi OT = 0 du o lai bao lau.
   //
   // MOI (17/09/2026): don OT duyet hai cap moi duoc DANG KY; chi khi KET QUA OT (anh chup
@@ -248,6 +268,8 @@ export async function tinh_lai_ngay(
     ngay_le,
     giai_trinh,
     cong_tac,
+    lam_remote: lam_remote !== null,
+    ve_som: ve_som !== null,
     lam_them,
     ngoai_le,
   });

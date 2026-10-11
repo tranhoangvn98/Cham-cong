@@ -284,16 +284,22 @@ export interface KetQuaQuyet {
  *
  * Ba loai con lai giu nguyen vong doi mot cap nhu truoc day, va `cap` bi bo qua.
  *
- * `cong_tac` la loai DUY NHAT trong bon loai nay doi bang cong — mot ngay cong tac da duyet
- * chuyen tu `vang` sang `cong_tac` va duoc mot cong. Ba loai con lai khong doi gi:
+ * Ba loai `cong_tac`, `lam_remote` va `ve_som` la nhung loai DOI BANG CONG khi duoc duyet:
+ *   - `cong_tac`    — ngay duoc duyet chuyen tu `vang` sang `cong_tac` va duoc mot cong.
+ *   - `lam_remote`  — nhu cong tac: ngay lam tu xa duoc mot cong tron, khong phai vang.
+ *   - `ve_som`      — ngay co don duoc duyet khong bi tru "nua ngay cong buoi chieu" khi ve
+ *                     som qua 30 phut (luat ap tu 01/09/2026).
+ * Cac loai con lai khong doi gi:
  *
  *   `lam_them`  — la DANG KY TRUOC. So phut OT tren bang cong van tinh tu lan quet that GIAO
  *                 voi don da duyet VA ket qua da duyet (xem cong/tinh_cong.ts), nen duyet mot
  *                 don OT khong tu nhien tao ra gio OT. Nop va duyet KET QUA moi tinh lai.
  *   `doi_ca`    — doi ca lam la viec cua nhan su tren ho so nhan vien; don chi la de nghi.
+ *   `di_muon`   — mien phat di muon do ben module luong doc don (phat_di_muon.ts), khong doi
+ *                 bang cong.
  *   `thoi_viec` — ngay nghi viec do nhan su ghi vao `nhan_vien.ngay_nghi_viec`.
  *
- * Bon dong tren la ranh gioi CO Y: don la de nghi va la ban ghi, khong phai lenh tu dong sua
+ * Nhung dong tren la ranh gioi CO Y: don la de nghi va la ban ghi, khong phai lenh tu dong sua
  * du lieu goc. Mot don duyet nham ma tu sua ho so thi khong ai lan lai duoc.
  */
 export async function quyet_don(
@@ -356,7 +362,8 @@ export async function quyet_don(
     trang_thai: d.loai === 'lam_them' && cap === 1 && quyet === 'da_duyet'
       ? 'cho_duyet_2'
       : quyet,
-    tinh_lai: d.loai === 'cong_tac' && quyet === 'da_duyet'
+    tinh_lai: (d.loai === 'cong_tac' || d.loai === 'lam_remote' || d.loai === 've_som')
+        && quyet === 'da_duyet'
       ? { tu_ngay: d.tu_ngay, den_ngay: d.den_ngay ?? d.tu_ngay }
       : null,
   };
@@ -392,9 +399,11 @@ export async function huy_don(
   await thuc_thi(
     `update don_tu set trang_thai = 'da_huy', quyet_luc = now() where id = $1`, [id]);
 
-  // Don cong tac DA DUYET bi huy -> ngay do khong con la ngay cong tac, phai tinh lai.
+  // Don cong tac / lam Remote / ve som DA DUYET bi huy -> ngay do khong con hieu luc cua don
+  // nua, phai tinh lai bang cong.
   return {
-    tinh_lai: d.trang_thai === 'da_duyet' && d.loai === 'cong_tac'
+    tinh_lai: d.trang_thai === 'da_duyet'
+      && (d.loai === 'cong_tac' || d.loai === 'lam_remote' || d.loai === 've_som')
       ? { tu_ngay: d.tu_ngay, den_ngay: d.den_ngay ?? d.tu_ngay }
       : null,
   };

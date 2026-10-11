@@ -144,9 +144,17 @@ async function tro_chuyen_qt(
       + 'Nguoi dung hoi: '
       + JSON.stringify(cau_hoi_goc)
       + '\n\nCac luot tro chuyen gan nhat cua CUNG nguoi hoi:\n' + (boi_canh === '' ? '(khong co)' : boi_canh)
-      + '\n\nBan chi ho tro quan tri nhan su: tong quan hom nay (co mat/di muon/vang/nghi phep/'
-      + 'chua quet), ai di muon/vang/chua quet hom nay, don cho duyet, tim nhan vien theo ten, '
-      + 'may cham cong, noi quy/che tai, van ban, thong bao. '
+      + '\n\nBan ho tro quan tri nhan su trong PHAN MEM Cham cong: tong quan hom nay (co mat/di '
+      + 'muon/vang/nghi phep/chua quet), ai di muon/vang/chua quet hom nay, don cho duyet, tim '
+      + 'nhan vien theo ten, may cham cong, noi quy/che tai, van ban, thong bao. Phan mem con '
+      + 'co cac trang: Ung luong, Duyet don, Nhan vien, Bang cong, Bang luong, Phu cap, Lan '
+      + 'quet, Ra/vao, Ky luat, Hop dong, Thiet bi cham cong, KPI, Cai dat, Tong quan — neu '
+      + 'nguoi dung hoi ve chung (vi du "phu cap o dau", "sua phu cap"), hay goi y ho noi "mo '
+      + 'trang <ten>" de ban mo giup, nhung KHONG tu khang dinh so lieu luong/phu cap. '
+      + 'TUYET DOI khong khang dinh ket qua tra cuu du lieu (ban KHONG co cong cu tra CSDL): '
+      + 'khong noi "khong tim thay nhan vien X", khong bia so lieu. Neu cau hoi can du lieu cu '
+      + 'the, noi ro ban khong tra duoc so lieu do va goi y dung kenh phu hop (hoi ho ten day '
+      + 'du de tro ly tra ho so, hoac mo trang Nhan vien / Phu cap). '
       + 'Neu cau NGOAI pham vi: duoc tro chuyen tu nhien 1-3 cau neu do la chuyen phiem lanh '
       + 'manh (hoi tham, loi khuyen chung, vui dua nhe) roi nhe nhang goi lai viec quan tri. '
       + 'Neu hoi thong tin thuc te can cap nhat (du bao thoi tiet, tin tuc, gia ca...): noi that '
@@ -346,26 +354,73 @@ async function tra_loi_don_cho(): Promise<TraLoiTroLyQT> {
   };
 }
 
-async function tra_loi_nhan_vien(cau: string, hom_nay: string): Promise<TraLoiTroLyQT> {
-  // Tim theo ten: so khop ho ten (khong dau) hoac cum hai tu cuoi cua ten.
-  const ds = await truy_van<{ id: string; ho_ten: string; ma_nv: string }>(
-    `select id, ho_ten, ma_nv from nhan_vien where dang_hoat_dong = true order by ho_ten`,
-  );
-  const khop = ds.filter((n) => {
+/** Mot nhan vien dang hoat dong, de doi chieu ten trong cau hoi. */
+export interface NhanVienKhop {
+  id: string;
+  ho_ten: string;
+  ma_nv: string;
+}
+
+/**
+ * Tu viet hoa giua cau la dau hieu ten rieng ("Trần Khánh Ly", "nhân viên Lan..."). Tu
+ * dau cau chi duoc coi la ten khi cau con co tu viet hoa khac — "Bảng lương tháng này"
+ * khong duoc bat nham thanh tim nguoi ten Bang.
+ */
+export function tu_ten_ung_vien(cau_goc: string): Set<string> {
+  const tu = cau_goc.split(/[^\p{L}\p{N}]+/u);
+  const ra = new Set<string>();
+  let co_giua_cau = false;
+  for (let i = 1; i < tu.length; i++) {
+    const t = tu[i]!;
+    if (t.length >= 2 && /^\p{Lu}/u.test(t)) {
+      ra.add(chuan(t));
+      co_giua_cau = true;
+    }
+  }
+  const dau = tu[0] ?? '';
+  if (co_giua_cau && dau.length >= 2 && /^\p{Lu}/u.test(dau)) ra.add(chuan(dau));
+  return ra;
+}
+
+/**
+ * Loc nhan vien khop ten trong cau hoi — ham THUAN de kiem duoc bang test rieng. Ba muc
+ * khop: ten day du khong dau; cum hai tu cuoi cua ten; mot phan cua ten viet hoa dung quy
+ * cach ten rieng trong cau goc.
+ */
+export function nhan_vien_khop(
+  ds: readonly NhanVienKhop[], cau: string, cau_goc: string,
+): NhanVienKhop[] {
+  // Muc 1 + 2: ten day du hoac cum hai tu cuoi — khop chinh xac, uu tien hon het. Khi da
+  // co ket qua chinh xac thi khong khớp them phan le (vd "Cẩm Ly" phai ra dung mot nguoi,
+  // khong keo theo ca nguoi ten Ly khac).
+  const chinh_xac = ds.filter((n) => {
     const t = chuan(n.ho_ten);
+    if (cau.includes(t)) return true;
     const phan = t.split(/\s+/).filter((p) => p.length >= 2);
     const cum = phan.slice(-2).join(' ');
-    return cau.includes(t) || (cum.length >= 4 && cau.includes(cum));
+    return cum.length >= 4 && cau.includes(cum);
   });
-  if (khop.length === 0) {
-    return {
-      tra_loi: 'Mình chưa tìm thấy nhân viên nào khớp tên. Bạn thử nói rõ họ tên, ví dụ '
-        + '**"Nguyễn Văn An công tháng này thế nào"** — hoặc mở trang Nhân viên để tìm.',
-      y_dinh: 'nhan_vien',
-      mo_de_xuat: { nhan: 'Mở trang Nhân viên', den: '/nhan-vien' },
-      goi_y: GOI_Y_QT,
-    };
-  }
+  if (chinh_xac.length > 0) return chinh_xac;
+  // Muc 3: mot phan cua ten viet hoa dung quy cach ten rieng trong cau goc ("Ly", "Lan"...).
+  const tu_ten = tu_ten_ung_vien(cau_goc);
+  return ds.filter((n) => {
+    const phan = chuan(n.ho_ten).split(/\s+/).filter((p) => p.length >= 2);
+    return phan.some((p) => tu_ten.has(p));
+  });
+}
+
+/**
+ * Tra loi tim nhan vien theo ten. Tra null khi khong khop ai — nguoi goi quyet dinh loi
+ * san thay vi khang dinh nham "khong co nhan vien nay" (cau hoi co the hoi chuyen khac).
+ */
+async function tra_loi_nhan_vien(
+  cau: string, cau_goc: string, hom_nay: string,
+): Promise<TraLoiTroLyQT | null> {
+  const ds = await truy_van<NhanVienKhop>(
+    `select id, ho_ten, ma_nv from nhan_vien where dang_hoat_dong = true order by ho_ten`,
+  );
+  const khop = nhan_vien_khop(ds, cau, cau_goc);
+  if (khop.length === 0) return null;
   if (khop.length > 1) {
     const ten = khop.slice(0, 5).map((n) => `• ${n.ho_ten} (${n.ma_nv})`).join('\n');
     return {
@@ -498,6 +553,19 @@ function tra_loi_hoi_tham_qt(cau: string): TraLoiTroLyQT {
   return { tra_loi: loi, y_dinh: 'hoi_tham', goi_y: GOI_Y_QT };
 }
 
+/** LLM cho cau ngoai kich ban; LLM chet thi loi san. */
+async function tra_loi_khong_ro(nd: NguoiHoiQuanTri, cau_hoi_goc: string): Promise<TraLoiTroLyQT> {
+  const llm = await tro_chuyen_qt(cau_hoi_goc, await lich_su_qt_boi_canh(nd.sub));
+  if (llm !== null) {
+    return { tra_loi: llm.tra_loi, y_dinh: 'llm', goi_y: llm.goi_y };
+  }
+  return {
+    tra_loi: 'Mình chưa hiểu câu hỏi. Bạn thử hỏi về **tổng quan hôm nay, đi muộn, vắng, '
+      + 'chưa quẹt, đơn chờ duyệt, nhân viên, máy chấm công, nội quy** nhé.',
+    y_dinh: 'khong_ro', goi_y: GOI_Y_QT,
+  };
+}
+
 /**
  * Tra loi cau hoi quan tri. Du lieu lay tu dashboard_cho nen TU DONG dung theo quyen cua
  * nguoi hoi. Lich su luu theo nguoi dung; cau rong (mo widget) khong luu.
@@ -519,7 +587,12 @@ export async function tra_loi_tro_ly_quan_tri(
     case 'vang': kq = await tra_loi_vang(hom_nay); break;
     case 'chua_quet': kq = await tra_loi_chua_quet(hom_nay); break;
     case 'don_cho': kq = await tra_loi_don_cho(); break;
-    case 'nhan_vien': kq = await tra_loi_nhan_vien(cau, hom_nay); break;
+    case 'nhan_vien': {
+      // Co tu khoa "nhan vien" chua chac la tim mot nguoi cu the (vd "them phu cap cho
+      // nhan vien"). Khong khop ten nao thi de LLM tra loi theo y cau hoi thuc su.
+      kq = await tra_loi_nhan_vien(cau, cau_hoi_goc, hom_nay) ?? await tra_loi_khong_ro(nd, cau_hoi_goc);
+      break;
+    }
     case 'may_cham': kq = await tra_loi_may_cham(nd, hom_nay); break;
     case 'noi_quy': {
       const r = await tra_loi_noi_quy(cau);
@@ -549,16 +622,10 @@ export async function tra_loi_tro_ly_quan_tri(
       break;
     }
     case 'khong_ro': {
-      const llm = await tro_chuyen_qt(cau_hoi_goc, await lich_su_qt_boi_canh(nd.sub));
-      if (llm !== null) {
-        kq = { tra_loi: llm.tra_loi, y_dinh: 'llm', goi_y: llm.goi_y };
-      } else {
-        kq = {
-          tra_loi: 'Mình chưa hiểu câu hỏi. Bạn thử hỏi về **tổng quan hôm nay, đi muộn, vắng, '
-            + 'chưa quẹt, đơn chờ duyệt, nhân viên, máy chấm công, nội quy** nhé.',
-          y_dinh: 'khong_ro', goi_y: GOI_Y_QT,
-        };
-      }
+      // Ten rieng dung mot minh ("Tran Khanh Ly") khong co tu khoa nao — kiem ten truoc
+      // de tra ho so; khong khop moi nho LLM (LLM khong co cong cu tra CSDL).
+      const nv = await tra_loi_nhan_vien(cau, cau_hoi_goc, hom_nay);
+      kq = nv ?? await tra_loi_khong_ro(nd, cau_hoi_goc);
       break;
     }
   }

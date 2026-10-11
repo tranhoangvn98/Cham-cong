@@ -2,6 +2,27 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.120.0] — 2026-10-03
+
+**Đơn từ: thêm đơn xin về sớm và đơn xin làm Remote.**
+
+Hai loại đơn mới dùng chung bảng `don_tu` và cùng vòng đời với các loại hiện có (làm đơn ở
+tab Đơn của tôi, người duyệt xử lý chung một bảng, sinh bản đơn DOCX vào kho hồ sơ):
+
+- **Đơn xin về sớm** (`ve_som`): một ngày + giờ dự kiến ra về. Đơn được duyệt thì ngày đó
+  **miễn luật "về sớm quá 30 phút mất nửa ngày công"** (như mục miễn của sổ ngoại lệ); giờ ra
+  thật vẫn ghi nhận bình thường. Duyệt/hủy đơn đều tự tính lại bảng công.
+- **Đơn xin làm Remote** (`lam_remote`): một hoặc nhiều ngày làm việc từ xa. Đơn được duyệt thì
+  ngày đó tính **một công tròn**, trạng thái ngày mới `lam_remote` trên bảng công — không còn
+  bị ghi vắng vì không quẹt máy ở văn phòng. Thứ tự ưu tiên tính công: nghỉ phép > ngày lễ >
+  nghỉ tuần > công tác > Remote (công tác thắng nếu cả hai trùm cùng ngày).
+- Trợ lý chat biết hai loại đơn này: "xin về sớm mai 16:00" và "xin làm Remote ngày mai" đều
+  điền sẵn đơn chờ xác nhận.
+- Migration 103: thêm hai loại vào ràng buộc `don_tu`, trạng thái `lam_remote` cho
+  `bang_cong_ngay` và chỉ mục cho truy vấn tính công hằng ngày.
+- Test: unit `loai_don`, `tinh_cong` (Remote 1 công, về sớm miễn mất công, thứ tự ưu tiên),
+  `tro_ly` + 2 e2e (Remote chuyển vắng → làm Remote; đơn về sớm khôi phục nửa ngày công).
+
 ## [1.119.1] — 2026-10-03
 
 **Sửa: Lịch sử lệnh báo "lỗi 423" / "lỗi -629" cho máy kiểm soát ra vào dù lệnh đã chạy.**

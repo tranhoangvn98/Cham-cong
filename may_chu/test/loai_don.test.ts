@@ -46,13 +46,24 @@ test('dang ky: thoi viec noi ro tu_ngay la NGAY LAM VIEC CUOI CUNG', () => {
   assert.match(dac_ta('thoi_viec').nhan_tu_ngay, /cuối cùng/);
 });
 
-test('dang ky: chi doi_ca va cong_tac co khoang ngay', () => {
-  // `lam_them` va `thoi_viec` la mot ngay. Neu cho chung co khoang ngay thi mot don OT "tu
-  // 01/08 den 31/08" duoc tao ra va khong ai biet no nghia la gi.
+test('dang ky: chi doi_ca, cong_tac va lam_remote co khoang ngay', () => {
+  // `lam_them`, `thoi_viec`, `di_muon` va `ve_som` la mot ngay. Neu cho chung co khoang ngay
+  // thi mot don OT "tu 01/08 den 31/08" duoc tao ra va khong ai biet no nghia la gi.
   assert.equal(dac_ta('lam_them').co_khoang_ngay, false);
   assert.equal(dac_ta('thoi_viec').co_khoang_ngay, false);
+  assert.equal(dac_ta('di_muon').co_khoang_ngay, false);
+  assert.equal(dac_ta('ve_som').co_khoang_ngay, false);
   assert.equal(dac_ta('doi_ca').co_khoang_ngay, true);
   assert.equal(dac_ta('cong_tac').co_khoang_ngay, true);
+  assert.equal(dac_ta('lam_remote').co_khoang_ngay, true);
+});
+
+test('dang ky: ve_som va lam_remote co nhan dung nghiep vu', () => {
+  // `gio_bat_dau` cua ve_som la GIO DU KIEN RA VE — khong phai gio bat dau lam viec.
+  assert.match(dac_ta('ve_som').nhan_tu_ngay, /về sớm/);
+  assert.match(dac_ta('lam_remote').nhan_tu_ngay, /Từ ngày/);
+  assert.equal(dac_ta('ve_som').tien_to_tep, 'Don-xin-ve-som');
+  assert.equal(dac_ta('lam_remote').tien_to_tep, 'Don-xin-lam-remote');
 });
 
 // ================================================================ so gio lam them

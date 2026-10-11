@@ -1,21 +1,23 @@
-// Dang ky BON LOAI DON dung chung bang `don_tu`: lam them, doi ca, cong tac, thoi viec.
+// Dang ky CAC LOAI DON dung chung bang `don_tu`: lam them, doi ca, cong tac, thoi viec,
+// di muon, ve som, lam Remote.
 //
 // MOT CHO KHAI, CA TANG DUOI DUNG THEO. Moi loai khai o day mot lan: ten hien thi, cac o du
 // lieu no dung, cach doc dau vao, va cac hang trong ban don DOCX. Route thi mot bo duy nhat va
-// chung cho ca bon.
+// chung cho moi loai.
 //
-// VI SAO LAM THE: bon loai don khac nhau o vai o du lieu, con vong doi thi giong het — lam
-// don, duyet, sinh ban don. Viet bon bo route la bon cho de lech: sua quyen o mot cho quen ba
-// cho, doi thong diep loi o mot cho con ba cho noi khac. Them loai thu nam sau nay la them mot
-// muc trong `CAC_LOAI` va khong sua route nao.
+// VI SAO LAM THE: cac loai don khac nhau o vai o du lieu, con vong doi thi giong het — lam
+// don, duyet, sinh ban don. Viet moi loai mot bo route la moi cho de lech: sua quyen o mot cho
+// quen cho khac, doi thong diep loi o mot cho con cac cho kia noi khac. Them loai moi sau nay
+// la them mot muc trong `CAC_LOAI` va khong sua route nao.
 //
 // Module NAY THUAN: khong CSDL, khong Fastify. Nho the kiem duoc tung loai bang du lieu mau.
 import { LoiDauVao } from '../tien_ich/kiem_tra.ts';
 
-export type MaLoaiDon = 'lam_them' | 'doi_ca' | 'cong_tac' | 'thoi_viec' | 'di_muon';
+export type MaLoaiDon = 'lam_them' | 'doi_ca' | 'cong_tac' | 'thoi_viec' | 'di_muon'
+  | 've_som' | 'lam_remote';
 
 export const MA_LOAI_DON: readonly MaLoaiDon[] =
-  ['lam_them', 'doi_ca', 'cong_tac', 'thoi_viec', 'di_muon'] as const;
+  ['lam_them', 'doi_ca', 'cong_tac', 'thoi_viec', 'di_muon', 've_som', 'lam_remote'] as const;
 
 /** Mot don sau khi da doc tu dau vao — khop tung cot cua bang `don_tu`. */
 export interface DonTu {
@@ -146,6 +148,36 @@ export const CAC_LOAI: readonly DacTaLoaiDon[] = [
     hang_ban_don: (d) => [
       ['Ngày đi muộn', d.tu_ngay_viet],
       ['Giờ dự kiến có mặt', gio(d.gio_bat_dau)],
+      ['Lý do', d.ly_do ?? '—'],
+    ],
+  },
+  {
+    // Don xin ve som: gio_bat_dau = gio du kien RA VE. Don duyet thi ngay do duoc MIEN luat
+    // "ve som qua 30 phut mat nua ngay cong" (xem cong/quy_tac_tinh_cong.ts).
+    ma: 've_som',
+    ten: 'Đơn xin về sớm',
+    tieu_de: 'ĐƠN XIN VỀ SỚM',
+    tien_to_tep: 'Don-xin-ve-som',
+    nhan_tu_ngay: 'Ngày về sớm',
+    co_khoang_ngay: false,
+    hang_ban_don: (d) => [
+      ['Ngày về sớm', d.tu_ngay_viet],
+      ['Giờ dự kiến ra về', gio(d.gio_bat_dau)],
+      ['Lý do', d.ly_do ?? '—'],
+    ],
+  },
+  {
+    // Don lam Remote: ngay lam viec tu xa, khong quet may o van phong. Don duyet thi ngay do
+    // tinh MOT CONG TRON va khong bi ghi vang (xem cong/quy_tac_tinh_cong.ts).
+    ma: 'lam_remote',
+    ten: 'Đơn xin làm Remote',
+    tieu_de: 'ĐƠN XIN LÀM VIỆC REMOTE',
+    tien_to_tep: 'Don-xin-lam-remote',
+    nhan_tu_ngay: 'Từ ngày',
+    co_khoang_ngay: true,
+    hang_ban_don: (d) => [
+      ['Từ ngày', d.tu_ngay_viet],
+      ['Đến ngày', d.den_ngay_viet ?? d.tu_ngay_viet],
       ['Lý do', d.ly_do ?? '—'],
     ],
   },

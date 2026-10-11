@@ -39,7 +39,8 @@ export type LoaiNghi = (typeof LOAI_NGHI)[number];
 export interface HanhDongChoXacNhan {
   loai: 'tao_don_nghi_phep' | 'tao_giai_trinh' | 'tao_de_xuat' | 'huy_don'
     | 'tao_don_lam_them' | 'tao_don_doi_ca' | 'tao_don_cong_tac' | 'tao_don_thoi_viec'
-    | 'tao_don_di_muon' | 'tao_khieu_nai_luong' | 'tao_khieu_nai_ky_luat';
+    | 'tao_don_di_muon' | 'tao_don_ve_som' | 'tao_don_lam_remote'
+    | 'tao_khieu_nai_luong' | 'tao_khieu_nai_ky_luat';
   tieu_de: string;
   /** Cac dong chi tiet hien cho nguoi dung xem truoc khi bam Xac nhan. */
   chi_tiet: string[];
@@ -68,6 +69,7 @@ export interface TraLoiTroLy {
 const GOI_Y = [
   'Xin nghỉ phép du lịch',
   'Xin về sớm',
+  'Xin làm Remote ngày mai',
   'Xin nghỉ ốm',
   'Đăng ký OT thêm thu nhập',
   'Xin đi muộn ngày mai',
@@ -333,6 +335,7 @@ export type YDinh =
   | 'noi_quy' | 'thong_bao' | 'van_ban' | 'luong' | 'di_muon'
   | 'cong_thang' | 'nghi_le' | 'ca_lam' | 'don_cho' | 'phep' | 'khong_ro'
   | 'dang_ky_ot' | 'doi_ca' | 'cong_tac' | 'nghi_viec' | 'xin_di_muon' | 'xin_ve_som'
+  | 'xin_lam_remote'
   | 'khieu_nai_luong' | 'khieu_nai_ky_luat' | 'ung_luong';
 
 /**
@@ -371,9 +374,10 @@ export function nhan_dang_y_dinh(cau_goc: string): YDinh {
   if (co(cau, 'doi ca', 'chuyen ca')) return 'doi_ca';
   if (co(cau, 'cong tac')) return 'cong_tac';
   if (co(cau, 'xin di muon', 'dang ky di muon', 'bao di muon', 'xin den tre', 'dang ky den tre')) return 'xin_di_muon';
-  // Xin VE SOM la viec co loi cho nguoi lao dong nhung he thong chua co don rieng — tra loi
-  // huong dan xin nghi phep nua ngay. Tu "ve som" tran van la cau hoi so lieu (di_muon).
+  // Xin VE SOM co don rieng (ve_som). Tu "ve som" tran van la cau hoi so lieu (di_muon).
   if (co(cau, 'xin ve som', 'muon ve som', 'xin ra som', 'muon ra som')) return 'xin_ve_som';
+  if (co(cau, 'xin lam remote', 'lam remote', 'lam viec tu xa', 'lam tu xa', 'dang ky remote',
+    'xin remote', 'lam o nha', 'lam wfh', 'wfh')) return 'xin_lam_remote';
   if (co(cau, 'ung luong', 'tam ung', 'ung truoc')) return 'ung_luong';
   if (co(cau, 'noi quy', 'vi pham', 'ky luat', 'che tai', 'bi phat', 'giam thuong', 'xu ly khi', 'sai pham')) return 'noi_quy';
   // Hoi hanh vi + che tai cung la cau hoi noi quy: "di muon bi xu ly the nao" khong phai
@@ -453,7 +457,8 @@ async function tra_loi_noi_bo(
     case 'doi_ca': return tra_loi_doi_ca(nv_id, cau_hoi_goc, cau, hom_nay);
     case 'cong_tac': return tra_loi_cong_tac(nv_id, cau_hoi_goc, cau, hom_nay);
     case 'xin_di_muon': return tra_loi_xin_di_muon(nv_id, cau_hoi_goc, cau, hom_nay);
-    case 'xin_ve_som': return tra_loi_xin_ve_som();
+    case 'xin_ve_som': return tra_loi_xin_ve_som(nv_id, cau_hoi_goc, cau, hom_nay);
+    case 'xin_lam_remote': return tra_loi_xin_lam_remote(nv_id, cau_hoi_goc, cau, hom_nay);
     case 'ung_luong': return tra_loi_ung_luong(vai_tro);
     case 'giai_trinh': return tra_loi_giai_trinh(nv_id, cau_hoi_goc, cau, hom_nay);
     case 'huy_don': return tra_loi_huy_don(nv_id, cau);
@@ -484,7 +489,7 @@ async function tra_loi_noi_bo(
 
   return {
     tra_loi: 'Mình chưa hiểu câu hỏi. Bạn thử hỏi về **phép, công, đi muộn, ca làm, nội quy**, '
-      + 'hoặc nhờ mình điền đơn **OT, đổi ca, công tác, xin đi muộn** nhé.',
+      + 'hoặc nhờ mình điền đơn **OT, đổi ca, công tác, đi muộn, về sớm, làm Remote** nhé.',
     y_dinh: 'khong_ro',
     goi_y: GOI_Y,
   };
@@ -542,7 +547,8 @@ const NHAN_Y_DINH_CHAO: Partial<Record<YDinh, string>> = {
   ca_lam: 'ca làm việc', luong: 'lương', don_cho: 'đơn chờ duyệt',
   xin_nghi_phep: 'xin nghỉ phép', giai_trinh: 'giải trình quên quét', de_xuat: 'đề xuất',
   dang_ky_ot: 'đăng ký OT', doi_ca: 'đổi ca', cong_tac: 'công tác',
-  xin_di_muon: 'xin đi muộn', nghi_viec: 'thôi việc', noi_quy: 'nội quy',
+  xin_di_muon: 'xin đi muộn', xin_ve_som: 'xin về sớm', xin_lam_remote: 'xin làm Remote',
+  nghi_viec: 'thôi việc', noi_quy: 'nội quy',
   thong_bao: 'thông báo', van_ban: 'văn bản', khieu_nai_luong: 'khiếu nại lương',
   khieu_nai_ky_luat: 'khiếu nại kỷ luật',
 };
@@ -1397,14 +1403,109 @@ async function don_tu_trung_ngay(
   return trung !== null;
 }
 
-/** Xin ve som: chua co don rieng — huong dan xin nghi phep nua ngay (co loi, lam duoc ngay). */
-function tra_loi_xin_ve_som(): TraLoiTroLy {
+/** Xin ve som: dien san don `ve_som`. gio_bat_dau = gio du kien ra ve doc tu cau noi. */
+async function tra_loi_xin_ve_som(
+  nv_id: string, cau_goc: string, cau: string, hom_nay: string,
+): Promise<TraLoiTroLy> {
+  let ngay = phan_tich_ngay(cau, hom_nay);
+  if (ngay === null) {
+    const llm = await phan_tich_khoang_llm(cau_goc, hom_nay, await lich_su_boi_canh(nv_id));
+    if (llm !== null) ngay = llm.tu;
+  }
+  if (ngay === null) {
+    return {
+      tra_loi: 'Bạn xin về sớm ngày nào? Ví dụ: **"xin về sớm ngày mai lúc 16:00"**.',
+      y_dinh: 'xin_ve_som',
+      goi_y: ['Xin về sớm ngày mai lúc 16:00'],
+    };
+  }
+  if (ngay < hom_nay) {
+    return {
+      tra_loi: `Ngày ${ngay_viet(ngay)} đã qua. Đơn về sớm cần gửi trong ngày đó để làm căn ` +
+        'cứ miễn mất công — ngày cũ bạn liên hệ nhân sự nhé.',
+      y_dinh: 'xin_ve_som', goi_y: GOI_Y,
+    };
+  }
+  if (await don_tu_trung_ngay(nv_id, 've_som', ngay, ngay)) {
+    return {
+      tra_loi: `Bạn đã có đơn xin về sớm ngày ${ngay_viet(ngay)} đang chờ duyệt hoặc đã duyệt.`,
+      y_dinh: 'xin_ve_som', goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    };
+  }
+  const gio_ra_ve = phan_tich_gio(cau).bat_dau;
+  const ly_do = phan_tich_ly_do(cau_goc);
   return {
-    tra_loi: 'Hệ thống chưa có đơn xin về sớm riêng. Cách nhanh nhất là **xin nghỉ phép nửa '
-      + 'ngày** — bạn nói "xin nghỉ phép nửa ngày hôm nay" là mình điền sẵn đơn giúp. Nếu '
-      + 'cần về gấp, bạn nên báo trực tiếp quản lý của mình nhé.',
+    tra_loi: 'Mình đã điền sẵn đơn xin về sớm bên dưới. Bấm **Gửi đơn về sớm** để nộp — ' +
+      'chỉ gửi khi **chính bạn xác nhận**. Đơn duyệt thì hôm đó bạn **không bị mất nửa ngày ' +
+      'công** dù về sớm quá 30 phút.',
     y_dinh: 'xin_ve_som',
-    goi_y: ['Xin nghỉ phép nửa ngày hôm nay', 'Xin nghỉ phép du lịch'],
+    goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    hanh_dong: {
+      loai: 'tao_don_ve_som',
+      tieu_de: 'Đơn xin về sớm',
+      chi_tiet: [
+        `Ngày về sớm: ${ngay_viet(ngay)}`,
+        `Giờ dự kiến ra về: ${gio_ra_ve ?? 'chưa rõ (bổ sung ở tab Đơn của tôi)'}`,
+        ...(ly_do === null ? [] : [`Lý do: ${ly_do}`]),
+      ],
+      duong_dan: '/api/toi/don',
+      phuong_thuc: 'POST',
+      du_lieu: { loai: 've_som', tu_ngay: ngay, gio_bat_dau: gio_ra_ve, ly_do },
+      nhan: 'Gửi đơn về sớm',
+      bo: 'Bỏ',
+    },
+  };
+}
+
+/** Xin lam Remote: dien san don `lam_remote` mot ngay (co the bo sung khoang o tab Don cua toi). */
+async function tra_loi_xin_lam_remote(
+  nv_id: string, cau_goc: string, cau: string, hom_nay: string,
+): Promise<TraLoiTroLy> {
+  let ngay = phan_tich_ngay(cau, hom_nay);
+  if (ngay === null) {
+    const llm = await phan_tich_khoang_llm(cau_goc, hom_nay, await lich_su_boi_canh(nv_id));
+    if (llm !== null) ngay = llm.tu;
+  }
+  if (ngay === null) {
+    return {
+      tra_loi: 'Bạn xin làm Remote ngày nào? Ví dụ: **"xin làm Remote ngày mai vì sửa nhà"**.',
+      y_dinh: 'xin_lam_remote',
+      goi_y: ['Xin làm Remote ngày mai'],
+    };
+  }
+  if (ngay < hom_nay) {
+    return {
+      tra_loi: `Ngày ${ngay_viet(ngay)} đã qua. Đơn làm Remote cần gửi trước ngày làm — ` +
+        'ngày cũ bạn liên hệ nhân sự nhé.',
+      y_dinh: 'xin_lam_remote', goi_y: GOI_Y,
+    };
+  }
+  if (await don_tu_trung_ngay(nv_id, 'lam_remote', ngay, ngay)) {
+    return {
+      tra_loi: `Bạn đã có đơn xin làm Remote ngày ${ngay_viet(ngay)} đang chờ duyệt hoặc đã duyệt.`,
+      y_dinh: 'xin_lam_remote', goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    };
+  }
+  const ly_do = phan_tich_ly_do(cau_goc);
+  return {
+    tra_loi: 'Mình đã điền sẵn đơn xin làm Remote bên dưới. Bấm **Gửi đơn Remote** để nộp — ' +
+      'chỉ gửi khi **chính bạn xác nhận**. Đơn duyệt thì hôm đó **tính đủ công**, không cần ' +
+      'quẹt máy. Muốn xin nhiều ngày liền, mở tab Đơn của tôi để chọn khoảng ngày.',
+    y_dinh: 'xin_lam_remote',
+    goi_y: ['Tôi có đơn nào đang chờ duyệt không?'],
+    hanh_dong: {
+      loai: 'tao_don_lam_remote',
+      tieu_de: 'Đơn xin làm Remote',
+      chi_tiet: [
+        `Ngày làm Remote: ${ngay_viet(ngay)}`,
+        ...(ly_do === null ? [] : [`Lý do: ${ly_do}`]),
+      ],
+      duong_dan: '/api/toi/don',
+      phuong_thuc: 'POST',
+      du_lieu: { loai: 'lam_remote', tu_ngay: ngay, den_ngay: ngay, ly_do },
+      nhan: 'Gửi đơn Remote',
+      bo: 'Bỏ',
+    },
   };
 }
 

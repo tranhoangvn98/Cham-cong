@@ -77,8 +77,13 @@ export const TEN_TRANG_THAI_NGAY: Record<string, string> = {
   co_mat: 'Có mặt',
   vang: 'Vắng',
   nghi_phep: 'Nghỉ phép',
+  nghi_khong_luong: 'Nghỉ không lương',
   ngay_le: 'Ngày lễ',
   nghi_tuan: 'Nghỉ tuần',
+  cong_tac: 'Công tác',
+  lam_remote: 'Làm Remote',
+  lam_bu: 'Làm bù',
+  ngoai_le: 'Ngoại lệ',
 };
 
 export const TEN_TRANG_THAI_DON: Record<string, string> = {

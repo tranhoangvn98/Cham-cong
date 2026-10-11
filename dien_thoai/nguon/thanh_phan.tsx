@@ -211,6 +211,7 @@ export function TheNhan(
 
 const MAU_TRANG_THAI_NGAY: Record<string, 'tot' | 'xau' | 'canh_bao' | 'lanh' | 'mo'> = {
   co_mat: 'tot', vang: 'xau', nghi_phep: 'lanh', ngay_le: 'canh_bao', nghi_tuan: 'mo',
+  cong_tac: 'lanh', lam_remote: 'lanh', lam_bu: 'tot', ngoai_le: 'lanh',
 };
 
 export function NhanNgay({ trang_thai, chu }: { trang_thai: string; chu: string }): ReactNode {

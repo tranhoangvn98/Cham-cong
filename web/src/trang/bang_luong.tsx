@@ -791,8 +791,8 @@ function HopThoaiChiTiet(
 
 const NHAN_TT_NGAY: Record<string, string> = {
   vang: 'Vắng', co_mat: 'Có mặt', nghi_phep: 'Nghỉ phép', nghi_khong_luong: 'Nghỉ không lương',
-  ngay_le: 'Ngày lễ', nghi_tuan: 'Nghỉ tuần', cong_tac: 'Công tác', lam_bu: 'Làm bù',
-  ngoai_le: 'Ngoại lệ',
+  ngay_le: 'Ngày lễ', nghi_tuan: 'Nghỉ tuần', cong_tac: 'Công tác', lam_remote: 'Làm Remote',
+  lam_bu: 'Làm bù', ngoai_le: 'Ngoại lệ',
 };
 // Cột "Phép / lý do": vắng = KHÔNG phép (đơn nghỉ duyệt sẽ đổi trạng thái sang nghỉ phép/không lương).
 const PHEP_NGAY: Record<string, ReactNode> = {
@@ -800,6 +800,7 @@ const PHEP_NGAY: Record<string, ReactNode> = {
   nghi_phep: 'Có phép (phép năm)',
   nghi_khong_luong: 'Nghỉ không lương',
   cong_tac: 'Công tác',
+  lam_remote: 'Làm Remote',
   ngay_le: 'Nghỉ lễ',
   lam_bu: 'Nghỉ bù',
   ngoai_le: 'Ngoại lệ (không trừ phép)',

@@ -225,7 +225,7 @@ export default function ManDonTu(): ReactNode {
               (khac.du_lieu?.danh_sach ?? []).length === 0 ? (
                 <Trong
                   tieu_de="Chưa có đơn nào"
-                  mo_ta="Làm thêm giờ, đổi ca, đi công tác, thôi việc."
+                  mo_ta="Làm thêm giờ, đổi ca, công tác, đi muộn, về sớm, làm Remote."
                 />
               ) : (
                 (khac.du_lieu?.danh_sach ?? []).map((d, i) => (
@@ -238,6 +238,8 @@ export default function ManDonTu(): ReactNode {
                           : `${ngay_viet(d.tu_ngay)} – ${ngay_viet(d.den_ngay)}`}
                         {d.gio_bat_dau !== null && d.gio_ket_thuc !== null
                           && ` · ${d.gio_bat_dau.slice(0, 5)}–${d.gio_ket_thuc.slice(0, 5)}`}
+                        {d.loai === 've_som' && d.gio_bat_dau !== null && d.gio_ket_thuc === null
+                          && ` · ra về ${d.gio_bat_dau.slice(0, 5)}`}
                         {d.noi_den !== null && ` · ${d.noi_den}`}
                       </Chu>
                       {d.ly_do !== null && <Chu co="bo" mau="mo">{d.ly_do}</Chu>}
@@ -575,7 +577,7 @@ function FormDonKhac({ loai_don, khi_dong, khi_xong }: {
         loai,
         tu_ngay,
         den_ngay: dt?.co_khoang_ngay === true ? den_ngay : null,
-        gio_bat_dau: loai === 'lam_them' ? gio_bat_dau : null,
+        gio_bat_dau: loai === 'lam_them' || loai === 've_som' ? gio_bat_dau : null,
         gio_ket_thuc: loai === 'lam_them' ? gio_ket_thuc : null,
         noi_den: loai === 'cong_tac' ? noi_den.trim() : null,
         ly_do: ly_do.trim() === '' ? null : ly_do.trim(),
@@ -708,6 +710,17 @@ function FormDonKhac({ loai_don, khi_dong, khi_xong }: {
             </>
           )}
 
+          {loai === 've_som' && (
+            <Nhap
+              nhan="Giờ dự kiến ra về"
+              gia_tri={gio_bat_dau}
+              khi_doi={dat_gio_bat_dau}
+              goi_y="16:30"
+              tu_dong="off"
+              goi_y_duoi="Định dạng giờ:phút, ví dụ 16:30"
+            />
+          )}
+
           {loai === 'cong_tac' && (
             <Nhap
               nhan="Nơi đến"
@@ -731,6 +744,21 @@ function FormDonKhac({ loai_don, khi_dong, khi_xong }: {
               loai="luu_y"
               chu={'Đổi ca cần nhân sự chọn ca mới trên hồ sơ. Gửi đơn ở đây rồi liên hệ nhân '
                 + 'sự để chốt ca — đơn là đề nghị, không tự đổi ca của bạn.'}
+            />
+          )}
+
+          {loai === 've_som' && (
+            <Hop
+              loai="luu_y"
+              chu={'Đơn được duyệt thì hôm đó bạn không bị mất nửa ngày công dù về sớm '
+                + 'quá 30 phút.'}
+            />
+          )}
+
+          {loai === 'lam_remote' && (
+            <Hop
+              loai="luu_y"
+              chu={'Ngày làm Remote được duyệt sẽ tính đủ công, không cần quẹt máy.'}
             />
           )}
 
