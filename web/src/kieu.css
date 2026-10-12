@@ -2879,6 +2879,9 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   background: var(--nen-the); border: 1px solid var(--vien); border-radius: 8px;
   box-shadow: var(--bong-noi); display: flex; flex-direction: column; overflow: hidden;
 }
+/* O cuoi khung cuon thi mo LEN cho danh sach con nam trong man hinh (chon.tsx do phia duoi
+   thieu cho thi them lop nay) — khong thi bang nam lech xuong duoi khung nhin, bam khong thay. */
+.chon-bang.chon-len { top: auto; bottom: calc(100% + 4px); }
 .chon-tim { border: 0; border-bottom: 1px solid var(--vien); border-radius: 0; padding: 8px 10px; }
 /* 5 muc x 36px + 2 x 4px padding = 188px — muc thu sau bat dau khuyat, con lan hien len. */
 .chon-ds { max-height: 188px; overflow-y: auto; padding: 4px; }

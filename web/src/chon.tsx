@@ -9,6 +9,7 @@
 // kem con lan (xem .chon-ds / .chon-muc o kieu.css); khi co tu 5 tuy chon tro len thi co
 // o GO DE TIM phia tren. Bam ra ngoai hoac Esc de dong.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { cao_bang_chon, phai_mo_len } from './chon_tien_ich.ts';
 
 export interface TuyChonChon {
   ma: string;
@@ -26,6 +27,9 @@ export function Chon({ gia_tri, dat_gia_tri, cac_tuy_chon, rong, nhan }: {
 }): ReactNode {
   const [mo, dat_mo] = useState(false);
   const [tim, dat_tim] = useState('');
+  // Mo LEN khi phia duoi khong du cho: o cuoi mot khung cuon (vd phan trang o day bang luong
+  // chi tiet) thi bang mo xuong nam lech het ra ngoai khung nhin — bam thay khong co gi xay ra.
+  const [mo_len, dat_mo_len] = useState(false);
   const vo = useRef<HTMLDivElement>(null);
 
   // Dong khi bam ra ngoai.
@@ -44,6 +48,29 @@ export function Chon({ gia_tri, dat_gia_tri, cac_tuy_chon, rong, nhan }: {
     ? cac_tuy_chon
     : cac_tuy_chon.filter((t) => t.nhan.toLowerCase().includes(tim.trim().toLowerCase()));
 
+  const bam_mo = (): void => {
+    // Ranh duoi de so la canh duoi cua KHUNG CUON gan nhat (no cat bang khi bang tran ra),
+    // khong co khung cuon thi lay viewport.
+    const o = vo.current;
+    let canh_duoi = window.innerHeight;
+    if (o !== null) {
+      const r = o.getBoundingClientRect();
+      let khung = o.parentElement;
+      while (khung !== null) {
+        const s = getComputedStyle(khung);
+        if (/(auto|scroll|hidden|clip)/.test(s.overflowY)) {
+          canh_duoi = khung.getBoundingClientRect().bottom;
+          break;
+        }
+        khung = khung.parentElement;
+      }
+      dat_mo_len(phai_mo_len(r.bottom, canh_duoi,
+        cao_bang_chon(cac_tuy_chon.length, cac_tuy_chon.length >= 5)));
+    }
+    dat_mo(!mo);
+    dat_tim('');
+  };
+
   return (
     <div className="chon" ref={vo}>
       <button
@@ -52,14 +79,14 @@ export function Chon({ gia_tri, dat_gia_tri, cac_tuy_chon, rong, nhan }: {
         aria-haspopup="listbox"
         aria-expanded={mo}
         aria-label={nhan}
-        onClick={() => { dat_mo(!mo); dat_tim(''); }}
+        onClick={bam_mo}
       >
         <span className="chon-o-nhan">{duoc}</span>
         {/* bt-chevron-right xoay 90 do o kieu.css (.chon-o i) — subset font chua cat chevron-down. */}
         <i className="bt bt-chevron-right" aria-hidden="true" />
       </button>
       {mo && (
-        <div className="chon-bang" role="listbox">
+        <div className={mo_len ? 'chon-bang chon-len' : 'chon-bang'} role="listbox">
           {tim_duoc && (
             <input
               className="chon-tim"
