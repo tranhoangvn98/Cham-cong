@@ -83,7 +83,19 @@ export async function tinh_ky_luong_cny(ky_luong_id: string, thang: string): Pro
            from bang_cong_ngay
           where nhan_vien_id = nv.id and ngay >= $1 and ngay <= $2
        ) bc on true
-      where nv.dang_hoat_dong = true and nv.che_do_luong = 'tq'
+      where nv.che_do_luong = 'tq'
+        and (
+          nv.dang_hoat_dong = true
+          -- Da nghi viec nhung ngay nghi nam TRONG ky: thang cuoi van phai tinh luong.
+          or (nv.ngay_nghi_viec is not null
+              and nv.ngay_nghi_viec >= $1 and nv.ngay_nghi_viec <= $2)
+          -- Hoac van con cong trong ky (phong ho nguoi bi cho nghi NHAM ma van di lam).
+          or exists (
+            select 1 from bang_cong_ngay bc2
+             where bc2.nhan_vien_id = nv.id and bc2.ngay >= $1 and bc2.ngay <= $2
+               and bc2.so_cong > 0
+          )
+        )
       order by nv.ma_nv`,
     [tu, den],
   );

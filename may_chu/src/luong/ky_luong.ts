@@ -320,8 +320,22 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
             and (tu_thang is null or tu_thang <= $2)
             and (den_thang is null or den_thang >= $1)
        ) pt on true
-      where nv.dang_hoat_dong = true
-        and nv.che_do_luong = 'vn'  -- nhom luong TQ (CNY) tinh o khoi rieng, khong vao bang VND
+      where nv.che_do_luong = 'vn'  -- nhom luong TQ (CNY) tinh o khoi rieng, khong vao bang VND
+        and (
+          -- Dang lam viec.
+          nv.dang_hoat_dong = true
+          -- Da nghi viec nhung ngay nghi nam TRONG ky: thang cuoi van phai tinh luong.
+          -- Khong duoc mat phieu vi nhan su da bam "Cho nghi viec" som truoc khi chot ky.
+          or (nv.ngay_nghi_viec is not null
+              and nv.ngay_nghi_viec >= $1 and nv.ngay_nghi_viec <= $2)
+          -- Hoac van con cong trong ky — phong ho nguoi bi cho nghi NHAM ma van di lam
+          -- (tien le Quynh Anh 08/10/2026): con cong la con phai tra luong.
+          or exists (
+            select 1 from bang_cong_ngay bc2
+             where bc2.nhan_vien_id = nv.id and bc2.ngay >= $1 and bc2.ngay <= $2
+               and bc2.so_cong > 0
+          )
+        )
       order by nv.ma_nv`,
     [tu, den, he_so_t7],
   );
@@ -514,14 +528,27 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
 
   await trong_giao_dich(async (khach) => {
     // Don phieu CU cua nguoi khong con thuoc bang luong VND: chuyen sang che do luong TQ,
-    // hoac da nghi. Khong don thi phieu cu ket lai trong ky (vd nhan su Kho TQ da doi sang
+    // hoac da nghi TRUOC ky ma khong con cong nao trong ky. Nguoi nghi GIUA ky (ngay nghi nam
+    // trong ky) hoac van con cong trong ky thi GIU NGUYEN phieu — ho phai duoc tinh luong
+    // thang cuoi. Khong don thi phieu cu ket lai trong ky (vd nhan su Kho TQ da doi sang
     // CNY van hien o bang VND). Cascade xoa luon phieu_luong_khoan.
     await khach.query(
       `delete from phieu_luong
         where ky_luong_id = $1
           and nhan_vien_id not in (
-            select id from nhan_vien where dang_hoat_dong = true and che_do_luong = 'vn')`,
-      [ky_luong_id],
+            select nv.id from nhan_vien nv
+             where nv.che_do_luong = 'vn'
+               and (
+                 nv.dang_hoat_dong = true
+                 or (nv.ngay_nghi_viec is not null
+                     and nv.ngay_nghi_viec >= $2 and nv.ngay_nghi_viec <= $3)
+                 or exists (
+                   select 1 from bang_cong_ngay bc2
+                    where bc2.nhan_vien_id = nv.id and bc2.ngay >= $2 and bc2.ngay <= $3
+                      and bc2.so_cong > 0
+                 )
+               ))`,
+      [ky_luong_id, tu, den],
     );
 
     for (const nv of ds) {

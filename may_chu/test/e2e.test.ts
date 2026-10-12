@@ -3557,6 +3557,83 @@ test('luong: tinh ky -> sinh phieu cho moi nhan vien dang lam viec', async () =>
   assert.ok(chuan >= 18 && chuan <= 23, `ngay cong chuan ${chuan} khong hop ly`);
 });
 
+test('luong: nguoi NGHI VIEC GIUA ky van co phieu (thang cuoi phai tinh luong)', async () => {
+  // Nghi viec GIUA thang dang tinh: ngay nghi nam trong ky -> phai co phieu luong thang cuoi,
+  // khong duoc bien mat khoi bang luong (YC HR 10/2026).
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien (ma_nv, ho_ten, pin_may, ca_lam_id, ngay_vao, ngay_nghi_viec, dang_hoat_dong)
+     values ('NV999', 'Tran Thi Thang Cuoi', '5999', $1, '2025-01-06', $2, false)
+     returning id`,
+    [ca_id, NGAY],
+  );
+  assert.notEqual(nv, null);
+  await thuc_thi(
+    `insert into quyet_dinh_luong(nhan_vien_id, hieu_luc_tu, luong_co_ban, phu_cap)
+     values ($1, $2, 15000000, 0)`,
+    [nv!.id, `${NGAY.slice(0, 7)}-01`],
+  );
+
+  const r = await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+  assert.equal(r.ma, 200);
+
+  const p = await truy_van_mot<{ luong_co_ban: string }>(
+    'select * from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2',
+    [ky_luong_id, nv!.id],
+  );
+  assert.ok(p !== null, 'nguoi nghi giua ky phai co phieu luong thang cuoi');
+  assert.equal(Number(p!.luong_co_ban), 15_000_000);
+});
+
+test('luong: nguoi nghi viec van CONG trong ky van co phieu (phong ho nghi NHAM)', async () => {
+  // Nghi viec da ghi TU TRUOC ky nhung van con cong trong ky — la dau hieu cho nghi NHAM
+  // ma van di lam (tien le Quynh Anh 08/10/2026). Con cong la con phai tra luong.
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien (ma_nv, ho_ten, pin_may, ca_lam_id, ngay_vao, ngay_nghi_viec, dang_hoat_dong)
+     values ('NV998', 'Tran Thi Nghi Nham', '5998', $1, '2025-01-06', '2025-12-31', false)
+     returning id`,
+    [ca_id],
+  );
+  assert.notEqual(nv, null);
+  await thuc_thi(
+    `insert into bang_cong_ngay (nhan_vien_id, ngay, trang_thai, so_cong)
+     values ($1, $2, 'co_mat', 1)`,
+    [nv!.id, NGAY],
+  );
+
+  const r = await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+  assert.equal(r.ma, 200);
+
+  const p = await truy_van_mot<{ so_ngay_cong_thuc: string }>(
+    'select * from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2',
+    [ky_luong_id, nv!.id],
+  );
+  assert.ok(p !== null, 'con cong trong ky thi phai co phieu du ngay nghi ghi truoc ky');
+});
+
+test('luong: phieu cua nguoi nghi TRUOC ky, khong con cong — duoc don sach', async () => {
+  // Nguoi nghi tu truoc ky va khong con cong nao trong ky: phieu cu (neu tinh truoc khi
+  // nghi) phai duoc don, khong nam lai lam lech bang luong.
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien (ma_nv, ho_ten, pin_may, ngay_vao, ngay_nghi_viec, dang_hoat_dong)
+     values ('NV997', 'Tran Thi Da Nghi', '5997', '2025-01-06', '2025-12-31', false)
+     returning id`,
+  );
+  assert.notEqual(nv, null);
+  await thuc_thi(
+    'insert into phieu_luong (ky_luong_id, nhan_vien_id) values ($1, $2)',
+    [ky_luong_id, nv!.id],
+  );
+
+  const r = await goi('POST', `/api/ky-luong/${ky_luong_id}/tinh`, { token: token_admin });
+  assert.equal(r.ma, 200);
+
+  const p = await truy_van_mot<{ id: string }>(
+    'select id from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2',
+    [ky_luong_id, nv!.id],
+  );
+  assert.equal(p, null, 'nghi truoc ky va khong con cong -> phieu cu phai duoc don');
+});
+
 test('luong: duyet ket qua OT tu cap nhat phieu luong dang nhap (Loi 2)', async () => {
   const don = await truy_van_mot<{ id: string }>(
     `insert into don_tu (nhan_vien_id, loai, tu_ngay, gio_bat_dau, gio_ket_thuc, ly_do)
