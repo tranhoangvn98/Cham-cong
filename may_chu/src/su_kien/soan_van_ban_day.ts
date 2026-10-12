@@ -17,6 +17,7 @@ import { xu_ly_tu_sua, LoiGateCode, LoiHetLuot } from '../ai/vong_lap_tu_sua.ts'
 import { LoiSoanVanBan } from '../ai/soan_van_ban.ts';
 import { LoiSinhDocx } from '../ai/sinh_docx.ts';
 import { ghep_spec, kiem_tra_spec } from '../ai/ghep_spec.ts';
+import { dich_van_ban_zh } from '../ai/dich_van_ban.ts';
 import { chay_gate, dat_tat_ca, muc_loi } from '../ai/gate_kiem_tra.ts';
 import { luu_van_ban_cong_ty } from '../tien_ich/luu_tep.ts';
 import { bo_dau, lam_doan } from '../tien_ich/ten_tep.ts';
@@ -231,9 +232,20 @@ async function xu_ly_mot(d: DongNhapAi, ghi_log: (s: string, ...t: unknown[]) =>
 
     const da_luu = await luu_van_ban_cong_ty(kq.docx, ten_tep_docx(d.ma, kq.spec), 'khac',
       ngay_dia_phuong(new Date()));
-    await ghi_ket_qua(d.id, 'cho_duyet', kq.spec, kq.ket_qua_gate, kq.so_lan_thu,
+
+    // Dich sang tieng Trung de email gui dung ngon ngu nguoi nhan. Fail-soft: LLM loi / chua
+    // khai khoa thi spec khong co ban dich, email tieng Trung se dich on-the-fly truoc khi gui.
+    const ban_dich = await dich_van_ban_zh(
+      (prompt) => goi_deepseek(prompt, { ghi_log: (s) => ghi_log(s) }),
+      kq.spec.trich_yeu, kq.spec.noi_dung,
+    );
+    const spec_da_dich: SpecVanBan = ban_dich === null
+      ? kq.spec
+      : { ...kq.spec, trich_yeu_zh: ban_dich.trich_yeu_zh, noi_dung_zh: ban_dich.noi_dung_zh };
+
+    await ghi_ket_qua(d.id, 'cho_duyet', spec_da_dich, kq.ket_qua_gate, kq.so_lan_thu,
       da_luu.ten_luu, da_luu.mime, da_luu.kich_thuoc);
-    ghi_log(`[vb-ai] ${d.ma} soan xong, gate dat, so lan AI: ${kq.so_lan_thu}`);
+    ghi_log(`[vb-ai] ${d.ma} soan xong, gate dat, so lan AI: ${kq.so_lan_thu}${ban_dich === null ? '' : ', co ban dich TQ'}`);
   } catch (loi) {
     const thong_diep = (loi as Error).message;
     if (loi instanceof LoiSoanVanBan && loi.ma === 'llm') {

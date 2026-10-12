@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.121.0] — 2026-10-12
+
+**Email thông báo: mẫu chuyên nghiệp có chữ ký, nội dung song ngữ Việt – Trung.**
+
+- Email thông báo được trình bày lại theo mẫu chung của hệ thống (băng tiêu đề xanh, thẻ nội
+  dung, hộp ghi chú) và có chữ ký công ty ở chân thư; nội dung căn lề trái.
+- Gửi theo ngôn ngữ người nhận: người dùng tiếng Trung nhận email khung chữ Hán giản thể, tiêu
+  đề `[考勤]`; người dùng tiếng Việt nhận `[Chấm công]`. Nội dung văn bản tiếng Trung do AI
+  dịch — luồng soạn AI sinh luôn bản tiếng Trung ngay từ khi soạn; thông báo soạn tay hoặc dữ
+  liệu cũ được dịch ngay trước khi gửi (không có LLM thì giữ nguyên tiếng Việt).
+- Migration 107: cột `tieu_de_zh` + `noi_dung_zh` trên bảng `thong_bao`.
+- Test: unit dịch văn bản + email song ngữ (chống HTML injection ở cả hai ngôn ngữ).
+
 ## [1.120.0] — 2026-10-03
 
 **Đơn từ: thêm đơn xin về sớm và đơn xin làm Remote.**

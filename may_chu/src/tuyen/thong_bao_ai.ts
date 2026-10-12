@@ -719,6 +719,11 @@ export async function ban_hanh_nhap_ai(
 
   const tieu_de = spec_cuoi.trich_yeu;
   const noi_dung = noi_dung_hien_thi(spec_cuoi);
+  // Ban tieng Trung (AI dich o buoc soan) — cho email gui nguoi nhan TQ. Trong = chua dich;
+  // email tieng Trung se dich on-the-fly truoc khi gui (fail-soft).
+  const tieu_de_zh = (spec_cuoi.trich_yeu_zh ?? '').trim() === '' ? null : spec_cuoi.trich_yeu_zh ?? null;
+  const noi_dung_zh = (spec_cuoi.noi_dung_zh ?? []).length > 0
+    ? spec_cuoi.noi_dung_zh?.join('\n') ?? null : null;
   const bat_popup = tuy_chon.popup === true;
   const bat_gui_email = tuy_chon.gui_email === true;
   let thong_bao: { id: string; ma: string };
@@ -727,12 +732,14 @@ export async function ban_hanh_nhap_ai(
     // Tra ve dong vua tao QUA ham de TypeScript khong thay no la `never` o ngoai.
     thong_bao = await trong_giao_dich(async (khach) => {
       const kq = await khach.query<{ id: string; ma: string }>(
-        `insert into thong_bao(tieu_de, noi_dung, muc_do, can_giai_trinh, pham_vi,
+        `insert into thong_bao(tieu_de, noi_dung, tieu_de_zh, noi_dung_zh, muc_do,
+                                can_giai_trinh, pham_vi,
                                 phong_ban_id, nhan_vien_id, nguoi_tao, het_han,
                                 ten_luu, mime, kich_thuoc, popup, gui_email)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
          returning id, ma`,
-        [tieu_de, noi_dung, d.muc_do, d.can_giai_trinh, d.pham_vi, d.phong_ban_id,
+        [tieu_de, noi_dung, tieu_de_zh, noi_dung_zh, d.muc_do, d.can_giai_trinh, d.pham_vi,
+          d.phong_ban_id,
           d.nhan_vien_id, d.nguoi_tao, d.het_han, da_luu.ten_luu, da_luu.mime,
           da_luu.kich_thuoc, bat_popup, bat_gui_email],
       );

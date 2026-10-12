@@ -6,6 +6,10 @@
 // giao dien hien chip trang thai + nut "Gui lai email".
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
+import { chuan_ngon_ngu, tra_chuoi } from '../chuoi/chi_muc.ts';
+import type { NgonNgu } from '../chuoi/chi_muc.ts';
+import { dich_van_ban_zh } from '../ai/dich_van_ban.ts';
+import { goi_deepseek } from '../ai/deepseek.ts';
 import { email_bat, gui_email } from './gui_email.ts';
 
 export interface DongThongBao {
@@ -13,6 +17,9 @@ export interface DongThongBao {
   ma: string;
   tieu_de: string;
   noi_dung: string;
+  /** Ban tieng Trung (AI dich) — trong = chua dich. */
+  tieu_de_zh: string | null;
+  noi_dung_zh: string | null;
   pham_vi: string;
   phong_ban_id: string | null;
   nhan_vien_id: string | null;
@@ -29,15 +36,18 @@ export interface KetQuaGuiEmail {
 }
 
 /**
- * Lay dia chi email cua nguoi nhan theo pham vi. Chi nhan vien DANG HOAT DONG va co email.
+ * Lay dia chi email cua nguoi nhan theo pham vi, NHOM THEO NGON NGU cua tai khoan nguoi
+ * dung (nhan vien chua co tai khoan mac dinh 'vi'). Chi nhan vien DANG HOAT DONG va co
+ * email; moi dia chi chi nam trong mot nhom — khong gui trung.
  * Toan cong ty / phong ban nhan theo phong_ban_id; ca nhan theo dung nguoi do.
  */
-export async function lay_dia_chi_nhan(
+export async function lay_dia_chi_nhan_theo_ngon_ngu(
   pham_vi: string, phong_ban_id: string | null, nhan_vien_id: string | null,
-): Promise<string[]> {
-  const dong = await truy_van<{ email: string }>(
-    `select distinct nv.email
+): Promise<Record<NgonNgu, string[]>> {
+  const dong = await truy_van<{ email: string; ngon_ngu: string | null }>(
+    `select distinct nv.email, nd.ngon_ngu
        from nhan_vien nv
+       left join nguoi_dung nd on nd.nhan_vien_id = nv.id
       where nv.dang_hoat_dong = true
         and nv.email is not null and btrim(nv.email) <> ''
         and ($1 = 'toan_cong_ty'
@@ -45,22 +55,86 @@ export async function lay_dia_chi_nhan(
              or ($1 = 'ca_nhan' and nv.id = $3::uuid))`,
     [pham_vi, phong_ban_id, nhan_vien_id],
   );
-  return dong.map((d) => d.email);
+  const ket: Record<NgonNgu, string[]> = { vi: [], zh: [] };
+  const da_co = new Set<string>();
+  for (const d of dong) {
+    const khoa = d.email.trim().toLowerCase();
+    if (khoa === '' || da_co.has(khoa)) continue;
+    da_co.add(khoa);
+    ket[chuan_ngon_ngu(d.ngon_ngu)].push(d.email.trim());
+  }
+  return ket;
 }
 
-/** Chuyen noi dung thong bao (van ban thuong) thanh HTML email — chong HTML injection. */
-export function html_email_thong_bao(t: DongThongBao): string {
+/**
+ * Lay tat ca dia chi email cua nguoi nhan theo pham vi (gom ca hai ngon ngu). Dung cho cac
+ * email he thong khac (vd moi gop y du thao van ban).
+ */
+export async function lay_dia_chi_nhan(
+  pham_vi: string, phong_ban_id: string | null, nhan_vien_id: string | null,
+): Promise<string[]> {
+  const g = await lay_dia_chi_nhan_theo_ngon_ngu(pham_vi, phong_ban_id, nhan_vien_id);
+  return [...g.vi, ...g.zh];
+}
+
+/** Tieu de email co tien to ten he thong ([Chấm công] / [考勤]) theo ngon ngu nguoi nhan. */
+export function tieu_de_email_thong_bao(t: DongThongBao, ngon_ngu: NgonNgu = 'vi'): string {
+  const tieu_de = ngon_ngu === 'zh' && (t.tieu_de_zh ?? '').trim() !== ''
+    ? (t.tieu_de_zh as string)
+    : t.tieu_de;
+  return `[${tra_chuoi(ngon_ngu, 'email_chu_de_tien_to')}] ${tieu_de}`;
+}
+
+/**
+ * Chuyen noi dung thong bao (van ban thuong) thanh HTML email chuyen nghiep theo mau chung
+ * cua he thong: dai bang xanh, the noi dung, hop ghi chu va CHU KY Phong Nhan su + ten cong
+ * ty o chan thu. Khung lay tu tu dien song ngu theo ngon ngu NGUOI NHAN; noi dung thong bao
+ * giu nguyen van ban goc. Chong HTML injection: moi du lieu tu CSDL/nguoi nhap deu thoat.
+ */
+export function html_email_thong_bao(t: DongThongBao, ngon_ngu: NgonNgu = 'vi'): string {
   const thoat = (s: string): string =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const doan = t.noi_dung.split(/\n+/).map((d) => `<p>${thoat(d)}</p>`).join('\n');
-  return '<!doctype html><html lang="vi"><head><meta charset="utf-8"></head>'
-    + `<body style="font-family:sans-serif;font-size:14px;color:#222;">`
-    + `<h2 style="margin-bottom:4px;">${thoat(t.tieu_de)}</h2>`
-    + `<div style="margin-bottom:12px;color:#666;">Mã: ${thoat(t.ma)}</div>`
+  // Email tieng Trung dung noi dung TQ neu co; chua dich thi giu nguyen van ban goc.
+  const noi_dung_goc = ngon_ngu === 'zh' && (t.noi_dung_zh ?? '').trim() !== ''
+    ? (t.noi_dung_zh as string)
+    : t.noi_dung;
+  const doan = noi_dung_goc
+    .split(/\n+/)
+    .map((d) => d.trim())
+    .filter((d) => d !== '')
+    .map((d) => `<p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#111">${thoat(d)}</p>`)
+    .join('\n');
+  const ghi_chu_dinh_kem = t.ten_luu !== null ? `${tra_chuoi(ngon_ngu, 'email_tep_dinh_kem')} ` : '';
+  const tieu_de = ngon_ngu === 'zh' && (t.tieu_de_zh ?? '').trim() !== ''
+    ? (t.tieu_de_zh as string)
+    : t.tieu_de;
+  return '<!doctype html><html lang="' + (ngon_ngu === 'zh' ? 'zh-CN' : 'vi')
+    + '"><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1"></head>'
+    + '<body style="margin:0;padding:0;background:#F3F4F6">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6">'
+    + '<tr><td align="center" style="padding:24px 12px">'
+    + '<div style="max-width:600px;width:100%;text-align:left;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111;line-height:1.5">'
+    + '<div style="background:#2563EB;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0">'
+    + `<div style="font-size:12px;letter-spacing:2px;opacity:.85">${tra_chuoi(ngon_ngu, 'email_thong_bao_noi_bo')}</div>`
+    + `<div style="font-size:18px;font-weight:700;margin-top:4px">${thoat(tieu_de)}</div>`
+    + '</div>'
+    + '<div style="background:#fff;border:1px solid #E5E7EB;border-top:0;border-radius:0 0 8px 8px;padding:22px 24px">'
+    + `<div style="font-size:12px;color:#6B7280;margin-bottom:14px">${tra_chuoi(ngon_ngu, 'email_ma_thong_bao')}: ${thoat(t.ma)}</div>`
     + doan
-    + '<p style="margin-top:16px;color:#666;font-size:12px;">'
-    + 'Văn bản đầy đủ đính kèm bên dưới. Mở ứng dụng Chấm công để xác nhận đã đọc.</p>'
-    + '</body></html>';
+    + '<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 14px;margin-top:16px;font-size:13px;color:#1E40AF">'
+    + ghi_chu_dinh_kem + tra_chuoi(ngon_ngu, 'email_xac_nhan_da_doc')
+    + '</div>'
+    + '<div style="border-top:1px solid #E5E7EB;margin-top:20px;padding-top:16px">'
+    + `<p style="margin:0 0 8px;font-size:14px;color:#111">${tra_chuoi(ngon_ngu, 'email_tran_trong')}</p>`
+    + `<p style="margin:0;font-size:14px;color:#111"><b>${tra_chuoi(ngon_ngu, 'email_phong_nhan_su')}</b><br/>`
+    + tra_chuoi(ngon_ngu, 'email_cong_ty')
+    + '</p>'
+    + '</div>'
+    + `<p style="margin:18px 0 0;color:#9CA3AF;font-size:11px">${tra_chuoi(ngon_ngu, 'email_tu_dong')}</p>`
+    + '</div>'
+    + '</div>'
+    + '</td></tr></table></body></html>';
 }
 
 /** Doc docx ban hanh (neu co) + cac tep kem cua van ban de dinh kem vao email. */
@@ -92,12 +166,34 @@ async function dinh_kem_cua(t: DongThongBao): Promise<{ ten: string; mime: strin
 }
 
 /**
+ * Dam bao co ban dich tieng Trung truoc khi gui email cho nhom TQ. Dich on-the-fly qua
+ * LLM neu chua co (ban nhap tu_soan, thong bao thu cong, du lieu cu) roi LUU LAI vao bang
+ * de lan gui lai khong phai dich nua. Fail-soft tuyet doi: LLM loi thi giu nguyen tieng Viet.
+ */
+async function bao_dam_ban_dich(t: DongThongBao): Promise<void> {
+  if ((t.noi_dung_zh ?? '').trim() !== '') return;
+  const ban_dich = await dich_van_ban_zh(
+    (prompt) => goi_deepseek(prompt),
+    t.tieu_de,
+    t.noi_dung.split(/\n+/).filter((d) => d.trim() !== ''),
+  );
+  if (ban_dich === null) return;
+  t.tieu_de_zh = ban_dich.trich_yeu_zh;
+  t.noi_dung_zh = ban_dich.noi_dung_zh.join('\n');
+  await thuc_thi(
+    `update thong_bao set tieu_de_zh = $2, noi_dung_zh = $3 where id = $1`,
+    [t.id, t.tieu_de_zh, t.noi_dung_zh],
+  ).catch(() => {});
+}
+
+/**
  * Gui email cho mot thong bao. Tra ket qua, KHONG nem loi — moi loi deu ghi vao cot
  * gui_email_loi de giao dien hien ro. Goi lai duoc nhieu lan (nut "Gui lai email").
  */
 export async function gui_email_thong_bao(id_thong_bao: string): Promise<KetQuaGuiEmail> {
   const t = await truy_van_mot<DongThongBao>(
-    `select id, ma, tieu_de, noi_dung, pham_vi, phong_ban_id, nhan_vien_id,
+    `select id, ma, tieu_de, noi_dung, tieu_de_zh, noi_dung_zh,
+            pham_vi, phong_ban_id, nhan_vien_id,
             ten_luu, mime, da_go, da_gui_email
        from thong_bao where id = $1`,
     [id_thong_bao],
@@ -115,8 +211,9 @@ export async function gui_email_thong_bao(id_thong_bao: string): Promise<KetQuaG
     return { ok: false, ly_do: 'Máy chủ chưa khai báo hộp thư gửi (MS_MAIL_*).' };
   }
 
-  const den = await lay_dia_chi_nhan(t.pham_vi, t.phong_ban_id, t.nhan_vien_id);
-  if (den.length === 0) {
+  const theo_ngon_ngu = await lay_dia_chi_nhan_theo_ngon_ngu(t.pham_vi, t.phong_ban_id, t.nhan_vien_id);
+  const so_nhan = theo_ngon_ngu.vi.length + theo_ngon_ngu.zh.length;
+  if (so_nhan === 0) {
     await thuc_thi(
       `update thong_bao
           set gui_email_loi = $2, gui_email_luc = coalesce(gui_email_luc, now())
@@ -127,12 +224,23 @@ export async function gui_email_thong_bao(id_thong_bao: string): Promise<KetQuaG
   }
 
   const dinh_kem = await dinh_kem_cua(t);
-  const gui_duoc = await gui_email({
-    den,
-    tieu_de: `[Chấm công] ${t.tieu_de}`,
-    noi_dung_html: html_email_thong_bao(t),
-    dinh_kem,
-  });
+  // Nhom TQ co nguoi nhan thi can ban dich — dich on-the-fly neu thong bao chua co (fail-soft).
+  if (theo_ngon_ngu.zh.length > 0) await bao_dam_ban_dich(t);
+  // Gui RIENG theo ngon ngu nguoi nhan (vi / zh): khung email song ngu, noi dung theo
+  // ngon ngu. Nhom nao khong co nguoi thi bo qua; chi can mot nhom that bai la coi nhu gui
+  // chua xong.
+  let gui_duoc = true;
+  for (const ngon_ngu of ['vi', 'zh'] as const) {
+    const den = theo_ngon_ngu[ngon_ngu];
+    if (den.length === 0) continue;
+    const ok = await gui_email({
+      den,
+      tieu_de: tieu_de_email_thong_bao(t, ngon_ngu),
+      noi_dung_html: html_email_thong_bao(t, ngon_ngu),
+      dinh_kem,
+    });
+    if (!ok) gui_duoc = false;
+  }
   if (!gui_duoc) {
     await thuc_thi(
       `update thong_bao
@@ -149,7 +257,7 @@ export async function gui_email_thong_bao(id_thong_bao: string): Promise<KetQuaG
       where id = $1`,
     [id_thong_bao],
   );
-  return { ok: true, so_nhan: den.length };
+  return { ok: true, so_nhan };
 }
 
 /**

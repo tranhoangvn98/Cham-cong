@@ -35,4 +35,15 @@ export const CHUOI_ZH = {
 
   // ================================ 助手
   tl_chua_co_quy_trinh: '您当前没有进行中的离职流程。',
+
+  // ================================ 邮件通知（框架 + 签名）
+  email_chu_de_tien_to: '考勤',
+  email_thong_bao_noi_bo: '内部通知',
+  email_ma_thong_bao: '通知编号',
+  email_tep_dinh_kem: '完整公文见下方附件。',
+  email_xac_nhan_da_doc: '请打开考勤应用确认已读。',
+  email_tran_trong: '此致敬礼',
+  email_phong_nhan_su: '人力资源部',
+  email_cong_ty: '陈黄越南有限公司',
+  email_tu_dong: '本邮件由考勤系统自动发送，请勿直接回复。',
 } as const satisfies Record<keyof typeof CHUOI_VI, string>;

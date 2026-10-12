@@ -83,6 +83,9 @@ export interface SpecVanBan {
   can_cu: string[];
   dieu: string[];
   noi_dung: string[];
+  /** Ban tieng Trung (AI dich sau khi gate dat) — dung cho email gui nguoi nhan TQ. */
+  trich_yeu_zh?: string;
+  noi_dung_zh?: string[];
   nguoi_ky: string;
   chuc_vu_nguoi_ky: string;
   noi_nhan: string[];

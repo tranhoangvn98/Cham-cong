@@ -33,4 +33,15 @@ export const CHUOI_VI = {
 
   // ================================ tro ly
   tl_chua_co_quy_trinh: 'Bạn chưa có quy trình thôi việc đang mở.',
+
+  // ================================ email thong bao (khung + chu ky)
+  email_chu_de_tien_to: 'Chấm công',
+  email_thong_bao_noi_bo: 'THÔNG BÁO NỘI BỘ',
+  email_ma_thong_bao: 'Mã thông báo',
+  email_tep_dinh_kem: 'Văn bản đầy đủ đính kèm bên dưới.',
+  email_xac_nhan_da_doc: 'Vui lòng mở ứng dụng Chấm công để xác nhận đã đọc.',
+  email_tran_trong: 'Trân trọng,',
+  email_phong_nhan_su: 'Phòng Nhân sự',
+  email_cong_ty: 'Công ty TNHH Trần Hoàng Việt Nam',
+  email_tu_dong: 'Email tự động từ hệ thống chấm công — vui lòng không trả lời trực tiếp email này.',
 } as const;
