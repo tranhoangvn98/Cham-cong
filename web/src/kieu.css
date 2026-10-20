@@ -563,9 +563,10 @@ tbody td { padding: 9px 12px; border-bottom: 1px solid var(--vien); vertical-ali
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: var(--nen-mo); }
 /* Bang tra cuu nho nam trong the — khong phai bang du lieu, nen bo hover va vien duoi,
-   va cot dau tu co theo noi dung thay vi chia deu. */
+   va cot dau tu co theo noi dung thay vi chia deu. LỀ TRÁI vẫn 12px như ô thường để chữ
+   không chạm vào lề ô (từng bị lỗi: hàng dữ liệu dịch trái hơn cả hàng tiêu đề). */
 .bang-gon { margin: 10px 0; }
-.bang-gon tbody td { padding: 5px 12px 5px 0; border-bottom: none; }
+.bang-gon tbody td { padding: 5px 12px; border-bottom: none; }
 .bang-gon tbody td:first-child { width: 1%; white-space: nowrap; color: var(--chu-nhat); }
 .bang-gon tbody tr:hover { background: none; }
 .bang-gon .goi-y { display: inline; margin-top: 0; }

@@ -2,6 +2,14 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.122.3] — 2026-10-20
+
+**Sửa lỗi hiển thị: chữ trong ô dữ liệu chạm lề trái của ô bảng.**
+
+- Bảng kiểu `bang-gon` (Ứng lương và ~20 trang khác) đặt padding trái của ô dữ liệu bằng 0
+  nên chữ hàng dữ liệu dịch trái hơn cả hàng tiêu đề, dính sát mép ô. Trả padding trái về
+  12px bằng ô thường — hàng tiêu đề và dữ liệu thẳng cột, chữ không chạm lề.
+
 ## [1.122.2] — 2026-10-20
 
 **Sửa lỗi hiển thị: ô chọn năm trong ChonThang bị cắt chữ ("Năm 20…").**
