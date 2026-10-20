@@ -2,6 +2,14 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.122.4] — 2026-10-20
+
+**Sửa lỗi hiển thị: hàng tổng ở chân bảng (tfoot) dính sát mép trái ô.**
+
+- Ô `tfoot td` không có padding nào trong toàn hệ thống nên chữ "Tổng đã chi (tháng...)" ở
+  chân bảng Ứng lương (và các hàng tổng ở Bảng lương) dính mép trái, lệch so với hàng tiêu
+  đề/dữ liệu. Bổ sung padding 9px 12px cho `tfoot td` và 5px 12px cho bảng gọn `bang-gon`.
+
 ## [1.122.3] — 2026-10-20
 
 **Sửa lỗi hiển thị: chữ trong ô dữ liệu chạm lề trái của ô bảng.**
