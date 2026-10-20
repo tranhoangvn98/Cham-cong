@@ -10,6 +10,19 @@ export const CHUOI_ZH = {
   ngon_ngu_tieng_trung: '中文',
   khong_duoc_tu_duyet: '您不能审批本人提交的申请。',
 
+  // ================================ ung luong tu phuc vu
+  ul_tk_khong_nhan_vien: '此账号未关联员工档案，无法使用个人预支工资。',
+  ul_thang_thieu: '缺少预支月份。',
+  ul_thang_sai_dang: '月份格式应为 YYYY-MM（例如 2026-10）。',
+  ul_so_tien_sai: '预支金额必须为大于 0 的数字。',
+  ul_ngay_sai: '日期格式应为 YYYY-MM-DD。',
+  ul_thang_qua_khu: '不能为已过去的月份提交预支申请。',
+  ul_trung_thang: '该月份已有待审批或已审批的预支申请。',
+  ul_khong_tim_thay: '找不到您的预支记录。',
+  ul_chi_huy_khi_cho_duyet: '只有待审批的申请可以取消。',
+  ul_thong_bao_de_nghi: '有新的预支工资申请',
+  ul_thong_bao_noi_dung: '{ten} 提交了 {thang} 月的预支工资申请。',
+
   // ================================ 通知铃状态标签
   tt_cho_duyet: '待审批',
   tt_cho_duyet_2: '待二级审批',

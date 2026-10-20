@@ -809,7 +809,7 @@ const BAN_DO_TRANG: { khoa: string; ten: string; duong: string | null }[] = [
   { khoa: 'thong bao', ten: 'Thông báo', duong: '/ca-nhan/thong-bao' },
   { khoa: 'van ban', ten: 'Văn bản công ty', duong: '/ca-nhan/van-ban' },
   { khoa: 'tong quan', ten: 'Tổng quan', duong: '/' },
-  { khoa: 'ung luong', ten: 'Ứng lương', duong: null }, // chua mo tu phuc vu
+  { khoa: 'ung luong', ten: 'Ứng lương', duong: '/ca-nhan/ung-luong' },
 ];
 
 /** Tra loi yeu cau "mo cho ...": tra duong dan (da kiem) de giao dien chuyen trang. */
@@ -824,8 +824,8 @@ export function tra_loi_mo_trang(cau_goc: string, vai_tro: string): TraLoiTroLy 
       goi_y: ['Mở đơn của tôi', 'Mở phiếu lương', 'Mở hồ sơ của tôi'],
     };
   }
-  // Ung luong la trang NGHIEP VU NHAN SU: tai khoan nhan su/quan tri mo duoc ngay ca khi
-  // dang dung tro ly ca nhan; nhan vien thuong thi huong dan lien he nhan su.
+  // Ung luong: nhan su/quan tri mo thang trang NGHIEP VU (tao + duyet khoan); nhan vien
+  // thuong mo man ca nhan cua minh (xem lich su + gui de nghi).
   if (muc.khoa === 'ung luong') {
     if (la_vai_tro_nhan_su(vai_tro)) {
       return {
@@ -836,10 +836,11 @@ export function tra_loi_mo_trang(cau_goc: string, vai_tro: string): TraLoiTroLy 
       };
     }
     return {
-      tra_loi: 'Ứng lương hiện chưa mở tự phục vụ trên hệ thống. Bạn gửi đề nghị tới bộ phận '
-        + 'nhân sự nhé — nhân sự sẽ tạo khoản ứng và theo dõi duyệt/chi cho bạn.',
+      tra_loi: 'Được, bạn bấm nút **Mở Ứng lương** bên dưới để xem lịch sử tạm ứng và gửi '
+        + 'đề nghị ứng lương nhé.',
       y_dinh: 'mo_trang',
-      goi_y: ['Công tháng này của tôi thế nào?', 'Tôi có đơn nào đang chờ duyệt không?'],
+      mo_de_xuat: { nhan: 'Mở Ứng lương', den: '/ca-nhan/ung-luong' },
+      goi_y: [],
     };
   }
   if (muc.duong === null) {
@@ -1915,8 +1916,8 @@ async function tra_loi_khieu_nai_ky_luat(
   };
 }
 
-/** Ung luong CHUA mo tu phuc vu (route chi danh cho nhan su/quan tri) — huong dan dung cho,
- * rieng nhan su/quan tri thi DE XUAT MO NGAY trang ung luong. */
+/** Ung luong da mo tu phuc vu: nhan su/quan tri de xuat mo trang QUAN TRI ung luong;
+ * nhan vien thuong de xuat mo man ung luong ca nhan cua chinh minh. */
 export function tra_loi_ung_luong(vai_tro: string): TraLoiTroLy {
   if (la_vai_tro_nhan_su(vai_tro)) {
     return {
@@ -1928,9 +1929,10 @@ export function tra_loi_ung_luong(vai_tro: string): TraLoiTroLy {
     };
   }
   return {
-    tra_loi: 'Ứng lương hiện chưa mở tự phục vụ trên hệ thống. Bạn gửi đề nghị tới bộ phận '
-      + 'nhân sự nhé — nhân sự sẽ tạo khoản ứng và theo dõi duyệt/chi cho bạn.',
+    tra_loi: 'Mình mở được mục **Ứng lương** ngay bên dưới để bạn xem lịch sử tạm ứng và gửi '
+      + 'đề nghị ứng lương. Nhân sự sẽ duyệt và đánh dấu đã chi cho bạn.',
     y_dinh: 'ung_luong',
-    goi_y: ['Công tháng này của tôi thế nào?', 'Tôi có đơn nào đang chờ duyệt không?'],
+    mo_de_xuat: { nhan: 'Mở Ứng lương của tôi', den: '/ca-nhan/ung-luong' },
+    goi_y: ['Ứng lương của tôi xử lý tới đâu rồi?'],
   };
 }

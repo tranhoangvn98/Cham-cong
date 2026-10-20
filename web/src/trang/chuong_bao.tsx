@@ -29,6 +29,7 @@ const DUONG_THEO_MAN: Record<string, string> = {
   'duyet-ket-qua-ot': '/duyet-don',
   'don-tu': '/duyet-don',
   'khieu-nai-luong': '/khieu-nai-luong',
+  'ung-luong': '/ung-luong',
   'ho-thu-y-kien': '/ca-nhan/y-kien',
   'ra-vao': '/ra-vao',
   'thong-bao': '/thong-bao',

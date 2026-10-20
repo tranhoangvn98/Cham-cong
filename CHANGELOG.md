@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.122.0] — 2026-10-20
+
+**Ứng lương cá nhân: mỗi người xem lịch sử tạm ứng và tự gửi đề nghị.**
+
+- Tab **Ứng lương** trong giao diện cá nhân của từng người (`/ca-nhan/ung-luong`): danh sách
+  khoản ứng của chính mình (tháng, số tiền, ngày ứng, hình thức, trạng thái) + nút gửi đề
+  nghị và hủy đề nghị khi còn chờ duyệt. Duyệt và đánh dấu đã chi vẫn đi qua trang quản trị
+  `/ung-luong` của nhân sự — một đường tiền duy nhất.
+- API tự phục vụ `GET/POST /api/toi/ung-luong` + `POST /api/toi/ung-luong/:id/huy` (chỉ đọc/ghi
+  dữ liệu của chính mình; khoản của người khác trả 404). Chặn gửi cho tháng đã qua, chặn trùng
+  tháng đang chờ duyệt/đã duyệt; nhân sự nhận thông báo chuông khi có đề nghị mới.
+- Trợ lý cá nhân mở được tab cho nhân viên; nhân sự/quản trị vẫn mở thẳng trang quản trị.
+- Song ngữ vi/zh đầy đủ (từ điển `may_chu/src/chuoi/` + `web/src/chuoi/`) — lỗi API trả theo
+  ngôn ngữ người dùng. Test đơn vị + e2e cho luồng tự phục vụ.
+
 ## [1.121.0] — 2026-10-12
 
 **Email thông báo: mẫu chuyên nghiệp có chữ ký, nội dung song ngữ Việt – Trung.**

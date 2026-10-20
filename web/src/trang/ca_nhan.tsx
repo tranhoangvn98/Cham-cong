@@ -12,6 +12,7 @@ import { Component, useEffect, useState, type ReactNode } from 'react';
 import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, gui_tep, mui_gio_offset_gio } from '../api.ts';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
 import { TrangPhieuLuongToi, TrangKhieuNaiToi } from './phieu_luong_toi.tsx';
+import { UngLuongToi } from './ung_luong_toi.tsx';
 import { YKienToi } from './y_kien_toi.tsx';
 import { ViecToi } from './viec_toi.tsx';
 import { TrangVanBan } from './van_ban.tsx';
@@ -381,7 +382,7 @@ function tra_khoa(k: ChuoiKhoa | undefined, thay: string): string {
 
 // ==================================================================== trang goc
 
-type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'phep' | 'khieu_nai' | 'viec' | 'y_kien' | 'ca_nhan';
+type Tab = 'trang_chu' | 'bang_cong' | 'don_tu' | 'luong' | 'ung_luong' | 'phep' | 'khieu_nai' | 'viec' | 'y_kien' | 'ca_nhan';
 type FormMo = 'nghi' | 'giai' | 'khac' | 'ot';
 
 /**
@@ -400,6 +401,7 @@ const CAC_TAB: { ma: Tab; khoa: ChuoiKhoa; icon: string }[] = [
   { ma: 'bang_cong', khoa: 'menu_bang_cong', icon: 'list-details' },
   { ma: 'don_tu', khoa: 'cn_tab_don_tu', icon: 'file-text' },
   { ma: 'luong', khoa: 'cn_tab_luong', icon: 'receipt-2' },
+  { ma: 'ung_luong', khoa: 'cn_tab_ung_luong', icon: 'download' },
   { ma: 'phep', khoa: 'cn_tab_phep', icon: 'calendar-stats' },
   { ma: 'khieu_nai', khoa: 'cn_tab_khieu_nai', icon: 'alert-triangle' },
   { ma: 'viec', khoa: 'menu_cong_viec', icon: 'check' },
@@ -417,6 +419,7 @@ const DUONG_TAB: Record<string, Tab> = {
   '/ca-nhan/bang-cong': 'bang_cong',
   '/ca-nhan/don-tu': 'don_tu',
   '/ca-nhan/luong': 'luong',
+  '/ca-nhan/ung-luong': 'ung_luong',
   '/ca-nhan/phep': 'phep',
   '/ca-nhan/khieu-nai': 'khieu_nai',
   '/ca-nhan/viec': 'viec',
@@ -429,6 +432,7 @@ const TAB_DUONG: Record<Tab, string> = {
   bang_cong: '/ca-nhan/bang-cong',
   don_tu: '/ca-nhan/don-tu',
   luong: '/ca-nhan/luong',
+  ung_luong: '/ca-nhan/ung-luong',
   phep: '/ca-nhan/phep',
   khieu_nai: '/ca-nhan/khieu-nai',
   viec: '/ca-nhan/viec',
@@ -441,6 +445,7 @@ const TEN_MAN: Record<Exclude<Tab, 'trang_chu'>, [ChuoiKhoa, ChuoiKhoa]> = {
   bang_cong: ['cn_ten_man_bang_cong', 'cn_ten_man_bang_cong_phu'],
   don_tu: ['cn_ten_man_don_tu', 'cn_ten_man_don_tu_phu'],
   luong: ['cn_ten_man_luong', 'cn_ten_man_luong_phu'],
+  ung_luong: ['cn_ten_man_ung_luong', 'cn_ten_man_ung_luong_phu'],
   phep: ['cn_ten_man_phep', 'cn_ten_man_phep_phu'],
   khieu_nai: ['cn_ten_man_khieu_nai', 'cn_ten_man_khieu_nai_phu'],
   viec: ['cn_ten_man_viec', 'cn_ten_man_viec_phu'],
@@ -597,6 +602,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
   const dieu_huong_bao = (man: string | undefined): void => {
     if (man === 'thong-bao') { vao_man_phu('thong_bao'); return; }
     if (man === 'khieu-nai-luong') { vao_tab('khieu_nai'); return; }
+    if (man === 'ung-luong') { vao_tab('ung_luong'); return; }
     if (man === 'ho-thu-y-kien') { vao_tab('y_kien'); return; }
     if (man === 'duyet-don' || man === 'don-tu') { di_duyet?.(); return; }
     if (man === 'ky-luat' || man === 'vi-pham' || man === 'don-cua-toi') { vao_tab('don_tu'); return; }
@@ -717,6 +723,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
                     <ManDonTu hom_nay_nap={hom_nay_nap} mo_form={mo_form} dat_mo_form={dat_mo_form} />
                   )}
                   {tab === 'luong' && <ManLuong />}
+                  {tab === 'ung_luong' && <UngLuongToi />}
                   {tab === 'phep' && <NoiDungPhep />}
                   {tab === 'khieu_nai' && <TrangKhieuNaiToi />}
                   {tab === 'viec' && <ViecToi />}

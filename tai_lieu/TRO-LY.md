@@ -27,9 +27,10 @@ Nút tròn góc phải dưới ở **góc nhìn Cá nhân** mở trợ lý. Hỏ
 
 **Mở trang giúp khi được yêu cầu**
 
-- "Mở đơn của tôi", "mở phiếu lương", "mở hồ sơ của tôi"… trợ lý **tự chuyển tới đúng trang**
-  (chỉ những đường dẫn trong danh sách trắng của mã nguồn). Trang nghiệp vụ nhân sự như
-  Ứng lương chỉ mở cho tài khoản **nhân sự/quản trị** — nhân viên thường nhận lời hướng dẫn.
+- "Mở đơn của tôi", "mở phiếu lương", "mở hồ sơ của tôi", "mở ứng lương"… trợ lý **tự
+  chuyển tới đúng trang** (chỉ những đường dẫn trong danh sách trắng của mã nguồn). Trang
+  nghiệp vụ nhân sự **Ứng lương** mở cho tài khoản **nhân sự/quản trị**; nhân viên thường
+  mở màn **Ứng lương của tôi** (`/ca-nhan/ung-luong`) để xem lịch sử và gửi đề nghị.
 
 **Tra cứu dữ liệu của chính mình**
 
@@ -70,8 +71,8 @@ Trợ lý điền sẵn payload cho các việc sau và hiện **thẻ chờ xá
   nhất của người hỏi, chỉ cần nội dung khiếu nại.
 - **Khiếu nại kỷ luật** (`/api/toi/khieu-nai`) — liệt kê hồ sơ kỷ luật của chính người hỏi,
   nói kèm mã hồ sơ là điền sẵn.
-- **Ứng lương**: chưa mở tự phục vụ (route chỉ cho nhân sự/quản trị) — trợ lý hướng dẫn
-  liên hệ nhân sự thay vì hứa điền đơn.
+- **Ứng lương**: đã mở tự phục vụ — nhân viên mở màn Ứng lương của tôi để xem lịch sử tạm
+  ứng và gửi đề nghị; nhân sự duyệt/đánh dấu đã chi trên trang quản trị `/ung-luong`.
 
 ## Nguyên tắc "nhân sự tự xác nhận"
 

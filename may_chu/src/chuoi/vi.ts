@@ -8,6 +8,20 @@ export const CHUOI_VI = {
   ngon_ngu_tieng_trung: 'Tiếng Trung',
   khong_duoc_tu_duyet: 'Bạn không được tự duyệt cho chính mình.',
 
+  // ================================ ung luong tu phuc vu
+  ul_tk_khong_nhan_vien:
+    'Tài khoản này không gắn với hồ sơ nhân viên nên không dùng được ứng lương cá nhân.',
+  ul_thang_thieu: 'Thiếu tháng ứng lương.',
+  ul_thang_sai_dang: 'Tháng phải có dạng YYYY-MM (ví dụ 2026-10).',
+  ul_so_tien_sai: 'Số tiền ứng phải là số lớn hơn 0.',
+  ul_ngay_sai: 'Ngày ứng phải có dạng YYYY-MM-DD.',
+  ul_thang_qua_khu: 'Không thể gửi đề nghị ứng lương cho tháng đã qua.',
+  ul_trung_thang: 'Tháng này đã có khoản ứng đang chờ duyệt hoặc đã duyệt.',
+  ul_khong_tim_thay: 'Không tìm thấy khoản ứng của bạn.',
+  ul_chi_huy_khi_cho_duyet: 'Chỉ hủy được đề nghị khi còn chờ duyệt.',
+  ul_thong_bao_de_nghi: 'Có đề nghị ứng lương mới',
+  ul_thong_bao_noi_dung: '{ten} gửi đề nghị ứng lương tháng {thang}.',
+
   // ================================ nhan trang thai trong chuong bao
   tt_cho_duyet: 'Chờ duyệt',
   tt_cho_duyet_2: 'Chờ duyệt cấp 2',

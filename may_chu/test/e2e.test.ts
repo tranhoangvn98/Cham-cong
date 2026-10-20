@@ -3731,6 +3731,58 @@ test('ung luong: quy trinh cho_duyet -> da_duyet -> da_chi, chan huy khi da chi'
     { token: token_admin })).ma, 200);
 });
 
+test('ung luong tu phuc vu: nhan vien gui de nghi, xem lich su, huy khi cho duyet', async () => {
+  // Nhan vien chinh minh gui de nghi cho thang 2099-12 (tuong lai trong bo test).
+  const tao = await goi('POST', '/api/toi/ung-luong', {
+    token: token_nhan_vien,
+    body: { thang: '2099-12', so_tien: 700000, ngay_ung: '2099-12-10', ly_do: 'Test' },
+  });
+  assert.equal(tao.ma, 201);
+  const id = tao.body['id'] as string;
+
+  // Danh sach cua chinh minh co khoan vua tao, trang thai cho_duyet.
+  const ds = await goi('GET', '/api/toi/ung-luong', { token: token_nhan_vien });
+  assert.equal(ds.ma, 200);
+  const list = ds.body as unknown as { id: string; trang_thai: string }[];
+  assert.ok(list.some((u) => u.id === id && u.trang_thai === 'cho_duyet'));
+
+  // Chan gui TRUNG cung thang khi con cho_duyet.
+  assert.equal((await goi('POST', '/api/toi/ung-luong', {
+    token: token_nhan_vien, body: { thang: '2099-12', so_tien: 100000 },
+  })).ma, 409);
+  // Chan thang da qua.
+  assert.equal((await goi('POST', '/api/toi/ung-luong', {
+    token: token_nhan_vien, body: { thang: '2020-01', so_tien: 100000 },
+  })).ma, 400);
+  // Chan so tien khong hop le.
+  assert.equal((await goi('POST', '/api/toi/ung-luong', {
+    token: token_nhan_vien, body: { thang: '2099-12', so_tien: 0 },
+  })).ma, 400);
+
+  // Huy de nghi cua chinh minh khi con cho_duyet; huy lai la idempotent.
+  assert.equal((await goi('POST', `/api/toi/ung-luong/${id}/huy`,
+    { token: token_nhan_vien })).ma, 200);
+  assert.equal((await goi('POST', `/api/toi/ung-luong/${id}/huy`,
+    { token: token_nhan_vien })).ma, 200);
+  const sau = await goi('GET', '/api/toi/ung-luong', { token: token_nhan_vien });
+  assert.ok(((sau.body as unknown as { id: string; trang_thai: string }[])
+    .some((u) => u.id === id && u.trang_thai === 'huy')));
+
+  // Da duyet roi thi nhan vien khong huy duoc nua (phai nho nhan su).
+  const tao3 = await goi('POST', '/api/toi/ung-luong', {
+    token: token_nhan_vien, body: { thang: '2099-12', so_tien: 200000 },
+  });
+  const id3 = tao3.body['id'] as string;
+  assert.equal((await goi('POST', `/api/ung-luong/${id3}/duyet`,
+    { token: token_admin })).ma, 200);
+  assert.equal((await goi('POST', `/api/toi/ung-luong/${id3}/huy`,
+    { token: token_nhan_vien })).ma, 409);
+
+  // Khoan khong phai cua minh tra 404 (khong tiet lo su ton tai).
+  assert.equal((await goi('POST', '/api/toi/ung-luong/00000000-0000-0000-0000-000000000000/huy',
+    { token: token_nhan_vien })).ma, 404);
+});
+
 test('luong: sua tay thuong -> tinh lai ca ky, tong khop voi tung dong', async () => {
   const p = await truy_van_mot<{ id: string }>(
     'select id from phieu_luong where ky_luong_id = $1 and nhan_vien_id = $2',

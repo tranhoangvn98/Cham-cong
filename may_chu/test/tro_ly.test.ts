@@ -183,28 +183,27 @@ test('buoi_trong_ngay: chao dung buoi theo mui gio may cham cong', () => {
   assert.equal(buoi_trong_ngay(23), 'toi');
 });
 
-test('tra_loi_mo_trang: ung luong chi mo cho nhan su/quan tri, nhan vien thi huong dan', () => {
-  // Nhan su/quan tri duoc DE XUAT nut mo trang ung luong ngay ca tu tro ly ca nhan.
+test('tra_loi_mo_trang: ung luong mo duoc cho ca nhan su lan nhan vien', () => {
+  // Nhan su/quan tri duoc DE XUAT nut mo trang ung luong quan tri ngay ca tu tro ly ca nhan.
   const hr = tra_loi_mo_trang('mở cho cái ứng lương', 'nhan_su');
   assert.equal(hr.y_dinh, 'mo_trang');
   assert.equal(hr.mo_de_xuat?.den, '/ung-luong');
   assert.equal(tra_loi_mo_trang('mở chỗ ứng lương', 'admin').mo_de_xuat?.den, '/ung-luong');
-  // Nhan vien thuong khong co trang de mo — tra loi huong dan, khong co nut.
+  // Nhan vien thuong mo man ung luong ca nhan cua chinh minh.
   const nv = tra_loi_mo_trang('mở cho cái ứng lương', 'nhan_vien');
-  assert.equal(nv.mo_de_xuat, undefined);
-  assert.match(nv.tra_loi, /nhân sự/);
+  assert.equal(nv.mo_de_xuat?.den, '/ca-nhan/ung-luong');
   // Trang thuong thi de xuat nut mo cho moi nguoi.
   assert.equal(tra_loi_mo_trang('mở đơn của tôi', 'nhan_vien').mo_de_xuat?.den, '/ca-nhan/don-tu');
 });
-test('tra_loi_ung_luong: bat duoc tu khoa thi de xuat mo trang cho nhan su', () => {
-  // Nhan su/quan tri: tra loi kem nut de xuat mo trang ung luong.
+test('tra_loi_ung_luong: bat duoc tu khoa thi de xuat mo trang', () => {
+  // Nhan su/quan tri: tra loi kem nut de xuat mo trang ung luong quan tri.
   const hr = tra_loi_ung_luong('nhan_su');
   assert.equal(hr.mo_de_xuat?.den, '/ung-luong');
   assert.equal(tra_loi_ung_luong('admin').mo_de_xuat?.den, '/ung-luong');
-  // Nhan vien thuong: chi huong dan, khong co nut mo.
+  // Nhan vien thuong: de xuat mo man ung luong ca nhan (da mo tu phuc vu).
   const nv = tra_loi_ung_luong('nhan_vien');
-  assert.equal(nv.mo_de_xuat, undefined);
-  assert.match(nv.tra_loi, /nhân sự/);
+  assert.equal(nv.mo_de_xuat?.den, '/ca-nhan/ung-luong');
+  assert.match(nv.tra_loi, /Ứng lương/);
 });
 test('phan_tich_gio: doc gio OT tu cau noi', () => {
   assert.deepEqual(phan_tich_gio('đăng ký OT từ 18:00 đến 20:00'),
