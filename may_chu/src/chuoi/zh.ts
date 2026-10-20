@@ -22,6 +22,12 @@ export const CHUOI_ZH = {
   ul_chi_huy_khi_cho_duyet: '只有待审批的申请可以取消。',
   ul_thong_bao_de_nghi: '有新的预支工资申请',
   ul_thong_bao_noi_dung: '{ten} 提交了 {thang} 月的预支工资申请。',
+  ul_thong_bao_duyet: '您的预支工资申请已获批',
+  ul_thong_bao_duyet_noi_dung: '您 {thang} 月的预支工资申请已获批。',
+  ul_thong_bao_chi: '您的预支工资已发放',
+  ul_thong_bao_chi_noi_dung: '您 {thang} 月的预支工资已标记发放。',
+  ul_thong_bao_huy: '您的预支工资申请已取消',
+  ul_thong_bao_huy_noi_dung: '您 {thang} 月的预支工资申请已取消。',
 
   // ================================ 通知铃状态标签
   tt_cho_duyet: '待审批',

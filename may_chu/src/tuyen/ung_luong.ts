@@ -8,6 +8,8 @@ import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { can_nhan_su, can_admin, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
+import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
+import { chuan_ngon_ngu, tra_chuoi, type ChuoiKhoa } from '../chuoi/chi_muc.ts';
 import {
   chuoi, ngay, so_thuc, than, trong_tap, uuid, uuid_bat_buoc,
   LoiDauVao, LoiKhongTim, LoiXungDot,
@@ -24,12 +26,39 @@ function doc_thang(nguon: Record<string, unknown>, bat_buoc = true): string | nu
 }
 
 /** Lay mot khoan ung theo id, hoac nem 404. */
-async function lay_ung(id: string): Promise<{ id: string; trang_thai: string; thang: string }> {
-  const u = await truy_van_mot<{ id: string; trang_thai: string; thang: string }>(
-    'select id, trang_thai, thang from ung_luong where id = $1', [id],
-  );
+async function lay_ung(id: string): Promise<{
+  id: string; trang_thai: string; thang: string; nhan_vien_id: string;
+}> {
+  const u = await truy_van_mot<{
+    id: string; trang_thai: string; thang: string; nhan_vien_id: string;
+  }>('select id, trang_thai, thang, nhan_vien_id from ung_luong where id = $1', [id]);
   if (u === null) throw new LoiKhongTim('Không tìm thấy khoản ứng lương.');
   return u;
+}
+
+/**
+ * Bao ket qua cua khoan ung cho chinh nhan vien do (chuong bao web + push app) — de nguoi
+ * xin ung biet da duoc duyet / da chi / bi huy ma khong phai mo lai trang xem.
+ *
+ * Gui NGAM (khong cho ket qua): thong bao la phan phu, khong duoc lam cham/hong viec chinh.
+ * Tieu de/noi dung theo ngon ngu cua nguoi nhan.
+ */
+async function bao_nhan_vien(
+  u: { nhan_vien_id: string; thang: string },
+  cap: { tieu_de: ChuoiKhoa; noi_dung: ChuoiKhoa },
+): Promise<void> {
+  const nguoi_nhan = await tai_khoan_cua_nhan_vien(u.nhan_vien_id);
+  if (nguoi_nhan.length === 0) return;
+  const ngon_ngu = chuan_ngon_ngu((await truy_van_mot<{ ngon_ngu: string | null }>(
+    'select ngon_ngu from nguoi_dung where nhan_vien_id = $1 and dang_hoat_dong = true limit 1',
+    [u.nhan_vien_id],
+  ))?.ngon_ngu);
+  gui_ngam({
+    nguoi_dung_ids: nguoi_nhan,
+    tieu_de: tra_chuoi(ngon_ngu, cap.tieu_de),
+    noi_dung: tra_chuoi(ngon_ngu, cap.noi_dung, { thang: u.thang }),
+    du_lieu: { man: 'ung-luong' },
+  });
 }
 
 export async function tuyen_ung_luong(app: FastifyInstance): Promise<void> {
@@ -124,6 +153,9 @@ export async function tuyen_ung_luong(app: FastifyInstance): Promise<void> {
       [id, nd.sub],
     );
     await ghi_nhat_ky(nd.sub, 'duyet_ung_luong', 'ung_luong', id, null, req.ip);
+    void bao_nhan_vien(u, {
+      tieu_de: 'ul_thong_bao_duyet', noi_dung: 'ul_thong_bao_duyet_noi_dung',
+    });
     return { ok: true };
   });
 
@@ -140,6 +172,9 @@ export async function tuyen_ung_luong(app: FastifyInstance): Promise<void> {
       [id],
     );
     await ghi_nhat_ky(nd.sub, 'chi_ung_luong', 'ung_luong', id, { thang: u.thang }, req.ip);
+    void bao_nhan_vien(u, {
+      tieu_de: 'ul_thong_bao_chi', noi_dung: 'ul_thong_bao_chi_noi_dung',
+    });
     // Bao cho nguoi dung biet phai tinh lai ky de khoan ung phan anh vao phieu.
     return { ok: true, luu_y: 'Hãy "Tính lương" tháng này để khoản ứng trừ vào phiếu.' };
   });
@@ -156,6 +191,9 @@ export async function tuyen_ung_luong(app: FastifyInstance): Promise<void> {
     await thuc_thi(
       `update ung_luong set trang_thai='huy', cap_nhat_luc=now() where id=$1`, [id]);
     await ghi_nhat_ky(nd.sub, 'huy_ung_luong', 'ung_luong', id, null, req.ip);
+    void bao_nhan_vien(u, {
+      tieu_de: 'ul_thong_bao_huy', noi_dung: 'ul_thong_bao_huy_noi_dung',
+    });
     return { ok: true };
   });
 

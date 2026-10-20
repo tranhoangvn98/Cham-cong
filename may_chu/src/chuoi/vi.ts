@@ -21,6 +21,12 @@ export const CHUOI_VI = {
   ul_chi_huy_khi_cho_duyet: 'Chỉ hủy được đề nghị khi còn chờ duyệt.',
   ul_thong_bao_de_nghi: 'Có đề nghị ứng lương mới',
   ul_thong_bao_noi_dung: '{ten} gửi đề nghị ứng lương tháng {thang}.',
+  ul_thong_bao_duyet: 'Khoản ứng lương của bạn đã được duyệt',
+  ul_thong_bao_duyet_noi_dung: 'Đề nghị ứng lương tháng {thang} của bạn đã được duyệt.',
+  ul_thong_bao_chi: 'Khoản ứng lương của bạn đã được chi',
+  ul_thong_bao_chi_noi_dung: 'Khoản ứng lương tháng {thang} của bạn đã được đánh dấu đã chi.',
+  ul_thong_bao_huy: 'Khoản ứng lương của bạn đã bị hủy',
+  ul_thong_bao_huy_noi_dung: 'Đề nghị ứng lương tháng {thang} của bạn đã bị hủy.',
 
   // ================================ nhan trang thai trong chuong bao
   tt_cho_duyet: 'Chờ duyệt',

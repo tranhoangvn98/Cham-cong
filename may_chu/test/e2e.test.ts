@@ -3773,8 +3773,36 @@ test('ung luong tu phuc vu: nhan vien gui de nghi, xem lich su, huy khi cho duye
     token: token_nhan_vien, body: { thang: '2099-12', so_tien: 200000 },
   });
   const id3 = tao3.body['id'] as string;
+
+  // Bao chuong gui NGAM (khong await trong route) — dem so bao man 'ung-luong' cua nhan vien
+  // truoc/sau moi buoc, cho mot chut cho thong bao kip luu.
+  const dem_bao_ul = async (): Promise<number> => {
+    const bao = await goi('GET', '/api/toi/bao', { token: token_nhan_vien });
+    const ds = (bao.body as { danh_sach: { du_lieu: { man?: string } | null }[] })['danh_sach'];
+    return ds.filter((b) => b.du_lieu?.man === 'ung-luong').length;
+  };
+  const cho_bao_ul = async (it_nhat: number): Promise<number> => {
+    let n = 0;
+    for (let i = 0; i < 50; i++) {
+      n = await dem_bao_ul();
+      if (n >= it_nhat) return n;
+      await new Promise((xong) => setTimeout(xong, 40));
+    }
+    return n;
+  };
+
+  // HR duyet -> nhan vien nhan duoc thong bao chuong "da duyet".
+  const bao_truoc = await dem_bao_ul();
   assert.equal((await goi('POST', `/api/ung-luong/${id3}/duyet`,
     { token: token_admin })).ma, 200);
+  assert.ok(await cho_bao_ul(bao_truoc + 1) >= bao_truoc + 1,
+    'nhan vien phai nhan thong bao khoan ung da duyet');
+  // HR danh dau da chi -> nhan vien nhan them thong bao "da chi".
+  assert.equal((await goi('POST', `/api/ung-luong/${id3}/da-chi`,
+    { token: token_admin })).ma, 200);
+  assert.ok(await cho_bao_ul(bao_truoc + 2) >= bao_truoc + 2,
+    'nhan vien phai nhan thong bao khoan ung da chi');
+
   assert.equal((await goi('POST', `/api/toi/ung-luong/${id3}/huy`,
     { token: token_nhan_vien })).ma, 409);
 

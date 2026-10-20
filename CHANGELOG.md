@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.122.1] — 2026-10-20
+
+**Ứng lương: nhân viên nhận thông báo khi khoản ứng được duyệt / đã chi / bị hủy.**
+
+- Khi nhân sự duyệt, đánh dấu đã chi hoặc hủy một khoản ứng trên trang quản trị, hệ thống gửi
+  thông báo chuông (và push app) cho chính nhân viên đó — bấm vào sẽ mở đúng tab Ứng lương
+  cá nhân. Tiêu đề/nội dung theo ngôn ngữ người nhận (vi/zh).
+- e2e kiểm chứng: sau khi duyệt và đánh dấu đã chi, nhân viên nhận đủ thông báo trong chuông.
+
 ## [1.122.0] — 2026-10-20
 
 **Ứng lương cá nhân: mỗi người xem lịch sử tạm ứng và tự gửi đề nghị.**
