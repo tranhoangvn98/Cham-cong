@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.122.5] — 2026-10-20
+
+**Rà soát toàn bộ lỗi hiển thị cùng kiểu (chữ dính mép ô / bị cắt).**
+
+- Hộp thoại Tạo khoản ứng: cột phải chỉ 250px trong khi bộ chọn Tháng/Năm cần 270px → ô Năm
+  tràn ra khỏi cột. Nâng cột phải `.ul-form` lên 290px.
+- Bảng gọn trong Dashboard (`.bang-dieu-khien .bang-gon`) vẫn còn lề trái 0 cho ô dữ liệu trong
+  khi tiêu đề có lề 10px — trả lề trái 10px cho thẳng cột.
+- Các quy tắc còn lại (select/input có width, Chon 110px ở Hợp đồng, phân trang 76px…) đã kiểm
+  và không có lỗi cắt chữ.
+
 ## [1.122.4] — 2026-10-20
 
 **Sửa lỗi hiển thị: hàng tổng ở chân bảng (tfoot) dính sát mép trái ô.**

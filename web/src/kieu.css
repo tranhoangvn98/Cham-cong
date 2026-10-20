@@ -446,7 +446,7 @@ blockquote {
 .bang-dieu-khien table { font-size: 12.5px; }
 .bang-dieu-khien thead th { padding: 5px 10px; }
 .bang-dieu-khien tbody td { padding: 5px 10px; }
-.bang-dieu-khien .bang-gon tbody td { padding: 3px 10px 3px 0; }
+.bang-dieu-khien .bang-gon tbody td { padding: 3px 10px; }
 .bang-dieu-khien .chu-giai { margin-top: 8px; }
 .bang-dieu-khien .bieu-do { height: 110px; }
 .bd-bieudo .bieu-do { flex: 1; height: auto; min-height: 110px; }
@@ -2438,7 +2438,7 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .ul-bang .vo-bang { flex: 1; min-height: 0; overflow: auto; }
 
 /* Modal: luoi 2 cot — trai danh sach nhan vien (cuon noi bo), phai cac o nhap. */
-.ul-form { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 16px; align-items: start; }
+.ul-form { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 16px; align-items: start; }
 .ul-form-mot-cot { grid-template-columns: 1fr; }
 .ul-cot-nv { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .ul-ds {
