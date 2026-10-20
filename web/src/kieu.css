@@ -2424,8 +2424,11 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .ul-loc-o > label { margin-bottom: 0; }
 .ul-loc-o select { min-width: 130px; width: auto; }
 .chon-thang { display: flex; gap: 6px; }
-.chon-thang select { flex: 1; min-width: 110px; }
-.chon-thang .chon { flex: 1; min-width: 110px; }
+/* O phai du cho nhan "Năm YYYY" cong mui ten + gap + padding (~28px): min-width hep hon
+   132px thi chu "Năm 2026" bi cat thanh "Năm 20…" (da xay ra o trang Ung luong va nhieu
+   trang khac dung ChonThang). */
+.chon-thang select { flex: 1; min-width: 132px; }
+.chon-thang .chon { flex: 1; min-width: 132px; }
 .ul-bang { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .ul-bang .vo-bang { flex: 1; min-height: 0; overflow: auto; }
 

@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.122.2] — 2026-10-20
+
+**Sửa lỗi hiển thị: ô chọn năm trong ChonThang bị cắt chữ ("Năm 20…").**
+
+- Bộ chọn Tháng/Năm dùng chung (`ChonThang`) có min-width 110px — chữ "Năm 2026" dài hơn chỗ
+  trống bên trong ô (sau khi trừ padding, mũi tên, khoảng cách) nên bị cắt thành "Năm 20…"
+  ở mọi trang dùng bộ chọn này (Ứng lương, ngày làm bù…). Tăng min-width lên 132px cho cả ô
+  tháng lẫn ô năm — chữ hiển thị trọn vẹn.
+
 ## [1.122.1] — 2026-10-20
 
 **Ứng lương: nhân viên nhận thông báo khi khoản ứng được duyệt / đã chi / bị hủy.**
