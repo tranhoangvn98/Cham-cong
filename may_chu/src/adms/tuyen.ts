@@ -203,8 +203,8 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
 
     // Bang sinh hoc: BIODATA chua TEMPLATE (khuon mat/van tay) ma may day len sau `DATA QUERY
     // USERINFO` — nguon de DOI CHIEU + CHUYEN khuon mat giua hai may (ZAM70 day ~143KB moi may).
-    // OPERLOG chua nhat ky enroll. May co the cat thanh nhieu chunk lien tiep nen giu CHUNK LON
-    // NHAT moi (serial, bang) trong may_du_lieu_tho — khong de luong day lien tuc phinh bang.
+    // May cat thanh NHIEU chunk lien tiep nen luu MOI chunk mot dong rieng (bang + moc ms),
+    // roi don dep: giu toi da 30 chunk moi nhat moi (serial, bang), xoa chunk qua 7 ngay.
     if (body.trim().length > 0
         && (bang === 'BIODATA' || bang === 'OPERLOG' || bang === 'FACE'
             || bang === 'FACEDATA' || bang === 'FACETEMPLATE')) {
@@ -212,11 +212,22 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       try {
         await thuc_thi(
           `insert into may_du_lieu_tho(thiet_bi_serial, bang, noi_dung, so_dong, luc)
-           values ($1,$2,$3,$4, now())
-           on conflict (thiet_bi_serial, bang) do update
-             set noi_dung = excluded.noi_dung, so_dong = excluded.so_dong, luc = now()
-             where length(may_du_lieu_tho.noi_dung) < length(excluded.noi_dung)`,
+           values ($1, $2 || '#' || (extract(epoch from clock_timestamp()) * 1000)::bigint,
+                   $3, $4, now())`,
           [sn, bang, body.slice(0, 400000), so_dong],
+        );
+        await thuc_thi(
+          `delete from may_du_lieu_tho t
+            where t.thiet_bi_serial = $1 and t.bang like $2 || '#%'
+              and (t.luc < now() - interval '7 days'
+                   or t.bang in (
+                     select bang from (
+                       select bang, row_number() over (order by luc desc) as rn
+                         from may_du_lieu_tho
+                        where thiet_bi_serial = $1 and bang like $2 || '#%'
+                     ) x where rn > 30
+                   ))`,
+          [sn, bang],
         );
       } catch (loi) {
         req.log.warn({ sn, bang, loi: (loi as Error).message }, 'khong luu duoc bang sinh hoc');

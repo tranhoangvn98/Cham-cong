@@ -753,16 +753,18 @@ test('RTLOG rong (nhip tim) khong sinh ban ghi', async () => {
 
 // Bang sinh hoc BIODATA (template khuon mat/van tay) may att day len sau `DATA QUERY USERINFO`
 // — phai LUU vao may_du_lieu_tho de doi chieu + chuyen khuon mat giua cac may, khong duoc bo
-// qua im lang. May cat thanh nhieu chunk lien tiep nen giu CHUNK LON NHAT moi (serial, bang).
-test('bang sinh hoc BIODATA duoc luu tho, giu chunk lon nhat', async () => {
-  const chunk_nho = 'BIODATA\t64\t1\t123456\n';
-  const chunk_lon = chunk_nho.repeat(20);
+// qua im lang. May cat thanh NHIEU chunk lien tiep nen moi chunk luu MOT DONG rieng.
+test('bang sinh hoc BIODATA duoc luu tho, moi chunk mot dong', async () => {
+  const chunk1 = 'BIODATA Pin=64 No=0 Index=0 Valid=1 Duress=0 Type=9 MajorVer=40 MinorVer=1'
+    + ' Format=0 Tmp=YWJj\n';
+  const chunk2 = 'BIODATA Pin=65 No=0 Index=0 Valid=1 Duress=0 Type=9 MajorVer=40 MinorVer=1'
+    + ' Format=0 Tmp=ZGVm\n';
 
   const r1 = await app.inject({
     method: 'POST',
     url: `/iclock/cdata?SN=${SERIAL}&table=BIODATA`,
     headers: { 'content-type': 'text/plain' },
-    payload: chunk_nho,
+    payload: chunk1,
   });
   assert.equal(r1.statusCode, 200);
   assert.equal(r1.body.trim(), 'OK');
@@ -771,19 +773,20 @@ test('bang sinh hoc BIODATA duoc luu tho, giu chunk lon nhat', async () => {
     method: 'POST',
     url: `/iclock/cdata?SN=${SERIAL}&table=BIODATA`,
     headers: { 'content-type': 'text/plain' },
-    payload: chunk_lon,
+    payload: chunk2,
   });
   assert.equal(r2.statusCode, 200);
   assert.equal(r2.body.trim(), 'OK');
 
-  const luu = await truy_van_mot<{ noi_dung: string; so_dong: number }>(
-    `select noi_dung, so_dong from may_du_lieu_tho
-      where thiet_bi_serial = $1 and bang = 'BIODATA'`,
+  const ds = await truy_van<{ noi_dung: string }>(
+    `select noi_dung from may_du_lieu_tho
+      where thiet_bi_serial = $1 and bang like 'BIODATA#%'
+      order by luc`,
     [SERIAL],
   );
-  assert.notEqual(luu, null, 'BIODATA phai duoc luu tho, khong bo qua im lang');
-  assert.equal(luu!.noi_dung, chunk_lon, 'chunk lon nhat phai thang the');
-  assert.equal(luu!.so_dong, 20);
+  assert.equal(ds.length, 2, 'hai chunk phai thanh hai dong rieng, khong ghi de nhau');
+  assert.equal(ds[0]?.noi_dung, chunk1);
+  assert.equal(ds[1]?.noi_dung, chunk2);
 });
 
 // Ket qua `DATA QUERY tablename=transaction` cua may acc day vao /iclock/querydata (KHONG
