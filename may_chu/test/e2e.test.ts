@@ -751,6 +751,44 @@ test('RTLOG rong (nhip tim) khong sinh ban ghi', async () => {
   assert.equal(r.body.trim(), 'OK: 0');
 });
 
+// Bang OPERLOG: nhat ky su kien tu may. He thong luu tung su kien vao `oplog_may` de phat
+// hien dang ky moi (dong bo sang may con lai) — nhung khong duoc cham lan quet cham cong.
+test('OPERLOG luu su kien vao oplog_may, khong cham ban ghi cham cong', async () => {
+  const than = 'OPLOG 9\t1\t2026-01-02 08:00:00\t7777\t0\t0\n'
+    + 'USERPIC PIN=34\tFileName=34.jpg\tSize=98\tContent=/9j/4AAQ\n';
+  const r = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=OPERLOG`,
+    headers: { 'content-type': 'text/plain' },
+    payload: than,
+  });
+  assert.equal(r.statusCode, 200);
+  assert.equal(r.body.trim(), 'OK');
+
+  const d = await truy_van_mot<{ hanh_dong: number; pin: string }>(
+    `select hanh_dong, pin from oplog_may
+      where thiet_bi_serial = $1 and pin = '7777'`,
+    [SERIAL],
+  );
+  assert.notEqual(d, null, 'su kien OPLOG phai duoc luu vao oplog_may');
+  assert.equal(d!.hanh_dong, 1);
+
+  // Day lai cung ban ghi (firmware hay lam voi Stamp=None) -> khong sinh dong trung.
+  const r2 = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=OPERLOG`,
+    headers: { 'content-type': 'text/plain' },
+    payload: than,
+  });
+  assert.equal(r2.statusCode, 200);
+  const so = await truy_van_mot<{ so: number }>(
+    `select count(*)::int as so from oplog_may
+      where thiet_bi_serial = $1 and pin = '7777'`,
+    [SERIAL],
+  );
+  assert.equal(so!.so, 1, 'day lai cung ban ghi khong duoc sinh dong trung');
+});
+
 // Bang sinh hoc BIODATA (template khuon mat/van tay) may att day len sau `DATA QUERY USERINFO`
 // — phai LUU vao may_du_lieu_tho de doi chieu + chuyen khuon mat giua cac may, khong duoc bo
 // qua im lang. May cat thanh NHIEU chunk lien tiep nen moi chunk luu MOT DONG rieng.

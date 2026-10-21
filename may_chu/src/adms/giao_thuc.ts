@@ -373,7 +373,71 @@ export function doc_thong_tin_may(body: string): Record<string, string> {
   }
   return map;
 }
+/** Mot su kien trong bang OPERLOG may day len (them/xoa user, enroll, dang nhap quan tri...). */
+export interface SuKienOplog {
+  /** So thu tu may dat (truong dau tien, co firmware dinh lien voi tu OPLOG). */
+  chi_muc: number | null;
+  /** Ma hanh dong cua may. */
+  hanh_dong: number;
+  /** Chuoi gio DIA PHUONG may ghi, dang "YYYY-MM-DD HH:mm:ss" — khong phai moc tuyet doi. */
+  thoi_diem: string;
+  /** PIN lien quan (0 = su kien khong gan nguoi, vd su kien cua). */
+  pin: string;
+  /** The lien quan (0 = khong co). */
+  the: string;
+  /** Cac truong con lai giu nguyen van, ghep bang dau phay. */
+  khac: string[];
+}
 
+/**
+ * Doc cac dong su kien trong bang OPERLOG.
+ *
+ * Dinh dang da kiem chung tren ZAM70 (10/2026):
+ *   `OPLOG 4<TAB>8<TAB>2026-10-21 18:04:59<TAB>8<TAB>0<TAB>0<TAB>0`
+ * (so sau "OPLOG " la chi muc, roi hanh dong, gio dia phuong, PIN, the, cac truong khac).
+ * Firmware khac co the khong co chi muc (`OPLOG<TAB>hanh dong<TAB>...`) — van doc duoc.
+ *
+ * Bang OPERLOG con tron dong USERPIC (anh chan dung, noi dung jpg lon) — bo qua, khong coi
+ * la dong loi.
+ */
+export function doc_oplog(body: string): { su_kien: SuKienOplog[]; so_dong_loi: number } {
+  const su_kien: SuKienOplog[] = [];
+  let so_dong_loi = 0;
+  if (typeof body !== 'string' || body.trim().length === 0) return { su_kien, so_dong_loi };
+
+  for (const raw of body.split('\n')) {
+    const dong = raw.replace(/\r$/, '').trim();
+    if (dong.length === 0) continue;
+    if (/^USERPIC\b/i.test(dong)) continue;
+    if (!dong.startsWith('OPLOG')) { so_dong_loi++; continue; }
+
+    // Phan sau chu "OPLOG". Co chi muc (cach bang khoang trang) hay khong (bat dau bang TAB)
+    // tuy firmware — chuoi thu nghiem tren ZAM70 la "OPLOG <chi_muc>\t...".
+    let chi_muc: number | null = null;
+    let phan: string[];
+    const duoi = dong.slice('OPLOG'.length);
+    if (duoi.startsWith('\t')) {
+      phan = duoi.slice(1).split('\t');
+    } else {
+      const mk = /^\s+(\d+)\t(.*)$/.exec(duoi);
+      if (mk === null) { so_dong_loi++; continue; }
+      chi_muc = Number.parseInt(mk[1] as string, 10) || null;
+      phan = (mk[2] as string).split('\t');
+    }
+
+    const hanh_dong = Number.parseInt(phan[0] ?? '', 10);
+    if (!Number.isInteger(hanh_dong)) { so_dong_loi++; continue; }
+    su_kien.push({
+      chi_muc,
+      hanh_dong,
+      thoi_diem: (phan[1] ?? '').trim(),
+      pin: (phan[2] ?? '').trim() || '0',
+      the: (phan[3] ?? '').trim() || '0',
+      khac: phan.slice(4),
+    });
+  }
+  return { su_kien, so_dong_loi };
+}
 /**
  * Dung block cau hinh tra cho may khi handshake (GET /iclock/cdata?options=all).
  * Realtime=1 de may day ngay khi co quet thay vi cho theo chu ky.

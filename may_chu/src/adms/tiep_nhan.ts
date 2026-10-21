@@ -1,6 +1,6 @@
 // Nghiep vu tiep nhan ATTLOG tu may: chong trung -> map PIN sang nhan vien -> luu
 // -> ghi su kien -> tinh lai bang cong ngay bi anh huong.
-import { trong_giao_dich, thuc_thi } from '../csdl/ket_noi.ts';
+import { trong_giao_dich, thuc_thi, truy_van_mot } from '../csdl/ket_noi.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { tinh_lai_nhieu } from '../cong/tinh_cong.ts';
 import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
@@ -71,6 +71,11 @@ export async function tiep_nhan_transaction(
  * Tiep nhan bang USERINFO may day len (sau lenh `DATA QUERY USERINFO`, hoac khi enroll/xoa user).
  * Upsert vao `may_nguoi_dung` — anh chup user THUC trong may, de doi chieu voi mapping he thong.
  * KHONG cham vao cham cong.
+ *
+ * Khi lan day nay la ket qua cua lenh hoi DANH SACH (co lenh `DATA QUERY USERINFO` gui gan
+ * day — cot `hoi_userinfo_luc`), no la ANH CHUP DAY DU: xoa cac dong user khong con trong
+ * danh sach de ban chup khong giu ma mai nguoi da bi xoa tren may (bang nay upsert, khong
+ * bao gio tu xoa). Lan day tu phat (khi enroll) giu nguyen hanh vi upsert.
  */
 export async function tiep_nhan_userinfo(
   serial: string,
@@ -86,6 +91,22 @@ export async function tiep_nhan_userinfo(
              quyen = excluded.quyen, thay_luc = now()`,
       [serial, u.pin, u.ten, u.the, u.quyen],
     );
+  }
+  if (nguoi_dung.length > 0) {
+    const hoi = await truy_van_mot<{ co: number }>(
+      `select 1 as co from lenh_thiet_bi
+        where thiet_bi_serial = $1 and hoi_userinfo_luc is not null
+          and hoi_userinfo_luc > now() - interval '5 minutes'
+        limit 1`,
+      [serial],
+    );
+    if (hoi !== null) {
+      const cac_pin = [...new Set(nguoi_dung.map((u) => u.pin))];
+      await thuc_thi(
+        'delete from may_nguoi_dung where thiet_bi_serial = $1 and not (pin = any($2::text[]))',
+        [serial, cac_pin],
+      );
+    }
   }
   return { so_user: nguoi_dung.length, dong_loi: so_dong_loi };
 }

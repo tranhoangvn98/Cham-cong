@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.122.8] — 2026-10-21
+
+**Đồng bộ máy chấm công: tự động theo sự kiện + đối chiếu 07:30 + khóa người đã nghỉ.**
+
+- Máy đẩy OPERLOG (thêm/xóa user, enroll...) → lưu vào `oplog_may` (migration 109) và **tự
+  động đồng bộ** người mới từ máy đó sang máy VP còn lại (`dong_bo_sau_enroll`, khóa 30
+  phút/PIN). Khi có người đăng ký gương mặt mới ở một cổng là cổng kia có ngay.
+- **07:30 hằng ngày** (giờ máy chấm công): đối chiếu cặp máy VP hai chiều (user + khuôn mặt
+  + vân tay), **khóa (xóa) user của người đã nghỉ ≥ 3 ngày** trên mọi máy đang bật, rồi
+  **xác nhận kết quả** (hỏi lại máy + so sánh) — nếu còn thiếu/khóa chưa hiệu lực thì log
+  cảnh báo. Chỉ khóa khi có bằng chứng lịch sử quẹt (chủ nhân PIN), và người còn quẹt trong
+  3 ngày gần nhất thì giữ nguyên (phòng cho-nghỉ-nhầm như tiền lệ Quỳnh Anh).
+- `may_nguoi_dung` giờ là ảnh chụp THẬT: sau lệnh hỏi danh sách, user bị xóa trên máy sẽ bị
+  xóa khỏi bảng (`hoi_userinfo_luc` đánh dấu lệnh hỏi). e2e +1, unit +8.
+
 ## [1.122.7] — 2026-10-21
 
 **ADMS: lưu bảng sinh học BIODATA/OPERLOG máy đẩy lên — nền để đồng bộ khuôn mặt giữa các máy.**

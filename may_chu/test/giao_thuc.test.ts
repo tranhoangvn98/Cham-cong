@@ -9,7 +9,7 @@ process.env['DATABASE_URL'] ??= 'postgres://khong_dung@localhost:5432/khong_dung
 const {
   doc_attlog, doc_rtlog, doc_transaction, doc_ket_qua_lenh, doc_thong_tin_may,
   dung_phan_hoi_handshake, dinh_dang_lenh, ma_hoa_thoi_gian_zkteco,
-  giai_ma_thoi_gian_zkteco, nhan_cach_xac_thuc, doc_userinfo,
+  giai_ma_thoi_gian_zkteco, nhan_cach_xac_thuc, doc_userinfo, doc_oplog,
   lenh_duoc_thuc_hien, ket_qua_lenh_hien_thi,
 } = await import('../src/adms/giao_thuc.ts');
 
@@ -296,4 +296,30 @@ test('doc_transaction: doc ca dang ten truong khac (time= chuoi, inoutstatus, ve
   assert.equal(kq.ban_ghi[0]!.trang_thai, 1);
   assert.equal(kq.ban_ghi[0]!.xac_thuc, 1);
   assert.equal(kq.ban_ghi[0]!.thoi_diem.toISOString(), '2026-10-02T23:21:39.000Z');
+});
+
+test('doc_oplog: doc su kien OPLOG, bo qua USERPIC va dong loi', () => {
+  const body = 'OPLOG 4\t8\t2026-10-21 18:04:59\t8\t0\t0\t0\n'
+    + 'USERPIC PIN=34\tFileName=34.jpg\tSize=98504\tContent=/9j/4AAQ...\n'
+    + 'dong_hong_khong_phai_oplog\n'
+    + 'OPLOG\t5\t2026-10-21 18:05:00\t69\t0\t0\n'
+    + 'OPLOG 7\t3\t2026-10-21 18:05:01\t\t0\t0\n';
+  const { su_kien, so_dong_loi } = doc_oplog(body);
+  assert.equal(so_dong_loi, 1);
+  assert.equal(su_kien.length, 3);
+  assert.deepEqual(su_kien[0], {
+    chi_muc: 4, hanh_dong: 8, thoi_diem: '2026-10-21 18:04:59', pin: '8', the: '0',
+    khac: ['0', '0'],
+  });
+  assert.deepEqual(su_kien[1], {
+    chi_muc: null, hanh_dong: 5, thoi_diem: '2026-10-21 18:05:00', pin: '69', the: '0',
+    khac: ['0'],
+  });
+  // PIN rong (khong gan nguoi) van duoc giu, nhung quy ve '0' de bo loc de dang.
+  assert.equal(su_kien[2]!.pin, '0');
+});
+
+test('doc_oplog: than rong tra ve mang rong, khong nem loi', () => {
+  assert.deepEqual(doc_oplog(''), { su_kien: [], so_dong_loi: 0 });
+  assert.deepEqual(doc_oplog('   \n  '), { su_kien: [], so_dong_loi: 0 });
 });

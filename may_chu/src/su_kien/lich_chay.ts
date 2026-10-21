@@ -23,6 +23,7 @@ import { sinh_viec_dinh_ky } from '../viec/dinh_ky.ts';
 import { khi_hop_dong_sap_het, quet_don_cho_duyet } from '../viec/workflow.ts';
 import { dong_bo_nguoi_ms365_da_cap_phep, graph_da_cau_hinh } from '../nhan_su/ms365.ts';
 import { bao_het_han_lay_y_kien, dong_y_kien_het_han } from '../ho_thu_y_kien/nghiep_vu.ts';
+import { dong_bo_hang_ngay, GIO_DONG_BO_MAY } from '../adms/dong_bo_may.ts';
 import { cong_ngay, khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. Khai duoc trong .env. */
@@ -281,6 +282,27 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
           await nha_viec(ma_quet);
           ghi_log(`[lich] LOI khi quet giay phep MS365: ${(loi as Error).message}`);
         }
+      }
+    }
+  }
+
+  // ------------------------------------------------------------ dong bo may cham cong
+  // 07:30 (gio may cham cong): doi chieu cap may VP voi nhau (user + khuon mat), khoa nguoi da
+  // nghi viec tren moi may dang bat, roi XAC NHAN ket qua (ma_tra_ve + hoi lai may) — nhat ky
+  // ghi lai gi da lam va con thieu gi. Khoa theo NGAY nen chi chay mot lan moi sang; may nghi/
+  // loop tre thi vong dau tien sau 07:30 bu duoc. Dang ky MOI trong ngay thi da co duong
+  // rieng (su kien OPERLOG -> dong_bo_sau_enroll).
+  if (gio_may >= GIO_DONG_BO_MAY) {
+    const ma_dbm = `dong_bo_may:${hom_nay}`;
+    if (await nhan_viec(ma_dbm)) {
+      ghi_log(`[lich] dong bo may: bat dau doi chieu (${String(GIO_DONG_BO_MAY)}:30)`);
+      try {
+        const kq = await dong_bo_hang_ngay(ghi_log);
+        await ghi_ket_qua(ma_dbm, kq);
+        ghi_log(`[lich] dong bo may: ${kq}`);
+      } catch (loi) {
+        await nha_viec(ma_dbm);
+        ghi_log(`[lich] LOI khi dong bo may cham cong: ${(loi as Error).message}`);
       }
     }
   }

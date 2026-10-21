@@ -15,6 +15,7 @@ import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import {
   dinh_dang_lenh,
   doc_ket_qua_lenh,
+  doc_oplog,
   doc_thong_tin_may,
   dung_phan_hoi_handshake,
   lenh_duoc_thuc_hien,
@@ -22,6 +23,7 @@ import {
 import {
   tiep_nhan_attlog, tiep_nhan_rtlog, tiep_nhan_transaction, tiep_nhan_userinfo,
 } from './tiep_nhan.ts';
+import { dong_bo_sau_enroll } from './dong_bo_may.ts';
 import { tick_pin_may_cua_nhan } from '../nhan_su/nhap_viec.ts';
 import { ip_duoc_phep } from '../tien_ich/dia_chi_ip.ts';
 
@@ -193,6 +195,32 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       const kq = await tiep_nhan_userinfo(sn, body);
       req.log.info({ sn, bang, ...kq }, 'nhan USERINFO');
       return tra_text(res, 'OK\n');
+    }
+
+    // OPERLOG: nhat ky su kien tu may (them/xoa user, enroll, dang nhap quan tri...). Luu tung
+    // su kien de biet KHI NAO co nguoi dang ky moi tren may — cap may VP (cong vao/ra) tu dong
+    // dong bo nguoi do sang may con lai (fire-and-forget, khong chan request cua may).
+    if (bang === 'OPERLOG') {
+      const { su_kien, so_dong_loi } = doc_oplog(body);
+      for (const s of su_kien) {
+        await thuc_thi(
+          `insert into oplog_may (thiet_bi_serial, chi_muc, hanh_dong, thoi_diem, pin, the, khac)
+           values ($1,$2,$3,$4,$5,$6,$7)
+           on conflict (thiet_bi_serial, chi_muc, hanh_dong, thoi_diem, pin, the) do nothing`,
+          [sn, s.chi_muc, s.hanh_dong, s.thoi_diem, s.pin, s.the, s.khac.join(',')],
+        );
+      }
+      if (su_kien.length > 0) {
+        req.log.info({ sn, so_su_kien: su_kien.length, dong_loi: so_dong_loi }, 'nhan OPERLOG');
+        for (const s of su_kien) {
+          if (s.pin !== '' && s.pin !== '0') {
+            dong_bo_sau_enroll(sn, s.pin).catch((loi: unknown) => {
+              req.log.warn(
+                { sn, pin: s.pin, loi: (loi as Error).message }, 'dong bo sau enroll loi');
+            });
+          }
+        }
+      }
     }
 
     // Bang khac (OPERLOG khong co user, ATTPHOTO, tabledata...): xac nhan da nhan de may khong
@@ -459,12 +487,19 @@ export async function xep_lenh(
   khoa: string | null = null,
   khach?: PoolClient,
 ): Promise<number> {
+  // Lenh hoi danh sach user: danh dau de biet may sap day ANH CHUP DAY DU — dung de xoa
+  // cac dong user da bi xoa tren may (xem tiep_nhan_userinfo).
+  const hoi_user = /DATA QUERY USERINFO/i.test(lenh) || /tablename=user\b/i.test(lenh);
   const sql = khoa === null
-    ? 'insert into lenh_thiet_bi(thiet_bi_serial, lenh) values ($1, $2) returning id'
-    : `insert into lenh_thiet_bi(thiet_bi_serial, lenh, khoa_chong_trung) values ($1, $2, $3)
+    ? `insert into lenh_thiet_bi(thiet_bi_serial, lenh, hoi_userinfo_luc) values ($1, $2, $3)
+       returning id`
+    : `insert into lenh_thiet_bi(thiet_bi_serial, lenh, khoa_chong_trung, hoi_userinfo_luc)
+       values ($1, $2, $3, $4)
        on conflict (khoa_chong_trung) where khoa_chong_trung is not null
        do nothing returning id`;
-  const ts = khoa === null ? [serial, lenh] : [serial, lenh, khoa];
+  const ts = khoa === null
+    ? [serial, lenh, hoi_user ? new Date() : null]
+    : [serial, lenh, khoa, hoi_user ? new Date() : null];
   const dong = khach === undefined
     ? await truy_van_mot<{ id: number }>(sql, ts)
     : (await khach.query<{ id: number }>(sql, ts)).rows[0] ?? null;

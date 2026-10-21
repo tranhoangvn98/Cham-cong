@@ -415,6 +415,10 @@ nhưng có đường đi được, đủ để **sao chép khuôn mặt từ má
    BIODATA và số khuôn mặt trong `INFO`.
    Lưu ý: phải **tạo user trước** rồi mới đẩy template.
 
+Từ 1.122.8 việc này **tự động**: máy đẩy sự kiện OPERLOG (có người đăng ký mới) là hệ thống
+tự đồng bộ sang máy VP còn lại, và 07:30 mỗi sáng có một vòng đối chiếu đầy đủ + khóa người
+đã nghỉ việc trên mọi máy (kèm xác nhận kết quả) — xem `may_chu/src/adms/dong_bo_may.ts`.
+
 ### Bỏ một máy đã ngừng dùng
 
 **Tắt trước, rồi Xóa** — nút Xóa chỉ hiện khi máy đã tắt. Hai bước là cố ý: xóa một máy đang chạy
