@@ -73,6 +73,21 @@ async function cho_trang_thai(id: string, mong: string, han_ms = 30_000): Promis
   }
 }
 
+/** Doi chuong bao rieng (gui_ngam chay NGAN sau phat hanh — khong tra ve) xuat hien. */
+async function cho_thong_bao_rieng(
+  thong_bao_id: string, han_ms = 10_000,
+): Promise<{ nguoi_dung_id: string }[]> {
+  const het = Date.now() + han_ms;
+  for (;;) {
+    const dong = await truy_van<{ nguoi_dung_id: string }>(
+      `select nguoi_dung_id from thong_bao_rieng where du_lieu->>'thong_bao_id' = $1`,
+      [thong_bao_id],
+    );
+    if (dong.length > 0 || Date.now() > het) return dong;
+    await new Promise((xong) => setTimeout(xong, 100));
+  }
+}
+
 /** Tao mot ban nhap tu_soan va doi den cho_duyet. */
 async function nhap_cho_duyet(than: Record<string, unknown>): Promise<{ id: string; ma: string }> {
   const r = await goi('POST', '/api/thong-bao/ai/nhap', { token: token_admin, body: than });
@@ -221,10 +236,7 @@ test('kiem nhiem phong ban + admin: nguoi kiem nhiem va admin deu nhan thong bao
   const tb_id = p.body['thong_bao_id'] as string;
 
   // Phia nguoi GUI: nguoi kiem nhiem va admin deu nam trong danh sach chuong bao rieng.
-  const rieng = await truy_van<{ nguoi_dung_id: string }>(
-    `select nguoi_dung_id from thong_bao_rieng where du_lieu->>'thong_bao_id' = $1`,
-    [tb_id],
-  );
+  const rieng = await cho_thong_bao_rieng(tb_id);
   const ids = new Set(rieng.map((r) => r.nguoi_dung_id));
   assert.ok(ids.has(ND_B), 'nguoi kiem nhiem co chuong bao rieng');
   assert.ok(ids.has(ND_ADMIN), 'admin co chuong bao rieng (khong thuoc phong nao)');
@@ -264,7 +276,7 @@ test('toan cong ty: PHAI trinh ky truoc, admin ban hanh, so lien tuc', async () 
 
   const p = await goi('POST', `/api/thong-bao/ai/${id}/phat-hanh`, { token: token_admin });
   assert.equal(p.ma, 200);
-  assert.equal(p.body['so_ky_hieu'], '02/2026/TB-CTTHVN', 'so thu hai lien tuc (C-11 so 0)');
+  assert.equal(p.body['so_ky_hieu'], '03/2026/TB-CTTHVN', 'so thu ba lien tuc (C-11 so 0)');
 
   // Nhan vien ngoai phong van thay (toan cong ty).
   const cua_b = await goi('GET', '/api/toi/thong-bao', { token: token_b });
@@ -484,6 +496,15 @@ test('quyet dinh nghi viec: phat hanh gan tep ho so, lich dem hoi to quy trinh, 
 });
 
 test('tep kem: soan dinh kem -> ban hanh chuyen sang thong bao -> nhan vien tai duoc, ngoai phong 404', async () => {
+  // Test nghi viec phia truoc da khoa NV_B/ND_B — mo lai de kiem dung pham vi 404.
+  await thuc_thi('update nguoi_dung set dang_hoat_dong = true where id = $1', [ND_B]);
+  await thuc_thi(
+    `update nhan_vien set dang_hoat_dong = true, ngay_nghi_viec = null where id = $1`,
+    [NV_B],
+  );
+  // NV_B co the con phong ban kiem nhiem tu test kiem nhiem (neu test do fail giua chung) — don sach.
+  await thuc_thi('delete from phong_ban_kiem_nhiem where nhan_vien_id = $1', [NV_B]);
+
   const { id } = await nhap_cho_duyet({
     loai: 'thong_bao', pham_vi: 'phong_ban', quan_he: 'noi_bo', muc_dich: 'pho_bien',
     che_do: 'tu_soan', phong_ban_id: PHONG,
