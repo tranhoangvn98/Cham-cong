@@ -751,6 +751,41 @@ test('RTLOG rong (nhip tim) khong sinh ban ghi', async () => {
   assert.equal(r.body.trim(), 'OK: 0');
 });
 
+// Bang sinh hoc BIODATA (template khuon mat/van tay) may att day len sau `DATA QUERY USERINFO`
+// — phai LUU vao may_du_lieu_tho de doi chieu + chuyen khuon mat giua cac may, khong duoc bo
+// qua im lang. May cat thanh nhieu chunk lien tiep nen giu CHUNK LON NHAT moi (serial, bang).
+test('bang sinh hoc BIODATA duoc luu tho, giu chunk lon nhat', async () => {
+  const chunk_nho = 'BIODATA\t64\t1\t123456\n';
+  const chunk_lon = chunk_nho.repeat(20);
+
+  const r1 = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=BIODATA`,
+    headers: { 'content-type': 'text/plain' },
+    payload: chunk_nho,
+  });
+  assert.equal(r1.statusCode, 200);
+  assert.equal(r1.body.trim(), 'OK');
+
+  const r2 = await app.inject({
+    method: 'POST',
+    url: `/iclock/cdata?SN=${SERIAL}&table=BIODATA`,
+    headers: { 'content-type': 'text/plain' },
+    payload: chunk_lon,
+  });
+  assert.equal(r2.statusCode, 200);
+  assert.equal(r2.body.trim(), 'OK');
+
+  const luu = await truy_van_mot<{ noi_dung: string; so_dong: number }>(
+    `select noi_dung, so_dong from may_du_lieu_tho
+      where thiet_bi_serial = $1 and bang = 'BIODATA'`,
+    [SERIAL],
+  );
+  assert.notEqual(luu, null, 'BIODATA phai duoc luu tho, khong bo qua im lang');
+  assert.equal(luu!.noi_dung, chunk_lon, 'chunk lon nhat phai thang the');
+  assert.equal(luu!.so_dong, 20);
+});
+
 // Ket qua `DATA QUERY tablename=transaction` cua may acc day vao /iclock/querydata (KHONG
 // phai /cdata). Duong "Lay log cu" xep kem lenh nay cho dong kiem soat ra vao — may acc
 // tu choi DATA QUERY ATTLOG (-629) va day kho ban ghi CHUA DONG BO cua no.

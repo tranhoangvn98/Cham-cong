@@ -2,6 +2,15 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.122.7] — 2026-10-21
+
+**ADMS: lưu bảng sinh học BIODATA/OPERLOG máy đẩy lên — nền để đồng bộ khuôn mặt giữa các máy.**
+
+- Máy ZAM70 (VP Cổng vào/ra) đẩy `table=BIODATA` (~143KB template khuôn mặt/vân tay) sau
+  `DATA QUERY USERINFO` nhưng máy chủ bỏ qua im lặng. Nay giữ chunk lớn nhất mỗi bảng vào
+  `may_du_lieu_tho` (BIODATA, OPERLOG, FACE, FACEDATA, FACETEMPLATE) để đối chiếu + chuyển
+  khuôn mặt giữa hai máy. e2e thêm 1 test.
+
 ## [1.122.6] — 2026-10-21
 
 **Kiêm nhiệm phòng ban — gửi thông báo đủ người + admin nhận mọi thông báo phòng ban.**
