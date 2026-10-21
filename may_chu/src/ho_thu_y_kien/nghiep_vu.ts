@@ -6,6 +6,7 @@
 // Email va chuong bao do lop tuyen goi (fire-and-forget), module nay chi nghiep vu CSDL.
 import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { LoiKhongTim, LoiXungDot } from '../tien_ich/kiem_tra.ts';
+import { trong_phong_ban } from '../su_kien/pham_vi_nhan.ts';
 import { noi_dung_hien_thi } from '../ai/ghep_spec.ts';
 import type { SpecVanBan } from '../ai/kieu.ts';
 
@@ -257,7 +258,7 @@ export async function trong_pham_vi_du_thao(
 ): Promise<boolean | null> {
   const d = await truy_van_mot<{ ok: boolean }>(
     `select (d.pham_vi = 'toan_cong_ty'
-             or (d.pham_vi = 'phong_ban' and nv.phong_ban_id = d.phong_ban_id)
+             or (d.pham_vi = 'phong_ban' and ${trong_phong_ban('d.phong_ban_id', '$2')})
              or (d.pham_vi = 'ca_nhan' and d.nhan_vien_id = nv.id)) as ok
        from thong_bao_nhap_ai d
        join nhan_vien nv on nv.id = $2 and nv.dang_hoat_dong = true

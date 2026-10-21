@@ -29,6 +29,10 @@ export const CHUOI_ZH = {
   ul_thong_bao_huy: '您的预支工资申请已取消',
   ul_thong_bao_huy_noi_dung: '您 {thang} 月的预支工资申请已取消。',
 
+  // ================================ 兼岗部门
+  kn_danh_sach_sai: '兼岗部门列表无效。',
+  kn_phong_khong_ton_tai: '存在不存在的兼岗部门。',
+
   // ================================ 通知铃状态标签
   tt_cho_duyet: '待审批',
   tt_cho_duyet_2: '待二级审批',

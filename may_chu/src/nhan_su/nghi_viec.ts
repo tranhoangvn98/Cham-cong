@@ -57,6 +57,9 @@ export async function cho_nghi_viec(
     [nhan_vien_id],
   );
 
+  // Don phong ban kiem nhiem — nguoi da roi khoi cong ty khong nhan thong bao phong ban nao.
+  await khach.query('delete from phong_ban_kiem_nhiem where nhan_vien_id = $1', [nhan_vien_id]);
+
   // Bao cong phan quyen: ben do doi `nhan_su.trang_thai`, vo hieu hoa tai khoan cong VA
   // thu hoi moi phien dang song. Buoc cuoi la buoc quan trong nhat — `vo_hieu_hoa` chan
   // duoc dang nhap lai nhung khong chan duoc tab dang mo.

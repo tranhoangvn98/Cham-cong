@@ -36,6 +36,7 @@ interface NhanVien {
   dang_hoat_dong: boolean;
   phong_ban_id: string | null;
   phong_ban: string | null;
+  phong_ban_kiem_nhiem: { id: string; ten: string }[];
   ca_lam_id: string | null;
   ca_lam: string | null;
   noi_lam_viec_id: string | null;
@@ -199,7 +200,13 @@ export function TrangNhanVien(): ReactNode {
                     <td className="so">
                       {n.pin_may ?? <span className="nhan nhan-xau">chưa có</span>}
                     </td>
-                    <td>{n.phong_ban ?? '—'}</td>
+                    <td>{n.phong_ban ?? '—'}
+                      {n.phong_ban_kiem_nhiem.length > 0 && (
+                        <div className="mo-ta">
+                          + {n.phong_ban_kiem_nhiem.map((p) => p.ten).join(', ')}
+                        </div>
+                      )}
+                    </td>
                     <td>{n.ca_lam ?? <span className="nhan nhan-canh-bao">chưa gán</span>}</td>
                     <td className="khong-ngat">{ngay_viet(n.ngay_vao)}</td>
                     <td className="canh-giua">
@@ -350,6 +357,9 @@ function FormNhanVien(
   });
   const [tu_cap_pin, dat_tu_cap_pin] = useState(tu_dong);
   const [serial_pin, dat_serial_pin] = useState('');
+  const [kiem_nhiem, dat_kiem_nhiem] = useState<string[]>(
+    nhan_vien?.phong_ban_kiem_nhiem.map((p) => p.id) ?? [],
+  );
   const [tao_tk_ms, dat_tao_tk_ms] = useState(tu_dong && ms365_tao_bat);
   const [tao_tk_ht, dat_tao_tk_ht] = useState(true);
   const [ket_qua, dat_ket_qua] = useState<TaiKhoanMs | null>(null);
@@ -362,6 +372,9 @@ function FormNhanVien(
 
   const doi = (khoa: keyof typeof f, gt: string | boolean): void =>
     dat_f((cu) => ({ ...cu, [khoa]: gt }));
+
+  const bat_tat_kiem_nhiem = (id: string): void =>
+    dat_kiem_nhiem((cu) => (cu.includes(id) ? cu.filter((x) => x !== id) : [...cu, id]));
 
   const gui = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -381,6 +394,7 @@ function FormNhanVien(
       noi_lam_viec_id: f.noi_lam_viec_id === '' ? null : f.noi_lam_viec_id,
       che_do_luong: f.che_do_luong,
       khoi_id: f.khoi_id === '' ? null : f.khoi_id,
+      phong_ban_kiem_nhiem: kiem_nhiem,
       cong_chuan_thang: f.cong_chuan_thang === '' ? null : Number(f.cong_chuan_thang),
     };
     if (nhan_vien === null) {
@@ -536,6 +550,29 @@ function FormNhanVien(
               cac_tuy_chon={cac_ca.map((c): TuyChonChon => ({ ma: c.id, nhan: c.ten }))}
               rong="— Chưa gán —" nhan="Ca làm việc" />
           </div>
+        </div>
+
+        <div className="o-nhap">
+          <label>{tra_hien_tai('nv_phong_ban_kiem_nhiem')}</label>
+          <div className="vo-bang" style={{ maxHeight: 170, overflowY: 'auto' }}>
+            <table className="bang-gon">
+              <tbody>
+                {cac_phong
+                  .filter((p) => p.id !== f.phong_ban_id)
+                  .map((p) => (
+                    <tr key={p.id}>
+                      <td style={{ width: 32 }}>
+                        <input type="checkbox" checked={kiem_nhiem.includes(p.id)}
+                          aria-label={`${tra_hien_tai('nv_phong_ban_kiem_nhiem')}: ${p.ten}`}
+                          onChange={() => bat_tat_kiem_nhiem(p.id)} />
+                      </td>
+                      <td>{p.ten}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="goi-y">{tra_hien_tai('nv_phong_ban_kiem_nhiem_phu')}</div>
         </div>
 
         <div className="o-nhap">

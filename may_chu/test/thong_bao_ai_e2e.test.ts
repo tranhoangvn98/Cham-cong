@@ -43,7 +43,7 @@ let token_a = '';
 let token_b = '';
 
 async function goi(
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   url: string,
   tuy_chon: { token?: string; body?: unknown } = {},
 ): Promise<{ ma: number; body: Record<string, unknown>; tho: string; byte: Buffer }> {
@@ -88,7 +88,7 @@ before(async () => {
 
   // Don bang cua rieng module nay — khong dung toi du lieu cua e2e.test.ts.
   await thuc_thi(`truncate table thong_bao_da_doc, thong_bao_nhap_ai, thong_bao,
-                  thong_bao_rieng, bo_dem_so_vb restart identity cascade`);
+                  thong_bao_rieng, phong_ban_kiem_nhiem, bo_dem_so_vb restart identity cascade`);
 
   await thuc_thi(
     `insert into phong_ban(id, ten) values ($1, 'Phòng Kinh doanh')
@@ -193,6 +193,58 @@ test('phat hanh 1 cap (phong_ban): cap so, nhan vien cung phong nhan duoc', asyn
   assert.equal(tai_a.ma, 200);
   const cua_b = await goi('GET', '/api/toi/thong-bao', { token: token_b });
   assert.equal(String(cua_b.tho).includes('họp giao ban'), false);
+});
+
+test('kiem nhiem phong ban + admin: nguoi kiem nhiem va admin deu nhan thong bao phong ban', async () => {
+  // NV_B chua thuoc phong nao — gan kiem nhiem PHONG qua chinh API danh muc.
+  const sua = await goi('PUT', `/api/nhan-vien/${NV_B}`, {
+    token: token_admin,
+    body: { ma_nv: 'AI-NVB', ho_ten: 'Nguyễn Văn B', phong_ban_kiem_nhiem: [PHONG] },
+  });
+  assert.equal(sua.ma, 200, `gan kiem nhiem loi: ${sua.tho}`);
+
+  const ds = await goi('GET', '/api/nhan-vien?tim=AI-NVB', { token: token_admin });
+  const danh = ds.body as unknown as { phong_ban_kiem_nhiem: { id: string; ten: string }[] }[];
+  const kn = danh[0]?.phong_ban_kiem_nhiem ?? [];
+  assert.equal(kn.length, 1, 'danh sach nhan vien tra dung 1 phong kiem nhiem');
+  assert.equal(kn[0]?.id, PHONG);
+  assert.equal(kn[0]?.ten, 'Phòng Kinh doanh');
+
+  const { id } = await nhap_cho_duyet({
+    loai: 'thong_bao', pham_vi: 'phong_ban', quan_he: 'noi_bo', muc_dich: 'pho_bien',
+    che_do: 'tu_soan', phong_ban_id: PHONG,
+    trich_yeu: 'Về việc tập huấn quy trình kiêm nhiệm', kinh_gui: [],
+    noi_dung: ['Buổi tập huấn quy trình kiêm nhiệm phòng ban.'],
+  });
+  const p = await goi('POST', `/api/thong-bao/ai/${id}/phat-hanh`, { token: token_admin });
+  assert.equal(p.ma, 200, `phat hanh loi: ${p.tho}`);
+  const tb_id = p.body['thong_bao_id'] as string;
+
+  // Phia nguoi GUI: nguoi kiem nhiem va admin deu nam trong danh sach chuong bao rieng.
+  const rieng = await truy_van<{ nguoi_dung_id: string }>(
+    `select nguoi_dung_id from thong_bao_rieng where du_lieu->>'thong_bao_id' = $1`,
+    [tb_id],
+  );
+  const ids = new Set(rieng.map((r) => r.nguoi_dung_id));
+  assert.ok(ids.has(ND_B), 'nguoi kiem nhiem co chuong bao rieng');
+  assert.ok(ids.has(ND_ADMIN), 'admin co chuong bao rieng (khong thuoc phong nao)');
+
+  // Phia nguoi DOC: nguoi kiem nhiem thay + tai duoc; admin cung thay.
+  const cua_b = await goi('GET', '/api/toi/thong-bao', { token: token_b });
+  assert.ok(String(cua_b.tho).includes('tập huấn quy trình kiêm nhiệm'));
+  const tai_b = await goi('GET', `/api/toi/thong-bao/${tb_id}/tai`, { token: token_b });
+  assert.equal(tai_b.ma, 200);
+  const cua_admin = await goi('GET', '/api/toi/thong-bao', { token: token_admin });
+  assert.ok(String(cua_admin.tho).includes('tập huấn quy trình kiêm nhiệm'));
+
+  // Bo kiem nhiem — nguoi do mat pham vi ngay.
+  const bo = await goi('PUT', `/api/nhan-vien/${NV_B}`, {
+    token: token_admin,
+    body: { ma_nv: 'AI-NVB', ho_ten: 'Nguyễn Văn B', phong_ban_kiem_nhiem: [] },
+  });
+  assert.equal(bo.ma, 200);
+  const cua_b_sau = await goi('GET', '/api/toi/thong-bao', { token: token_b });
+  assert.equal(String(cua_b_sau.tho).includes('tập huấn quy trình kiêm nhiệm'), false);
 });
 
 test('toan cong ty: PHAI trinh ky truoc, admin ban hanh, so lien tuc', async () => {

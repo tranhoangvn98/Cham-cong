@@ -1,6 +1,6 @@
 // API danh muc cho webapp HR: phong ban, ca lam, nhan vien, thiet bi, dia diem,
 // ngay le, nguoi dung. Toan bo yeu cau vai tro nhan_su tro len.
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { can_admin, can_dang_nhap, can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
 import { bam_mat_khau, LoiMatKhau } from '../bao_mat/mat_khau.ts';
@@ -29,6 +29,7 @@ import { tao_ho_so_nhan_su } from '../nhan_su/tao_ho_so.ts';
 import { MA_VI_TRI } from '../nhan_su/vi_tri.ts';
 import { dong_bo_vi_tri_ho_so } from '../to_chuc/ghi.ts';
 import { lich_cua_may } from '../ra_vao/khoa_cua.ts';
+import { chuan_ngon_ngu, tra_chuoi, type NgonNgu } from '../chuoi/chi_muc.ts';
 
 // 'cho_duyet' co trong tap hop de admin co the ha ai do ve trang thai cho duyet, nhung
 // KHONG duoc dung khi tao tai khoan moi bang tay (xem POST /nguoi-dung).
@@ -179,6 +180,11 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
               nv.noi_lam_viec_id, nlv.ten as noi_lam_viec, nlv.lich_nghi_ma,
               nv.che_do_luong, nv.khoi_id, k.ten as khoi,
               nv.cong_chuan_thang,
+              coalesce((select json_agg(json_build_object('id', pb2.id, 'ten', pb2.ten)
+                                          order by pb2.ten)
+                          from phong_ban_kiem_nhiem pbk
+                          join phong_ban pb2 on pb2.id = pbk.phong_ban_id
+                         where pbk.nhan_vien_id = nv.id), '[]') as phong_ban_kiem_nhiem,
               (nd.id is not null) as co_tai_khoan
          from nhan_vien nv
          left join phong_ban pb on pb.id = nv.phong_ban_id
@@ -225,6 +231,20 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tao_nhan_vien', 'nhan_vien',
       kq.id, { ma_nv: b['ma_nv'] }, req.ip);
 
+    // Phong ban kiem nhiem (neu co): ghi sau khi tao ho so thanh cong.
+    const ngon_ngu = await ngon_ngu_hien_tai(req);
+    const kiem_nhiem = doc_kiem_nhiem(
+      b, ts[4] === null ? null : String(ts[4]), ngon_ngu,
+    );
+    if (kiem_nhiem !== null && kiem_nhiem.length > 0) {
+      await chan_ton_tai_phong(kiem_nhiem, ngon_ngu);
+      await thuc_thi(
+        `insert into phong_ban_kiem_nhiem(nhan_vien_id, phong_ban_id)
+         select $1, x from unnest($2::uuid[]) as x on conflict do nothing`,
+        [kq.id, kiem_nhiem],
+      );
+    }
+
     const ket_qua: Record<string, unknown> = { id: kq.id };
     if (kq.canh_bao.length > 0) ket_qua['canh_bao'] = kq.canh_bao;
     if (kq.tai_khoan_ms365 !== null) {
@@ -250,6 +270,12 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const ma_moi = String(ts[0]);
     const ten_moi = String(ts[1]);
     const vi_tri_moi = ts[14] === null ? null : String(ts[14]);
+    // Doc truoc transaction de bao loi dau vao som (khong vao giao dich roi moi phat hien).
+    const ngon_ngu = await ngon_ngu_hien_tai(req);
+    const kiem_nhiem = doc_kiem_nhiem(
+      b, ts[4] === null ? null : String(ts[4]), ngon_ngu,
+    );
+    if (kiem_nhiem !== null) await chan_ton_tai_phong(kiem_nhiem, ngon_ngu);
 
     const kq = await ghi_bat_trung(
       () => trong_giao_dich(async (khach) => {
@@ -275,6 +301,18 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
 
         // Co cau to chuc: dong bo bac vi tri tu ho so sang bang vi_tri + gan nhan vien.
         await dong_bo_vi_tri_ho_so(khach, id, vi_tri_moi);
+
+        // Phong ban kiem nhiem: than yeu cau la nguon su that — thay the toan bo.
+        if (kiem_nhiem !== null) {
+          await khach.query('delete from phong_ban_kiem_nhiem where nhan_vien_id = $1', [id]);
+          if (kiem_nhiem.length > 0) {
+            await khach.query(
+              `insert into phong_ban_kiem_nhiem(nhan_vien_id, phong_ban_id)
+               select $1, x from unnest($2::uuid[]) as x on conflict do nothing`,
+              [id, kiem_nhiem],
+            );
+          }
+        }
 
         // CHI gui khi ho ten THAT SU doi. Moi lan bam Lưu deu gui mot su kien thi hop thu day
         // nhung dong khong noi len dieu gi, va nguoi doc nhat ky ben cong het nhin ra lan doi
@@ -1492,6 +1530,44 @@ function doc_nhan_vien(b: Record<string, unknown>, bat_buoc: boolean): unknown[]
     trong_tap(b, 'vi_tri', MA_VI_TRI, { bat_buoc: false }),
     so_thuc(b, 'cong_chuan_thang', { min: 0, max: 31 }),
   ];
+}
+
+/** Đọc danh sách phòng ban KIÊM NHIỆM từ thân yêu cầu.
+ *  - Khóa `phong_ban_kiem_nhiem` vắng mặt → null (PUT giữ nguyên như cũ).
+ *  - Có mặt → mảng id phòng ban hợp lệ: bỏ trùng, bỏ phòng trùng phòng ban chính. */
+function doc_kiem_nhiem(
+  b: Record<string, unknown>, phong_chinh_id: string | null, ngon_ngu: NgonNgu,
+): string[] | null {
+  if (!Object.hasOwn(b, 'phong_ban_kiem_nhiem')) return null;
+  const tho = b['phong_ban_kiem_nhiem'];
+  if (!Array.isArray(tho)) {
+    throw new LoiDauVao(tra_chuoi(ngon_ngu, 'kn_danh_sach_sai'));
+  }
+  const ds: string[] = [];
+  for (const x of tho) {
+    const ma = uuid({ id: x }, 'id', { bat_buoc: true }) as string;
+    if (!ds.includes(ma) && ma !== phong_chinh_id) ds.push(ma);
+  }
+  return ds;
+}
+
+/** Chặn sớm phòng ban kiêm nhiệm không tồn tại — để lỗi FK khó hiểu không lọt ra người dùng. */
+async function chan_ton_tai_phong(ds: string[], ngon_ngu: NgonNgu): Promise<void> {
+  if (ds.length === 0) return;
+  const co = await truy_van<{ id: string }>(
+    'select id from phong_ban where id = any($1::uuid[])', [ds],
+  );
+  if (co.length !== ds.length) {
+    throw new LoiDauVao(tra_chuoi(ngon_ngu, 'kn_phong_khong_ton_tai'));
+  }
+}
+
+/** Ngon ngu cua nguoi dang goi — doc tu CSDL moi lan (JWT khong mang ngon_ngu). */
+async function ngon_ngu_hien_tai(req: FastifyRequest): Promise<NgonNgu> {
+  const nd = nguoi_dung_hien_tai(req);
+  return chuan_ngon_ngu((await truy_van_mot<{ ngon_ngu: string | null }>(
+    'select ngon_ngu from nguoi_dung where id = $1', [nd.sub],
+  ))?.ngon_ngu);
 }
 
 /** Bo dau tieng Viet — man hinh may ZKTeco chi hien duoc ASCII. */

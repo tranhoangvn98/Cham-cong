@@ -805,13 +805,18 @@ export async function ban_hanh_nhap_ai(
   await ghi_nhat_ky(nd.sub, 'thong_bao_ai_phat_hanh', 'thong_bao_nhap_ai', d.id,
     { thong_bao_id: thong_bao?.id, so_ky_hieu }, ip);
 
-  // Chuong bao + push cho dung tap nguoi nhan.
+  // Chuong bao + push cho dung tap nguoi nhan (gom ca nguoi kiem nhiem phong va admin).
   const nguoi_nhan = await truy_van<{ id: string }>(
     `select u.id from nguoi_dung u
        join nhan_vien nv on nv.id = u.nhan_vien_id
       where u.dang_hoat_dong = true and nv.dang_hoat_dong = true
         and ($1 = 'toan_cong_ty'
-             or ($1 = 'phong_ban' and nv.phong_ban_id = $2::uuid)
+             or ($1 = 'phong_ban' and (
+                   nv.phong_ban_id = $2::uuid
+                   or exists (select 1 from phong_ban_kiem_nhiem pbk
+                               where pbk.nhan_vien_id = nv.id
+                                 and pbk.phong_ban_id = $2::uuid)
+                   or u.vai_tro = 'admin'))
              or ($1 = 'ca_nhan' and nv.id = $3::uuid))`,
     [d.pham_vi, d.phong_ban_id, d.nhan_vien_id],
   );

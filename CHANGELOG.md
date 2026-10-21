@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.122.6] — 2026-10-21
+
+**Kiêm nhiệm phòng ban — gửi thông báo đủ người + admin nhận mọi thông báo phòng ban.**
+
+- Bảng mới `phong_ban_kiem_nhiem` (migration 108): một nhân sự thuộc nhiều phòng ban, phòng
+  chính vẫn ở `nhan_vien.phong_ban_id`.
+- Người kiêm nhiệm nhận **chuông, popup, email, văn bản, tệp đính kèm, dự thảo lấy ý kiến** của
+  cả phòng chính lẫn phòng kiêm nhiệm; bỏ kiêm nhiệm thì mất phạm vi ngay.
+- **Tài khoản admin luôn nằm trong người nhận** mọi thông báo/văn bản phạm vi phòng ban.
+- Form Nhân viên có ô chọn "Phòng ban kiêm nhiệm" (song ngữ Việt – Trung); khi cho nghỉ việc hệ
+  thống tự dọn các phòng kiêm nhiệm.
+- Test e2e: người kiêm nhiệm + admin nhận thông báo phòng ban; API danh mục lưu/trả danh sách.
+
 ## [1.122.5] — 2026-10-20
 
 **Rà soát toàn bộ lỗi hiển thị cùng kiểu (chữ dính mép ô / bị cắt).**

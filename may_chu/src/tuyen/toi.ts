@@ -9,6 +9,7 @@ import { tinh_lai_khoang, tinh_lai_ngay } from '../cong/tinh_cong.ts';
 import { sql_ngay_khong_mien_vang } from '../cong/so_ngoai_le.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { gui_ngam, tai_khoan_duyet_ot_cap_1, tai_khoan_duyet_ot_cap_2, tai_khoan_nguoi_duyet } from '../su_kien/thong_bao_day.ts';
+import { trong_phong_ban } from '../su_kien/pham_vi_nhan.ts';
 import { do_geofence, type DiaDiem } from '../tien_ich/dia_ly.ts';
 import { doc_anh_selfie, luu_anh_selfie } from '../tien_ich/luu_anh.ts';
 import { doc_tep_ho_so, luu_tep_ho_so, lam_sach_ten, xoa_tep_ho_so } from '../tien_ich/luu_tep.ts';
@@ -1419,7 +1420,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         where d.trang_thai = 'dang_lay_y_kien'
           and (d.han_lay_y_kien is null or d.han_lay_y_kien > now())
           and (d.pham_vi = 'toan_cong_ty'
-               or (d.pham_vi = 'phong_ban' and d.phong_ban_id = nv.phong_ban_id)
+               or (d.pham_vi = 'phong_ban' and ${trong_phong_ban('d.phong_ban_id', '$1')})
                or (d.pham_vi = 'ca_nhan' and d.nhan_vien_id = nv.id))
         order by d.han_lay_y_kien asc nulls last, d.ma`,
       [nv_id],
@@ -1867,7 +1868,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
            select tb.id, tb.can_giai_trinh from thong_bao tb
             where tb.da_go = false and (tb.het_han is null or tb.het_han > now())
               and (tb.pham_vi = 'toan_cong_ty'
-                   or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+                   or ${trong_phong_ban('tb.phong_ban_id', '$1')}
                    or tb.nhan_vien_id = $1)
          )
          select count(*) filter (where not exists (
@@ -2040,7 +2041,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
          left join thong_bao_da_doc dd on dd.thong_bao_id = tb.id and dd.nhan_vien_id = $1
         where tb.da_go = false and (tb.het_han is null or tb.het_han > now())
           and (tb.pham_vi = 'toan_cong_ty'
-               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+               or ${trong_phong_ban('tb.phong_ban_id', '$1')}
                or tb.nhan_vien_id = $1)
         order by (dd.doc_luc is null) desc, tb.muc_do = 'khan' desc, tb.tao_luc desc
         limit 200`,
@@ -2060,7 +2061,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       `select tb.can_giai_trinh from thong_bao tb
         where tb.id = $1 and tb.da_go = false
           and (tb.pham_vi = 'toan_cong_ty'
-               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)
+               or ${trong_phong_ban('tb.phong_ban_id', '$2')}
                or tb.nhan_vien_id = $2)`,
       [tb_id, nv_id],
     );
@@ -2090,7 +2091,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       `select tb.ten_luu, tb.mime from thong_bao tb
         where tb.id = $1 and tb.da_go = false
           and (tb.pham_vi = 'toan_cong_ty'
-               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $2)
+               or ${trong_phong_ban('tb.phong_ban_id', '$2')}
                or tb.nhan_vien_id = $2)`,
       [tb_id, nv_id],
     );
@@ -2119,7 +2120,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
         join thong_bao tb on tb.id = t.thuoc_id
         where t.id = $1 and t.nhom = 'thong_bao_tep_kem' and tb.id = $2 and tb.da_go = false
           and (tb.pham_vi = 'toan_cong_ty'
-               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $3)
+               or ${trong_phong_ban('tb.phong_ban_id', '$3')}
                or tb.nhan_vien_id = $3)`,
       [tep_id, tb_id, nv_id],
     );
@@ -2149,7 +2150,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
           and (tb.het_han is null or tb.het_han > now())
           and dd.doc_luc is null
           and (tb.pham_vi = 'toan_cong_ty'
-               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+               or ${trong_phong_ban('tb.phong_ban_id', '$1')}
                or tb.nhan_vien_id = $1)
         order by tb.muc_do = 'khan' desc, tb.tao_luc desc
         limit 20`,
@@ -2170,7 +2171,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
          from van_ban_cong_ty
         where da_go = false
           and (pham_vi = 'toan_cong_ty'
-               or phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+               or ${trong_phong_ban('phong_ban_id', '$1')}
                or nhan_vien_id = $1)
         order by danh_muc, tao_luc desc limit 500`,
       [nv_id],
@@ -2190,7 +2191,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
          join thong_bao_nhap_ai n on n.thong_bao_id = tb.id
         where tb.da_go = false and (tb.het_han is null or tb.het_han > now())
           and (tb.pham_vi = 'toan_cong_ty'
-               or tb.phong_ban_id = (select phong_ban_id from nhan_vien where id = $1)
+               or ${trong_phong_ban('tb.phong_ban_id', '$1')}
                or tb.nhan_vien_id = $1)
         order by tb.tao_luc desc limit 300`,
       [nv_id],

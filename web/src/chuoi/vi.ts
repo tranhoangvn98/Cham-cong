@@ -284,6 +284,9 @@ export const CHUOI_VI = {
   nv_cong_chuan_rieng: 'Công chuẩn riêng',
   nv_cong_chuan_rieng_phu:
     'Số công chuẩn cố định mỗi tháng của riêng người này. Để trống = theo khối, rồi tham số chung, rồi đếm theo lịch. Dùng cho ngoại lệ đã duyệt (ví dụ 30 công/tháng).',
+  nv_phong_ban_kiem_nhiem: 'Phòng ban kiêm nhiệm',
+  nv_phong_ban_kiem_nhiem_phu:
+    'Chọn thêm phòng ban phụ: người này nhận thông báo, văn bản của cả phòng chính lẫn các phòng kiêm nhiệm. Tài khoản admin luôn nhận mọi thông báo phòng ban.',
   cn_gio_lam: 'GIỜ LÀM',
   cn_tang_ca: 'TĂNG CA',
   cn_chi_tiet_tung_ngay: 'Chi tiết từng ngày',

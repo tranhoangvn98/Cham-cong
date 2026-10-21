@@ -286,6 +286,9 @@ export const CHUOI_ZH = {
   nv_cong_chuan_rieng: '个人应出勤天数',
   nv_cong_chuan_rieng_phu:
     '此人每月固定的应出勤天数。留空 = 按部门，其次按通用参数，最后按日历计算。用于已批准的特例（例如每月 30 天）。',
+  nv_phong_ban_kiem_nhiem: '兼岗部门',
+  nv_phong_ban_kiem_nhiem_phu:
+    '选择兼任部门：该员工将同时接收主部门及兼任部门的通知与文件。管理员账号始终接收所有部门通知。',
   cn_gio_lam: '工作时长',
   cn_tang_ca: '加班',
   cn_chi_tiet_tung_ngay: '每日明细',

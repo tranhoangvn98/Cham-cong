@@ -28,6 +28,10 @@ export const CHUOI_VI = {
   ul_thong_bao_huy: 'Khoản ứng lương của bạn đã bị hủy',
   ul_thong_bao_huy_noi_dung: 'Đề nghị ứng lương tháng {thang} của bạn đã bị hủy.',
 
+  // ================================ phong ban kiem nhiem
+  kn_danh_sach_sai: 'Danh sách phòng ban kiêm nhiệm không hợp lệ.',
+  kn_phong_khong_ton_tai: 'Có phòng ban kiêm nhiệm không tồn tại.',
+
   // ================================ nhan trang thai trong chuong bao
   tt_cho_duyet: 'Chờ duyệt',
   tt_cho_duyet_2: 'Chờ duyệt cấp 2',

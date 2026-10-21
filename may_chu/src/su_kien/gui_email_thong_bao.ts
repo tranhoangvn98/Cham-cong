@@ -51,7 +51,12 @@ export async function lay_dia_chi_nhan_theo_ngon_ngu(
       where nv.dang_hoat_dong = true
         and nv.email is not null and btrim(nv.email) <> ''
         and ($1 = 'toan_cong_ty'
-             or ($1 = 'phong_ban' and nv.phong_ban_id = $2::uuid)
+             or ($1 = 'phong_ban' and (
+                   nv.phong_ban_id = $2::uuid
+                   or exists (select 1 from phong_ban_kiem_nhiem pbk
+                               where pbk.nhan_vien_id = nv.id
+                                 and pbk.phong_ban_id = $2::uuid)
+                   or nd.vai_tro = 'admin'))
              or ($1 = 'ca_nhan' and nv.id = $3::uuid))`,
     [pham_vi, phong_ban_id, nhan_vien_id],
   );
