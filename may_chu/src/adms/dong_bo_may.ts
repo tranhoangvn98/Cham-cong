@@ -33,15 +33,20 @@ type GhiLog = (s: string, ...t: unknown[]) => void;
 
 /** Giong `xep_lenh` cua tuyen.ts nhung viet lai o day de khong import tuyen.ts (tranh vong lap module). */
 async function xep_cuc_bo(serial: string, lenh: string, khoa: string | null): Promise<number> {
+  // Lenh hoi danh sach user: danh dau de `tiep_nhan_userinfo` biet day la ANH CHUP DAY DU
+  // (xoa dong user da bi xoa tren may) — giong xep_lenh cua tuyen.ts.
+  const hoi_user = /DATA QUERY USERINFO/i.test(lenh) || /tablename=user\b/i.test(lenh);
   const dong = khoa === null
     ? await truy_van_mot<{ id: number }>(
-      'insert into lenh_thiet_bi(thiet_bi_serial, lenh) values ($1, $2) returning id',
-      [serial, lenh])
+      `insert into lenh_thiet_bi(thiet_bi_serial, lenh, hoi_userinfo_luc) values ($1, $2, $3)
+       returning id`,
+      [serial, lenh, hoi_user ? new Date() : null])
     : await truy_van_mot<{ id: number }>(
-      `insert into lenh_thiet_bi(thiet_bi_serial, lenh, khoa_chong_trung) values ($1, $2, $3)
+      `insert into lenh_thiet_bi(thiet_bi_serial, lenh, khoa_chong_trung, hoi_userinfo_luc)
+       values ($1, $2, $3, $4)
        on conflict (khoa_chong_trung) where khoa_chong_trung is not null
        do nothing returning id`,
-      [serial, lenh, khoa]);
+      [serial, lenh, khoa, hoi_user ? new Date() : null]);
   return dong?.id ?? 0;
 }
 

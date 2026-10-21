@@ -194,6 +194,17 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       await cham_thiet_bi(sn, null, req.ip);
       const kq = await tiep_nhan_userinfo(sn, body);
       req.log.info({ sn, bang, ...kq }, 'nhan USERINFO');
+      // Day TU PHAT (khong phai ket qua lenh hoi cua ta): ai do vua dang ky moi tren may
+      // -> dong bo ngay sang may VP con lai (fire-and-forget).
+      if (kq.tu_phat && bang !== 'USERDATA') {
+        for (const u of kq.cac_pin ?? []) {
+          if (u !== '' && u !== '0') {
+            dong_bo_sau_enroll(sn, u).catch((loi: unknown) => {
+              req.log.warn({ sn, pin: u, loi: (loi as Error).message }, 'dong bo sau enroll loi');
+            });
+          }
+        }
+      }
       return tra_text(res, 'OK\n');
     }
 
@@ -318,6 +329,16 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
     if ((bang === 'user' || bang === '') && body.trim().length > 0) {
       const kq = await tiep_nhan_userinfo(sn, body);
       req.log.info({ sn, bang, ...kq }, 'nhan querydata user');
+      // Day TU PHAT (ai do dang ky moi tren may): dong bo sang may VP con lai.
+      if (kq.tu_phat) {
+        for (const u of kq.cac_pin) {
+          if (u !== '' && u !== '0') {
+            dong_bo_sau_enroll(sn, u).catch((loi: unknown) => {
+              req.log.warn({ sn, pin: u, loi: (loi as Error).message }, 'dong bo sau enroll loi');
+            });
+          }
+        }
+      }
     } else if (body.trim().length > 0) {
       req.log.info({ sn, bang, dai: body.length }, 'nhan querydata bang khac (da luu tho)');
     }

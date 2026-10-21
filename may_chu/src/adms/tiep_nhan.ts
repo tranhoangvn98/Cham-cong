@@ -75,12 +75,13 @@ export async function tiep_nhan_transaction(
  * Khi lan day nay la ket qua cua lenh hoi DANH SACH (co lenh `DATA QUERY USERINFO` gui gan
  * day — cot `hoi_userinfo_luc`), no la ANH CHUP DAY DU: xoa cac dong user khong con trong
  * danh sach de ban chup khong giu ma mai nguoi da bi xoa tren may (bang nay upsert, khong
- * bao gio tu xoa). Lan day tu phat (khi enroll) giu nguyen hanh vi upsert.
+ * bao gio tu xoa). Lan day TU PHAT (khi ai do enroll tren may) thi `tu_phat = true` de ben
+ * goi kich dong bo sang may con lai.
  */
 export async function tiep_nhan_userinfo(
   serial: string,
   body: string,
-): Promise<{ so_user: number; dong_loi: number }> {
+): Promise<{ so_user: number; dong_loi: number; tu_phat: boolean; cac_pin: string[] }> {
   const { nguoi_dung, so_dong_loi } = doc_userinfo(body);
   for (const u of nguoi_dung) {
     await thuc_thi(
@@ -92,6 +93,8 @@ export async function tiep_nhan_userinfo(
       [serial, u.pin, u.ten, u.the, u.quyen],
     );
   }
+  const cac_pin = [...new Set(nguoi_dung.map((u) => u.pin))];
+  let tu_phat = true;
   if (nguoi_dung.length > 0) {
     const hoi = await truy_van_mot<{ co: number }>(
       `select 1 as co from lenh_thiet_bi
@@ -100,15 +103,15 @@ export async function tiep_nhan_userinfo(
         limit 1`,
       [serial],
     );
-    if (hoi !== null) {
-      const cac_pin = [...new Set(nguoi_dung.map((u) => u.pin))];
+    tu_phat = hoi === null;
+    if (!tu_phat) {
       await thuc_thi(
         'delete from may_nguoi_dung where thiet_bi_serial = $1 and not (pin = any($2::text[]))',
         [serial, cac_pin],
       );
     }
   }
-  return { so_user: nguoi_dung.length, dong_loi: so_dong_loi };
+  return { so_user: nguoi_dung.length, dong_loi: so_dong_loi, tu_phat, cac_pin };
 }
 
 async function tiep_nhan_ban_ghi(
