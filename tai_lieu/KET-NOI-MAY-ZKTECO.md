@@ -393,6 +393,28 @@ Menu › USB › Download › Attendance Data — rồi *Nhật ký quẹt* → 
 *"Ghi nhận là của máy"* **chọn đúng máy cũ**. Chọn đúng máy thì khóa chống trùng khớp với bản ghi
 máy đã đẩy (nếu sau này nó đẩy được), nên không tạo bản sao.
 
+### Đồng bộ khuôn mặt giữa hai máy (đã kiểm chứng với ZAM70, 21.10.2026)
+
+Máy ZAM70 **không** cho tải template khuôn mặt bằng `DATA QUERY FaceTemplate` (báo -1004) —
+nhưng có đường đi được, đủ để **sao chép khuôn mặt từ máy này sang máy kia**:
+
+1. **Đọc**: gửi `DATA QUERY USERINFO` → máy đẩy `POST /iclock/cdata?table=BIODATA` với
+   **toàn bộ template** (khuôn mặt + vân tay), cắt thành **nhiều chunk liên tiếp**
+   (~143KB + đuôi nhỏ). Mỗi dòng:
+   `BIODATA Pin=<PIN>⇥No=<số>⇥Index=0⇥Valid=1⇥Duress=0⇥Type=<loại>⇥MajorVer=..⇥MinorVer=..⇥Format=0⇥Tmp=<base64>`.
+   - `Type=9, No=0` = **khuôn mặt** (mọi người đều có 1 bản).
+   - `Type=1, No=0/5/6/7` = **vân tay** (không bắt buộc).
+   Máy chủ lưu mọi chunk vào `may_du_lieu_tho` (bang `BIODATA#<ms>`) kể từ 1.122.7.
+2. **Đối chiếu**: số khuôn mặt mỗi máy nằm ở chuỗi `INFO=..` máy gửi trong `getrequest`
+   (số thứ 11 sau tên firmware — cạnh số user và số vân tay). Cùng dãy số: số user, số vân
+   tay, số khuôn mặt.
+3. **Ghi**: xếp lệnh xuống máy thiếu theo thứ tự
+   `DATA UPDATE USERINFO Pin=<PIN>⇥Name=<ten>⇥Pri=0⇥Passwd=⇥Card=⇥Grp=1⇥TZ=0000000000000000`
+   rồi **dùng nguyên dòng BIODATA đã đọc** đổi tiền tố thành `DATA UPDATE BIODATA ` (giữ
+   nguyên tab và base64). Máy trả `0` = thành công; kiểm chứng bằng cách hỏi lại USERINFO/
+   BIODATA và số khuôn mặt trong `INFO`.
+   Lưu ý: phải **tạo user trước** rồi mới đẩy template.
+
 ### Bỏ một máy đã ngừng dùng
 
 **Tắt trước, rồi Xóa** — nút Xóa chỉ hiện khi máy đã tắt. Hai bước là cố ý: xóa một máy đang chạy
