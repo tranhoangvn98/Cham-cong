@@ -13,12 +13,31 @@ import {
 import {
   bo_dau, doi_chieu, gop_nguoi_trung, type HoSoHienCo,
 } from '../src/nhan_su/nap_ho_so.ts';
+import { ten_phong_chuan } from '../src/nhan_su/ten_phong.ts';
 
 // ---------------------------------------------------------------- ngay
 
 test('serial Excel: goc la 1899-12-30, khong phai 1900-01-01', () => {
   assert.equal(ngay_tu_serial(61), '1900-03-01');
   assert.equal(ngay_tu_serial(45913), '2025-09-13');
+});
+
+// ---------------------------------------------------------------- ten phong ban chuan
+
+test('ten phong chuan: viet tat va bien the kinh doanh deu ve Phòng Kinh doanh', () => {
+  assert.equal(ten_phong_chuan('KD'), 'Phòng Kinh doanh');
+  assert.equal(ten_phong_chuan('Kinh doanh'), 'Phòng Kinh doanh');
+  assert.equal(ten_phong_chuan('Kinh doanh Hà Nội'), 'Phòng Kinh doanh');
+  assert.equal(ten_phong_chuan('Kinh doanh Sài Gòn'), 'Phòng Kinh doanh');
+  assert.equal(ten_phong_chuan('  kinh doanh   ha noi '), 'Phòng Kinh doanh');
+  assert.equal(ten_phong_chuan('KT'), 'Phòng Kế toán');
+});
+
+test('ten phong chuan: ten day du giu nguyen, ten la khong bi bien doi', () => {
+  assert.equal(ten_phong_chuan('Phòng Kinh doanh'), 'Phòng Kinh doanh');
+  assert.equal(ten_phong_chuan('Phòng Kế toán'), 'Phòng Kế toán');
+  assert.equal(ten_phong_chuan('Đội bảo vệ'), 'Đội bảo vệ');
+  assert.equal(ten_phong_chuan(''), '');
 });
 
 test('serial Excel: vung 1..60 tra null chu khong tra ngay lech mot ngay', () => {

@@ -11,6 +11,7 @@ import { tiep_nhan_attlog } from '../adms/tiep_nhan.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { sap_xep_kho } from '../ho_so/sap_xep_tep.ts';
 import { chuan_hoa_tieu_de, doi_chieu_cot, tach_csv, type DongCsv } from '../tien_ich/csv.ts';
+import { ten_phong_chuan } from '../nhan_su/ten_phong.ts';
 import { chuoi, chuoi_bat_buoc, luan_ly, than, LoiDauVao } from '../tien_ich/kiem_tra.ts';
 import { gan_ma_am_tham } from '../dinh_danh/nghiep_vu.ts';
 
@@ -126,8 +127,9 @@ export async function tuyen_nhap_du_lieu(app: FastifyInstance): Promise<void> {
       }
 
       const ten_pb = lay('phong_ban');
+      const ten_pb_chuan = ten_phong_chuan(ten_pb);
       const ten_ca = lay('ca_lam');
-      if (ten_pb !== '' && !pb.has(chuan_hoa_tieu_de(ten_pb)) && !tao_thieu) {
+      if (ten_pb_chuan !== '' && !pb.has(chuan_hoa_tieu_de(ten_pb_chuan)) && !tao_thieu) {
         bao_loi(`Phòng ban "${ten_pb}" chưa có. Tạo trước, hoặc bật "tạo mục còn thiếu".`); continue;
       }
       if (ten_ca !== '' && !ca.has(chuan_hoa_tieu_de(ten_ca)) && !tao_thieu) {
@@ -149,12 +151,12 @@ export async function tuyen_nhap_du_lieu(app: FastifyInstance): Promise<void> {
 
       // --- Ghi that ---
       let phong_ban_id: string | null = null;
-      if (ten_pb !== '') {
-        const khoa = chuan_hoa_tieu_de(ten_pb);
+      if (ten_pb_chuan !== '') {
+        const khoa = chuan_hoa_tieu_de(ten_pb_chuan);
         let id = pb.get(khoa) ?? null;
         if (id === null) {
           const moi = await truy_van_mot<{ id: string }>(
-            'insert into phong_ban(ten) values ($1) returning id', [ten_pb]);
+            'insert into phong_ban(ten) values ($1) returning id', [ten_pb_chuan]);
           id = moi?.id ?? null;
           if (id !== null) pb.set(khoa, id);
         }

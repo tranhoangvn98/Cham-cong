@@ -11,6 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { doc_ho_so_xlsx } from './doc_ho_so_xlsx.ts';
 import { bo_dau } from './nap_ho_so.ts';
+import { ten_phong_chuan } from './ten_phong.ts';
 import { truy_van, trong_giao_dich, dong_pool } from '../csdl/ket_noi.ts';
 
 function chuan(s: string): string {
@@ -23,20 +24,6 @@ function tap_tu(s: string): string {
 
 interface Nguoi { ho_ten: string; phong_ban: string | null; chuc_danh: string | null; }
 
-// Ten phong ban DAY DU (chu cong ty chot 29.08): khong viet tat. Ma trong file -> ten day du.
-const ANH_XA_PHONG: Record<string, string> = {
-  kd: 'Phòng Kinh doanh',
-  ks: 'Phòng Kiểm soát',
-  cskh: 'Phòng Chăm sóc khách hàng',
-  mkt: 'Phòng Marketing',
-  xnk: 'Phòng Xuất nhập khẩu',
-  it: 'Phòng Công nghệ thông tin',
-  kt: 'Phòng Kế toán',
-  hcns: 'Phòng Hành chính nhân sự',
-  'quản lý kho': 'Phòng Kho Hà Nội',
-  'bốc xếp': 'Phòng Kho Hà Nội',
-  'lái xe': 'Phòng Lái xe',
-};
 // Luon tao (du chua ai duoc gan) — chu cong ty yeu cau mo san ba phong nay.
 const PHONG_LUON_TAO = ['Phòng Kho Trung Quốc', 'Phòng Kho Hà Nội', 'Phòng Lái xe'];
 
@@ -45,7 +32,7 @@ function phong_cua(sheet: string, pb: string | null): string | null {
   if (sheet.toLowerCase().includes('kho trung')) return 'Phòng Kho Trung Quốc';
   const raw = (pb ?? '').replace(/\s+/g, ' ').trim();
   if (raw === '') return null;
-  return ANH_XA_PHONG[raw.toLowerCase()] ?? raw;   // khong biet -> giu nguyen, hien ra de kiem
+  return ten_phong_chuan(raw);   // khong biet -> giu nguyen, hien ra de kiem
 }
 
 async function main(): Promise<void> {
