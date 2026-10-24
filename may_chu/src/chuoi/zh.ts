@@ -80,6 +80,7 @@ export const CHUOI_ZH = {
   bs_ghi_chu: '人力资源部备注',
   bs_lan: '本次为第 {n} 次提醒。',
   bs_ket: '在档案补齐之前，系统将每周继续发送提醒。',
+  bs_huong_dan: '提交方式：打开考勤应用 →「个人」→「我的档案」→「文件」，在缺失材料一栏点击「上传文件」（支持 PDF、JPG、PNG、DOCX、XLSX）。',
   bs_da_huy_nguoi_nhan: '{ten} 的档案补交通知已取消。',
   bs_da_du_nguoi_nhan: '{ten} 的必需档案材料已补齐，通知已自动关闭。',
 } as const satisfies Record<keyof typeof CHUOI_VI, string>;

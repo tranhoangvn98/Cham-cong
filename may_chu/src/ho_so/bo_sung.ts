@@ -255,7 +255,7 @@ export function html_nhac_bo_sung(d: DuLieuNhac, ngon_ngu: NgonNgu): string {
     + thoat_html(tra('bs_lan', { n: d.lan })) + '</p>'
     + '<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;'
     + 'padding:12px 14px;font-size:13px;color:#1E3A8A;line-height:1.6">'
-    + thoat_html(tra('bs_ket')) + '</div>'
+    + thoat_html(tra('bs_huong_dan')) + '<br><br>' + thoat_html(tra('bs_ket')) + '</div>'
     + '<p style="margin:18px 0 0;font-size:14px;color:#111">' + thoat_html(tra('email_tran_trong'))
     + '</p>'
     + '<p style="margin:2px 0 0;font-size:14px;color:#111"><strong>'

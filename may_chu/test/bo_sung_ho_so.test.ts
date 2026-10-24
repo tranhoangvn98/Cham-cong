@@ -47,6 +47,10 @@ test('html_nhac_bo_sung: liet ke du tai lieu, co han va so lan nhac', () => {
   assert.ok(html.includes('Hạn bổ sung: 2026-11-01'));
   assert.ok(html.includes('Nộp bản gốc'));
   assert.ok(html.includes('lần nhắc thứ 2'));
+  // Huong dan phai noi RO nop o dau — nguoi nhan khong tu tim ra tab Tai lieu trong khu ca nhan.
+  assert.ok(html.includes('Cách nộp'));
+  assert.ok(html.includes('Hồ sơ của tôi'));
+  assert.ok(html.includes('Nộp tệp'));
 });
 
 test('html_nhac_bo_sung: ban tieng Trung dung thuat ngu chuan va van giu so lieu', () => {
@@ -62,6 +66,8 @@ test('html_nhac_bo_sung: ban tieng Trung dung thuat ngu chuan va van giu so lieu
   assert.ok(html.includes('需补交材料'));
   assert.ok(html.includes('身份证'));
   assert.ok(html.includes('第 1 次提醒'));
+  assert.ok(html.includes('提交方式'), 'phai co huong dan nop tep bang tieng Trung');
+  assert.ok(html.includes('我的档案'));
   assert.ok(!html.includes('补交期限'), 'khong co han thi khong in dong han');
 });
 

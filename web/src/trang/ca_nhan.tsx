@@ -9,7 +9,7 @@
 //
 // Chuoi hien thi cho nhan vien viet co dau; ten bien/ham viet khong dau theo quy uoc du an.
 import { Component, useEffect, useState, type ReactNode } from 'react';
-import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, gui_tep, mui_gio_offset_gio } from '../api.ts';
+import { dang_xuat, doi_mat_khau, goi, goc_api_tuyet_doi, gui_tep, mui_gio_offset_gio, tai_tep } from '../api.ts';
 import { TrangThongBaoCaNhan } from './thong_bao_ca_nhan.tsx';
 import { TrangPhieuLuongToi, TrangKhieuNaiToi } from './phieu_luong_toi.tsx';
 import { UngLuongToi } from './ung_luong_toi.tsx';
@@ -59,7 +59,7 @@ class RanhGioiLoi extends Component<{ children: ReactNode }, { loi: Error | null
   }
 }
 import {
-  HopLoi, HopThoai, OSo, Trong, XuongDanhSach, OKeoTep,
+  HopLoi, HopThoai, HopTot, OSo, Trong, XuongDanhSach, OKeoTep,
   dung_hanh_dong, dung_nap, dung_xac_nhan,
   gio_ngan, hom_nay, ngay_viet, phut_thanh_chu, thang_nay, thu_cua_ngay,
   NhanDon, TEN_NGUON,
@@ -276,6 +276,7 @@ interface HoSoToi {
     chi_khi_nghi_viec: boolean;
     trang_thai: string;
     co_dong: boolean;
+    tep_id: string | null;
     ten_tep: string | null;
   }[];
 }
@@ -2482,7 +2483,7 @@ const CAC_TAB_CN: { ma: TabCN; khoa: ChuoiKhoa }[] = [
 
 function ManCaNhan(): ReactNode {
   const [tab, dat_tab] = useState<TabCN>('chung');
-  const { du_lieu, dang_tai, loi } = dung_nap<HoSoToi>('/api/toi/ho-so');
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<HoSoToi>('/api/toi/ho-so');
   const { tra } = dung_chuoi();
 
   if (dang_tai && du_lieu === null) return <XuongDanhSach />;
@@ -2581,7 +2582,9 @@ function ManCaNhan(): ReactNode {
       </div>
 
       {tab === 'chung' && <NoiDungChung du_lieu={du_lieu} />}
-      {tab === 'tai_lieu' && <NoiDungTaiLieu du_lieu={du_lieu} ty_le_tl={ty_le_tl} />}
+      {tab === 'tai_lieu' && (
+        <NoiDungTaiLieu du_lieu={du_lieu} ty_le_tl={ty_le_tl} khi_doi={() => nap_lai()} />
+      )}
       {tab === 'hop_dong' && <NoiDungHopDong du_lieu={du_lieu} />}
       {tab === 'luong' && <NoiDungLuongCN du_lieu={du_lieu} />}
       {tab === 'phu_thuoc' && <NoiDungPhuThuoc du_lieu={du_lieu} />}
@@ -2662,12 +2665,38 @@ function NoiDungChung({ du_lieu }: { du_lieu: HoSoToi }): ReactNode {
   );
 }
 
-function NoiDungTaiLieu({ du_lieu, ty_le_tl }: { du_lieu: HoSoToi; ty_le_tl: number }): ReactNode {
+function NoiDungTaiLieu(
+  { du_lieu, ty_le_tl, khi_doi }: {
+    du_lieu: HoSoToi;
+    ty_le_tl: number;
+    khi_doi: () => void;
+  },
+): ReactNode {
   const tl_bat_buoc = du_lieu.tai_lieu.filter((t) => t.bat_buoc && !t.chi_khi_nghi_viec);
   const tl_du = tl_bat_buoc.filter((t) => t.trang_thai === 'da_len_phan_mem').length;
   const { tra } = dung_chuoi();
+  const hd = dung_hanh_dong();
+  const [dang_nop, dat_dang_nop] = useState<string | null>(null);
+
+  /**
+   * Nop tep cho mot muc con thieu. Tep di thang len may chu roi moi gan vao dong — khong luu
+   * tam o trinh duyet, vi day la ban goc giay to ca nhan.
+   */
+  const nop = async (ma: string, tep: File): Promise<void> => {
+    dat_dang_nop(ma);
+    const fd = new FormData();
+    fd.append('tep', tep);
+    const ok = await hd.chay(
+      () => gui_tep(`/api/toi/ho-so/tai-lieu/${ma}`, fd),
+      tra('cn_tai_lieu_da_nop'),
+    );
+    dat_dang_nop(null);
+    if (ok) khi_doi();
+  };
   return (
     <div className="cn-cot-gap">
+      <HopLoi loi={hd.loi} />
+      <HopTot chu={hd.tot} />
       <div className="the">
         <div className="cn-tieu-de-hang">
           <h2>{tra('cn_tien_do_ho_so')}</h2>
@@ -2691,6 +2720,26 @@ function NoiDungTaiLieu({ du_lieu, ty_le_tl }: { du_lieu: HoSoToi; ty_le_tl: num
               </div>
               <span className={`nhan ${n.lop}`}>{tra(n.khoa)}</span>
               <span className="cn-tl-tep">{t.ten_tep ?? '—'}</span>
+              <span className="cn-tl-nut">
+                {t.tep_id !== null ? (
+                  <button type="button" className="nut-nho nut-phang"
+                    onClick={() => void tai_tep(`/api/ho-so/tep/${t.tep_id}`, t.ten_tep ?? 'tai-lieu')}>
+                    {tra('cn_tai_lieu_tai_ve')}
+                  </button>
+                ) : (
+                  <OKeoTep
+                    ma={`tai-lieu-${t.ma}`}
+                    nhan={tra('cn_tai_lieu_nop_tep')}
+                    gon
+                    gui_ngay
+                    vo_hieu={dang_nop !== null}
+                    khi_nhan={(ds) => {
+                      const f = ds?.[0];
+                      if (f !== undefined) void nop(t.ma, f);
+                    }}
+                  />
+                )}
+              </span>
             </div>
           );
         })}

@@ -79,6 +79,7 @@ export const CHUOI_VI = {
   bs_ghi_chu: 'Ghi chú từ phòng Nhân sự',
   bs_lan: 'Đây là lần nhắc thứ {n}.',
   bs_ket: 'Hệ thống sẽ tiếp tục nhắc cho đến khi hồ sơ được bổ sung đầy đủ.',
+  bs_huong_dan: 'Cách nộp: mở ứng dụng Chấm công → mục Cá nhân → Hồ sơ của tôi → tab Tài liệu, rồi bấm "Nộp tệp" ở dòng tài liệu còn thiếu (nhận PDF, JPG, PNG, DOCX, XLSX).',
   bs_da_huy_nguoi_nhan: 'Yêu cầu bổ sung hồ sơ của {ten} đã được hủy.',
   bs_da_du_nguoi_nhan: 'Hồ sơ của {ten} đã bổ sung đủ tài liệu bắt buộc — yêu cầu đã tự đóng.',
 } as const;

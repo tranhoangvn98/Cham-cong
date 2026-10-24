@@ -1970,6 +1970,7 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
           `select dm.ma, dm.ten, dm.nhom, dm.mo_ta, dm.bat_buoc, dm.chi_khi_nghi_viec,
                   coalesce(tl.trang_thai, 'thieu') as trang_thai,
                   tl.id is not null as co_dong,
+                  tl.tep_id,
                   ht.ten_goc as ten_tep
              from danh_muc_tai_lieu dm
              left join tai_lieu_nhan_vien tl
@@ -2017,6 +2018,106 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
     );
     await ghi_nhat_ky(nd.sub, 'tu_cap_nhat_lien_he', 'nhan_vien', nv_id, {}, req.ip);
     return res.send({ ok: true });
+  });
+
+  /**
+   * Tu nop tep cho MOT muc tai lieu bat buoc cua chinh minh (bo sung ho so).
+   *
+   * VI SAO NHAN VIEN DUOC NOP: giay to ca nhan (CCCD, so yeu ly lich, giay kham suc khoe) chi
+   * nguoi do moi co ban goc. Bat ho dem ban giay len phong Nhan su roi nhan su scan lai moi la
+   * hai lan di lai cho cung mot viec — va lan thuc te da cho thay no lam ho so thieu hang thang.
+   *
+   * CHI NOP VAO O CON TRONG: da co tep thi tu choi. Ghi de mot ban da nap la lam mat chung cu
+   * (xem `thay_xoa_tep_duoc` — chi truong phong nhan su duoc thay/go), va mot o bi ghi de boi
+   * nham thi khong ai biet ban dung da mat.
+   *
+   * Trang thai dat la `da_so_hoa` chu KHONG phai `da_len_phan_mem`: nguoi nop khong tu xac
+   * nhan rang nhan su da kiem tra va dua vao phan mem. Viec xac nhan do van la cua nhan su.
+   */
+  app.post('/ho-so/tai-lieu/:ma', {
+    bodyLimit: cau_hinh.tep_toi_da_byte + 1024 * 1024,
+  }, async (req, res) => {
+    const nd = nguoi_dung_hien_tai(req);
+    const nv_id = nhan_vien_cua_toi(req);
+    const ma = String((req.params as { ma?: unknown }).ma ?? '').trim();
+    if (ma === '') throw new LoiKhongTim('Không tìm thấy mục tài liệu.');
+
+    const dm = await truy_van_mot<{ id: string; ten: string }>(
+      `select id, ten from danh_muc_tai_lieu where ma = $1 and dang_dung = true`, [ma]);
+    if (dm === null) throw new LoiKhongTim('Không tìm thấy mục tài liệu.');
+
+    let du_lieu: Buffer | null = null;
+    let ten_goc = 'tai-lieu';
+    for await (const phan of req.parts({
+      limits: { fileSize: cau_hinh.tep_toi_da_byte, files: 1 },
+    })) {
+      if (phan.type === 'file') {
+        if (phan.fieldname !== 'tep' || du_lieu !== null) {
+          await phan.toBuffer();
+          continue;
+        }
+        ten_goc = lam_sach_ten(phan.filename ?? 'tai-lieu');
+        du_lieu = await phan.toBuffer();
+      }
+    }
+    if (du_lieu === null) throw new LoiDauVao('Thiếu tệp đính kèm.');
+
+    const nv = await ma_va_ten_nhan_vien(nv_id);
+    const da_luu = await luu_tep_ho_so(du_lieu, ten_goc, {
+      ma_nv: nv.ma_nv, ho_ten: nv.ho_ten, nhom: 'tai_lieu',
+      ngay: ngay_dia_phuong(new Date()),
+    });
+
+    let ket_qua: { tep_id: string; trang_thai: string };
+    try {
+      ket_qua = await trong_giao_dich(async (khach) => {
+        // Tao dong neu chua co (o trong), roi KHOA no lai — hai lan nop cung luc thi mot lan
+        // thang, lan kia thay tep_id da co va bi tu choi.
+        await khach.query(
+          `insert into tai_lieu_nhan_vien (nhan_vien_id, danh_muc_id)
+           values ($1, $2)
+           on conflict (nhan_vien_id, danh_muc_id) do nothing`,
+          [nv_id, dm.id],
+        );
+        const dong = (await khach.query<{ id: string; tep_id: string | null }>(
+          `select id, tep_id from tai_lieu_nhan_vien
+            where nhan_vien_id = $1 and danh_muc_id = $2
+            for update`,
+          [nv_id, dm.id],
+        )).rows[0];
+        if (dong === undefined) throw new LoiXungDot('Không mở được mục tài liệu này.');
+        if (dong.tep_id !== null) {
+          throw new LoiXungDot(
+            `Mục "${dm.ten}" đã có tệp. Liên hệ phòng Nhân sự nếu cần thay tệp khác.`);
+        }
+
+        const tep = (await khach.query<{ id: string }>(
+          `insert into ho_so_tep(nhan_vien_id, nhom, thuoc_id, ten_goc, ten_luu, kieu_mime,
+                                 kich_thuoc, tai_len_boi)
+           values ($1, 'tai_lieu', $2, $3, $4, $5, $6, $7)
+           returning id`,
+          [nv_id, dong.id, ten_goc, da_luu.ten_luu, da_luu.mime, da_luu.kich_thuoc, nd.sub],
+        )).rows[0];
+        if (tep === undefined) throw new LoiXungDot('Không lưu được tệp.');
+
+        await khach.query(
+          `update tai_lieu_nhan_vien
+              set tep_id = $2, trang_thai = 'da_so_hoa', cap_nhat_luc = now()
+            where id = $1`,
+          [dong.id, tep.id],
+        );
+        return { tep_id: tep.id, trang_thai: 'da_so_hoa' };
+      });
+    } catch (loi) {
+      // Tep da nam tren dia ma khong co dong CSDL nao tro toi -> mo coi, va thu muc kho se
+      // phinh mai. Don ngay bang chinh con duong cua no.
+      await xoa_tep_ho_so(da_luu.ten_luu).catch(() => { /* loi goc dang duoc nem ra */ });
+      throw loi;
+    }
+
+    await ghi_nhat_ky(nd.sub, 'tu_nop_tai_lieu', 'tai_lieu_nhan_vien', ket_qua.tep_id,
+      { ma, ten_goc }, req.ip);
+    return res.code(201).send(ket_qua);
   });
 
   /** Thong bao (BGD/HR) trong pham vi cua toi, kem trang thai da doc / da giai trinh. */

@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.123.1] — 2026-10-24
+
+**Nhân sự tự nộp tệp hồ sơ trong khu vực cá nhân + email nhắc có hướng dẫn.**
+
+- Email nhắc bổ sung hồ sơ nêu **cách nộp cụ thể**: mở ứng dụng Chấm công → mục **Cá nhân**
+  → **Hồ sơ của tôi** → tab **Tài liệu** → bấm **Nộp tệp** (bản tiếng Trung dùng đúng nhãn
+  个人 / 我的档案 / 文件).
+- Tab **Tài liệu** trong khu vực cá nhân có nút **Nộp tệp** ở mỗi mục còn trống và nút **Tải về**
+  cho mục đã có tệp — nhân viên không phải mang bản giấy lên phòng Nhân sự để nhân sự scan lại.
+- Route mới `POST /api/toi/ho-so/tai-lieu/:ma` (multipart, 1 tệp): **chỉ nộp vào ô trống** —
+  đã có tệp thì từ chối, vì ghi đè một bản đã nạp là làm mất chứng cứ (chỉ trưởng phòng nhân
+  sự được thay/gỡ). Dòng ghi và tệp nằm trong **cùng transaction**, lỗi thì xóa tệp vừa lưu.
+- Trạng thái sau khi nhân viên nộp là `da_so_hoa`, **không tự nhảy** `da_len_phan_mem` — việc
+  xác nhận đã kiểm tra vẫn thuộc phòng Nhân sự.
+
 ## [1.123.0] — 2026-10-24
 
 **Yêu cầu bổ sung hồ sơ bắt buộc — email nhắc hàng tuần cho tới khi đủ.**
