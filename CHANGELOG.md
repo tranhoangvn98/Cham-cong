@@ -2,6 +2,24 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.122.9] — 2026-10-24
+
+**Nghỉ việc: Microsoft 365 bị khóa và rút giấy phép TỰ ĐỘNG — vá hòm thư đi bị tắc.**
+
+- **Hòm thư đi tắc hơn 123.000 sự kiện** từ tháng 9: bộ nhặt việc lấy 50 dòng cũ nhất mỗi
+  20 giây, mà nhóm cũ nhất toàn sự kiện ERP cũ — đích webhook chưa khai nên chúng thất bại,
+  hết backoff lại quay về đúng nhóm cũ nhất. Sự kiện mới (nghỉ việc, tạo tài khoản, ERP1,
+  Microsoft 365) **không bao giờ tới lượt** (`so_lan = 0` suốt từ 09/2026).
+- Bộ nhặt việc nay **chỉ lấy sự kiện có đích đã cấu hình đủ** (`dich_cua_loai` /
+  `dieu_kien_nhat_viec` trong `su_kien/hop_thu_di.ts`). Sự kiện chưa có đích **vẫn nằm
+  nguyên trong bảng** — không mất, chỉ không chiếm slot của người khác.
+- Nhờ vậy luồng **chặn đăng nhập + thu hồi phiên + rút toàn bộ giấy phép Microsoft 365 khi
+  nghỉ việc** (`ms365.nghi_viec`) chạy thật ngay sau khi bấm cho nghỉ việc, thay vì nằm
+  chờ vô hạn. Unit test mới `test/hop_thu_di_dich.test.ts` (5 ca) khoá điều kiện chọn đích.
+- Hồ sơ nhân sự có thêm nút **"Nghỉ việc không bàn giao"** (cạnh "Quyết định nghỉ việc"):
+  đánh dấu nghỉ ngay, không qua quy trình bàn giao, chọn được ngày nghỉ việc; chuỗi song ngữ
+  Việt – Trung đầy đủ.
+
 ## [1.122.8] — 2026-10-21
 
 **Đồng bộ máy chấm công: tự động theo sự kiện + đối chiếu 07:30 + khóa người đã nghỉ.**

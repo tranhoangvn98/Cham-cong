@@ -1094,4 +1094,15 @@ export const CHUOI_ZH = {
   ul_ngay_sai_dang: '日期格式应为 dd/mm/yyyy（例如 19/09/2026）。',
   ul_ngay_khong_hop_le: '预支日期无效。',
   ul_gui_de_nghi_tieu_de: '预支工资申请',
+
+  // ================================ ho so nhan su
+  hs_nghi_khong_ban_giao: '离职未交接',
+  hs_nkbg_tieu_de: '离职未交接',
+  hs_nkbg_mo_ta: '将 {ten} 标记为已离职（未按离职流程办理交接）。考勤记录及全部档案将保留；登录账号将立即停用。此操作不会删除档案。',
+  hs_nkbg_ngay_nghi: '离职日期',
+  hs_nkbg_ngay_goi_y: '留空则默认为今天。',
+  hs_nkbg_dong_y: '确认标记离职',
+  hs_nkbg_dang_luu: '保存中…',
+  hs_nkbg_huy: '取消',
+  hs_nkbg_xong: '已标记为离职。',
 } as const satisfies Record<keyof typeof CHUOI_VI, string>;

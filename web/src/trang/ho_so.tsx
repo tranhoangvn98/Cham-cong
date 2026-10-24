@@ -13,6 +13,7 @@ import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
 import { dat_qd_nghi_viec } from '../dieu_huong_sau.ts';
+import { dung_chuoi } from '../chuoi/chi_muc.tsx';
 import { dung_dat_tieu_de } from '../tieu_de_trang.tsx';
 import { NhanCachTrich } from './hop_dong.tsx';
 import { TheMaDinhDanh } from './ma_dinh_danh.tsx';
@@ -189,6 +190,8 @@ function Nhan({ ma, bang }: { ma: unknown; bang: string }): ReactNode {
 
 export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {
   const [nhom, dat_nhom] = useState<Nhom | null>(null);
+  const [hoi_nghi_kbg, dat_hoi_nghi_kbg] = useState(false);
+  const { tra } = dung_chuoi();
   const { di_toi } = dung_tuyen();
   const tq = dung_nap<TongQuan>(`/api/nhan-vien/${nhan_vien_id}/ho-so`, [nhan_vien_id]);
 
@@ -241,6 +244,11 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
                   di_toi('/van-ban/ban-hanh');
                 }}>
                 Quyết định nghỉ việc
+              </button>
+            )}
+            {la_nhan_su() && nv['dang_hoat_dong'] !== false && (
+              <button type="button" className="nut-nguy" onClick={() => dat_hoi_nghi_kbg(true)}>
+                {tra('hs_nghi_khong_ban_giao')}
               </button>
             )}
             <LienKet den="/nhan-vien" lop="nut">← Danh sách nhân viên</LienKet>
@@ -319,7 +327,77 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
           khi_doi={() => tq.nap_lai()}
         />
       )}
+
+      {hoi_nghi_kbg && (
+        <HopThoaiNghiKhongBanGiao
+          nhan_vien_id={nv.id}
+          ho_ten={nv.ho_ten}
+          khi_dong={() => dat_hoi_nghi_kbg(false)}
+          khi_xong={() => {
+            dat_hoi_nghi_kbg(false);
+            tq.nap_lai();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/**
+ * Danh dau "nghi viec khong ban giao": nhan su da nghi nhung khong lam quy trinh ban giao.
+ * Goi thang route cho-nghi-viec (tat hoat dong + khoa tai khoan), KHONG sinh quy trinh thoi
+ * viec — do la nhanh "Quyet dinh nghi viec" con lai.
+ */
+function HopThoaiNghiKhongBanGiao(
+  { nhan_vien_id, ho_ten, khi_dong, khi_xong }: {
+    nhan_vien_id: string;
+    ho_ten: string;
+    khi_dong: () => void;
+    khi_xong: () => void;
+  },
+): ReactNode {
+  const { tra } = dung_chuoi();
+  const hd = dung_hanh_dong();
+  const [ngay_nghi, dat_ngay_nghi] = useState('');
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    const ok = await hd.chay(
+      () => goi(`/api/nhan-vien/${nhan_vien_id}/nghi-viec`, {
+        method: 'POST',
+        body: ngay_nghi === '' ? {} : { ngay_nghi_viec: ngay_nghi },
+      }),
+      tra('hs_nkbg_xong'),
+    );
+    if (ok) setTimeout(khi_xong, 600);
+  };
+
+  return (
+    <HopThoai tieu_de={tra('hs_nkbg_tieu_de')} khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={hd.loi} />
+        <HopTot chu={hd.tot} />
+        <div className="mo-ta" style={{ marginBottom: 10 }}>
+          {tra('hs_nkbg_mo_ta', { ten: ho_ten })}
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="nkbg-ngay">{tra('hs_nkbg_ngay_nghi')}</label>
+          <input
+            id="nkbg-ngay"
+            type="date"
+            value={ngay_nghi}
+            onChange={(e) => dat_ngay_nghi(e.target.value)}
+          />
+          <div className="goi-y">{tra('hs_nkbg_ngay_goi_y')}</div>
+        </div>
+        <div className="hang-nut">
+          <button type="submit" className="nut-nguy" disabled={hd.dang_chay}>
+            {hd.dang_chay ? tra('hs_nkbg_dang_luu') : tra('hs_nkbg_dong_y')}
+          </button>
+          <button type="button" onClick={khi_dong}>{tra('hs_nkbg_huy')}</button>
+        </div>
+      </form>
+    </HopThoai>
   );
 }
 

@@ -1092,4 +1092,15 @@ export const CHUOI_VI = {
   ul_ngay_sai_dang: 'Ngày ứng phải viết dạng dd/mm/yyyy (ví dụ 19/09/2026).',
   ul_ngay_khong_hop_le: 'Ngày ứng không hợp lệ.',
   ul_gui_de_nghi_tieu_de: 'Đề nghị ứng lương',
+
+  // ================================ ho so nhan su
+  hs_nghi_khong_ban_giao: 'Nghỉ việc không bàn giao',
+  hs_nkbg_tieu_de: 'Nghỉ việc không bàn giao',
+  hs_nkbg_mo_ta: 'Đánh dấu {ten} đã nghỉ việc mà không theo quy trình nghỉ việc (không làm bàn giao). Lịch sử chấm công và toàn bộ hồ sơ được giữ lại; tài khoản đăng nhập bị vô hiệu hóa ngay. Đây không phải xóa hồ sơ.',
+  hs_nkbg_ngay_nghi: 'Ngày nghỉ việc',
+  hs_nkbg_ngay_goi_y: 'Để trống thì lấy ngày hôm nay.',
+  hs_nkbg_dong_y: 'Đánh dấu nghỉ việc',
+  hs_nkbg_dang_luu: 'Đang lưu…',
+  hs_nkbg_huy: 'Hủy',
+  hs_nkbg_xong: 'Đã đánh dấu nghỉ việc.',
 } as const;

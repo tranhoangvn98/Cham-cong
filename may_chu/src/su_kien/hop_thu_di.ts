@@ -98,14 +98,77 @@ interface DongOutbox {
   so_lan: number;
 }
 
-/** Co dich nao duoc cau hinh chua. Chua thi khong can nhan viec ra khoi bang. */
-function co_dich(): boolean {
-  return cau_hinh.erp.webhook_url !== ''
-    || cau_hinh.erp1.webhook_url !== ''
-    || cau_hinh.cong_su_kien.goc !== ''
-    || cau_hinh.ms365_nghi_viec.bat
-    || cau_hinh.ms365_tao.bat
-    || cau_hinh.mail.nguoi_gui !== '';
+/**
+ * Dich cua mot su kien. MOT su kien chi co MOT dich — do la quy tac cua `gui_mot`, va cung
+ * la ly do phan chon dich phai nam o mot cho.
+ */
+export type DichSuKien = 'ms365_nghi_viec' | 'ms365_tao' | 'cong' | 'erp1' | 'email' | 'erp';
+
+/** Dich nao dang san sang nhan su kien (da khai du cau hinh de goi duoc that). */
+export interface TinhTrangDich {
+  ms365_nghi_viec: boolean;
+  ms365_tao: boolean;
+  cong: boolean;
+  erp1: boolean;
+  email: boolean;
+  erp: boolean;
+}
+
+/**
+ * Su kien nay di ve dau. Ham THUAN: chon sai dich nghia la su kien nhan su di nham he thong,
+ * nen no phai kiem duoc ma khong can cau hinh hay CSDL.
+ */
+export function dich_cua_loai(loai: string): DichSuKien {
+  if (loai === 'ms365.tao_tai_khoan') return 'ms365_tao';
+  if (loai.startsWith('ms365.')) return 'ms365_nghi_viec';
+  if (loai.startsWith('nhan_su.')) return 'cong';
+  if (loai.startsWith('erp1.')) return 'erp1';
+  if (loai === 'gui_email') return 'email';
+  return 'erp';
+}
+
+/**
+ * Doc cau hinh de biet dich nao goi duoc that.
+ *
+ * Mot dich chi tinh la san sang khi du MOI thu no can, khong phai chi co URL: cong can ca
+ * token dich vu, email can ca hop thu gui lan creds Graph. Tinh thieu dieu kien thi tien
+ * trinh nhat viec se lay dong ra roi that bai — dung cai vong lap vo ich dang muon bo.
+ */
+export function tinh_trang_dich(): TinhTrangDich {
+  return {
+    ms365_nghi_viec: cau_hinh.ms365_nghi_viec.bat,
+    ms365_tao: cau_hinh.ms365_tao.bat,
+    cong: cau_hinh.cong_su_kien.goc !== '' && cau_hinh.cong_su_kien.token_dich_vu !== '',
+    erp1: cau_hinh.erp1.webhook_url !== '',
+    email: email_bat(),
+    erp: cau_hinh.erp.webhook_url !== '',
+  };
+}
+
+/**
+ * Dieu kien NHAT VIEC cho tien trinh day: chi lay su kien co dich DA CAU HINH.
+ *
+ * VI SAO PHAI LOC NGAY TRONG CAU NHAT VIEC, khong phai chi bo qua luc gui
+ *
+ * Bo nhat viec lay `order by id limit 50` — tuc la lay nhung dong CU NHAT. Mot dong khong co
+ * dich that bai, lui theo backoff (tran 1 gio), roi den han lai nam trong nhom cu nhat ay.
+ * Chi can so dong do lon hon so slot moi vong thi KHONG su kien nao khac duoc lay ra nua:
+ * hang doi dung han. Da xay ra that — 123.510 su kien ERP cu (dich chua khai) chiem het slot
+ * va toan bo su kien nghi viec / ms365 nam im tu thang 9, trong khi so lan thu cua chung = 0.
+ *
+ * `nhan_erp` = co lay cac loai "con lai" (dich ERP cu) hay khong; cac loai con lai duoc nhan
+ * dien bang cach LOAI TRU cac tien to da co dich rieng, dung y het thu tu uu tien cua `gui_mot`.
+ */
+export function dieu_kien_nhat_viec(
+  t: TinhTrangDich,
+): { mau: string[]; nhan_erp: boolean } {
+  const mau: string[] = [];
+  if (t.ms365_nghi_viec) mau.push('ms365.nghi_viec');
+  if (t.ms365_tao) mau.push('ms365.tao_tai_khoan');
+  if (t.cong) mau.push('nhan_su.%');
+  if (t.erp1) mau.push('erp1.%');
+  if (t.email) mau.push('gui_email');
+  return { mau, nhan_erp: t.erp };
 }
 
 /**
@@ -120,12 +183,12 @@ function co_dich(): boolean {
  * Chua cau hinh dich NAO thi khong lam gi: su kien nam lai trong bang, khong mat. Bat len luc
  * nao thi chung di luc do.
  *
- * Chi cau hinh MOT dich thi van chay: dong cua dich kia se that bai va lui theo backoff cho
- * den khi dich do duoc khai. Do la co y — mot su kien nhan su khong duoc phep bi danh dau "da
- * gui" chi vi cong chua duoc cau hinh.
+ * Chi cau hinh MOT dich thi van chay: dong cua dich kia se nam lai (khong duoc nhat ra), va
+ * khi dich do duoc khai thi chung tu chay — khong mat, chi la khong chiem slot.
  */
 export async function day_hop_thu_di(so_luong = 50): Promise<number> {
-  if (!co_dich()) return 0;
+  const k = dieu_kien_nhat_viec(tinh_trang_dich());
+  if (!k.nhan_erp && k.mau.length === 0) return 0;
 
   // Nhan viec bang MOT cau UPDATE nguyen tu: day gui_lai_sau ve tuong lai de instance
   // khac khong lay lai cung su kien. Khong giu transaction trong luc goi HTTP.
@@ -136,12 +199,20 @@ export async function day_hop_thu_di(so_luong = 50): Promise<number> {
       where id in (
         select id from hop_thu_di
          where gui_luc is null and gui_lai_sau <= now()
+           and (
+             hop_thu_di.loai_su_kien like any ($2::text[])
+             or ($3::boolean
+                 and hop_thu_di.loai_su_kien not like 'ms365.%'
+                 and hop_thu_di.loai_su_kien not like 'nhan_su.%'
+                 and hop_thu_di.loai_su_kien not like 'erp1.%'
+                 and hop_thu_di.loai_su_kien <> 'gui_email')
+           )
          order by id
          limit $1
          for update skip locked
       )
       returning id, loai_su_kien, du_lieu, so_lan`,
-    [so_luong],
+    [so_luong, k.mau, k.nhan_erp],
   );
   if (dong.length === 0) return 0;
 
@@ -420,7 +491,8 @@ let bo_hen: NodeJS.Timeout | null = null;
 
 /** Chay tien trinh day outbox dinh ky (goi mot lan khi khoi dong may chu). */
 export function bat_tien_trinh_day(chu_ky_giay = 20): void {
-  if (!co_dich()) return;
+  const k = dieu_kien_nhat_viec(tinh_trang_dich());
+  if (!k.nhan_erp && k.mau.length === 0) return;
   if (bo_hen !== null) return;
   bo_hen = setInterval(() => {
     day_hop_thu_di().catch((loi: unknown) => {
