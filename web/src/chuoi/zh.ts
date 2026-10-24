@@ -1105,4 +1105,22 @@ export const CHUOI_ZH = {
   hs_nkbg_dang_luu: '保存中…',
   hs_nkbg_huy: '取消',
   hs_nkbg_xong: '已标记为离职。',
+
+  // ================================ yeu cau bo sung ho so
+  hs_ycbs_nut: '发起档案补交',
+  hs_ycbs_tieu_de: '档案补交通知',
+  hs_ycbs_mo_ta: '系统将每周向该员工发送提醒，直至必需材料补齐。目前尚缺 {so} 份。',
+  hs_ycbs_han: '补交期限',
+  hs_ycbs_ghi_chu: '备注',
+  hs_ycbs_gui: '发送通知',
+  hs_ycbs_huy: '取消',
+  hs_ycbs_da_tao: '档案补交通知已发送。',
+  hs_ycbs_da_du: '档案必需材料已齐全，无需发起补交。',
+  hs_ycbs_dang_mo: '待补交 {so} 份材料',
+  hs_ycbs_lan_nhac: '已提醒 {n} 次，最近一次 {luc}',
+  hs_ycbs_chua_nhac: '尚未发送提醒 — 首次提醒将在 7 天后发送。',
+  hs_ycbs_huy_yeu_cau: '取消通知',
+  hs_ycbs_xn_huy: '确定取消档案补交通知？',
+  hs_ycbs_xn_huy_mo_ta: '员工将不再收到每周提醒邮件。',
+  hs_ycbs_da_huy: '通知已取消。',
 } as const satisfies Record<keyof typeof CHUOI_VI, string>;

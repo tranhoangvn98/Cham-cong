@@ -1217,9 +1217,189 @@ function FormHoSo(
   );
 }
 
+// ==================================================================== yeu cau bo sung ho so
+
+interface YeuCauBoSung {
+  id: string;
+  han_bo_sung: string | null;
+  ghi_chu: string | null;
+  tao_luc: string;
+  lan_nhac_cuoi: string | null;
+  so_lan_nhac: number;
+  con_thieu: number;
+  ten_con_thieu: string[];
+}
+
+interface TinhTrangBoSung {
+  yeu_cau: YeuCauBoSung | null;
+  con_thieu: { ma: string; ten: string }[];
+}
+
+/**
+ * The trang thai "yeu cau bo sung ho so" o tab Tai lieu.
+ *
+ * Hai trang thai loai tru nhau: dang co yeu cau mo (hien so lan da nhac + nut huy) hoac chua
+ * co (hien nut mo yeu cau khi con thieu). Khong hien ca hai cung luc — nguoi dung se khong
+ * biet nen bam cai nao.
+ */
+function TheTrangThaiBoSung(
+  { nhan_vien_id, yeu_cau, con_thieu, khi_doi }: {
+    nhan_vien_id: string;
+    yeu_cau: YeuCauBoSung | null;
+    con_thieu: { ma: string; ten: string }[];
+    khi_doi: () => void;
+  },
+): ReactNode {
+  const { tra } = dung_chuoi();
+  const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
+  const [mo, dat_mo] = useState(false);
+
+  const huy = async (): Promise<void> => {
+    if (yeu_cau === null) return;
+    const dong_y = await xn.hoi({
+      tieu_de: tra('hs_ycbs_xn_huy'),
+      mo_ta: tra('hs_ycbs_xn_huy_mo_ta'),
+      chu_dong_y: tra('hs_ycbs_huy_yeu_cau'),
+    });
+    if (!dong_y) return;
+    const ok = await hd.chay(
+      () => goi(`/api/ho-so-bo-sung/${yeu_cau.id}/huy`, { method: 'POST', body: {} }),
+      tra('hs_ycbs_da_huy'),
+    );
+    if (ok) khi_doi();
+  };
+
+  if (yeu_cau !== null) {
+    return (
+      <div className="the hop-tin">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+          <strong>{tra('hs_ycbs_dang_mo', { so: yeu_cau.con_thieu })}</strong>
+          <button type="button" className="nut-nho nut-phang"
+            onClick={() => void huy()} disabled={hd.dang_chay}>
+            {tra('hs_ycbs_huy_yeu_cau')}
+          </button>
+        </div>
+        <div className="goi-y" style={{ marginTop: 6 }}>
+          {yeu_cau.so_lan_nhac === 0
+            ? tra('hs_ycbs_chua_nhac')
+            : tra('hs_ycbs_lan_nhac', {
+              n: yeu_cau.so_lan_nhac,
+              luc: yeu_cau.lan_nhac_cuoi === null ? '—' : ngay_gio(yeu_cau.lan_nhac_cuoi),
+            })}
+          {yeu_cau.han_bo_sung !== null && <> · {tra('hs_ycbs_han')}: {ngay_viet(yeu_cau.han_bo_sung)}</>}
+        </div>
+        {yeu_cau.ten_con_thieu.length > 0 && (
+          <div className="goi-y" style={{ marginTop: 4 }}>
+            {yeu_cau.ten_con_thieu.join(' · ')}
+          </div>
+        )}
+        <HopLoi loi={hd.loi} />
+        <HopTot chu={hd.tot} />
+        {xn.hop_thoai}
+      </div>
+    );
+  }
+
+  if (con_thieu.length === 0 || !la_nhan_su()) return null;
+
+  return (
+    <>
+      <div className="the">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <div>
+            <strong>{tra('hs_ycbs_nut')}</strong>
+            <div className="goi-y">{tra('hs_ycbs_mo_ta', { so: con_thieu.length })}</div>
+          </div>
+          <button type="button" className="nut-chinh" onClick={() => dat_mo(true)}>
+            {tra('hs_ycbs_nut')}
+          </button>
+        </div>
+        <HopLoi loi={hd.loi} />
+        <HopTot chu={hd.tot} />
+      </div>
+      {mo && (
+        <HopThoaiYeuCauBoSung
+          nhan_vien_id={nhan_vien_id}
+          so_tai_lieu={con_thieu.length}
+          khi_dong={() => dat_mo(false)}
+          khi_xong={() => { dat_mo(false); khi_doi(); }}
+        />
+      )}
+    </>
+  );
+}
+
+function HopThoaiYeuCauBoSung(
+  { nhan_vien_id, so_tai_lieu, khi_dong, khi_xong }: {
+    nhan_vien_id: string;
+    so_tai_lieu: number;
+    khi_dong: () => void;
+    khi_xong: () => void;
+  },
+): ReactNode {
+  const { tra } = dung_chuoi();
+  const [han, dat_han] = useState('');
+  const [ghi_chu, dat_ghi_chu] = useState('');
+  const [loi, dat_loi] = useState<unknown>(null);
+  const [dang_gui, dat_dang_gui] = useState(false);
+
+  const gui = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    dat_loi(null);
+    dat_dang_gui(true);
+    try {
+      const kq = await goi<{ da_co: boolean }>(`/api/nhan-vien/${nhan_vien_id}/bo-sung`, {
+        method: 'POST',
+        body: {
+          han_bo_sung: han === '' ? null : han,
+          ghi_chu: ghi_chu.trim() === '' ? null : ghi_chu.trim(),
+        },
+      });
+      // Ho so vua duoc bo sung xong (co the do nguoi khac vua lam) — khong phai loi, nhung
+      // cung khong phai "da gui". Noi dung that de nguoi bam biet chuyen gi vua xay ra.
+      if (kq.da_co) {
+        dat_loi(tra('hs_ycbs_da_du'));
+        dat_dang_gui(false);
+        return;
+      }
+      khi_xong();
+    } catch (x) {
+      dat_loi(x);
+      dat_dang_gui(false);
+    }
+  };
+
+  return (
+    <HopThoai tieu_de={tra('hs_ycbs_tieu_de')} khi_dong={khi_dong}>
+      <form onSubmit={gui}>
+        <HopLoi loi={loi} />
+        <div className="mo-ta" style={{ marginBottom: 10 }}>
+          {tra('hs_ycbs_mo_ta', { so: so_tai_lieu })}
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="ycbs-han">{tra('hs_ycbs_han')}</label>
+          <input id="ycbs-han" type="date" value={han}
+            onChange={(e) => dat_han(e.target.value)} />
+        </div>
+        <div className="o-nhap">
+          <label htmlFor="ycbs-ghi-chu">{tra('hs_ycbs_ghi_chu')}</label>
+          <textarea id="ycbs-ghi-chu" rows={3} value={ghi_chu}
+            onChange={(e) => dat_ghi_chu(e.target.value)} />
+        </div>
+        <div className="hang-nut">
+          <button type="submit" className="nut-chinh" disabled={dang_gui}>
+            {dang_gui ? '…' : tra('hs_ycbs_gui')}
+          </button>
+          <button type="button" onClick={khi_dong}>{tra('hs_ycbs_huy')}</button>
+        </div>
+      </form>
+    </HopThoai>
+  );
+}
+
 /** Doc id nhan vien tu duong dan /nhan-vien/<id>. */
-export function dung_id_ho_so(): string | null {
-  const { duong_dan } = dung_tuyen();
+export function dung_id_ho_so(): string | null {  const { duong_dan } = dung_tuyen();
   const m = /^\/nhan-vien\/([0-9a-f-]{36})$/i.exec(duong_dan);
   return m?.[1] ?? null;
 }
@@ -1489,6 +1669,7 @@ function PanelTaiLieu(
   const [dang_sua, dat_dang_sua] = useState<DongTaiLieu | null>(null);
   const hd = dung_hanh_dong();
   const xn = dung_xac_nhan();
+  const bs = dung_nap<TinhTrangBoSung>(`/api/nhan-vien/${nhan_vien_id}/bo-sung`, [nhan_vien_id]);
   const ds = du_lieu?.danh_sach ?? [];
   const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
 
@@ -1578,6 +1759,13 @@ function PanelTaiLieu(
           {!(du_lieu?.dang_nghi_viec ?? false) && ' Tài liệu chỉ phát sinh khi nghỉ việc được tạm miễn.'}
         </div>
       </div>
+
+      <TheTrangThaiBoSung
+        nhan_vien_id={nhan_vien_id}
+        yeu_cau={bs.du_lieu?.yeu_cau ?? null}
+        con_thieu={bs.du_lieu?.con_thieu ?? []}
+        khi_doi={() => { bs.nap_lai(); khi_doi(); }}
+      />
 
       <div className="the the-mong">
         <div className="vo-bang">

@@ -69,4 +69,17 @@ export const CHUOI_ZH = {
   email_phong_nhan_su: '人力资源部',
   email_cong_ty: '陈黄越南有限公司',
   email_tu_dong: '本邮件由考勤系统自动发送，请勿直接回复。',
+
+  // ================================ yeu cau bo sung ho so
+  bs_tieu_de: '档案补交通知',
+  bs_email_tieu_de: '档案补交提醒 — 尚有 {so} 份必需材料未交',
+  bs_chao: '{ten} 您好：',
+  bs_mo_ta: '您的员工档案尚有 {so} 份必需材料未提交，请提交至人力资源部。',
+  bs_danh_sach: '需补交材料',
+  bs_han: '补交期限：{ngay}',
+  bs_ghi_chu: '人力资源部备注',
+  bs_lan: '本次为第 {n} 次提醒。',
+  bs_ket: '在档案补齐之前，系统将每周继续发送提醒。',
+  bs_da_huy_nguoi_nhan: '{ten} 的档案补交通知已取消。',
+  bs_da_du_nguoi_nhan: '{ten} 的必需档案材料已补齐，通知已自动关闭。',
 } as const satisfies Record<keyof typeof CHUOI_VI, string>;

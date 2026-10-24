@@ -2,6 +2,23 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.123.0] — 2026-10-24
+
+**Yêu cầu bổ sung hồ sơ bắt buộc — email nhắc hàng tuần cho tới khi đủ.**
+
+- Tab Tài liệu của hồ sơ nhân sự có mục **"Yêu cầu bổ sung hồ sơ"**: chọn hạn và ghi chú,
+  hệ thống gửi email nhắc cho nhân sự theo **ngôn ngữ của người nhận** (Việt / Trung) và
+  chuông báo trong web/app.
+- **Nhắc lại mỗi 7 ngày** cho tới khi hồ sơ đủ tài liệu bắt buộc; yêu cầu **tự đóng** khi
+  đã đủ và báo lại cho người mở yêu cầu. Nhân sự hủy được yêu cầu bất kỳ lúc nào.
+- Mỗi người chỉ có **một yêu cầu đang mở** (ràng buộc UNIQUE một phần) — mở hai cái là hai
+  luồng nhắc chạy song song và người nhận bị nhắc hai lần một tuần.
+- Chống gửi trùng khi chạy nhiều instance: quyền nhắc **chiếm bằng một câu UPDATE nguyên tử**
+  trước khi gọi Graph, điều kiện thời gian giống hệt hàm thuần `den_han_nhac` (có test).
+- Bảng mới `yeu_cau_bo_sung_ho_so` (migration 110) lưu **ảnh chụp** danh mục tài liệu còn thiếu
+  lúc mở yêu cầu — danh mục đổi về sau không làm sai nội dung đã yêu cầu.
+- Email đi qua `gui_email` sẵn có; mọi dữ liệu từ CSDL đều thọat HTML (có test).
+
 ## [1.122.9] — 2026-10-24
 
 **Nghỉ việc: Microsoft 365 bị khóa và rút giấy phép TỰ ĐỘNG — vá hòm thư đi bị tắc.**

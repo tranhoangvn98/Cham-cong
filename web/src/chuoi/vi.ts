@@ -1103,4 +1103,22 @@ export const CHUOI_VI = {
   hs_nkbg_dang_luu: 'Đang lưu…',
   hs_nkbg_huy: 'Hủy',
   hs_nkbg_xong: 'Đã đánh dấu nghỉ việc.',
+
+  // ================================ yeu cau bo sung ho so
+  hs_ycbs_nut: 'Yêu cầu bổ sung hồ sơ',
+  hs_ycbs_tieu_de: 'Yêu cầu bổ sung hồ sơ',
+  hs_ycbs_mo_ta: 'Hệ thống sẽ gửi email nhắc hàng tuần cho nhân sự này cho tới khi bổ sung đủ tài liệu bắt buộc. Hiện còn {so} tài liệu.',
+  hs_ycbs_han: 'Hạn bổ sung',
+  hs_ycbs_ghi_chu: 'Ghi chú',
+  hs_ycbs_gui: 'Gửi yêu cầu',
+  hs_ycbs_huy: 'Hủy',
+  hs_ycbs_da_tao: 'Đã gửi yêu cầu bổ sung hồ sơ.',
+  hs_ycbs_da_du: 'Hồ sơ đã đủ tài liệu bắt buộc — không cần yêu cầu.',
+  hs_ycbs_dang_mo: 'Đang yêu cầu bổ sung {so} tài liệu',
+  hs_ycbs_lan_nhac: 'Đã nhắc {n} lần — lần cuối {luc}',
+  hs_ycbs_chua_nhac: 'Chưa gửi nhắc lần nào — lần nhắc đầu tiên sau 7 ngày.',
+  hs_ycbs_huy_yeu_cau: 'Hủy yêu cầu',
+  hs_ycbs_xn_huy: 'Hủy yêu cầu bổ sung hồ sơ?',
+  hs_ycbs_xn_huy_mo_ta: 'Nhân sự sẽ không còn nhận email nhắc hàng tuần nữa.',
+  hs_ycbs_da_huy: 'Đã hủy yêu cầu.',
 } as const;

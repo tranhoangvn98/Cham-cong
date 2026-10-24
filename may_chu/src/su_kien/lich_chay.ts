@@ -24,6 +24,7 @@ import { khi_hop_dong_sap_het, quet_don_cho_duyet } from '../viec/workflow.ts';
 import { dong_bo_nguoi_ms365_da_cap_phep, graph_da_cau_hinh } from '../nhan_su/ms365.ts';
 import { bao_het_han_lay_y_kien, dong_y_kien_het_han } from '../ho_thu_y_kien/nghiep_vu.ts';
 import { dong_bo_hang_ngay, GIO_DONG_BO_MAY } from '../adms/dong_bo_may.ts';
+import { nhac_bo_sung } from '../ho_so/bo_sung.ts';
 import { cong_ngay, khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. Khai duoc trong .env. */
@@ -315,6 +316,34 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     if (so > 0) ghi_log(`[lich] cong viec: ${so} viec qua han chuyen thanh khong hoan thanh`);
   } catch (loi) {
     ghi_log(`[lich] LOI khi quet cong viec qua han: ${(loi as Error).message}`);
+  }
+
+  // ------------------------------------------------------------ nhac bo sung ho so
+  // CHAY MOI VONG: ham tu kiem ky nhac 7 ngay va tu CHIEM QUYEN nhac bang mot cau UPDATE
+  // nguyen tu, nen goi moi vong khong sinh email trung khi co nhieu instance. Yeu cau nao da
+  // bo sung du thi tu dong dong (`da_du`) ngay tai day.
+  try {
+    const kq = await nhac_bo_sung(bay_gio);
+    if (kq.so_email > 0 || kq.so_dong > 0) {
+      ghi_log(`[lich] bo sung ho so: gui ${String(kq.so_email)} email nhac, `
+        + `dong ${String(kq.so_dong)} yeu cau`);
+    }
+  } catch (loi) {
+    ghi_log(`[lich] LOI khi nhac bo sung ho so: ${(loi as Error).message}`);
+  }
+
+  // ------------------------------------------------------------ nhac bo sung ho so
+  // CHAY MOI VONG: ham tu kiem ky nhac 7 ngay va tu CHIEM QUYEN nhac bang mot cau UPDATE
+  // nguyen tu, nen goi moi vong khong sinh email trung khi co nhieu instance. Yeu cau nao da
+  // bo sung du thi tu dong dong (`da_du`) ngay tai day.
+  try {
+    const kq = await nhac_bo_sung(bay_gio);
+    if (kq.so_email > 0 || kq.so_dong > 0) {
+      ghi_log(`[lich] bo sung ho so: gui ${String(kq.so_email)} email nhac, `
+        + `dong ${String(kq.so_dong)} yeu cau`);
+    }
+  } catch (loi) {
+    ghi_log(`[lich] LOI khi nhac bo sung ho so: ${(loi as Error).message}`);
   }
 
   // ------------------------------------------------------------ quy trinh thoi viec

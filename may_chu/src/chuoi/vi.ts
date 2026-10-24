@@ -68,4 +68,17 @@ export const CHUOI_VI = {
   email_phong_nhan_su: 'Phòng Nhân sự',
   email_cong_ty: 'Công ty TNHH Trần Hoàng Việt Nam',
   email_tu_dong: 'Email tự động từ hệ thống chấm công — vui lòng không trả lời trực tiếp email này.',
+
+  // ================================ yeu cau bo sung ho so
+  bs_tieu_de: 'Yêu cầu bổ sung hồ sơ',
+  bs_email_tieu_de: 'Nhắc bổ sung hồ sơ — còn {so} tài liệu bắt buộc',
+  bs_chao: 'Chào {ten},',
+  bs_mo_ta: 'Hồ sơ nhân sự của bạn còn {so} tài liệu bắt buộc chưa bổ sung. Vui lòng nộp cho phòng Nhân sự.',
+  bs_danh_sach: 'Tài liệu cần bổ sung',
+  bs_han: 'Hạn bổ sung: {ngay}',
+  bs_ghi_chu: 'Ghi chú từ phòng Nhân sự',
+  bs_lan: 'Đây là lần nhắc thứ {n}.',
+  bs_ket: 'Hệ thống sẽ tiếp tục nhắc cho đến khi hồ sơ được bổ sung đầy đủ.',
+  bs_da_huy_nguoi_nhan: 'Yêu cầu bổ sung hồ sơ của {ten} đã được hủy.',
+  bs_da_du_nguoi_nhan: 'Hồ sơ của {ten} đã bổ sung đủ tài liệu bắt buộc — yêu cầu đã tự đóng.',
 } as const;
