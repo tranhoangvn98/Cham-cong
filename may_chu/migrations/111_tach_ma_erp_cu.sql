@@ -12,10 +12,11 @@
 --
 -- Chay tren VPS:
 --   docker compose exec -T postgres psql -U chamcong -d chamcong -v ON_ERROR_STOP=1 -f -
-
-\set ON_ERROR_STOP on
-
-begin;
+--
+-- LUU Y: khong dat `\set ON_ERROR_STOP on` trong tep nay. Migration duoc chay bang Node
+-- (`csdl/di_tru.ts`), khong qua psql — mot dong bat dau bang `\` lam ca tep loi syntax va
+-- may chu khong khoi dong duoc. Cung khong dat `begin/commit`: runner da boc moi tep mot
+-- transaction, long them mot lop chi tao ra canh bao "already a transaction in progress".
 
 -- 1) Ho so nao dang mang ma ERP cu trong `ma_nv` thi chep sang cot `ma_erp`.
 update nhan_vien
@@ -40,8 +41,6 @@ select null, 'backfill_ma_erp', 'nhan_vien', null,
          'ly_do', 'Tach ma ERP cu khoi ma noi bo: ba he thong song song dung ba ma rieng'),
        null
   from nhan_vien where ma_erp is not null;
-
-commit;
 
 -- Kiem chung: moi he thong mot ma, khong ep trung nhau.
 select nv.ma_nv            as ma_noi_bo,
