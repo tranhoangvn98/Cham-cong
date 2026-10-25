@@ -132,6 +132,47 @@ async function doc_giay_phep(token: string, upn: string): Promise<string[]> {
 }
 
 /**
+ * Gỡ TOÀN BỘ vai trò thư mục Entra của một tài khoản. Trả về số vai trò đã gỡ.
+ *
+ * VI SAO PHẢI GỠ TRƯỚC KHI KHÓA: Microsoft chặn ứng dụng tắt tài khoản còn giữ vai trò quản trị
+ * (`PATCH accountEnabled` trả 403) — cơ chế bảo vệ có chủ đích, để một app bị lộ không tự khóa
+ * quản trị viên. Nhưng với người ĐÃ NGHỈ thì vai trò đó không còn lý do tồn tại, và không gỡ
+ * thì tài khoản không bao giờ khóa được (đã gặp thật với ERP147: 3 vai trò, 403).
+ *
+ * Đọc vai trò cần `RoleManagement.ReadWrite.Directory` (quyền ứng dụng, đã cấp admin consent).
+ * Gỡ xong thì tài khoản thường mới, nên `$ref` trả 404 cũng tính là xong.
+ */
+export async function go_vai_tro_entra(upn: string): Promise<number> {
+  const token = await lay_token_graph();
+  const dau = { authorization: `Bearer ${token}` };
+
+  const u = await fetch(`${GOC_GRAPH()}/users/${encodeURIComponent(upn)}?$select=id`, {
+    headers: dau, signal: AbortSignal.timeout(HET_GIO_MS),
+  });
+  if (u.status === 404) return 0;
+  if (!u.ok) throw new Error(`Graph từ chối đọc tài khoản ${upn} (HTTP ${u.status})`);
+  const { id } = (await u.json().catch(() => ({}))) as { id?: string };
+  if (id === undefined) return 0;
+
+  const ds = await fetch(
+    `${GOC_GRAPH()}/users/${id}/transitiveMemberOf/microsoft.graph.directoryRole?$select=id`,
+    { headers: dau, signal: AbortSignal.timeout(HET_GIO_MS) },
+  );
+  if (!ds.ok) throw new Error(`Graph từ chối đọc vai trò của ${upn} (HTTP ${ds.status})`);
+  const vai_tro = ((await ds.json().catch(() => ({}))) as { value?: { id?: string }[] }).value ?? [];
+
+  let so = 0;
+  for (const v of vai_tro) {
+    if (v.id === undefined) continue;
+    const x = await fetch(`${GOC_GRAPH()}/directoryRoles/${v.id}/members/${id}/$ref`, {
+      method: 'DELETE', headers: dau, signal: AbortSignal.timeout(HET_GIO_MS),
+    });
+    if (x.ok || x.status === 404) so += 1;
+  }
+  return so;
+}
+
+/**
  * Chan dang nhap + thu hoi phien + rut toan bo giay phep cua mot tai khoan Entra.
  *
  * NEM loi ro rang khi that bai de outbox giu lai dong va thu lai theo backoff. Khong nuot
@@ -142,6 +183,17 @@ export async function chan_dang_nhap_va_rut_giay_phep(upn: string): Promise<void
     throw new Error('MS365_NGHI_VIEC_BAT chưa bật — sự kiện ms365 nằm lại hộp thư chờ');
   }
   const token = await lay_token_graph();
+
+  // 0. Go vai tro quan tri Entra TRUOC khi khoa.
+  //    Tai khoan con vai tro quan tri thi buoc 1 (PATCH) chac chan 403. Buoc nay KHONG chan
+  //    luong: tai khoan thuong khong co vai tro nao (tra 0, khong goi Graph them), va neu Graph
+  //    tu choi o day thi buoc khoa ben duoi se bao loi ro rang — con hon nuot loi roi bao "da khoa".
+  try {
+    const so_vai_tro = await go_vai_tro_entra(upn);
+    if (so_vai_tro > 0) console.info(`[ms365] da go ${String(so_vai_tro)} vai tro Entra cua ${upn}`);
+  } catch (loi) {
+    console.warn(`[ms365] khong go duoc vai tro Entra cua ${upn}: ${(loi as Error).message}`);
+  }
 
   // 1. Khoa tai khoan: accountEnabled = false.
   const khoa = await fetch(`${GOC_GRAPH()}/users/${encodeURIComponent(upn)}`, {
