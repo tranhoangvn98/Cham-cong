@@ -26,6 +26,7 @@ import { bao_het_han_lay_y_kien, dong_y_kien_het_han } from '../ho_thu_y_kien/ng
 import { dong_bo_hang_ngay, GIO_DONG_BO_MAY } from '../adms/dong_bo_may.ts';
 import { nhac_bo_sung } from '../ho_so/bo_sung.ts';
 import { cap_nhat_email_nhan_su } from '../nhan_su/dong_bo_email.ts';
+import { quet_nghi_viec_chua_khoa } from '../nhan_su/quet_nghi_viec.ts';
 import { cong_ngay, khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. Khai duoc trong .env. */
@@ -336,6 +337,26 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     } catch (loi) {
       await nha_viec(ma_email);
       ghi_log(`[lich] LOI khi cap nhat email nhan su: ${(loi as Error).message}`);
+    }
+  }
+
+  // ------------------------------------------------------------ quet nguoi da nghi chua khoa
+  // MOT LAN MOI NGAY: doi chieu trang thai THAT cua tung tai khoan (Entra) va su kien ERP1 da
+  // gui, de bat ba kieu loi am tham: hop thu tac, ben nhan tra 2xx nhung khong khoa, va su kien
+  // bi danh dau bo qua bang tay. Khong tu sua gi — chi bao dong cho HR.
+  const ma_quet_nghi = `quet_nghi_viec_chua_khoa:${hom_nay}`;
+  if (await nhan_viec(ma_quet_nghi)) {
+    try {
+      const kq = await quet_nghi_viec_chua_khoa();
+      await ghi_ket_qua(ma_quet_nghi,
+        `da nghi ${String(kq.so_da_nghi)}, loi ${String(kq.so_loi)}, `
+        + `khong kiem tra duoc ${String(kq.so_khong_kiem_tra_duoc)}`);
+      if (kq.so_loi > 0) {
+        ghi_log(`[lich] nghi viec: ${String(kq.so_loi)} tai khoan chua khoa du da nghi`);
+      }
+    } catch (loi) {
+      await nha_viec(ma_quet_nghi);
+      ghi_log(`[lich] LOI khi quet nghi viec chua khoa: ${(loi as Error).message}`);
     }
   }
 

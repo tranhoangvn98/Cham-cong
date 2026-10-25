@@ -87,4 +87,11 @@ export const CHUOI_ZH = {
   // ================================ dong bo email nhan su
   ns_thieu_email_tieu_de: '在职员工尚无邮箱',
   ns_thieu_email_noi_dung: '共有 {so} 名在职员工尚未登记邮箱，将无法收到通知、工资单及档案提醒：{danh_sach}。请进入员工档案补充邮箱。',
+
+  // ================================ quet nghi viec chua khoa tai khoan
+  qn_tieu_de: '警告：离职员工账号尚未停用',
+  qn_noi_dung: '共有 {so} 名离职员工在 ERP1 或 Microsoft 365 上的账号仍未停用：{danh_sach}。请进入员工档案重新发起账号停用。',
+  qn_loi_erp1: 'ERP1 未停用',
+  qn_loi_m365_mo: 'M365 仍可登录',
+  qn_loi_m365_phep: 'M365 仍持有许可证',
 } as const satisfies Record<keyof typeof CHUOI_VI, string>;

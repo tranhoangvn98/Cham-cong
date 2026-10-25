@@ -2,6 +2,22 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.125.0] — 2026-10-25
+
+**Quét hằng ngày: người đã nghỉ mà tài khoản ERP1 / Microsoft 365 vẫn còn mở.**
+
+- Job mới `quet_nghi_viec_chua_khoa:<ngày>` (một lần mỗi ngày) đối chiếu **trạng thái thật**:
+  - **ERP1**: chưa có sự kiện `erp1.nhan_su.nghi_viec` gửi thành công → báo `ERP1 chưa khóa`;
+  - **Microsoft 365**: đọc trực tiếp Entra — `accountEnabled` còn bật → `M365 vẫn đăng nhập
+    được`; còn giấy phép → `M365 còn giấy phép`. Tài khoản đã xóa hẳn **không** tính là lỗi
+    (xóa là cách đóng chặt hơn khóa).
+- Cảnh báo gộp **một chuông mỗi ngày** cho nhân sự/admin, kèm mã nhân viên và từng loại lỗi
+  (song ngữ Việt – Trung). Job **chỉ báo, không tự sửa**: khóa nhầm người đang đi làm đắt hơn
+  nhiều so với việc để HR bấm lại.
+- Đây là lưới an toàn cho ba kiểu lỗi đã xảy ra thật: hộp thư đi tắc, bên nhận trả 2xx nhưng
+  không khóa, và sự kiện bị đánh dấu bỏ qua bằng tay (vụ Quỳnh Anh, ERP147).
+- Test mới `quet_nghi_viec.test.ts` (5 ca) khoá quy tắc đánh giá tài khoản.
+
 ## [1.124.0] — 2026-10-25
 
 **Tách bạch mã nhân sự của ba hệ thống — không còn ép chúng giống nhau.**

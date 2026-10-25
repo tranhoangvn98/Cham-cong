@@ -86,4 +86,11 @@ export const CHUOI_VI = {
   // ================================ dong bo email nhan su
   ns_thieu_email_tieu_de: 'Nhân sự đang làm chưa có email',
   ns_thieu_email_noi_dung: '{so} nhân sự đang làm việc chưa có email nên sẽ không nhận được thông báo, phiếu lương hay nhắc hồ sơ nào: {danh_sach}. Vào Hồ sơ nhân sự để bổ sung email.',
+
+  // ================================ quet nghi viec chua khoa tai khoan
+  qn_tieu_de: 'Cảnh báo: tài khoản của người đã nghỉ chưa được khóa',
+  qn_noi_dung: '{so} nhân sự đã nghỉ nhưng tài khoản ở ERP1 hoặc Microsoft 365 vẫn còn mở: {danh_sach}. Vào Hồ sơ nhân sự để báo lại việc khóa tài khoản.',
+  qn_loi_erp1: 'ERP1 chưa khóa',
+  qn_loi_m365_mo: 'M365 vẫn đăng nhập được',
+  qn_loi_m365_phep: 'M365 còn giấy phép',
 } as const;
