@@ -2,6 +2,19 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.125.1] — 2026-10-25
+
+**Quét nghỉ việc: chỉ kiểm hệ thống đã kết nối.**
+
+- Bản 1.125.0 báo `ERP1 chưa khóa` cho **mọi** người đã nghỉ, vì `ERP1_WEBHOOK_URL` chưa khai —
+  cảnh báo đúng sự thật nhưng vô dụng, và là cách chắc chắn nhất để nhân sự bỏ qua cảnh báo
+  thật. Nay chỉ kiểm ERP1 khi webhook đã khai, chỉ kiểm Microsoft 365 khi
+  `MS365_NGHI_VIEC_BAT=1`; cả hai tắt thì job không báo gì.
+- Kết quả thật trên production ngay sau khi sửa: **8 người đã nghỉ, 2 người còn mở M365**
+  (ERP128 Đào Thái Bình — nghỉ 08/08, còn đăng nhập được + còn giấy phép; ERP147 Hoàng Minh
+  Ngọc — đang có chủ đích giữ vì hồ sơ nghỉ chưa chốt), 1 người không có UPN để kiểm
+  (TAM14), còn lại đã khóa và hết giấy phép.
+
 ## [1.125.0] — 2026-10-25
 
 **Quét hằng ngày: người đã nghỉ mà tài khoản ERP1 / Microsoft 365 vẫn còn mở.**
