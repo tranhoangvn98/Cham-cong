@@ -34,10 +34,20 @@ test('khuon payload: su_kien_id on dinh, du cac dinh danh ERP1 can', () => {
     loai_su_kien: 'erp1.nhan_su.nghi_viec',
     ma_nv: 'NV0123',
     ma_erp: 'THVN-0456',
+    ma_erp1: null,
     email: 'nguyenvana@tranhoangvietnam.com',
     ngay_nghi_viec: '2026-09-22',
     luc: '2026-09-22T01:05:00.000Z',
   });
+});
+
+test('khuon payload: ma ERP1 di kem khi so ma dinh danh co ma do', () => {
+  // Ba he thong song song: ma noi bo, ma ERP cu, ma ERP1 la ba ma khac nhau. ERP1 nhan ma cua
+  // chinh no de khoi phai tu doan tu ma noi bo.
+  const than = JSON.parse(dung_than_erp1(dong({ ma_nv: 'NV0123', ma_erp: 'THVN-0456' }), 'ERP1-77'));
+  assert.equal(than.ma_erp1, 'ERP1-77');
+  assert.equal(than.ma_nv, 'NV0123');
+  assert.equal(than.ma_erp, 'THVN-0456');
 });
 
 test('khuon payload: truong trong tra null, khong phai chuoi rong', () => {
@@ -78,6 +88,7 @@ test('da_tao: khuon payload du cac dinh danh ERP1 can de thiet lap tai khoan', (
     loai_su_kien: 'erp1.nhan_su.da_tao',
     ma_nv: 'NV0156',
     ma_erp: 'THVN-0789',
+    ma_erp1: null,
     email: 'tranthib@tranhoangvietnam.com',
     ho_ten: 'Trần Thị Bình',
     so_dien_thoai: '0912345678',

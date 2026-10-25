@@ -23,6 +23,7 @@ export type MaHeThong =
   | 'erp_cu'
   | 'erp_cu_tai_khoan'
   | 'erp_cu_ma'
+  | 'erp1'
   | 'microsoft_oid'
   | 'microsoft_email';
 
@@ -164,6 +165,20 @@ export const CAC_HE_THONG: readonly DacTaHeThong[] = [
     cot_cu: 'nhan_vien.ma_erp',
     cot_nhan_vien: 'ma_erp',
     dong_bo_cot: 'luon',
+    chi_tu_form_ho_so: false,
+    chuan_hoa: (s) => s.trim().toUpperCase(),
+    kiem: khong_rong,
+  },
+  {
+    ma: 'erp1',
+    ten: 'Mã nhân viên bên ERP1',
+    nhom: 'ERP1 (ERP mới)',
+    nhieu_ma: false,
+    on_dinh: true,
+    // He thong ERP1 chua co cot nao tren `nhan_vien`; ma nam o bang ma dinh danh.
+    cot_cu: null,
+    cot_nhan_vien: null,
+    dong_bo_cot: 'khong',
     chi_tu_form_ho_so: false,
     chuan_hoa: (s) => s.trim().toUpperCase(),
     kiem: khong_rong,

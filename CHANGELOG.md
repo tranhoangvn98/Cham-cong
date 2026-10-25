@@ -2,6 +2,27 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.124.0] — 2026-10-25
+
+**Tách bạch mã nhân sự của ba hệ thống — không còn ép chúng giống nhau.**
+
+Hệ thống chấm công, ERP cũ và ERP1 chạy song song, mỗi bên gọi một người bằng một mã khác
+nhau. Trước đây **59/68 hồ sơ** có `ma_nv` đúng bằng mã ERP cũ (dạng `ERP<id>`), nên "mã nội
+bộ" và "mã ERP" lẫn vào nhau và không có nơi nào lưu mã ERP1.
+
+- **Mỗi hệ thống một mã, một chỗ lưu:** mã nội bộ (`nhan_vien.ma_nv`), mã ERP cũ
+  (`nhan_vien.ma_erp` + `erp_user_id` / `erp_username`), **mã ERP1** (nhóm mã mới `erp1` trong
+  sổ mã định danh, nhóm `ERP1 (ERP mới)`), **Microsoft 365** (UPN / object ID), và **PIN máy
+  chấm công** (nhiều máy, có lịch sử).
+- Migration 111 **chép mã ERP cũ** từ `ma_nv` sang `ma_erp` và ghi vào sổ mã định danh (nguồn
+  `di_tru`) — từ nay đổi `ma_nv` không kéo theo dữ liệu ERP.
+- **Gửi sang ERP cũ chỉ dùng mã ERP cũ:** payload bỏ `ma_nv` và `nhan_vien_id` (uuid nội bộ);
+  thiếu mã ERP thì sự kiện **nằm lại hộp thư** thay vì gửi một sự kiện không xác định được
+  là của ai. Sự kiện cũ chưa có mã sẽ tự tra từ sổ mã định danh khi gửi.
+- **ERP1 nhận thêm `ma_erp1`** trong payload `erp1.nhan_su.nghi_viec` và `erp1.nhan_su.da_tao`
+  (tra theo mã nội bộ) để ERP1 không phải tự đoán từ mã của hệ thống khác.
+- Hồ sơ nhân sự hiện đủ các nhóm mã trong thẻ **Mã định danh**; nhập/sửa mã ERP1 tại đó.
+
 ## [1.123.2] — 2026-10-25
 
 **Hàng ngày tự cập nhật danh sách email nhân sự — để thông báo, phiếu lương và nhắc hồ sơ

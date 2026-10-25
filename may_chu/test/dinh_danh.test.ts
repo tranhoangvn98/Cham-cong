@@ -85,7 +85,7 @@ test('chi cac ma ON DINH duoc coi la khoa khop nguoi tin duoc', () => {
   // `microsoft_oid` va `erp_cu` khong doi; email va PIN thi doi duoc. Bai kiem nay giu dung cai
   // phan biet do, vi dang nhap Microsoft khop `oid` TRUOC email chinh vi le nay.
   const on_dinh = CAC_HE_THONG.filter((h) => h.on_dinh).map((h) => h.ma);
-  assert.deepEqual(on_dinh.sort(), ['erp_cu', 'microsoft_oid']);
+  assert.deepEqual(on_dinh.sort(), ['erp1', 'erp_cu', 'microsoft_oid']);
 });
 
 test('cot_cu va cot_nhan_vien phai noi cung mot chuyen', () => {

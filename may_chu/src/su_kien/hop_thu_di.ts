@@ -4,7 +4,7 @@
 import type { PoolClient } from 'pg';
 import { createHmac } from 'node:crypto';
 import { cau_hinh } from '../cau_hinh.ts';
-import { pool, truy_van, thuc_thi } from '../csdl/ket_noi.ts';
+import { pool, truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { email_bat, gui_email, type DinhKemMail } from './gui_email.ts';
 import {
@@ -376,14 +376,61 @@ async function gui_sang_cong(d: DongOutbox): Promise<void> {
   }
 }
 
+/**
+ * Ma cua mot he thong doc tu SO MA DINH DANH, theo ma noi bo.
+ *
+ * `du_lieu` cua su kien chi mang `ma_nv` (ma noi bo) — no khong mang ma ERP1, va cung khong
+ * nen: cac he thong song song, moi ben mot ma. Su kien sinh ra truoc khi he thong moi duoc khai
+ * ma thi phai tra cuu o day thay vi gui mot ma sai cho ben nhan.
+ */
+async function ma_theo_he_thong(ma_nv: string, he_thong: string): Promise<string | null> {
+  const ma = ma_nv.trim();
+  if (ma === '') return null;
+  const dong = await truy_van_mot<{ ma: string }>(
+    `select m.ma
+       from ma_dinh_danh m
+       join nhan_vien nv on nv.id = m.nhan_vien_id
+      where m.he_thong = $2 and m.hieu_luc_den is null
+        and upper(btrim(nv.ma_nv)) = upper($1)
+      limit 1`,
+    [ma, he_thong],
+  );
+  return dong?.ma ?? null;
+}
+
+/**
+ * Day mot su kien sang ERP CU.
+ *
+ * CHI GUI MA ERP CUA CHINH ERP CU. Ba he thong chay song song va moi ben goi mot nguoi bang mot
+ * ma khac nhau — gui kem ma noi bo hay `nhan_vien_id` (uuid cua he thong nay) la dua cho ERP cu
+ * mot khoa no khong co, va sau nay doi `ma_nv` la ERP cu tro sai nguoi.
+ *
+ * Thieu ma ERP thi NEM loi de dong nam lai cho: gui su kien ma ben nhan khong biet la cua ai
+ * con te hon la khong gui, vi no ghi du lieu sai ma khong ai thay.
+ */
 async function gui_sang_erp(d: DongOutbox): Promise<void> {
   if (cau_hinh.erp.webhook_url === '') {
     throw new Error('Chua khai ERP_WEBHOOK_URL — su kien nam lai cho');
   }
+
+  const trongDuLieu = typeof d.du_lieu['ma_erp'] === 'string'
+    ? (d.du_lieu['ma_erp'] as string).trim()
+    : '';
+  const ma_nv = typeof d.du_lieu['ma_nv'] === 'string' ? (d.du_lieu['ma_nv'] as string) : '';
+  const ma_erp = trongDuLieu !== '' ? trongDuLieu : await ma_theo_he_thong(ma_nv, 'erp_cu_ma');
+  if (ma_erp === null) {
+    throw new Error(`su kien ${d.id} chua co ma ERP cu (ma_nv: ${ma_nv === '' ? '?' : ma_nv})`);
+  }
+
+  // Bo ma noi bo va uuid noi bo: hop dong cua ERP cu chi co ma cua no.
+  const du_lieu: Record<string, unknown> = { ...d.du_lieu, ma_erp };
+  delete du_lieu['ma_nv'];
+  delete du_lieu['nhan_vien_id'];
+
   const than = JSON.stringify({
     id: d.id,
     loai_su_kien: d.loai_su_kien,
-    du_lieu: d.du_lieu,
+    du_lieu,
   });
 
   const header: Record<string, string> = { 'content-type': 'application/json' };
@@ -414,7 +461,7 @@ async function gui_sang_erp(d: DongOutbox): Promise<void> {
  * `su_kien_id` = `chamcong-<id dong outbox>` — ON DINH qua cac lan gui lai de ERP1 chong
  * trung bang `unique(su_kien_id)` (cung mau cong phan quyen dang dung).
  */
-export function dung_than_erp1(d: DongOutbox): string {
+export function dung_than_erp1(d: DongOutbox, ma_erp1: string | null = null): string {
   const chuoi = (k: string): string | null =>
     typeof d.du_lieu[k] === 'string' && d.du_lieu[k] !== '' ? d.du_lieu[k] as string : null;
   return JSON.stringify({
@@ -422,6 +469,7 @@ export function dung_than_erp1(d: DongOutbox): string {
     loai_su_kien: d.loai_su_kien,
     ma_nv: chuoi('ma_nv'),
     ma_erp: chuoi('ma_erp'),
+    ma_erp1,
     email: chuoi('email'),
     ngay_nghi_viec: chuoi('ngay_nghi_viec'),
     luc: chuoi('luc'),
@@ -435,7 +483,7 @@ export function dung_than_erp1(d: DongOutbox): string {
  * `chuc_danh` + `phong_ban` (ten) kem theo de ERP1 tu phan quyen theo vi tri thay vi cho
  * nguoi nhan su thiet lap tay.
  */
-export function dung_than_erp1_da_tao(d: DongOutbox): string {
+export function dung_than_erp1_da_tao(d: DongOutbox, ma_erp1: string | null = null): string {
   const chuoi = (k: string): string | null =>
     typeof d.du_lieu[k] === 'string' && d.du_lieu[k] !== '' ? d.du_lieu[k] as string : null;
   return JSON.stringify({
@@ -443,6 +491,7 @@ export function dung_than_erp1_da_tao(d: DongOutbox): string {
     loai_su_kien: d.loai_su_kien,
     ma_nv: chuoi('ma_nv'),
     ma_erp: chuoi('ma_erp'),
+    ma_erp1,
     email: chuoi('email'),
     ho_ten: chuoi('ho_ten'),
     so_dien_thoai: chuoi('so_dien_thoai'),
@@ -461,9 +510,12 @@ async function gui_sang_erp1(d: DongOutbox): Promise<void> {
   if (cau_hinh.erp1.webhook_url === '') {
     throw new Error('Chua khai ERP1_WEBHOOK_URL — su kien erp1 nam lai cho');
   }
+  // Ma ERP1 nam o so ma dinh danh, khong nam tren ho so — tra theo ma noi bo cua su kien.
+  const ma_nv = typeof d.du_lieu['ma_nv'] === 'string' ? (d.du_lieu['ma_nv'] as string) : '';
+  const ma_erp1 = await ma_theo_he_thong(ma_nv, 'erp1');
   const than = d.loai_su_kien === 'erp1.nhan_su.da_tao'
-    ? dung_than_erp1_da_tao(d)
-    : dung_than_erp1(d);
+    ? dung_than_erp1_da_tao(d, ma_erp1)
+    : dung_than_erp1(d, ma_erp1);
 
   const header: Record<string, string> = { 'content-type': 'application/json' };
   // Chu ky HMAC de ERP1 xac minh su kien that su den tu he thong cham cong.
