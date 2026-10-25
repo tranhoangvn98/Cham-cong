@@ -82,4 +82,8 @@ export const CHUOI_VI = {
   bs_huong_dan: 'Cách nộp: mở ứng dụng Chấm công → mục Cá nhân → Hồ sơ của tôi → tab Tài liệu, rồi bấm "Nộp tệp" ở dòng tài liệu còn thiếu (nhận PDF, JPG, PNG, DOCX, XLSX).',
   bs_da_huy_nguoi_nhan: 'Yêu cầu bổ sung hồ sơ của {ten} đã được hủy.',
   bs_da_du_nguoi_nhan: 'Hồ sơ của {ten} đã bổ sung đủ tài liệu bắt buộc — yêu cầu đã tự đóng.',
+
+  // ================================ dong bo email nhan su
+  ns_thieu_email_tieu_de: 'Nhân sự đang làm chưa có email',
+  ns_thieu_email_noi_dung: '{so} nhân sự đang làm việc chưa có email nên sẽ không nhận được thông báo, phiếu lương hay nhắc hồ sơ nào: {danh_sach}. Vào Hồ sơ nhân sự để bổ sung email.',
 } as const;

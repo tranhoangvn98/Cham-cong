@@ -2,6 +2,22 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.123.2] — 2026-10-25
+
+**Hàng ngày tự cập nhật danh sách email nhân sự — để thông báo, phiếu lương và nhắc hồ sơ
+không bị gửi thiếu người.**
+
+- Luồng mới chạy **một lần mỗi ngày** (`cap_nhat_email_nhan_su:<ngày>` trong lịch chạy): điền
+  `nhan_vien.email` còn trống từ **UPN Microsoft** (`nguoi_dung.email_microsoft`) — nguồn chắc
+  chắn — rồi từ tên đăng nhập khi nó đúng là một địa chỉ email. **Không đoán từ họ tên** và
+  **không ghi đè** địa chỉ đã có (câu UPDATE có điều kiện "email còn trống").
+- Người **vẫn không có email** được báo cho nhân sự/admin qua chuông, kèm danh sách mã — vì mọi
+  luồng gửi thư đều bỏ qua họ trong im lặng: họ không nhận được thông báo, phiếu lương hay
+  nhắc bổ sung hồ sơ nào.
+- Hiện production: 60 nhân sự đang làm, **9 người chưa có email và đều chưa có tài khoản
+  Microsoft** → luồng sẽ báo đúng 9 người này cho HR bổ sung. Test mới `dong_bo_email.test.ts`
+  (5 ca) khoá quy tắc chọn nguồn email.
+
 ## [1.123.1] — 2026-10-24
 
 **Nhân sự tự nộp tệp hồ sơ trong khu vực cá nhân + email nhắc có hướng dẫn.**

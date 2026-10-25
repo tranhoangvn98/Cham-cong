@@ -83,4 +83,8 @@ export const CHUOI_ZH = {
   bs_huong_dan: '提交方式：打开考勤应用 →「个人」→「我的档案」→「文件」，在缺失材料一栏点击「上传文件」（支持 PDF、JPG、PNG、DOCX、XLSX）。',
   bs_da_huy_nguoi_nhan: '{ten} 的档案补交通知已取消。',
   bs_da_du_nguoi_nhan: '{ten} 的必需档案材料已补齐，通知已自动关闭。',
+
+  // ================================ dong bo email nhan su
+  ns_thieu_email_tieu_de: '在职员工尚无邮箱',
+  ns_thieu_email_noi_dung: '共有 {so} 名在职员工尚未登记邮箱，将无法收到通知、工资单及档案提醒：{danh_sach}。请进入员工档案补充邮箱。',
 } as const satisfies Record<keyof typeof CHUOI_VI, string>;
