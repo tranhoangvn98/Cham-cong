@@ -89,6 +89,15 @@ export interface KetQuaQuetNghiViec {
  * mang khong duoc che mat cac tai khoan con lai.
  */
 export async function quet_nghi_viec_chua_khoa(): Promise<KetQuaQuetNghiViec> {
+  // CHI KIEM HE THONG DA NOI. Chua khai `ERP1_WEBHOOK_URL` thi he thong CHUA TUNG bao ERP1
+  // lan nao — coi do la loi se sinh mot canh bao dung-su-that nhung vo dung moi ngay cho moi
+  // nguoi da nghi, va cach chac chan nhat de nhan su bo qua canh bao that.
+  const kiem_erp1 = cau_hinh.erp1.webhook_url !== '';
+  const kiem_m365 = cau_hinh.ms365_nghi_viec.bat;
+  if (!kiem_erp1 && !kiem_m365) {
+    return { so_da_nghi: 0, so_loi: 0, so_khong_kiem_tra_duoc: 0, ds: [] };
+  }
+
   const ds = await truy_van<{
     ma_nv: string; ho_ten: string; ngay_nghi_viec: string | null;
     email: string | null; email_microsoft: string | null; erp1_da_bao: number;
@@ -111,17 +120,19 @@ export async function quet_nghi_viec_chua_khoa(): Promise<KetQuaQuetNghiViec> {
     const loi: LoiNghiViec[] = [];
 
     // ERP1: chua co su kien gui thanh cong nghia la chua ai bao ERP1 khoa tai khoan.
-    if (d.erp1_da_bao === 0) loi.push('erp1_chua_khoa');
+    if (kiem_erp1 && d.erp1_da_bao === 0) loi.push('erp1_chua_khoa');
 
     // M365: doc trang thai THAT tu Entra, khong suy tu su kien.
     const upn = (d.email_microsoft ?? d.email ?? '').trim();
     let khong_kiem_tra_duoc = false;
-    if (upn === '' || !upn.includes('@')) {
-      khong_kiem_tra_duoc = true;
-    } else {
-      const tt = await doc_entra(upn);
-      if (tt === null) khong_kiem_tra_duoc = true;
-      else loi.push(...loi_m365(tt));
+    if (kiem_m365) {
+      if (upn === '' || !upn.includes('@')) {
+        khong_kiem_tra_duoc = true;
+      } else {
+        const tt = await doc_entra(upn);
+        if (tt === null) khong_kiem_tra_duoc = true;
+        else loi.push(...loi_m365(tt));
+      }
     }
 
     if (loi.length === 0 && !khong_kiem_tra_duoc) continue;
