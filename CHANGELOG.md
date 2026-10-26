@@ -2,6 +2,22 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.137.3] — 2026-10-27
+
+**Lệnh cấp lại mã: bản chạy thử phải tính cả `--khoi-mac-dinh`.**
+
+Chạy thử trên dữ liệu thật cho thấy một cái bẫy: `--khoi-mac-dinh vp` **không có tác dụng ở chế độ
+chạy thử**, vì tham số ấy chỉ được dùng ở bước ghi. Người chạy thử thấy 11 người hiện "(chưa gán
+khối)", thêm `--that` là 11 người đó được gán khối Văn phòng và nhận mã — đúng thứ họ chưa hề nhìn
+thấy để duyệt. Nay bản chạy thử tính mã dự kiến **y như bước ghi**.
+
+- `danh_sach_ma_cu(khoi_mac_dinh)` nhận khối mặc định và điền khối đó vào bản xem trước; khối
+  không có trong danh mục thì **báo lỗi ngay** thay vì lặng lẽ bỏ qua từng người.
+- `--giup` / `--help` in cách dùng rồi thoát. Trước đó gõ `--that --help` sẽ **ghi thật** vì cờ
+  lạ bị bỏ qua.
+- Test e2e mới khóa cả ba điều: chạy thử ra đúng mã sẽ cấp, chạy thử **không** ghi khối vào hồ sơ,
+  và khối mặc định sai thì báo lỗi.
+
 ## [1.137.2] — 2026-10-27
 
 **Biểu tượng gợi ý: đổi từ nút chữ `?` sang biểu tượng ⓘ vẽ SVG, đặt ngay sau nhãn của ô.**

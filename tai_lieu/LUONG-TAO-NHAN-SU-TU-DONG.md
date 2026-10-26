@@ -261,6 +261,10 @@ docker compose exec -T may_chu node dist/dinh_danh/chay_cap_lai_ma.js           
 docker compose exec -T may_chu node dist/dinh_danh/chay_cap_lai_ma.js --that     # ghi thật
 ```
 
+Chạy thử **tính cả `--khoi-mac-dinh`**: người chưa gán khối hiện đúng mã sẽ được cấp, nên thứ tự
+đúng là chạy thử với đủ tham số, đọc danh sách, rồi mới thêm `--that`. Chạy thử **không** ghi khối
+vào hồ sơ — chỉ bước `--that` mới gán.
+
 Chỉ đụng tới người **còn mã kiểu cũ**. Người đã có mã đúng khuôn không bị sửa, nên **chạy lại
 bao nhiêu lần cũng an toàn** — đó cũng là cách chắc chắn không ai bị đổi mã hai lần.
 

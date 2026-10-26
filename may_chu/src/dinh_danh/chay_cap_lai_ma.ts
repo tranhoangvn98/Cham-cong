@@ -25,12 +25,29 @@ function tham_so(ten: string): string | null {
   return v === undefined || v.startsWith('--') ? null : v;
 }
 
+const HUONG_DAN = `
+Cấp lại mã nhân sự theo khuôn NV + mã ngắn khối + MMYY + số thứ tự.
+
+  node dist/dinh_danh/chay_cap_lai_ma.js                       chạy thử, không ghi gì
+  node dist/dinh_danh/chay_cap_lai_ma.js --that                ghi thật
+  node dist/dinh_danh/chay_cap_lai_ma.js --khoi-mac-dinh vp    người chưa gán khối: gán khối này
+  node dist/dinh_danh/chay_cap_lai_ma.js --ly-do "..."         lý do, ghi vào lịch sử mã
+
+Chạy trên VPS: docker compose exec -T may_chu node dist/dinh_danh/chay_cap_lai_ma.js [...]
+`;
+
 async function main(): Promise<void> {
+  if (process.argv.some((a) => a === '--giup' || a === '--help' || a === '-h')) {
+    console.log(HUONG_DAN);
+    await dong_pool();
+    return;
+  }
+
   const that = process.argv.includes('--that');
   const khoi_mac_dinh = tham_so('--khoi-mac-dinh');
   const ly_do = tham_so('--ly-do');
 
-  const ds = await danh_sach_ma_cu();
+  const ds = await danh_sach_ma_cu(khoi_mac_dinh);
   if (ds.length === 0) {
     console.log('Mọi nhân sự đã dùng mã theo khuôn mới — không có gì để cấp lại.');
     await dong_pool();
@@ -38,6 +55,9 @@ async function main(): Promise<void> {
   }
 
   console.log(`\n${String(ds.length)} nhân sự còn dùng mã cũ:\n`);
+  if (khoi_mac_dinh !== null) {
+    console.log(`  (áp dụng khối mặc định "${khoi_mac_dinh}" cho người chưa gán khối)\n`);
+  }
   let so_chua_khoi = 0;
   for (const d of ds) {
     const trang_thai = d.dang_hoat_dong ? '' : '  (đã nghỉ)';
@@ -47,10 +67,16 @@ async function main(): Promise<void> {
   }
 
   if (so_chua_khoi > 0) {
-    console.log(`\n⚠ ${String(so_chua_khoi)} người chưa gán khối nên KHÔNG sinh được mã `
-      + '(mã ghép từ mã ngắn của khối).');
-    console.log('  Gán khối cho họ ở hồ sơ, hoặc chạy lại với --khoi-mac-dinh <ma khoi> '
-      + 'nếu tất cả những người đó thật sự thuộc cùng một khối.');
+    if (khoi_mac_dinh === null) {
+      console.log(`\n⚠ ${String(so_chua_khoi)} người chưa gán khối nên KHÔNG sinh được mã `
+        + '(mã ghép từ mã ngắn của khối).');
+      console.log('  Gán khối cho họ ở hồ sơ, hoặc chạy lại với --khoi-mac-dinh <ma khoi> '
+        + 'nếu tất cả những người đó thật sự thuộc cùng một khối.');
+    } else {
+      console.log(`\n⚠ ${String(so_chua_khoi)} người vẫn không sinh được mã: khối mặc định `
+        + `"${khoi_mac_dinh}" chưa khai mã ngắn.`);
+      console.log('  Khai mã ngắn cho khối ở danh mục khối rồi chạy lại.');
+    }
   }
 
   if (!that) {

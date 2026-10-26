@@ -589,6 +589,29 @@ test('cap lai ma khi chua gan khoi: bao loi ro rang (khong doan khoi)', async ()
     'phai bao loi ve khoi, khong tu doan');
 });
 
+test('xem truoc: khoi mac dinh duoc tinh ngay trong ban chay thu', async () => {
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien(ma_nv, ho_ten, ngay_vao, dang_hoat_dong)
+     values ('HR-03', 'Người Xem Trước', '2026-05-20', true) returning id`);
+  // Khong truyen khoi mac dinh: ban xem truoc phai noi that la chua sinh duoc ma.
+  const khong_mac_dinh = (await danh_sach_ma_cu()).find((d) => d.id === nv!.id);
+  assert.equal(khong_mac_dinh?.ma_du_kien, '');
+  // Truyen khoi mac dinh: phai ra DUNG ma se cap. Truoc day ban chay thu bo qua tham so nay nen
+  // nguoi chay thu thay "chua gan khoi", them --that, roi moi nguoi do bi cap ma khac y.
+  const co_mac_dinh = (await danh_sach_ma_cu(khoi_vp)).find((d) => d.id === nv!.id);
+  assert.equal(co_mac_dinh?.ma_du_kien, 'NVVP0526####');
+  assert.equal(co_mac_dinh?.khoi_ten !== null, true, 'phai hien ten khoi mac dinh');
+  // Xem truoc KHONG duoc ghi khoi vao ho so — chi buoc --that moi gan.
+  const trong_csdl = await truy_van_mot<{ khoi_id: string | null }>(
+    'select khoi_id from nhan_vien where id = $1', [nv!.id]);
+  assert.equal(trong_csdl?.khoi_id, null, 'xem truoc khong duoc ghi khoi vao ho so');
+
+  // Khoi mac dinh khong co trong danh muc: bao loi ngay, khong lang le bo qua tung nguoi.
+  await assert.rejects(
+    () => danh_sach_ma_cu('khong_co_khoi_nay'),
+    (loi: Error) => /khối/.test(loi.message));
+});
+
 test('hang loat: chon khoi mac dinh thi nguoi chua gan khoi cung duoc cap ma', async () => {
   const nv = await truy_van_mot<{ id: string }>(
     `insert into nhan_vien(ma_nv, ho_ten, dang_hoat_dong)

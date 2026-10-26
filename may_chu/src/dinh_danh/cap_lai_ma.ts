@@ -80,8 +80,26 @@ export interface DongMaCu {
  *
  * CHI DOC: khong cap ma nao o day. Cap ma la thao tac doi danh tinh (doi ten thu muc, lech ma
  * ben cong) nen phai do nguoi that bam, tung nguoi mot.
+ *
+ * `khoi_mac_dinh` (id hoac ma khoi) duoc tinh NGAY TRONG ban xem truoc: nguoi chay thu phai
+ * thay dung ma se duoc cap, ke ca phan ma khoi mac dinh quyet dinh. Tinh o buoc ghi thi ban xem
+ * truoc noi mot dang, buoc ghi lam mot neo.
  */
-export async function danh_sach_ma_cu(): Promise<DongMaCu[]> {
+export async function danh_sach_ma_cu(khoi_mac_dinh: string | null = null): Promise<DongMaCu[]> {
+  let khoi_mac_dinh_id: string | null = null;
+  let khoi_mac_dinh_ten: string | null = null;
+  let khoi_mac_dinh_ma_ngan: string | null = null;
+  if (khoi_mac_dinh !== null && khoi_mac_dinh.trim() !== '') {
+    const k = (await truy_van<{ id: string; ten: string; ma_ngan: string | null }>(
+      'select id, ten, ma_ngan from khoi where id::text = $1 or ma = $1',
+      [khoi_mac_dinh.trim()],
+    ))[0];
+    if (k === undefined) throw new LoiDauVao('Không thấy khối mặc định này trong danh mục.');
+    khoi_mac_dinh_id = k.id;
+    khoi_mac_dinh_ten = k.ten;
+    khoi_mac_dinh_ma_ngan = k.ma_ngan;
+  }
+
   const dong = await truy_van<{
     id: string; ma_nv: string; ho_ten: string; dang_hoat_dong: boolean;
     khoi_id: string | null; khoi_ten: string | null; ma_ngan: string | null;
@@ -95,6 +113,13 @@ export async function danh_sach_ma_cu(): Promise<DongMaCu[]> {
       where upper(trim(nv.ma_nv)) !~ '^NV[A-Z]+[0-9]{4}[0-9]{4,}$'
       order by nv.dang_hoat_dong desc, nv.ho_ten`,
   );
+  for (const d of dong) {
+    if (d.khoi_id === null && khoi_mac_dinh_id !== null) {
+      d.khoi_id = khoi_mac_dinh_id;
+      d.khoi_ten = khoi_mac_dinh_ten;
+      d.ma_ngan = khoi_mac_dinh_ma_ngan;
+    }
+  }
   return dong.map((d) => {
     const ngay = ngay_de_sinh_ma(d.ngay_vao, d.tao_luc);
     return {
@@ -259,7 +284,7 @@ export async function cap_lai_ma_hang_loat(
   khoi_mac_dinh: string | null = null,
   ly_do: string | null = null,
 ): Promise<KetQuaCapLaiHangLoat> {
-  const ds = await danh_sach_ma_cu();
+  const ds = await danh_sach_ma_cu(khoi_mac_dinh);
   const kq: KetQuaCapLaiHangLoat = { da_cap: [], bo_qua: [], loi: [] };
 
   for (const d of ds) {
