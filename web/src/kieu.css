@@ -1114,26 +1114,139 @@ input[type="checkbox"] {
 .o-chon-vai-tro > span { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 
 /* ---------------------------------------------------------------- dau trang ho so */
-.the-ho-so {
+/* Kieu DASHBOARD: the dinh danh (anh + ten + the phu + nhom thao tac) roi dai chi so
+   sat day the. Moi khoang cach lay tu thang token, khong dat so le de cac nut khong dinh
+   nhau khi ten dai hoac man hep. */
+.hs-hero {
   background: var(--nen-the);
   border: 1px solid var(--vien);
-  border-radius: var(--tron);
+  border-radius: var(--tron-lon);
   box-shadow: var(--bong);
-  padding: 18px 20px 0;
-  margin-bottom: 16px;
+  padding: var(--khoang-lon) var(--khoang-lon) 0;
+  margin-bottom: var(--khoang-lon);
   overflow: hidden;
 }
-.ho-so-danh-tinh {
+.hs-dinh-danh {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--khoang-lon);
+  flex-wrap: wrap;
+  padding-bottom: var(--khoang-lon);
+}
+.hs-dinh-danh > .anh-dai-dien-lon { flex: none; }
+/* min-width: 0 de ten dai khong day nhom nut sang phai ra khoi the. */
+.hs-ten { flex: 1 1 240px; min-width: 0; }
+.hs-ten-dong { display: flex; align-items: center; gap: var(--khoang-nho); flex-wrap: wrap; }
+.hs-ten h1 { margin: 0; font-size: 22px; line-height: 1.25; }
+.hs-phu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: var(--khoang-rat-nho);
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--chu-mo);
+}
+/* Dau cham ngan cach cac thuoc tinh — truoc moi muc SAU muc dau tien. */
+.hs-phu > span + span::before {
+  content: '·';
+  margin-right: 6px;
+  color: var(--vien-dam);
+}
+.hs-ma {
+  border: 1px solid var(--vien);
+  background: var(--nen-mo);
+  border-radius: var(--tron-nho);
+  padding: 1px 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chu-nhat);
+  font-variant-numeric: tabular-nums;
+}
+/* Nhom thao tac: khoang cach 12px de hai nut ke nhau khong dinh vao nhau; tu xuong dong
+   khi man hep thay vi ep chu trong mot hang. */
+.hs-hanh-dong {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--khoang-vua);
   flex-wrap: wrap;
-  padding-bottom: 18px;
+  margin-left: auto;
 }
-/* min-width: 0 de ten dai khong day nut sang phai ra khoi the. */
-.ho-so-danh-tinh > .ten { flex: 1; min-width: 180px; }
-.ho-so-danh-tinh h1 { margin: 0 0 3px; }
-.ho-so-hanh-dong { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+/* Nut nguy hiem dang VIEN: dung canh nut nguy hiem dang DAC se lam mat phan cap — hai nut
+   do dam nhu nhau thi mat nhin khong biet nut nao la chinh. */
+.nut-vien-nguy {
+  background: transparent;
+  border-color: var(--xau);
+  color: var(--xau);
+}
+.nut-vien-nguy:hover:not(:disabled) { background: var(--xau-nen); }
+
+/* Dai chi so nam sat day the.
+   Duong ke ve bang box-shadow tren tung o (mot vach trai + mot vach tren) chu KHONG bang
+   thu "gap: 1px + nen mau vien": cach do lam o luoi con trong o dong cuoi hien ra thanh mot
+   khoi xam khi so o khong chia het cho so cot. box-shadow chi ve quanh o co that. */
+.hs-chi-so {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  align-items: stretch;
+  margin: 0 calc(-1 * var(--khoang-lon));
+  border-top: 1px solid var(--vien);
+}
+.hs-chi-so > div {
+  padding: var(--khoang-vua) var(--khoang-lon) var(--khoang-lon);
+  box-shadow: -1px 0 0 var(--vien), 0 -1px 0 var(--vien);
+}
+.hs-chi-so .o-so-gia-tri { font-size: 20px; margin-top: 2px; }
+/* Phu de cho phep xuong dong: cau nhu "con thieu 6 tai lieu bat buoc" dai hon o 170px. */
+.hs-chi-so .o-so-phu { font-size: 12px; line-height: 1.35; }
+@media (max-width: 520px) {
+  .hs-chi-so { grid-template-columns: 1fr; }
+  .hs-hanh-dong { margin-left: 0; }
+}
+
+/* Thanh tab dang VIEN THUOC rieng cua trang ho so. Khong sua `.thanh-tab` vi bang luong,
+   KPI va vi pham cung dung lop do — sua o day la sua ca ba trang kia. */
+.hs-thanh-tab {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--khoang-nho);
+  padding: 6px;
+  background: var(--nen-the);
+  border: 1px solid var(--vien);
+  border-radius: var(--tron-lon);
+  box-shadow: var(--bong);
+  margin-bottom: var(--khoang-lon);
+}
+.hs-tab {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--tron-nho);
+  padding: 6px 12px;
+  font-size: 13.5px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--chu-nhat);
+  white-space: nowrap;
+}
+.hs-tab:hover:not(:disabled) { background: var(--nen-mo); color: var(--chu); }
+.hs-tab-dang-mo,
+.hs-tab-dang-mo:hover:not(:disabled) {
+  background: var(--chinh-nhat);
+  border-color: var(--chinh-dam);
+  color: var(--chinh-dam);
+}
+.hs-tab-so {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--tron-tron);
+  background: var(--nen-mo);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--chu-nhat);
+}
+.hs-tab-dang-mo .hs-tab-so { background: var(--chinh-dam); color: var(--tren-chinh); }
+.hs-tab:focus-visible { outline: 2px solid var(--chinh); outline-offset: 1px; }
 
 .anh-dai-dien-lon {
   width: 60px;

@@ -1144,6 +1144,13 @@ export const CHUOI_ZH = {
 
   // ================================ ho so nhan su
   hs_nghi_khong_ban_giao: '离职未交接',
+  hs_dang_lam: '在职',
+  hs_da_nghi: '已离职',
+  hs_ca: '班次',
+  hs_ve_danh_sach: '员工名册',
+  hs_qd_nghi_viec: '办理离职',
+  hs_thong_tin_ca_nhan: '个人资料',
+  hs_sua_thong_tin: '编辑资料',
   hs_nkbg_tieu_de: '离职未交接',
   hs_nkbg_mo_ta: '将 {ten} 标记为已离职（未按离职流程办理交接）。系统仍会保留一条已关闭的离职流程用于报表，所有项目均附原因跳过。考勤记录及全部档案保留；登录账号将立即停用。',
   hs_nkbg_ngay_nghi: '离职日期',

@@ -224,39 +224,43 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
 
   return (
     <>
-      <div className="the-ho-so">
-        <div className="ho-so-danh-tinh">
+      <section className="hs-hero">
+        <div className="hs-dinh-danh">
           <AnhDaiDien ho_ten={nv.ho_ten} khoa={nv.ma_nv} />
-          <div className="ten">
-            <h1>{nv.ho_ten}</h1>
-            <p className="mo-ta">
-              {nv.ma_nv}
-              {co(nv['chuc_danh']) !== '—' && <> · {String(nv['chuc_danh'])}</>}
-              {co(nv['phong_ban']) !== '—' && <> · {String(nv['phong_ban'])}</>}
-              {co(nv['ca_lam']) !== '—' && <> · ca {String(nv['ca_lam'])}</>}
-              {nv['dang_hoat_dong'] === false && <> · <span className="nhan nhan-xau">đã nghỉ việc</span></>}
+          <div className="hs-ten">
+            <div className="hs-ten-dong">
+              <h1>{nv.ho_ten}</h1>
+              <span className={nv['dang_hoat_dong'] === false ? 'nhan nhan-mo' : 'nhan nhan-tot'}>
+                {nv['dang_hoat_dong'] === false ? tra('hs_da_nghi') : tra('hs_dang_lam')}
+              </span>
+            </div>
+            <p className="hs-phu">
+              <span className="hs-ma">{nv.ma_nv}</span>
+              {co(nv['chuc_danh']) !== '—' && <span>{String(nv['chuc_danh'])}</span>}
+              {co(nv['phong_ban']) !== '—' && <span>{String(nv['phong_ban'])}</span>}
+              {co(nv['ca_lam']) !== '—' && <span>{tra('hs_ca')} {String(nv['ca_lam'])}</span>}
             </p>
           </div>
-          <div className="ho-so-hanh-dong">
+          <div className="hs-hanh-dong">
+            <LienKet den="/nhan-vien" lop="nut nut-phang">← {tra('hs_ve_danh_sach')}</LienKet>
+            {la_nhan_su() && nv['dang_hoat_dong'] !== false && (
+              <button type="button" className="nut-vien-nguy" onClick={() => dat_hoi_nghi_kbg(true)}>
+                {tra('hs_nghi_khong_ban_giao')}
+              </button>
+            )}
             {la_nhan_su() && nv['dang_hoat_dong'] !== false && (
               <button type="button" className="nut-nguy"
                 onClick={() => {
                   dat_qd_nghi_viec({ nhan_vien_id: nv.id });
                   di_toi('/van-ban/ban-hanh');
                 }}>
-                Quyết định nghỉ việc
+                {tra('hs_qd_nghi_viec')}
               </button>
             )}
-            {la_nhan_su() && nv['dang_hoat_dong'] !== false && (
-              <button type="button" className="nut-nguy" onClick={() => dat_hoi_nghi_kbg(true)}>
-                {tra('hs_nghi_khong_ban_giao')}
-              </button>
-            )}
-            <LienKet den="/nhan-vien" lop="nut">← Danh sách nhân viên</LienKet>
           </div>
         </div>
 
-        <div className="ho-so-chi-so">
+        <div className="hs-chi-so">
           <ODoc nhan="PIN máy" gia_tri={co(nv['pin_may'])}
             phu={co(nv['pin_may']) === '—' ? 'chưa gán PIN' : 'trùng số ID trên máy'} />
           <ODoc nhan="Ngày vào" gia_tri={nv['ngay_vao'] === null ? '—' : ngay_viet(String(nv['ngay_vao']))}
@@ -293,7 +297,7 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
               : `phụ cấp ${tien(d.luong_hien_tai['phu_cap'])}`}
           />
         </div>
-      </div>
+      </section>
 
       {xem_duoc.length < THU_TU.length && (
         <div className="goi-y" style={{ marginBottom: 10 }}>
@@ -302,16 +306,16 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
         </div>
       )}
 
-      <div className="thanh-tab">
+      <div className="hs-thanh-tab">
         {xem_duoc.map((n) => (
           <button
             key={n}
             type="button"
-            className={n === dang_mo ? 'tab tab-dang-mo' : 'tab'}
+            className={n === dang_mo ? 'hs-tab hs-tab-dang-mo' : 'hs-tab'}
             onClick={() => dat_nhom(n)}
           >
             {TEN_TAB[n] ?? TEN_NHOM[n]}
-            {(d.dem[n] ?? 0) > 0 && <span className="tab-so">{d.dem[n]}</span>}
+            {(d.dem[n] ?? 0) > 0 && <span className="hs-tab-so">{d.dem[n]}</span>}
           </button>
         ))}
       </div>
@@ -1474,6 +1478,7 @@ function PanelThongTin(
   const duong = `/api/nhan-vien/${nhan_vien_id}/thong-tin`;
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<KetQuaThongTin>(duong, [nhan_vien_id]);
   const [dang_sua, dat_dang_sua] = useState(false);
+  const { tra } = dung_chuoi();
 
   if (dang_tai) return <DangTai />;
   const h = du_lieu?.ho_so ?? null;
@@ -1489,11 +1494,14 @@ function PanelThongTin(
         </div>
       )}
 
-      {du_lieu?.sua_duoc === true && h !== null && (
-        <div className="hang-nut">
-          <button type="button" className="nut-chinh" onClick={() => dat_dang_sua(true)}>
-            Sửa thông tin
-          </button>
+      {h !== null && (
+        <div className="dau-khoi">
+          <h2>{tra('hs_thong_tin_ca_nhan')}</h2>
+          {du_lieu?.sua_duoc === true && (
+            <button type="button" className="nut-chinh" onClick={() => dat_dang_sua(true)}>
+              {tra('hs_sua_thong_tin')}
+            </button>
+          )}
         </div>
       )}
 

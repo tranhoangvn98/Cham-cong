@@ -1143,6 +1143,13 @@ export const CHUOI_VI = {
 
   // ================================ ho so nhan su
   hs_nghi_khong_ban_giao: 'Nghỉ việc không bàn giao',
+  hs_dang_lam: 'Đang làm việc',
+  hs_da_nghi: 'Đã nghỉ việc',
+  hs_ca: 'ca',
+  hs_ve_danh_sach: 'Danh sách nhân viên',
+  hs_qd_nghi_viec: 'Quyết định nghỉ việc',
+  hs_thong_tin_ca_nhan: 'Thông tin cá nhân',
+  hs_sua_thong_tin: 'Sửa thông tin',
   hs_nkbg_tieu_de: 'Nghỉ việc không bàn giao',
   hs_nkbg_mo_ta: 'Đánh dấu {ten} đã nghỉ việc mà không theo quy trình nghỉ việc (không làm bàn giao). Hệ thống vẫn ghi lại một quy trình thôi việc ĐÃ ĐÓNG để báo cáo, mọi mục được bỏ qua kèm lý do. Lịch sử chấm công và toàn bộ hồ sơ được giữ lại; tài khoản đăng nhập bị vô hiệu hóa ngay.',
   hs_nkbg_ngay_nghi: 'Ngày nghỉ việc',

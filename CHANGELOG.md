@@ -2,6 +2,26 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.133.1] — 2026-10-26
+
+**Hồ sơ nhân sự: thiết kế lại phần đầu trang theo kiểu dashboard, sửa các nút bị dính nhau.**
+
+- Thẻ định danh mới: ảnh đại diện + tên + **nhãn trạng thái** (Đang làm việc / Đã nghỉ việc),
+  mã nhân viên dạng chip, rồi chức danh · phòng ban · ca trên một dòng phụ có dấu phân cách.
+- Nhóm thao tác tách khỏi tên: cách nhau 12px (lấy từ thang khoảng cách của token), tự xuống
+  dòng khi màn hẹp. **Hai nút nghỉ việc không còn cùng là nút đỏ đặc**: “Nghỉ việc không bàn
+  giao” chuyển sang kiểu viền, chỉ “Quyết định nghỉ việc” giữ nền đặc — nhìn là biết nút nào
+  là hành động chính.
+- Dải 5 chỉ số (PIN, ngày vào, hợp đồng, hồ sơ tài liệu, lương) dùng thang khoảng cách token và
+  cho phụ đề xuống dòng, không bị cắt chữ như trước.
+- Thanh tab 11 mục chuyển sang **dạng viên thuốc** trên nền thẻ; tab đang mở có nền và viền màu
+  chính nên dễ nhận ra hơn kiểu gạch chân cũ. Chỉ áp dụng cho trang hồ sơ — thanh tab của Bảng
+  lương, KPI, Vi phạm giữ nguyên.
+- Nút “Sửa thông tin” từ chỗ đứng lẻ loi dưới thanh tab chuyển lên **thanh tiêu đề mục** “Thông
+  tin cá nhân” ở bên phải, đúng cặp tiêu đề – hành động.
+- Chuỗi mới có đủ bản Việt + Trung: `hs_dang_lam`, `hs_da_nghi`, `hs_ca`, `hs_ve_danh_sach`,
+  `hs_qd_nghi_viec`, `hs_thong_tin_ca_nhan`, `hs_sua_thong_tin`.
+
 ## [1.133.0] — 2026-10-26
 
 **Form thêm nhân viên: chọn loại + kì hạn hợp đồng, hệ thống tạo hợp đồng lao động ngay.**
