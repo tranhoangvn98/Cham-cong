@@ -49,7 +49,7 @@ const truoc = {
       where bc.trang_thai = 'vang' and bc.da_chot = true and ${MIEN}`),
   vang_tuong_lai: await dem(
     `select count(*)::int as so from bang_cong_ngay
-      where ngay > date '${NGAY}' and da_chot = false`),
+      where ngay >= date '${NGAY}' and trang_thai = 'vang' and da_chot = false`),
   vang_sau_nghi_viec: await dem(
     `select count(*)::int as so
        from bang_cong_ngay bc join nhan_vien nv on nv.id = bc.nhan_vien_id
@@ -89,7 +89,8 @@ await thuc_thi(
      left join khoi k on k.id = nv.khoi_id
     where bc.nhan_vien_id = nv.id and bc.trang_thai = 'vang' and ${MIEN}`);
 await thuc_thi(
-  `delete from bang_cong_ngay where ngay > date '${NGAY}' and da_chot = false`);
+  `delete from bang_cong_ngay
+    where ngay >= date '${NGAY}' and trang_thai = 'vang' and da_chot = false`);
 await thuc_thi(
   `delete from bang_cong_ngay bc
     using nhan_vien nv
