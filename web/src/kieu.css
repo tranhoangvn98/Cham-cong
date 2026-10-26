@@ -3059,6 +3059,17 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   padding-top: 14px;
   border-top: 1px solid var(--vien);
 }
+/* Tieu de the + o loc "Hien ca ma da dong" cung mot hang. */
+.mdh-dau-the {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.mdh-dau-the h3 { margin: 0; }
+.mdh-loc { margin: 0; }
 .mdh-nhom-ten {
   margin: 0 0 8px;
   font-size: 12px;
@@ -3068,7 +3079,12 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   color: var(--chu-mo);
 }
 .mdh-hst + .mdh-hst { margin-top: 14px; }
-.mdh-hst-dau { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mdh-hst-dau {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .mdh-hst-ten { font-size: 13.5px; font-weight: 600; }
 .mdh-ds { margin-top: 4px; }
 .mdh-dong {
@@ -3089,7 +3105,13 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 }
 .mdh-trong { font-size: 12.5px; color: var(--chu-mo); padding: 4px 0; }
 .mdh-nut { flex: none; }
-.mdh-hd { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+/* Nut thao tac cua he thong: day het sang PHAI hang tieu de. */
+.mdh-hd {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
 
 /* ============================================================================
    ĐIỆN THOẠI — bỏ thanh cuộn và hiển thị VỪA KHUNG

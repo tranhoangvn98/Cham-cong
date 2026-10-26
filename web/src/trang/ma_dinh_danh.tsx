@@ -30,15 +30,6 @@ export interface NhomMa {
   cac_ma: DongMa[];
 }
 
-const TEN_NGUON: Record<string, string> = {
-  di_tru: 'chuyển từ cột cũ',
-  nguoi_khai: 'nhân sự khai',
-  dong_bo_erp: 'đồng bộ ERP',
-  dang_nhap_microsoft: 'đăng nhập Microsoft',
-  gop_ho_so: 'gộp hồ sơ',
-  nhap_csv: 'nhập CSV',
-};
-
 /** Bang ma dinh danh cua mot nguoi. Dat trong tab Thong tin chung cua ho so. */
 export function TheMaDinhDanh(
   { nhan_vien_id, sua_duoc }: { nhan_vien_id: string; sua_duoc: boolean },
@@ -68,16 +59,9 @@ export function TheMaDinhDanh(
 
   return (
     <div className="the">
-      <h3>Mã ở các hệ thống</h3>
-      <p className="mo-ta">
-        Một người đi qua nhiều hệ thống và mỗi hệ thống gọi họ bằng một mã khác. Một mã{' '}
-        <strong>đang hiệu lực</strong> chỉ thuộc một người — cơ sở dữ liệu bảo đảm điều đó.
-      </p>
-
-      <HopTotHoacLoi hd={hd} />
-
-      <div className="hang-nut">
-        <label className="o-nhap-ngang">
+      <div className="mdh-dau-the">
+        <h3>Mã ở các hệ thống</h3>
+        <label className="o-nhap-ngang mdh-loc">
           <input
             type="checkbox"
             checked={ca_lich_su}
@@ -86,6 +70,8 @@ export function TheMaDinhDanh(
           Hiện cả mã đã đóng
         </label>
       </div>
+
+      <HopTotHoacLoi hd={hd} />
 
       {cac_nhom.map((nh) => (
         <div key={nh} className="mdh-nhom-cot">
@@ -96,6 +82,29 @@ export function TheMaDinhDanh(
                 <span className="mdh-hst-ten">{n.ten_he_thong}</span>
                 {n.on_dinh && (
                   <span className="nhan" title="Mã không đổi, tin được để khớp người">ổn định</span>
+                )}
+                {/* Nút thao tác của hệ thống dồn hết sang PHẢI hàng tiêu đề — không còn
+                    một hàng nút riêng bên dưới. */}
+                {sua_duoc && (
+                  <div className="mdh-hd">
+                    {n.he_thong === 'may_cham_cong' && (
+                      <button type="button" className="nut-nho nut-chinh"
+                        onClick={() => dat_dang_cap_pin(true)}
+                        title="Hệ thống chọn một PIN còn trống trong dải của máy">
+                        Cấp PIN
+                      </button>
+                    )}
+                    {(n.nhieu_ma || n.cac_ma.every((m) => m.hieu_luc_den !== null)) && (
+                      <button type="button" className="nut-nho" onClick={() => dat_dang_them(n.he_thong)}>
+                        + Thêm
+                      </button>
+                    )}
+                    {!n.nhieu_ma && n.cac_ma.some((m) => m.hieu_luc_den === null) && (
+                      <button type="button" className="nut-nho" onClick={() => dat_dang_them(n.he_thong)}>
+                        Đổi
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -112,12 +121,7 @@ export function TheMaDinhDanh(
                             ? <span className="nhan-tot">đang dùng</span>
                             : <span className="nhan">đã đóng {ngay_gio(m.hieu_luc_den)}</span>}
                         </div>
-                        {/* Nguồn + ghi chú gộp MỘT dòng phụ nhỏ: trước đây chúng nằm rời
-                            từng mảnh cạnh badge nên dòng mã trông như chữ vụn. */}
-                        <div className="mdh-phu">
-                          {TEN_NGUON[m.nguon] ?? m.nguon}
-                          {m.ghi_chu !== null ? ` · ${m.ghi_chu}` : ''}
-                        </div>
+                        {m.ghi_chu !== null && <div className="mdh-phu">{m.ghi_chu}</div>}
                       </div>
                       {sua_duoc && m.hieu_luc_den === null && (
                         <button
@@ -126,35 +130,11 @@ export function TheMaDinhDanh(
                           disabled={hd.dang_chay}
                           onClick={thu_hoi(m)}
                         >
-                          Đóng mã
+                          Đóng
                         </button>
                       )}
                     </div>
                   ))}
-                </div>
-              )}
-
-              {/* Nút thao tác của CẢ hệ thống gom về một hàng cuối khối — không rải mỗi
-                  hành động một ô như bảng 3 cột trước đây. */}
-              {sua_duoc && (
-                <div className="mdh-hd">
-                  {n.he_thong === 'may_cham_cong' && (
-                    <button type="button" className="nut-nho nut-chinh"
-                      onClick={() => dat_dang_cap_pin(true)}
-                      title="Hệ thống chọn một PIN còn trống trong dải của máy">
-                      Cấp PIN
-                    </button>
-                  )}
-                  {(n.nhieu_ma || n.cac_ma.every((m) => m.hieu_luc_den !== null)) && (
-                    <button type="button" className="nut-nho" onClick={() => dat_dang_them(n.he_thong)}>
-                      + Thêm mã
-                    </button>
-                  )}
-                  {!n.nhieu_ma && n.cac_ma.some((m) => m.hieu_luc_den === null) && (
-                    <button type="button" className="nut-nho" onClick={() => dat_dang_them(n.he_thong)}>
-                      Đổi mã
-                    </button>
-                  )}
                 </div>
               )}
             </div>
