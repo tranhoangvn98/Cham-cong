@@ -1094,3 +1094,78 @@ function FormNoiLamViec(
     </HopThoai>
   );
 }
+
+// ============================================================ KHOI & MIEN CHAM CONG
+interface Khoi {
+  id: string;
+  ma: string;
+  ma_ngan: string | null;
+  ten: string;
+  ghi_chu: string | null;
+  dang_bat: boolean;
+  mien_cham_cong: boolean;
+}
+
+/**
+ * Bat/tat mien cham cong cho CA KHOI.
+ *
+ * Khoi VP Lang Son khong co may quet: bat mot lan o day thi nguoi vao sau tu dong duoc mien,
+ * thay vi bat nhan su nho tick o tung ho so. Doi co se tinh lai bang cong thang nay cua nguoi
+ * trong khoi — ngay vang bien mat hoac hien lai ngay.
+ */
+export function TrangKhoi(): ReactNode {
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<Khoi[]>('/api/khoi');
+  const hd = dung_hanh_dong();
+
+  const doi = async (k: Khoi, bat: boolean): Promise<void> => {
+    const ok = await hd.chay(
+      () => goi(`/api/khoi/${k.id}`, { method: 'PATCH', body: { mien_cham_cong: bat } }),
+      bat
+        ? `Đã miễn chấm công cho khối ${k.ten}. Ngày vắng của người trong khối được bỏ khỏi bảng công tháng này.`
+        : `Đã bỏ miễn chấm công cho khối ${k.ten}. Bảng công tháng này được tính lại.`,
+    );
+    if (ok) nap_lai();
+  };
+
+  return (
+    <>
+      <p className="mo-ta">
+        Người thuộc khối bật <strong>miễn chấm công</strong> không cần quẹt máy và
+        <strong> không bị tính vắng</strong>. Ngày lễ, nghỉ phép vẫn tính bình thường.
+      </p>
+      <HopLoi loi={hd.loi} />
+      <HopTot chu={hd.tot} />
+      <HopLoi loi={loi} />
+
+      <div className="the the-mong">
+        {dang_tai ? <DangTai /> : (
+          <div className="vo-bang">
+            <table>
+              <thead>
+                <tr>
+                  <th>Mã</th><th>Tên khối</th><th>Ghi chú</th>
+                  <th className="canh-giua">Miễn chấm công</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(du_lieu ?? []).map((k) => (
+                  <tr key={k.id}>
+                    <td className="so">{k.ma}</td>
+                    <td>{k.ten}{!k.dang_bat && <span className="nhan-mo"> (ngừng dùng)</span>}</td>
+                    <td>{k.ghi_chu ?? <span className="chu-mo">—</span>}</td>
+                    <td className="canh-giua">
+                      <input type="checkbox" checked={k.mien_cham_cong}
+                        disabled={hd.dang_chay || !la_nhan_su()}
+                        aria-label={`Miễn chấm công cho khối ${k.ten}`}
+                        onChange={(e) => void doi(k, e.target.checked)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

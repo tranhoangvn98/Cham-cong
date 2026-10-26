@@ -1081,8 +1081,63 @@ test('nhan vien vao sau ngay le KHONG duoc cong ngay truoc khi vao (Loi 4)', asy
   assert.equal(so?.so, 0, 'ngay truoc ngay_vao phai bi xoa va khong duoc tao lai');
 });
 
-test('tu choi khoang ngay qua dai (chong truy van keo sap CSDL)', async () => {
-  const r = await goi('GET', '/api/bang-cong?tu=2020-01-01&den=2026-12-31', { token: token_admin });
+// MIEN CHAM CONG: khoi VP Lang Son va tai khoan he thong khong quet may. Truoc 26/10/2026 ho
+// bi ket luan 'vang' moi ngay, va moi thang sinh mot phieu vi pham. Bai nay chot ba dieu:
+// dong 'vang' cu bi xoa khi tinh lai, danh sach drill-down khong tra ve ho, va nguoi DA NGHI
+// cung khong lot vao danh sach vang.
+test('mien cham cong: khong sinh dong vang, khong hien trong danh sach vang', async () => {
+  const NGAY_CU = '2026-09-15';
+
+  const tao = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: { ma_nv: 'NV-MIEN', ho_ten: 'Người Miễn Chấm Công', mien_cham_cong: true },
+  });
+  assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+  const id_mien = tao.body['id'] as string;
+
+  const nghi = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: { ma_nv: 'NV-DANGHI', ho_ten: 'Người Đã Nghỉ Việc' },
+  });
+  assert.equal(nghi.ma, 201, JSON.stringify(nghi.body));
+  const id_nghi = nghi.body['id'] as string;
+  await thuc_thi(
+    `update nhan_vien set dang_hoat_dong = false, ngay_nghi_viec = '2026-09-01' where id = $1`,
+    [id_nghi],
+  );
+
+  // Gia lap du lieu cu: ca hai deu co mot dong 'vang' do lan tinh truoc sinh ra.
+  await thuc_thi(
+    `insert into bang_cong_ngay (nhan_vien_id, ngay, trang_thai, so_cong)
+     values ($1, $2, 'vang', 0), ($3, $2, 'vang', 0)`,
+    [id_mien, NGAY_CU, id_nghi],
+  );
+
+  await goi('POST', '/api/bang-cong/tinh-lai', {
+    token: token_admin, body: { tu: NGAY_CU, den: NGAY_CU, nhan_vien_id: id_mien },
+  });
+  await goi('POST', '/api/bang-cong/tinh-lai', {
+    token: token_admin, body: { tu: NGAY_CU, den: NGAY_CU, nhan_vien_id: id_nghi },
+  });
+
+  const con = await truy_van<{ nhan_vien_id: string }>(
+    `select nhan_vien_id from bang_cong_ngay
+      where ngay = $1 and nhan_vien_id = any($2::uuid[])`,
+    [NGAY_CU, [id_mien, id_nghi]],
+  );
+  assert.deepEqual(con, [], 'dong vang cu cua nguoi mien cham cong va nguoi da nghi phai bi xoa');
+
+  const r = await goi('GET', `/api/dashboard/danh-sach?loai=vang&ngay=${NGAY_CU}`,
+    { token: token_admin });
+  assert.equal(r.ma, 200);
+  const ds = r.body as unknown as { nhan_vien_id: string }[];
+  assert.equal(ds.some((d) => d.nhan_vien_id === id_mien), false,
+    'nguoi mien cham cong khong duoc nam trong danh sach vang');
+  assert.equal(ds.some((d) => d.nhan_vien_id === id_nghi), false,
+    'nguoi da nghi viec khong duoc nam trong danh sach vang');
+});
+
+test('tu choi khoang ngay qua dai (chong truy van keo sap CSDL)', async () => {  const r = await goi('GET', '/api/bang-cong?tu=2020-01-01&den=2026-12-31', { token: token_admin });
   assert.equal(r.ma, 400);
   assert.match(String(r.body['loi']), /quá dài/);
 });

@@ -113,6 +113,13 @@ curl -X POST http://localhost:8080/api/xac-thuc/dang-nhap \
 | DELETE | `/nhan-vien/:id` | nhan_su |
 | GET | `/nhan-vien/ms365-da-cap-phep` | nhan_su |
 | POST | `/nhan-vien/ms365-da-cap-phep/dong-bo` | nhan_su |
+| GET | `/khoi` | đã đăng nhập |
+| PATCH | `/khoi/:id` | nhan_su | `{ mien_cham_cong }` — bật/tắt miễn chấm công cho cả khối |
+
+`mien_cham_cong` (theo khối hoặc theo từng người, hiệu lực = **hoặc**) đánh dấu người
+**không phải quẹt máy**: hệ thống không ghi dòng `vang` cho họ, nên không sinh vi phạm/kỷ luật
+oan. Ngày lễ, nghỉ tuần và nghỉ phép vẫn giữ. Đổi cờ này sẽ **tính lại bảng công tháng hiện tại**
+của những người liên quan.
 
 `POST /nhan-vien` là **luồng tạo hồ sơ duy nhất** (từ 26/10/2026): lưu là khởi tạo thật, không
 có bước duyệt. Nhận thêm `loai_hop_dong` (cho checklist nhập việc), `serial_may_cua` (máy cửa),

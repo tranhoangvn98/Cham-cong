@@ -706,12 +706,18 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
 
     // 'tong' = MOI nhan vien dang hoat dong (khop o so "Tong nhan vien", von dem tu nhan_vien),
     // left join bang cong hom nay de con hien trang thai. Cac loai khac loc theo bang cong ngay.
+    //
+    // `mien_cham_cong`: nguoi khong phai quet may (khoi VP Lang Son, tai khoan he thong). Ho
+    // khong co dong cong nao nen phai noi ro ly do, neu khong man hinh hien trong trang thai.
+    const COT = `nv.id as nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
+            bc.trang_thai, bc.gio_vao, bc.gio_ra, bc.phut_muon,
+            (nv.mien_cham_cong or coalesce(k.mien_cham_cong, false)) as mien_cham_cong`;
     if (loai === 'tong') {
       return truy_van(
-        `select nv.id as nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
-                bc.trang_thai, bc.gio_vao, bc.gio_ra, bc.phut_muon
+        `select ${COT}
            from nhan_vien nv
            left join phong_ban pb on pb.id = nv.phong_ban_id
+           left join khoi k on k.id = nv.khoi_id
            left join bang_cong_ngay bc on bc.nhan_vien_id = nv.id and bc.ngay = $1
           where nv.dang_hoat_dong = true and ${pv.sql}
           order by nv.ho_ten limit 1000`,
@@ -719,11 +725,11 @@ export async function tuyen_bang_cong(app: FastifyInstance): Promise<void> {
       );
     }
     return truy_van(
-      `select nv.id as nhan_vien_id, nv.ma_nv, nv.ho_ten, pb.ten as phong_ban,
-              bc.trang_thai, bc.gio_vao, bc.gio_ra, bc.phut_muon
+      `select ${COT}
          from bang_cong_ngay bc
-         join nhan_vien nv on nv.id = bc.nhan_vien_id
+         join nhan_vien nv on nv.id = bc.nhan_vien_id and nv.dang_hoat_dong
          left join phong_ban pb on pb.id = nv.phong_ban_id
+         left join khoi k on k.id = nv.khoi_id
         where bc.ngay = $1 and (${DIEU_KIEN_DS[loai]}) and ${pv.sql}
         order by ${loai === 'di_muon' ? 'bc.phut_muon desc,' : ''} nv.ho_ten limit 1000`,
       [ngay, ...pv.tham_so],

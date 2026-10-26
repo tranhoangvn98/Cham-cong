@@ -23,7 +23,7 @@ import { truy_van, truy_van_mot } from '../csdl/ket_noi.ts';
 import { la_quan_tri, la_vai_tro_nhan_su } from '../bao_mat/quyen_ho_so.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { hop_dong_sap_het_han, muc_gap } from '../hop_dong/nhac_han.ts';
-import { dem_pin_lech } from '../dinh_danh/doi_chieu_may.ts';
+import { dem_pin_van_de, type DemPinVanDe } from '../dinh_danh/doi_chieu_may.ts';
 
 export interface NguoiXemDashboard {
   vai_tro: string;
@@ -148,6 +148,8 @@ async function quy_phep_nam(nv_id: string, nam: string, quy: number): Promise<{
 
 export interface TinhHinhNgay {
   tong_nhan_vien: number;
+  /** Nguoi khong phai cham cong (mien theo khoi hoac theo nguoi) — khong nam trong tu so. */
+  mien_cham_cong: number;
   co_mat: number;
   di_muon: number;
   vang: number;
@@ -194,6 +196,10 @@ export async function phong_cua_toi(
       `select
          (select count(*) from nhan_vien
            where dang_hoat_dong = true and phong_ban_id = $2)::int      as tong_nhan_vien,
+         (select count(*) from nhan_vien nv2
+             left join khoi k2 on k2.id = nv2.khoi_id
+           where nv2.dang_hoat_dong = true and nv2.phong_ban_id = $2
+             and (nv2.mien_cham_cong or coalesce(k2.mien_cham_cong, false)))::int as mien_cham_cong,
          count(*) filter (where bc.trang_thai = 'co_mat')::int          as co_mat,
          count(*) filter (where bc.phut_muon > 0)::int                  as di_muon,
          count(*) filter (where bc.trang_thai = 'vang')::int            as vang,
@@ -201,7 +207,7 @@ export async function phong_cua_toi(
          count(*) filter (where bc.gio_vao is not null
                             and bc.gio_vao = bc.gio_ra)::int            as chua_quet_ra
        from bang_cong_ngay bc
-       join nhan_vien nv on nv.id = bc.nhan_vien_id
+       join nhan_vien nv on nv.id = bc.nhan_vien_id and nv.dang_hoat_dong
       where bc.ngay = $1 and nv.phong_ban_id = $2`,
       [hom_nay, pb.id],
     ),
@@ -227,7 +233,8 @@ export async function phong_cua_toi(
     phong_ban_id: pb.id,
     ten_phong: pb.ten,
     tinh_hinh: tinh_hinh ?? {
-      tong_nhan_vien: 0, co_mat: 0, di_muon: 0, vang: 0, nghi_phep: 0, chua_quet_ra: 0,
+      tong_nhan_vien: 0, mien_cham_cong: 0, co_mat: 0, di_muon: 0, vang: 0, nghi_phep: 0,
+      chua_quet_ra: 0,
     },
     di_muon_hom_nay: muon,
     cho_toi_duyet: duyet?.so ?? 0,
@@ -248,17 +255,24 @@ export async function toan_cong_ty(hom_nay: string): Promise<CongTy> {
     truy_van_mot<TinhHinhNgay>(
       `select
          (select count(*) from nhan_vien where dang_hoat_dong = true)::int as tong_nhan_vien,
+         (select count(*) from nhan_vien nv2
+             left join khoi k2 on k2.id = nv2.khoi_id
+           where nv2.dang_hoat_dong = true
+             and (nv2.mien_cham_cong or coalesce(k2.mien_cham_cong, false)))::int as mien_cham_cong,
          count(*) filter (where trang_thai = 'co_mat')::int                as co_mat,
          count(*) filter (where phut_muon > 0)::int                        as di_muon,
          count(*) filter (where trang_thai = 'vang')::int                  as vang,
          count(*) filter (where trang_thai = 'nghi_phep')::int             as nghi_phep,
          count(*) filter (where gio_vao is not null and gio_vao = gio_ra)::int as chua_quet_ra
-       from bang_cong_ngay where ngay = $1`,
+       from bang_cong_ngay bc
+       join nhan_vien nv on nv.id = bc.nhan_vien_id and nv.dang_hoat_dong
+      where ngay = $1`,
       [hom_nay],
     ),
     truy_van<DiMuon>(
       `select nv.ho_ten, nv.ma_nv, bc.phut_muon, bc.gio_vao
-         from bang_cong_ngay bc join nhan_vien nv on nv.id = bc.nhan_vien_id
+         from bang_cong_ngay bc
+         join nhan_vien nv on nv.id = bc.nhan_vien_id and nv.dang_hoat_dong
         where bc.ngay = $1 and bc.phut_muon > 0
         order by bc.phut_muon desc limit 10`,
       [hom_nay],
@@ -272,21 +286,23 @@ export async function toan_cong_ty(hom_nay: string): Promise<CongTy> {
          (select count(*) from lan_quet where trang_thai_duyet = 'cho_duyet')::int as quet_mobile`,
     ),
     truy_van<{ ngay: string; co_mat: number; di_muon: number; vang: number; phut_ot: number }>(
-      `select ngay,
-              count(*) filter (where trang_thai = 'co_mat')::int as co_mat,
-              count(*) filter (where phut_muon > 0)::int         as di_muon,
-              count(*) filter (where trang_thai = 'vang')::int   as vang,
-              coalesce(sum(phut_ot), 0)::int                     as phut_ot
-         from bang_cong_ngay
-        where ngay > $1::date - 7 and ngay <= $1::date
-        group by ngay order by ngay`,
+      `select bc.ngay,
+              count(*) filter (where bc.trang_thai = 'co_mat')::int as co_mat,
+              count(*) filter (where bc.phut_muon > 0)::int         as di_muon,
+              count(*) filter (where bc.trang_thai = 'vang')::int   as vang,
+              coalesce(sum(bc.phut_ot), 0)::int                     as phut_ot
+         from bang_cong_ngay bc
+         join nhan_vien nv on nv.id = bc.nhan_vien_id and nv.dang_hoat_dong
+        where bc.ngay > $1::date - 7 and bc.ngay <= $1::date
+        group by bc.ngay order by bc.ngay`,
       [hom_nay],
     ),
   ]);
 
   return {
     tinh_hinh: tinh_hinh ?? {
-      tong_nhan_vien: 0, co_mat: 0, di_muon: 0, vang: 0, nghi_phep: 0, chua_quet_ra: 0,
+      tong_nhan_vien: 0, mien_cham_cong: 0, co_mat: 0, di_muon: 0, vang: 0, nghi_phep: 0,
+      chua_quet_ra: 0,
     },
     di_muon_hom_nay: muon,
     cho_duyet: cho_duyet ?? { nghi_phep: 0, giai_trinh: 0, quet_mobile: 0 },
@@ -468,12 +484,15 @@ export interface HeThong {
   /** Ban ghi ERP da noi duoc voi nhan vien. */
   erp_da_noi: number;
   erp_da_cau_hinh: boolean;
-  /** So user trong may bi LECH mapping (PIN thuoc nguoi khac) hoac chua gan — canh bao do. */
-  pin_lech: number;
+  /**
+   * PIN tren may co van de. `trung_nguoi` = luot quet se bi gan nham hoac bi bo (nang);
+   * `chua_gan` = user cu khong ai quet (don dep); `da_nghi` = PIN cua nguoi da nghi con tren may.
+   */
+  pin: DemPinVanDe;
 }
 
 export async function tinh_trang_he_thong(): Promise<HeThong> {
-  const [may, erp, pin_lech] = await Promise.all([
+  const [may, erp, pin] = await Promise.all([
     truy_van<HeThong['thiet_bi'][number]>(
       `select ten, serial, thay_lan_cuoi,
               (thay_lan_cuoi is not null
@@ -484,13 +503,13 @@ export async function tinh_trang_he_thong(): Promise<HeThong> {
     truy_van_mot<{ so: number }>(
       'select count(*)::int as so from nhan_vien where erp_user_id is not null',
     ),
-    dem_pin_lech(),
+    dem_pin_van_de(),
   ]);
   return {
     thiet_bi: may,
     erp_da_noi: erp?.so ?? 0,
     erp_da_cau_hinh: cau_hinh.erp.url !== '' && cau_hinh.erp.api_key !== '',
-    pin_lech,
+    pin,
   };
 }
 

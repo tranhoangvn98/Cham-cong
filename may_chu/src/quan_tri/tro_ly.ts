@@ -253,7 +253,11 @@ async function tra_loi_tong_quan(nd: NguoiHoiQuanTri, hom_nay: string): Promise<
   const ht = d.he_thong;
   if (ht !== null) {
     const off = ht.thiet_bi.filter((t) => !t.dang_online).length;
-    dong.push(`Máy chấm công: **${ht.thiet_bi.length}** máy, offline **${off}**; PIN lệch **${ht.pin_lech}**.`);
+    dong.push(
+      `Máy chấm công: **${ht.thiet_bi.length}** máy, offline **${off}**; `
+      + `PIN trùng người **${ht.pin.trung_nguoi}**, PIN chưa gán **${ht.pin.chua_gan}** `
+      + `(PIN của người đã nghỉ còn trên máy: **${ht.pin.da_nghi}**).`,
+    );
   }
   if (dong.length === 0) {
     return {
@@ -477,7 +481,8 @@ async function tra_loi_may_cham(nd: NguoiHoiQuanTri, hom_nay: string): Promise<T
     `• **${m.ten}**: ${m.dang_online ? 'online' : 'offline'}${m.thay_lan_cuoi === null ? '' : ` (liên lạc cuối ${m.thay_lan_cuoi})`}`,
   ).join('\n');
   return {
-    tra_loi: `${danh_sach}\nPIN lệch trong máy: **${ht.pin_lech}**.`,
+    tra_loi: `${danh_sach}\nPIN trùng người trong máy: **${ht.pin.trung_nguoi}**`
+      + `, PIN chưa gán: **${ht.pin.chua_gan}**.`,
     y_dinh: 'may_cham',
     mo_de_xuat: { nhan: 'Mở Thiết bị chấm công', den: '/cai-dat/thiet-bi' },
     goi_y: ['Tổng quan hôm nay thế nào?'],

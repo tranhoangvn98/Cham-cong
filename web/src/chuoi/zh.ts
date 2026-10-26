@@ -140,6 +140,8 @@ export const CHUOI_ZH = {
   menu_ngay_le_phu: '春节假期需每年手动添加',
   menu_lam_bu: '补班日',
   menu_lam_bu_phu: '调休日，以补班换取工时',
+  menu_khoi: '板块',
+  menu_khoi_phu: '无需打卡的板块',
   menu_tham_so_luong: '工资参数',
   menu_tham_so_luong_phu: '社保、个人所得税、专项附加扣除',
   menu_tai_khoan: '账号',

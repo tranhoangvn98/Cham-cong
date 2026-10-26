@@ -18,7 +18,7 @@ import { TrangQuanLyPhep } from './trang/quan_ly_phep.tsx';
 import { TrangViec } from './trang/viec.tsx';
 import { TrangToChuc } from './trang/to_chuc.tsx';
 import { TrangKhieuNaiLuong } from './trang/khieu_nai_luong.tsx';
-import { TrangCaLam, TrangDiaDiem, TrangNgayLe } from './trang/cai_dat.tsx';
+import { TrangCaLam, TrangDiaDiem, TrangKhoi, TrangNgayLe } from './trang/cai_dat.tsx';
 import { TrangLamBu } from './trang/lam_bu.tsx';
 import { TrangSoNgoaiLe } from './trang/so_ngoai_le.tsx';
 import { TrangLanQuet } from './trang/lan_quet.tsx';
@@ -158,6 +158,7 @@ const MENU_CAI_DAT: MucMenu[] = [
   { duong_dan: '/cai-dat/dia-diem', ten: 'Địa điểm', khoa: 'menu_dia_diem', icon: 'map-pin', nhom: 'Chấm công', phu: 'Đối chiếu GPS khi đi công tác', khoa_phu: 'menu_dia_diem_phu' },
   { duong_dan: '/cai-dat/ngay-le', ten: 'Ngày lễ', khoa: 'menu_ngay_le', icon: 'star', nhom: 'Chấm công', phu: 'Tết Nguyên đán phải tự thêm mỗi năm', khoa_phu: 'menu_ngay_le_phu' },
   { duong_dan: '/cai-dat/lam-bu', ten: 'Ngày làm bù', khoa: 'menu_lam_bu', icon: 'calendar-stats', nhom: 'Chấm công', phu: 'Ngày được nghỉ, kiếm công bằng buổi làm bù', khoa_phu: 'menu_lam_bu_phu', quyen: 'nhan_su' },
+  { duong_dan: '/cai-dat/khoi', ten: 'Khối', khoa: 'menu_khoi', icon: 'users', nhom: 'Chấm công', phu: 'Khối không cần chấm công', khoa_phu: 'menu_khoi_phu', quyen: 'nhan_su' },
 
   { duong_dan: '/cai-dat/tham-so-luong', ten: 'Tham số lương', khoa: 'menu_tham_so_luong', icon: 'receipt-2', nhom: 'Nhân sự & lương', phu: 'BHXH, thuế TNCN, giảm trừ gia cảnh', khoa_phu: 'menu_tham_so_luong_phu', quyen: 'nhan_su' },
 
@@ -275,6 +276,7 @@ function NoiDungCaiDat({ duong_dan }: { duong_dan: string }): ReactNode {
     case '/cai-dat/dia-diem': return <TrangDiaDiem />;
     case '/cai-dat/ngay-le': return <TrangNgayLe />;
     case '/cai-dat/lam-bu': return <TrangLamBu />;
+    case '/cai-dat/khoi': return <TrangKhoi />;
     case '/cai-dat/tham-so-luong': return <TrangThamSoLuong />;
     case '/cai-dat/tai-khoan': return <TrangNguoiDung />;
     case '/cai-dat/khoa-api': return <TrangKhoaApi />;

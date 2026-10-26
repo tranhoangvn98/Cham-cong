@@ -380,11 +380,13 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
     const chi_tiet = await truy_van_mot<Record<string, unknown>>(
       `select nv.ma_nv, nv.ho_ten, nv.pin_may, nv.email, nv.so_dien_thoai, nv.ngay_vao,
               nv.ngay_nghi_viec, nv.dang_hoat_dong, nv.duoc_cham_cong_dien_thoai,
+              nv.mien_cham_cong, coalesce(kh.mien_cham_cong, false) as khoi_mien_cham_cong,
               nv.chuc_danh, nv.ngay_chinh_thuc,
               pb.ten as phong_ban, cl.ten as ca_lam
          from nhan_vien nv
          left join phong_ban pb on pb.id = nv.phong_ban_id
          left join ca_lam cl on cl.id = nv.ca_lam_id
+         left join khoi kh on kh.id = nv.khoi_id
         where nv.id = $1`,
       [id],
     );

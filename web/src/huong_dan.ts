@@ -561,6 +561,19 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       'Xóa ngày nghỉ/buổi làm bù sau khi đã chốt lương sẽ làm lệch sổ — chỉ sửa trong kỳ chưa duyệt.',
     ],
   },
+  {
+    duong_dan: '/cai-dat/khoi',
+    tom_tat: 'Đánh dấu khối không cần quẹt máy (ví dụ Khối VP Lạng Sơn) để hệ thống không ghi ngày vắng cho người trong khối.',
+    buoc: [
+      { chu: 'Tìm khối cần miễn và tick ô "Miễn chấm công".' },
+      { chu: 'Hệ thống xóa các dòng Vắng trong tháng hiện tại của người thuộc khối — ngày lễ và nghỉ phép giữ nguyên.' },
+      { chu: 'Người vào sau thuộc khối tự động được miễn, không phải tick lại ở hồ sơ.', vai_tro: NHAN_SU },
+    ],
+    luu_y: [
+      'Trường hợp lẻ (tài khoản hệ thống, người làm ở điểm chưa có máy) thì tick "Miễn chấm công" ngay trong hồ sơ nhân viên.',
+      'Bỏ tick sẽ tính lại bảng công tháng này và ngày vắng hiện lại — chỉ làm khi đã hiểu vì sao người đó không quẹt.',
+    ],
+  },
 ];
 
 const THEO_DUONG = new Map(HUONG_DAN.map((h) => [h.duong_dan, h]));

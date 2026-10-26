@@ -137,6 +137,8 @@ export const CHUOI_VI = {
   menu_ngay_le_phu: 'Tết Nguyên đán phải tự thêm mỗi năm',
   menu_lam_bu: 'Ngày làm bù',
   menu_lam_bu_phu: 'Ngày được nghỉ, kiếm công bằng buổi làm bù',
+  menu_khoi: 'Khối',
+  menu_khoi_phu: 'Khối không cần chấm công',
   menu_tham_so_luong: 'Tham số lương',
   menu_tham_so_luong_phu: 'BHXH, thuế TNCN, giảm trừ gia cảnh',
   menu_tai_khoan: 'Tài khoản',

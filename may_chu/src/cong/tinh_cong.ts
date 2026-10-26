@@ -36,6 +36,11 @@ interface DongNhanVien {
   lich_nghi_ma: string;
   /** Ghi de T7 theo khoi: true = nua cong, false = du cong, null = theo tham so chung. */
   t7_nua_cong_khoi: boolean | null;
+  /**
+   * Mien cham cong: nguoi khong quet may (khoi VP Lang Son, tai khoan he thong...). Bat theo
+   * KHOI hoac theo TUNG NGUOI — khong co mat thi khong phai VANG.
+   */
+  mien_cham_cong: boolean;
   /** Ngay vao lam / ngay nghi viec ('YYYY-MM-DD') — chan tinh cong ngoai khoang lam viec. */
   ngay_vao: string | null;
   ngay_nghi_viec: string | null;
@@ -75,6 +80,7 @@ export async function tinh_lai_ngay(
     `select nv.id, nv.ma_nv, nv.ma_erp, nv.ca_lam_id,
             coalesce(nlv.lich_nghi_ma, 'vn') as lich_nghi_ma,
             kh.t7_nua_cong as t7_nua_cong_khoi,
+            (nv.mien_cham_cong or coalesce(kh.mien_cham_cong, false)) as mien_cham_cong,
             to_char(nv.ngay_vao, 'YYYY-MM-DD') as ngay_vao,
             to_char(nv.ngay_nghi_viec, 'YYYY-MM-DD') as ngay_nghi_viec
        from nhan_vien nv
@@ -92,6 +98,19 @@ export async function tinh_lai_ngay(
     await trong_giao_dich(async (khach) => {
       await khach.query(
         'delete from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+        [nhan_vien_id, ngay],
+      );
+    });
+    return null;
+  }
+
+  // NGAY TUONG LAI khong co gi de tinh: nguoi di lam chua quet thi khong the la "vang".
+  // Truoc day mot lan tinh lai theo khoang (script sua du lieu chon ca thang) sinh dong 'vang'
+  // cho nhung ngay chua toi, va bang cong thang hien mot thang day vang.
+  if (ngay > ngay_dia_phuong(new Date())) {
+    await trong_giao_dich(async (khach) => {
+      await khach.query(
+        'delete from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2 and da_chot = false',
         [nhan_vien_id, ngay],
       );
     });
@@ -274,6 +293,23 @@ export async function tinh_lai_ngay(
     ngoai_le,
   });
 
+  // --- MIEN CHAM CONG: khong co mat thi khong phai VANG.
+  //
+  // Khoi VP Lang Son / tai khoan he thong khong quet may, nen moi ngay deu bi ket luan 'vang':
+  // 27 ngay vang mot thang, mot phieu vi pham mot thang, mot ho so ky luat mot thang — tat ca
+  // deu la rac sinh tu mot gia dinh sai. Chi bo dong VANG; giu ngay le / nghi tuan / nghi phep
+  // vi do la su that cua lich va ngay le dang duoc tra luong.
+  if (nv.mien_cham_cong && kq.trang_thai === 'vang') {
+    await trong_giao_dich(async (khach) => {
+      await khach.query(
+        `delete from bang_cong_ngay
+          where nhan_vien_id = $1 and ngay = $2 and da_chot = false`,
+        [nhan_vien_id, ngay],
+      );
+    });
+    return null;
+  }
+
   // --- LAM BU (YC-03): ngay nay la NGAY BU (thu Bay duoc chi dinh bu cho mot ngay nguon)?
   // Cong THEM 0,5 moi buoi lam bu DA LAM tren chinh ngay nay:
   //   - co mat dung buoi (sang: vao truoc 12h; chieu: ra tu 13h tro di) hoac ca ngay -> 0,5
@@ -447,6 +483,11 @@ export async function tinh_lai_nhieu(
 /**
  * Tinh lai toan bo nhan vien dang hoat dong trong khoang ngay.
  * Dung khi nhan su doi ca / them ngay le / duyet don hang loat.
+ *
+ * Lay them nguoi DA NGHI nhung con dong cong trong khoang: lich chay dem chi tinh nguoi dang
+ * hoat dong, nen khi mot nguoi nghi viec thi dong 'vang' cu cua ho nam lai vinh vien va van
+ * duoc dem vao bang cong thang. Tinh lai chinh ho la cach duy nhat de `ngay_ngoai_thoi_gian_
+ * lam_viec` xoa cac dong do.
  */
 export async function tinh_lai_khoang(
   tu: string,
@@ -457,7 +498,13 @@ export async function tinh_lai_khoang(
   const ds_ngay = danh_sach_ngay(tu, den);
   const nv = nhan_vien_id !== undefined
     ? await truy_van<{ id: string }>('select id from nhan_vien where id = $1', [nhan_vien_id])
-    : await truy_van<{ id: string }>('select id from nhan_vien where dang_hoat_dong = true');
+    : await truy_van<{ id: string }>(
+      `select id from nhan_vien where dang_hoat_dong = true
+       union
+       select distinct nhan_vien_id as id from bang_cong_ngay
+        where ngay >= $1::date and ngay <= $2::date`,
+      [tu, den],
+    );
 
   const cap: { nhan_vien_id: string; ngay: string }[] = [];
   for (const n of nv) for (const ng of ds_ngay) cap.push({ nhan_vien_id: n.id, ngay: ng });

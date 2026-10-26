@@ -25,6 +25,7 @@ interface ThietBi {
 
 interface TinhHinhNgay {
   tong_nhan_vien: number;
+  mien_cham_cong: number;
   co_mat: number;
   di_muon: number;
   vang: number;
@@ -99,8 +100,11 @@ interface HeThong {
   thiet_bi: ThietBi[];
   erp_da_noi: number;
   erp_da_cau_hinh: boolean;
-  /** So user trong máy bị lệch mapping (PIN thuộc người khác) hoặc chưa gán. */
-  pin_lech: number;
+  /**
+   * PIN trên máy có vấn đề. `trung_nguoi` = lượt quẹt sẽ bị gán nhầm hoặc bị bỏ (nặng);
+   * `chua_gan` = user cũ không ai quẹt (dọn dẹp); `da_nghi` = PIN người đã nghỉ còn trên máy.
+   */
+  pin: { trung_nguoi: number; chua_gan: number; da_nghi: number; can_xu_ly: number };
 }
 
 interface DiemNongNguoi {
@@ -163,6 +167,7 @@ const TEN_LOAI_DS: Record<LoaiDs, string> = {
 interface DongDs {
   nhan_vien_id: string; ma_nv: string; ho_ten: string; phong_ban: string | null;
   trang_thai: string | null; gio_vao: string | null; gio_ra: string | null; phut_muon: number;
+  mien_cham_cong: boolean;
 }
 
 /** O so bam duoc: bam ra danh sach nhan vien thuoc nhom do (mot ngay). */
@@ -212,9 +217,12 @@ function HopThoaiDanhSach(
                         <td><LienKet den={`/nhan-vien/${d.nhan_vien_id}`} lop="lk-nhan-vien">{d.ho_ten}</LienKet></td>
                         <td>{d.phong_ban ?? '—'}</td>
                         <td className="khong-ngat">
-                          {d.trang_thai === null
-                            ? <span className="nhan-mo">chưa có công</span>
-                            : <NhanNgay trang_thai={d.trang_thai} />}
+                          {d.trang_thai !== null
+                            ? <NhanNgay trang_thai={d.trang_thai} />
+                            : d.mien_cham_cong
+                              ? <span className="nhan-mo" title="Người không phải quẹt máy">
+                                miễn chấm công</span>
+                              : <span className="nhan-mo">chưa có công</span>}
                         </td>
                         <td className="so">{gio_ngan(d.gio_vao)}</td>
                         <td className="so">
@@ -675,17 +683,30 @@ function KhoiHeThong({ ht }: { ht: HeThong }): ReactNode {
   const may_offline = ht.thiet_bi.filter((m) => !m.dang_online);
   // Bang dieu khien chi can cac CANH BAO can hanh dong. Trang thai tung may va dong bo ERP
   // xem o trang May cham cong / Cai dat — khong trung ra day de giu trang gon.
-  const co_canh_bao = ht.pin_lech > 0 || ht.thiet_bi.length === 0 || may_offline.length > 0;
+  const co_canh_bao = ht.pin.trung_nguoi > 0 || ht.pin.chua_gan > 0
+    || ht.thiet_bi.length === 0 || may_offline.length > 0;
   if (!co_canh_bao) return null;
   return (
     <div className="the">
       <h2>Hệ thống</h2>
-      {ht.pin_lech > 0 && (
+      {ht.pin.trung_nguoi > 0 && (
         <div className="hop-thong-bao hop-loi">
-          <strong>⚠ {ht.pin_lech} PIN trong máy bị lệch / trùng người.</strong>{' '}
-          Lượt quẹt sẽ bị gán nhầm. Vào <LienKet den="/cai-dat/thiet-bi">Máy chấm công</LienKet> →
-          “Đối chiếu user máy”.
+          <strong>⚠ {ht.pin.trung_nguoi} PIN trên máy bị gán sai hoặc đang có người quẹt mà chưa gán.</strong>{' '}
+          Lượt quẹt của các PIN đó sẽ bị gán nhầm hoặc bị bỏ. Vào{' '}
+          <LienKet den="/cai-dat/thiet-bi">Máy chấm công</LienKet> → “Đối chiếu user máy”.
         </div>
+      )}
+      {ht.pin.chua_gan > 0 && (
+        <div className="hop-thong-bao hop-luu-y">
+          <strong>{ht.pin.chua_gan} PIN trên máy chưa gán cho ai</strong> và không còn ai quẹt —
+          thường là user của người đã nghỉ từ trước. Dọn ở{' '}
+          <LienKet den="/cai-dat/thiet-bi">Máy chấm công</LienKet> → “Đối chiếu user máy”.
+        </div>
+      )}
+      {ht.pin.da_nghi > 0 && (
+        <p className="mo-ta" style={{ marginTop: 6 }}>
+          {ht.pin.da_nghi} PIN của người đã nghỉ việc vẫn còn trên máy — hệ thống tự khóa khi đủ điều kiện.
+        </p>
       )}
       {ht.thiet_bi.length === 0 && (
         <div className="hop-thong-bao hop-luu-y">
@@ -707,17 +728,24 @@ function KhoiHeThong({ ht }: { ht: HeThong }): ReactNode {
 
 function ONgay({ t, ngay }: { t: TinhHinhNgay; ngay: string }): ReactNode {
   return (
-    <div className="luoi luoi-4">
-      <OSoBam nhan="Tổng nhân viên" gia_tri={t.tong_nhan_vien} loai="tong" ngay={ngay} />
-      <OSoBam nhan="Có mặt" gia_tri={t.co_mat} mau="tot" loai="co_mat" ngay={ngay} />
-      <OSoBam nhan="Đi muộn" gia_tri={t.di_muon} mau={Number(t.di_muon) > 0 ? 'canh_bao' : undefined}
-        loai="di_muon" ngay={ngay} />
-      <OSoBam nhan="Vắng" gia_tri={t.vang} mau={Number(t.vang) > 0 ? 'xau' : undefined}
-        loai="vang" ngay={ngay} />
-      <OSoBam nhan="Nghỉ phép" gia_tri={t.nghi_phep} mau="lanh" loai="nghi_phep" ngay={ngay} />
-      <OSoBam nhan="Chưa quẹt ra" gia_tri={t.chua_quet_ra} phu="Còn trong giờ hoặc quên quẹt"
-        loai="chua_quet_ra" ngay={ngay} />
-    </div>
+    <>
+      <div className="luoi luoi-4">
+        <OSoBam nhan="Tổng nhân viên" gia_tri={t.tong_nhan_vien} loai="tong" ngay={ngay} />
+        <OSoBam nhan="Có mặt" gia_tri={t.co_mat} mau="tot" loai="co_mat" ngay={ngay} />
+        <OSoBam nhan="Đi muộn" gia_tri={t.di_muon} mau={Number(t.di_muon) > 0 ? 'canh_bao' : undefined}
+          loai="di_muon" ngay={ngay} />
+        <OSoBam nhan="Vắng" gia_tri={t.vang} mau={Number(t.vang) > 0 ? 'xau' : undefined}
+          loai="vang" ngay={ngay} />
+        <OSoBam nhan="Nghỉ phép" gia_tri={t.nghi_phep} mau="lanh" loai="nghi_phep" ngay={ngay} />
+        <OSoBam nhan="Chưa quẹt ra" gia_tri={t.chua_quet_ra} phu="Còn trong giờ hoặc quên quẹt"
+          loai="chua_quet_ra" ngay={ngay} />
+      </div>
+      {t.mien_cham_cong > 0 && (
+        <p className="mo-ta" style={{ marginTop: 8 }}>
+          Không tính {t.mien_cham_cong} người miễn chấm công (khối hoặc cá nhân không quẹt máy).
+        </p>
+      )}
+    </>
   );
 }
 

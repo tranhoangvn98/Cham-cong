@@ -33,6 +33,9 @@ interface NhanVien {
   chuc_danh: string | null;
   vi_tri: string | null;
   duoc_cham_cong_dien_thoai: boolean;
+  mien_cham_cong: boolean;
+  /** Khối của người này miễn chấm công (cờ khối) — hiển thị để khỏi tick trùng. */
+  khoi_mien_cham_cong: boolean;
   dang_hoat_dong: boolean;
   phong_ban_id: string | null;
   phong_ban: string | null;
@@ -52,7 +55,10 @@ interface NhanVien {
 interface CaLam { id: string; ten: string; dang_hoat_dong: boolean }
 interface PhongBan { id: string; ten: string }
 interface NoiLamViec { id: string; ten: string; lich_nghi_ma: string }
-interface Khoi { id: string; ma: string; ma_ngan: string | null; ten: string; dang_bat: boolean }
+interface Khoi {
+  id: string; ma: string; ma_ngan: string | null; ten: string; dang_bat: boolean;
+  mien_cham_cong: boolean;
+}
 
 interface ThietBi {
   id: string;
@@ -218,6 +224,14 @@ export function TrangNhanVien(): ReactNode {
                       {n.che_do_luong === 'tq' && (
                         <span className="nhan nhan-canh-bao" style={{ marginLeft: 6 }}>lương CNY</span>
                       )}
+                      {(n.mien_cham_cong || n.khoi_mien_cham_cong) && (
+                        <span className="nhan nhan-mo" style={{ marginLeft: 6 }}
+                          title={n.khoi_mien_cham_cong
+                            ? 'Khối của người này miễn chấm công'
+                            : 'Miễn chấm công theo hồ sơ'}>
+                          miễn chấm công
+                        </span>
+                      )}
                     </td>
                     <td className="so">
                       {n.pin_may ?? <span className="nhan nhan-xau">chưa có</span>}
@@ -373,6 +387,7 @@ function FormNhanVien(
     chuc_danh: nhan_vien?.chuc_danh ?? '',
     vi_tri: nhan_vien?.vi_tri ?? '',
     duoc_cham_cong_dien_thoai: nhan_vien?.duoc_cham_cong_dien_thoai ?? false,
+    mien_cham_cong: nhan_vien?.mien_cham_cong ?? false,
     noi_lam_viec_id: nhan_vien?.noi_lam_viec_id ?? '',
     che_do_luong: nhan_vien?.che_do_luong ?? 'vn',
     khoi_id: nhan_vien?.khoi_id ?? '',
@@ -494,6 +509,7 @@ function FormNhanVien(
       chuc_danh: f.chuc_danh.trim() === '' ? null : f.chuc_danh.trim(),
       vi_tri: f.vi_tri === '' ? null : f.vi_tri,
       duoc_cham_cong_dien_thoai: f.duoc_cham_cong_dien_thoai,
+      mien_cham_cong: f.mien_cham_cong,
       noi_lam_viec_id: f.noi_lam_viec_id === '' ? null : f.noi_lam_viec_id,
       che_do_luong: f.che_do_luong,
       khoi_id: f.khoi_id === '' ? null : f.khoi_id,
@@ -897,6 +913,19 @@ function FormNhanVien(
         <div className="goi-y" style={{ marginTop: -8, marginBottom: 12 }}>
           Chỉ bật cho người thường xuyên đi công tác / công trường. Chấm công ngoài phạm vi địa điểm
           đã khai vẫn phải chờ nhân sự duyệt mới được tính công.
+        </div>
+
+        <div className="o-nhap-ngang">
+          <input id="mcc" type="checkbox" checked={f.mien_cham_cong}
+            disabled={khoi_dang_chon?.mien_cham_cong === true}
+            onChange={(e) => doi('mien_cham_cong', e.target.checked)} />
+          <label htmlFor="mcc">Miễn chấm công — không cần quẹt máy</label>
+        </div>
+        <div className="goi-y" style={{ marginTop: -8, marginBottom: 12 }}>
+          {khoi_dang_chon?.mien_cham_cong === true
+            ? `Khối "${khoi_dang_chon.ten}" đã miễn chấm công nên người này tự động được miễn — không cần quẹt máy, cũng không bị tính vắng.`
+            : 'Bật cho người không quẹt máy (làm ở điểm chưa có máy, tài khoản hệ thống…). '
+              + 'Hệ thống không ghi ngày vắng cho họ; ngày lễ và nghỉ phép vẫn tính bình thường.'}
         </div>
 
         {nhan_vien === null && !tu_dong && (

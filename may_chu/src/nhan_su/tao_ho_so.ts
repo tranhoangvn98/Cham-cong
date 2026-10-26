@@ -50,6 +50,8 @@ export interface DauVaoTaoHoSo {
   vi_tri: string | null;
   /** Cong chuan co dinh RIENG cua nguoi nay (null = theo khoi > tham so > lich). */
   cong_chuan_thang?: number | null;
+  /** Mien cham cong (nguoi khong quet may). Mac dinh false. */
+  mien_cham_cong?: boolean;
   tu_cap_pin: boolean;
   thiet_bi_serial: string | null;
   /** cap_ms365 = tai khoan Microsoft duoc TAO MOI trong lan nay. */
@@ -190,6 +192,7 @@ export async function tao_ho_so_nhan_su(
     ma_nv, v.ho_ten, pin, v.ma_erp, v.phong_ban_id, v.ca_lam_id, v.ngay_vao,
     v.so_dien_thoai, v.email, v.duoc_cham_cong_dien_thoai, v.noi_lam_viec_id,
     v.che_do_luong, v.khoi_id, v.chuc_danh, v.vi_tri, v.cong_chuan_thang ?? null,
+    v.mien_cham_cong === true,
   ];
 
   let dong: { id: string } | null = null;
@@ -220,8 +223,8 @@ export async function tao_ho_so_nhan_su(
             `insert into nhan_vien
                (ma_nv, ho_ten, pin_may, ma_erp, phong_ban_id, ca_lam_id, ngay_vao,
                 so_dien_thoai, email, duoc_cham_cong_dien_thoai, noi_lam_viec_id, che_do_luong,
-                khoi_id, chuc_danh, vi_tri, cong_chuan_thang)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning id`,
+                khoi_id, chuc_danh, vi_tri, cong_chuan_thang, mien_cham_cong)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id`,
             dung_ts(ma_nv, pin_gui),
           );
           const moi = kq.rows[0] ?? null;

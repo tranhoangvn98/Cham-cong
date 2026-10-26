@@ -747,21 +747,24 @@ interface UserMay {
   thay_luc: string;
   ma_nv: string | null;
   ho_ten: string | null;
-  khop: 'khop' | 'lech' | 'chua_gan' | 'khong_ten';
+  quet_7_ngay: number;
+  khop: 'khop' | 'lech' | 'co_quet_chua_gan' | 'chua_gan' | 'da_nghi' | 'khong_ten';
 }
 const NHAN_KHOP: Record<UserMay['khop'], { ten: string; lop: string }> = {
   khop: { ten: 'Khớp', lop: 'nhan-tot' },
   lech: { ten: 'LỆCH — người khác', lop: 'nhan-xau' },
-  chua_gan: { ten: 'Hệ thống chưa gán', lop: 'nhan-canh-bao' },
+  co_quet_chua_gan: { ten: 'CÓ QUẸT — chưa gán ai', lop: 'nhan-xau' },
+  chua_gan: { ten: 'Chưa gán (không ai quẹt)', lop: 'nhan-canh-bao' },
+  da_nghi: { ten: 'Người đã nghỉ việc', lop: 'nhan-mo' },
   khong_ten: { ten: 'Máy không gửi tên', lop: 'nhan-mo' },
 };
 
 function DoiChieuNguoiDung(
   { thiet_bi, khi_dong }: { thiet_bi: ThietBi; khi_dong: () => void },
 ): ReactNode {
-  const { du_lieu, dang_tai, loi, nap_lai } =
-    dung_nap<{ serial: string; so_lech: number; danh_sach: UserMay[] }>(
-      `/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/nguoi-dung`, [thiet_bi.serial]);
+  const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<{
+    serial: string; so_lech: number; so_chua_gan: number; so_da_nghi: number; danh_sach: UserMay[];
+  }>(`/api/thiet-bi/${encodeURIComponent(thiet_bi.serial)}/nguoi-dung`, [thiet_bi.serial]);
   const hd = dung_hanh_dong();
   const ds = du_lieu?.danh_sach ?? [];
   const { ds_xem, bo_phan_trang } = dung_phan_trang(ds);
@@ -771,8 +774,10 @@ function DoiChieuNguoiDung(
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
       <p className="mo-ta" style={{ marginBottom: 10 }}>
         So sánh user <strong>đang enroll trong máy</strong> với người giữ PIN đó <strong>trong hệ
-        thống</strong>. Dòng <span className="nhan-xau">LỆCH</span> = PIN này trong hệ thống thuộc
-        người khác → lượt quẹt bị gán nhầm, cần cấp PIN riêng &amp; enroll lại.
+        thống</strong>. Tên trên máy thường là tên viết tắt nên hệ thống chấp nhận cả dạng rút
+        gọn. Dòng <span className="nhan-xau">LỆCH</span> /{' '}
+        <span className="nhan-xau">CÓ QUẸT</span> = lượt quẹt bị gán nhầm hoặc bị bỏ, cần sửa
+        ngay.
       </p>
 
       <div className="hang-nut" style={{ marginBottom: 12 }}>
@@ -793,9 +798,15 @@ function DoiChieuNguoiDung(
             mo_ta="Bấm “Lấy từ máy” rồi chờ ~15 giây và bấm “Tải lại”." />
         ) : (
           <>
-            {du_lieu !== null && du_lieu.so_lech > 0 && (
-              <div className="hop-thong-bao hop-loi">
-                <strong>{du_lieu.so_lech}</strong> user bị lệch / chưa gán — xem các dòng đỏ/vàng bên dưới.
+            {du_lieu !== null && (du_lieu.so_lech > 0 || du_lieu.so_chua_gan > 0) && (
+              <div className={`hop-thong-bao ${du_lieu.so_lech > 0 ? 'hop-loi' : 'hop-luu-y'}`}>
+                {du_lieu.so_lech > 0 && (
+                  <strong>{du_lieu.so_lech} PIN bị trùng người hoặc có người quẹt mà chưa gán — </strong>
+                )}
+                {du_lieu.so_chua_gan > 0 && (
+                  <span>{du_lieu.so_chua_gan} PIN chưa gán và không ai quẹt (user cũ). </span>
+                )}
+                Xem các dòng đỏ/vàng bên dưới.
               </div>
             )}
             <div className="vo-bang">
@@ -808,9 +819,16 @@ function DoiChieuNguoiDung(
                 </thead>
                 <tbody>
                   {ds_xem.map((u) => (
-                    <tr key={u.pin} className={u.khop === 'lech' ? 'dong-canh-bao' : undefined}>
+                    <tr key={u.pin}
+                      className={u.khop === 'lech' || u.khop === 'co_quet_chua_gan'
+                        ? 'dong-canh-bao' : undefined}>
                       <td className="so">{u.pin}</td>
-                      <td>{u.ten_may ?? <span className="chu-mo">—</span>}</td>
+                      <td>
+                        {u.ten_may ?? <span className="chu-mo">—</span>}
+                        {u.quet_7_ngay > 0 && u.khop !== 'khop' && (
+                          <span className="chu-mo"> ({u.quet_7_ngay} lượt/7 ngày)</span>
+                        )}
+                      </td>
                       <td>
                         {u.ma_nv === null ? <span className="chu-mo">— chưa gán —</span>
                           : <>{u.ma_nv} — {u.ho_ten}</>}
