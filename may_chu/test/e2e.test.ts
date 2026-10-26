@@ -1142,12 +1142,13 @@ test('nghi viec: don dong vang cua ngay SAU ngay lam viec cuoi', async () => {
   const id = tao.body['id'] as string;
 
   // 20/09 la ngay lam viec CUOI: khong quet thi van la vang that, phai giu.
-  // 21/09 nam sau ngay cuoi: khong con la nguoi cua cong ty, phai xoa.
-  // 19/09 truoc ngay cuoi: co mat, phai giu.
+  // 21/09 nam sau ngay cuoi, trang thai 'vang': khong con la nguoi cua cong ty, phai xoa.
+  // 22/09 sau ngay cuoi nhung 'co_mat': GIU — do la bang chung nguoi bi danh dau nghi nham
+  // van di lam, va la can cu de tra luong.
   await thuc_thi(
     `insert into bang_cong_ngay (nhan_vien_id, ngay, trang_thai, so_cong)
      values ($1, '2026-09-19', 'co_mat', 1), ($1, '2026-09-20', 'vang', 0),
-            ($1, '2026-09-21', 'co_mat', 1)`,
+            ($1, '2026-09-21', 'vang', 0), ($1, '2026-09-22', 'co_mat', 1)`,
     [id],
   );
 
@@ -1158,8 +1159,8 @@ test('nghi viec: don dong vang cua ngay SAU ngay lam viec cuoi', async () => {
 
   const con = await truy_van<{ ngay: string }>(
     'select ngay::text from bang_cong_ngay where nhan_vien_id = $1 order by ngay', [id]);
-  assert.deepEqual(con.map((d) => d.ngay), ['2026-09-19', '2026-09-20'],
-    'chi xoa dong cua ngay SAU ngay lam viec cuoi; ngay cuoi van giu (vang that thi van la vang)');
+  assert.deepEqual(con.map((d) => d.ngay), ['2026-09-19', '2026-09-20', '2026-09-22'],
+    'chi xoa dong VANG cua ngay sau ngay lam viec cuoi; ngay cuoi va dong co_mat van giu');
 });
 
 test('tu choi khoang ngay qua dai (chong truy van keo sap CSDL)', async () => {  const r = await goi('GET', '/api/bang-cong?tu=2020-01-01&den=2026-12-31', { token: token_admin });
