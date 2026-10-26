@@ -1217,7 +1217,10 @@ input[type="checkbox"] {
 }
 @media (max-width: 520px) {
   .hs-chi-so { grid-template-columns: 1fr; }
-  .hs-hanh-dong { margin-left: 0; }
+  /* Man dien thoai: xep nut thanh cot, rong bang the — de bam hon la ba nut nho chen nhau
+     mot hang. */
+  .hs-hanh-dong { margin-left: 0; flex-direction: column; align-items: stretch; }
+  .hs-hanh-dong > * { justify-content: center; }
 }
 
 /* Thanh tab dang VIEN THUOC rieng cua trang ho so. Khong sua `.thanh-tab` vi bang luong,
