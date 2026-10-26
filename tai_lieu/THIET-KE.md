@@ -240,13 +240,19 @@ thích này không tự làm đỏ bài kiểm).
 
 ---
 
-## 9. Gợi ý: nút `?`, không bày mô tả dài
+## 9. Gợi ý: biểu tượng ⓘ, không bày mô tả dài
 
 **Quy ước bắt buộc từ 26/10/2026.** Mô tả hướng dẫn không hiện sẵn dưới ô nhập. Mỗi ô có giải thích
-thì đặt một nút tròn `?`; rê chuột vào (hoặc focus bằng bàn phím) mới hiện bong gợi ý.
+thì đặt một biểu tượng tròn ⓘ ngay sau nhãn; rê chuột vào (hoặc focus bằng bàn phím) mới hiện bong
+gợi ý.
 
 - Dùng component **`web/src/goi_y.tsx`**: `<GoiY>{noi_dung}</GoiY>`.
-  Nút `?` nằm ở góc phải trên của `.o-nhap`, không chiếm thêm chiều cao form.
+  Biểu tượng vẽ bằng **SVG** (nét 1,6, ăn theo `currentColor` nên tự đổi màu ở chế độ tối) —
+  không dùng ký tự `?` để nét đều ở mọi độ phân giải.
+- **Vị trí: ngay sau NHÃN của ô**, cùng dòng (từ 27/10/2026). `.o-nhap` là lưới 2 cột
+  (`max-content 1fr`): nhãn ở cột 1, biểu tượng ở cột 2, mọi thứ khác (ô nhập, bảng, khối trạng
+  thái) tràn cả hai cột. Hàng chỉ có ô tích (`.o-nhap-ngang`) thì đặt `<GoiY>` **bên trong**
+  hàng đó, sau `<label>`, để biểu tượng nằm sát nhãn chứ không rơi xuống dòng dưới.
 - **Không** viết `<div className="goi-y">…</div>` cho mô tả mới. Bài kiểm
   `thiet_ke/goi_y.test.mjs` đọc toàn bộ `web/src/**/*.tsx` và báo đỏ nếu còn.
 - **Ngoại lệ được giữ hiện trực tiếp**: thông báo trạng thái (đang tải, đồng bộ lần cuối, số bản
@@ -255,6 +261,7 @@ thì đặt một nút tròn `?`; rê chuột vào (hoặc focus bằng bàn ph�
 - Nội dung trong bong gợi ý vẫn được dùng thẻ `<strong>`, `<br>`, liên kết như cũ; đây là chỗ giải
   thích **vì sao**, không phải nơi chứa nhãn hay giá trị bắt buộc.
 - Bong gợi ý mở bằng `:hover` **và** `:focus-within`, nên bàn phím và màn hình cảm ứng vẫn dùng
-  được (bấm vào nút `?`).
+  được (bấm vào biểu tượng ⓘ). Bong mở về bên phải biểu tượng (`left: -4px`) và tối đa
+  `min(360px, 82vw)`.
 - App điện thoại: khi thêm mô tả cho ô nhập, dùng cùng nguyên tắc — nhãn/giá trị luôn hiện, giải
-  thích dài đưa vào nút `?`/trợ giúp, không nhồi chữ dưới ô.
+  thích dài đưa vào biểu tượng ⓘ/trợ giúp, không nhồi chữ dưới ô.

@@ -2,6 +2,22 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.137.2] — 2026-10-27
+
+**Biểu tượng gợi ý: đổi từ nút chữ `?` sang biểu tượng ⓘ vẽ SVG, đặt ngay sau nhãn của ô.**
+
+- Bong gợi ý không còn nằm ở góc phải trên của ô nhập (xa nhãn, dễ bị hiểu là nút của ô khác).
+  Nay `.o-nhap` là **lưới 2 cột** `max-content 1fr`: nhãn ở cột 1, biểu tượng ở cột 2 sát ngay
+  sau chữ; ô nhập, bảng, khối trạng thái tràn cả hai cột nên bố cục form không đổi.
+- Biểu tượng vẽ bằng **SVG** (vòng tròn + chữ i, nét 1,6) thay cho ký tự `?`: nét đều ở mọi độ
+  phân giải, ăn theo `currentColor` nên tự sáng/tối theo chế độ màu, hover đổi sang màu nhấn.
+- Hàng chỉ có ô tích (`.o-nhap-ngang`): `<GoiY>` nay nằm **trong** hàng, sau `<label>`, nên biểu
+  tượng đứng cạnh nhãn thay vì rơi xuống một dòng riêng (form nhân viên: chấm công điện thoại,
+  miễn chấm công, tạo tài khoản hệ thống, tạo tài khoản Microsoft 365).
+- Bong gợi ý mở về bên phải biểu tượng (`left: -4px`) thay vì canh phải, hợp với vị trí mới.
+- Quy ước cập nhật ở `tai_lieu/THIET-KE.md` mục 9 + `CLAUDE.md`; bài kiểm `thiet_ke/goi_y.test.mjs`
+  vẫn giữ nguyên luật (không được bày lại mô tả dài).
+
 ## [1.137.1] — 2026-10-27
 
 **Cấp lại mã nhân sự: chuyển thành lệnh cho IT, bỏ hết nút trên giao diện.**

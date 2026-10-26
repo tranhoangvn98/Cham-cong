@@ -663,7 +663,19 @@ input:focus, select:focus, textarea:focus {
 input[type="checkbox"] { width: auto; }
 textarea { min-height: 66px; resize: vertical; }
 
-.o-nhap { margin-bottom: 12px; position: relative; }
+.o-nhap {
+  margin-bottom: 12px;
+  position: relative;
+  /* Luoi 2 cot: cot 1 = nhan (rong vua du), cot 2 = bieu tuong goi y ngay sau nhan.
+     Moi thu khac (o nhap, bang, khoi trang thai) tran ca 2 cot. */
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  row-gap: 3px;
+}
+.o-nhap > label { grid-column: 1; grid-row: 1; margin: 0; }
+.o-nhap > .tro-giup { grid-column: 2; grid-row: 1; justify-self: start; margin: 0 0 0 4px; }
+.o-nhap > :not(label):not(.tro-giup) { grid-column: 1 / -1; }
 /*
  * Nut chon phai giu kich thuoc that cua no.
  *
@@ -699,22 +711,21 @@ input[type="checkbox"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   padding: 0;
-  border: 1px solid var(--vien-dam);
+  border: 0;
   border-radius: var(--tron-tron);
-  background: var(--nen-mo);
-  color: var(--chu-nhat);
-  font-size: 12px;
-  font-weight: var(--trong-dam);
-  line-height: 1;
+  background: transparent;
+  color: var(--chu-mo);
+  line-height: 0;
   cursor: help;
+  transition: color .15s ease, background .15s ease;
 }
+.tro-giup-nut svg { width: 14px; height: 14px; display: block; }
 .tro-giup-nut:hover,
 .tro-giup-nut:focus-visible {
   background: var(--chinh-nhat);
-  border-color: var(--chinh-dam);
   color: var(--chinh-dam);
   outline: none;
 }
@@ -722,7 +733,7 @@ input[type="checkbox"] {
   display: none;
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
+  left: -4px;
   z-index: 80;
   width: max-content;
   max-width: min(360px, 82vw);
@@ -740,13 +751,8 @@ input[type="checkbox"] {
 }
 .tro-giup:hover .tro-giup-bong,
 .tro-giup:focus-within .tro-giup-bong { display: block; }
-/* Trong o nhap: dat nut "?" o goc phai tren, ngang hang nhan — khong chiem them chieu cao. */
-.o-nhap > .tro-giup {
-  position: absolute;
-  top: 0;
-  right: 0;
-  margin: 0 !important;
-}
+/* Hang chi co o tich + nhan: bieu tuong ⓘ nam ngay sau nhan chu. */
+.o-nhap-ngang .tro-giup { margin-left: 2px; }
 
 .bo-loc {
   display: flex;

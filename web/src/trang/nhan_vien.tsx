@@ -957,17 +957,15 @@ function FormNhanVien(
         </div>
 
         {!la_outsource && (
-          <>
-            <div className="o-nhap-ngang">
-              <input id="ccdt" type="checkbox" checked={f.duoc_cham_cong_dien_thoai}
-                onChange={(e) => doi('duoc_cham_cong_dien_thoai', e.target.checked)} />
-              <label htmlFor="ccdt">Cho phép chấm công bằng điện thoại (GPS + selfie)</label>
-            </div>
-            <GoiY style={{ marginTop: -8, marginBottom: 12 }}>
+          <div className="o-nhap-ngang">
+            <input id="ccdt" type="checkbox" checked={f.duoc_cham_cong_dien_thoai}
+              onChange={(e) => doi('duoc_cham_cong_dien_thoai', e.target.checked)} />
+            <label htmlFor="ccdt">Cho phép chấm công bằng điện thoại (GPS + selfie)</label>
+            <GoiY>
               Chỉ bật cho người thường xuyên đi công tác / công trường. Chấm công ngoài phạm vi địa điểm
               đã khai vẫn phải chờ nhân sự duyệt mới được tính công.
             </GoiY>
-          </>
+          </div>
         )}
 
         <div className="o-nhap-ngang">
@@ -975,26 +973,24 @@ function FormNhanVien(
             disabled={khoi_dang_chon?.mien_cham_cong === true}
             onChange={(e) => doi('mien_cham_cong', e.target.checked)} />
           <label htmlFor="mcc">Miễn chấm công — không cần quẹt máy</label>
+          <GoiY>
+            {khoi_dang_chon?.mien_cham_cong === true
+              ? `Khối "${khoi_dang_chon.ten}" đã miễn chấm công nên người này tự động được miễn — không cần quẹt máy, cũng không bị tính vắng.`
+              : 'Bật cho người không quẹt máy (làm ở điểm chưa có máy, tài khoản hệ thống…). '
+                + 'Hệ thống không ghi ngày vắng cho họ; ngày lễ và nghỉ phép vẫn tính bình thường.'}
+          </GoiY>
         </div>
-        <GoiY style={{ marginTop: -8, marginBottom: 12 }}>
-          {khoi_dang_chon?.mien_cham_cong === true
-            ? `Khối "${khoi_dang_chon.ten}" đã miễn chấm công nên người này tự động được miễn — không cần quẹt máy, cũng không bị tính vắng.`
-            : 'Bật cho người không quẹt máy (làm ở điểm chưa có máy, tài khoản hệ thống…). '
-              + 'Hệ thống không ghi ngày vắng cho họ; ngày lễ và nghỉ phép vẫn tính bình thường.'}
-        </GoiY>
 
         {nhan_vien === null && !tu_dong && (
           <div className="o-nhap-ngang" style={{ marginTop: 8 }}>
             <input id="tkht" type="checkbox" checked={tao_tk_ht}
               onChange={(e) => dat_tao_tk_ht(e.target.checked)} />
             <label htmlFor="tkht">Tạo tài khoản hệ thống (đăng nhập app điện thoại)</label>
+            <GoiY>
+              Tên đăng nhập sinh từ mã nhân viên, mật khẩu khởi tạo <strong>chỉ hiện một lần</strong>
+              sau khi lưu. Vai trò tự suy từ ô Vị trí ở trên.
+            </GoiY>
           </div>
-        )}
-        {nhan_vien === null && !tu_dong && (
-          <GoiY style={{ marginTop: -8, marginBottom: 12 }}>
-            Tên đăng nhập sinh từ mã nhân viên, mật khẩu khởi tạo <strong>chỉ hiện một lần</strong>
-            sau khi lưu. Vai trò tự suy từ ô Vị trí ở trên.
-          </GoiY>
         )}
 
         {nhan_vien === null && !tu_dong && !ms365_da_co && (
@@ -1002,16 +998,14 @@ function FormNhanVien(
             <input id="tkms" type="checkbox" checked={tao_tk_ms} disabled={!ms365_tao_bat}
               onChange={(e) => dat_tao_tk_ms(e.target.checked)} />
             <label htmlFor="tkms">Tạo tài khoản Microsoft 365 + cấp giấy phép</label>
+            <GoiY>
+              {ms365_tao_bat
+                ? <>Email trở thành tên đăng nhập Microsoft. Mật khẩu khởi tạo sẽ <strong>chỉ hiện
+                  một lần</strong> ngay sau khi lưu — hãy chép lại rồi bàn giao cho nhân viên.
+                  Giấy phép mặc định là <strong>Business Basic</strong>.</>
+                : 'Máy chủ chưa bật tính năng này (MS365_TAO_TAI_KHOAN_BAT) — hỏi quản trị hệ thống.'}
+            </GoiY>
           </div>
-        )}
-        {nhan_vien === null && !tu_dong && !ms365_da_co && (
-          <GoiY style={{ marginTop: -8, marginBottom: 12 }}>
-            {ms365_tao_bat
-              ? <>Email trở thành tên đăng nhập Microsoft. Mật khẩu khởi tạo sẽ <strong>chỉ hiện
-                một lần</strong> ngay sau khi lưu — hãy chép lại rồi bàn giao cho nhân viên.
-                Giấy phép mặc định là <strong>Business Basic</strong>.</>
-              : 'Máy chủ chưa bật tính năng này (MS365_TAO_TAI_KHOAN_BAT) — hỏi quản trị hệ thống.'}
-          </GoiY>
         )}
         {nhan_vien === null && tu_dong && (
           <GoiY style={{ marginBottom: 12 }}>
