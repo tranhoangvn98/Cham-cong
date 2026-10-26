@@ -60,6 +60,7 @@ export default function ManDoiMatKhau(): ReactNode {
             mat_khau
             tu_dong="new-password"
             goi_y_duoi={lai !== '' && !khop ? 'Hai lần nhập chưa khớp.' : undefined}
+            loi={lai !== '' && !khop}
           />
 
           <Nut
