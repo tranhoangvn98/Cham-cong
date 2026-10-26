@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Xem o chon tep — kiem tra kieu moi</title>
+<link rel="stylesheet" href="./src/kieu.css" />
+<style>
+  :root {
+    --chu: #1e293b; --chu-nhat: #64748b; --chu-mo: #94a3b8;
+    --vien: #cbd5e1; --tron: 8px; --nen-mo: #f8fafc;
+    --chinh-dam: #2563EB; --chinh: #3B82F6;
+    --xau: #E53935; --xau-nen: #fdecec; --tot: #2e7d32; --tot-nen: #e9f6ea;
+    --canh-bao: #b26a00; --canh-bao-nen: #fff4e0; --nen-the: #fff;
+  }
+  body { margin: 0; background: #f1f5f9; font-family: Arial, sans-serif; }
+  .demo { max-width: 620px; margin: 32px auto; padding: 20px; background: #fff;
+          border: 1px solid #e2e8f0; border-radius: 8px; }
+  .demo h2 { font-size: 15px; margin: 18px 0 8px; color: #334155; }
+  .demo h2:first-child { margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="demo">
+  <h2>1. Ô chọn tệp (mặc định) — chưa chọn gì</h2>
+  <div class="o-tep">
+    <label class="o-keo-tha" for="a"><i class="bt bt-plus"></i><span class="o-tep-chu">Kéo thả tệp vào đây hoặc bấm để chọn</span></label>
+    <input id="a" type="file" style="display:none" />
+  </div>
+
+  <h2>2. Đã chọn tệp — hiện tên + nút bỏ chọn</h2>
+  <div class="o-tep">
+    <label class="o-keo-tha" for="b"><i class="bt bt-plus"></i><span class="o-tep-chu">Kéo thả tệp vào đây hoặc bấm để chọn</span></label>
+    <input id="b" type="file" style="display:none" />
+    <div class="o-tep-da-chon">
+      <i class="bt bt-file-text"></i>
+      <span class="o-tep-ten">Bảng công tháng 09-2026.pdf · Ảnh bằng chứng 1.png</span>
+      <button type="button" class="o-tep-xoa"><i class="bt bt-x"></i> Bỏ chọn</button>
+    </div>
+  </div>
+
+  <h2>3. Bản gọn — dùng cạnh tệp đã có</h2>
+  <div class="o-tep">
+    <label class="o-keo-tha o-keo-tha-gon" for="c"><i class="bt bt-plus"></i><span class="o-tep-chu">Thay tệp khác</span></label>
+    <input id="c" type="file" style="display:none" />
+  </div>
+
+  <h2>4. Vô hiệu hóa</h2>
+  <div class="o-tep o-tep-vo-hieu">
+    <label class="o-keo-tha" for="d"><i class="bt bt-plus"></i><span class="o-tep-chu">Kéo thả tệp vào đây hoặc bấm để chọn</span></label>
+    <input id="d" type="file" disabled style="display:none" />
+  </div>
+
+  <h2>5. Trạng thái kéo thả (dang-ke)</h2>
+  <div class="o-tep">
+    <label class="o-keo-tha dang-ke" for="e"><i class="bt bt-plus"></i><span class="o-tep-chu">Thả tệp vào đây</span></label>
+    <input id="e" type="file" style="display:none" />
+  </div>
+</div>
+</body>
+</html>
