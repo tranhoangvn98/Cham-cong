@@ -4,7 +4,7 @@
 // ve theo. Trang nay KHONG tu suy ra quyen tu vai tro — neu suy o hai noi thi som muon hai
 // noi lech nhau, va cai lech nguy hiem la ben giao dien "de" hon ben may chu.
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import { goi, gui_tep, la_nhan_su, tai_tep } from '../api.ts';
+import { goi, gui_tep, la_admin, la_nhan_su, tai_tep } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, HopThoaiXemTep, HopTot, OKeoTep, OSo, Trong,
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet, ngay_gio,
@@ -243,7 +243,7 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
           </div>
           <div className="hs-hanh-dong">
             <LienKet den="/nhan-vien" lop="nut nut-phang">← {tra('hs_ve_danh_sach')}</LienKet>
-            {la_nhan_su() && nv['dang_hoat_dong'] !== false && (
+            {la_admin() && nv['dang_hoat_dong'] !== false && (
               <button type="button" className="nut-vien-nguy" onClick={() => dat_hoi_nghi_kbg(true)}>
                 {tra('hs_nghi_khong_ban_giao')}
               </button>
