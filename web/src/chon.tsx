@@ -44,9 +44,17 @@ export function Chon({ gia_tri, dat_gia_tri, cac_tuy_chon, rong, nhan }: {
 
   const duoc = cac_tuy_chon.find((t) => t.ma === gia_tri)?.nhan ?? rong ?? '';
   const tim_duoc = cac_tuy_chon.length >= 5;
+  // `rong` la mot LUA CHON THAT (bam duoc de bo chon), khong chi la nhan hien tren o.
+  // Truoc day danh sach chi co cac tuy chon that, nen o khong bat buoc van "bat" nguoi dung
+  // phai chon mot muc moi dong duoc bang — khong co duong quay ve trang thai de trong.
+  const co_rong = rong !== undefined && rong !== '';
+  const nhan_rong = rong ?? '';
   const hien = tim.trim() === ''
-    ? cac_tuy_chon
+    ? (co_rong ? [{ ma: '', nhan: nhan_rong }, ...cac_tuy_chon] : cac_tuy_chon)
     : cac_tuy_chon.filter((t) => t.nhan.toLowerCase().includes(tim.trim().toLowerCase()));
+  const so_muc = tim.trim() === '' && co_rong
+    ? cac_tuy_chon.length + 1
+    : hien.length;
 
   const bam_mo = (): void => {
     // Ranh duoi de so la canh duoi cua KHUNG CUON gan nhat (no cat bang khi bang tran ra),
@@ -65,7 +73,7 @@ export function Chon({ gia_tri, dat_gia_tri, cac_tuy_chon, rong, nhan }: {
         khung = khung.parentElement;
       }
       dat_mo_len(phai_mo_len(r.bottom, canh_duoi,
-        cao_bang_chon(cac_tuy_chon.length, cac_tuy_chon.length >= 5)));
+        cao_bang_chon(so_muc, tim_duoc)));
     }
     dat_mo(!mo);
     dat_tim('');

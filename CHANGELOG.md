@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.134.1] — 2026-10-26
+
+**Bỏ chọn được ở mọi ô không bắt buộc; làm rõ máy VP tự đồng bộ và mốc 07:00.**
+
+- **Sửa lỗi “bắt phải chọn” ở ô Máy cửa**: bộ chọn dùng chung chỉ liệt kê các máy, không có mục
+  quay về trạng thái để trống — mở ra là buộc phải chọn “VP - Cổng ra” hoặc “VP - Cổng vào”.
+  Nay nhãn `rong` là một lựa chọn thật ở đầu danh sách, nên mọi ô không bắt buộc đều bỏ chọn được.
+- **Máy cửa ghi rõ “(không bắt buộc)”**; gợi ý nói rõ: để trống là hệ thống đẩy user xuống **tất
+  cả** máy đang bật của khối (VP gồm cả cổng vào và cổng ra), PIN dùng chung nên quẹt máy nào
+  cũng đúng người.
+- **Mã nhân viên** đổi từ ô nhập chỉ-đọc sang ô chữ tĩnh, khi chưa chọn Khối thì ghi thẳng
+  “Chọn Khối bên dưới — hệ thống tự sinh mã, không cần nhập.” — không còn giống ô phải điền.
+- **Tài liệu ZKTeco**: hai máy VP tự đồng bộ user + khuôn mặt/vân tay khi một máy đăng ký mới,
+  cộng vòng đối chiếu đầy đủ **07:00** hằng ngày; sửa ghi chú cũ 07:30 cho khớp mã.
+
 ## [1.134.0] — 2026-10-26
 
 **Nghỉ việc: chốt hạn báo trước theo chính sách công ty (thử việc 14 ngày, HĐ xác định 30

@@ -360,15 +360,15 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
   }
 
   // ------------------------------------------------------------ dong bo may cham cong
-  // 07:30 (gio may cham cong): doi chieu cap may VP voi nhau (user + khuon mat), khoa nguoi da
+  // 07:00 (gio may cham cong): doi chieu cap may VP voi nhau (user + khuon mat), khoa nguoi da
   // nghi viec tren moi may dang bat, roi XAC NHAN ket qua (ma_tra_ve + hoi lai may) — nhat ky
   // ghi lai gi da lam va con thieu gi. Khoa theo NGAY nen chi chay mot lan moi sang; may nghi/
-  // loop tre thi vong dau tien sau 07:30 bu duoc. Dang ky MOI trong ngay thi da co duong
+  // loop tre thi vong dau tien sau 07:00 bu duoc. Dang ky MOI trong ngay thi da co duong
   // rieng (su kien OPERLOG -> dong_bo_sau_enroll).
   if (gio_may >= GIO_DONG_BO_MAY) {
     const ma_dbm = `dong_bo_may:${hom_nay}`;
     if (await nhan_viec(ma_dbm)) {
-      ghi_log(`[lich] dong bo may: bat dau doi chieu (${String(GIO_DONG_BO_MAY)}:30)`);
+      ghi_log(`[lich] dong bo may: bat dau doi chieu (${String(GIO_DONG_BO_MAY)}:00)`);
       try {
         const kq = await dong_bo_hang_ngay(ghi_log);
         await ghi_ket_qua(ma_dbm, kq);

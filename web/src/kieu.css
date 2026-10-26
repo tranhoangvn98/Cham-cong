@@ -749,6 +749,17 @@ input[type="checkbox"] {
   font-family: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, 'Courier New', monospace;
 }
 .chu-ma { font-variant-numeric: tabular-nums; }
+/* O CHI DOC (khong phai input): ma he thong sinh, de nguoi dung khong tuong phai go. */
+.o-tinh {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px dashed var(--vien-dam);
+  border-radius: var(--tron);
+  background: var(--nen-mo);
+  color: var(--chu-nhat);
+}
 .hop-tin { background: var(--lanh-nen); color: var(--lanh); border-color: var(--lanh); }
 
 /* ---------------------------------------------------------------- ky luat: chon hang loat + khieu nai */

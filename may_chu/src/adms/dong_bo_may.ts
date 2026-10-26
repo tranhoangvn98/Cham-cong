@@ -256,7 +256,7 @@ export async function xac_nhan_dong_bo(
 }
 
 /**
- * Dong bo hang ngay (lich 07:30): hoi anh chup ca hai may, day nhung gi thieu cho nhau,
+ * Dong bo hang ngay (lich 07:00): hoi anh chup ca hai may, day nhung gi thieu cho nhau,
  * khoa nguoi da nghi, roi xac nhan ket qua. Tra chuoi bao cao de ghi vao nhat ky.
  */
 export async function dong_bo_hang_ngay(ghi_log: GhiLog): Promise<string> {

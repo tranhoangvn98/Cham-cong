@@ -421,7 +421,7 @@ function FormNhanVien(
   /** Xem truoc khuon ma: khoi + thang nam vao lam. So thu tu chi biet khi luu. */
   const ma_xem_truoc = ((): string => {
     const mn = khoi_dang_chon?.ma_ngan;
-    if (mn === null || mn === undefined || mn === '') return '—';
+    if (mn === null || mn === undefined || mn === '') return '';
     const m = /^(\d{4})-(\d{2})-\d{2}$/.exec(f.ngay_vao);
     const thang = m === null ? 'MMYY' : `${m[2] as string}${(m[1] as string).slice(2)}`;
     return `NV${mn}${thang}####`;
@@ -615,7 +615,9 @@ function FormNhanVien(
           {nhan_vien === null ? (
             <div className="o-nhap">
               <label htmlFor="ma">{tra_hien_tai('nv_ma_tu_sinh')}</label>
-              <input id="ma" value={ma_xem_truoc} readOnly className="chu-ma" />
+              <div id="ma" className={ma_xem_truoc === '' ? 'o-tinh' : 'o-tinh chu-ma'}>
+                {ma_xem_truoc === '' ? tra_hien_tai('nv_ma_cho_khoi') : ma_xem_truoc}
+              </div>
               <div className="goi-y">{tra_hien_tai('nv_ma_tu_sinh_phu')}</div>
             </div>
           ) : (

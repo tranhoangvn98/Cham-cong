@@ -166,6 +166,7 @@ export const CHUOI_ZH = {
   cn_tab_phep: '假期',
   cn_tab_khieu_nai: '申诉',
   cn_tab_ca_nhan: '个人',
+  cn_them: '更多',
   cn_ten_man_bang_cong: '我的考勤表',
   cn_ten_man_bang_cong_phu: '按月考勤数据',
   cn_ten_man_don_tu: '请假与申请单',
@@ -290,6 +291,7 @@ export const CHUOI_ZH = {
   nv_ma_tu_sinh: '员工编号',
   nv_ma_tu_sinh_phu:
     '保存时由系统自动生成：NV + 部门代码 + 入职年月 + 序号（例如 NVKHN05260001）。编号不会重复使用，无需手工填写。',
+  nv_ma_cho_khoi: '请在下方选择部门——系统会自动生成编号，无需手工填写。',
   nv_ma_erp1: 'ERP1 员工编号',
   nv_ma_erp1_phu:
     '该员工在 ERP1 中的编号。在此填写后，创建账号的 webhook 将随附该编号，ERP1 无需手工匹配。',
@@ -322,10 +324,10 @@ export const CHUOI_ZH = {
   nv_hd_chinh_thuc_6: '正式 — 6 个月',
   nv_hd_chinh_thuc_12: '正式 — 1 年',
   nv_hd_khong_xac_dinh: '正式 — 无固定期限',
-  nv_may_cua: '门禁设备（出入管理）',
-  nv_may_cua_rong: '— 使用部门考勤设备 —',
+  nv_may_cua: '门禁设备（可不选）',
+  nv_may_cua_rong: '— 不选：使用部门考勤设备 —',
   nv_may_cua_phu:
-    '若该员工需要刷门禁，请选择门禁设备：系统按该设备号段分配 PIN，并将用户同时下发到门禁设备与部门考勤设备。',
+    '留空即可：系统会把用户下发到该部门所有启用设备（VP 包含入口与出口设备），PIN 通用，刷哪台都对应同一个人。仅当该员工需要刷部门之外的门禁设备时才选择。',
   nv_vi_tri_to_chuc: '“组织与职责”中的岗位',
   nv_vi_tri_to_chuc_phu:
     '选择“组织与职责”中已配置的岗位：系统将立即为该员工分配岗位对应的例行工作。第一个勾选的岗位为主岗位（若职务为空则自动填入）。未配置时可留空；保存后可在“组织与职责”页面增删岗位。',

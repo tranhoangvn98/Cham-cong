@@ -163,6 +163,7 @@ export const CHUOI_VI = {
   cn_tab_phep: 'Phép',
   cn_tab_khieu_nai: 'Khiếu nại',
   cn_tab_ca_nhan: 'Cá nhân',
+  cn_them: 'Thêm',
   cn_ten_man_bang_cong: 'Bảng công của tôi',
   cn_ten_man_bang_cong_phu: 'Số liệu chấm công theo tháng',
   cn_ten_man_don_tu: 'Nghỉ phép & đơn từ',
@@ -288,6 +289,7 @@ export const CHUOI_VI = {
   nv_ma_tu_sinh: 'Mã nhân viên',
   nv_ma_tu_sinh_phu:
     'Hệ thống tự sinh khi lưu: NV + mã khối + tháng năm vào làm + số thứ tự (ví dụ NVKHN05260001). Mã không tái dùng nên không cần nhập.',
+  nv_ma_cho_khoi: 'Chọn Khối bên dưới — hệ thống tự sinh mã, không cần nhập.',
   nv_ma_erp1: 'Mã nhân viên bên ERP1',
   nv_ma_erp1_phu:
     'Mã của người này bên ERP1. Khai ở đây để webhook tạo tài khoản gửi kèm mã, ERP1 khỏi phải ghép tay.',
@@ -320,10 +322,10 @@ export const CHUOI_VI = {
   nv_hd_chinh_thuc_6: 'Chính thức — 6 tháng',
   nv_hd_chinh_thuc_12: 'Chính thức — 1 năm',
   nv_hd_khong_xac_dinh: 'Chính thức — Không xác định kì hạn',
-  nv_may_cua: 'Máy cửa (kiểm soát ra vào)',
-  nv_may_cua_rong: '— Dùng máy chấm công của khối —',
+  nv_may_cua: 'Máy cửa (không bắt buộc)',
+  nv_may_cua_rong: '— Không chọn: dùng máy chấm công của khối —',
   nv_may_cua_phu:
-    'Chọn máy cửa nếu người này cần quẹt ra vào: hệ thống cấp PIN theo dải của máy đó và đẩy user xuống cả máy cửa lẫn máy chấm công của khối.',
+    'Để trống là đủ: hệ thống đẩy user xuống TẤT CẢ máy đang bật của khối (VP có cả cổng vào và cổng ra), PIN dùng chung nên quẹt máy nào cũng ra đúng người. Chỉ chọn máy cửa khi người này cần quẹt ở một máy cửa nằm ngoài khối.',
   nv_vi_tri_to_chuc: 'Vị trí trong Tổ chức & trách nhiệm',
   nv_vi_tri_to_chuc_phu:
     'Chọn vị trí đã khai trong Tổ chức & trách nhiệm: hệ thống giao luôn các đầu việc định kỳ của vị trí cho người này. Vị trí chọn ĐẦU TIÊN là vị trí chính (điền chức danh nếu ô đó đang trống). Bỏ trống nếu chưa có cấu hình; sau khi lưu có thể gán/gỡ thêm ở trang Tổ chức & trách nhiệm.',

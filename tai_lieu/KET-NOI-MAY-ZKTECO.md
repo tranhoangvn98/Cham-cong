@@ -301,9 +301,13 @@ Hai máy đặt hai bên cùng một cửa phục vụ **cùng một nhóm ngư�
 - **Không chia dải PIN.** Để trống dải ở cả hai máy, hoặc khai **cùng một dải**. Một người phải
   mang **đúng một PIN giống nhau trên cả hai máy** — quẹt vào ở máy này, quẹt ra ở máy kia, cùng
   một danh tính. Chia dải là biến một người thành hai người.
-- **Nạp nhân viên xuống CẢ HAI máy**, mỗi máy một lần. Khuôn mặt / vân tay không liên thông giữa
-  các máy, nên phải đăng ký sinh trắc ở từng máy. Nạp thiếu một máy thì người ta quẹt được ở
-  cửa vào mà không quẹt được ở cửa ra.
+- **Nạp nhân viên xuống CẢ HAI máy tự động.** Chỉ cần chọn **Khối** khi thêm nhân sự: hệ thống
+  đẩy user xuống **tất cả** máy đang bật của khối (VP có cả cổng vào và cổng ra), không phải
+  chọn từng máy và không phải nạp tay. Ô **Máy cửa** trên form là tuỳ chọn, chỉ dùng khi người
+  đó cần quẹt ở một máy cửa nằm ngoài khối.
+- **Khuôn mặt / vân tay tự lan sang máy còn lại.** Đăng ký sinh trắc ở một máy là máy kia nhận
+  ngay khi máy vừa đăng ký đẩy sự kiện OPERLOG; 07:00 mỗi sáng còn một vòng đối chiếu đầy đủ
+  hai chiều để bù trường hợp máy mất mạng lúc đăng ký.
 - **Đồng bộ giờ cả hai, cùng lúc.** Ở đây lệch đồng hồ nguy hiểm nhất: giờ vào và giờ ra do hai
   máy khác nhau ghi, nên lệch 5 phút giữa hai máy là mọi ngày công đều sai 5 phút.
 
@@ -416,7 +420,7 @@ nhưng có đường đi được, đủ để **sao chép khuôn mặt từ má
    Lưu ý: phải **tạo user trước** rồi mới đẩy template.
 
 Từ 1.122.8 việc này **tự động**: máy đẩy sự kiện OPERLOG (có người đăng ký mới) là hệ thống
-tự đồng bộ sang máy VP còn lại, và 07:30 mỗi sáng có một vòng đối chiếu đầy đủ + khóa người
+tự đồng bộ sang máy VP còn lại, và **07:00 mỗi sáng** có một vòng đối chiếu đầy đủ + khóa người
 đã nghỉ việc trên mọi máy (kèm xác nhận kết quả) — xem `may_chu/src/adms/dong_bo_may.ts`.
 
 ### Bỏ một máy đã ngừng dùng
