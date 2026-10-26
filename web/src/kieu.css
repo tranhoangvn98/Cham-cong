@@ -3197,6 +3197,16 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   .vt-dong { flex-wrap: wrap; }
   .vt-han,
   .vt-buoc { flex: 0 1 auto; }
+  /* Thanh tab NGANG (Duyệt đơn, Phụ cấp, Thôi việc, Hồ sơ...): 8-12 tab dài hơn màn hình.
+     Trước đây cuộn ngang và người dùng kéo sang không biết còn tab — nay xuống dòng, thấy
+     hết tab ngay trên màn hình, không còn vùng cuộn ngang rỗng. */
+  .hang-tab { flex-wrap: wrap; overflow-x: visible; }
+  .hang-tab button,
+  .hang-tab a { flex: 0 0 auto; }
+  /* Thanh mục Cài đặt (Tài khoản, Thiết bị, Đồng bộ ERP...): các khối tự xuống dòng thay vì
+     một dải cuộn ngang 625px. */
+  .cai-dat-ben { flex-wrap: wrap; overflow-x: visible; gap: 4px var(--khoang-lon); }
+  .cai-dat-ben a { white-space: normal; }
 }
 
 @media (max-width: 768px) {
