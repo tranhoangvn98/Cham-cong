@@ -458,7 +458,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   });
 
   /** Cho nghi viec: giu lai lich su cham cong, chi tat hoat dong. */
-  app.post('/nhan-vien/:id/nghi-viec', { preHandler: can_nhan_su }, async (req) => {
+  app.post('/nhan-vien/:id/nghi-viec', { preHandler: can_admin }, async (req) => {
     const id = lay_id(req);
     const b = than(req.body ?? {});
     const ngay_nghi = ngay(b, 'ngay_nghi_viec');

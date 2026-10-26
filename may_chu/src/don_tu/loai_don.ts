@@ -249,14 +249,14 @@ export function canh_bao_tran_ot(phut_da_co: number, phut_don_moi: number): stri
 }
 
 /**
- * So ngay bao truoc toi thieu khi nguoi lao dong don phuong cham dut HDLD.
+ * So ngay bao truoc toi thieu khi don phuong cham dut HDLD.
  *
- * BLLD 2019 Dieu 35.1:
- *   - Hop dong khong xac dinh thoi han:            45 ngay
- *   - Hop dong xac dinh thoi han tu 12 den 36 thang: 30 ngay
- *   - Hop dong duoi 12 thang:                       3 ngay lam viec
+ * Chinh sach cong ty (theo chi dao 26/10/2026):
+ *   - Hop dong khong xac dinh thoi han:              45 ngay
+ *   - Hop dong xac dinh thoi han (moi ky han):      30 ngay
+ *   - Thu viec:                                     14 ngay
  *
- * Tra null khi khong biet loai hop dong — thieu du lieu thi khong doan mot con so phap ly.
+ * Tra null khi khong biet loai hop dong — thieu du lieu thi khong doan mot con so.
  */
 export function ngay_bao_truoc_toi_thieu(
   loai_hop_dong: string | null,
@@ -264,23 +264,20 @@ export function ngay_bao_truoc_toi_thieu(
 ): number | null {
   if (loai_hop_dong === null) return null;
   if (loai_hop_dong === 'khong_xac_dinh') return 45;
-  if (loai_hop_dong === 'thu_viec') return 3;
-  if (loai_hop_dong === 'xac_dinh') {
-    if (so_thang_hop_dong === null) return 30;
-    return so_thang_hop_dong < 12 ? 3 : 30;
-  }
-  // thoi_vu, cong_tac_vien, hoc_viec: khong nam trong bang cua Dieu 35.1.
+  if (loai_hop_dong === 'thu_viec') return 14;
+  if (loai_hop_dong === 'xac_dinh') return 30;
+  // thoi_vu, cong_tac_vien, hoc_viec: khong nam trong bang bao truoc cua cong ty.
   return null;
 }
 
-/** Canh bao khi don thoi viec bao truoc it hon muc BLLD Dieu 35 doi. */
+/** Canh bao khi don thoi viec bao truoc it hon nguong ap dung (luat hoac chinh sach cong ty). */
 export function canh_bao_bao_truoc(
   so_ngay_bao_truoc: number,
   toi_thieu: number | null,
 ): string | null {
   if (toi_thieu === null || so_ngay_bao_truoc >= toi_thieu) return null;
   return `Đơn báo trước ${String(so_ngay_bao_truoc)} ngày, ít hơn mức `
-    + `${String(toi_thieu)} ngày mà BLLĐ 2019 Điều 35.1 quy định cho loại hợp đồng này. `
-    + 'Vẫn duyệt được — Điều 35.2 có các trường hợp không cần báo trước — nhưng nếu không '
-    + 'thuộc trường hợp đó thì đây là vi phạm thời hạn báo trước.';
+    + `${String(toi_thieu)} ngày áp dụng cho loại hợp đồng này. `
+    + 'Vẫn duyệt được — nhưng nếu không thuộc trường hợp được miễn báo trước thì đây là '
+    + 'vi phạm thời hạn báo trước.';
 }

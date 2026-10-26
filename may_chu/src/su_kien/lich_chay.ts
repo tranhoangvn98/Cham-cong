@@ -155,6 +155,7 @@ export async function nghi_viec_den_han(
 ): Promise<void> {
   const dong = await truy_van<{
     id: string; ma: string; nhan_vien_id: string | null; ngay_nghi_viec: string;
+    so_ky_hieu: string | null; thong_bao_id: string | null; ngay_phat_hanh: string | null;
   }>(
     `update thong_bao_nhap_ai
         set nghi_viec_dang_chay_luc = now()
@@ -168,7 +169,8 @@ export async function nghi_viec_den_han(
          order by ngay_nghi_viec
          for update skip locked
       )
-      returning id, ma, nhan_vien_id, ngay_nghi_viec::text`,
+      returning id, ma, nhan_vien_id, ngay_nghi_viec::text, so_ky_hieu, thong_bao_id,
+                to_char(cap_nhat_luc, 'YYYY-MM-DD') as ngay_phat_hanh`,
     [],
   );
 
@@ -198,6 +200,11 @@ export async function nghi_viec_den_han(
         // checklist ban giao. Ngay da qua thi danh dau hoi to (bo qua muc nhan vien).
         const qt = await dam_bao_quy_trinh_tu_qd(khach, nhan_vien_id, d.ngay_nghi_viec, {
           hoi_to: d.ngay_nghi_viec < hom_nay,
+          quyet_dinh: {
+            thong_bao_id: d.thong_bao_id,
+            so_ky_hieu: d.so_ky_hieu,
+            ngay: d.ngay_phat_hanh,
+          },
         });
         if (qt.quy_trinh_id === null) {
           // Khong tao duoc thi KHONG danh dau da xu ly — vong sau thu lai.

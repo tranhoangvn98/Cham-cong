@@ -49,9 +49,9 @@ flowchart TD
 | Nhóm | Loại HĐ | Báo trước | BHXH / báo giảm | Trợ cấp thôi việc | Phép năm | Quyết toán 14 ngày (Đ.48) | Tiêu đề quyết định Cổng 2 |
 |---|---|---|---|---|---|---|---|
 | Thực tập sinh | `hoc_viec` | Theo hợp đồng (không chặn) | **Không** | **Không** | **Không** | **Không** | Kết thúc học việc / thực tập |
-| Thử việc | `thu_viec` | 0 ngày (Đ.27) | Không bắt buộc | **Không** | **Không** | Có | Kết thúc thời gian thử việc |
-| Thời vụ | `thoi_vu` | 3 ngày (Đ.35) | Có (khi phát sinh) | Có | Có (khi phát sinh) | Có | Chấm dứt HĐLĐ |
-| Chính thức | `xac_dinh`, `khong_xac_dinh` | 30 / 45 ngày (Đ.35) | Có | Có | Có | Có | Chấm dứt HĐLĐ |
+| Thử việc | `thu_viec` | **14 ngày** (chính sách công ty) | Không bắt buộc | **Không** | **Không** | Có | Kết thúc thời gian thử việc |
+| Thời vụ | `thoi_vu` | 3 ngày | Có (khi phát sinh) | Có | Có (khi phát sinh) | Có | Chấm dứt HĐLĐ |
+| Chính thức | `xac_dinh`, `khong_xac_dinh` | **30 ngày** (HĐ xác định, kể cả dưới 1 năm) / 45 ngày (không xác định) | Có | Có | Có | Có | Chấm dứt HĐLĐ |
 | Quản lý DN | HĐ **xác định / không xác định** + chức danh quản lý | **120 ngày** (Đ.7 NĐ145/2020) | Có | Có | Có | Có | Chấm dứt HĐLĐ |
 | Cộng tác viên | `cong_tac_vien` | Theo hợp đồng dịch vụ | **Không** | **Không** | **Không** | **Không** | Chấm dứt hợp đồng dịch vụ |
 
@@ -72,6 +72,7 @@ xác định thời hạn.
   định chấm dứt HĐLĐ".
 
 ### Thử việc (`thu_viec`)
+- **Báo trước 14 ngày** (chính sách công ty), thời gian thử việc 30–60 ngày.
 - Như trên, cộng quyết toán lương + mốc 14 ngày; không trợ cấp thôi việc, không phép năm.
 - Quyết định: **kết thúc thời gian thử việc**.
 
@@ -89,15 +90,18 @@ xác định thời hạn.
 - `quy_trinh.ts`:
   - `sinh_quy_trinh_thoi_viec` nhận `nguon_tao`, chụp `nhom_quy_trinh`, **tái dùng** quy trình
     đang mở thay vì tạo quy trình thứ hai; đổi lastday thì đưa mục tự động về `chua` để tính lại.
-  - `dam_bao_quy_trinh_tu_qd(..., { hoi_to, nguon_tao })`: tạo/duyệt đơn + quy trình; `hoi_to`
-    quyết định bỏ qua hay giữ mục nhân viên.
+  - `dam_bao_quy_trinh_tu_qd(..., { hoi_to, nguon_tao, quyet_dinh })`: tạo/duyệt đơn + quy trình;
+    liên kết QĐ (số, ngày, tệp, thông báo) và tick mục `ban_hanh_qd`; `hoi_to` quyết định bỏ qua
+    hay giữ mục nhân viên.
 - `thong_bao_ai.ts`: phát hành QĐ → gọi `dam_bao_quy_trinh_tu_qd` **trong transaction phát
-  hành**; đánh dấu `nghi_viec_da_chay_luc`; chuông cho nhân viên theo ngôn ngữ người nhận.
+  hành**, truyền số/ngày/tệp QĐ; đánh dấu `nghi_viec_da_chay_luc`; chuông cho nhân viên + admin.
 - `lich_chay.ts`: sửa lỗi khối `nghi_viec_den_han` bị lồng trong `catch` của job ra/vào; quét
-  **mọi** QĐ chưa vào luồng (không lọc theo ngày) làm lưới an toàn/backfill.
-- `danh_muc.ts`: nút nghỉ không bàn giao ghi quy trình đã đóng (nguồn `nghi_khong_ban_giao`).
-- `chay_dung.ts`: quyết định/bảng quyết toán/BHXH theo nhánh; chỉ sinh chứng từ khi mục tương
-  ứng có trong khuôn.
+  **mọi** QĐ chưa vào luồng (không lọc theo ngày) làm lưới an toàn/backfill, kèm số/ngày QĐ.
+- `danh_muc.ts`: nút nghỉ không bàn giao **chỉ `can_admin`**, ghi quy trình đã đóng
+  (nguồn `nghi_khong_ban_giao`).
+- `chay_dung.ts`: quyết định/bảng quyết toán/BHXH theo nhánh; **dùng lại QĐ đã liên kết** thay
+  vì sinh văn bản thứ hai; chỉ sinh chứng từ khi mục tương ứng có trong khuôn.
+- `tu_dong.ts`: mục `ban_hanh_qd` chỉ xong khi QĐ đã liên kết — chưa có QĐ thì Cổng 2 bị chặn.
 - Migration `113_luong_nghi_viec_duy_nhat.sql`: thêm `nguon_tao`, `nhom_quy_trinh`, partial
   unique index một quy trình mở/người, dọn mục không áp dụng khỏi khuôn.
 - UI: cột **Nhánh** + **Nguồn tạo** ở trang Thôi việc; chi tiết hiện căn cứ pháp lý của nhánh.
@@ -112,14 +116,20 @@ xác định thời hạn.
 | ERP147 Hoàng Minh Ngọc — TBN-000003, nghỉ 22/09 | Đã `dang_hoat_dong=false`, không có quy trình | **Bỏ qua** khi backfill (đã nghỉ tay); chỉ đánh dấu QĐ đã xử lý |
 | ERP151 Đinh Thị Cẩm Nhung — quy trình mở từ 25/09, lastday 30/09 | 7 mục nhân viên còn `chua`, lastday chưa chốt | HR nhắc nhân viên hoàn tất hoặc Admin bỏ qua từng mục kèm lý do rồi Cổng 2 |
 
-## 8. Điểm cần duyệt
+## 8. Điểm đã chốt
 
-1. **Thực tập sinh**: giữ quyết toán lương (trả trợ cấp/thù lao còn lại) nhưng **không** phép
-   năm, trợ cấp thôi việc, BHXH, mốc 14 ngày — đúng ý "không thể nghỉ như nhân viên chính thức".
-2. **Thử việc**: vẫn giữ mốc quyết toán 14 ngày (Đ.48) hay bỏ luôn? Bản này giữ.
-3. **Nghỉ không bàn giao**: vẫn khóa ngay, nhưng ghi một quy trình đã đóng để báo cáo — thay vì
-   không có dấu vết như trước.
+1. **Thực tập sinh**: giữ quyết toán lương nhưng **không** phép năm, trợ cấp thôi việc, BHXH,
+   mốc 14 ngày — đúng ý "không thể nghỉ như nhân viên chính thức".
+2. **Thử việc**: báo trước **14 ngày**, thời gian thử việc 30–60 ngày; vẫn giữ mốc quyết toán
+   14 ngày (Đ.48).
+3. **Nghỉ không bàn giao**: chỉ **admin** thực hiện; vẫn ghi quy trình đã đóng để báo cáo.
 4. **Quản lý doanh nghiệp**: tự áp 120 ngày khi chức danh khớp và HĐ là **xác định / không xác
-   định**; có cần cờ xác nhận riêng của HR không?
-5. **Một quy trình mở/người**: nếu HR muốn hủy để mở quy trình mới, phải bấm Hủy quy trình cũ
-   trước — chấp nhận được không?
+   định**; không cần cờ xác nhận riêng.
+5. **Một quy trình mở/người**: muốn mở quy trình mới phải Hủy quy trình cũ trước — đã đồng ý.
+
+## 9. Bước QĐ trong luồng 1
+
+- Mục `ban_hanh_qd` (bắt buộc) chỉ xong khi quyết định nghỉ việc đã ban hành và được liên kết
+  vào quy trình (số, ngày, tệp).
+- Cổng 2 dùng lại đúng QĐ đó, không sinh văn bản thứ hai; quy trình cũ đã qua lastday được
+  `bo_qua` mục này khi di trú.

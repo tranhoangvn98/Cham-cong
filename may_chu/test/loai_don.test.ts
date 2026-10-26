@@ -112,12 +112,12 @@ test('tran OT: vuot tran thi canh bao, co ca hai con so', () => {
 
 // ================================================================ han bao truoc (Dieu 35)
 
-test('han bao truoc: dung bang cua BLLD 2019 Dieu 35.1', () => {
+test('han bao truoc: theo chinh sach cong ty 14/30/45 ngay', () => {
   assert.equal(ngay_bao_truoc_toi_thieu('khong_xac_dinh', null), 45);
   assert.equal(ngay_bao_truoc_toi_thieu('xac_dinh', 24), 30);
-  assert.equal(ngay_bao_truoc_toi_thieu('xac_dinh', 12), 30, 'dung 12 thang la 30 ngay');
-  assert.equal(ngay_bao_truoc_toi_thieu('xac_dinh', 6), 3, 'duoi 12 thang la 3 ngay lam viec');
-  assert.equal(ngay_bao_truoc_toi_thieu('thu_viec', null), 3);
+  assert.equal(ngay_bao_truoc_toi_thieu('xac_dinh', 12), 30);
+  assert.equal(ngay_bao_truoc_toi_thieu('xac_dinh', 6), 30, 'duoi 12 thang cung 30 ngay');
+  assert.equal(ngay_bao_truoc_toi_thieu('thu_viec', null), 14);
 });
 
 test('han bao truoc: thieu du lieu thi KHONG doan mot con so phap ly', () => {
@@ -139,8 +139,8 @@ test('canh bao bao truoc: thieu han thi canh bao, va noi ro co ngoai le', () => 
   assert.notEqual(cb, null);
   assert.match(cb!, /10/);
   assert.match(cb!, /45/);
-  assert.match(cb!, /35/, 'thieu dan chieu dieu luat');
-  // Dieu 35.2 co cac truong hop khong can bao truoc — canh bao phai noi ra, khong ket luan.
-  assert.match(cb!, /35\.2/);
+  // Nguong co the la luat hoac chinh sach cong ty (thu viec 14 ngay) — khong duoc
+  // vien dan mot dieu luat cu the khi khong chac, chi canh bao va neu ngoai le.
+  assert.match(cb!, /miễn báo trước/, 'thieu y neu ngoai le');
   assert.match(cb!, /duyệt được/);
 });

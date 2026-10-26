@@ -15,6 +15,7 @@ import {
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon } from '../chon.tsx';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
+import { dat_qd_nghi_viec } from '../dieu_huong_sau.ts';
 import { tra_hien_tai, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
 
 // ---------------------------------------------------------------- kieu du lieu
@@ -69,6 +70,10 @@ interface QuyTrinhThoiViec {
   chuc_danh: string | null;
   nguon_tao: 'don_nhan_vien' | 'quyet_dinh' | 'nghi_khong_ban_giao';
   nhom_quy_trinh: string | null;
+  quyet_dinh_tep_id: string | null;
+  quyet_dinh_thong_bao_id: string | null;
+  quyet_dinh_so: string | null;
+  quyet_dinh_ngay: string | null;
   ngay_lam_viec_cuoi: string | null;
   lastday_da_chot: boolean;
   khong_can_bao_truoc: boolean;
@@ -297,6 +302,7 @@ function ChiTietQuyTrinh({ id, khi_dong }: { id: string; khi_dong: () => void })
   const ct = dung_nap<QuyTrinhThoiViec>(`/api/thoi-viec/quy-trinh/${id}`, [id]);
   const hd = dung_hanh_dong();
   const xac_nhan = dung_xac_nhan();
+  const { di_toi } = dung_tuyen();
   const [ngay_chot, dat_ngay_chot] = useState('');
   const [khong_bao_truoc, dat_khong_bao_truoc] = useState(false);
   const [tep_mo, dat_tep_mo] = useState<{ tep_id: string; ten_goc: string } | null>(null);
@@ -371,6 +377,23 @@ function ChiTietQuyTrinh({ id, khi_dong }: { id: string; khi_dong: () => void })
             {can_cu_nhanh(d.nhom_quy_trinh) !== '' && <> — {can_cu_nhanh(d.nhom_quy_trinh)}</>}
             <span className="mo-ta"> · {tra_hien_tai('tv_nguon_tao')}: {nhan_nguon(d.nguon_tao)}</span>
           </div>
+          <div className="mo-ta" style={{ marginTop: 6 }}>
+            {d.quyet_dinh_so === null
+              ? 'Chưa ban hành quyết định nghỉ việc.'
+              : (
+                <>
+                  Quyết định: <b>{d.quyet_dinh_so}</b>
+                  {d.quyet_dinh_ngay !== null && <> · ngày {ngay_viet(d.quyet_dinh_ngay)}</>}
+                  {d.quyet_dinh_tep_id !== null && (
+                    <button type="button" className="nut-nho nut-phang" style={{ marginLeft: 8 }}
+                      onClick={() => {
+                        void tai_tep(`/api/ho-so/tep/${d.quyet_dinh_tep_id}`,
+                          `Quyet-dinh-${d.quyet_dinh_so ?? ''}.docx`);
+                      }}>Tải QĐ</button>
+                  )}
+                </>
+              )}
+          </div>
         </div>
         <div className="hang-nut">
           <button type="button" className="nut-phang" onClick={khi_dong}>Đóng</button>
@@ -401,6 +424,13 @@ function ChiTietQuyTrinh({ id, khi_dong }: { id: string; khi_dong: () => void })
                 <td>
                   <div>{m.tieu_de}{!m.bat_buoc && <span className="mo-ta"> (khi phát sinh)</span>}</div>
                   {m.ghi_chu !== null && <div className="mo-ta">{m.ghi_chu}</div>}
+                  {m.ma_muc === 'ban_hanh_qd' && m.trang_thai !== 'xong' && m.trang_thai !== 'bo_qua' && (
+                    <button type="button" className="nut-nho nut-chinh" style={{ marginTop: 6 }}
+                      onClick={() => {
+                        dat_qd_nghi_viec({ nhan_vien_id: d.nhan_vien_id });
+                        di_toi('/van-ban/ban-hanh');
+                      }}>Soạn QĐ nghỉ việc</button>
+                  )}
                   <KetQuaMuc ket_qua={m.ket_qua} />
                 </td>
                 <td>
@@ -646,7 +676,7 @@ export function TrangHuongDanThoiViec(): ReactNode {
     return (
       <Trong
         tieu_de="Bạn chưa có quy trình thôi việc"
-        mo_ta="Quy trình được khởi tạo khi Admin duyệt đơn xin thôi việc của bạn."
+        mo_ta="Quy trình được khởi tạo khi Admin duyệt đơn xin thôi việc hoặc ban hành quyết định nghỉ việc."
         hanh_dong={la_nhan_su() ? (
           <button type="button" className="nut-chinh" onClick={() => di_toi('/thoi-viec')}>
             Mở trang quản trị
@@ -725,6 +755,11 @@ export function TrangHuongDanThoiViec(): ReactNode {
           <h2 className="tv-tua">Hướng dẫn thủ tục thôi việc</h2>
           <div className="mo-ta">
             Còn {muc_con.length} mục chưa xong · đã xong {xong}/{d.muc.length}
+          </div>
+          <div className="mo-ta" style={{ marginTop: 4 }}>
+            {d.quyet_dinh_so === null
+              ? 'Chưa có quyết định nghỉ việc.'
+              : `Quyết định ${d.quyet_dinh_so}${d.quyet_dinh_ngay === null ? '' : ` ngày ${ngay_viet(d.quyet_dinh_ngay)}`}`}
           </div>
         </div>
       </div>

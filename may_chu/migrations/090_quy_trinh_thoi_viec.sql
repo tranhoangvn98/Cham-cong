@@ -146,14 +146,14 @@ insert into cau_hinh_thoi_viec (khoa, gia_tri, ghi_chu) values
 on conflict (khoa) do nothing;
 
 -- ---------------------------------------------------------------- nap khuon han bao truoc
--- REQ-CL-02: thu_viec = 0 (D.27 k2 BLLD); thoi_vu/HD<12 thang = 3 ngay lam viec;
--- xac_dinh 12-36 thang = 30; khong_xac_dinh = 45; hoc_viec/cong_tac_vien theo hop dong
--- (khong chan); quan ly DN toi 120 ngay (D.7 ND145/2020) — co rieng la_quan_ly_dn.
+-- REQ-CL-02 theo chinh sach cong ty (26/10/2026): thu viec bao truoc 14 ngay; HĐ xac dinh
+-- thoi han 30 ngay; khong xac dinh 45 ngay; thoi_vu 3 ngay; hoc_viec/cong_tac_vien theo
+-- hop dong (khong chan); quan ly DN toi 120 ngay (D.7 ND145/2020).
 insert into khuon_han_bao_truoc (loai_hop_dong, so_ngay, ghi_chu) values
-  ('thu_viec',       0,   'Thử việc không cần báo trước — BLLĐ 2019 Điều 27 khoản 2'),
+  ('thu_viec',       14,  'Chính sách công ty: thử việc báo trước 14 ngày'),
   ('hoc_viec',       null,'Theo hợp đồng — không chặn'),
   ('thoi_vu',        3,   'BLLĐ 2019 Điều 35.1 (HĐ dưới 12 tháng: 3 ngày làm việc)'),
-  ('xac_dinh',       30,  'BLLĐ 2019 Điều 35.1 (HĐ 12–36 tháng: 30 ngày; dưới 12 tháng: 3 ngày)'),
+  ('xac_dinh',       30,  'BLLĐ 2019 Điều 35.1 — HĐ xác định thời hạn báo trước 30 ngày (kể cả dưới 12 tháng)'),
   ('khong_xac_dinh', 45,  'BLLĐ 2019 Điều 35.1'),
   ('cong_tac_vien',  null,'Hợp đồng dịch vụ (BLDS) — theo hợp đồng, không chặn'),
   ('quan_ly_dn',     120, 'Điều 7 NĐ145/2020 — người quản lý doanh nghiệp báo trước tới 120 ngày')
@@ -203,7 +203,7 @@ join (
     ('ban_giao_ho_so',              'B','P','B','B','B','B'),
     ('ky_bien_ban_ban_giao',        'B','B','B','B','B','B'),
     ('ban_giao_cong_viec_do',       'B','B','B','B','B','B'),
-    ('kiem_tra_bao_truoc',          '-','-','B','B','B','-'),
+    ('kiem_tra_bao_truoc',          'B','-','B','B','B','-'),
     ('quyet_toan_luong',            'B','B','B','B','B','P'),
     ('thanh_toan_phep',             '-','-','P','B','B','-'),
     ('tinh_tro_cap',                '-','-','P','B','B','-'),

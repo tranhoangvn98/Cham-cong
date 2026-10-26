@@ -2,6 +2,27 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.134.0] — 2026-10-26
+
+**Nghỉ việc: chốt hạn báo trước theo chính sách công ty (thử việc 14 ngày, HĐ xác định 30
+ngày) và buộc ban hành quyết định trước khi chạy Cổng 2.**
+
+- **Hạn báo trước**: thử việc **14 ngày** (chính sách công ty, thời gian thử việc 30–60 ngày);
+  hợp đồng xác định thời hạn **30 ngày cho mọi kì hạn, kể cả dưới 1 năm**; không xác định 45
+  ngày; thời vụ 3 ngày; quản lý doanh nghiệp 120 ngày. Áp dụng thống nhất ở cảnh báo đơn từ,
+  ngưỡng `kiem_tra_bao_truoc` và căn cứ hiển thị trên giao diện.
+- **Mục `ban_hanh_qd` là bắt buộc** trong mọi nhánh: chưa ban hành quyết định nghỉ việc và liên
+  kết vào quy trình (số, ngày, tệp) thì quy trình không chuyển `san_sang_chot` — Cổng 2 bị chặn.
+  Có quyết định rồi thì Cổng 2 dùng lại đúng văn bản đó, không sinh quyết định thứ hai.
+- **Thử việc có lại mốc quyết toán 14 ngày** (Điều 48 BLLĐ) và mục kiểm tra báo trước; vẫn không
+  trợ cấp thôi việc, không phép năm.
+- **Nút Nghỉ không bàn giao chỉ dành cho `admin`**; vẫn ghi quy trình đã đóng (nguồn
+  `nghi_khong_ban_giao`) để báo cáo không còn lỗ hổng.
+- **CSDL (migration 113)**: thêm liên kết quyết định (`quyet_dinh_tep_id`,
+  `quyet_dinh_thong_bao_id`, `quyet_dinh_so`, `quyet_dinh_ngay`), một quy trình mở/người, dọn
+  mục không áp dụng khỏi khuôn, thêm `ban_hanh_qd` và nâng ngưỡng thử việc từ 0 lên 14 ngày.
+- Tài liệu: `THIET-KE-LUONG-NGHI-VIEC.md` (thiết kế + điểm đã chốt), `NGHI-VIEC.md` (vận hành).
+
 ## [1.133.1] — 2026-10-26
 
 **Hồ sơ nhân sự: thiết kế lại phần đầu trang theo kiểu dashboard, sửa các nút bị dính nhau.**

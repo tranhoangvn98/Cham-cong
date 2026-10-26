@@ -29,6 +29,9 @@ interface QtDangChay {
   khong_can_bao_truoc: boolean;
   lastday_da_chot: boolean;
   ngay_lam_viec_cuoi: string | null;
+  quyet_dinh_tep_id: string | null;
+  quyet_dinh_so: string | null;
+  quyet_dinh_ngay: string | null;
   ngay_vao: string | null;
   tao_luc: string;
 }
@@ -112,7 +115,8 @@ async function doc_qt(khach: PoolClient, id: string): Promise<
 > {
   const d = await khach.query<QtDangChay & { trang_thai: string }>(
     `select qt.id, qt.nhan_vien_id, qt.loai_hop_dong, qt.la_quan_ly_dn, qt.khong_can_bao_truoc,
-            qt.lastday_da_chot, qt.trang_thai,
+            qt.lastday_da_chot, qt.trang_thai, qt.quyet_dinh_tep_id, qt.quyet_dinh_so,
+            to_char(qt.quyet_dinh_ngay, 'YYYY-MM-DD') as quyet_dinh_ngay,
             to_char(qt.tao_luc, 'YYYY-MM-DD') as tao_luc,
             to_char(qt.ngay_lam_viec_cuoi, 'YYYY-MM-DD') as ngay_lam_viec_cuoi,
             to_char(nv.ngay_vao, 'YYYY-MM-DD') as ngay_vao,
@@ -146,6 +150,7 @@ async function chay_mot_muc(
   khach: PoolClient, qt: QtDangChay, muc: MucChua,
 ): Promise<KetQuaMuc> {
   switch (muc.ma_muc) {
+    case 'ban_hanh_qd': return kiem_ban_hanh_qd(qt);
     case 'ban_giao_cong_viec_do': return chuyen_giao_viec_do(khach, qt);
     case 'kiem_tra_bao_truoc': return kiem_tra_bao_truoc(khach, qt);
     case 'quyet_toan_luong': return quyet_toan_luong(khach, qt);
@@ -155,6 +160,28 @@ async function chay_mot_muc(
     default:
       return { ket_qua: { ghi_chu: `Mục ${muc.ma_muc} chưa có cơ chế tự chạy.` }, loi: null };
   }
+}
+
+/**
+ * Muc `ban_hanh_qd` chi xong khi quy trinh da lien ket QD nghi viec da ban hanh.
+ * Chua co QD thi GIU `chua` + ghi ly do — Cong 2 bi chan, khong the bo qua buoc QD.
+ */
+function kiem_ban_hanh_qd(qt: QtDangChay): KetQuaMuc {
+  if (qt.quyet_dinh_tep_id === null && qt.quyet_dinh_so === null) {
+    return {
+      ket_qua: null,
+      loi: 'Chưa ban hành quyết định nghỉ việc. Mở hồ sơ nhân sự và bấm "Quyết định nghỉ '
+        + 'việc" để ban hành trước khi chốt.',
+    };
+  }
+  return {
+    ket_qua: {
+      so_ky_hieu: qt.quyet_dinh_so,
+      ngay: qt.quyet_dinh_ngay,
+      tep_id: qt.quyet_dinh_tep_id,
+    },
+    loi: null,
+  };
 }
 
 /**

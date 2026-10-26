@@ -46,12 +46,35 @@ transaction, hệ thống:
 
 Thêm loại HĐ / mục mới / vị trí mới chỉ bằng **seed**, không sửa code luồng.
 
+## Luồng 1 — đơn xin nghỉ việc → quyết định → bàn giao
+
+1. Nhân viên nộp đơn `thoi_viec`; Admin duyệt (Cổng 1) → quy trình mở, checklist theo loại HĐ.
+2. HR ban hành **quyết định nghỉ việc** trên hệ văn bản AI (nút *Quyết định nghỉ việc* ở hồ sơ
+   hoặc nút *Soạn QĐ nghỉ việc* ngay trong mục checklist). QĐ được **liên kết vào quy trình**
+   (số, ngày, tệp); lastday chốt theo QĐ.
+3. Nhân viên bàn giao theo checklist; tiến trình nền tự tick các mục tự động.
+4. Admin mở Cổng 2: dùng lại đúng QĐ đã ban hành (không sinh văn bản thứ hai), khóa tài khoản.
+
+Mục `ban_hanh_qd` là **bắt buộc**: chưa ban hành QĐ thì quy trình không chuyển `san_sang_chot`
+— Cổng 2 bị chặn. Quy trình cũ đã qua lastday được đánh `bo_qua` mục này khi di trú (không truy
+thu thủ tục).
+
+## Luồng 2 — quyết định nghỉ việc trực tiếp, không cần đơn
+
+QĐ phát hành → hệ thống tạo đơn `thoi_viec` (đã duyệt, tài khoản hệ thống) + quy trình, chốt
+lastday theo QĐ và **mở ngay mục bàn giao**. Không cần nhân viên nộp đơn.
+
+## Luồng 3 — nghỉ ngay, không bàn giao (chỉ Admin)
+
+Nút **Nghỉ việc không bàn giao** ở hồ sơ nhân sự chỉ hiện với vai trò `admin`. Hệ thống khóa
+tài khoản ngay và ghi một quy trình **đã đóng**, mọi mục còn mở bỏ qua kèm lý do.
+
 ## Quyết định nghỉ việc của công ty
 
 HR phát hành QĐ nghỉ việc trên hệ văn bản AI (có ngày nghỉ việc). Trong **cùng transaction
-phát hành**, hệ thống tạo (hoặc tái dùng) đơn + quy trình, chốt lastday theo QĐ và **mở ngay
-mục bàn giao** để nhân viên làm trong thời hạn báo trước. QĐ đã quá ngày thì đánh dấu **hồi
-tố**: bỏ qua mục nhân viên kèm lý do, không truy thu thủ tục.
+phát hành**, hệ thống tạo (hoặc tái dùng) đơn + quy trình, **liên kết QĐ vào quy trình**, chốt
+lastday theo QĐ và **mở ngay mục bàn giao** để nhân viên làm trong thời hạn báo trước. QĐ đã
+quá ngày thì đánh dấu **hồi tố**: bỏ qua mục nhân viên kèm lý do, không truy thu thủ tục.
 
 ## Phần giữa — nhân viên + hệ thống
 
@@ -62,10 +85,10 @@ tố**: bỏ qua mục nhân viên kèm lý do, không truy thu thủ tục.
 - **Tiến trình nền** (mỗi chu kỳ lịch, nhận việc nguyên tử `for update skip locked`) tự
   tick mục `tu_dong`:
   - `ban_giao_cong_viec_do` — chuyển mọi việc đang mở sang quản lý phòng; tick xong khi 0 việc mở.
-  - `kiem_tra_bao_truoc` — so lastday với ngưỡng theo loại HĐ (thử việc 0 ngày, thời vụ/HĐ
-    <12 tháng 3 ngày, xác định 12–36 tháng 30 ngày, không xác định 45 ngày, quản lý DN 120
-    ngày — Điều 35, Điều 27.2 BLLĐ 2019, Điều 7 NĐ145/2020). Thiếu hạn → **cảnh báo** "nghỉ
-    ngang, rủi ro Điều 40" cho Admin, **không chặn**.
+  - `kiem_tra_bao_truoc` — so lastday với ngưỡng **chính sách công ty**: thử việc 14 ngày,
+    thời vụ 3 ngày, HĐ xác định thời hạn **30 ngày** (kể cả dưới 12 tháng), không xác định
+    45 ngày, quản lý DN 120 ngày (Điều 7 NĐ145/2020). Thiếu hạn → **cảnh báo** "nghỉ ngang,
+    rủi ro Điều 40" cho Admin, **không chặn**.
   - `quyet_toan_luong`, `thanh_toan_phep` (Điều 113.3), `tinh_tro_cap` (Điều 46, trừ thời
     gian đóng BHTN), `hen_quyet_toan_14n` (lastday + 14 ngày làm việc — Điều 48.1).
 - Mục bắt buộc cuối cùng xong → quy trình **tự chuyển** `san_sang_chot` + chuông báo Admin.
@@ -82,12 +105,14 @@ một transaction đúng thứ tự:
    BHXH/thuế có trong nhánh** (thực tập sinh không có mục BHXH nên không bị đòi email). Sai →
    dừng sạch, báo lý do (REQ-CH-02: thiếu `email_dich_vu_bhxh` thì chặn).
 2. **Thu giữ dữ liệu** — ghi mốc chuyển quyền OneDrive/SharePoint, xoay mật khẩu dùng chung.
-3. **Sinh & gửi văn bản** — Quyết định kết thúc/chấm dứt **theo nhánh hợp đồng** (thực tập →
-   kết thúc học việc/thực tập; thử việc → kết thúc thử việc; cộng tác viên → chấm dứt hợp đồng
-   dịch vụ; HĐLĐ → chấm dứt HĐLĐ), giấy xác nhận BHXH-BHTN, hồ sơ báo giảm/chốt sổ BHXH (email
-   đơn vị dịch vụ), chứng từ khấu trừ thuế TNCN (NĐ126/2020), bảng quyết toán — lưu hồ sơ nhân
-   viên. Chỉ sinh chứng từ khi mục tương ứng **có trong khuôn của nhánh** (thực tập sinh không
-   có quyết định chấm dứt HĐLĐ, không có giấy BHXH).
+3. **Sinh & gửi văn bản** — Nếu quy trình đã liên kết **quyết định nghỉ việc** đã ban hành
+   (luồng đơn → QĐ, hoặc QĐ trực tiếp) thì dùng lại đúng quyết định đó, **không sinh văn bản
+   thứ hai**. Chưa có QĐ thì sinh quyết định kết thúc/chấm dứt **theo nhánh hợp đồng** (thực
+   tập → kết thúc học việc/thực tập; thử việc → kết thúc thử việc; cộng tác viên → chấm dứt
+   hợp đồng dịch vụ; HĐLĐ → chấm dứt HĐLĐ), giấy xác nhận BHXH-BHTN, hồ sơ báo giảm/chốt sổ
+   BHXH (email đơn vị dịch vụ), chứng từ khấu trừ thuế TNCN (NĐ126/2020), bảng quyết toán —
+   lưu hồ sơ nhân viên. Chỉ sinh chứng từ khi mục tương ứng **có trong khuôn của nhánh**
+   (thực tập sinh không có quyết định chấm dứt HĐLĐ, không có giấy BHXH).
 4. **Cắt truy cập (cuối cùng)** — tái dùng `cho_nghi_viec()`: khóa login, thu hồi token,
    sự kiện `nhan_su.nghi_viec` (cổng phân quyền) + `erp1.nhan_su.nghi_viec` + `ms365.nghi_viec`.
 5. Đặt `da_khoa` + nhật ký ai bấm lúc nào.
@@ -122,7 +147,7 @@ Admin sửa trong app (trang **Thôi việc → Cấu hình**), không cần dep
 | `email_dich_vu_bhxh` | Email đơn vị dịch vụ BHXH nhận hồ sơ báo giảm/chốt sổ | env `EMAIL_DICH_VU_BHXH` |
 | `email_dich_vu_bhxh_cc` | CC nội bộ (HR) | env `EMAIL_DICH_VU_BHXH_CC` |
 | `email_chung_tu_thue` | Email nhận chứng từ khấu trừ thuế TNCN | env `EMAIL_CHUNG_TU_THUE` (rỗng = dùng chung email BHXH) |
-| `han_bao_truoc_<loai>` | Ngưỡng báo trước theo loại HĐ (ngày; trống = theo hợp đồng) | seed theo luật |
+| `han_bao_truoc_<loai>` | Ngưỡng báo trước theo loại HĐ (ngày; trống = theo hợp đồng) | seed theo chính sách công ty |
 
 Bảng lưu: `cau_hinh_thoi_viec` (email) và `khuon_han_bao_truoc` (ngưỡng). Giá trị trong bảng
 ưu tiên hơn env.
@@ -144,7 +169,8 @@ npm --workspace may_chu run test_e2e            # e2e, gồm thong_bao_ai_e2e (h
 npm run kiem_tra_kieu                           # kiểm tra kiểu may_chu + web + dien_thoai
 ```
 
-Các ca bắt buộc: thử việc nghỉ nhanh (checklist rút gọn, không trợ cấp), HĐ không xác định
-đúng 45 ngày (đầy đủ + email BHXH/thuế), nghỉ ngang (cảnh báo Điều 40, không tự khóa), tới
-lastday dở checklist (không khóa, báo đỏ), chạy Cổng 2 thiếu điều kiện (dừng sạch), có/không
-tài khoản Microsoft, idempotent.
+Các ca bắt buộc: thử việc nghỉ nhanh (báo trước 14 ngày, checklist rút gọn, không trợ cấp),
+HĐ xác định dưới 1 năm đúng 30 ngày, HĐ không xác định đúng 45 ngày (đầy đủ + email
+BHXH/thuế), nghỉ ngang (cảnh báo Điều 40, không tự khóa), tới lastday dở checklist (không
+khóa, báo đỏ), chạy Cổng 2 thiếu điều kiện (dừng sạch), có/không tài khoản Microsoft,
+idempotent.

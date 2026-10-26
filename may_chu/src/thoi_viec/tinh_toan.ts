@@ -8,15 +8,10 @@ import { nhom_quy_trinh, nguong_bao_truoc_nhanh, type KhuonHanBaoTruoc } from '.
 export type { KhuonHanBaoTruoc };
 
 /**
- * Nguong bao truoc toi thieu khi don phuong cham dut HDLD.
- *
- * BLLD 2019 Dieu 35.1 + Dieu 27 khoan 2 (thu viec khong can bao truoc) + Dieu 7
- * ND145/2020 (nguoi quan ly doanh nghiep toi 120 ngay). Ngoai le: hop dong XAC DINH
- * duoi 12 thang thi 3 ngay lam viec, khong phai 30.
- *
- * Tra null khi khong chan — theo hop dong (hoc_viec, cong_tac_vien). Hoc viec/thuc tap
- * va cong tac vien KHONG lay muc 120 ngay du chuc danh co chu "quan ly": ho khong phai
- * nguoi lao dong theo HDLD.
+ * Nguong bao truoc toi thieu khi don phuong cham dut HDLD — THEO CHINH SACH CONG TY:
+ * thu viec 14 ngay, HĐ xac dinh thoi han 30 ngay, khong xac dinh 45 ngay; quan ly DN
+ * toi 120 ngay (D.7 ND145/2020). Hoc viec/thuc tap va cong tac vien tra null (theo hop
+ * dong, khong chan) — khong lay muc 120 ngay du chuc danh co chu "quan ly".
  */
 export function nguong_bao_truoc(
   khuon: KhuonHanBaoTruoc,

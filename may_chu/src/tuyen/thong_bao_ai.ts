@@ -801,7 +801,15 @@ export async function ban_hanh_nhap_ai(
         if (nv.rows[0]?.dang_hoat_dong === true) {
           const kq_qt = await dam_bao_quy_trinh_tu_qd(
             khach, d.nhan_vien_id, d.ngay_nghi_viec,
-            { hoi_to: d.ngay_nghi_viec < hom_nay },
+            {
+              hoi_to: d.ngay_nghi_viec < hom_nay,
+              quyet_dinh: {
+                tep_id: da_luu_ho_so?.ma_tep ?? null,
+                thong_bao_id: dong.id,
+                so_ky_hieu,
+                ngay: hom_nay,
+              },
+            },
           );
           if (kq_qt.quy_trinh_id === null) {
             // Khong the phat hanh mot QD nghi viec ma khong co quy trinh ban giao.

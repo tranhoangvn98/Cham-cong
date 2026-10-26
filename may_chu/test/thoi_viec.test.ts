@@ -12,7 +12,7 @@ const {
 // ---------------------------------------------------------------- nguong bao truoc
 
 const KHUON: Record<string, number | null> = {
-  thu_viec: 0,
+  thu_viec: 14,
   hoc_viec: null,
   thoi_vu: 3,
   xac_dinh: 30,
@@ -21,8 +21,8 @@ const KHUON: Record<string, number | null> = {
   quan_ly_dn: 120,
 };
 
-test('thu viec khong can bao truoc (BLLD D.27 k2)', () => {
-  assert.equal(nguong_bao_truoc(KHUON, 'thu_viec', null, false), 0);
+test('thu viec bao truoc 14 ngay (chinh sach cong ty)', () => {
+  assert.equal(nguong_bao_truoc(KHUON, 'thu_viec', null, false), 14);
 });
 
 test('hop dong khong xac dinh bao truoc 45 ngay (BLLD D.35.1)', () => {
@@ -33,8 +33,8 @@ test('hop dong xac dinh 12-36 thang bao truoc 30 ngay', () => {
   assert.equal(nguong_bao_truoc(KHUON, 'xac_dinh', 24, false), 30);
 });
 
-test('hop dong xac dinh duoi 12 thang chi 3 ngay lam viec', () => {
-  assert.equal(nguong_bao_truoc(KHUON, 'xac_dinh', 6, false), 3);
+test('hop dong xac dinh duoi 12 thang van bao truoc 30 ngay (chinh sach cong ty)', () => {
+  assert.equal(nguong_bao_truoc(KHUON, 'xac_dinh', 6, false), 30);
 });
 
 test('hoc viec va cong tac vien khong chan — theo hop dong', () => {
@@ -50,8 +50,8 @@ test('thuc tap sinh va cong tac vien KHONG lay muc 120 ngay du chuc danh quan ly
   // Chuc danh co chu "truong phong" khong bien hoc viec / hop dong dich vu thanh HDLD.
   assert.equal(nguong_bao_truoc(KHUON, 'hoc_viec', null, true), null);
   assert.equal(nguong_bao_truoc(KHUON, 'cong_tac_vien', null, true), null);
-  // Thu viec cua mot chuc danh quan ly van la 0 ngay: hop dong ngan, khong the bao 120 ngay.
-  assert.equal(nguong_bao_truoc(KHUON, 'thu_viec', null, true), 0);
+  // Thu viec cua mot chuc danh quan ly van la 14 ngay: hop dong ngan, khong the bao 120 ngay.
+  assert.equal(nguong_bao_truoc(KHUON, 'thu_viec', null, true), 14);
 });
 
 // ---------------------------------------------------------------- nhanh quy trinh

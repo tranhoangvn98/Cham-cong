@@ -385,6 +385,11 @@ export function la_nhan_su(): boolean {
   return v === 'admin' || v === 'nhan_su' || v === 'truong_phong_nhan_su';
 }
 
+/** Chi vai tro admin — dung cho thao tac nghỉ không bàn giao (khẩn cấp). */
+export function la_admin(): boolean {
+  return phien?.nguoi_dung.vai_tro === 'admin';
+}
+
 /**
  * Co vao PHAN QUAN TRI khong. Vai tro nhan su luon co; truong phong thi CHI khi duoc admin cap
  * quyen (`quyen_quan_tri`). Dung cho hien menu quan tri + nut chuyen goc nhin.
@@ -428,10 +433,6 @@ export function dat_goc_nhin(g: GocNhin): void {
 /** Vai tro cua nguoi dang dang nhap, hoac null khi chua dang nhap. */
 export function vai_tro_hien_tai(): VaiTroNguoiDung | null {
   return phien?.nguoi_dung.vai_tro ?? null;
-}
-
-export function la_admin(): boolean {
-  return phien?.nguoi_dung.vai_tro === 'admin';
 }
 
 /** Duyet OT cap 2 va duyet ket qua OT. */

@@ -34,6 +34,9 @@ interface QtChoChay {
   phong_ban: string | null;
   loai_hop_dong: string;
   la_quan_ly_dn: boolean;
+  quyet_dinh_tep_id: string | null;
+  quyet_dinh_so: string | null;
+  quyet_dinh_ngay: string | null;
   ngay_lam_viec_cuoi: string;
   ngay_vao: string | null;
   email: string | null;
@@ -64,6 +67,8 @@ export async function chay_dung_hoat_dong(
   await trong_giao_dich(async (khach) => {
     const hang = await khach.query<QtChoChay & { trang_thai: string }>(
       `select qt.id, qt.nhan_vien_id, qt.trang_thai, qt.loai_hop_dong, qt.la_quan_ly_dn,
+              qt.quyet_dinh_tep_id, qt.quyet_dinh_so,
+              to_char(qt.quyet_dinh_ngay, 'YYYY-MM-DD') as quyet_dinh_ngay,
               to_char(qt.ngay_lam_viec_cuoi, 'YYYY-MM-DD') as ngay_lam_viec_cuoi,
               to_char(nv.ngay_vao, 'YYYY-MM-DD') as ngay_vao,
               nv.ma_nv, nv.ho_ten, nv.chuc_danh, nv.email,
@@ -108,8 +113,18 @@ export async function chay_dung_hoat_dong(
     const bang_quyet_toan_id = await sinh_bang_quyet_toan(khach, qtc, nhom);
 
     if (await co_muc_ap_dung(khach, quy_trinh_id, 'ra_qd_cham_dut', qtc)) {
-      const qd_id = await sinh_quyet_dinh_cham_dut(khach, qtc, nhom);
-      await danh_dau_muc(khach, quy_trinh_id, 'ra_qd_cham_dut', { tep_id: qd_id });
+      if (qtc.quyet_dinh_tep_id !== null || qtc.quyet_dinh_so !== null) {
+        // QD da ban hanh tren he van ban AI (Flow 1/2) — dung lai, khong sinh van ban thu hai.
+        await danh_dau_muc(khach, quy_trinh_id, 'ra_qd_cham_dut', {
+          tep_id: qtc.quyet_dinh_tep_id,
+          so_ky_hieu: qtc.quyet_dinh_so,
+          ngay: qtc.quyet_dinh_ngay,
+          nguon: 'quyet_dinh_van_ban',
+        });
+      } else {
+        const qd_id = await sinh_quyet_dinh_cham_dut(khach, qtc, nhom);
+        await danh_dau_muc(khach, quy_trinh_id, 'ra_qd_cham_dut', { tep_id: qd_id });
+      }
     }
 
     if (await co_muc_ap_dung(khach, quy_trinh_id, 'tra_so_giay_to', qtc)) {

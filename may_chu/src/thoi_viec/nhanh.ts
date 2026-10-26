@@ -9,7 +9,8 @@
 //   thu_viec                  -> D.27 k2: khong can bao truoc; khong tro cap thoi viec,
 //                                khong thanh toan phep nam.
 //   thoi_vu                   -> D.35.1: bao truoc 3 ngay lam viec.
-//   xac_dinh / khong_xac_dinh -> nhan vien chinh thuc (30 / 45 ngay).
+//   xac_dinh                 -> nhan vien chinh thuc (30 ngay, ke ca HDLD duoi 1 nam)
+//   khong_xac_dinh           -> nhan vien chinh thuc (45 ngay)
 //   quan_ly (co HĐLĐ)         -> D.7 ND145/2020: bao truoc toi 120 ngay.
 //   cong_tac_vien             -> hop dong dich vu (BLDS), ngoai D.35.
 //
@@ -79,7 +80,8 @@ const CAU_TRUC: Record<NhomQuyTrinh, CauTrucNhanh> = {
     nhom: 'thu_viec',
     tieu_de_quyet_dinh: 'QUYẾT ĐỊNH KẾT THÚC THỜI GIAN THỬ VIỆC',
     tieu_de_bang_quyet_toan: 'BẢNG QUYẾT TOÁN KẾT THÚC THỜI GIAN THỬ VIỆC',
-    can_cu: 'Căn cứ Bộ luật Lao động 2019 (Điều 27, 48) và biên bản bàn giao;',
+    can_cu: 'Căn cứ hợp đồng thử việc, chính sách báo trước 14 ngày của công ty và biên bản '
+      + 'bàn giao;',
     co_dieu_48: true,
     ghi_chu_quyet_toan: '',
     dieu_1: 'Kết thúc thời gian thử việc',
@@ -128,16 +130,16 @@ export function cau_truc_nhanh(nhom: NhomQuyTrinh): CauTrucNhanh {
 }
 
 /**
- * Nguong bao truoc ap dung cho nhanh nay. Hoc viec / cong tac vien = null (theo hop dong,
- * khong chan) — DU chuc danh co chu "quan ly" thi cung khong lay muc 120 ngay.
+ * Nguong bao truoc ap dung cho nhanh nay — THEO CHINH SACH CONG TY (26/10/2026):
+ * thu viec 14 ngay, HĐ xac dinh thoi han 30 ngay, khong xac dinh 45 ngay. Hoc viec /
+ * cong tac vien = null (theo hop dong, khong chan) — du chuc danh co chu "quan ly" thi
+ * cung khong lay muc 120 ngay.
  */
 export function nguong_bao_truoc_nhanh(
   khuon: KhuonHanBaoTruoc, nhom: NhomQuyTrinh, so_thang_hop_dong: number | null, loai_hop_dong: string,
 ): number | null {
   if (!la_hop_dong_lao_dong(loai_hop_dong)) return null;
   if (nhom === 'quan_ly') return khuon['quan_ly_dn'] ?? 120;
-  if (loai_hop_dong === 'xac_dinh' && so_thang_hop_dong !== null && so_thang_hop_dong < 12) {
-    return 3;
-  }
+  if (loai_hop_dong === 'xac_dinh') return khuon['xac_dinh'] ?? 30;
   return khuon[loai_hop_dong] ?? null;
 }

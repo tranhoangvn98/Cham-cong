@@ -74,6 +74,10 @@ export interface DongQuyTrinh {
   trang_thai: string;
   nguon_tao: NguonTaoQuyTrinh;
   nhom_quy_trinh: NhomQuyTrinh;
+  quyet_dinh_tep_id: string | null;
+  quyet_dinh_thong_bao_id: string | null;
+  quyet_dinh_so: string | null;
+  quyet_dinh_ngay: string | null;
   ly_do_nghi: string | null;
   admin_duyet1_id: string | null;
   admin_duyet1_ten: string | null;
@@ -94,6 +98,8 @@ const CHON_QT = `
   to_char(qt.ngay_lam_viec_cuoi, 'YYYY-MM-DD') as ngay_lam_viec_cuoi,
   qt.lastday_da_chot, qt.khong_can_bao_truoc, qt.la_quan_ly_dn, qt.trang_thai,
   qt.nguon_tao, qt.nhom_quy_trinh,
+  qt.quyet_dinh_tep_id, qt.quyet_dinh_thong_bao_id, qt.quyet_dinh_so,
+  to_char(qt.quyet_dinh_ngay, 'YYYY-MM-DD') as quyet_dinh_ngay,
   qt.ly_do_nghi, qt.admin_duyet1_id, qt.admin_duyet1_luc,
   qt.admin_duyet2_id, qt.admin_duyet2_luc,
   to_char(qt.tao_luc, 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM') as tao_luc,
@@ -398,6 +404,14 @@ export interface KetQuaDamBaoQuyTrinh {
   dung_lai: boolean;
 }
 
+/** Quyet dinh nghi viec da ban hanh — gan vao quy trinh de Cong 2 dung lai, khong sinh trung. */
+export interface QuyetDinhLienKet {
+  tep_id?: string | null;
+  thong_bao_id?: string | null;
+  so_ky_hieu?: string | null;
+  ngay?: string | null;
+}
+
 /**
  * Bảo đảm quy trình thôi việc TỒN TẠI cho một Quyết định nghỉ việc đã phát hành.
  *
@@ -414,7 +428,9 @@ export interface KetQuaDamBaoQuyTrinh {
  */
 export async function dam_bao_quy_trinh_tu_qd(
   khach: PoolClient, nhan_vien_id: string, ngay_nghi_viec: string,
-  tuy_chon: { hoi_to?: boolean; nguon_tao?: NguonTaoQuyTrinh } = {},
+  tuy_chon: {
+    hoi_to?: boolean; nguon_tao?: NguonTaoQuyTrinh; quyet_dinh?: QuyetDinhLienKet;
+  } = {},
 ): Promise<KetQuaDamBaoQuyTrinh> {
   const hoi_to = tuy_chon.hoi_to === true;
   const nguon_tao = tuy_chon.nguon_tao ?? 'quyet_dinh';
@@ -429,6 +445,7 @@ export async function dam_bao_quy_trinh_tu_qd(
   if (mo.rows[0] !== undefined) {
     await dat_lastday_va_tinh_lai(khach, mo.rows[0].id, ngay_nghi_viec, true);
     await ap_che_do_hoi_to(khach, mo.rows[0].id, hoi_to);
+    await lien_ket_quyet_dinh(khach, mo.rows[0].id, tuy_chon.quyet_dinh);
     return { quy_trinh_id: mo.rows[0].id, tao_moi_don: false, tao_moi_qt: false, dung_lai: true };
   }
 
@@ -491,7 +508,38 @@ export async function dam_bao_quy_trinh_tu_qd(
   }
   await dat_lastday_va_tinh_lai(khach, qt_id, ngay_nghi_viec, true);
   await ap_che_do_hoi_to(khach, qt_id, hoi_to);
+  await lien_ket_quyet_dinh(khach, qt_id, tuy_chon.quyet_dinh);
   return { quy_trinh_id: qt_id, tao_moi_don, tao_moi_qt: true, dung_lai: false };
+}
+
+/**
+ * Gan QĐ nghỉ việc đã ban hành vào quy trình + đánh dấu mục `ban_hanh_qd` xong.
+ * Không có QĐ (đơn chờ HR ban hành) thì để nguyên mục `chua` — Cổng 2 bị chặn cho tới khi có QĐ.
+ */
+async function lien_ket_quyet_dinh(
+  khach: PoolClient, quy_trinh_id: string, qd: QuyetDinhLienKet | undefined,
+): Promise<void> {
+  if (qd === undefined) return;
+  await khach.query(
+    `update quy_trinh_thoi_viec
+        set quyet_dinh_tep_id = coalesce($2, quyet_dinh_tep_id),
+            quyet_dinh_thong_bao_id = coalesce($3, quyet_dinh_thong_bao_id),
+            quyet_dinh_so = coalesce($4, quyet_dinh_so),
+            quyet_dinh_ngay = coalesce($5::date, quyet_dinh_ngay),
+            cap_nhat_luc = now()
+      where id = $1`,
+    [quy_trinh_id, qd.tep_id ?? null, qd.thong_bao_id ?? null,
+      qd.so_ky_hieu ?? null, qd.ngay ?? null],
+  );
+  await khach.query(
+    `update muc_checklist
+        set trang_thai = 'xong', xac_nhan_luc = now(), ghi_chu = null,
+            ket_qua = coalesce(ket_qua, '{}'::jsonb) || jsonb_build_object(
+              'so_ky_hieu', $2::text, 'ngay', $3::text)
+      where quy_trinh_id = $1 and ma_muc = 'ban_hanh_qd'
+        and trang_thai in ('chua','dang')`,
+    [quy_trinh_id, qd.so_ky_hieu ?? null, qd.ngay ?? null],
+  );
 }
 
 /**
