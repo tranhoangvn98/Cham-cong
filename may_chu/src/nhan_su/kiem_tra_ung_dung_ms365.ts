@@ -112,6 +112,13 @@ export async function kiem_tra_ung_dung_ms365(): Promise<KetQuaKiemTraUngDung> {
   }
 
   const ds = await nap_nhan_vien_upn();
+  // Anh chup nguoi da duoc cap giay phep: phan biet "khong co giay phep" voi "khong dung".
+  // Bang trong (chua tung quet / dang loi) thi de null — khong ket luan sai cho ca cong ty.
+  const dsGiayPhep = await truy_van<{ upn: string }>(
+    'select lower(upn) as upn from ms365_nguoi_da_cap_phep');
+  const tapGiayPhep = dsGiayPhep.length === 0
+    ? null
+    : new Set(dsGiayPhep.map((d) => d.upn));
   const theoNguoi: { nhan_vien_id: string; dong: DongKiemTraUngDung[] }[] = [];
   for (const nv of ds) {
     theoNguoi.push({
@@ -122,6 +129,7 @@ export async function kiem_tra_ung_dung_ms365(): Promise<KetQuaKiemTraUngDung> {
         baoCaoOneDrive: baoCaoOneDrive ?? new Map(),
         co_bao_cao_app: baoCaoApp !== null,
         co_bao_cao_onedrive: baoCaoOneDrive !== null,
+        upn_co_giay_phep: tapGiayPhep,
       }),
     });
   }

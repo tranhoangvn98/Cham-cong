@@ -67,6 +67,7 @@ const KHOA_CHI_TIET: Record<string, ChuoiKhoa> = {
   bao_cao_khong_tach_thiet_bi: 'udm365_ct_bao_cao_khong_tach_thiet_bi',
   loi_bao_cao: 'udm365_ct_loi_bao_cao',
   chua_co_upn: 'udm365_ct_chua_co_upn',
+  khong_co_giay_phep: 'udm365_ct_khong_co_giay_phep',
 };
 
 export function TheUngDungMs365({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {

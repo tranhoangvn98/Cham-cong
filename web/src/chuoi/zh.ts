@@ -1191,6 +1191,7 @@ export const CHUOI_ZH = {
   udm365_ct_bao_cao_khong_tach_thiet_bi: 'M365 报告未区分手机版',
   udm365_ct_loi_bao_cao: '无法读取 Microsoft 365 报告',
   udm365_ct_chua_co_upn: '档案中尚无 Microsoft 365 邮箱/UPN',
+  udm365_ct_khong_co_giay_phep: '该邮箱尚未分配 Microsoft 365 许可证',
 
   // ================================ 离职流程 — 按合同类型分支
   tv_nhanh: '流程分支',

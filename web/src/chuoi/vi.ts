@@ -1190,6 +1190,7 @@ export const CHUOI_VI = {
   udm365_ct_bao_cao_khong_tach_thiet_bi: 'Báo cáo M365 không tách riêng bản trên điện thoại',
   udm365_ct_loi_bao_cao: 'Không đọc được báo cáo Microsoft 365',
   udm365_ct_chua_co_upn: 'Chưa có email/UPN Microsoft 365 trong hồ sơ',
+  udm365_ct_khong_co_giay_phep: 'Email này chưa được cấp giấy phép Microsoft 365',
 
   // ================================ quy trinh thoi viec — nhanh theo hop dong
   tv_nhanh: 'Nhánh quy trình',

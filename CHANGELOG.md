@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.132.1] — 2026-10-26
+
+**Kiểm tra ứng dụng M365: không nhầm “không có giấy phép” với “không dùng”.**
+
+- Đối chiếu ảnh chụp `ms365_nguoi_da_cap_phep`: người có email nhưng **chưa được cấp giấy phép**
+  Microsoft 365 hiện “Chưa có tài khoản M365” kèm lý do, thay vì bị ghi “Chưa thấy dùng”. Tránh
+  việc nhân sự đi nhắc người không thể cài ứng dụng công ty. Nếu ảnh chụp giấy phép đang trống
+  thì bỏ qua phép đối chiếu (không kết luận sai cho cả công ty).
+- Mốc “báo cáo M365 đến …” lấy ngày **cũ nhất** trong ảnh chụp, không nói dữ liệu mới hơn thực tế.
+- Thêm script `trien_khai/chay_kiem_tra_ung_dung_ms365.mjs` để chạy ngay một vòng trong container.
+
 ## [1.132.0] — 2026-10-26
 
 **Hồ sơ nhân sự kiểm tra ứng dụng bắt buộc trên máy tính và điện thoại — tự động hằng ngày.**

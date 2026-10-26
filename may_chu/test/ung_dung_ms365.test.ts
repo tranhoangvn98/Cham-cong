@@ -78,6 +78,7 @@ test('danh gia: du 8 ung dung theo thu tu khai bao', () => {
     baoCaoOneDrive: doc_bao_cao_onedrive(CSV_ONEDRIVE),
     co_bao_cao_app: true,
     co_bao_cao_onedrive: true,
+    upn_co_giay_phep: null,
   });
   assert.equal(dong.length, UNG_DUNG_BAT_BUOC.length);
   assert.deepEqual(
@@ -93,6 +94,7 @@ test('danh gia: Outlook Windows, Teams chi web, OneDrive dong bo, Mobile tach du
     baoCaoOneDrive: doc_bao_cao_onedrive(CSV_ONEDRIVE),
     co_bao_cao_app: true,
     co_bao_cao_onedrive: true,
+    upn_co_giay_phep: null,
   });
   const tim = (nen_tang: string, ma: string) =>
     dong.find((d) => d.nen_tang === nen_tang && d.ung_dung === ma);
@@ -116,6 +118,7 @@ test('danh gia: nguoi chi dung OneDrive tren web thi la chi_web, khong phai da_d
     baoCaoOneDrive: doc_bao_cao_onedrive(CSV_ONEDRIVE),
     co_bao_cao_app: true,
     co_bao_cao_onedrive: true,
+    upn_co_giay_phep: null,
   });
   const tim = (nen_tang: string, ma: string) =>
     dong.find((d) => d.nen_tang === nen_tang && d.ung_dung === ma);
@@ -131,9 +134,36 @@ test('danh gia: chua co UPN thi MOI dong la khong_co_tai_khoan, khong phai khong
     baoCaoOneDrive: new Map(),
     co_bao_cao_app: true,
     co_bao_cao_onedrive: true,
+    upn_co_giay_phep: null,
   });
   assert.equal(dong.every((d) => d.trang_thai === 'khong_co_tai_khoan'), true);
   assert.equal(dong.every((d) => d.chi_tiet === 'chua_co_upn'), true);
+});
+
+test('danh gia: co UPN nhung KHONG co giay phep M365 thi la khong_co_tai_khoan', () => {
+  const dong = danh_gia_ung_dung({
+    upn: 'khongphep@tranhoangvietnam.com',
+    baoCaoApp: new Map(),
+    baoCaoOneDrive: new Map(),
+    co_bao_cao_app: true,
+    co_bao_cao_onedrive: true,
+    upn_co_giay_phep: new Set(['an@tranhoangvietnam.com']),
+  });
+  assert.equal(dong.every((d) => d.trang_thai === 'khong_co_tai_khoan'), true);
+  assert.equal(dong.every((d) => d.chi_tiet === 'khong_co_giay_phep'), true);
+});
+
+test('danh gia: anh chup giay phep TRONG thi khong ket luan thieu giay phep', () => {
+  const dong = danh_gia_ung_dung({
+    upn: 'an@tranhoangvietnam.com',
+    baoCaoApp: doc_bao_cao_app(CSV_APP),
+    baoCaoOneDrive: doc_bao_cao_onedrive(CSV_ONEDRIVE),
+    co_bao_cao_app: true,
+    co_bao_cao_onedrive: true,
+    upn_co_giay_phep: null,
+  });
+  assert.equal(dong.find((d) => d.nen_tang === 'may_tinh' && d.ung_dung === 'outlook')?.trang_thai,
+    'da_dung');
 });
 
 test('danh gia: loi doc bao cao thi khong_kiem_tra_duoc, KHONG quy toi nhan vien', () => {
@@ -143,6 +173,7 @@ test('danh gia: loi doc bao cao thi khong_kiem_tra_duoc, KHONG quy toi nhan vien
     baoCaoOneDrive: new Map(),
     co_bao_cao_app: false,
     co_bao_cao_onedrive: false,
+    upn_co_giay_phep: new Set(['an@tranhoangvietnam.com']),
   });
   for (const d of dong) {
     // Authenticator / OneDrive / SharePoint dien thoai van la khong_kiem_tra_duoc vi ly do rieng.

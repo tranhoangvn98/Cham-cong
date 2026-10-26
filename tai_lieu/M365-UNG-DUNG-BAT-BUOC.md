@@ -39,7 +39,9 @@ Giao diện ghi đúng các trạng thái:
 - **Chưa thấy dùng** — báo cáo đọc được nhưng không có hoạt động.
 - **Chưa kiểm tra được** — nguồn không trả dữ liệu (giấy phép/quyền/không tách được thiết bị).
   Lỗi kỹ thuật **không bao giờ** bị ghi thành lỗi của nhân viên.
-- **Chưa có tài khoản M365** — hồ sơ chưa có email/UPN Microsoft.
+- **Chưa có tài khoản M365** — hồ sơ chưa có email/UPN Microsoft, **hoặc** email có nhưng chưa
+  được cấp giấy phép (đối chiếu ảnh chụp `ms365_nguoi_da_cap_phep` — người không có giấy phép
+  thì không thể cài ứng dụng công ty, nên không bị ghi là “chưa thấy dùng”).
 
 > Khi cần bằng chứng để nhắc nhở hay kỷ luật, phải kiểm tra thêm trên máy thật. Thẻ này chỉ là
 > danh sách gợi ý để nhân sự rà soát.
@@ -51,6 +53,9 @@ Giao diện ghi đúng các trạng thái:
   mạng tạm thời không làm mất cả ngày dữ liệu.
 - **Thủ công**: nút **Đồng bộ ngay** trên thẻ, hoặc
   `POST /api/nhan-vien/ms365-ung-dung/dong-bo` (quyền `can_nhan_su`).
+- **Chạy ngay một vòng trong container** (không cần chờ lịch):
+  `docker compose exec -T may_chu node /app/chay_kiem_tra_ung_dung_ms365.mjs`
+  (chép `trien_khai/chay_kiem_tra_ung_dung_ms365.mjs` vào container trước).
 - Chỉ chạy khi đã cấu hình Microsoft Graph (`MS_MAIL_TENANT_ID` / `CLIENT_ID` / `CLIENT_SECRET`).
 
 Báo cáo Microsoft **cập nhật theo tuần**, nên thẻ hiển thị thêm dòng “báo cáo M365 đến …” để
@@ -123,5 +128,5 @@ Kết quả lần chạy tự động nằm ở `cong_viec_da_chay.ket_qua` vớ
 | `HTTP 403` khi đọc báo cáo | Thiếu `Reports.Read.All` hoặc chưa admin consent. Chạy lại mục 4. |
 | `Authentication_RequestFromNonPremiumTenantOrB2CTenant` | Tenant không có Entra ID P1/P2 — không đọc được trạng thái Authenticator. Đây là lý do Authenticator luôn “chưa kiểm tra được”. |
 | Mọi người đều “Chưa thấy dùng” | Xem “báo cáo M365 đến …” trên thẻ. Nếu ngày cũ hơn 7 ngày, Microsoft chưa làm mới báo cáo; chờ hoặc mở Microsoft 365 admin center → Reports để kiểm tra. |
-| Một người “Chưa có tài khoản M365” | Hồ sơ thiếu `nguoi_dung.email_microsoft` và `nhan_vien.email`; bổ sung email/UPN rồi đồng bộ lại. |
+| Một người “Chưa có tài khoản M365” | Hồ sơ thiếu `nguoi_dung.email_microsoft`/`nhan_vien.email`, **hoặc** email chưa được cấp giấy phép Microsoft 365. Bổ sung/cấp giấy phép rồi đồng bộ lại. |
 | Báo cáo lỗi một nguồn | Thẻ ghi “Chưa kiểm tra được” cho các ứng dụng của nguồn đó; nguồn còn lại vẫn hiển thị. Xem `cong_viec_da_chay.ket_qua` để biết lỗi cụ thể. |

@@ -197,6 +197,15 @@ export interface ThamSoDanhGia {
   /** false khi lan quet nay KHONG doc duoc bao cao (loi mang/quyen) — khac voi "khong co dong". */
   co_bao_cao_app: boolean;
   co_bao_cao_onedrive: boolean;
+  /**
+   * Tap UPN dang co giay phep Microsoft (chu thuong). `null` = CHUA BIET (bang anh chup
+   * giay phep dang trong) — luc do bo qua phep thu nay, dung ket qua bao cao.
+   *
+   * VI SAO CAN: bao cao khong co dong nao cho mot UPN co the do KHONG CO GIAY PHEP chu
+   * khong phai "khong dung". Nham hai truong hop nay se lam nhan su di nhac nguoi khong
+   * the cai dat duoc gi.
+   */
+  upn_co_giay_phep: Set<string> | null;
 }
 
 /**
@@ -217,6 +226,20 @@ export function danh_gia_ung_dung(t: ThamSoDanhGia): DongKiemTraUngDung[] {
       ngay_bao_cao: null,
       nguon: 'khong_co',
       chi_tiet: 'chua_co_upn',
+    }));
+  }
+
+  // Co email nhung KHONG nam trong anh chup nguoi da duoc cap giay phep: khong the co ung dung
+  // cong ty. Chi xet khi anh chup CO du lieu — bang trong thi coi nhu chua biet.
+  if (t.upn_co_giay_phep !== null && !t.upn_co_giay_phep.has(upn)) {
+    return UNG_DUNG_BAT_BUOC.map((u) => ({
+      nen_tang: u.nen_tang,
+      ung_dung: u.ma,
+      trang_thai: 'khong_co_tai_khoan' as const,
+      lan_hoat_dong: null,
+      ngay_bao_cao: null,
+      nguon: 'khong_co',
+      chi_tiet: 'khong_co_giay_phep',
     }));
   }
 
