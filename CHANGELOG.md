@@ -2,6 +2,32 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.137.8] — 2026-10-27
+
+**"Email đã thuộc hồ sơ khác": nút đúng là MỞ HỒ SƠ ĐÓ, không phải cấp lại mật khẩu.**
+
+Sự cố thật (27/10/2026): nhân sự lập hồ sơ cho một người, phiên đăng nhập rớt giữa chừng — **hồ sơ
+đã được tạo** (và tài khoản Microsoft đã có), nhưng không ai kịp chép mật khẩu khởi tạo. Lần sau
+lập lại thì bị chặn *"Email … đã thuộc …"* và màn hình chỉ đưa ra nút **Cấp lại mật khẩu**. Bấm vào
+thì cấp lại **thật**, lấy được mật khẩu, nhưng **bấm Lưu vẫn không được** — vì việc cần làm là mở
+hồ sơ đã có, không phải lấy lại mật khẩu.
+
+- **Lỗi 409 nay kèm dữ liệu máy đọc được**: `chi_tiet = { ma: 'email_da_co_ho_so', nhan_vien_id,
+  ma_nv, ho_ten, dang_hoat_dong }` (khung `chi_tiet` dùng chung trong `LoiXungDot`). Giao diện đọc
+  **mã**, không so chuỗi thông điệp.
+- **Hộp lỗi của form nhân viên** nay nói rõ: hồ sơ này đã có sẵn, mỗi email chỉ một hồ sơ — kèm
+  nút **Mở hồ sơ <mã NV>** (mở thẳng hồ sơ đang trùng), nút **Cấp lại mật khẩu Microsoft** (giữ
+  lại cho đúng việc bàn giao) và nút **Bỏ bản nháp và đóng** (bản nháp cũ chính là thứ khiến lần
+  sau bấm Lưu lại bị chặn).
+- **Chặn trùng email cả khi KHÔNG tạo tài khoản Microsoft**: trước đây kiểm tra nằm trong nhánh
+  `tao_tk_ms365`, nên chỉ cần bỏ tick "tạo tài khoản Microsoft" là lưu được → sinh **hai hồ sơ
+  cùng một email** (một hộp thư cho hai người, bảng lương trả nhầm). Nay `POST /nhan-vien` chặn
+  mọi email đã thuộc hồ sơ khác.
+- Hàng nút trong khối thông báo/lỗi có khoảng cách do CSS (`tai_lieu/THIET-KE.md` mục 10), bài
+  kiểm `thiet_ke/khoang_cach.test.mjs` canh luôn luật này.
+- Test: `may_chu/test/loi_ho_so.test.ts` (4 ca) + `web/test/nhan_vien_loi.test.ts` (4 ca, gồm cả
+  trường hợp máy chủ bản cũ chỉ trả chuỗi).
+
 ## [1.137.7] — 2026-10-27
 
 **Hết cảnh "các ô dính nhau": khoảng cách giữa các khối do CSS bảo đảm, có bài kiểm giữ luật.**

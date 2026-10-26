@@ -7,8 +7,23 @@ export class LoiKhongTim extends Error {
   readonly ma_http = 404;
 }
 
+/**
+ * Loi 409 kem DU LIEU MAY DOC DUOC (`chi_tiet`), de giao dien biet phai lam gi tiep.
+ *
+ * Vi sao can: thong diep "email da thuoc ho so X" chi la cau chu — giao dien khong the biet
+ * mo ho so nao. Truoc 27/10/2026, nguoi dung gap loi nay chi con cach tu tim lai ho so trong
+ * danh sach, con nut duoc dua ra lai la "Cap lai mat khau" (khong giai quyet duoc gi).
+ */
+export type ChiTietLoi = Record<string, unknown>;
+
 export class LoiXungDot extends Error {
   readonly ma_http = 409;
+  readonly chi_tiet?: ChiTietLoi;
+
+  constructor(thong_diep: string, chi_tiet?: ChiTietLoi) {
+    super(thong_diep);
+    if (chi_tiet !== undefined) this.chi_tiet = chi_tiet;
+  }
 }
 
 export class LoiKhongQuyen extends Error {

@@ -63,6 +63,11 @@ test('hai khoi hanh dong lien nhau khong bao gio dinh nhau', () => {
     assert.match(css, /margin-top:\s*var\(--khoang-(lon|vua),\s*\d+px\)/,
       `"${cap}" phai co margin-top dung token kem gia tri du phong px`);
   }
+  // Hàng nút NẰM TRONG khối (ô nhập, hộp thông báo) cũng phải cách khối một khoảng.
+  for (const trong of ['.o-nhap > .hang-nut', '.hop-thong-bao > .hang-nut']) {
+    assert.match(luat(trong), /margin-top:\s*var\(--khoang-(lon|vua),\s*\d+px\)/,
+      `"${trong}" phai co margin-top dung token kem gia tri du phong px`);
+  }
 });
 
 test('nut phu cua o nhap nam canh o, khong nam duoi o', () => {

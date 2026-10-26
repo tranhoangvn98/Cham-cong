@@ -665,6 +665,9 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .the + .hang-nut { margin-top: var(--khoang-lon, 16px); }
 /* Hàng nút nằm trong ô nhập (nút phụ của riêng ô đó) phải tách khỏi ô nhập. */
 .o-nhap > .hang-nut { margin-top: var(--khoang-vua, 10px); }
+/* Hàng nút nằm trong khối thông báo/lỗi (vd nút "Mở hồ sơ" dưới lời cảnh báo trùng email)
+ * cũng vậy — không có luật này thì nút dán ngay vào câu chữ phía trên. */
+.hop-thong-bao > .hang-nut { margin-top: var(--khoang-vua, 10px); }
 
 /*
  * Ô nhập kèm nút phụ NGAY CẠNH (Sao chép, Tải về, Tạo lại…).

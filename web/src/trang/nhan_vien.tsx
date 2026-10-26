@@ -9,6 +9,7 @@ import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
 import { tra_hien_tai } from '../chuoi/chi_muc.tsx';
 import { GoiY } from '../goi_y.tsx';
+import { ho_so_trung_tu_loi } from './nhan_vien_loi.ts';
 
 /**
  * Tieu de tep mau nhap nhan vien.
@@ -555,14 +556,13 @@ function FormNhanVien(
   /** Lao dong outsource: hop dong dich vu — khong thuoc bang luong, khong can chi tiet cham cong. */
   const la_outsource = f.loai_hop_dong === 'cong_tac_vien';
 
-  // Loi "Email ... đã thuộc <ai đó> — không thể tạo tài khoản Microsoft trùng": tài khoản đã
-  // được tạo từ lần trước (hay gặp khi lần trước bị mất phiên giữa chừng) — việc cần làm là
-  // CẤP LẠI MẬT KHẨU để bàn giao, không phải tạo tài khoản thứ hai.
+  // Loi "Email ... đã thuộc <ai đó>": email nay DA CO ho so, ma moi email chi duoc mot ho so
+  // (email la ten dang nhap Microsoft). Viec can lam la MO HO SO DO — khong phai cap lai mat
+  // khau nhu ban va truoc 27/10/2026: cap lai mat khau van thanh cong ma ho so van khong luu duoc.
   const thong_diep_loi = hd.loi === null
     ? null
     : (hd.loi instanceof Error ? hd.loi.message : String(hd.loi));
-  const la_loi_trung_ms = thong_diep_loi !== null
-    && thong_diep_loi.includes('không thể tạo tài khoản Microsoft trùng');
+  const ho_so_trung = ho_so_trung_tu_loi(hd.loi);
 
   /** Doi loai lao dong: outsource tu dat "Khong theo bang luong" + mien cham cong; doi sang loai
    *  khac thi tra ve VND va bo mien cham cong neu chinh viec chon outsource dat ra. */
@@ -755,18 +755,29 @@ function FormNhanVien(
       lop_them="hop-thoai-form-nhan-vien"
     >
       <form onSubmit={gui}>
-        {la_loi_trung_ms
+        {ho_so_trung !== null
           ? (
             <div className="hop-thong-bao hop-loi">
               {thong_diep_loi}
-              <div className="hang-nut" style={{ marginTop: 8 }}>
+              <div className="goi-y giu-hien" style={{ marginTop: 6 }}>
+                Mỗi email chỉ có <strong>một hồ sơ</strong> (email là tên đăng nhập Microsoft).
+                Hồ sơ này đã có sẵn nên không tạo mới được — mở hồ sơ đó để sửa/bổ sung. Nếu đúng
+                là người mới thì đổi sang email khác.
+              </div>
+              <div className="hang-nut">
+                {ho_so_trung.id !== '' && (
+                  <LienKet den={`/nhan-vien/${ho_so_trung.id}`} lop="nut nut-chinh">
+                    Mở hồ sơ{ho_so_trung.ma_nv === '' ? '' : ` ${ho_so_trung.ma_nv}`}
+                  </LienKet>
+                )}
                 <button type="button" className="nut-nho"
                   onClick={() => { void cap_lai_mat_khau_ms(); }} disabled={cap_mk.dang_chay}>
-                  {cap_mk.dang_chay ? 'Đang cấp lại…' : 'Cấp lại mật khẩu'}
+                  {cap_mk.dang_chay ? 'Đang cấp lại…' : 'Cấp lại mật khẩu Microsoft'}
                 </button>
-                <span className="goi-y giu-hien">
-                  Người này đã có tài khoản Microsoft — cấp lại mật khẩu khởi tạo để bàn giao lại.
-                </span>
+                <button type="button" className="nut-nho nut-phang"
+                  onClick={() => { bo_ban_nhap(); khi_dong(); }}>
+                  Bỏ bản nháp và đóng
+                </button>
               </div>
               <HopLoi loi={cap_mk.loi} />
             </div>

@@ -150,6 +150,26 @@ trên máy. Không có PIN thì log về không map được vào ai.
 đã thuộc người khác trong bảng định danh; khi đó hồ sơ **vẫn lưu** và phản hồi kèm mảng
 `canh_bao` nói rõ ai đang giữ mã. Xem [`MA-DINH-DANH.md`](MA-DINH-DANH.md).
 
+**Ngoại lệ: `email` khi TẠO hồ sơ.** Mỗi email chỉ được **một hồ sơ** (email là tên đăng nhập
+Microsoft), nên `POST /nhan-vien` trả **409** nếu email đã thuộc hồ sơ khác — **kể cả khi không
+tạo tài khoản Microsoft** (bỏ tick mà vẫn cho lưu là sinh ra hai hồ sơ cùng email: một hộp thư
+cho hai người, bảng lương trả nhầm). Phản hồi có thêm khối máy đọc được:
+
+```json
+{
+  "loi": "Email huyen@congty.vn đã thuộc hồ sơ NVVP10260001 — Bùi Khánh Huyền. Mỗi email chỉ có một hồ sơ — mở hồ sơ đó để sửa, hoặc dùng email khác nếu đây là người mới.",
+  "chi_tiet": {
+    "ma": "email_da_co_ho_so",
+    "nhan_vien_id": "44641e70-66a1-4145-b894-987bccddef56",
+    "ma_nv": "NVVP10260001",
+    "ho_ten": "Bùi Khánh Huyền",
+    "dang_hoat_dong": true
+  }
+}
+```
+
+Giao diện **đọc `chi_tiet.ma`**, không so chuỗi thông điệp, rồi mở thẳng hồ sơ đang trùng.
+
 ### Mã định danh
 
 | Method | Đường dẫn | Quyền | Ghi chú |

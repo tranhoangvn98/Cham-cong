@@ -148,7 +148,12 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
     }
 
     req.log.info({ ma, thong_diep: loi.message }, 'loi dau vao');
-    return res.code(ma).send({ loi: loi.message });
+    // Loi nghiep vu co the kem du lieu may doc duoc (vd `chi_tiet: {ma: 'email_da_co_ho_so',
+    // nhan_vien_id}` de giao dien mo dung ho so dang trung). Khong co thi tra nhu cu.
+    const chi_tiet = (loi as { chi_tiet?: unknown }).chi_tiet;
+    return res.code(ma).send(chi_tiet === undefined
+      ? { loi: loi.message }
+      : { loi: loi.message, chi_tiet });
   });
 
   app.setNotFoundHandler((req, res) => {

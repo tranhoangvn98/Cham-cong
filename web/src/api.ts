@@ -55,8 +55,15 @@ interface Phien {
 }
 
 export class LoiApi extends Error {
-  constructor(readonly ma: number, thong_diep: string) {
+  /**
+   * Du lieu MAY DOC DUOC kem theo loi (vd `{ma:'email_da_co_ho_so', nhan_vien_id}`).
+   * Dung de giao dien lam viec tiep (mo dung ho so dang trung), khong do chuoi thong diep.
+   */
+  readonly chi_tiet?: unknown;
+
+  constructor(readonly ma: number, thong_diep: string, chi_tiet?: unknown) {
     super(thong_diep);
+    if (chi_tiet !== undefined) this.chi_tiet = chi_tiet;
   }
 }
 
@@ -531,13 +538,15 @@ export async function goi<T = unknown>(duong_dan: string, tc: TuyChonGoi = {}): 
 
   if (!res.ok) {
     let thong_diep = `Lỗi ${res.status}`;
+    let chi_tiet: unknown;
     try {
-      const j = (await res.json()) as { loi?: string };
+      const j = (await res.json()) as { loi?: string; chi_tiet?: unknown };
       if (typeof j.loi === 'string') thong_diep = j.loi;
+      chi_tiet = j.chi_tiet;
     } catch {
       /* phan hoi khong phai JSON — giu thong diep mac dinh */
     }
-    throw new LoiApi(res.status, thong_diep);
+    throw new LoiApi(res.status, thong_diep, chi_tiet);
   }
 
   if (res.status === 204) return undefined as T;

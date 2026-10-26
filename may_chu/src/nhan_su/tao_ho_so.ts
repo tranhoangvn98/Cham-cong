@@ -22,6 +22,7 @@ import { bao_pin_cho_nhan_vien } from './bao_pin.ts';
 import { nguoi_nhan_nhap_viec, tao_viec_nhap_viec_trong } from './nhap_viec.ts';
 import { bao_nhan_su_moi } from './bao_nhan_su_moi.ts';
 import { bao_tai_khoan_ms365 } from './bao_tai_khoan_ms365.ts';
+import { loi_trung_email } from './loi_ho_so.ts';
 import {
   kiem_hop_dong_khoi_tao, nhan_hop_dong, ngay_het_han,
   type LoaiHopDongKhoiTao,
@@ -149,23 +150,32 @@ export async function tao_ho_so_nhan_su(
     [...serial_theo_khoi, serial_cap_pin].filter((s) => s !== ''),
   )];
 
-  // Tao tai khoan Microsoft: email chinh la UPN, bat buoc va khong duoc trung nguoi khac
-  // dang lam viec (trung thi Graph tra 409 va mot nguoi se bi cap nham giay phep).
+  // EMAIL LA DINH DANH: một email chỉ được MỘT hồ sơ, và nó là tên đăng nhập Microsoft (UPN).
+  // Chặn cả khi KHÔNG tạo tài khoản Microsoft — nếu không, nhân sự chỉ việc bỏ tick "tạo tài
+  // khoản" là lưu được, và hệ thống có hai hồ sơ cùng email (một hộp thư cho hai người, bảng
+  // lương trả nhầm người). Lỗi kèm `chi_tiet` để giao diện mở đúng hồ sơ đang trùng.
+  const email_chuan = (v.email ?? '').trim().toLowerCase();
+  if (email_chuan !== '') {
+    const trung = await truy_van_mot<{
+      id: string; ma_nv: string; ho_ten: string; dang_hoat_dong: boolean;
+    }>(
+      'select id, ma_nv, ho_ten, dang_hoat_dong from nhan_vien where lower(email) = $1 limit 1',
+      [email_chuan]);
+    if (trung !== null) {
+      const loi = loi_trung_email(email_chuan, trung);
+      throw new LoiXungDot(loi.thong_diep, loi.chi_tiet);
+    }
+  }
+
+  // Tạo tài khoản Microsoft: email chính là UPN nên bắt buộc phải có.
   let upn = '';
   let mat_khau = '';
   let sku_id = '';
   if (v.tao_tk_ms365) {
-    const email = (v.email ?? '').trim();
-    if (!email.includes('@')) {
+    if (!email_chuan.includes('@')) {
       throw new LoiDauVao('Tạo tài khoản Microsoft cần email công ty hợp lệ (email chính là tên đăng nhập).');
     }
-    upn = email.toLowerCase();
-    const trung = await truy_van_mot<{ ho_ten: string }>(
-      'select ho_ten from nhan_vien where lower(email) = lower($1) limit 1', [upn]);
-    if (trung !== null) {
-      throw new LoiXungDot(
-        `Email ${upn} đã thuộc ${trung.ho_ten} — không thể tạo tài khoản Microsoft trùng.`);
-    }
+    upn = email_chuan;
     mat_khau = sinh_mat_khau_khoi_tao();
     // Mac dinh Basic cho moi tai khoan moi (chu cong ty chot 10/2026). Standard chi khi nguoi
     // tao chon dich danh — cong duyet ghi de bang `sku_id_tuy_chon` (REQ-G-01).
