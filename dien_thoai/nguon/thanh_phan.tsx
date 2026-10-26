@@ -122,7 +122,7 @@ export function Nut(
 
 // ============================================================ nhap lieu
 export function Nhap(
-  { nhan, gia_tri, khi_doi, goi_y, mat_khau, so, nhieu_dong, tu_dong, goi_y_duoi }: {
+  { nhan, gia_tri, khi_doi, goi_y, mat_khau, so, nhieu_dong, tu_dong, goi_y_duoi, loi }: {
     nhan: string;
     gia_tri: string;
     khi_doi: (v: string) => void;
@@ -132,12 +132,33 @@ export function Nhap(
     nhieu_dong?: boolean;
     tu_dong?: 'username' | 'password' | 'new-password' | 'off';
     goi_y_duoi?: string;
+    /** Loi kiem tra: hien truc tiep, khong giu trong nut ?. */
+    loi?: boolean;
   },
 ): ReactNode {
   const m = dung_mau();
+  const [hien_goi_y, dat_hien_goi_y] = useState(false);
+  const co_tro_giup = goi_y_duoi !== undefined && loi !== true;
   return (
     <View>
-      <Text style={[kieu.nhan, { color: m.chu_nhat }]}>{nhan}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Text style={[kieu.nhan, { color: m.chu_nhat }]}>{nhan}</Text>
+        {co_tro_giup && (
+          <Pressable
+            onPress={() => dat_hien_goi_y(!hien_goi_y)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Gợi ý"
+            style={{
+              width: 18, height: 18, borderRadius: 9, borderWidth: 1,
+              borderColor: m.vien, alignItems: 'center', justifyContent: 'center',
+              marginLeft: 6, backgroundColor: m.nen_mo,
+            }}
+          >
+            <Text style={{ color: m.chu_nhat, fontSize: 12, fontWeight: '600' }}>?</Text>
+          </Pressable>
+        )}
+      </View>
       <TextInput
         value={gia_tri}
         onChangeText={khi_doi}
@@ -160,7 +181,10 @@ export function Nhap(
           },
         ]}
       />
-      {goi_y_duoi !== undefined && (
+      {goi_y_duoi !== undefined && loi === true && (
+        <Chu co="bo" mau="xau" style={{ marginTop: 4 }}>{goi_y_duoi}</Chu>
+      )}
+      {co_tro_giup && hien_goi_y && goi_y_duoi !== undefined && (
         <Chu co="bo" mau="mo" style={{ marginTop: 4 }}>{goi_y_duoi}</Chu>
       )}
     </View>
