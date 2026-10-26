@@ -129,7 +129,52 @@ không có điện thoại.
 Báo cáo sử dụng 30 ngày + ghi rõ “chưa kiểm tra được” cho Authenticator/OneDrive/SharePoint trên
 điện thoại. Không tốn thêm giấy phép.
 
-## 6. Script kiểm tra nhanh sau khi kích hoạt
+## 6. Chỉ dùng báo cáo M365 thì trích được gì (đo thật 26/10/2026)
+
+Đã tải 5 báo cáo về và đọc **toàn bộ danh sách cột** (script
+`trien_khai/kiem_tra_cot_bao_cao_m365.mjs`):
+
+| Báo cáo | Số cột | Cột đáng dùng |
+| --- | --- | --- |
+| `getM365AppUserDetail` | 39 | `Outlook (Windows)`, `Teams (Windows)`, `Outlook (Mobile)`, `Teams (Mobile)`, `Outlook (Web)`, `Teams (Web)` |
+| `getOneDriveActivityUserDetail` | 11 | `Synced File Count`, `Viewed Or Edited File Count` |
+| `getSharePointActivityUserDetail` | 12 | `Synced File Count`, `Viewed Or Edited File Count`, `Visited Page Count` |
+| `getTeamsDeviceUsageUserDetail` | 16 | `Used Windows`, `Used Mac`, `Used iOS`, `Used Android Phone`, `Used Web` |
+| `getEmailAppUsageUserDetail` | 16 | `Outlook For Windows`, `Outlook For Mobile`, `Other For Mobile` |
+
+**Không báo cáo nào có cột OneDrive/SharePoint tách riêng điện thoại**, và không có cột nào
+liên quan Authenticator.
+
+### 6.1. Phủ được 5/8 ứng dụng bắt buộc
+
+| Ứng dụng | Bằng chứng lấy từ | Kết luận |
+| --- | --- | --- |
+| Outlook (máy tính) | `Outlook (Windows)` | Được |
+| Teams (máy tính) | `Teams (Windows)` | Được |
+| OneDrive (máy tính) | `Synced File Count` > 0 | Được |
+| Outlook (điện thoại) | `Outlook (Mobile)` | Được |
+| Teams (điện thoại) | `Teams (Mobile)`, hoặc `Used iOS`/`Used Android Phone` | Được |
+| OneDrive (điện thoại) | — | **Không** |
+| SharePoint (điện thoại) | — (`getSharePointActivityUserDetail` chỉ có đồng bộ trên máy tính) | **Không** |
+| Authenticator | — (cần Entra ID P1/P2) | **Không** |
+
+### 6.2. Hai báo cáo từng nghĩ là bù được — đo thì không
+
+- `getEmailAppUsageUserDetail`: cột `Outlook For Mobile` **không trả `Yes`/`No`** mà trả
+  `Undetermined` (53 người để trống, 13 người `Undetermined`). Tập 13 người này **trùng khớp
+  100%** với 13 người có `Outlook (Mobile) = Yes` ở báo cáo M365 Apps → **không thêm thông tin**,
+  ngữ nghĩa giá trị lại không rõ nên **không nên dùng**.
+- `getTeamsDeviceUsageUserDetail`: 57 người có `Used iOS`/`Used Android Phone`, so với 58 người
+  `Teams (Mobile) = Yes` ở báo cáo M365 Apps → nếu dùng thì phải **hợp hai nguồn**; lợi ích duy
+  nhất là tách được iOS/Android. Không cần cho yêu cầu hiện tại.
+
+### 6.3. Giới hạn phải nói rõ với nhân sự
+
+“Chưa thấy dùng” nghĩa là **không có hoạt động trong 30 ngày**, **không phải** “chưa cài”. Người
+đã cài Outlook nhưng 30 ngày không mở sẽ hiện “Chưa thấy dùng”. Vì vậy thẻ này dùng để **nhắc
+nhở**, không dùng để kỷ luật.
+
+## 7. Script kiểm tra nhanh sau khi kích hoạt
 
 `trien_khai/kiem_tra_api_kiem_ke_ung_dung.mjs` — chạy trong container `may_chu`, in HTTP status
 của 3 API trên. Dùng để xác nhận Intune/Defender đã sẵn sàng trước khi bật chế độ kiểm kê chính xác.
@@ -140,7 +185,7 @@ ssh vps 'cd /root/Cham-cong && docker compose cp trien_khai/kiem_tra_api_kiem_ke
   && docker compose exec -T may_chu node /app/kiem_tra_api_kiem_ke_ung_dung.mjs'
 ```
 
-## 7. Kết luận
+## 8. Kết luận
 
 - **Không có API “installed apps” ngoài Intune/Defender.** Báo cáo M365 (`Reports.Read.All`) chỉ
   có hoạt động/kích hoạt, không có danh sách cài đặt.
