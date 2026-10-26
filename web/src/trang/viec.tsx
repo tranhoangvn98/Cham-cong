@@ -758,6 +758,9 @@ export function HopThoaiChiTiet({ id, khi_dong }: { id: string; khi_dong: () => 
 // ================================================================ GANTT
 export function ManGantt(): ReactNode {
   const [nghin, dat_nghin] = useState(14);
+  // Danh sách điện thoại có thể dài hàng nghìn việc (cửa sổ ±14 ngày trả về rất nhiều dòng
+  // định kỳ) — hiện dần 50 thẻ để trang mở nhanh, không dựng cả nghìn node.
+  const [so_the, dat_so_the] = useState(50);
   const hom_nay_str = hom_nay();
   const tu = new Date(new Date(`${hom_nay_str}T00:00:00Z`).getTime() - (nghin - 1) * 86_400_000)
     .toISOString().slice(0, 10);
@@ -844,7 +847,7 @@ export function ManGantt(): ReactNode {
             <span>Hôm nay {ngay_viet(hom_nay_str)}</span>
             <span>{ngay_viet(den)}</span>
           </div>
-          {(du_lieu ?? []).map((v) => {
+          {(du_lieu ?? []).slice(0, so_the).map((v) => {
             const bat = (v.bat_dau ?? v.tao_luc ?? '').slice(0, 10);
             const han = (v.han ?? v.tao_luc ?? '').slice(0, 10);
             let i0 = ngay.indexOf(bat);
@@ -890,6 +893,15 @@ export function ManGantt(): ReactNode {
               </div>
             );
           })}
+          {(du_lieu ?? []).length > so_the && (
+            <button
+              type="button"
+              className="cv-gantt-mb-them"
+              onClick={() => dat_so_the(so_the + 50)}
+            >
+              Xem thêm {Math.min(50, (du_lieu ?? []).length - so_the)} việc
+            </button>
+          )}
         </div>
         </>
       )}

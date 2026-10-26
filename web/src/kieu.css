@@ -2999,6 +2999,14 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
     border-radius: 1px;
     background: var(--chinh-dam);
   }
+  .cv-gantt-mb-them {
+    min-height: 40px;
+    border: 1px dashed var(--vien-dam);
+    border-radius: var(--tron);
+    background: transparent;
+    color: var(--chinh-dam);
+    font-weight: 600;
+  }
 }
 
 .cv-workflow { border: 1px solid var(--vien, #e2e8f0); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
