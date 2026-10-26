@@ -1,8 +1,0 @@
-Gợi ý UI: biểu tượng ⓘ vẽ SVG đặt ngay sau nhãn ô thay cho nút "?" ở góc phải
-
-- .o-nhap thành lưới 2 cột (max-content 1fr): nhãn cột 1, biểu tượng cột 2; ô nhập/bảng/khối
-  trạng thái tràn cả hai cột nên bố cục form không đổi.
-- Biểu tượng SVG (vòng tròn + chữ i, nét 1,6) ăn theo currentColor, tự đổi màu ở chế độ tối.
-- Ô tích: đưa <GoiY> vào trong hàng .o-nhap-ngang sau <label> để biểu tượng đứng cạnh nhãn.
-- Bong gợi ý mở về bên phải biểu tượng (left: -4px).
-- Cập nhật quy ước ở tai_lieu/THIET-KE.md mục 9 và CLAUDE.md.
