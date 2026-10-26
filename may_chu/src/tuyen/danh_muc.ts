@@ -28,6 +28,7 @@ import { CAC_HE_THONG, MA_CAC_HE_THONG } from '../dinh_danh/he_thong.ts';
 import { cap_pin, doc_dai_pin, goi_y_pin } from '../dinh_danh/cap_pin.ts';
 import { doi_chieu_may } from '../dinh_danh/doi_chieu_may.ts';
 import { tao_ho_so_nhan_su } from '../nhan_su/tao_ho_so.ts';
+import { dat_lai_mat_khau_ms365, graph_da_cau_hinh } from '../nhan_su/ms365.ts';
 import { ten_phong_chuan } from '../nhan_su/ten_phong.ts';
 import { LOAI_HOP_DONG_KHOI_TAO, kiem_hop_dong_khoi_tao } from '../nhan_su/hop_dong_khoi_tao.ts';
 import { MA_VI_TRI } from '../nhan_su/vi_tri.ts';
@@ -203,6 +204,30 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       'select id from nhan_vien where khoi_id = $1', [id]);
     for (const nv of ds) await tinh_lai_khoang(tu, hom_nay, nv.id);
     return { ok: true };
+  });
+
+  /**
+   * Cap lai mat khau Microsoft 365 cho mot email DA CO tai khoan.
+   *
+   * Dung dung luc form "Them nhan vien" bao "Email ... da thuoc <ai do>": tai khoan da duoc
+   * tao tu lan truoc (thuong la lan truoc bi mat phien giua chung), nen viec can lam la dat lai
+   * mat khau khoi tao de ban giao — KHONG tao tai khoan thu hai, KHONG cap them giay phep.
+   */
+  app.post('/nhan-vien/cap-lai-mat-khau-ms365', { preHandler: can_nhan_su }, async (req) => {
+    const email = chuoi_bat_buoc(than(req.body), 'email', { toi_da: 200 }).trim().toLowerCase();
+    if (!email.includes('@')) throw new LoiDauVao('Email không hợp lệ.');
+    if (!graph_da_cau_hinh()) {
+      throw new LoiDauVao('Máy chủ chưa cấu hình Microsoft 365 (thiếu MS_TENANT_ID/CLIENT/SECRET).');
+    }
+    const kq = await dat_lai_mat_khau_ms365(email);
+    const nv = await truy_van_mot<{ id: string; ho_ten: string }>(
+      'select id, ho_ten from nhan_vien where lower(email) = lower($1) limit 1', [email]);
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'cap_lai_mat_khau_ms365', 'nhan_vien',
+      nv?.id ?? null, { email, dang_bi_khoa: kq.dang_bi_khoa }, req.ip);
+    return {
+      upn: email, mat_khau: kq.mat_khau, dang_bi_khoa: kq.dang_bi_khoa,
+      ho_ten: nv?.ho_ten ?? null,
+    };
   });
 
   app.get('/nhan-vien', { preHandler: can_dang_nhap }, async (req) => {

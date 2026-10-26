@@ -113,6 +113,7 @@ curl -X POST http://localhost:8080/api/xac-thuc/dang-nhap \
 | DELETE | `/nhan-vien/:id` | nhan_su |
 | GET | `/nhan-vien/ms365-da-cap-phep` | nhan_su |
 | POST | `/nhan-vien/ms365-da-cap-phep/dong-bo` | nhan_su |
+| POST | `/nhan-vien/cap-lai-mat-khau-ms365` | nhan_su | `{ email }` → đặt lại mật khẩu Microsoft cho tài khoản **đã có**, trả `{ upn, mat_khau, dang_bi_khoa, ho_ten }` |
 | GET | `/khoi` | đã đăng nhập |
 | PATCH | `/khoi/:id` | nhan_su | `{ mien_cham_cong }` — bật/tắt miễn chấm công cho cả khối |
 

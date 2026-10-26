@@ -11,12 +11,19 @@ import assert from 'node:assert/strict';
 const {
   dung_than_chan_dang_nhap, dung_than_rut_giay_phep,
   dung_than_tao_tai_khoan, dung_than_cap_giay_phep,
+  dung_than_dat_lai_mat_khau,
   la_truong_phong, sinh_mat_khau_khoi_tao, loc_nguoi_da_cap_phep,
   ten_moi_thanh_chu,
 } = await import('../src/nhan_su/ms365.ts');
 
 test('chan dang nhap: accountEnabled phai la false', () => {
   assert.deepEqual(dung_than_chan_dang_nhap(), { accountEnabled: false });
+});
+
+test('dat lai mat khau: chi gui passwordProfile, bat buoc doi o lan dang nhap dau', () => {
+  assert.deepEqual(dung_than_dat_lai_mat_khau('Xy12#abcD'), {
+    passwordProfile: { forceChangePasswordNextSignIn: true, password: 'Xy12#abcD' },
+  });
 });
 
 test('rut giay phep: addLicenses rong, removeLicenses la danh sach sku dang gan', () => {

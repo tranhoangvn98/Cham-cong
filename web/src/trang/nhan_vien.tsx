@@ -402,6 +402,14 @@ const FORM_TRONG: TruongFormNhanVien = {
   che_do_luong: 'vn', khoi_id: '', cong_chuan_thang: '', loai_hop_dong: '', serial_may_cua: '',
 };
 
+/** Tra ve cua POST /api/nhan-vien/cap-lai-mat-khau-ms365. */
+interface KetQuaCapLaiMk {
+  upn: string;
+  mat_khau: string;
+  dang_bi_khoa: boolean;
+  ho_ten: string | null;
+}
+
 interface BanNhapNhanVien {
   f: Partial<TruongFormNhanVien>;
   kiem_nhiem: string[];
@@ -509,6 +517,9 @@ function FormNhanVien(
   const [ket_qua_may, dat_ket_qua_may] = useState<string[]>([]);
   const [ket_qua_vt, dat_ket_qua_vt] = useState<{ so_vt: number; so_viec: number } | null>(null);
   const [canh_bao_ket, dat_canh_bao_ket] = useState<string[]>([]);
+  // Ket qua cap lai mat khau Microsoft (ban giao lai khi email da co tai khoan).
+  const [mk_ms, dat_mk_ms] = useState<KetQuaCapLaiMk | null>(null);
+  const cap_mk = dung_hanh_dong();
   const noi = dung_nap<NoiLamViec[]>('/api/noi-lam-viec');
   const khoi = dung_nap<Khoi[]>('/api/khoi');
   const hd = dung_hanh_dong();
@@ -543,6 +554,15 @@ function FormNhanVien(
 
   /** Lao dong outsource: hop dong dich vu — khong thuoc bang luong, khong can chi tiet cham cong. */
   const la_outsource = f.loai_hop_dong === 'cong_tac_vien';
+
+  // Loi "Email ... đã thuộc <ai đó> — không thể tạo tài khoản Microsoft trùng": tài khoản đã
+  // được tạo từ lần trước (hay gặp khi lần trước bị mất phiên giữa chừng) — việc cần làm là
+  // CẤP LẠI MẬT KHẨU để bàn giao, không phải tạo tài khoản thứ hai.
+  const thong_diep_loi = hd.loi === null
+    ? null
+    : (hd.loi instanceof Error ? hd.loi.message : String(hd.loi));
+  const la_loi_trung_ms = thong_diep_loi !== null
+    && thong_diep_loi.includes('không thể tạo tài khoản Microsoft trùng');
 
   /** Doi loai lao dong: outsource tu dat "Khong theo bang luong" + mien cham cong; doi sang loai
    *  khac thi tra ve VND va bo mien cham cong neu chinh viec chon outsource dat ra. */
@@ -618,6 +638,15 @@ function FormNhanVien(
       method: 'POST', body: {},
     }));
     if (ok) nguon.nap_lai();
+  };
+
+  /** Cap lai mat khau Microsoft cho email dang go — dung khi he thong bao email da co tai khoan. */
+  const cap_lai_mat_khau_ms = async (): Promise<void> => {
+    const email = f.email.trim();
+    if (email === '') return;
+    const kq = await cap_mk.chay_lay<KetQuaCapLaiMk>(() =>
+      goi('/api/nhan-vien/cap-lai-mat-khau-ms365', { method: 'POST', body: { email } }));
+    if (kq !== null) dat_mk_ms(kq);
   };
 
   const gui = async (e: React.FormEvent): Promise<void> => {
@@ -726,7 +755,23 @@ function FormNhanVien(
       lop_them="hop-thoai-form-nhan-vien"
     >
       <form onSubmit={gui}>
-        <HopLoi loi={hd.loi} />
+        {la_loi_trung_ms
+          ? (
+            <div className="hop-thong-bao hop-loi">
+              {thong_diep_loi}
+              <div className="hang-nut" style={{ marginTop: 8 }}>
+                <button type="button" className="nut-nho"
+                  onClick={() => { void cap_lai_mat_khau_ms(); }} disabled={cap_mk.dang_chay}>
+                  {cap_mk.dang_chay ? 'Đang cấp lại…' : 'Cấp lại mật khẩu'}
+                </button>
+                <span className="goi-y giu-hien">
+                  Người này đã có tài khoản Microsoft — cấp lại mật khẩu khởi tạo để bàn giao lại.
+                </span>
+              </div>
+              <HopLoi loi={cap_mk.loi} />
+            </div>
+          )
+          : <HopLoi loi={hd.loi} />}
 
         {giu_ban_nhap && (
           <div className="hop-thong-bao hop-luu-y">
@@ -1166,6 +1211,39 @@ function FormNhanVien(
             khi_xong();
           }}
         />
+      )}
+      {mk_ms !== null && (
+        <HopThoai tieu_de="Mật khẩu Microsoft mới" khi_dong={() => dat_mk_ms(null)}>
+          <div className="hop-thong-bao hop-tin">
+            Đã đặt lại mật khẩu cho <strong>{mk_ms.ho_ten ?? mk_ms.upn}</strong>. Mật khẩu
+            <strong> chỉ hiện một lần</strong> — chép lại rồi bàn giao; người dùng bắt buộc đổi ở
+            lần đăng nhập đầu.
+          </div>
+          <div className="o-nhap">
+            <label htmlFor="mk-upn">Tên đăng nhập Microsoft (UPN)</label>
+            <input id="mk-upn" value={mk_ms.upn} readOnly />
+          </div>
+          <div className="o-nhap">
+            <label htmlFor="mk-mk">Mật khẩu khởi tạo</label>
+            <input id="mk-mk" value={mk_ms.mat_khau} readOnly className="chu-ma" />
+            <div className="hang-nut">
+              <button type="button" className="nut-chinh"
+                onClick={() => { void navigator.clipboard.writeText(mk_ms.mat_khau); }}>
+                Sao chép mật khẩu
+              </button>
+            </div>
+          </div>
+          {mk_ms.dang_bi_khoa && (
+            <div className="hop-thong-bao hop-loi">
+              Tài khoản này đang <strong>bị khoá</strong> (thường do đã cho nghỉ việc). Mở khoá
+              trong trung tâm quản trị Microsoft 365 trước khi bàn giao, nếu không mật khẩu mới
+              cũng không dùng được.
+            </div>
+          )}
+          <div className="hang-nut">
+            <button type="button" className="nut-chinh" onClick={() => dat_mk_ms(null)}>Đóng</button>
+          </div>
+        </HopThoai>
       )}
       {xn.hop_thoai}
     </HopThoai>

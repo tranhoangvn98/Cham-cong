@@ -119,6 +119,55 @@ export function dung_than_cap_giay_phep(sku_id: string): Record<string, unknown>
   return { addLicenses: [{ skuId: sku_id }], removeLicenses: [] };
 }
 
+/**
+ * Payload PATCH /users/{id}: dat lai mat khau khoi tao cho tai khoan DA CO (ban giao lai).
+ *
+ * Bat buoc `forceChangePasswordNextSignIn: true` — nguoi nhan mat khau tam phai doi ngay o lan
+ * dang nhap dau, neu khong thi mat khau do nam lai trong tin nhan/giay ghi chu mai mai.
+ */
+export function dung_than_dat_lai_mat_khau(mat_khau: string): Record<string, unknown> {
+  return { passwordProfile: { forceChangePasswordNextSignIn: true, password: mat_khau } };
+}
+
+/**
+ * Dat lai mat khau Microsoft cho mot UPN da ton tai, tra ve mat khau moi de ban giao.
+ *
+ * Dung khi tao ho so bao "email đã thuộc <ai đó>" — tuc tai khoan da duoc tao tu lan truoc
+ * (vi du lan truoc bi mat phien giua chung). KHONG tao tai khoan moi, KHONG cap them giay phep,
+ * KHONG mo khoa tai khoan: dang bi khoa thi bao ra de nguoi lam ho so tu quyet dinh.
+ */
+export async function dat_lai_mat_khau_ms365(
+  upn: string,
+): Promise<{ mat_khau: string; dang_bi_khoa: boolean }> {
+  const token = await lay_token_graph();
+  const doc = await fetch(
+    `${GOC_GRAPH()}/users/${encodeURIComponent(upn)}?$select=accountEnabled`,
+    { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(HET_GIO_MS) },
+  );
+  if (doc.status === 404) {
+    throw new Error(`Không tìm thấy tài khoản Microsoft ${upn} — kiểm tra lại email.`);
+  }
+  if (!doc.ok) {
+    throw new Error(`Graph từ chối đọc tài khoản ${upn} (HTTP ${doc.status})`);
+  }
+  const dang_bat = ((await doc.json()) as { accountEnabled?: unknown }).accountEnabled === true;
+
+  const mat_khau = sinh_mat_khau_khoi_tao();
+  const sua = await fetch(`${GOC_GRAPH()}/users/${encodeURIComponent(upn)}`, {
+    method: 'PATCH',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(dung_than_dat_lai_mat_khau(mat_khau)),
+    signal: AbortSignal.timeout(HET_GIO_MS),
+  });
+  if (!sua.ok) {
+    throw new Error(`Graph từ chối đặt lại mật khẩu ${upn} (HTTP ${sua.status})`);
+  }
+  return { mat_khau, dang_bi_khoa: !dang_bat };
+}
+
 /** Doc danh sach skuId giay phep dang gan cua mot tai khoan Entra. */
 async function doc_giay_phep(token: string, upn: string): Promise<string[]> {
   const res = await fetch(

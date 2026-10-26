@@ -2,6 +2,27 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.137.5] — 2026-10-27
+
+**Tạo hồ sơ báo "email đã thuộc người khác": có ngay nút Cấp lại mật khẩu để bàn giao.**
+
+Tình huống thật (27/10/2026): lần trước bấm Lưu thì phiên đăng nhập rớt giữa chừng — hồ sơ **đã
+được tạo** và tài khoản Microsoft đã có, nhưng người dùng không nhận được mật khẩu khởi tạo. Lần
+sau tạo lại thì bị chặn: *"Email … đã thuộc … — không thể tạo tài khoản Microsoft trùng."* Trước
+đây chỉ còn cách nhờ quản trị Microsoft 365 đặt lại mật khẩu bằng tay.
+
+- **Trong ô cảnh báo lỗi** nay có nút **Cấp lại mật khẩu**. Bấm là hệ thống đặt lại mật khẩu khởi
+  tạo cho đúng tài khoản đó và mở hộp thoại hiện UPN + mật khẩu mới (có nút sao chép) để bàn giao
+  — người dùng vẫn bắt buộc đổi ở lần đăng nhập đầu.
+- Route mới: `POST /api/nhan-vien/cap-lai-mat-khau-ms365` (`{ email }`), quyền nhân sự, ghi
+  `nhat_ky_thao_tac` (`cap_lai_mat_khau_ms365`).
+- **Không** tạo tài khoản mới, **không** cấp thêm giấy phép, **không** tự mở khoá. Tài khoản đang
+  bị khoá (thường do đã cho nghỉ việc) thì hộp thoại cảnh báo rõ: mở khoá trong trung tâm quản trị
+  Microsoft 365 trước khi bàn giao, nếu không mật khẩu mới cũng vô dụng.
+- Dùng chung creds Graph của module mail (`SHAREPOINT_*`); máy chủ thiếu cấu hình thì báo lỗi rõ
+  thay vì im lặng.
+- Test `ms365.test.ts`: khóa khuôn payload `passwordProfile` (`forceChangePasswordNextSignIn`).
+
 ## [1.137.4] — 2026-10-27
 
 **Không mất việc đang làm: hộp thoại chỉ đóng khi bấm đúp ra ngoài, form nhân viên giữ bản nháp,
