@@ -1147,18 +1147,18 @@ input[type="checkbox"] {
   font-size: 13px;
   color: var(--chu-mo);
 }
-/* Dau cham ngan cach cac thuoc tinh — truoc moi muc SAU muc dau tien.
-   Moi muc la inline-flex nen dau cham KHONG bi roi xuong dau dong khi xuong hang: neu de
-   dau cham thanh phan tu rieng thi no dung mot minh o cuoi dong truoc. */
+/* Dau cham ngan cach cac thuoc tinh — dat SAU moi muc (tru muc cuoi), khong dat truoc.
+   Dat truoc thi khi xuong hang dau cham dung mot minh o dau dong trong rat le; dat sau thi
+   no bam vao cuoi dong truoc. Moi muc la inline-flex nen dau cham khong tach khoi chu cua no. */
 .hs-phu > span {
   display: inline-flex;
   align-items: baseline;
   min-width: 0;
   max-width: 100%;
 }
-.hs-phu > span + span::before {
+.hs-phu > span:not(:last-child)::after {
   content: '·';
-  margin-right: 6px;
+  margin-left: 6px;
   color: var(--vien-dam);
   flex: none;
 }
