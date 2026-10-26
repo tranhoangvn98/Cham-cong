@@ -296,6 +296,14 @@ export const CHUOI_VI = {
   nv_ma_erp1_phu:
     'Mã của người này bên ERP1. Khai ở đây để webhook tạo tài khoản gửi kèm mã, ERP1 khỏi phải ghép tay.',
   nv_ma_erp1_goi_y: 'Ví dụ: 0526-0001',
+  nv_cap_lai_ma: 'Cấp lại mã',
+  nv_cap_lai_ma_phu:
+    'Mã ghép lại theo mã ngắn của khối và tháng vào làm. Mã cũ được đóng lại (không xóa) nên lịch sử quẹt máy và chứng từ cũ vẫn tra cứu được.',
+  nv_cap_lai_ma_hoi: 'Cấp lại mã nhân viên?',
+  nv_cap_lai_ma_hoi_mo_ta:
+    'Mã mới ghép theo khối và tháng vào làm. Mã cũ được đóng lại nhưng vẫn tra cứu được; tên thư mục kho tệp đổi theo; bản ghi bên cổng phân quyền vẫn mang mã cũ nên phải cập nhật tay bên đó.',
+  nv_cap_lai_ma_hoi_nut: 'Cấp lại mã',
+  nv_cap_lai_ma_xong: 'Đã cấp mã mới: {ma}',
   nv_pin_tu_khoi: 'Tự cấp PIN theo dãy của máy thuộc khối',
   nv_pin_tu_khoi_phu:
     'Hệ thống chọn số PIN còn trống đầu tiên trong dải của máy thuộc khối đã chọn, ghi vào mã định danh và xếp lệnh cập nhật user xuống mọi máy của khối. Để trống ô này chỉ khi người đó đã có PIN trên máy.',
