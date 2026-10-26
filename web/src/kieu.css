@@ -3204,6 +3204,30 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   padding: 5px 8px;
 }
 
+/* ---------------------------------------------------------------- thanh cuộn (máy tính)
+   Thanh cuộn mặc định lấy màu của HỆ ĐIỀU HÀNH (xám sáng) nên trên nền tối nó thành một dải
+   trắng lệch hẳn tông. Đặt theo token để đồng màu ở cả chế độ sáng và tối; nền thanh trong
+   suốt để hòa vào thẻ. Màn hẹp / thiết bị cảm ứng đã ẩn hẳn thanh cuộn ở khối "ĐIỆN THOẠI". */
+@media (min-width: 1024px) and (pointer: fine) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--vien-dam) transparent;
+  }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb {
+    background: var(--vien-dam);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--chu-mo);
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-corner { background: transparent; }
+}
+
 /* ============================================================================
    ĐIỆN THOẠI — bỏ thanh cuộn và hiển thị VỪA KHUNG
    Nguyên tắc: trên màn hẹp không có thanh cuộn nào hiện ra (vẫn cuộn được bằng cảm ứng), và
