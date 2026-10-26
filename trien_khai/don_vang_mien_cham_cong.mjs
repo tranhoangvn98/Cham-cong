@@ -25,7 +25,7 @@ const THUC_THI = process.argv.includes('--thuc-thi');
 const OFFSET = Number(process.env['DEVICE_TZ_OFFSET_HOURS'] ?? 7);
 
 /** Ngay hom nay theo mui gio noi dat may cham cong (KHONG phai mui gio may chu). */
-function hom_nay(): string {
+function hom_nay() {
   return new Date(Date.now() + OFFSET * 3600_000).toISOString().slice(0, 10);
 }
 
