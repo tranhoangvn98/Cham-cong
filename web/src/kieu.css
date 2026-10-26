@@ -3274,6 +3274,9 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   .vt-dong { flex-wrap: wrap; }
   .vt-han,
   .vt-buoc { flex: 0 1 auto; }
+  /* Vỏ cá nhân: chừa chỗ cho thanh tab chân (cao ~67px) + nút trợ lý nổi (đến ~144px từ đáy)
+     để dòng cuối của trang không bị che khi cuộn hết. */
+  .cn-noi-dung { padding-bottom: 150px; }
   /* Thanh tab NGANG (Duyệt đơn, Phụ cấp, Thôi việc, Hồ sơ...): 8-12 tab dài hơn màn hình.
      Trước đây cuộn ngang và người dùng kéo sang không biết còn tab — nay xuống dòng, thấy
      hết tab ngay trên màn hình, không còn vùng cuộn ngang rỗng. */
