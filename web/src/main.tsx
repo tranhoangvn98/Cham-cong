@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.tsx';
+import { bat_bang_di_dong } from './bang_di_dong.ts';
 import './kieu.css';
 
 // Bien nay do vite.config.ts thay bang ma phien ban luc build (define __PHIEN_BAN__).
@@ -61,6 +62,7 @@ if (window.__PHIEN_BAN__ !== undefined && window.__PHIEN_BAN__ !== __PHIEN_BAN__
   window.location.reload();
 } else {
   bat_tu_chua_benh();
+  bat_bang_di_dong();
   createRoot(goc).render(
     <StrictMode>
       <App />

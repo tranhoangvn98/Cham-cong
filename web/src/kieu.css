@@ -3105,8 +3105,8 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 
 @media (max-width: 768px) {
   /* Lưới an toàn: bảng KHÔNG nằm trong `.vo-bang` (bảng kỳ lương, bảng khoản trong hộp
-     thoại...) tự cuộn trong khung của nó thay vì đẩy cả trang rộng ra. Ở <= 640px các bảng
-     này chuyển hẳn sang dạng thẻ nên không còn cuộn. */
+     thoại...) tự cuộn trong khung của nó thay vì đẩy cả trang rộng ra. Bảng thường chuyển
+     hẳn sang dạng thẻ bên dưới nên không còn cuộn; chỉ bảng gộp ô (colspan) mới dùng tới. */
   table:not(.vo-bang table) {
     display: block;
     overflow-x: auto;
@@ -3114,7 +3114,7 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   /* --- bảng dữ liệu thành "thẻ" --- */
   .bang-di-dong { display: block; width: 100%; }
   .bang-di-dong thead { display: none; }

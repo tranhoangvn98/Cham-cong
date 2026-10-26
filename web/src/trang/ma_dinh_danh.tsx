@@ -91,7 +91,7 @@ export function TheMaDinhDanh(
         <div key={nh} style={{ marginTop: 12 }}>
           <h4 style={{ margin: '0 0 6px' }}>{nh}</h4>
           <div className="vo-bang">
-            <table className="bang-gon">
+            <table className="bang-gon bang-thuoc-tinh">
               <tbody>
                 {(du_lieu ?? []).filter((n) => n.nhom === nh).map((n) => (
                   <tr key={n.he_thong}>

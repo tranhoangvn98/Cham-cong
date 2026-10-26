@@ -411,6 +411,13 @@ const CAC_TAB: { ma: Tab; khoa: ChuoiKhoa; icon: string }[] = [
 ];
 
 /**
+ * Nam tab CHINH hien tren thanh tab chan o man hep. Muoi tab khong the chia deu mot hang
+ * 390px: nhan moi tab rong 54-80px trong khi moi nut chi con ~36px, chu tran ra ngoai va de
+ * len nhau. Cac man con lai vao nut "Them" (hop thoai chon man) — van voi mot lan bam.
+ */
+const TAB_CHINH: Tab[] = ['trang_chu', 'bang_cong', 'don_tu', 'luong', 'ca_nhan'];
+
+/**
  * Duong dan <-> tab. Khu vuc cua toi la vo ca nhan DUY NHAT: tro ly, chuong bao va lien ket
  * noi khac deu mo DUNG TAB bang duong dan con (`/ca-nhan/luong`), thay vi trang doc lap cu.
  * Nho vay nut Lui/Tien cua trinh duyet chay dung va URL co the bookmark duoc.
@@ -504,6 +511,8 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
   const [tab, dat_tab] = useState<Tab>(() => DUONG_TAB[duong_dan]
     ?? (duong_dan === '/gop-y-du-thao' ? 'y_kien' : 'trang_chu'));
   const [mo_form, dat_mo_form] = useState<FormMo | null>(null);
+  // Hop thoai "Them" cua thanh tab chan: liet ke cac man khong nam trong 5 tab chinh.
+  const [mo_them, dat_mo_them] = useState(false);
   // Man PHU nam ngoai 5 tab chinh (Thong bao, Van ban cong ty): mo ngay TRONG vo ca nhan chu
   // khong dieu huong ra route rieng — dieu huong ra se roi ve vo quan tri cu ("quay lai giao
   // dien cu"). null = dang xem mot trong 9 tab.
@@ -738,7 +747,7 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
 
         {hep && (
           <nav className="cn-tab-chan" aria-label={tra('cn_cac_man_khu_vuc')}>
-            {CAC_TAB.map((t) => (
+            {CAC_TAB.filter((t) => TAB_CHINH.includes(t.ma)).map((t) => (
               <button
                 key={t.ma}
                 type="button"
@@ -754,7 +763,47 @@ export function TrangCaNhan({ ve_quan_tri, di_duyet }: {
                 <span>{tra(t.khoa)}</span>
               </button>
             ))}
+            {/* Man dang xem khong nam trong 5 tab chinh: nut nay to sang + mang ten man do,
+                de nguoi dung biet minh dang o dau va bam lai de doi man. */}
+            <button
+              type="button"
+              className={TAB_CHINH.includes(tab)
+                ? 'cn-tab-chan-nut'
+                : 'cn-tab-chan-nut cn-tab-chan-chon'}
+              onClick={() => dat_mo_them(true)}
+              aria-haspopup="dialog"
+            >
+              <span className="cn-tab-chan-hinh">
+                <i className="bt bt-menu-2" aria-hidden="true" />
+              </span>
+              <span>
+                {TAB_CHINH.includes(tab)
+                  ? tra('cn_them')
+                  : tra(CAC_TAB.find((t) => t.ma === tab)?.khoa ?? 'cn_them')}
+              </span>
+            </button>
           </nav>
+        )}
+
+        {mo_them && (
+          <HopThoai tieu_de={tra('cn_cac_man_khu_vuc')} khi_dong={() => dat_mo_them(false)}>
+            <div className="cn-them-ds">
+              {CAC_TAB.filter((t) => !TAB_CHINH.includes(t.ma)).map((t) => (
+                <button
+                  key={t.ma}
+                  type="button"
+                  className="cn-them-muc"
+                  onClick={() => { dat_mo_them(false); chon_tab(t.ma); }}
+                >
+                  <i className={`bt bt-${t.icon}`} aria-hidden="true" />
+                  <span>{tra(t.khoa)}</span>
+                  {t.ma === 'don_tu' && so_don_cho > 0 && (
+                    <span className="cn-them-muc-so">{so_don_cho}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </HopThoai>
         )}
       </div>
     </div>
