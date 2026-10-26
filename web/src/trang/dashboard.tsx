@@ -443,6 +443,12 @@ function TongQuanNgay(
         <OSoBam nhan="Chưa quẹt ra" gia_tri={t.chua_quet_ra} phu="trong giờ hoặc quên quẹt"
           loai="chua_quet_ra" ngay={ngay} />
       </div>
+      {t.mien_cham_cong > 0 && (
+        <p className="mo-ta" style={{ marginTop: 8 }}>
+          Không tính {t.mien_cham_cong} người miễn chấm công (khối hoặc cá nhân không quẹt máy) —
+          vào <LienKet den="/cai-dat/khoi">Cài đặt → Khối</LienKet> để xem.
+        </p>
+      )}
     </div>
   );
 }
