@@ -643,6 +643,38 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .hang-nut { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
+/* Hang tep dinh kem (anh / tai lieu) trong bang. Truoc 27/10/2026 markup dung `.hang-anh` ma
+ * khong co dinh nghia nao — `gap` vo tac dung nen cac tep dinh sat nhau. */
+.hang-anh { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/*
+ * CHỐNG "CÁC Ô DÍNH NHAU" — luật cứng, không phụ thuộc người viết JSX nhớ hay quên.
+ *
+ * Lỗi có thật (27/10/2026): hộp thoại "Mật khẩu Microsoft mới" có một hàng nút nằm TRONG ô nhập
+ * (nút Sao chép) và một hàng nút nữa ngay sau đó (nút Đóng). Không luật nào bảo đảm khoảng cách
+ * giữa hai hàng ấy, nên khi ô nhập không còn margin (hoặc ai đó đặt style riêng) là hai nút dán
+ * vào nhau. Nay bất kể thứ tự lắp ghép, hai khối hành động liền nhau LUÔN có khoảng cách.
+ *
+ * Quy ước kèm theo (tai_lieu/THIET-KE.md mục 10): một hộp thoại chỉ có MỘT hàng nút hành động
+ * chính; nút phụ (sao chép, tải về…) nằm chung hàng đó, không đẻ thêm hàng thứ hai.
+ */
+.hang-nut + .hang-nut,
+.o-nhap + .hang-nut,
+.hop-thong-bao + .hang-nut,
+.bang + .hang-nut,
+.the + .hang-nut { margin-top: var(--khoang-lon, 16px); }
+/* Hàng nút nằm trong ô nhập (nút phụ của riêng ô đó) phải tách khỏi ô nhập. */
+.o-nhap > .hang-nut { margin-top: var(--khoang-vua, 10px); }
+
+/*
+ * Ô nhập kèm nút phụ NGAY CẠNH (Sao chép, Tải về, Tạo lại…).
+ * Dùng khối này thay vì đặt `.hang-nut` bên dưới ô nhập: nút không bao giờ rơi xuống
+ * hàng thứ hai rồi dán vào hàng nút hành động của hộp thoại.
+ */
+.o-nhap-nut { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.o-nhap-nut > input { flex: 1 1 auto; min-width: 0; }
+.o-nhap-nut > button { flex: 0 0 auto; white-space: nowrap; }
+
 /* ---------------------------------------------------------------- nhap lieu */
 label { display: block; font-size: 12.5px; font-weight: 500; margin-bottom: 4px; color: var(--chu-nhat); }
 

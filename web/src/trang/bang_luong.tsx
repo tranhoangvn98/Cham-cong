@@ -11,7 +11,7 @@ import { la_admin } from '../api.ts';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
 import {
-  DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
+  DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio,
   XuongDanhSach,
 } from '../thanh_phan.tsx';
 import { GoiY } from '../goi_y.tsx';
@@ -365,6 +365,7 @@ function HopThoaiChiTiet(
   const [tab, dat_tab] = useState<'vnd' | 'cny'>('vnd');
   const [lech, dat_lech] = useState<{ thong_bao: string; ds: DongLech[] } | null>(null);
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
   // Phan trang bảng phiếu VND: hook phai truoc cac return som (dang tai / loi).
   const { ds_xem: phieu_xem, bo_phan_trang } = dung_phan_trang(du_lieu?.phieu ?? []);
 
@@ -399,6 +400,7 @@ function HopThoaiChiTiet(
   return (
     <KhungToanMan tieu_de={`Bảng lương tháng ${k.thang}`} khi_dong={khi_dong}>
       {hd.loi !== null && <HopLoi loi={hd.loi} />}
+      {xn.hop_thoai}
 
       <div className="thanh-tab">
         <button className={`tab ${tab === 'vnd' ? 'tab-dang-mo' : ''}`}
@@ -494,13 +496,18 @@ function HopThoaiChiTiet(
             <button
               className="nut-phang" disabled={hd.dang_chay}
               onClick={() => {
-                if (!window.confirm(
-                  'Thu hồi duyệt sẽ mở lại kỳ lương về "nháp" để sửa/bổ sung '
-                  + '(giữ nguyên công 31/8 làm bù và các ngày chỉnh tay). Tiếp tục?')) return;
-                void hd.chay(
-                  () => goi(`/api/ky-luong/${k.id}/thu-hoi-duyet`, { method: 'POST' }),
-                  'Đã thu hồi duyệt. Kỳ mở lại để sửa — nhớ Tính lại rồi Gửi duyệt / Duyệt lại.',
-                ).then(() => { nap_lai(); khi_doi(); });
+                void xn.hoi({
+                  tieu_de: 'Thu hồi duyệt kỳ lương?',
+                  mo_ta: <>Kỳ lương mở lại về <strong>nháp</strong> để sửa/bổ sung (giữ nguyên công
+                    ngày làm bù và các ngày chỉnh tay). Phiếu đã gửi cho nhân viên sẽ phải duyệt lại.</>,
+                  chu_dong_y: 'Thu hồi duyệt',
+                }).then((dong_y) => {
+                  if (!dong_y) return;
+                  void hd.chay(
+                    () => goi(`/api/ky-luong/${k.id}/thu-hoi-duyet`, { method: 'POST' }),
+                    'Đã thu hồi duyệt. Kỳ mở lại để sửa — nhớ Tính lại rồi Gửi duyệt / Duyệt lại.',
+                  ).then(() => { nap_lai(); khi_doi(); });
+                });
               }}
             >
               Thu hồi duyệt
@@ -1241,8 +1248,7 @@ function HopThoaiKhoan(
                         tiền của khoản. Để trống = một dòng gộp như cũ.
                       </div>
                       {(ct[d.ma] ?? []).map((c, i) => (
-                        // eslint-disable-next-line react/no-array-index-key
-                        <div key={i} style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                        <div key={`ct-${d.ma}-${i}`} style={{ display: 'flex', gap: 6, marginTop: 4 }}>
                           <input value={c.ly_do} placeholder="Lý do / căn cứ (vd: 287 số × 10.000)"
                             onChange={(e) => dat_ct_dong(d.ma, i, 'ly_do', e.target.value)} />
                           <input type="number" min="0" style={{ width: 120 }} value={c.so_tien}

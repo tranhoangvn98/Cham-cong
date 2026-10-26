@@ -832,7 +832,7 @@ function FormNhanVien(
                 ma: u.oid, nhan: `${u.ho_ten} — ${u.upn}`,
               }))}
               rong={tra_hien_tai('nv_ms365_chon_rong')} nhan={tra_hien_tai('nv_ms365_chon')} />
-            <div className="hang-nut" style={{ marginTop: 8 }}>
+            <div className="hang-nut">
               <button type="button" className="nut-nho nut-phang"
                 onClick={() => { void dong_bo_ngay(); }} disabled={db.dang_chay}>
                 {db.dang_chay ? tra_hien_tai('nv_dang_dong_bo') : tra_hien_tai('nv_dong_bo_ngay')}
@@ -1225,11 +1225,11 @@ function FormNhanVien(
           </div>
           <div className="o-nhap">
             <label htmlFor="mk-mk">Mật khẩu khởi tạo</label>
-            <input id="mk-mk" value={mk_ms.mat_khau} readOnly className="chu-ma" />
-            <div className="hang-nut">
+            <div className="o-nhap-nut">
+              <input id="mk-mk" value={mk_ms.mat_khau} readOnly className="chu-ma" />
               <button type="button" className="nut-chinh"
                 onClick={() => { void navigator.clipboard.writeText(mk_ms.mat_khau); }}>
-                Sao chép mật khẩu
+                Sao chép
               </button>
             </div>
           </div>
@@ -1241,7 +1241,7 @@ function FormNhanVien(
             </div>
           )}
           <div className="hang-nut">
-            <button type="button" className="nut-chinh" onClick={() => dat_mk_ms(null)}>Đóng</button>
+            <button type="button" onClick={() => dat_mk_ms(null)}>Đóng</button>
           </div>
         </HopThoai>
       )}
@@ -1297,11 +1297,11 @@ function HopThoaiKetQuaTk(
         </div>
         <div className="o-nhap">
           <label htmlFor="kq-mk">Mật khẩu khởi tạo Microsoft</label>
-          <input id="kq-mk" value={ket_qua_ms.mat_khau} readOnly className="chu-ma" />
-          <div className="hang-nut">
-            <button className="nut-chinh"
+          <div className="o-nhap-nut">
+            <input id="kq-mk" value={ket_qua_ms.mat_khau} readOnly className="chu-ma" />
+            <button type="button" className="nut-chinh"
               onClick={() => { void navigator.clipboard.writeText(ket_qua_ms.mat_khau); }}>
-              Sao chép mật khẩu Microsoft
+              Sao chép
             </button>
           </div>
         </div>
@@ -1319,11 +1319,11 @@ function HopThoaiKetQuaTk(
         </div>
         <div className="o-nhap">
           <label htmlFor="kq-mkh">Mật khẩu khởi tạo hệ thống</label>
-          <input id="kq-mkh" value={ket_qua_ht.mat_khau} readOnly className="chu-ma" />
-          <div className="hang-nut">
-            <button className="nut-chinh"
+          <div className="o-nhap-nut">
+            <input id="kq-mkh" value={ket_qua_ht.mat_khau} readOnly className="chu-ma" />
+            <button type="button" className="nut-chinh"
               onClick={() => { void navigator.clipboard.writeText(ket_qua_ht.mat_khau); }}>
-              Sao chép mật khẩu hệ thống
+              Sao chép
             </button>
           </div>
         </div>

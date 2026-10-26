@@ -4,7 +4,7 @@
 // nguoi (tinh lai cong khoang bao trum ngay nghi + cac buoi).
 import { useState, type ReactNode } from 'react';
 import { goi } from '../api.ts';
-import { DangTai, HopLoi, HopTot, Trong, dung_hanh_dong, dung_nap, ngay_gio } from '../thanh_phan.tsx';
+import { DangTai, HopLoi, HopTot, Trong, dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio } from '../thanh_phan.tsx';
 import { Chon } from '../chon.tsx';
 
 interface Buoi { ngay: string; buoi: 'sang' | 'chieu' }
@@ -55,20 +55,28 @@ export function TrangLamBu(): ReactNode {
 
 function DongLamBu({ r, khi_doi }: { r: NgayLamBu; khi_doi: () => void }): ReactNode {
   const hd = dung_hanh_dong();
+  const xn = dung_xac_nhan();
   const tinh_lai = async (): Promise<void> => {
     await hd.chay(() => goi(`/api/lam-bu/${r.id}/tinh-lai`, { method: 'POST', body: {} }),
       'Đã tính lại công cho ngày làm bù.');
   };
   const xoa = async (): Promise<void> => {
-    if (!window.confirm('Xoá ngày làm bù này? (nên tính lại công sau khi xoá)')) return;
+    const dong_y = await xn.hoi({
+      tieu_de: 'Xoá ngày làm bù?',
+      mo_ta: <>Ngày <strong>{ngay_vn(r.ngay_nghi)}</strong> và {r.buoi.length} buổi làm bù của nó sẽ bị
+        xoá. Nên bấm “Tính lại” cho ngày này sau khi xoá.</>,
+      chu_dong_y: 'Xoá',
+      nguy_hiem: true,
+    });
+    if (!dong_y) return;
     const ok = await hd.chay(() => goi(`/api/lam-bu/${r.id}`, { method: 'DELETE' }), 'Đã xoá.');
     if (ok) khi_doi();
   };
   return (
     <tr>
       <td><strong>{ngay_vn(r.ngay_nghi)}</strong><div className="mo-ta">{ngay_gio(r.tao_luc)}</div></td>
-      <td>{r.buoi.map((b, i) => (
-        <span key={i} className="nhan nhan-mo" style={{ marginRight: 4 }}>{ngay_vn(b.ngay)} · {ten_buoi(b.buoi)}</span>
+      <td>{r.buoi.map((b) => (
+        <span key={`${b.ngay}-${b.buoi}`} className="nhan nhan-mo" style={{ marginRight: 4 }}>{ngay_vn(b.ngay)} · {ten_buoi(b.buoi)}</span>
       ))}</td>
       <td>{r.ghi_chu ?? '—'}</td>
       <td style={{ whiteSpace: 'nowrap' }}>
@@ -77,6 +85,7 @@ function DongLamBu({ r, khi_doi }: { r: NgayLamBu; khi_doi: () => void }): React
           {hd.dang_chay ? '…' : 'Tính lại'}
         </button>{' '}
         <button className="nut-nho nut-phang" onClick={() => { void xoa(); }} disabled={hd.dang_chay}>Xoá</button>
+        {xn.hop_thoai}
       </td>
     </tr>
   );
@@ -123,7 +132,7 @@ function FormLamBu({ khi_xong }: { khi_xong: () => void }): ReactNode {
       <div style={{ marginTop: 8 }}>
         <div className="mo-ta" style={{ marginBottom: 4 }}>Các buổi làm bù (đi làm buổi này để kiếm công cho ngày nghỉ):</div>
         {buoi.map((b, i) => (
-          <div key={i} className="tb-dang-hang" style={{ alignItems: 'end', marginBottom: 6 }}>
+          <div key={`buoi-${i}`} className="tb-dang-hang" style={{ alignItems: 'end', marginBottom: 6 }}>
             <label className="truong"><span>Ngày làm bù</span>
               <input type="date" value={b.ngay} onChange={(e) => sua_buoi(i, { ngay: e.target.value })} /></label>
             <label className="truong"><span>Buổi</span>

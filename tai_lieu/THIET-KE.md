@@ -277,3 +277,78 @@ gợi ý.
   `min(360px, 82vw)`.
 - App điện thoại: khi thêm mô tả cho ô nhập, dùng cùng nguyên tắc — nhãn/giá trị luôn hiện, giải
   thích dài đưa vào biểu tượng ⓘ/trợ giúp, không nhồi chữ dưới ô.
+
+
+## 10. Khoảng cách giữa các khối: không bao giờ để "các ô dính nhau"
+
+**Quy ước bắt buộc từ 27/10/2026.** Đây là lỗi đã quay lại nhiều lần: hộp thoại "Mật khẩu Microsoft
+mới" có nút **Sao chép** nằm dưới ô mật khẩu và nút **Đóng** nằm ngay dưới nó; trên máy người dùng
+hai nút dán vào nhau, nhìn như một khối vỡ. Nguyên nhân không phải một chỗ sai cụ thể nào, mà là
+**không có luật nào bảo đảm khoảng cách** — ai viết JSX quên là hỏng, và bản xem thử trên máy khác
+vẫn thấy bình thường.
+
+### 10.1 Luật cứng trong `web/src/kieu.css`
+
+Ba khối dưới đây là **hàng rào**, không được xoá hay thu hẹp:
+
+```css
+.hang-nut { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.hang-nut + .hang-nut,
+.o-nhap + .hang-nut,
+.hop-thong-bao + .hang-nut,
+.bang + .hang-nut,
+.the + .hang-nut { margin-top: var(--khoang-lon, 16px); }
+.o-nhap > .hang-nut { margin-top: var(--khoang-vua, 10px); }
+
+.o-nhap-nut { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.o-nhap-nut > input { flex: 1 1 auto; min-width: 0; }
+.o-nhap-nut > button { flex: 0 0 auto; white-space: nowrap; }
+```
+
+- Hai hàng nút liền nhau **luôn** cách nhau 16 px, dù thứ tự lắp ghép thế nào.
+- Hàng nút nằm trong ô nhập cách ô 12 px.
+- `var(--khoang-lon, 16px)` cố ý kèm **giá trị dự phòng**: token đổi tên thì khoảng cách vẫn còn,
+  không âm thầm thành 0.
+
+### 10.2 Nút phụ của một ô thì nằm CẠNH ô
+
+Nút "Sao chép", "Tải về", "Tạo lại"… gắn với một ô nhập thì dùng khung `.o-nhap-nut`
+(`[ô nhập][nút]` cùng dòng), **không** đặt `.hang-nut` bên dưới ô. Xếp dưới ô là sinh ra hàng nút
+thứ hai — đúng cái đã gây lỗi.
+
+```tsx
+<div className="o-nhap">
+  <label htmlFor="mk-mk">Mật khẩu khởi tạo</label>
+  <div className="o-nhap-nut">
+    <input id="mk-mk" value={mk} readOnly className="chu-ma" />
+    <button type="button" className="nut-chinh" onClick={chep}>Sao chép</button>
+  </div>
+</div>
+```
+
+Ô nhập co lại theo bề ngang (`min-width: 0`), nút giữ nguyên bề rộng và không xuống dòng — đã đo ở
+bề ngang 360 px: ô 233 px, nút 87 px, cách nhau 8 px, không tràn ngang.
+
+### 10.3 Một hộp thoại chỉ có MỘT hàng nút hành động
+
+Hàng cuối hộp thoại gộp mọi nút hành động vào **cùng một** `.hang-nut`: `[Lưu][Hủy]`,
+`[Chép khóa][Đóng]`. Không đẻ hàng thứ hai chỉ để chứa một nút, cũng không đặt hai nút chính
+(`.nut-chinh`) ở hai hàng liền nhau — mắt người đọc thành hai khối ngang nhau.
+
+Thứ tự hành động trong một hàng: hành động **chính** trước (trái), hành động phụ sau; nút nguy
+hiểm (`nut-nguy`) đẩy về cuối hàng bằng `margin-left: auto`.
+
+### 10.4 Bài kiểm giữ luật
+
+`thiet_ke/khoang_cach.test.mjs` (chạy trong `npm test`) báo đỏ khi:
+
+1. `.hang-nut` mất `gap`;
+2. một trong các luật `margin-top` ở 10.1 bị xoá hoặc mất giá trị dự phòng px;
+3. khung `.o-nhap-nut` bị xoá / mất `display: flex` / ô nhập hết dãn rộng;
+4. có `.o-nhap` chứa `.hang-nut` mà trong đó là `navigator.clipboard.writeText` — tức nút sao chép
+   bị xếp dưới ô.
+
+Muốn thêm kiểu khối mới vào hộp thoại (bảng, thẻ, khối mã…) thì thêm selector của nó vào danh sách
+`margin-top` ở 10.1 **trước**, rồi mới dùng — để mọi khối đều có khoảng cách do CSS bảo đảm, không
+nhờ margin của từng khối.

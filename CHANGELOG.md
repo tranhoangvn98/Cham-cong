@@ -2,6 +2,38 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.137.7] — 2026-10-27
+
+**Hết cảnh "các ô dính nhau": khoảng cách giữa các khối do CSS bảo đảm, có bài kiểm giữ luật.**
+
+Nhiều lần hộp thoại hiện hai nút dán vào nhau, lần này là "Mật khẩu Microsoft mới": nút **Sao
+chép** nằm dưới ô mật khẩu, nút **Đóng** nằm ngay dưới nó. Gốc của vấn đề không phải một chỗ sai
+cụ thể mà là **không có luật nào bảo đảm khoảng cách** — ai viết giao diện quên là hỏng, và bản
+xem thử trên máy khác vẫn thấy bình thường.
+
+- **Luật cứng trong `web/src/kieu.css`**: hai `.hang-nut` liền nhau luôn cách 16 px; hàng nút nằm
+  trong `.o-nhap` cách ô 12 px; luật dùng `var(--khoang-lon, 16px)` nên token đổi tên thì khoảng
+  cách vẫn còn, không âm thầm thành 0.
+- **Khung `.o-nhap-nut`**: nút phụ của một ô ("Sao chép", "Tải về") nằm **cạnh** ô, cùng dòng —
+  hết đường sinh ra hàng nút thứ hai. Ô nhập co lại theo bề ngang, nút giữ nguyên bề rộng (đã đo
+  ở bề ngang 360 px: ô 233 px, nút 87 px, cách 8 px, không tràn ngang).
+- **Hộp thoại kết quả tạo tài khoản** và **hộp thoại cấp lại mật khẩu** gộp nút Sao chép lên cạnh
+  ô; hàng cuối chỉ còn nút đóng. Một hộp thoại = một hàng nút hành động.
+- **Bài kiểm `thiet_ke/khoang_cach.test.mjs`** (chạy trong `npm test`) báo đỏ khi: `.hang-nut` mất
+  `gap`; luật `margin-top` bị xoá hoặc mất giá trị dự phòng px; khung `.o-nhap-nut` bị xoá; hoặc
+  có ô nhập chứa nút sao chép ở hàng dưới.
+- Quy ước mới ghi ở `tai_lieu/THIET-KE.md` mục 10 và `CLAUDE.md`.
+
+## [1.137.6] — 2026-10-27
+
+**Cấp lại mật khẩu Microsoft: báo đúng lý do Graph từ chối, ghi rõ quyền ứng dụng cần có.**
+
+- Lỗi 403 "Insufficient privileges" khi đặt lại mật khẩu không còn bị nuốt thành "Lỗi hệ thống":
+  thông điệp thật của Graph được đưa ra màn hình.
+- Ứng dụng `cham-cong-sharepoint-sync` cần thêm quyền **`User-PasswordProfile.ReadWrite.All`**
+  (đã cấp và đồng ý cho toàn tenant) — thiếu quyền này thì `PATCH passwordProfile` trả 403 dù đã
+  có `User.ReadWrite.All`.
+
 ## [1.137.5] — 2026-10-27
 
 **Tạo hồ sơ báo "email đã thuộc người khác": có ngay nút Cấp lại mật khẩu để bàn giao.**

@@ -83,6 +83,11 @@ Bốn luật đã có tiền lệ (chi tiết ở `tai_lieu/THIET-KE.md`):
   **ngay sau nhãn** của ô, chỉ hiện bong gợi ý khi rê chuột/focus, không bày đoạn mô tả dài dưới ô
   nhập. Thông báo trạng thái và lỗi vẫn hiện trực tiếp bằng `goi-y giu-hien` / `goi-y chu-xau`.
   Quy ước + bài kiểm: `tai_lieu/THIET-KE.md` mục 9, `thiet_ke/goi_y.test.mjs`.
+- **Khoảng cách giữa các khối do CSS bảo đảm, không nhờ margin của từng khối** — hai `.hang-nut`
+  liền nhau cách 16 px, hàng nút trong `.o-nhap` cách 12 px (luật cứng trong `kieu.css`). Nút phụ
+  của một ô ("Sao chép", "Tải về") nằm **cạnh** ô bằng khung `.o-nhap-nut`, **không** xếp dưới ô;
+  một hộp thoại chỉ có **một** hàng nút hành động. Quy ước + bài kiểm:
+  `tai_lieu/THIET-KE.md` mục 10, `thiet_ke/khoang_cach.test.mjs`.
 
 ### Chống trùng dữ liệu
 
