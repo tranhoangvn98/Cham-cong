@@ -4,6 +4,7 @@
 // khac nhau: ten ngan ("Phòng IT"), ten day du ("Phòng Công nghệ thông tin") va viet tat
 // ("IT"). Man hinh "Phòng ban kiem nhiem" liet ke du 29 dong nen nguoi dung thay trung.
 // Bai kiem nay giu bang anh xa luon tro ve DUNG 13 phong dang co du lieu that.
+import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TEN_PHONG_CHUAN, ten_phong_chuan } from '../src/nhan_su/ten_phong.ts';
