@@ -52,3 +52,17 @@ export function ho_so_trung_tu_loi(loi: unknown): HoSoTrung | null {
   }
   return null;
 }
+
+/**
+ * Hồ sơ nên TỰ MỞ khi bấm Lưu, thay vì chỉ hiện hộp lỗi — `null` là không tự mở.
+ *
+ * Điều kiện: lỗi là "email đã thuộc hồ sơ khác", biết id hồ sơ, VÀ người dùng đã bấm
+ * "Cấp lại mật khẩu" cho email đó trước đó. Lúc ấy tài khoản đã lấy được, việc còn lại chỉ là
+ * mở hồ sơ để bổ sung — bắt bấm thêm một lần nữa là thừa.
+ */
+export function ho_so_tu_mo(loi: unknown, da_cap_lai_mk: boolean): HoSoTrung | null {
+  if (!da_cap_lai_mk) return null;
+  const trung = ho_so_trung_tu_loi(loi);
+  if (trung === null || trung.id === '') return null;
+  return trung;
+}

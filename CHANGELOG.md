@@ -2,6 +2,20 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.137.9] — 2026-10-27
+
+**Bấm Lưu mà hồ sơ đã có → tự mở hồ sơ đó (khi đã cấp lại mật khẩu trước đó).**
+
+- Trước: bấm Lưu lần nữa vẫn ra hộp lỗi "Email … đã thuộc …", phải bấm thêm nút *Mở hồ sơ*.
+  Nay: nếu nhân sự **đã bấm "Cấp lại mật khẩu Microsoft"** cho email đó (tài khoản đã lấy được)
+  thì lần bấm Lưu kế tiếp **tự mở hồ sơ đã có** — xoá bản nháp, đóng hộp thoại, chuyển thẳng
+  sang trang hồ sơ. Việc còn lại chỉ là bổ sung thông tin, không phải tạo mới.
+- Chưa cấp lại mật khẩu thì vẫn hiện hộp lỗi như cũ (để còn chọn cấp lại trước nếu cần).
+- Cờ "đã cấp lại" tự tắt khi **đổi email** (email khác là người khác) hoặc **bỏ bản nháp**.
+- Quy tắc tách thành hàm thuần `ho_so_tu_mo(loi, da_cap_lai_mk)` trong `web/src/trang/nhan_vien_loi.ts`
+  + 4 bài kiểm (đã cấp lại → mở; chưa cấp lại → không; lỗi khác → không; máy chủ bản cũ thiếu
+  mã hồ sơ → không đoán địa chỉ).
+
 ## [1.137.8] — 2026-10-27
 
 **"Email đã thuộc hồ sơ khác": nút đúng là MỞ HỒ SƠ ĐÓ, không phải cấp lại mật khẩu.**

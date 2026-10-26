@@ -4,12 +4,12 @@ import {
   DangTai, HopLoi, HopThoai, HopThoaiNhap, TEN_VAI_TRO, Trong,
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
-import { LienKet } from '../dinh_tuyen.tsx';
+import { LienKet, dung_tuyen } from '../dinh_tuyen.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
 import { tra_hien_tai } from '../chuoi/chi_muc.tsx';
 import { GoiY } from '../goi_y.tsx';
-import { ho_so_trung_tu_loi } from './nhan_vien_loi.ts';
+import { ho_so_trung_tu_loi, ho_so_tu_mo } from './nhan_vien_loi.ts';
 
 /**
  * Tieu de tep mau nhap nhan vien.
@@ -520,12 +520,16 @@ function FormNhanVien(
   const [canh_bao_ket, dat_canh_bao_ket] = useState<string[]>([]);
   // Ket qua cap lai mat khau Microsoft (ban giao lai khi email da co tai khoan).
   const [mk_ms, dat_mk_ms] = useState<KetQuaCapLaiMk | null>(null);
+  // Da bam "Cap lai mat khau" cho email dang go chua — co nay quyet dinh viec TU MO ho so khi
+  // bam Luu ma ho so da ton tai (nguoi dung da lay duoc tai khoan, viec con lai la bo sung).
+  const [da_cap_lai_mk, dat_da_cap_lai_mk] = useState(false);
   const cap_mk = dung_hanh_dong();
   const noi = dung_nap<NoiLamViec[]>('/api/noi-lam-viec');
   const khoi = dung_nap<Khoi[]>('/api/khoi');
   const hd = dung_hanh_dong();
   const db = dung_hanh_dong();
   const xn = dung_xac_nhan();
+  const { di_toi } = dung_tuyen();
 
   // Tu luu ban nhap (chi form THEM MOI): mat phien dang nhap hay dong nham hop thoai van con.
   useEffect(() => {
@@ -551,6 +555,7 @@ function FormNhanVien(
     dat_tao_tk_ht(true);
     dat_nguon_ms365('');
     dat_ms365_da_co(false);
+    dat_da_cap_lai_mk(false);
   };
 
   /** Lao dong outsource: hop dong dich vu — khong thuoc bang luong, khong can chi tiet cham cong. */
@@ -625,6 +630,8 @@ function FormNhanVien(
    *  chua co tai khoan Microsoft nao, khong duoc bo qua buoc tao tai khoan. */
   const doi_email = (gt: string): void => {
     doi('email', gt);
+    // Email đổi là đổi NGƯỜI: cờ "đã cấp lại mật khẩu" của email cũ không còn đúng.
+    dat_da_cap_lai_mk(false);
     const u = (nguon.du_lieu?.danh_sach ?? []).find((x) => x.oid === nguon_ms365);
     if (u !== undefined && gt.trim().toLowerCase() !== u.upn.toLowerCase()) {
       dat_nguon_ms365('');
@@ -646,7 +653,10 @@ function FormNhanVien(
     if (email === '') return;
     const kq = await cap_mk.chay_lay<KetQuaCapLaiMk>(() =>
       goi('/api/nhan-vien/cap-lai-mat-khau-ms365', { method: 'POST', body: { email } }));
-    if (kq !== null) dat_mk_ms(kq);
+    if (kq !== null) {
+      dat_mk_ms(kq);
+      dat_da_cap_lai_mk(true);
+    }
   };
 
   const gui = async (e: React.FormEvent): Promise<void> => {
@@ -687,8 +697,11 @@ function FormNhanVien(
         : Number(f.cong_chuan_thang),
     };
     if (nhan_vien === null) {
+      // Giu lai loi NGAY tai day: `chay_lay` chi tra null, con quyet dinh "tu mo ho so" thi phai
+      // biet loi la gi.
+      let loi_gui: unknown = null;
       const kq = await hd.chay_lay<KetQuaTaoNhanVien>(() =>
-        goi('/api/nhan-vien', {
+        goi<KetQuaTaoNhanVien>('/api/nhan-vien', {
           method: 'POST',
           body: {
             ...than,
@@ -701,9 +714,24 @@ function FormNhanVien(
             thoi_han_thang: hop_dong_gui.thang,
             vi_tri_ids: vi_tri_to_chuc,
           },
-        }),
+        }).then(
+          (v) => v,
+          (e: unknown) => { loi_gui = e; throw e; },
+        ),
       );
-      if (kq === null) return;
+      if (kq === null) {
+        // Hồ sơ đã tồn tại VÀ người dùng đã bấm "Cấp lại mật khẩu" cho email này: tài khoản đã
+        // lấy được, việc còn lại chỉ là bổ sung thông tin — mở thẳng hồ sơ đó, khỏi bắt bấm thêm.
+        const tu_mo = ho_so_tu_mo(loi_gui, da_cap_lai_mk);
+        if (tu_mo !== null) {
+          // Dọn lỗi trước khi rời trang: không để hộp đỏ nhấp nháy rồi mới biến mất.
+          hd.xoa_thong_bao();
+          bo_ban_nhap();
+          khi_dong();
+          di_toi(`/nhan-vien/${tu_mo.id}`);
+        }
+        return;
+      }
       // Luôn mở hộp thoại kết quả: mã nhân viên và PIN đều do hệ thống sinh nên phải hiện ra
       // đúng một lần để nhân sự chép lại bàn giao.
       dat_ket_qua(kq.tai_khoan_ms365 ?? null);
