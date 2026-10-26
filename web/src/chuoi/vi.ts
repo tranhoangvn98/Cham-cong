@@ -304,6 +304,18 @@ export const CHUOI_VI = {
     'Mã mới ghép theo khối và tháng vào làm. Mã cũ được đóng lại nhưng vẫn tra cứu được; tên thư mục kho tệp đổi theo; bản ghi bên cổng phân quyền vẫn mang mã cũ nên phải cập nhật tay bên đó.',
   nv_cap_lai_ma_hoi_nut: 'Cấp lại mã',
   nv_cap_lai_ma_xong: 'Đã cấp mã mới: {ma}',
+  nv_ma_cu_tieu_de: 'Nhân sự còn dùng mã cũ',
+  nv_ma_cu_mo_ta:
+    '{so} nhân sự còn dùng mã cũ (dạng ERP69, NV0156…). Mã mới ghép theo khối và tháng vào làm, ví dụ NVKHN05260001.',
+  nv_ma_cu_xem: 'Xem danh sách',
+  nv_ma_cu_trong: 'Mọi nhân sự đã dùng mã theo khuôn mới.',
+  nv_ma_cu_cot_ma: 'Mã cũ',
+  nv_ma_cu_cot_du_kien: 'Mã dự kiến',
+  nv_ma_cu_cot_khoi: 'Khối',
+  nv_ma_cu_cap_lai: 'Cấp lại',
+  nv_ma_cu_chua_khoi: 'Chưa gán khối — gán khối cho hồ sơ trước khi cấp lại mã.',
+  nv_ma_cu_dang_nghi: 'đã nghỉ',
+  nv_ma_cu_con_lai: 'Còn {so} nhân sự dùng mã cũ.',
   nv_pin_tu_khoi: 'Tự cấp PIN theo dãy của máy thuộc khối',
   nv_pin_tu_khoi_phu:
     'Hệ thống chọn số PIN còn trống đầu tiên trong dải của máy thuộc khối đã chọn, ghi vào mã định danh và xếp lệnh cập nhật user xuống mọi máy của khối. Để trống ô này chỉ khi người đó đã có PIN trên máy.',
