@@ -106,6 +106,13 @@ Chọn một trong hai hướng:
 Khi có Intune, chỉ cần thay hàm `danh_gia_ung_dung` (hoặc bổ sung nguồn) và thêm trạng thái
 “đã cài” thật; phần hiển thị và lịch chạy giữ nguyên.
 
+**Đo thật ngày 26/10/2026** — đã tải 5 báo cáo về đọc toàn bộ danh sách cột: báo cáo M365 chỉ
+đủ bằng chứng cho **5/8 ứng dụng bắt buộc** (Outlook và Teams trên máy tính, Outlook và Teams
+trên điện thoại, OneDrive trên máy tính). **OneDrive điện thoại, SharePoint điện thoại và
+Authenticator không có cột dữ liệu nào** trong báo cáo M365. Chi tiết API Intune `detectedApps`
+/ báo cáo `AppInvRawData`, Defender `DeviceTvmSoftwareInventory`, quyền cần cấp và kết quả kiểm
+tra tenant: **`tai_lieu/M365-KIEM-KE-UNG-DUNG-DA-CAI.md`**.
+
 ## 6. Dữ liệu và API
 
 Bảng `ms365_ung_dung_kiem_tra` (migration 114) là **ảnh chụp** lần quét gần nhất, mỗi người 8
