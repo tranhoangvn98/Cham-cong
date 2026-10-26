@@ -3050,6 +3050,47 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .chon-muc-chon { background: var(--chinh-nhat); color: var(--chinh-dam); font-weight: 600; }
 .chon-rong { padding: 10px; color: var(--chu-mo); font-size: 13px; text-align: center; }
 
+/* ---------------------------------------------------------------- mã định danh trên hồ sơ
+   Danh sách gọn thay cho bảng 3 cột: mỗi hệ thống là một khối, bên trong là các mã (mã +
+   trạng thái + nguồn), và nút thao tác của cả hệ thống gom về MỘT hàng cuối khối. Bảng cũ
+   đặt nút vào cột riêng 90px nên trên điện thoại mỗi nút rơi xuống một dòng, trông rời rạc. */
+.mdh-nhom-cot + .mdh-nhom-cot {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--vien);
+}
+.mdh-nhom-ten {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chu-mo);
+}
+.mdh-hst + .mdh-hst { margin-top: 14px; }
+.mdh-hst-dau { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mdh-hst-ten { font-size: 13.5px; font-weight: 600; }
+.mdh-ds { margin-top: 4px; }
+.mdh-dong {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--vien);
+}
+.mdh-dong:last-child { border-bottom: 0; }
+.mdh-chinh { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mdh-ma-hang { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mdh-ma { font-size: 13px; }
+.mdh-phu {
+  font-size: 12px;
+  color: var(--chu-mo);
+  overflow-wrap: anywhere;
+}
+.mdh-trong { font-size: 12.5px; color: var(--chu-mo); padding: 4px 0; }
+.mdh-nut { flex: none; }
+.mdh-hd { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
 /* ============================================================================
    ĐIỆN THOẠI — bỏ thanh cuộn và hiển thị VỪA KHUNG
    Nguyên tắc: trên màn hẹp không có thanh cuộn nào hiện ra (vẫn cuộn được bằng cảm ứng), và

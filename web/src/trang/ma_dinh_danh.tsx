@@ -88,69 +88,77 @@ export function TheMaDinhDanh(
       </div>
 
       {cac_nhom.map((nh) => (
-        <div key={nh} style={{ marginTop: 12 }}>
-          <h4 style={{ margin: '0 0 6px' }}>{nh}</h4>
-          <div className="vo-bang">
-            <table className="bang-gon bang-thuoc-tinh">
-              <tbody>
-                {(du_lieu ?? []).filter((n) => n.nhom === nh).map((n) => (
-                  <tr key={n.he_thong}>
-                    <td style={{ color: 'var(--chu-nhat)', width: '38%' }}>
-                      {n.ten_he_thong}
-                      {n.on_dinh && <span className="nhan" title="Mã không đổi, tin được để khớp người"> ổn định</span>}
-                    </td>
-                    <td>
-                      {n.cac_ma.length === 0
-                        ? <span style={{ color: 'var(--chu-nhat)' }}>—</span>
-                        : n.cac_ma.map((m) => (
-                          <div key={m.id} style={{ marginBottom: 4 }}>
-                            <code>{m.ma}</code>{' '}
-                            {m.hieu_luc_den === null
-                              ? <span className="nhan-tot">đang dùng</span>
-                              : <span className="nhan">đã đóng {ngay_gio(m.hieu_luc_den)}</span>}
-                            <span style={{ color: 'var(--chu-nhat)' }}>
-                              {' '}({TEN_NGUON[m.nguon] ?? m.nguon})
-                            </span>
-                            {m.ghi_chu !== null && (
-                              <div className="mo-ta" style={{ marginLeft: 4 }}>{m.ghi_chu}</div>
-                            )}
-                            {sua_duoc && m.hieu_luc_den === null && (
-                              <button
-                                type="button"
-                                className="nut-nho"
-                                disabled={hd.dang_chay}
-                                onClick={thu_hoi(m)}
-                              >
-                                Đóng mã
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                    </td>
-                    <td style={{ width: 90 }}>
-                      {sua_duoc && n.he_thong === 'may_cham_cong' && (
-                        <button type="button" className="nut-nho nut-chinh"
-                          onClick={() => dat_dang_cap_pin(true)}
-                          title="Hệ thống chọn một PIN còn trống trong dải của máy">
-                          Cấp PIN
+        <div key={nh} className="mdh-nhom-cot">
+          <h4 className="mdh-nhom-ten">{nh}</h4>
+          {(du_lieu ?? []).filter((n) => n.nhom === nh).map((n) => (
+            <div key={n.he_thong} className="mdh-hst">
+              <div className="mdh-hst-dau">
+                <span className="mdh-hst-ten">{n.ten_he_thong}</span>
+                {n.on_dinh && (
+                  <span className="nhan" title="Mã không đổi, tin được để khớp người">ổn định</span>
+                )}
+              </div>
+
+              {n.cac_ma.length === 0 ? (
+                <div className="mdh-trong">Chưa có mã</div>
+              ) : (
+                <div className="mdh-ds">
+                  {n.cac_ma.map((m) => (
+                    <div key={m.id} className="mdh-dong">
+                      <div className="mdh-chinh">
+                        <div className="mdh-ma-hang">
+                          <code className="mdh-ma">{m.ma}</code>
+                          {m.hieu_luc_den === null
+                            ? <span className="nhan-tot">đang dùng</span>
+                            : <span className="nhan">đã đóng {ngay_gio(m.hieu_luc_den)}</span>}
+                        </div>
+                        {/* Nguồn + ghi chú gộp MỘT dòng phụ nhỏ: trước đây chúng nằm rời
+                            từng mảnh cạnh badge nên dòng mã trông như chữ vụn. */}
+                        <div className="mdh-phu">
+                          {TEN_NGUON[m.nguon] ?? m.nguon}
+                          {m.ghi_chu !== null ? ` · ${m.ghi_chu}` : ''}
+                        </div>
+                      </div>
+                      {sua_duoc && m.hieu_luc_den === null && (
+                        <button
+                          type="button"
+                          className="nut-nho mdh-nut"
+                          disabled={hd.dang_chay}
+                          onClick={thu_hoi(m)}
+                        >
+                          Đóng mã
                         </button>
                       )}
-                      {sua_duoc && (n.nhieu_ma || n.cac_ma.every((m) => m.hieu_luc_den !== null)) && (
-                        <button type="button" className="nut-nho" onClick={() => dat_dang_them(n.he_thong)}>
-                          + Thêm
-                        </button>
-                      )}
-                      {sua_duoc && !n.nhieu_ma && n.cac_ma.some((m) => m.hieu_luc_den === null) && (
-                        <button type="button" className="nut-nho" onClick={() => dat_dang_them(n.he_thong)}>
-                          Đổi
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Nút thao tác của CẢ hệ thống gom về một hàng cuối khối — không rải mỗi
+                  hành động một ô như bảng 3 cột trước đây. */}
+              {sua_duoc && (
+                <div className="mdh-hd">
+                  {n.he_thong === 'may_cham_cong' && (
+                    <button type="button" className="nut-nho nut-chinh"
+                      onClick={() => dat_dang_cap_pin(true)}
+                      title="Hệ thống chọn một PIN còn trống trong dải của máy">
+                      Cấp PIN
+                    </button>
+                  )}
+                  {(n.nhieu_ma || n.cac_ma.every((m) => m.hieu_luc_den !== null)) && (
+                    <button type="button" className="nut-nho" onClick={() => dat_dang_them(n.he_thong)}>
+                      + Thêm mã
+                    </button>
+                  )}
+                  {!n.nhieu_ma && n.cac_ma.some((m) => m.hieu_luc_den === null) && (
+                    <button type="button" className="nut-nho" onClick={() => dat_dang_them(n.he_thong)}>
+                      Đổi mã
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       ))}
 
