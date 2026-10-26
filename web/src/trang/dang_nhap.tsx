@@ -5,6 +5,7 @@ import {
 } from '../api.ts';
 import { dung_hanh_dong, HopLoi, HopTot } from '../thanh_phan.tsx';
 import { dung_chuoi } from '../chuoi/chi_muc.tsx';
+import { GoiY } from '../goi_y.tsx';
 
 interface Props {
   khi_xong: () => void;
@@ -147,7 +148,7 @@ export function TrangDoiMatKhau({ bat_buoc, khi_xong }: { bat_buoc: boolean; khi
           <label htmlFor="moi">{tra('mat_khau_moi')}</label>
           <input id="moi" type="password" value={moi} onChange={(e) => dat_moi(e.target.value)}
             autoComplete="new-password" required />
-          <div className="goi-y">{tra('mat_khau_yeu_cau')}</div>
+          <GoiY>{tra('mat_khau_yeu_cau')}</GoiY>
         </div>
 
         <div className="o-nhap">

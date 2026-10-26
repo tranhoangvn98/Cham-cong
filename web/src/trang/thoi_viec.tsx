@@ -17,6 +17,7 @@ import { Chon } from '../chon.tsx';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
 import { dat_qd_nghi_viec } from '../dieu_huong_sau.ts';
 import { tra_hien_tai, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
+import { GoiY } from '../goi_y.tsx';
 
 // ---------------------------------------------------------------- kieu du lieu
 
@@ -372,11 +373,11 @@ function ChiTietQuyTrinh({ id, khi_dong }: { id: string; khi_dong: () => void })
             {d.phong_ban ?? '—'} · {TEN_LOAI_HD[d.loai_hop_dong] ?? d.loai_hop_dong}
             {d.nhom_quy_trinh === 'quan_ly' ? ' · quản lý DN' : ''} · Quy trình tạo lúc {ngay_gio(d.tao_luc)}
           </div>
-          <div className="goi-y" style={{ marginTop: 8 }}>
+          <GoiY style={{ marginTop: 8 }}>
             <b>{tra_hien_tai('tv_nhanh')}:</b> {nhan_nhanh(d.nhom_quy_trinh)}
             {can_cu_nhanh(d.nhom_quy_trinh) !== '' && <> — {can_cu_nhanh(d.nhom_quy_trinh)}</>}
             <span className="mo-ta"> · {tra_hien_tai('tv_nguon_tao')}: {nhan_nguon(d.nguon_tao)}</span>
-          </div>
+          </GoiY>
           <div className="mo-ta" style={{ marginTop: 6 }}>
             {d.quyet_dinh_so === null
               ? 'Chưa ban hành quyết định nghỉ việc.'

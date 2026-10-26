@@ -237,3 +237,24 @@ Dùng `dung_xac_nhan()` / `dung_nhap_chu()` trong `thanh_phan.tsx`. Hai quy tắ
 
 Có bài kiểm chặn `window.confirm|alert|prompt` quay lại (bỏ qua phần ghi chú, để chính đoạn giải
 thích này không tự làm đỏ bài kiểm).
+
+---
+
+## 9. Gợi ý: nút `?`, không bày mô tả dài
+
+**Quy ước bắt buộc từ 26/10/2026.** Mô tả hướng dẫn không hiện sẵn dưới ô nhập. Mỗi ô có giải thích
+thì đặt một nút tròn `?`; rê chuột vào (hoặc focus bằng bàn phím) mới hiện bong gợi ý.
+
+- Dùng component **`web/src/goi_y.tsx`**: `<GoiY>{noi_dung}</GoiY>`.
+  Nút `?` nằm ở góc phải trên của `.o-nhap`, không chiếm thêm chiều cao form.
+- **Không** viết `<div className="goi-y">…</div>` cho mô tả mới. Bài kiểm
+  `thiet_ke/goi_y.test.mjs` đọc toàn bộ `web/src/**/*.tsx` và báo đỏ nếu còn.
+- **Ngoại lệ được giữ hiện trực tiếp**: thông báo trạng thái (đang tải, đồng bộ lần cuối, số bản
+  ghi, PIN sẽ cấp…) và lỗi kiểm tra. Dùng `className="goi-y giu-hien"` hoặc
+  `className="goi-y chu-xau"` — không giấu thông tin người dùng cần thấy ngay.
+- Nội dung trong bong gợi ý vẫn được dùng thẻ `<strong>`, `<br>`, liên kết như cũ; đây là chỗ giải
+  thích **vì sao**, không phải nơi chứa nhãn hay giá trị bắt buộc.
+- Bong gợi ý mở bằng `:hover` **và** `:focus-within`, nên bàn phím và màn hình cảm ứng vẫn dùng
+  được (bấm vào nút `?`).
+- App điện thoại: khi thêm mô tả cho ô nhập, dùng cùng nguyên tắc — nhãn/giá trị luôn hiện, giải
+  thích dài đưa vào nút `?`/trợ giúp, không nhồi chữ dưới ô.

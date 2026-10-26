@@ -8,6 +8,7 @@ import type { NhanVien } from './nhan_vien.tsx';
 import type { NhomMa as NhomMaDinhDanh } from './ma_dinh_danh.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
+import { GoiY } from '../goi_y.tsx';
 
 interface ThietBi {
   id: string;
@@ -295,10 +296,10 @@ function FormThietBi({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
         <div className="o-nhap">
           <label htmlFor="sn">Serial máy *</label>
           <input id="sn" value={serial} onChange={(e) => dat_serial(e.target.value)} required autoFocus />
-          <div className="goi-y">
+          <GoiY>
             Lấy ở <strong>Menu › Hệ thống › Thông tin thiết bị › Số sê ri</strong> trên chính máy
             đó, không lấy số dán sau lưng máy. Phải khớp tuyệt đối, có phân biệt chữ hoa/thường.
-          </div>
+          </GoiY>
         </div>
         <div className="o-nhap">
           <label htmlFor="tn">Tên gợi nhớ *</label>
@@ -322,12 +323,12 @@ function FormThietBi({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
               onChange={(e) => dat_pin_den(e.target.value)} placeholder="1999" />
           </div>
         </div>
-        <div className="goi-y">
+        <GoiY>
           Hệ thống sẽ <strong>cấp PIN trong dải này</strong> cho nhân viên của máy, rồi bạn cài
           đúng số đó lên máy. Mỗi máy một dải riêng (VP1 <code>1001–1999</code>, VP2{' '}
           <code>2001–2999</code>) thì nhìn PIN là biết máy nào, và hai nơi không bao giờ cấp
           trùng số cho hai người khác nhau. Để trống thì cấp từ 1 trở lên.
-        </div>
+        </GoiY>
         <div className="hang-nut">
           <button type="submit" className="nut-chinh" disabled={hd.dang_chay}>
             {hd.dang_chay ? 'Đang lưu…' : 'Khai báo'}
@@ -367,9 +368,9 @@ function FormSuaThietBi(
         <div className="o-nhap">
           <label htmlFor="s-sn">Serial</label>
           <input id="s-sn" value={thiet_bi.serial} readOnly />
-          <div className="goi-y">
+          <GoiY>
             Serial là khóa máy tự nhận diện — không đổi được. Muốn dùng serial khác thì khai máy mới.
-          </div>
+          </GoiY>
         </div>
         <div className="o-nhap">
           <label htmlFor="s-tn">Tên gợi nhớ *</label>
@@ -507,11 +508,11 @@ function NapNhanVien(
             <Chon gia_tri={pin} dat_gia_tri={dat_pin}
               cac_tuy_chon={pin_dang_co.map((p): TuyChonChon => ({ ma: p, nhan: p }))}
               rong="— Chọn PIN —" nhan="PIN nạp xuống máy" />
-            <div className="goi-y">
+            <GoiY>
               Người này có {pin_dang_co.length} PIN đang dùng. Chọn PIN đã khai{' '}
               <strong>trên chính máy {thiet_bi.ten}</strong> — nạp nhầm PIN của máy khác thì họ
               quẹt vào máy này sẽ không khớp được ai.
-            </div>
+            </GoiY>
           </div>
         )}
 
@@ -577,10 +578,10 @@ function XoaNhanVienKhoiMay(
           <label htmlFor="pinxoa">Số PIN cần xoá *</label>
           <input id="pinxoa" value={pin} onChange={(e) => dat_pin(e.target.value)}
             required maxLength={32} autoComplete="off" />
-          <div className="goi-y">
+          <GoiY>
             Lần quẹt cũ của PIN này <strong>vẫn nằm nguyên</strong> trong hệ thống — xoá trên máy
             chỉ chặn quẹt mới, không xoá lịch sử chấm công.
-          </div>
+          </GoiY>
         </div>
 
         <div className="hang-nut">
@@ -622,41 +623,41 @@ function HuongDanCauHinh(): ReactNode {
           <tr>
             <td>Enable Domain Name</td>
             <td><strong>{qua_ten_mien ? 'Bật' : 'Tắt'}</strong>{' '}
-              <span className="goi-y">
+              <GoiY>
                 {qua_ten_mien
                   ? 'để tắt thì máy không phân giải DNS và im lặng không gọi được'
                   : 'điền IP thì phải tắt'}
-              </span>
+              </GoiY>
             </td>
           </tr>
           <tr>
             <td>Server Address</td>
             <td>
               <strong>{la_cuc_bo ? 'địa chỉ IP máy chủ này' : chu_nha}</strong>{' '}
-              <span className="goi-y">không kèm http:// và không kèm / ở cuối</span>
+              <GoiY>không kèm http:// và không kèm / ở cuối</GoiY>
             </td>
           </tr>
           <tr>
             <td>Server Port</td>
             <td><strong>{qua_ten_mien ? '80' : '8080'}</strong>{' '}
               {qua_ten_mien && (
-                <span className="goi-y">không phải 8080 — 8080 chỉ tồn tại bên trong máy chủ</span>
+                <GoiY>không phải 8080 — 8080 chỉ tồn tại bên trong máy chủ</GoiY>
               )}
             </td>
           </tr>
           <tr>
             <td>Enable Proxy Server</td>
             <td><strong>Tắt</strong>{' '}
-              <span className="goi-y">
+              <GoiY>
                 bật lên là máy đẩy hết qua proxy đã khai (thường bỏ trống thành 0.0.0.0) và
                 không bao giờ tới được máy chủ
-              </span>
+              </GoiY>
             </td>
           </tr>
           <tr>
             <td>HTTPS</td>
             <td><strong>Tắt</strong>{' '}
-              <span className="goi-y">nhiều firmware ZKTeco không làm được TLS</span>
+              <GoiY>nhiều firmware ZKTeco không làm được TLS</GoiY>
             </td>
           </tr>
           <tr><td>Realtime</td><td><strong>Bật</strong></td></tr>
@@ -719,11 +720,11 @@ function FormLayLog(
         <div className="o-nhap">
           <label htmlFor="ll-den">Đến ngày *</label>
           <input id="ll-den" type="date" value={den} onChange={(e) => dat_den(e.target.value)} required />
-          <div className="goi-y">
+          <GoiY>
             Bản ghi trùng tự bị bỏ qua, nên chạy nhiều lần hay chọn khoảng rộng đều an toàn.
             Firmware cũ có thể không hỗ trợ lệnh này — khi đó xuất ra USB rồi dùng
             <em> Nhật ký quẹt → Nhập lịch sử từ file</em>.
-          </div>
+          </GoiY>
         </div>
 
         <div className="hang-nut">

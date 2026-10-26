@@ -10,6 +10,7 @@ import {
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
+import { GoiY } from '../goi_y.tsx';
 
 export interface DongMa {
   id: string;
@@ -238,7 +239,7 @@ function HopThoaiGanMa(
       </label>
 
       {cho_thu_hoi && (
-        <div className="goi-y">
+        <GoiY>
           <label className="o-nhap-ngang">
             <input
               type="checkbox"
@@ -251,7 +252,7 @@ function HopThoaiGanMa(
             Mã của người kia sẽ được <strong>đóng lại</strong>, không bị xóa — lịch sử vẫn tra
             cứu được. Dùng khi một PIN máy được cấp lại cho người mới.
           </p>
-        </div>
+        </GoiY>
       )}
 
       <div className="hang-nut">
@@ -320,7 +321,7 @@ function HopThoaiCapPin(
 
           <HopLoi loi={loi_goi_y} />
           {goi_y !== null && (
-            <div className="goi-y">
+            <div className="goi-y giu-hien">
               PIN sẽ cấp: <strong style={{ fontSize: 18 }}>{goi_y.pin}</strong>
               {' '}— dải {goi_y.dai.tu}–{goi_y.dai.den}, còn trống{' '}
               {goi_y.con_trong > 1000 ? 'trên 1000' : goi_y.con_trong} số.
@@ -338,7 +339,7 @@ function HopThoaiCapPin(
       ) : (
         <>
           <HopTot chu={`Đã cấp PIN ${da_cap.pin} cho máy ${da_cap.thiet_bi_ten}.`} />
-          <div className="goi-y">
+          <GoiY>
             <p><strong>Việc còn lại, làm tại máy:</strong></p>
             <ol style={{ margin: '4px 0 0 18px' }}>
               <li>Tạo user trên máy với <strong>User ID = {da_cap.pin}</strong> — hoặc bấm
@@ -346,7 +347,7 @@ function HopThoaiCapPin(
               <li>Nhân viên <strong>đăng ký khuôn mặt / vân tay trực tiếp tại máy</strong> —
                 sinh trắc học không nạp từ xa được.</li>
             </ol>
-          </div>
+          </GoiY>
           <div className="hang-nut">
             <button type="button" className="nut-chinh" onClick={khi_xong}>Xong</button>
           </div>

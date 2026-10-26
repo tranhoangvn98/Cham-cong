@@ -10,6 +10,7 @@ import {
   dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio,
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
+import { GoiY } from '../goi_y.tsx';
 
 interface KhoaApi {
   id: string;
@@ -107,9 +108,9 @@ export function TrangKhoaApi(): ReactNode {
             <tr><td>Spec OpenAPI 3.1</td>
               <td><a href={`${goc_api_tuyet_doi()}/api/v1/openapi.json`} target="_blank" rel="noreferrer">
                 {goc_api_tuyet_doi()}/api/v1/openapi.json</a>
-                {' '}<span className="goi-y">dán vào bộ sinh client là ra sẵn thư viện gọi API</span></td></tr>
+                {' '}<GoiY>dán vào bộ sinh client là ra sẵn thư viện gọi API</GoiY></td></tr>
             <tr><td>Khóa API</td>
-              <td><span className="goi-y">tạo ở trên, gửi riêng — đừng gửi cùng kênh với tài liệu</span></td></tr>
+              <td><GoiY>tạo ở trên, gửi riêng — đừng gửi cùng kênh với tài liệu</GoiY></td></tr>
           </tbody>
         </table>
       </div>
@@ -245,23 +246,23 @@ function FormKhoa(
           <label htmlFor="ten">Tên bên tích hợp *</label>
           <input id="ten" value={ten} onChange={(e) => dat_ten(e.target.value)}
             placeholder="ERP kế toán" required autoFocus />
-          <div className="goi-y">
+          <GoiY>
             Đặt tên để sau này nhìn nhật ký biết ngay ai đang gọi.
-          </div>
+          </GoiY>
         </div>
 
         <div className="o-nhap">
           <label>Phạm vi *</label>
-          <div className="goi-y" style={{ marginBottom: 6 }}>
+          <GoiY style={{ marginBottom: 6 }}>
             Chọn ít nhất một. Cấp đúng thứ họ cần — khóa chỉ-đọc không thể sửa dữ liệu dù có
             đoán đúng đường dẫn.
-          </div>
+          </GoiY>
           {PHAM_VI.map((p) => (
             <label key={p.ma} className="o-chon-vai-tro">
               <input type="checkbox" checked={chon.includes(p.ma)} onChange={() => doi(p.ma)} />
               <span>
                 <strong>{p.nhan}</strong>
-                <span className="goi-y">{p.mo_ta}</span>
+                <GoiY>{p.mo_ta}</GoiY>
               </span>
             </label>
           ))}
@@ -271,10 +272,10 @@ function FormKhoa(
           <label htmlFor="ip">Chỉ cho phép từ IP</label>
           <input id="ip" value={ip_cho_phep} onChange={(e) => dat_ip(e.target.value)}
             placeholder="203.0.113.45,198.51.100.0/24" />
-          <div className="goi-y">
+          <GoiY>
             Để trống là cho gọi từ mọi nơi. Biết trước IP máy chủ của bên kia thì nên khai —
             khóa lộ ra ngoài cũng không dùng được từ chỗ khác.
-          </div>
+          </GoiY>
         </div>
 
         <div className="o-nhap">

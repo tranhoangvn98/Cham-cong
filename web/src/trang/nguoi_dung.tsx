@@ -8,6 +8,7 @@ import {
 import type { NhanVien } from './nhan_vien.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
+import { GoiY } from '../goi_y.tsx';
 
 interface TaiKhoan {
   id: string;
@@ -275,11 +276,11 @@ function FormNoiMicrosoft(
             placeholder="ten.nhanvien@congty.vn"
             autoFocus
           />
-          <div className="goi-y">
+          <GoiY>
             Người đăng nhập bằng tài khoản Microsoft này sẽ vào với vai trò{' '}
             <strong>{TEN_VAI_TRO[tai_khoan.vai_tro] ?? tai_khoan.vai_tro}</strong>. Để trống rồi
             lưu là gỡ liên kết — tài khoản quay lại chỉ đăng nhập được bằng mật khẩu.
-          </div>
+          </GoiY>
         </div>
 
         <div className="hop-thong-bao hop-luu-y">
@@ -359,18 +360,18 @@ function FormTaoTaiKhoan(
             required
             autoFocus
           />
-          <div className="goi-y">
+          <GoiY>
             Chữ không dấu, số và các ký tự <code>. _ -</code>. Dùng email công ty cũng được.
-          </div>
+          </GoiY>
         </div>
 
         <div className="o-nhap">
           <label htmlFor="mkt">Mật khẩu tạm *</label>
           <input id="mkt" value={mat_khau} onChange={(e) => dat_mat_khau(e.target.value)} required />
-          <div className="goi-y">
+          <GoiY>
             Tối thiểu 8 ký tự, có cả chữ và số. Đọc trực tiếp cho người dùng — họ bị buộc đổi ở
             lần đăng nhập đầu.
-          </div>
+          </GoiY>
         </div>
 
         <div className="o-nhap">
@@ -378,7 +379,7 @@ function FormTaoTaiKhoan(
           <Chon gia_tri={vai_tro} dat_gia_tri={dat_vai_tro}
             cac_tuy_chon={VAI_TRO_CAP.map((v): TuyChonChon => ({ ma: v.ma, nhan: v.ten }))}
             nhan="Vai trò" />
-          {mo_ta_vai_tro !== '' && <div className="goi-y">{mo_ta_vai_tro}</div>}
+          {mo_ta_vai_tro !== '' && <GoiY>{mo_ta_vai_tro}</GoiY>}
         </div>
 
         <div className="o-nhap">
@@ -388,11 +389,11 @@ function FormTaoTaiKhoan(
               ma: n.id, nhan: `${n.ma_nv} — ${n.ho_ten}`,
             }))}
             rong="— Không gắn hồ sơ nhân viên —" nhan="Nhân viên" />
-          <div className="goi-y">
+          <GoiY>
             {can_ho_so
               ? 'Vai trò này bắt buộc phải nối với một hồ sơ nhân viên, nếu không họ đăng nhập vào mà không xem được gì.'
               : 'Để trống nếu người này không có hồ sơ nhân viên trong hệ thống — kế toán thuê ngoài, tài khoản quản trị kỹ thuật.'}
-          </div>
+          </GoiY>
         </div>
 
         {vai_tro === 'truong_phong_nhan_su' && (
@@ -450,7 +451,7 @@ function FormDatLaiMatKhau(
         <div className="o-nhap">
           <label htmlFor="mkm">Mật khẩu tạm *</label>
           <input id="mkm" value={mk} onChange={(e) => dat_mk(e.target.value)} required autoFocus />
-          <div className="goi-y">Tối thiểu 8 ký tự, có cả chữ và số. Đọc trực tiếp cho người dùng.</div>
+          <GoiY>Tối thiểu 8 ký tự, có cả chữ và số. Đọc trực tiếp cho người dùng.</GoiY>
         </div>
 
         <div className="hang-nut">

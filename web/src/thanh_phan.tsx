@@ -4,6 +4,7 @@ import { goi, tai_anh_tu, tai_blob, tai_tep, LoiApi, mui_gio_offset_gio } from '
 import { dung_phan_trang } from './phan_trang.tsx';
 import { Chon, type TuyChonChon } from './chon.tsx';
 import { tra_hien_tai, type ChuoiKhoa } from './chuoi/chi_muc.tsx';
+import { GoiY } from './goi_y.tsx';
 
 /**
  * Khoa React cho mot danh sach CHI DOC, sinh lai toan bo moi lan.
@@ -285,7 +286,7 @@ export function OKeoTep(
         style={{ display: 'none' }}
         onChange={(e) => { nhan_ds(e.target.files); e.target.value = ''; }}
       />
-      {nhan_phu !== undefined && nhan_phu !== '' && <div className="goi-y">{nhan_phu}</div>}
+      {nhan_phu !== undefined && nhan_phu !== '' && <GoiY>{nhan_phu}</GoiY>}
       {ten.length > 0 && (
         <div className="o-tep-da-chon">
           <i className="bt bt-file-text" aria-hidden="true" />
@@ -779,7 +780,7 @@ export function HopThoaiNhap(
           </div>
 
           {(xem.som_nhat ?? null) !== null && (
-            <div className="goi-y">Khoảng thời gian: {xem.som_nhat} → {xem.muon_nhat}</div>
+            <div className="goi-y giu-hien">Khoảng thời gian: {xem.som_nhat} → {xem.muon_nhat}</div>
           )}
 
           {(xem.chua_map_pin ?? []).length > 0 && (
