@@ -392,6 +392,10 @@ blockquote {
 }
 
 .luoi { display: grid; gap: 12px; }
+/* O luoi mac dinh co min-width: auto nen MOT O co bang rong se keo ca luoi rong hon khung
+   chua, sinh thanh cuon ngang cho ca trang (tung thay o ho so: bang ung dung M365 rong
+   636px trong cot 553px). Cho phep co lai thi `.vo-bang` tu cuon ben trong no. */
+.luoi > * { min-width: 0; }
 .luoi-4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 .luoi-3 { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 .luoi-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
@@ -1208,6 +1212,9 @@ input[type="checkbox"] {
 .hs-chi-so .o-so-gia-tri { font-size: 20px; margin-top: 2px; }
 /* Phu de cho phep xuong dong: cau nhu "con thieu 6 tai lieu bat buoc" dai hon o 170px. */
 .hs-chi-so .o-so-phu { font-size: 12px; line-height: 1.35; }
+@media (max-width: 900px) {
+  .hs-chi-so { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 520px) {
   .hs-chi-so { grid-template-columns: 1fr; }
   .hs-hanh-dong { margin-left: 0; }
