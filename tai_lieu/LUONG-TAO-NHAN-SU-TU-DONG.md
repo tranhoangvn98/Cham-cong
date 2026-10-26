@@ -204,6 +204,7 @@ của khối kho phải gán tay ở trang Thiết bị.
 | Gán vị trí Tổ chức & trách nhiệm khi tạo | `may_chu/src/to_chuc/ghi.ts` (`gan_vi_tri_khi_tao_ho_so`) |
 | Loại/kì hạn hợp đồng + tính ngày hết hạn | `may_chu/src/nhan_su/hop_dong_khoi_tao.ts` |
 | Checklist nhập việc | `may_chu/src/nhan_su/nhap_viec.ts` |
+| Cấp lại mã cho người đã có hồ sơ (lệnh IT) | `may_chu/src/dinh_danh/cap_lai_ma.ts` · `chay_cap_lai_ma.ts` |
 | Chuông "có nhân sự mới" | `may_chu/src/nhan_su/bao_nhan_su_moi.ts` |
 | Chuông "PIN của bạn là …" | `may_chu/src/nhan_su/bao_pin.ts` |
 | Chia người nhận theo ngôn ngữ | `may_chu/src/su_kien/gui_chuong_ngon_ngu.ts` |
@@ -224,13 +225,80 @@ công**, nên phải ra `0626` chứ không phải `0526`.
 
 `tao_ho_so_e2e.test.ts` khóa thêm: nhân viên nhận được chuông mang **đúng số PIN** và tên máy;
 người **chưa có tài khoản** thì phản hồi kèm cảnh báo nêu số PIN; mục 3 của checklist mang số
-PIN. `song_ngu.test.ts` khóa nội dung thông báo PIN có đủ hai ngôn ngữ và không sót tham số.
+PIN; **cấp lại mã** thì mã cũ đóng lại (giữ lịch sử), cột `ma_nv` đổi theo, số thứ tự tăng, và
+người chưa gán khối bị bỏ qua kèm lý do rõ. `song_ngu.test.ts` khóa nội dung thông báo PIN có đủ hai
+ngôn ngữ và không sót tham số; `cap_lai_ma.test.ts` khóa khuôn mã và cách chọn ngày sinh mã.
 
-## 7. Việc còn để ngỏ
+## 7. Cấp lại mã cho người đã có hồ sơ — việc của IT
 
-1. **Khối mới** phải được khai `ma_ngan` trong migration — hiện chưa có màn hình quản lý khối.
-   Chưa khai thì tạo hồ sơ báo lỗi rõ ràng, không sinh mã sai.
-2. **Sửa mã nhân viên** sau khi tạo vẫn cho phép, nhưng đổi mã là đổi tên thư mục kho tệp và
-   đường dẫn SharePoint, và hợp đồng với cổng không có động từ cho việc này — xem
-   `may_chu/src/tuyen/danh_muc.ts` phần `doi_ma_nv_lech_cong`.
-3. **Máy của khối kho** chưa được gán `khoi_id`; gán xong mới đẩy được lệnh cho khối đó.
+Người vào trước còn mã kiểu cũ (`ERP69`, `NV0156`, `TAM14`, `BGD`…). Ô `ma_nv` trên form cho gõ
+tay, nhưng gõ tay nghĩa là người lập hồ sơ **phải tự bịa số** — và sẽ bịa trùng.
+
+**Không có nút trên giao diện.** Cấp lại mã là đổi danh tính của cả một tập hồ sơ cùng lúc, nên
+nó là một **lệnh chạy có chủ đích** trong lúc bảo trì, không phải một cái bấm trong lúc đang làm
+việc khác.
+
+### 7.1. Chạy
+
+```bash
+# Chạy thử: in ai sẽ đổi thành mã gì, KHÔNG ghi gì
+npm --workspace may_chu run cap_lai_ma
+
+# Ghi thật
+npm --workspace may_chu run cap_lai_ma -- --that
+
+# Người chưa gán khối: gán luôn khối này rồi cấp mã (chỉ khi tất cả đều thuộc khối đó)
+npm --workspace may_chu run cap_lai_ma -- --that --khoi-mac-dinh vp
+
+# Ghi lý do vào lịch sử mã định danh
+npm --workspace may_chu run cap_lai_ma -- --that --ly-do "Chuẩn hoá mã 10/2026"
+```
+
+Trên VPS (bản đã build):
+
+```bash
+docker compose exec -T may_chu node dist/dinh_danh/chay_cap_lai_ma.js            # chạy thử
+docker compose exec -T may_chu node dist/dinh_danh/chay_cap_lai_ma.js --that     # ghi thật
+```
+
+Chỉ đụng tới người **còn mã kiểu cũ**. Người đã có mã đúng khuôn không bị sửa, nên **chạy lại
+bao nhiêu lần cũng an toàn** — đó cũng là cách chắc chắn không ai bị đổi mã hai lần.
+
+### 7.2. Cấp lại KHÔNG phải sửa một ô nhập liệu
+
+Ba hệ quả được xử lý trong cùng một chỗ (`may_chu/src/dinh_danh/cap_lai_ma.ts`):
+
+1. **Mã cũ được đóng lại, không xóa** — dòng `noi_bo` cũ nhận `hieu_luc_den`, dòng mới được thêm.
+   Câu hỏi "lần quẹt tháng 6 bằng mã `ERP69` là của ai" vẫn trả lời được.
+2. **Tên thư mục kho tệp đổi theo** (`dong_bo_thu_muc_nhan_vien`). Đổi thất bại **không** cuộn
+   mã vừa cấp: `ho_so_tep.ten_luu` vẫn trỏ đúng chỗ cũ nên tệp vẫn mở được, lần quét định kỳ
+   sửa tên sau.
+3. **Bản ghi bên cổng phân quyền vẫn mang mã cũ** — hợp đồng với cổng không có động từ đổi mã.
+   Lệnh in ra **việc còn lại** ở cuối để người chạy cập nhật tay; hệ thống **không** bịa sự kiện
+   (`da_tao` với mã mới sẽ tạo bản ghi mồ côi, `nghi_viec` + `da_tao` thì đá người ta ra khỏi
+   cổng — cả hai đã cân nhắc và bỏ).
+
+### 7.3. Ngày dùng để sinh phần `MMYY`
+
+| Có gì | Lấy gì |
+| --- | --- |
+| `ngay_vao` | ngày vào làm |
+| không có `ngay_vao` | ngày **tạo hồ sơ** (`tao_luc`) |
+| không có cả hai | hôm nay, theo **giờ máy chấm công** |
+
+Không lấy "hôm nay" khi còn `tao_luc`: mã sẽ mang tháng của lúc cấp lại, không phải lúc vào làm,
+và sai vĩnh viễn (`ngay_de_sinh_ma`).
+
+### 7.4. Một người một transaction
+
+Lệnh chạy từng người, không gom cả lo vào một transaction: một cái tên thư mục hỏng không được
+làm cuộn cả trăm mã vừa cấp. Người lỗi được in ra riêng ở cuối để xử lý tiếp.
+
+Người **chưa gán khối** bị **bỏ qua** (không đoán khối từ tên phòng ban — đoán sai thì mã sai
+vĩnh viễn). Hai cách xử lý: gán khối cho họ ở hồ sơ, hoặc chạy lại với `--khoi-mac-dinh`.
+
+## 8. Việc còn để ngỏ
+
+1. **Khối mới** phải được khai `ma_ngan` — chưa khai thì tạo hồ sơ báo lỗi, và lệnh cấp lại mã
+   bỏ qua người thuộc khối đó kèm lý do rõ ràng.
+2. **Máy của khối kho** chưa được gán `khoi_id`; gán xong mới đẩy được lệnh cho khối đó.

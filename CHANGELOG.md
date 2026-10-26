@@ -2,7 +2,44 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
-## [1.136.0] — 2026-10-27
+## [1.137.1] — 2026-10-27
+
+**Cấp lại mã nhân sự: chuyển thành lệnh cho IT, bỏ hết nút trên giao diện.**
+
+Bản trước đưa việc cấp lại mã lên web (banner ở trang Nhân viên + nút cạnh ô mã), nhưng phần máy
+chủ đi kèm **chưa từng lên production** — giao diện gọi `/api/nhan-vien/ma-cu` và nhận 404, nên
+màn hình chỉ im lặng không hiện gì. Chủ công ty cũng chốt lại: **cấp lại mã là việc của hệ thống
+IT**, không phải thao tác hằng ngày của nhân sự — vì nó đổi danh tính của cả một tập hồ sơ (tên
+thư mục kho tệp, mã bên cổng phân quyền, chứng từ đã in). Nay không còn nút nào; việc này chạy
+bằng lệnh, có chạy thử trước khi ghi.
+
+```bash
+# Chạy thử: in ai sẽ đổi thành mã gì, KHÔNG ghi gì
+npm --workspace may_chu run cap_lai_ma
+
+# Ghi thật (trên VPS, bản đã build)
+docker compose exec -T may_chu node dist/dinh_danh/chay_cap_lai_ma.js --that
+```
+
+- **Gỡ toàn bộ giao diện**: banner "Nhân sự còn dùng mã cũ", hộp thoại danh sách, nút cạnh ô mã,
+  và ba route `GET /api/nhan-vien/ma-cu`, `POST /api/nhan-vien/:id/cap-lai-ma`,
+  `POST /api/nhan-vien/cap-lai-ma-hang-loat`. Bề mặt API trở lại đúng những gì nghiệp vụ cần.
+- **Thêm lệnh `cap_lai_ma`** (`may_chu/src/dinh_danh/chay_cap_lai_ma.ts`): mặc định **chạy thử**;
+  `--that` mới ghi; `--khoi-mac-dinh <ma khoi>` cho người chưa gán khối (gán luôn khối đó — chỉ
+  dùng khi tất cả những người đó thật sự thuộc khối ấy); `--ly-do "..."` ghi vào lịch sử mã.
+- **Chạy hàng loạt nhưng mỗi người một transaction**: một tên thư mục hỏng không làm cuộn cả lo;
+  người lỗi in riêng ở cuối. Chỉ đụng tới người **còn mã kiểu cũ**, nên chạy lại bao nhiêu lần
+  cũng an toàn — không ai bị đổi mã hai lần.
+- **Bỏ qua có lý do** thay vì đoán: người chưa gán khối, và người thuộc khối chưa khai `ma_ngan`
+  (khai ở danh mục khối rồi chạy lại). Không suy khối từ tên phòng ban — đoán sai thì mã sai vĩnh
+  viễn.
+- Phần lõi giữ nguyên như 1.136.0: mã cũ **đóng lại chứ không xóa**, `ma_nv` đổi theo, tên thư mục
+  kho tệp đổi theo, và lệnh in ra **việc còn lại** (cập nhật mã bên cổng phân quyền).
+- Test e2e gọi thẳng module thay vì gọi HTTP — bộ kiểm vẫn khóa đủ: mã cũ đóng lại, số thứ tự
+  tăng, chặn khi thiếu khối, hàng loạt bỏ qua người thiếu khối/thiếu mã ngắn, chạy lại không đổi
+  lần hai.
+
+## [1.137.0] — 2026-10-27
 
 **Chọn "Loại lao động" trước tiên — outsource không còn phải điền chi tiết chấm công, và có
 chế độ lương "Không theo bảng lương".**
@@ -23,7 +60,7 @@ chế độ lương "Không theo bảng lương".**
   khi hai giá trị đó do chính việc chọn outsource đặt ra) — không âm thầm ghi đè lựa chọn tay.
 - Bộ khóa song ngữ mới: `nv_loai_lao_dong*`, `nv_cdl*`, `nv_ngoai_bang_luong` (vi + zh).
 
-## [1.135.1] — 2026-10-27
+## [1.136.1] — 2026-10-27
 
 **Gộp 16 phòng ban trùng tên — danh sách "Phòng ban kiêm nhiệm" hết cảnh IT / Phòng IT / Phòng
 Công nghệ thông tin chồng nhau.**

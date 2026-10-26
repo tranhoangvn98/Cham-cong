@@ -242,7 +242,12 @@ nó đã lưu xong.
 | Đăng nhập Microsoft | `microsoft_oid`, `microsoft_email` | Mỗi lần đăng nhập thành công |
 | Di trú 025 | tất cả, từ các cột cũ | Một lần, lúc cập nhật |
 | Nhập CSV nhân viên | `noi_bo`, `may_cham_cong`, `microsoft_email` | Mỗi lần nhập tệp |
+| Cấp lại mã nhân sự | `noi_bo` (đóng mã cũ, thêm mã mới) | Lệnh IT `npm run cap_lai_ma -- --that` |
 | Trang Mã định danh | mọi hệ thống trừ `noi_bo` | Nhân sự gán tay |
+
+`noi_bo` **không** đổi được ở trang Mã định danh: đổi mã nhân sự kéo theo đổi tên thư mục kho tệp
+và đường dẫn trên SharePoint, nên nó có đường riêng — xem
+[`LUONG-TAO-NHAN-SU-TU-DONG.md`](LUONG-TAO-NHAN-SU-TU-DONG.md) mục 7.
 
 Hai đường tự động (đồng bộ ERP, đăng nhập Microsoft) **không bao giờ được làm hỏng việc chính của
 chúng** vì một mã trùng:

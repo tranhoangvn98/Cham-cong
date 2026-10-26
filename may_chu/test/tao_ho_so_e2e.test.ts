@@ -59,19 +59,29 @@ let vt_phu_id = '';
 /** Serial may cua khoi Van Phong trong bai kiem nay (khac serial that). */
 const MAY_VP = 'MAYVP0001';
 
-async function goi(
-  body: Record<string, unknown>,
+/** Goi API bang token admin cua bai kiem. `body` bo trong = khong gui than. */
+async function goi_api(
+  phuong: 'GET' | 'POST',
+  duong: string,
+  body?: Record<string, unknown>,
 ): Promise<{ ma: number; than: Record<string, unknown> }> {
   const res = await app.inject({
-    method: 'POST',
-    url: '/api/nhan-vien',
+    method: phuong,
+    url: duong,
     headers: { authorization: `Bearer ${token}` },
-    payload: body as never,
+    ...(body === undefined ? {} : { payload: body as never }),
   });
   return {
     ma: res.statusCode,
     than: res.body === '' ? {} : (JSON.parse(res.body) as Record<string, unknown>),
   };
+}
+
+/** Tao nhan vien qua POST /api/nhan-vien. */
+async function goi(
+  body: Record<string, unknown>,
+): Promise<{ ma: number; than: Record<string, unknown> }> {
+  return goi_api('POST', '/api/nhan-vien', body);
 }
 
 before(async () => {
@@ -86,6 +96,16 @@ before(async () => {
   ]) {
     await thuc_thi(`truncate table ${b} restart identity cascade`);
   }
+
+  // Migration 053 chi seed tai khoan 'he_thong' MOT lan, va `truncate nguoi_dung` o tren xoa no
+  // di trong khi `di_tru` khong chay lai tep do. Khong tao lai thi bo kiem cua file chay SAU
+  // (va moi lan chay lai ca bo) chet voi "Thieu tai khoan he thong" — loi khong lien quan gi
+  // den thu dang kiem. Tao y nguyen: khong dang nhap duoc, chi lam danh tinh cho quyet dinh tu dong.
+  await thuc_thi(
+    `insert into nguoi_dung (ten_dang_nhap, mat_khau_hash, vai_tro, dang_hoat_dong, phai_doi_mat_khau)
+     select 'he_thong', '!', 'nhan_su', false, false
+      where not exists (select 1 from nguoi_dung where ten_dang_nhap = 'he_thong')`,
+  );
 
   // Nguoi phu trach nhan su (nhan viec "Nhap viec") — chua co khoi nen khong anh huong bo dem ma.
   await thuc_thi(
@@ -487,4 +507,129 @@ test('nguoi lap ho so nhan chuong tai khoan Microsoft + mat khau khoi tao', asyn
     'chuong phai mang UPN + mat khau khoi tao de ban giao');
   assert.ok(tb.some((x) => x.noi_dung.includes('đổi mật khẩu')),
     'noi dung phai nhac nhan vien doi mat khau o lan dang nhap dau');
+});
+
+// ================================================================ cap lai ma nhan su
+// CAP LAI MA LA VIEC CUA IT, khong co nut tren giao dien: doi ma la doi danh tinh (ten thu muc
+// kho tep, lech ma ben cong). Bo kiem goi thang module ma lenh IT dung — khong qua HTTP, vi
+// he thong khong mo route nay ra web.
+const {
+  cap_lai_ma_hang_loat, cap_lai_ma_nhan_su, danh_sach_ma_cu,
+} = await import('../src/dinh_danh/cap_lai_ma.ts');
+
+/** Tao mot nguoi dung ma kieu cu, kem dong ma dinh danh nhu migration 025 da backfill. */
+async function tao_nguoi_ma_cu(ma: string, khoi_id: string | null): Promise<string> {
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien(ma_nv, ho_ten, khoi_id, ngay_vao, dang_hoat_dong)
+     values ($1, 'Nguyễn Văn Cũ', $2, '2026-05-20', true) returning id`,
+    [ma, khoi_id]);
+  await thuc_thi(
+    `insert into ma_dinh_danh(nhan_vien_id, he_thong, ma, ma_chuan, nguon)
+     values ($1, 'noi_bo', $2, upper($2), 'di_tru')`,
+    [nv!.id, ma]);
+  return nv!.id;
+}
+
+test('danh sach ma cu: liet ke nguoi chua dung khuon, kem ma du kien', async () => {
+  const id = await tao_nguoi_ma_cu('ERP69', khoi_vp);
+  const ds = await danh_sach_ma_cu();
+  const dong = ds.find((d) => d.id === id);
+  assert.ok(dong !== undefined, 'phai co nguoi vua tao trong danh sach ma cu');
+  assert.equal(dong?.ma_nv, 'ERP69');
+  assert.equal(dong?.ma_du_kien, 'NVVP0526####', 'ma du kien ghep tu ma ngan khoi + thang vao lam');
+  assert.equal(dong?.ngay_sinh_ma, '2026-05-20', 'lay ngay vao lam chu khong phai hom nay');
+});
+
+test('cap lai ma: ma cu dong lai (giu lich su), cot ma_nv doi, ra khoi danh sach ma cu', async () => {
+  const id = await tao_nguoi_ma_cu('NV0156', khoi_vp);
+  const r = await cap_lai_ma_nhan_su(id);
+  assert.match(r.ma_moi, /^NVVP0526\d{4,}$/, `ma moi phai dung khuon: ${r.ma_moi}`);
+  assert.equal(r.ma_cu, 'NV0156');
+  assert.equal(r.ma_cu_dung_khuon, false);
+  assert.ok(r.canh_bao.some((c) => c.includes('cổng phân quyền')),
+    `phai canh bao ma ben cong van la ma cu, nhan duoc: ${JSON.stringify(r.canh_bao)}`);
+
+  const nv = await truy_van_mot<{ ma_nv: string }>(
+    'select ma_nv from nhan_vien where id = $1', [id]);
+  assert.equal(nv?.ma_nv, r.ma_moi, 'cot ma_nv phai doi theo');
+
+  // Ma cu khong bi xoa: dong lai de lich su van tra loi duoc "ma nay tung cua ai".
+  const md = await truy_van<{ ma: string; hieu_luc_den: string | null }>(
+    `select ma, hieu_luc_den from ma_dinh_danh
+      where nhan_vien_id = $1 and he_thong = 'noi_bo' order by hieu_luc_tu`,
+    [id]);
+  assert.equal(md.length, 2, 'phai co dong ma cu va dong ma moi');
+  assert.equal(md[0]?.ma, 'NV0156');
+  assert.ok(md[0]?.hieu_luc_den !== null, 'ma cu phai duoc dong lai');
+  assert.equal(md[1]?.ma, r.ma_moi);
+  assert.equal(md[1]?.hieu_luc_den, null, 'ma moi dang hieu luc');
+
+  const sau = await danh_sach_ma_cu();
+  assert.ok(!sau.some((d) => d.id === id), 'cap lai xong thi ra khoi danh sach ma cu');
+});
+
+test('cap lai ma hai lan: so thu tu tang, khong dung lai ma vua cap', async () => {
+  const id = await tao_nguoi_ma_cu('TAM14', khoi_vp);
+  const l1 = await cap_lai_ma_nhan_su(id);
+  const l2 = await cap_lai_ma_nhan_su(id);
+  assert.notEqual(l1.ma_moi, l2.ma_moi);
+  assert.equal(l2.ma_cu, l1.ma_moi, 'lan hai dong lai ma cua lan mot');
+  const so1 = Number(/(\d{4,})$/.exec(l1.ma_moi)?.[1] ?? 0);
+  const so2 = Number(/(\d{4,})$/.exec(l2.ma_moi)?.[1] ?? 0);
+  assert.ok(so2 > so1, `so thu tu phai tang: ${String(so1)} -> ${String(so2)}`);
+});
+
+test('cap lai ma khi chua gan khoi: bao loi ro rang (khong doan khoi)', async () => {
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien(ma_nv, ho_ten, dang_hoat_dong)
+     values ('BGD', 'Người Không Khối', true) returning id`);
+  await assert.rejects(
+    () => cap_lai_ma_nhan_su(nv!.id),
+    (loi: Error) => /khối/.test(loi.message),
+    'phai bao loi ve khoi, khong tu doan');
+});
+
+test('hang loat: chon khoi mac dinh thi nguoi chua gan khoi cung duoc cap ma', async () => {
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien(ma_nv, ho_ten, dang_hoat_dong)
+     values ('HR-01', 'Người Chưa Khối', true) returning id`);
+  const kq = await cap_lai_ma_hang_loat(() => {}, khoi_vp);
+  const dong = kq.da_cap.find((d) => d.id === nv!.id);
+  assert.ok(dong !== undefined, 'phai cap ma cho nguoi chua gan khoi khi co khoi mac dinh');
+  // Ho so khong co ngay_vao nen MMYY lay theo ngay TAO HO SO (hom nay), khong phai 0526.
+  assert.match(dong!.ma_moi, /^NVVP\d{4}\d{4,}$/, `ma phai dung khuon: ${dong!.ma_moi}`);
+  // Chon khoi mac dinh la GAN khoi that: ma phai nhat quan voi du lieu ho so.
+  const sau = await truy_van_mot<{ khoi_id: string | null }>(
+    'select khoi_id from nhan_vien where id = $1', [nv!.id]);
+  assert.equal(sau?.khoi_id, khoi_vp, 'khoi mac dinh duoc ghi vao ho so');
+});
+
+test('hang loat: khoi chua khai ma ngan thi bo qua, khong bia ra ma', async () => {
+  const khoi = await truy_van_mot<{ id: string }>(
+    `insert into khoi(ma, ten) values ('kt_khong_ma', 'Khoi kiem thu khong ma ngan')
+     on conflict (ma) do update set ma_ngan = null returning id`);
+  const id = await tao_nguoi_ma_cu('HR-02', khoi!.id);
+  const ds = await danh_sach_ma_cu();
+  const dong = ds.find((d) => d.id === id);
+  assert.equal(dong?.ma_du_kien, '', 'khong co ma ngan thi khong doan ma');
+  const kq = await cap_lai_ma_hang_loat(() => {});
+  const bo_qua = kq.bo_qua.find((d) => d.id === id);
+  assert.ok(bo_qua !== undefined,
+    `phai bo qua nguoi thuoc khoi chua khai ma ngan, nhan duoc: `
+    + `${JSON.stringify(kq.bo_qua)} / ${JSON.stringify(kq.loi)}`);
+  assert.match(bo_qua!.ly_do, /mã ngắn/, 'ly do phai noi ro thieu ma ngan chu khong phai loi chung');
+  assert.equal(kq.da_cap.some((d) => d.id === id), false);
+});
+
+test('hang loat: chi cap cho nguoi con ma cu, chay lai khong dung toi nguoi da doi', async () => {
+  const truoc = await danh_sach_ma_cu();
+  const id_truoc = new Set(truoc.map((d) => d.id));
+  const kq = await cap_lai_ma_hang_loat(() => {});
+  for (const d of kq.da_cap) {
+    assert.ok(id_truoc.has(d.id),
+      `chi nguoi con ma cu moi bi doi, nhan duoc ${d.ma_cu} (${d.ho_ten})`);
+  }
+  // Chay lai ngay: khong ai bi doi lan hai, vi khong con ai mang ma kieu cu.
+  const lai = await cap_lai_ma_hang_loat(() => {});
+  assert.deepEqual(lai.da_cap, [], 'chay lai khong duoc doi ma cua ai nua');
 });

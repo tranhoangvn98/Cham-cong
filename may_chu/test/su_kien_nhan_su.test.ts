@@ -158,6 +158,13 @@ before(async () => {
   for (const b of ['hop_thu_di', 'token_lam_moi', 'nhat_ky_thao_tac', 'nguoi_dung', 'nhan_vien']) {
     await thuc_thi(`truncate table ${b} restart identity cascade`);
   }
+  // Migration 053 chi seed tai khoan 'he_thong' MOT lan; `truncate nguoi_dung` xoa no va `di_tru`
+  // khong chay lai tep do. Tao lai de cac bo kiem chay sau khong chet vi thieu danh tinh tu dong.
+  await thuc_thi(
+    `insert into nguoi_dung (ten_dang_nhap, mat_khau_hash, vai_tro, dang_hoat_dong, phai_doi_mat_khau)
+     select 'he_thong', '!', 'nhan_su', false, false
+      where not exists (select 1 from nguoi_dung where ten_dang_nhap = 'he_thong')`,
+  );
   const nd = await truy_van_mot<{ id: string }>(
     `insert into nguoi_dung(ten_dang_nhap, mat_khau_hash, vai_tro, dang_hoat_dong)
      values ('quantri', $1, 'admin', true) returning id`,

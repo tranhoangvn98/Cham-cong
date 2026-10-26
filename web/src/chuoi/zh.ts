@@ -298,26 +298,6 @@ export const CHUOI_ZH = {
   nv_ma_erp1_phu:
     '该员工在 ERP1 中的编号。在此填写后，创建账号的 webhook 将随附该编号，ERP1 无需手工匹配。',
   nv_ma_erp1_goi_y: '例如：0526-0001',
-  nv_cap_lai_ma: '重新生成编号',
-  nv_cap_lai_ma_phu:
-    '按部门代码与入职年月重新生成编号。旧编号仅停用（不删除），历史打卡记录与旧单据仍可按旧编号查询。',
-  nv_cap_lai_ma_hoi: '重新生成员工编号？',
-  nv_cap_lai_ma_hoi_mo_ta:
-    '新编号按部门与入职年月生成。旧编号停用但仍可查询；档案库文件夹名称随之更改；权限门户中的记录仍为旧编号，需在门户侧手工更新。',
-  nv_cap_lai_ma_hoi_nut: '重新生成编号',
-  nv_cap_lai_ma_xong: '已生成新编号：{ma}',
-  nv_ma_cu_tieu_de: '仍在沿用旧编号的员工',
-  nv_ma_cu_mo_ta:
-    '共有 {so} 名员工仍在沿用旧编号（如 ERP69、NV0156 等）。新编号按部门与入职年月生成，例如 NVKHN05260001。',
-  nv_ma_cu_xem: '查看列表',
-  nv_ma_cu_trong: '所有员工均已使用新格式编号。',
-  nv_ma_cu_cot_ma: '旧编号',
-  nv_ma_cu_cot_du_kien: '预计编号',
-  nv_ma_cu_cot_khoi: '部门',
-  nv_ma_cu_cap_lai: '重新生成',
-  nv_ma_cu_chua_khoi: '尚未分配部门——请先为该档案分配部门，再重新生成编号。',
-  nv_ma_cu_dang_nghi: '已离职',
-  nv_ma_cu_con_lai: '仍有 {so} 名员工沿用旧编号。',
   nv_pin_tu_khoi: '按所属部门设备的号段自动分配 PIN',
   nv_pin_tu_khoi_phu:
     '系统在所属部门设备的号段中取第一个未使用的 PIN，写入身份编号，并向该部门所有设备下发用户更新指令。仅当该员工已在设备上拥有 PIN 时才留空此项。',

@@ -22,30 +22,6 @@ const MAU_NHAN_VIEN = [
   'NV002;Trần Thị Bình;1002;Kinh doanh;Hành chính;15/07/2025;0912345678;binh.tt@congty.vn;x',
 ].join('\r\n') + '\r\n';
 
-/** Ket qua cua POST /api/nhan-vien/:id/cap-lai-ma. */
-interface KetQuaCapLaiMa {
-  ma_cu: string;
-  ma_moi: string;
-  ma_cu_dung_khuon: boolean;
-  ngay_sinh_ma: string;
-  canh_bao: string[];
-}
-
-/** Mot nguoi con dung ma kieu cu — GET /api/nhan-vien/ma-cu. */
-interface DongMaCu {
-  id: string;
-  ma_nv: string;
-  ho_ten: string;
-  dang_hoat_dong: boolean;
-  khoi_id: string | null;
-  khoi_ten: string | null;
-  ma_ngan: string | null;
-  ngay_vao: string | null;
-  ngay_sinh_ma: string;
-  ma_du_kien: string;
-}
-interface KqMaCu { danh_sach: DongMaCu[]; so_luong: number }
-
 interface NhanVien {
   id: string;
   ma_nv: string;
@@ -151,7 +127,6 @@ export function TrangNhanVien(): ReactNode {
   const [tao_tk_cho, dat_tao_tk_cho] = useState<NhanVien | null>(null);
   const [dang_nhap_tep, dat_dang_nhap_tep] = useState(false);
   const [tao_thieu, dat_tao_thieu] = useState(false);
-  const [xem_ma_cu, dat_xem_ma_cu] = useState(false);
 
   const url = `/api/nhan-vien?chi_dang_lam=${chi_dang_lam}`
     + (tim.trim() === '' ? '' : `&tim=${encodeURIComponent(tim.trim())}`);
@@ -160,8 +135,6 @@ export function TrangNhanVien(): ReactNode {
   const phong = dung_nap<PhongBan[]>('/api/phong-ban');
   const may = dung_nap<ThietBi[]>('/api/thiet-bi');
   const ch_may_chu = dung_nap<{ ms365_tao?: { bat: boolean } }>('/api/xac-thuc/cau-hinh');
-  // Ai con dung ma kieu cu — chi nguoi co quyen nhan su moi goi duoc (route chan 403).
-  const ma_cu = dung_nap<KqMaCu>(la_nhan_su() ? '/api/nhan-vien/ma-cu' : null);
 
   const chua_co_pin = (du_lieu ?? []).filter((n) => n.pin_may === null && n.dang_hoat_dong);
   const chua_co_ca = (du_lieu ?? []).filter((n) => n.ca_lam_id === null && n.dang_hoat_dong);
@@ -200,16 +173,6 @@ export function TrangNhanVien(): ReactNode {
         <div className="hop-thong-bao hop-tin">
           {chua_co_ca.length} nhân viên chưa được gán ca làm việc — hệ thống chỉ tính tổng thời gian
           có mặt, không tính đi muộn / về sớm cho họ.
-        </div>
-      )}
-
-      {(ma_cu.du_lieu?.so_luong ?? 0) > 0 && (
-        <div className="hop-thong-bao hop-luu-y">
-          <strong>{tra_hien_tai('nv_ma_cu_tieu_de')}</strong>{' '}
-          {tra_hien_tai('nv_ma_cu_mo_ta', { so: ma_cu.du_lieu?.so_luong ?? 0 })}{' '}
-          <button type="button" className="nut-nho nut-phang" onClick={() => dat_xem_ma_cu(true)}>
-            {tra_hien_tai('nv_ma_cu_xem')}
-          </button>
         </div>
       )}
 
@@ -396,102 +359,7 @@ export function TrangNhanVien(): ReactNode {
           }}
         />
       )}
-
-      {xem_ma_cu && (
-        <HopThoaiMaCu
-          danh_sach={ma_cu.du_lieu?.danh_sach ?? []}
-          khi_dong={() => dat_xem_ma_cu(false)}
-          khi_xong={() => {
-            ma_cu.nap_lai();
-            nap_lai();
-          }}
-        />
-      )}
     </>
-  );
-}
-
-/**
- * Danh sach nguoi con dung ma kieu cu, moi nguoi mot nut cap lai.
- *
- * Cap ma la thao tac doi danh tinh (doi ten thu muc kho tep, lech ma ben cong) nen KHONG co nut
- * "cap lai tat ca": moi nguoi phai duoc nhin ten va bam rieng. Danh sach nay chi de thay ro con
- * ai, va sua tung nguoi khi nguoi phu trach san sang doi chieu ben cong.
- */
-function HopThoaiMaCu(
-  { danh_sach, khi_dong, khi_xong }:
-  { danh_sach: DongMaCu[]; khi_dong: () => void; khi_xong: () => void },
-): ReactNode {
-  const [ds, dat_ds] = useState<DongMaCu[]>(danh_sach);
-  const [da_cap, dat_da_cap] = useState<string[]>([]);
-  const hd = dung_hanh_dong();
-
-  const cap = async (d: DongMaCu): Promise<void> => {
-    const kq = await hd.chay_lay<KetQuaCapLaiMa>(() =>
-      goi(`/api/nhan-vien/${d.id}/cap-lai-ma`, { method: 'POST', body: {} }),
-      tra_hien_tai('nv_cap_lai_ma_xong', { ma: d.ma_du_kien }));
-    if (kq === null) return;
-    dat_da_cap((cu) => [...cu, tra_hien_tai('nv_cap_lai_ma_xong', { ma: kq.ma_moi })]);
-    dat_ds((cu) => cu.filter((x) => x.id !== d.id));
-    khi_xong();
-  };
-
-  return (
-    <HopThoai tieu_de={tra_hien_tai('nv_ma_cu_tieu_de')} khi_dong={khi_dong}>
-      <HopLoi loi={hd.loi} />
-      {da_cap.map((m) => <div key={m} className="hop-thong-bao hop-tin">{m}</div>)}
-      {ds.length === 0 ? (
-        <div className="hop-thong-bao hop-tin">{tra_hien_tai('nv_ma_cu_trong')}</div>
-      ) : (
-        <>
-          <div className="hop-thong-bao hop-luu-y">
-            {tra_hien_tai('nv_ma_cu_con_lai', { so: ds.length })}
-          </div>
-          <div className="vo-bang">
-            <table>
-              <thead>
-                <tr>
-                  <th>{tra_hien_tai('nv_ma_cu_cot_ma')}</th>
-                  <th>Họ tên</th>
-                  <th>{tra_hien_tai('nv_ma_cu_cot_khoi')}</th>
-                  <th>{tra_hien_tai('nv_ma_cu_cot_du_kien')}</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {ds.map((d) => (
-                  <tr key={d.id}>
-                    <td className="so">{d.ma_nv}</td>
-                    <td>
-                      {d.ho_ten}
-                      {!d.dang_hoat_dong && (
-                        <span className="nhan nhan-mo" style={{ marginLeft: 6 }}>
-                          {tra_hien_tai('nv_ma_cu_dang_nghi')}
-                        </span>
-                      )}
-                    </td>
-                    <td>{d.khoi_ten ?? '—'}</td>
-                    <td className="so">{d.ma_du_kien === '' ? '—' : d.ma_du_kien}</td>
-                    <td className="khong-ngat">
-                      <button className="nut-nho nut-phang" disabled={hd.dang_chay
-                        || d.khoi_id === null || d.ma_du_kien === ''}
-                        title={d.khoi_id === null || d.ma_du_kien === ''
-                          ? tra_hien_tai('nv_ma_cu_chua_khoi') : undefined}
-                        onClick={() => { void cap(d); }}>
-                        {tra_hien_tai('nv_ma_cu_cap_lai')}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-      <div className="hang-nut">
-        <button onClick={khi_dong}>Đóng</button>
-      </div>
-    </HopThoai>
   );
 }
 
@@ -558,7 +426,6 @@ function FormNhanVien(
   const [ket_qua_may, dat_ket_qua_may] = useState<string[]>([]);
   const [ket_qua_vt, dat_ket_qua_vt] = useState<{ so_vt: number; so_viec: number } | null>(null);
   const [canh_bao_ket, dat_canh_bao_ket] = useState<string[]>([]);
-  const [cap_lai_kq, dat_cap_lai_kq] = useState<KetQuaCapLaiMa | null>(null);
   const noi = dung_nap<NoiLamViec[]>('/api/noi-lam-viec');
   const khoi = dung_nap<Khoi[]>('/api/khoi');
   const hd = dung_hanh_dong();
@@ -723,28 +590,6 @@ function FormNhanVien(
     if (ok) khi_xong();
   };
 
-  /**
-   * Cap lai ma nhan su theo khuon moi.
-   *
-   * Hoi truoc khi lam: day la thao tac doi danh tinh (doi ten thu muc kho tep, lech ma ben cong),
-   * khong phai sua mot o nhap lieu. Sau khi xong thi o ma tren form phai doi theo, neu khong
-   * nguoi dung bam "Luu" tiep se ghi de ma cu tro lai.
-   */
-  const cap_lai_ma = async (): Promise<void> => {
-    if (nhan_vien === null) return;
-    const dong_y = await xn.hoi({
-      tieu_de: tra_hien_tai('nv_cap_lai_ma_hoi'),
-      mo_ta: <>{tra_hien_tai('nv_cap_lai_ma_hoi_mo_ta')}</>,
-      chu_dong_y: tra_hien_tai('nv_cap_lai_ma_hoi_nut'),
-    });
-    if (!dong_y) return;
-    const kq = await hd.chay_lay<KetQuaCapLaiMa>(() =>
-      goi(`/api/nhan-vien/${nhan_vien.id}/cap-lai-ma`, { method: 'POST', body: {} }));
-    if (kq === null) return;
-    doi('ma_nv', kq.ma_moi);
-    dat_cap_lai_kq(kq);
-  };
-
   const cho_nghi = async (): Promise<void> => {
     if (nhan_vien === null) return;
     const dong_y = await xn.hoi({
@@ -854,15 +699,6 @@ function FormNhanVien(
             <div className="o-nhap">
               <label htmlFor="ma">Mã nhân viên *</label>
               <input id="ma" value={f.ma_nv} onChange={(e) => doi('ma_nv', e.target.value)} required />
-              {la_nhan_su() && (
-                <>
-                  <button type="button" className="nut-nho nut-phang" style={{ marginTop: 6 }}
-                    onClick={cap_lai_ma} disabled={hd.dang_chay}>
-                    {tra_hien_tai('nv_cap_lai_ma')}
-                  </button>
-                  <GoiY>{tra_hien_tai('nv_cap_lai_ma_phu')}</GoiY>
-                </>
-              )}
             </div>
           )}
           <div className="o-nhap">
@@ -870,13 +706,6 @@ function FormNhanVien(
             <input id="ht" value={f.ho_ten} onChange={(e) => doi('ho_ten', e.target.value)} required />
           </div>
         </div>
-
-        {cap_lai_kq !== null && (
-          <div className="hop-thong-bao hop-tin">
-            <strong>{tra_hien_tai('nv_cap_lai_ma_xong', { ma: cap_lai_kq.ma_moi })}</strong>
-            {cap_lai_kq.canh_bao.map((cb) => <div key={cb}>{cb}</div>)}
-          </div>
-        )}
 
         {nhan_vien === null && !la_outsource && (
           <>
