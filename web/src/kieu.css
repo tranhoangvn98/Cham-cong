@@ -663,7 +663,7 @@ input:focus, select:focus, textarea:focus {
 input[type="checkbox"] { width: auto; }
 textarea { min-height: 66px; resize: vertical; }
 
-.o-nhap { margin-bottom: 12px; }
+.o-nhap { margin-bottom: 12px; position: relative; }
 /*
  * Nut chon phai giu kich thuoc that cua no.
  *
@@ -682,6 +682,71 @@ input[type="checkbox"] {
 .o-nhap-ngang { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .o-nhap-ngang label { margin: 0; }
 .goi-y { font-size: 11.5px; color: var(--chu-mo); margin-top: 3px; }
+/* Thong bao TRANG THAI / LOI phai luon hien — khong doi thanh nut "?". */
+.goi-y.giu-hien { display: block; }
+
+/* ---------------------------------------------------------------- goi y "?" */
+/* Nut hoi + bong goi y dung chung (web/src/goi_y.tsx). Mo ta huong dan khong bay san
+   duoi o nhap nua: chi hien khi hover/focus. Trang thai va loi van dung .goi-y truc tiep. */
+.tro-giup {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.tro-giup-nut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--vien-dam);
+  border-radius: var(--tron-tron);
+  background: var(--nen-mo);
+  color: var(--chu-nhat);
+  font-size: 12px;
+  font-weight: var(--trong-dam);
+  line-height: 1;
+  cursor: help;
+}
+.tro-giup-nut:hover,
+.tro-giup-nut:focus-visible {
+  background: var(--chinh-nhat);
+  border-color: var(--chinh-dam);
+  color: var(--chinh-dam);
+  outline: none;
+}
+.tro-giup-bong {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 80;
+  width: max-content;
+  max-width: min(360px, 82vw);
+  padding: 8px 10px;
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  background: var(--nen-the);
+  color: var(--chu);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  font-size: 12px;
+  font-weight: var(--trong-thuong);
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+}
+.tro-giup:hover .tro-giup-bong,
+.tro-giup:focus-within .tro-giup-bong { display: block; }
+/* Trong o nhap: dat nut "?" o goc phai tren, ngang hang nhan — khong chiem them chieu cao. */
+.o-nhap > .tro-giup {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+}
 
 .bo-loc {
   display: flex;

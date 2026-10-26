@@ -7,6 +7,7 @@ import {
 } from '../thanh_phan.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
+import { GoiY } from '../goi_y.tsx';
 
 const TEN_THU_DAY = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
 const TEN_THU_NGAN = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -292,19 +293,19 @@ function FormCaLam(
               </button>
             ))}
           </div>
-          <div className="goi-y">
+          <GoiY>
             Ngày không chọn được coi là nghỉ tuần — đi làm ngày đó sẽ tính toàn bộ vào OT.
-          </div>
+          </GoiY>
         </div>
 
         {!f.qua_dem && (
           <div className="o-nhap">
             <label>Khung giờ riêng theo thứ</label>
-            <div className="goi-y" style={{ marginBottom: 8 }}>
+            <GoiY style={{ marginBottom: 8 }}>
               Ngày không bật ở đây dùng chung giờ vào/ra phía trên. Dùng cho chế độ làm{' '}
               <strong>sáng thứ Bảy</strong>: bật T7, đặt 08:00–12:00 và để "đủ công" gấp đôi số
               phút làm để ngày đó tính 0,5 công.
-            </div>
+            </GoiY>
             {f.cac_ngay_lam.map((thu) => {
               const r = theo_thu[thu];
               const dat = (moi: Partial<CaTheoThu>): void =>
@@ -369,17 +370,17 @@ function FormCaLam(
         <div className="luoi luoi-2">
           <div className="o-nhap">
             <label>Làm thêm giờ</label>
-            <div className="goi-y">
+            <GoiY>
               OT chỉ tính khi có <strong>đơn làm thêm đã duyệt</strong>, và chỉ tính phần giờ
               vừa có mặt vừa nằm trong đơn. Không còn ngưỡng &#34;ở lại quá N phút thì thành OT&#34;
               — quẹt thẻ muộn vì lý do khác không sinh OT nữa.
-            </div>
+            </GoiY>
           </div>
           <div className="o-nhap">
             <label htmlFor="pdc">Số phút để tính đủ 1 công</label>
             <input id="pdc" type="number" min="60" max="1440" value={f.phut_du_cong}
               onChange={(e) => doi('phut_du_cong', e.target.value)} />
-            <div className="goi-y">Từ nửa ngưỡng này tính 0,5 công.</div>
+            <GoiY>Từ nửa ngưỡng này tính 0,5 công.</GoiY>
           </div>
         </div>
 
@@ -572,10 +573,10 @@ function FormDiaDiem({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
           <label htmlFor="bk">Bán kính cho phép (mét) *</label>
           <input id="bk" type="number" min="20" max="20000" value={ban_kinh}
             onChange={(e) => dat_ban_kinh(e.target.value)} required />
-          <div className="goi-y">
+          <GoiY>
             GPS điện thoại thường lệch 10–50m trong nhà. Đặt quá nhỏ sẽ khiến nhân viên đứng tại chỗ
             vẫn bị coi là ngoài phạm vi. 100–300m là hợp lý cho một văn phòng.
-          </div>
+          </GoiY>
         </div>
 
         <div className="hang-nut">
@@ -947,10 +948,10 @@ function FormKeHoach({ khi_dong, khi_xong }: { khi_dong: () => void; khi_xong: (
             value={so_nghi} onChange={(e) => dat_so_nghi(e.target.value)}
             placeholder={so_ngay_khoang !== null && so_ngay_khoang > 0
               ? `Cả khoảng (${so_ngay_khoang} ngày)` : 'Cả khoảng'} />
-          <div className="goi-y">
+          <GoiY>
             Tính từ ngày bắt đầu. Để trống = nghỉ cả khoảng. Ví dụ: khoảng 1/9–3/9 nhập 2 →
             nghỉ 1/9 và 2/9, ngày 3/9 là ngày làm việc bình thường.
-          </div>
+          </GoiY>
         </div>
         <div className="o-nhap">
           <label htmlFor="lichkh">Lịch áp dụng</label>

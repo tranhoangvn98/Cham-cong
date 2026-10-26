@@ -10,6 +10,7 @@
 import { useState, type ReactNode } from 'react';
 import { vai_tro_hien_tai } from './api.ts';
 import { buoc_cho_vai_tro, huong_dan_cua, type VaiTro } from './huong_dan.ts';
+import { GoiY } from './goi_y.tsx';
 
 // Ghi nho cac trang nguoi dung DA MO huong dan. MAC DINH THU GON (1 dong) cho gon man hinh —
 // nguoi dung can thi bam mo, va lua chon do duoc nho lai cho tung trang.
@@ -83,11 +84,11 @@ export function KhungHuongDan({ duong_dan }: { duong_dan: string }): ReactNode {
           )}
 
           {(h.luu_y ?? []).length > 0 && (
-            <div className="goi-y" style={{ marginTop: 10 }}>
+            <GoiY style={{ marginTop: 10 }}>
               {(h.luu_y ?? []).map((l) => (
                 <div key={l} style={{ marginBottom: 4 }}>⚠ {l}</div>
               ))}
-            </div>
+            </GoiY>
           )}
         </>
       )}

@@ -18,6 +18,7 @@ import { dung_dat_tieu_de } from '../tieu_de_trang.tsx';
 import { NhanCachTrich } from './hop_dong.tsx';
 import { TheMaDinhDanh } from './ma_dinh_danh.tsx';
 import { TheUngDungMs365 } from './ung_dung_ms365.tsx';
+import { GoiY } from '../goi_y.tsx';
 
 // ==================================================================== kieu du lieu
 
@@ -300,10 +301,10 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
       </section>
 
       {xem_duoc.length < THU_TU.length && (
-        <div className="goi-y" style={{ marginBottom: 10 }}>
+        <GoiY style={{ marginBottom: 10 }}>
           Một số mục không hiện vì vai trò của bạn không được xem. Lương, hợp đồng và khiếu nại
           chỉ nhân sự và chính nhân viên đó xem được.
-        </div>
+        </GoiY>
       )}
 
       <div className="hs-thanh-tab">
@@ -393,7 +394,7 @@ function HopThoaiNghiKhongBanGiao(
             value={ngay_nghi}
             onChange={(e) => dat_ngay_nghi(e.target.value)}
           />
-          <div className="goi-y">{tra('hs_nkbg_ngay_goi_y')}</div>
+          <GoiY>{tra('hs_nkbg_ngay_goi_y')}</GoiY>
         </div>
         <div className="hang-nut">
           <button type="submit" className="nut-nguy" disabled={hd.dang_chay}>
@@ -1007,10 +1008,10 @@ function FormTep(
             accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
             khi_nhan={(ds) => dat_tep(ds?.[0] ?? null)}
           />
-          <div className="goi-y">
+          <GoiY>
             Nhận PDF, JPG, PNG, DOCX, XLSX — tối đa 15 MB. Loại tệp được nhận diện bằng nội dung
             thật, đổi đuôi tên không qua được. Tệp luôn được tải về chứ không mở trong trình duyệt.
-          </div>
+          </GoiY>
         </div>
         <div className="hang-nut">
           <button type="submit" className="nut-chinh" disabled={hd.dang_chay || tep === null}>
@@ -1206,7 +1207,7 @@ function FormHoSo(
                   required={x.bat_buoc === true}
                 />
               )}
-              {x.goi_y !== undefined && <div className="goi-y">{x.goi_y}</div>}
+              {x.goi_y !== undefined && <GoiY>{x.goi_y}</GoiY>}
             </div>
           ))}
         </div>
@@ -1285,7 +1286,7 @@ function TheTrangThaiBoSung(
             {tra('hs_ycbs_huy_yeu_cau')}
           </button>
         </div>
-        <div className="goi-y" style={{ marginTop: 6 }}>
+        <div className="goi-y giu-hien" style={{ marginTop: 6 }}>
           {yeu_cau.so_lan_nhac === 0
             ? tra('hs_ycbs_chua_nhac')
             : tra('hs_ycbs_lan_nhac', {
@@ -1295,7 +1296,7 @@ function TheTrangThaiBoSung(
           {yeu_cau.han_bo_sung !== null && <> · {tra('hs_ycbs_han')}: {ngay_viet(yeu_cau.han_bo_sung)}</>}
         </div>
         {yeu_cau.ten_con_thieu.length > 0 && (
-          <div className="goi-y" style={{ marginTop: 4 }}>
+          <div className="goi-y giu-hien" style={{ marginTop: 4 }}>
             {yeu_cau.ten_con_thieu.join(' · ')}
           </div>
         )}
@@ -1314,7 +1315,7 @@ function TheTrangThaiBoSung(
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
           <div>
             <strong>{tra('hs_ycbs_nut')}</strong>
-            <div className="goi-y">{tra('hs_ycbs_mo_ta', { so: con_thieu.length })}</div>
+            <div className="goi-y giu-hien">{tra('hs_ycbs_mo_ta', { so: con_thieu.length })}</div>
           </div>
           <button type="button" className="nut-chinh" onClick={() => dat_mo(true)}>
             {tra('hs_ycbs_nut')}
@@ -1769,10 +1770,10 @@ function PanelTaiLieu(
           <div className={phan_tram >= 100 ? 'thanh-tien-do-day du' : 'thanh-tien-do-day'}
             style={{ width: `${phan_tram}%` }} />
         </div>
-        <div className="goi-y" style={{ marginTop: 6 }}>
+        <GoiY style={{ marginTop: 6 }}>
           Chỉ tính là đủ khi tài liệu đã ở mức <strong>"Đã lên phần mềm"</strong>.
           {!(du_lieu?.dang_nghi_viec ?? false) && ' Tài liệu chỉ phát sinh khi nghỉ việc được tạm miễn.'}
-        </div>
+        </GoiY>
       </div>
 
       <TheTrangThaiBoSung
@@ -1960,10 +1961,10 @@ function FormDongTaiLieu(
               ma, nhan: ten,
             }))}
             nhan="Trạng thái tài liệu" />
-          <div className="goi-y">
+          <GoiY>
             Ba mức theo checklist HCNS: đã có dữ liệu → đã số hóa → đã lên phần mềm.
             Chỉ mức cuối mới tính vào tiến độ.
-          </div>
+          </GoiY>
         </div>
 
         <div className="luoi luoi-2">

@@ -14,6 +14,7 @@ import {
   DangTai, HopLoi, HopThoai, Trong, dung_hanh_dong, dung_nap, ngay_gio,
   XuongDanhSach,
 } from '../thanh_phan.tsx';
+import { GoiY } from '../goi_y.tsx';
 
 interface BanChot {
   id: string;
@@ -841,7 +842,7 @@ function HopThoaiCong(
       {loi !== null && <HopLoi loi={loi} />}
       {dang_tai ? <DangTai /> : (
         <>
-          <div className="goi-y" style={{ marginBottom: '0.5rem' }}>
+          <div className="goi-y giu-hien" style={{ marginBottom: '0.5rem' }}>
             Thực tế <strong>{Number(phieu.so_ngay_cong_thuc)}</strong> / chuẩn{' '}
             <strong>{Number(phieu.so_ngay_cong_chuan)}</strong> công ·{' '}
             <strong>{bi_tru.length}</strong> ngày bị trừ / thiếu công (bôi đậm bên dưới).
@@ -887,10 +888,10 @@ function HopThoaiCong(
               </tbody>
             </table>
           </div>
-          <div className="goi-y" style={{ marginTop: '0.5rem' }}>
+          <GoiY style={{ marginTop: '0.5rem' }}>
             Ghi chú: đi muộn / phạt tiền được tính ở bảng lương (cột "Khoản trừ"), không phải ở
             số công. Số công chỉ phản ánh ngày làm thực tế (nửa ngày, vắng, nghỉ không lương…).
-          </div>
+          </GoiY>
         </>
       )}
     </HopThoai>
@@ -994,7 +995,7 @@ function HopThoaiThuongKpi(
         <button type="button" onClick={ap_chung_cho_loc}>Điền hết</button>
       </div>
 
-      <div className="goi-y" style={{ margin: '0.5rem 0' }}>
+      <div className="goi-y giu-hien" style={{ margin: '0.5rem 0' }}>
         {loc.length} người đang lọc · đã nhập tiền cho {so_da_nhap} người. Để trống = không đổi;
         nhập <strong>0</strong> = gỡ khoản này khỏi phiếu.
       </div>

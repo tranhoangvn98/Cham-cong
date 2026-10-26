@@ -79,6 +79,10 @@ Bốn luật đã có tiền lệ (chi tiết ở `tai_lieu/THIET-KE.md`):
 - **Ký hiệu font thiếu glyph phải vẽ qua `<KyHieu>`** (không đặt `fontFamily`). `→` và `✓`
   không có trong Be Vietnam Pro; trình duyệt tự tìm font dự phòng nên chạy thử trên web
   **không** thấy, nhưng máy thật ra ô vuông rỗng.
+- **Mọi mô tả hướng dẫn trên web dùng `<GoiY>` (`web/src/goi_y.tsx`)** — nút `?` chỉ hiện bong
+  gợi ý khi rê chuột/focus, không bày đoạn mô tả dài dưới ô nhập. Thông báo trạng thái và lỗi
+  vẫn hiện trực tiếp bằng `goi-y giu-hien` / `goi-y chu-xau`. Quy ước + bài kiểm:
+  `tai_lieu/THIET-KE.md` mục 9, `thiet_ke/goi_y.test.mjs`.
 
 ### Chống trùng dữ liệu
 

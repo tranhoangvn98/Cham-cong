@@ -11,6 +11,7 @@ import { tra_hien_tai } from '../chuoi/chi_muc.tsx';
 import { BoPhanTrang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
 import type { NhanVien } from './nhan_vien.tsx';
+import { GoiY } from '../goi_y.tsx';
 
 /** Tep mau nhap lich su: dang de doc nhat, may xuat ra dang nao bo doc cung nhan duoc. */
 const MAU_LAN_QUET = [
@@ -184,10 +185,10 @@ export function TrangLanQuet(): ReactNode {
           </div>
         )}
 
-        <div className="goi-y" style={{ marginBottom: 6 }}>
+        <GoiY style={{ marginBottom: 6 }}>
           Tối đa 31 ngày mỗi lần xem. Bản CSV xuất hết khoảng đã chọn, không giới hạn số dòng
           hiển thị.
-        </div>
+        </GoiY>
       </div>
 
       <HopLoi loi={loi} />
@@ -336,10 +337,10 @@ export function TrangLanQuet(): ReactNode {
                   ma: t.serial, nhan: `${t.ten} (${t.serial})`,
                 })) ?? []}
                 rong="— Nhập từ file (không gắn máy nào) —" nhan="Ghi nhận là của máy" />
-              <div className="goi-y">
+              <GoiY>
                 Chọn đúng máy nếu file này do chính máy đó xuất ra — nhờ vậy bộ chống trùng
                 nhận ra bản ghi máy đã đẩy lên rồi, không tạo bản sao.
-              </div>
+              </GoiY>
             </div>
           }
           khi_dong={() => dat_dang_nhap_tep(false)}
@@ -478,9 +479,9 @@ function FormGanLai(
               nhan: `${n.ma_nv} — ${n.ho_ten}${n.pin_may === null ? '' : ` (PIN hiện tại ${n.pin_may})`}`,
             }))}
             rong="— Chọn nhân viên —" nhan="Nhân viên" />
-          <div className="goi-y">
+          <GoiY>
             Nhớ sửa PIN của nhân viên này thành {pin} ở trang Nhân viên, nếu không log mới vẫn không map được.
-          </div>
+          </GoiY>
         </div>
 
         <div className="luoi luoi-2">
@@ -493,11 +494,11 @@ function FormGanLai(
             <input id="gl-den" type="date" value={den} onChange={(e) => dat_den(e.target.value)} />
           </div>
         </div>
-        <div className="goi-y">
+        <GoiY>
           Để trống cả hai thì hệ thống lấy đúng khoảng nhân viên này giữ PIN {pin} theo bảng Mã
           định danh. Nhân viên chưa từng được khai PIN đó thì máy chủ từ chối — nó không đoán.
           Tháng đã có bảng lương được duyệt cũng bị từ chối.
-        </div>
+        </GoiY>
 
         <div className="hang-nut">
           <button type="submit" className="nut-chinh" disabled={hd.dang_chay || nhan_vien_id === ''}>
