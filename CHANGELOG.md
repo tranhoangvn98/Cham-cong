@@ -2,6 +2,47 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.136.0] — 2026-10-27
+
+**Chọn "Loại lao động" trước tiên — outsource không còn phải điền chi tiết chấm công, và có
+chế độ lương "Không theo bảng lương".**
+
+- **Ô đầu form** "+ Thêm nhân viên" nay là **Loại lao động** (học việc · outsource · thử việc ·
+  chính thức 6 tháng / 1 năm / không xác định kì hạn). Chọn xong form mới mở đúng phần cần
+  điền; ô "Loại hợp đồng" cũ ở giữa form được bỏ (vẫn tạo hợp đồng `hop_dong_lao_dong` như cũ).
+- **Outsource (cộng tác viên)**: hệ thống tự đặt **Chế độ lương = Không theo bảng lương**, bật
+  **Miễn chấm công**, và **ẩn** PIN, máy cửa, ca làm việc, công chuẩn riêng, chấm công điện
+  thoại. Hồ sơ gửi lên cũng bỏ các trường đó (`pin_may`, `ca_lam_id`, `cong_chuan_thang`,
+  `serial_may_cua`, `tu_cap_pin = false`) — người outsource không bị xếp lệnh cập nhật user
+  xuống máy và không bị ghi ngày vắng.
+- **Chế độ lương thứ ba — "Không theo bảng lương"** (`che_do_luong='khong'`, migration 116):
+  không sinh phiếu lương ở cả kỳ VND lẫn khối CNY, trả theo hợp đồng dịch vụ. Không phải sửa
+  bộ tính lương: `ky_luong.ts` lọc `='vn'`, `ky_luong_cny.ts` lọc `='tq'` nên giá trị mới tự
+  nằm ngoài cả hai. Danh sách nhân sự hiện nhãn **ngoài bảng lương**.
+- Đổi loại lao động sang loại khác thì chế độ lương tự trả về VND và bỏ miễn chấm công (chỉ
+  khi hai giá trị đó do chính việc chọn outsource đặt ra) — không âm thầm ghi đè lựa chọn tay.
+- Bộ khóa song ngữ mới: `nv_loai_lao_dong*`, `nv_cdl*`, `nv_ngoai_bang_luong` (vi + zh).
+
+## [1.135.1] — 2026-10-27
+
+**Gộp 16 phòng ban trùng tên — danh sách "Phòng ban kiêm nhiệm" hết cảnh IT / Phòng IT / Phòng
+Công nghệ thông tin chồng nhau.**
+
+- Bảng `phong_ban` có 29 dòng, **16 dòng rỗng hoàn toàn** do dữ liệu sinh qua ba đợt đặt tên
+  (07/08 tên ngắn, 29/08 tên đầy đủ, 20/09 viết tắt). Đã gộp về **13 phòng thật** bằng
+  `trien_khai/gop_phong_ban_trung.sql`: chuyển hết tham chiếu (nhân viên, vị trí, đầu việc, văn
+  bản, thông báo, KPI, kiêm nhiệm, đề nghị thêm nhân sự) rồi mới xóa dòng trống; có chốt chặn
+  `raise exception` nếu còn tham chiếu sót.
+- **Chuẩn là tên ngắn đang giữ dữ liệu**: `Phòng IT`, `Phòng XNK`, `Phòng HCNS`, `Phòng CSKH`,
+  `Phòng Kho TQ`, `Phòng Kho VN`, `Ban Kiểm soát`… Tên đầy đủ và viết tắt đều bị kéo về tên
+  ngắn.
+- **Chặn tái phát**: `ten_phong_chuan()` (`may_chu/src/nhan_su/ten_phong.ts`) nay ánh xạ cả
+  tên đầy đủ lẫn viết tắt về tên ngắn; `POST`/`PATCH /api/phong-ban` chuẩn hóa tên trước khi
+  ghi; công cụ `cap_nhat_phong_ban` và `gan_kho_tq` dùng tên chuẩn (thôi tạo lại
+  `Phòng Kho Trung Quốc`).
+- Bài kiểm `may_chu/test/ten_phong.test.ts`: mọi biến thể phải trỏ về đúng 13 phòng thật, tên
+  lạ giữ nguyên, danh mục nạp JD chỉ dùng phòng thật.
+
 ## [1.135.0] — 2026-10-26
 
 **Vắng hằng ngày không còn đếm người đã nghỉ / người không cần quẹt máy; cảnh báo PIN nói đúng

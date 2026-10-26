@@ -344,6 +344,18 @@ export const CHUOI_VI = {
   nv_hd_chinh_thuc_6: 'Chính thức — 6 tháng',
   nv_hd_chinh_thuc_12: 'Chính thức — 1 năm',
   nv_hd_khong_xac_dinh: 'Chính thức — Không xác định kì hạn',
+  nv_loai_lao_dong: 'Loại lao động',
+  nv_loai_lao_dong_phu:
+    'Chọn trước — form tự mở đúng phần cần điền. Outsource (cộng tác viên) ẩn phần chấm công (PIN, máy cửa, ca làm việc, công chuẩn riêng, chấm công điện thoại), tự đặt "Không theo bảng lương" và bật miễn chấm công — họ trả theo hợp đồng dịch vụ, không thuộc bảng lương công ty.',
+  nv_outsource_da_an:
+    'Lao động outsource: đã ẩn PIN, máy cửa, ca làm việc, công chuẩn riêng và chấm công điện thoại; chế độ lương đặt "Không theo bảng lương" và bật miễn chấm công. Đổi lại nếu người này vẫn quẹt máy hoặc vẫn nhận lương qua bảng lương.',
+  nv_cdl: 'Chế độ lương',
+  nv_cdl_vn: 'Lương Việt Nam (VND) — vào bảng lương',
+  nv_cdl_tq: 'Lương Trung Quốc (CNY) — khối riêng',
+  nv_cdl_khong: 'Không theo bảng lương (outsource, khoán việc)',
+  nv_cdl_phu:
+    'Lương Trung Quốc (CNY): loại khỏi kỳ lương VND (không áp BHXH/thuế TNCN Việt Nam), tính ở khối lương Trung Quốc riêng. Không theo bảng lương: không sinh phiếu lương ở cả hai khối — dùng cho nhân sự outsource/khoán việc, trả theo hợp đồng dịch vụ.',
+  nv_ngoai_bang_luong: 'ngoài bảng lương',
   nv_may_cua: 'Máy cửa (không bắt buộc)',
   nv_may_cua_rong: '— Không chọn: dùng máy chấm công của khối —',
   nv_may_cua_phu:

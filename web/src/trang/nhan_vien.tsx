@@ -70,7 +70,7 @@ interface NhanVien {
   noi_lam_viec_id: string | null;
   noi_lam_viec: string | null;
   lich_nghi_ma: string | null;
-  che_do_luong: 'vn' | 'tq';
+  che_do_luong: 'vn' | 'tq' | 'khong';
   khoi_id: string | null;
   khoi: string | null;
   cong_chuan_thang: string | null;
@@ -261,6 +261,11 @@ export function TrangNhanVien(): ReactNode {
                       )}
                       {n.che_do_luong === 'tq' && (
                         <span className="nhan nhan-canh-bao" style={{ marginLeft: 6 }}>lương CNY</span>
+                      )}
+                      {n.che_do_luong === 'khong' && (
+                        <span className="nhan nhan-mo" style={{ marginLeft: 6 }}>
+                          {tra_hien_tai('nv_ngoai_bang_luong')}
+                        </span>
                       )}
                       {(n.mien_cham_cong || n.khoi_mien_cham_cong) && (
                         <span className="nhan nhan-mo" style={{ marginLeft: 6 }}
@@ -563,6 +568,25 @@ function FormNhanVien(
   const doi = (khoa: keyof typeof f, gt: string | boolean): void =>
     dat_f((cu) => ({ ...cu, [khoa]: gt }));
 
+  /** Lao dong outsource: hop dong dich vu — khong thuoc bang luong, khong can chi tiet cham cong. */
+  const la_outsource = f.loai_hop_dong === 'cong_tac_vien';
+
+  /** Doi loai lao dong: outsource tu dat "Khong theo bang luong" + mien cham cong; doi sang loai
+   *  khac thi tra ve VND va bo mien cham cong neu chinh viec chon outsource dat ra. */
+  const doi_loai_lao_dong = (ma: string): void =>
+    dat_f((cu) => {
+      const outsource = ma === 'cong_tac_vien';
+      const cu_outsource = cu.loai_hop_dong === 'cong_tac_vien';
+      return {
+        ...cu,
+        loai_hop_dong: ma,
+        che_do_luong: outsource
+          ? 'khong'
+          : (cu.che_do_luong === 'khong' ? 'vn' : cu.che_do_luong),
+        mien_cham_cong: outsource ? true : (cu_outsource ? false : cu.mien_cham_cong),
+      };
+    });
+
   const khoi_dang_chon = (khoi.du_lieu ?? []).find((k) => k.id === f.khoi_id) ?? null;
   const may_cua_khoi = cac_may.filter((m) => m.khoi_id !== null && m.khoi_id === f.khoi_id
     && m.dang_bat);
@@ -638,23 +662,27 @@ function FormNhanVien(
     const than = {
       ma_nv: f.ma_nv.trim(),
       ho_ten: f.ho_ten.trim(),
-      pin_may: tu_cap_pin ? null : (f.pin_may.trim() === '' ? null : f.pin_may.trim()),
+      pin_may: (tu_cap_pin || la_outsource)
+        ? null
+        : (f.pin_may.trim() === '' ? null : f.pin_may.trim()),
       ma_erp: f.ma_erp.trim() === '' ? null : f.ma_erp.trim(),
       ma_erp1: f.ma_erp1.trim() === '' ? null : f.ma_erp1.trim(),
       phong_ban_id: f.phong_ban_id === '' ? null : f.phong_ban_id,
-      ca_lam_id: f.ca_lam_id === '' ? null : f.ca_lam_id,
+      ca_lam_id: la_outsource || f.ca_lam_id === '' ? null : f.ca_lam_id,
       ngay_vao: f.ngay_vao === '' ? null : f.ngay_vao,
       so_dien_thoai: f.so_dien_thoai.trim() === '' ? null : f.so_dien_thoai.trim(),
       email: f.email.trim() === '' ? null : f.email.trim(),
       chuc_danh: f.chuc_danh.trim() === '' ? null : f.chuc_danh.trim(),
       vi_tri: f.vi_tri === '' ? null : f.vi_tri,
-      duoc_cham_cong_dien_thoai: f.duoc_cham_cong_dien_thoai,
+      duoc_cham_cong_dien_thoai: la_outsource ? false : f.duoc_cham_cong_dien_thoai,
       mien_cham_cong: f.mien_cham_cong,
       noi_lam_viec_id: f.noi_lam_viec_id === '' ? null : f.noi_lam_viec_id,
       che_do_luong: f.che_do_luong,
       khoi_id: f.khoi_id === '' ? null : f.khoi_id,
       phong_ban_kiem_nhiem: kiem_nhiem,
-      cong_chuan_thang: f.cong_chuan_thang === '' ? null : Number(f.cong_chuan_thang),
+      cong_chuan_thang: la_outsource || f.cong_chuan_thang === ''
+        ? null
+        : Number(f.cong_chuan_thang),
     };
     if (nhan_vien === null) {
       const kq = await hd.chay_lay<KetQuaTaoNhanVien>(() =>
@@ -662,8 +690,8 @@ function FormNhanVien(
           method: 'POST',
           body: {
             ...than,
-            tu_cap_pin,
-            serial_may_cua: f.serial_may_cua === '' ? null : f.serial_may_cua,
+            tu_cap_pin: tu_cap_pin && !la_outsource,
+            serial_may_cua: la_outsource || f.serial_may_cua === '' ? null : f.serial_may_cua,
             tao_tk_ms365: tao_tk_ms,
             tao_tk_he_thong: tao_tk_ht,
             ms365_da_co,
@@ -763,6 +791,30 @@ function FormNhanVien(
           <div className="hop-thong-bao hop-tin">{tra_hien_tai('nv_hop_nhat_phu')}</div>
         )}
 
+        {/* Chon loai lao dong TRUOC: quyet dinh phan nao cua form can dien (outsource khong
+            can chi tiet cham cong). */}
+        {nhan_vien === null && (
+          <div className="o-nhap">
+            <label htmlFor="lld">{tra_hien_tai('nv_loai_lao_dong')}</label>
+            <Chon gia_tri={f.loai_hop_dong}
+              dat_gia_tri={doi_loai_lao_dong}
+              cac_tuy_chon={[
+                { ma: 'hoc_viec', nhan: tra_hien_tai('nv_hd_hoc_viec') },
+                { ma: 'cong_tac_vien', nhan: tra_hien_tai('nv_hd_outsource') },
+                { ma: 'thu_viec', nhan: tra_hien_tai('nv_hd_thu_viec') },
+                { ma: 'xac_dinh_6', nhan: tra_hien_tai('nv_hd_chinh_thuc_6') },
+                { ma: 'xac_dinh_12', nhan: tra_hien_tai('nv_hd_chinh_thuc_12') },
+                { ma: 'khong_xac_dinh', nhan: tra_hien_tai('nv_hd_khong_xac_dinh') },
+              ]}
+              rong={tra_hien_tai('nv_hd_chua_chon')} nhan={tra_hien_tai('nv_loai_lao_dong')} />
+            <GoiY>{tra_hien_tai('nv_loai_lao_dong_phu')}</GoiY>
+          </div>
+        )}
+
+        {nhan_vien === null && la_outsource && (
+          <div className="hop-thong-bao hop-tin">{tra_hien_tai('nv_outsource_da_an')}</div>
+        )}
+
         {nhan_vien === null && (
           <div className="o-nhap">
             <label htmlFor="m365">{tra_hien_tai('nv_ms365_chon')}</label>
@@ -826,7 +878,7 @@ function FormNhanVien(
           </div>
         )}
 
-        {nhan_vien === null ? (
+        {nhan_vien === null && !la_outsource && (
           <>
             <div className="o-nhap-ngang" style={{ marginBottom: tu_cap_pin ? 0 : 8 }}>
               <input id="tcp" type="checkbox" checked={tu_cap_pin}
@@ -861,7 +913,8 @@ function FormNhanVien(
               <GoiY>{tra_hien_tai('nv_may_cua_phu')}</GoiY>
             </div>
           </>
-        ) : (
+        )}
+        {nhan_vien !== null && (
           <div className="o-nhap">
             <label htmlFor="pin">PIN trên máy chấm công</label>
             <input id="pin" value={f.pin_may} onChange={(e) => doi('pin_may', e.target.value)}
@@ -909,13 +962,15 @@ function FormNhanVien(
               cac_tuy_chon={cac_phong.map((p): TuyChonChon => ({ ma: p.id, nhan: p.ten }))}
               rong="— Chưa gán —" nhan="Phòng ban" />
           </div>
-          <div className="o-nhap">
-            <label htmlFor="cl">Ca làm việc</label>
-            <Chon gia_tri={f.ca_lam_id}
-              dat_gia_tri={(ma) => doi('ca_lam_id', ma)}
-              cac_tuy_chon={cac_ca.map((c): TuyChonChon => ({ ma: c.id, nhan: c.ten }))}
-              rong="— Chưa gán —" nhan="Ca làm việc" />
-          </div>
+          {!la_outsource && (
+            <div className="o-nhap">
+              <label htmlFor="cl">Ca làm việc</label>
+              <Chon gia_tri={f.ca_lam_id}
+                dat_gia_tri={(ma) => doi('ca_lam_id', ma)}
+                cac_tuy_chon={cac_ca.map((c): TuyChonChon => ({ ma: c.id, nhan: c.ten }))}
+                rong="— Chưa gán —" nhan="Ca làm việc" />
+            </div>
+          )}
         </div>
 
         <div className="o-nhap">
@@ -1003,19 +1058,16 @@ function FormNhanVien(
         </div>
 
         <div className="o-nhap">
-          <label htmlFor="cdl">Chế độ lương</label>
+          <label htmlFor="cdl">{tra_hien_tai('nv_cdl')}</label>
           <Chon gia_tri={f.che_do_luong}
             dat_gia_tri={(ma) => doi('che_do_luong', ma)}
             cac_tuy_chon={[
-              { ma: 'vn', nhan: 'Lương Việt Nam (VND) — vào bảng lương' },
-              { ma: 'tq', nhan: 'Lương Trung Quốc (CNY) — khối riêng' },
+              { ma: 'vn', nhan: tra_hien_tai('nv_cdl_vn') },
+              { ma: 'tq', nhan: tra_hien_tai('nv_cdl_tq') },
+              { ma: 'khong', nhan: tra_hien_tai('nv_cdl_khong') },
             ]}
-            nhan="Chế độ lương" />
-          <GoiY>
-            Chọn <strong>Lương Trung Quốc</strong> cho nhân sự nhận lương bằng CNY: họ được
-            <strong> loại khỏi kỳ lương VND</strong> (không áp BHXH/thuế TNCN Việt Nam) và tính ở
-            khối lương Trung Quốc riêng.
-          </GoiY>
+            nhan={tra_hien_tai('nv_cdl')} />
+          <GoiY>{tra_hien_tai('nv_cdl_phu')}</GoiY>
         </div>
 
         <div className="o-nhap">
@@ -1032,36 +1084,21 @@ function FormNhanVien(
           </GoiY>
         </div>
 
-        <div className="o-nhap">
-          <label htmlFor="ccr">{tra_hien_tai('nv_cong_chuan_rieng')}</label>
-          <input id="ccr" type="number" min="0" max="31" step="0.5"
-            value={f.cong_chuan_thang} onChange={(e) => doi('cong_chuan_thang', e.target.value)}
-            placeholder="—" />
-          <GoiY>{tra_hien_tai('nv_cong_chuan_rieng_phu')}</GoiY>
-        </div>
+        {!la_outsource && (
+          <div className="o-nhap">
+            <label htmlFor="ccr">{tra_hien_tai('nv_cong_chuan_rieng')}</label>
+            <input id="ccr" type="number" min="0" max="31" step="0.5"
+              value={f.cong_chuan_thang} onChange={(e) => doi('cong_chuan_thang', e.target.value)}
+              placeholder="—" />
+            <GoiY>{tra_hien_tai('nv_cong_chuan_rieng_phu')}</GoiY>
+          </div>
+        )}
 
         <div className="luoi luoi-2">
           <div className="o-nhap">
             <label htmlFor="nv">Ngày vào làm</label>
             <input id="nv" type="date" value={f.ngay_vao} onChange={(e) => doi('ngay_vao', e.target.value)} />
           </div>
-          {nhan_vien === null && (
-            <div className="o-nhap">
-              <label htmlFor="lhd">{tra_hien_tai('nv_loai_hop_dong')}</label>
-              <Chon gia_tri={f.loai_hop_dong}
-                dat_gia_tri={(ma) => doi('loai_hop_dong', ma)}
-                cac_tuy_chon={[
-                  { ma: 'hoc_viec', nhan: tra_hien_tai('nv_hd_hoc_viec') },
-                  { ma: 'cong_tac_vien', nhan: tra_hien_tai('nv_hd_outsource') },
-                  { ma: 'thu_viec', nhan: tra_hien_tai('nv_hd_thu_viec') },
-                  { ma: 'xac_dinh_6', nhan: tra_hien_tai('nv_hd_chinh_thuc_6') },
-                  { ma: 'xac_dinh_12', nhan: tra_hien_tai('nv_hd_chinh_thuc_12') },
-                  { ma: 'khong_xac_dinh', nhan: tra_hien_tai('nv_hd_khong_xac_dinh') },
-                ]}
-                rong={tra_hien_tai('nv_hd_chua_chon')} nhan={tra_hien_tai('nv_loai_hop_dong')} />
-              <GoiY>{tra_hien_tai('nv_loai_hop_dong_phu')}</GoiY>
-            </div>
-          )}
         </div>
 
         <div className="luoi luoi-2">
@@ -1090,15 +1127,19 @@ function FormNhanVien(
           </div>
         </div>
 
-        <div className="o-nhap-ngang">
-          <input id="ccdt" type="checkbox" checked={f.duoc_cham_cong_dien_thoai}
-            onChange={(e) => doi('duoc_cham_cong_dien_thoai', e.target.checked)} />
-          <label htmlFor="ccdt">Cho phép chấm công bằng điện thoại (GPS + selfie)</label>
-        </div>
-        <GoiY style={{ marginTop: -8, marginBottom: 12 }}>
-          Chỉ bật cho người thường xuyên đi công tác / công trường. Chấm công ngoài phạm vi địa điểm
-          đã khai vẫn phải chờ nhân sự duyệt mới được tính công.
-        </GoiY>
+        {!la_outsource && (
+          <>
+            <div className="o-nhap-ngang">
+              <input id="ccdt" type="checkbox" checked={f.duoc_cham_cong_dien_thoai}
+                onChange={(e) => doi('duoc_cham_cong_dien_thoai', e.target.checked)} />
+              <label htmlFor="ccdt">Cho phép chấm công bằng điện thoại (GPS + selfie)</label>
+            </div>
+            <GoiY style={{ marginTop: -8, marginBottom: 12 }}>
+              Chỉ bật cho người thường xuyên đi công tác / công trường. Chấm công ngoài phạm vi địa điểm
+              đã khai vẫn phải chờ nhân sự duyệt mới được tính công.
+            </GoiY>
+          </>
+        )}
 
         <div className="o-nhap-ngang">
           <input id="mcc" type="checkbox" checked={f.mien_cham_cong}

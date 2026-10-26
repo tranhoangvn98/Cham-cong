@@ -28,6 +28,7 @@ import { CAC_HE_THONG, MA_CAC_HE_THONG } from '../dinh_danh/he_thong.ts';
 import { cap_pin, doc_dai_pin, goi_y_pin } from '../dinh_danh/cap_pin.ts';
 import { doi_chieu_may } from '../dinh_danh/doi_chieu_may.ts';
 import { tao_ho_so_nhan_su } from '../nhan_su/tao_ho_so.ts';
+import { ten_phong_chuan } from '../nhan_su/ten_phong.ts';
 import { LOAI_HOP_DONG_KHOI_TAO, kiem_hop_dong_khoi_tao } from '../nhan_su/hop_dong_khoi_tao.ts';
 import { MA_VI_TRI } from '../nhan_su/vi_tri.ts';
 import { dong_bo_vi_tri_ho_so } from '../to_chuc/ghi.ts';
@@ -69,7 +70,8 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
 
   app.post('/phong-ban', { preHandler: can_nhan_su }, async (req, res) => {
     const b = than(req.body);
-    const ten = chuoi_bat_buoc(b, 'ten', { toi_da: 120 });
+    // Chuan hoa ten (IT -> Phòng IT, XNK -> Phòng XNK…) de khong sinh phong ban trung.
+    const ten = ten_phong_chuan(chuoi_bat_buoc(b, 'ten', { toi_da: 120 }));
     const truong_phong_id = uuid(b, 'truong_phong_id');
     const dong = await ghi_bat_trung(
       () => truy_van_mot<{ id: string }>(
@@ -84,7 +86,8 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   app.patch('/phong-ban/:id', { preHandler: can_nhan_su }, async (req) => {
     const id = lay_id(req);
     const b = than(req.body);
-    const ten = chuoi(b, 'ten', { toi_da: 120 });
+    const ten_tho = chuoi(b, 'ten', { toi_da: 120 });
+    const ten = ten_tho === null ? null : ten_phong_chuan(ten_tho);
     const truong_phong_id = uuid(b, 'truong_phong_id');
     const so = await thuc_thi(
       `update phong_ban
@@ -1670,7 +1673,7 @@ function doc_nhan_vien(
     chuoi(b, 'email', { toi_da: 200 }),
     luan_ly(b, 'duoc_cham_cong_dien_thoai', false),
     uuid(b, 'noi_lam_viec_id'),
-    trong_tap(b, 'che_do_luong', ['vn', 'tq'] as const, { bat_buoc: false }) ?? 'vn',
+    trong_tap(b, 'che_do_luong', ['vn', 'tq', 'khong'] as const, { bat_buoc: false }) ?? 'vn',
     uuid(b, 'khoi_id'),
     chuoi(b, 'chuc_danh', { toi_da: 200 }),
     trong_tap(b, 'vi_tri', MA_VI_TRI, { bat_buoc: false }),

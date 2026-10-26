@@ -272,6 +272,8 @@ Nguyên tắc rà soát (17/09/2026): mọi quy tắc lương/công áp **chung 
 phải được duyệt và ghi ở đây. Danh sách hiện hành:
 
 1. **Khối Trung Quốc** (`che_do_luong='tq'`) — bảng lương CNY riêng, không BHXH/thuế VN.
+   **Ngoài bảng lương** (`che_do_luong='khong'`, mặc định cho lao động outsource) — không sinh
+   phiếu lương ở cả kỳ VND lẫn CNY; trả theo hợp đồng dịch vụ bên ngoài.
 2. **Khối Kho Hà Nội** — T7 đủ công + thêm giờ ngày thường ×1,0 (xem mục trên).
 3. **Loại hợp đồng** — thử việc ×85% lương cứng (BLLĐ Đ.26); thử việc + học việc không đóng
    BHXH bắt buộc (luật); thời vụ/CTV không hưởng phụ cấp khối; thử việc không hưởng PC trang

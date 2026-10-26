@@ -6,14 +6,14 @@
 //   npm run gan_kho_tq -- --ten "A,B" --that # gán thêm người theo tên (ngoài phòng Kho TQ)
 //
 // TIÊU CHÍ gán:
-//   1. Phòng ban = "Phòng Kho Trung Quốc" (đã có từ lệnh cap_nhat_phong_ban), CỘNG
+//   1. Phòng ban = "Phòng Kho TQ" (đã có từ lệnh cap_nhat_phong_ban), CỘNG
 //   2. Các tên chỉ định (mặc định: Thân Thị Vân Anh; thêm bằng --ten "Tên 1,Tên 2").
 //
 // MẶC ĐỊNH CHẠY THỬ theo đúng nếp các lệnh khác — xem trước rồi mới --that.
 import { truy_van, truy_van_mot, thuc_thi, dong_pool } from '../csdl/ket_noi.ts';
 
 const TEN_NOI = 'Kho Trung quốc';
-const PHONG_TQ = 'Phòng Kho Trung Quốc';
+const PHONG_TQ = 'Phòng Kho TQ';
 const TEN_CHI_DINH_MAC_DINH = ['Thân Thị Vân Anh', 'Huang Shu Ping', 'Huang Li Hua'];
 
 /** Bỏ dấu + thường hoá để khớp tên dù lệch dấu/hoa-thường. */

@@ -3,6 +3,20 @@
 Câu hỏi vận hành (07/10/2026): nhân sự outsource chuyển tiền thế nào — cho vào bảng lương
 trả cùng nhân sự công ty hay làm lệnh chuyển riêng?
 
+> **Cập nhật 27/10/2026 — hai nhóm outsource, chọn ở ô "Chế độ lương".**
+>
+> Form thêm nhân sự nay hỏi **Loại lao động** trước tiên. Chọn *Outsource (cộng tác viên)* thì
+> hệ thống tự đặt `che_do_luong = 'khong'` (**Không theo bảng lương**) và bật *Miễn chấm công*,
+> đồng thời ẩn PIN, máy cửa, ca làm việc, công chuẩn riêng và chấm công điện thoại.
+>
+> - **Không theo bảng lương** (mặc định cho outsource): **không sinh phiếu lương** ở cả kỳ VND
+>   lẫn khối CNY — trả theo hợp đồng dịch vụ bên ngoài. Người này vẫn có hồ sơ `nhan_vien`,
+>   tài khoản đăng nhập và được giao việc như thường.
+> - **Vẫn theo bảng lương** (ngoại lệ): đổi ô Chế độ lương về *Lương Việt Nam (VND)* thì mọi
+>   bước dưới đây áp dụng như cũ.
+>
+> Mục "Quyết định" bên dưới giữ nguyên cho nhóm thứ hai.
+
 ## Quyết định
 
 Chốt: **nhân sự outsource vào chung bảng lương** (có phiếu lương, đối soát được, lưu hồ sơ

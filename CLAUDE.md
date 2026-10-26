@@ -89,6 +89,20 @@ Bốn luật đã có tiền lệ (chi tiết ở `tai_lieu/THIET-KE.md`):
 Chống trùng bằng **ràng buộc UNIQUE + `on conflict do nothing`**, không dùng
 "select trước rồi insert" — hai lô đến cùng lúc sẽ lọt qua khe đó.
 
+### Tên phòng ban — một chuẩn duy nhất
+
+`phong_ban.ten` từng sinh trùng 3 đợt (07/08 tên ngắn, 29/08 tên đầy đủ, 20/09 viết tắt):
+29 dòng, **16 dòng rỗng**, màn hình "Phòng ban kiêm nhiệm" liệt kê đủ 29. Đã gộp 27/10/2026
+(`trien_khai/gop_phong_ban_trung.sql`) còn **13 phòng**.
+
+- **Chuẩn = tên ngắn đang giữ dữ liệu**: `Phòng IT`, `Phòng XNK`, `Phòng HCNS`, `Phòng CSKH`,
+  `Phòng Kế toán`, `Phòng Kho TQ`, `Phòng Kho VN`, `Ban Kiểm soát`…
+- Mọi chỗ tạo/đọc tên phòng **phải đi qua `ten_phong_chuan()`**
+  (`may_chu/src/nhan_su/ten_phong.ts`): công cụ nhập Excel, `POST|PATCH /api/phong-ban`.
+  Tên đầy đủ (`Phòng Công nghệ thông tin`) và viết tắt (`IT`, `XNK`) đều bị kéo về tên ngắn.
+- Bài kiểm chống tái phát: `may_chu/test/ten_phong.test.ts` (mọi biến thể phải trỏ về đúng 13
+  phòng thật). Sửa bảng ánh xạ là phải sửa cả danh sách 13 phòng trong bài kiểm.
+
 ### Nhận việc / nhận lệnh
 
 Nhận việc từ hàng đợi bằng **một câu UPDATE nguyên tử** (`update ... where id in (select

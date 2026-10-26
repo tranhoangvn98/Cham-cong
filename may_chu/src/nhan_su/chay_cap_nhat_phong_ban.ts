@@ -25,11 +25,12 @@ function tap_tu(s: string): string {
 interface Nguoi { ho_ten: string; phong_ban: string | null; chuc_danh: string | null; }
 
 // Luon tao (du chua ai duoc gan) — chu cong ty yeu cau mo san ba phong nay.
-const PHONG_LUON_TAO = ['Phòng Kho Trung Quốc', 'Phòng Kho Hà Nội', 'Phòng Lái xe'];
+// Ten phai trung voi TEN_PHONG_CHUAN (ten ngan dang giu du lieu that).
+const PHONG_LUON_TAO = ['Phòng Kho TQ', 'Phòng Kho Hà Nội', 'Phòng Lái xe'];
 
-/** Ten phong ban day du tu (sheet, o "Phong ban"). Sheet kho Trung -> gom het ve Kho Trung Quoc. */
+/** Ten phong ban chuan tu (sheet, o "Phong ban"). Sheet kho Trung -> gom het ve Kho TQ. */
 function phong_cua(sheet: string, pb: string | null): string | null {
-  if (sheet.toLowerCase().includes('kho trung')) return 'Phòng Kho Trung Quốc';
+  if (sheet.toLowerCase().includes('kho trung')) return 'Phòng Kho TQ';
   const raw = (pb ?? '').replace(/\s+/g, ' ').trim();
   if (raw === '') return null;
   return ten_phong_chuan(raw);   // khong biet -> giu nguyen, hien ra de kiem

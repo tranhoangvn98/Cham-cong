@@ -8,6 +8,12 @@
 Khi nhân sự bấm **+ Thêm nhân viên** (trang Nhân viên) và lưu, hệ thống thực hiện trọn một
 chuỗi tích hợp mà không cần thao tác tay thêm:
 
+> **Ô đầu tiên của form là "Loại lao động"** (từ 27/10/2026) — chọn trước để form mở đúng
+> phần cần điền. Chọn *Outsource (cộng tác viên)* thì hệ thống tự đặt **Chế độ lương = Không
+> theo bảng lương**, bật **Miễn chấm công** và **ẩn** PIN, máy cửa, ca làm việc, công chuẩn
+> riêng, chấm công điện thoại — bước 3 dưới đây không chạy. Xem
+> [`NHAN-SU-OUTSOURCE.md`](NHAN-SU-OUTSOURCE.md).
+
 1. **Sinh mã nhân viên** — `NV` + mã ngắn khối + MMYY + số thứ tự (`NVKHN05260001`). Không
    nhập tay.
 2. **Lưu hồ sơ** (họ tên, chức danh, vị trí, phòng ban, ca làm, email, …).
