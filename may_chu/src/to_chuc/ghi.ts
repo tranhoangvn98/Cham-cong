@@ -11,7 +11,7 @@ import { LoiDauVao, LoiKhongQuyen, LoiKhongTim } from '../tien_ich/kiem_tra.ts';
 import { la_vai_tro_nhan_su } from '../bao_mat/quyen_ho_so.ts';
 import type { NguoiXem } from '../viec/quyen.ts';
 import { dau_viec_theo_id } from './doc.ts';
-import { dau_viec_cua_vi_tri, tao_mau_tu_dau_viec, tat_mau_theo_vi_tri } from './sinh_mau.ts';
+import { dau_viec_cua_vi_tri, tao_mau_tu_dau_viec, tat_mau_theo_vi_tri, tu_dong_sinh_duoc } from './sinh_mau.ts';
 import { BAC_VI_TRI_TO_CHUC, ma_vi_tri_to_chuc } from '../nhan_su/vi_tri.ts';
 import type { CapBac, DongBuoc, DongRaci, TanSuat } from './kieu.ts';
 
@@ -351,8 +351,7 @@ export async function gan_vi_tri(
 /** Bo mot vi tri cua nhan vien (tat mau dinh ky tuong ung). */
 export async function bo_vi_tri(
   nd: NguoiXem, nhan_vien_id: string, vi_tri_id: string,
-): Promise<void> {
-  if (!la_vai_tro_nhan_su(nd.vai_tro) && nd.nv !== nhan_vien_id) {
+): Promise<void> {  if (!la_vai_tro_nhan_su(nd.vai_tro) && nd.nv !== nhan_vien_id) {
     throw new LoiKhongQuyen('Chỉ nhân sự mới được gỡ vị trí của người khác.');
   }
   await trong_giao_dich(async (khach) => {
@@ -367,6 +366,80 @@ export async function bo_vi_tri(
 }
 
 // ---------------------------------------------------------------- dong bo vi tri ho so
+/**
+ * Gan cac vi tri JD (danh muc To chuc & trach nhiem) cho ho so VUA tao — chay TRONG
+ * transaction cua tao ho so (cung nguyen tac "mot transaction" cua luong tao nhan su).
+ *
+ * Khac `gan_vi_tri()` (thao tac tay tren trang To chuc):
+ *   - khong mo transaction rieng, khong goi `dong_bo_chuc_danh` qua pool;
+ *   - vi tri NGUOI DUNG CHON DAU TIEN thanh vi tri CHINH; tu choi vi tri bac (`bac.%`)
+ *     vi vung do do ho so tu dong dong bo;
+ *   - sinh mau viec dinh ky tu `dau_viec` cua tung vi tri (cung transaction), nen loi o
+ *     bat ky vi tri nao cung cuon ca ho so — khong co nguoi "nua co viec, nua khong".
+ *
+ * Tra ve so vi tri da gan + so dau viec se sinh viec dinh ky (chi dem muc dang bat va
+ * co tan suat sinh tu dong), de phan hoi cho nguoi lap ho so biet viec da giao.
+ */
+export async function gan_vi_tri_khi_tao_ho_so(
+  khach: pg.PoolClient,
+  nhan_vien_id: string,
+  vi_tri_ids: readonly string[],
+  chuc_danh_nhap: string | null,
+): Promise<{ so_vi_tri: number; so_dau_viec: number }> {
+  const ds = [...new Set(vi_tri_ids.filter((x) => x.trim() !== ''))];
+  if (ds.length === 0) return { so_vi_tri: 0, so_dau_viec: 0 };
+
+  const dong = await khach.query<{ id: string; ten: string }>(
+    `select id, ten from vi_tri
+      where id = any($1::uuid[]) and dang_hoat_dong and ma not like 'bac.%'`,
+    [ds],
+  );
+  if (dong.rows.length !== ds.length) {
+    throw new LoiDauVao(
+      'Có vị trí không tồn tại, đã ngừng dùng hoặc là vị trí bậc — chọn lại vị trí trong Tổ chức & trách nhiệm.');
+  }
+
+  // Vi tri chinh = vi tri NGUOI DUNG CHON DAU TIEN. Phai ha co chinh cua MOI dong cu (ke ca
+  // vi tri bac vua dong bo tu ho so) TRUOC khi chen: unique index chi cho mot dong la_chinh.
+  await khach.query(
+    'update nhan_vien_vi_tri set la_chinh = false where nhan_vien_id = $1',
+    [nhan_vien_id],
+  );
+  const chinh_id = ds[0] as string;
+  for (const [i, id] of ds.entries()) {
+    await khach.query(
+      `insert into nhan_vien_vi_tri(nhan_vien_id, vi_tri_id, la_chinh)
+       values ($1,$2,$3)
+       on conflict (nhan_vien_id, vi_tri_id)
+       do update set la_chinh = excluded.la_chinh`,
+      [nhan_vien_id, id, i === 0],
+    );
+  }
+
+  // Chuc danh: giu nguyen chu nguoi lap ho so tu go; chi dien ten vi tri chinh khi o do TRONG.
+  const ten_chinh = dong.rows.find((d) => d.id === chinh_id)?.ten ?? null;
+  const chu_danh_trong = (chuc_danh_nhap ?? '').trim() === '';
+  await khach.query(
+    `update nhan_vien
+        set vi_tri_chinh_id = $2,
+            chuc_danh = case when $3::boolean then $4 else chuc_danh end,
+            cap_nhat_luc = now()
+      where id = $1`,
+    [nhan_vien_id, chinh_id, chu_danh_trong, ten_chinh],
+  );
+
+  // Sinh mau viec dinh ky tu dau viec cua TUNG vi tri.
+  let so_dau_viec = 0;
+  for (const id of ds) {
+    const dvs = await dau_viec_cua_vi_tri(id);
+    for (const dv of dvs) {
+      await tao_mau_tu_dau_viec(khach, dv, nhan_vien_id);
+      if (dv.dang_bat && tu_dong_sinh_duoc(dv.tan_suat)) so_dau_viec += 1;
+    }
+  }
+  return { so_vi_tri: ds.length, so_dau_viec };
+}
+
 /**
  * Dong bo vi tri (bac) tu ho so nhan su (nhan_vien.vi_tri) sang co cau to chuc:
  * tao vi tri bac tuong ung trong bang `vi_tri` (neu chua co) roi gan nhan vien vao
@@ -454,8 +527,7 @@ export async function dong_bo_vi_tri_ho_so(
 }
 
 /** Dong bo nhan_vien.chuc_danh + vi_tri_chinh_id theo cac vi tri dang giu. */
-async function dong_bo_chuc_danh(nhan_vien_id: string): Promise<void> {
-  const chinh = await truy_van_mot<{ vi_tri_id: string; ten: string }>(
+async function dong_bo_chuc_danh(nhan_vien_id: string): Promise<void> {  const chinh = await truy_van_mot<{ vi_tri_id: string; ten: string }>(
     `select nvv.vi_tri_id, vt.ten from nhan_vien_vi_tri nvv
        join vi_tri vt on vt.id = nvv.vi_tri_id
       where nvv.nhan_vien_id = $1 and nvv.la_chinh limit 1`,

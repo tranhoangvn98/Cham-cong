@@ -204,3 +204,17 @@ export async function tai_khoan_nhan_su(): Promise<string[]> {
   );
   return dong.map((d) => d.id);
 }
+
+/**
+ * Tai khoan QUAN TRI VIEN dang hoat dong — nguoi nhan bao "co nhan su moi".
+ *
+ * Chi admin: viec them ho so do nguoi co quyen nhan su tu lam, admin khong duyet nua ma chi
+ * can biet (yeu cau 26/10/2026).
+ */
+export async function tai_khoan_quan_tri(): Promise<string[]> {
+  const dong = await truy_van<{ id: string }>(
+    `select id from nguoi_dung
+      where dang_hoat_dong = true and vai_tro = 'admin'`,
+  );
+  return dong.map((d) => d.id);
+}

@@ -26,6 +26,7 @@ const { bat_soan_van_ban, dung_soan_van_ban } = await import('../src/su_kien/soa
 const { nghi_viec_den_han } = await import('../src/su_kien/lich_chay.ts');
 const { quet_quy_trinh_thoi_viec } = await import('../src/thoi_viec/tu_dong.ts');
 const { chay_dung_hoat_dong } = await import('../src/thoi_viec/chay_dung.ts');
+const { bo_qua_muc } = await import('../src/thoi_viec/nghiep_vu.ts');
 const { dat_cau_hinh_thoi_viec } = await import('../src/thoi_viec/quy_trinh.ts');
 const { cong_ngay, ngay_dia_phuong } = await import('../src/tien_ich/thoi_gian.ts');
 
@@ -428,24 +429,49 @@ test('quyet dinh nghi viec: phat hanh gan tep ho so, lich dem hoi to quy trinh, 
   );
   assert.equal(tl?.trang_thai, 'da_len_phan_mem', 'checklist QĐ nghỉ việc da len phan mem');
 
-  // REQ-G2-05: lich dem KHONG tu khoa nua — thay vao do hoi to thanh quy trinh thoi viec
-  // (lastday chot theo QD, muc nhan_vien bo qua) de ca dang do khong lot.
+  // Phat hanh QD = dua nguoi vao quy trinh NGAY (khong cho den lastday). Lich dem chi la
+  // luoi an toan: goi lai KHONG duoc tao quy trinh thu hai.
   await nghi_viec_den_han(hom_nay, () => {});
 
   const nv_con = await truy_van_mot<{ dang_hoat_dong: boolean }>(
     'select dang_hoat_dong from nhan_vien where id = $1', [NV_B]);
   assert.equal(nv_con?.dang_hoat_dong, true, 'lich dem khong tu khoa nhan vien');
 
-  const qt = await truy_van_mot<{ id: string; trang_thai: string; lastday_da_chot: boolean }>(
-    `select id::text, trang_thai, lastday_da_chot from quy_trinh_thoi_viec
-      where nhan_vien_id = $1`, [NV_B]);
-  assert.notEqual(qt, null, 'quyet dinh nghi viec duoc hoi to thanh quy trinh');
+  const qt = await truy_van_mot<{
+    id: string; trang_thai: string; lastday_da_chot: boolean;
+    nguon_tao: string; nhom_quy_trinh: string | null;
+  }>(
+    `select id::text, trang_thai, lastday_da_chot, nguon_tao, nhom_quy_trinh
+       from quy_trinh_thoi_viec where nhan_vien_id = $1`, [NV_B]);
+  assert.notEqual(qt, null, 'QD phai tao quy trinh ngay khi phat hanh');
   assert.equal(qt?.lastday_da_chot, true, 'lastday chot theo quyet dinh');
+  assert.equal(qt?.nguon_tao, 'quyet_dinh');
+  assert.notEqual(qt?.nhom_quy_trinh, null, 'quy trinh phai chup nhanh hop dong');
+
+  const so_qt = await truy_van_mot<{ so: number }>(
+    'select count(*)::int as so from quy_trinh_thoi_viec where nhan_vien_id = $1', [NV_B]);
+  assert.equal(so_qt?.so, 1, 'mot nguoi chi mot quy trinh mo');
 
   const da_chay = await truy_van_mot<{ da_chay: boolean }>(
     'select (nghi_viec_da_chay_luc is not null) as da_chay from thong_bao_nhap_ai where id = $1',
     [id]);
-  assert.equal(da_chay?.da_chay, true, 'quyet dinh duoc danh dau da chay');
+  assert.equal(da_chay?.da_chay, true, 'quyet dinh duoc danh dau da xu ly');
+
+  // Con thoi han bao truoc -> muc nhan vien GIU MO de ban giao truoc lastday.
+  const qt_id = qt?.id ?? '';
+  const muc_nv = await truy_van<{ id: string; ma_muc: string; trang_thai: string }>(
+    `select id::text, ma_muc, trang_thai from muc_checklist
+      where quy_trinh_id = $1 and loai_tu_dong = 'nhan_vien' order by ma_muc`, [qt_id]);
+  assert.equal(muc_nv.length > 0, true, 'QD con thoi han phai giu muc ban giao mo');
+  assert.equal(muc_nv.some((m) => m.trang_thai === 'chua'), true);
+  assert.equal(muc_nv.find((m) => m.ma_muc === 'xac_nhan_lastday')?.trang_thai, 'xong',
+    'lastday do QD an dinh nen tu xac nhan');
+
+  // Nhan su bo qua cac muc nhan vien con lai (thuc te nhan vien lam + dinh kem bang chung).
+  for (const m of muc_nv) {
+    if (m.trang_thai !== 'chua') continue;
+    await bo_qua_muc(m.id, true, 'e2e: bo qua de chay Cong 2');
+  }
 
   // Muc tu dong chay nen (trong test goi truc tiep thay cho vong lich) -> san sang chot.
   await quet_quy_trinh_thoi_viec(() => {});
@@ -493,6 +519,39 @@ test('quyet dinh nghi viec: phat hanh gan tep ho so, lich dem hoi to quy trinh, 
     `select count(*)::int as so from hop_thu_di
       where loai_su_kien = 'nhan_su.nghi_viec' and du_lieu ->> 'ma_nv' = 'AI-NVB'`);
   assert.equal(dem_cong?.so, 1, 'chay lai khong sinh su kien trung');
+});
+
+test('hoi to: quyet dinh cu (lastday da qua) bo qua muc nhan vien, khong tu khoa', async () => {
+  const { dam_bao_quy_trinh_tu_qd } = await import('../src/thoi_viec/quy_trinh.ts');
+  const { trong_giao_dich } = await import('../src/csdl/ket_noi.ts');
+  const hom_nay = ngay_dia_phuong(new Date());
+  const qua_khu = cong_ngay(hom_nay, -10);
+
+  await thuc_thi('delete from quy_trinh_thoi_viec where nhan_vien_id = $1', [NV_A]);
+  await thuc_thi(`delete from don_tu where nhan_vien_id = $1 and loai = 'thoi_viec'`, [NV_A]);
+  await thuc_thi(
+    'update nhan_vien set dang_hoat_dong = true, ngay_nghi_viec = null where id = $1', [NV_A]);
+
+  const kq = await trong_giao_dich((khach) =>
+    dam_bao_quy_trinh_tu_qd(khach, NV_A, qua_khu, { hoi_to: true }));
+  assert.notEqual(kq.quy_trinh_id, null, 'phai tao duoc quy trinh hoi to');
+  assert.equal(kq.tao_moi_qt, true, 'lan dau phai tao moi quy trinh');
+
+  const muc = await truy_van<{ trang_thai: string }>(
+    `select trang_thai from muc_checklist
+      where quy_trinh_id = $1 and loai_tu_dong = 'nhan_vien'`,
+    [kq.quy_trinh_id]);
+  assert.equal(muc.length > 0, true);
+  assert.equal(muc.every((m) => m.trang_thai === 'bo_qua'), true,
+    'hoi to phai bo qua toan bo muc nhan vien');
+
+  const nv = await truy_van_mot<{ dang_hoat_dong: boolean }>(
+    'select dang_hoat_dong from nhan_vien where id = $1', [NV_A]);
+  assert.equal(nv?.dang_hoat_dong, true, 'quy trinh khong tu khoa nhan vien');
+
+  // Don sach de cac test sau khong bi dinh quy trinh mo cua NV_A.
+  await thuc_thi('delete from quy_trinh_thoi_viec where id = $1', [kq.quy_trinh_id]);
+  await thuc_thi(`delete from don_tu where nhan_vien_id = $1 and loai = 'thoi_viec'`, [NV_A]);
 });
 
 test('tep kem: soan dinh kem -> ban hanh chuyen sang thong bao -> nhan vien tai duoc, ngoai phong 404', async () => {

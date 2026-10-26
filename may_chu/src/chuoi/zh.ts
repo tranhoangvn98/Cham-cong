@@ -59,6 +59,12 @@ export const CHUOI_ZH = {
   // ================================ 助手
   tl_chua_co_quy_trinh: '您当前没有进行中的离职流程。',
 
+  // ================================ 离职流程
+  tv_thong_bao_qd_tieu_de: '离职决定已发布',
+  tv_thong_bao_qd_noi_dung: '您已进入离职流程 — 最后工作日为 {ngay}。请打开离职指引，在该日期前完成交接。',
+  tv_thong_bao_qt_moi_tieu_de: '新的离职流程',
+  tv_thong_bao_qt_moi_noi_dung: '{ten}（{ma}）— 最后工作日为 {ngay}。请进入离职页面指定交接接收人。',
+
   // ================================ 邮件通知（框架 + 签名）
   email_chu_de_tien_to: '考勤',
   email_thong_bao_noi_bo: '内部通知',
@@ -94,4 +100,23 @@ export const CHUOI_ZH = {
   qn_loi_erp1: 'ERP1 未停用',
   qn_loi_m365_mo: 'M365 仍可登录',
   qn_loi_m365_phep: 'M365 仍持有许可证',
+
+  // ================================ bao PIN may cham cong cho nguoi moi
+  pin_tieu_de: '您的考勤机 PIN：{pin}',
+  pin_noi_dung:
+    '您在考勤机上的 PIN 为 {pin}{may}。到达考勤机后请选择“登记”，输入该号码完成指纹、人脸或卡片的登记。PIN 是您的考勤身份，请勿告知他人——用该号码的每次打卡都会计入您的出勤。',
+  pin_noi_dung_may: '（已下发至设备：{may}）',
+
+  // ================================ 通知管理员：有新员工
+  ns_moi_tieu_de: '有新员工：{ho_ten}',
+  ns_moi_noi_dung: '{ho_ten}（{ma_nv}）已加入系统。请打开“员工”页面查看档案——无需审批。',
+
+  // ================================ Microsoft 365：新账号获得许可证
+  m365_moi_tieu_de: 'Microsoft 365 有新账号获得许可证',
+  m365_moi_noi_dung: '{danh_sach} 刚获得 Microsoft 365 许可证——请打开“员工”页面为其添加档案。',
+
+  // ================================ 向创建人发送 Microsoft 初始账号
+  tk365_tieu_de: '{ho_ten} 的 Microsoft 365 账号：{upn}',
+  tk365_noi_dung:
+    '登录名：{upn} — 初始密码：{mat_khau}。请转交给新员工，并提醒其首次登录时必须修改密码（Microsoft 强制）。请勿通过公开渠道传播密码。',
 } as const satisfies Record<keyof typeof CHUOI_VI, string>;

@@ -3,9 +3,9 @@
 // Moi con so phap ly o day phai co can cu (BLLD 2019, ND145/2020): sai mot so la sai
 // tien cua nguoi sap nghi — module nay la noi duy nhat tinh, va test khoa tung con so.
 import type { DongMucThoiViec } from './quy_trinh.ts';
+import { nhom_quy_trinh, nguong_bao_truoc_nhanh, type KhuonHanBaoTruoc } from './nhanh.ts';
 
-/** Mau khuon han bao truoc: loai hop dong -> so ngay (null = theo hop dong, khong chan). */
-export type KhuonHanBaoTruoc = Record<string, number | null>;
+export type { KhuonHanBaoTruoc };
 
 /**
  * Nguong bao truoc toi thieu khi don phuong cham dut HDLD.
@@ -14,7 +14,9 @@ export type KhuonHanBaoTruoc = Record<string, number | null>;
  * ND145/2020 (nguoi quan ly doanh nghiep toi 120 ngay). Ngoai le: hop dong XAC DINH
  * duoi 12 thang thi 3 ngay lam viec, khong phai 30.
  *
- * Tra null khi khong chan — theo hop dong (hoc_viec, cong_tac_vien).
+ * Tra null khi khong chan — theo hop dong (hoc_viec, cong_tac_vien). Hoc viec/thuc tap
+ * va cong tac vien KHONG lay muc 120 ngay du chuc danh co chu "quan ly": ho khong phai
+ * nguoi lao dong theo HDLD.
  */
 export function nguong_bao_truoc(
   khuon: KhuonHanBaoTruoc,
@@ -22,14 +24,8 @@ export function nguong_bao_truoc(
   so_thang_hop_dong: number | null,
   la_quan_ly_dn: boolean,
 ): number | null {
-  if (la_quan_ly_dn) {
-    const n = khuon['quan_ly_dn'];
-    return n === undefined ? 120 : n;
-  }
-  if (loai_hop_dong === 'xac_dinh' && so_thang_hop_dong !== null && so_thang_hop_dong < 12) {
-    return 3;
-  }
-  return khuon[loai_hop_dong] ?? null;
+  const nhom = nhom_quy_trinh(loai_hop_dong, la_quan_ly_dn);
+  return nguong_bao_truoc_nhanh(khuon, nhom, so_thang_hop_dong, loai_hop_dong);
 }
 
 /** Thu trong tuan: 0 = Chu nhat, 6 = Thu bay. Giong `thoi_gian.thu_trong_tuan`. */

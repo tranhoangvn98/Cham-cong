@@ -2,6 +2,186 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.132.0] — 2026-10-26
+
+**Hồ sơ nhân sự kiểm tra ứng dụng bắt buộc trên máy tính và điện thoại — tự động hằng ngày.**
+
+- **Thẻ mới trong tab Thông tin chung** của hồ sơ: 3 ứng dụng máy tính (Outlook, Microsoft
+  Teams, OneDrive for Business) và 5 ứng dụng điện thoại (Authenticator, Outlook, Teams,
+  OneDrive, SharePoint). Mỗi dòng ghi rõ *đã dùng / chỉ dùng bản web / chưa thấy dùng / chưa
+  kiểm tra được / chưa có tài khoản M365* kèm lần hoạt động cuối và mốc báo cáo Microsoft.
+- **Lịch tự chạy 08:00 và 13:00** mỗi ngày (`kiem_tra_ung_dung_ms365:<ngày>:<giờ>`), cộng nút
+  **Đồng bộ ngay** cho nhân sự. Dữ liệu ghi vào bảng `ms365_ung_dung_kiem_tra` (migration 114),
+  mỗi lần quét ghi đè toàn bộ ảnh chụp trong một transaction.
+- **Nguồn: báo cáo sử dụng Microsoft 365** (`Reports.Read.All`, đã cấp cho app
+  `cham-cong-sharepoint-sync`) — báo cáo chỉ trả CSV, không phải JSON. OneDrive trên máy tính
+  nhận biết qua cột `Synced File Count`.
+- **Nói đúng giới hạn:** Microsoft Graph không có danh sách “ứng dụng đã cài” khi tenant không
+  dùng Intune. Authenticator, OneDrive và SharePoint trên điện thoại **chưa kiểm tra được**
+  (tenant không có Entra ID P1/P2; Intune chưa kích hoạt; 43/46 người dùng Business Basic).
+  Giao diện ghi rõ đây là bằng chứng đăng nhập/đồng bộ, không phải kiểm kê cài đặt.
+- Tài liệu `tai_lieu/M365-UNG-DUNG-BAT-BUOC.md`; script chẩn đoán
+  `trien_khai/kiem_tra_bao_cao_ms365.mjs`; test `ung_dung_ms365.test.ts` (10 ca).
+
+## [1.131.0] — 2026-10-26
+
+**Người lập hồ sơ nhận tài khoản Microsoft + mật khẩu khởi tạo để bàn giao; nhân viên buộc đổi
+mật khẩu ở lần đăng nhập đầu.**
+
+- Khi tạo hồ sơ có tài khoản Microsoft 365, hệ thống gửi **chuông riêng cho tài khoản người lập
+  hồ sơ** (`nhan_su/bao_tai_khoan_ms365.ts`, song ngữ theo `nguoi_dung.ngon_ngu`): tiêu đề nêu
+  họ tên + UPN, nội dung có **mật khẩu khởi tạo** và nhắc bàn giao/không chia sẻ công khai. Chỉ
+  tài khoản đó đọc được thông báo; không gửi email.
+- Hộp thoại kết quả ghi rõ mật khẩu **đã gửi vào chuông** và **chỉ hiện ở đây một lần**; mật
+  khẩu vẫn bị xóa khỏi `hop_thu_di` ngay sau khi Graph tạo tài khoản xong.
+- **Bắt buộc đổi mật khẩu**: payload tạo user Entra giữ `forceChangePasswordNextSignIn: true`
+  (đã có từ trước, `ms365.test.ts` khóa lại) — nhân viên không thể dùng mật khẩu khởi tạo lần
+  thứ hai.
+- Trường hợp tạo bằng script/MCP (không có tài khoản người lập): phản hồi kèm cảnh báo "mật
+  khẩu chỉ hiện ở phản hồi này" thay vì im lặng.
+- Test e2e: người lập hồ sơ nhận chuông chứa UPN + mật khẩu + nhắc đổi mật khẩu.
+
+
+## [1.130.0] — 2026-10-26
+
+**Thêm nhân sự là giao luôn việc theo vị trí trong “Tổ chức & trách nhiệm”.**
+
+- Form **+ Thêm nhân viên** có thêm ô chọn **vị trí JD** lấy từ danh mục Tổ chức & trách nhiệm
+  (bỏ qua vị trí bậc `bac.*` — vùng đó hệ thống tự đồng bộ từ hồ sơ). Chọn vị trí là hệ thống
+  ghi `nhan_vien_vi_tri` và **sinh mẫu việc định kỳ** từ các `dau_viec` của vị trí ngay trong
+  cùng transaction tạo hồ sơ — sai một vị trí thì cuốn cả hồ sơ, không có trạng thái nửa vời.
+- **Vị trí chọn đầu tiên là vị trí chính**: hạ cờ chính của các vị trí cũ (kể cả vị trí bậc),
+  ghi `nhan_vien.vi_tri_chinh_id`, và điền `chuc_danh` theo tên vị trí **chỉ khi ô chức danh
+  đang trống** (không đè chữ người lập hồ sơ tự gõ).
+- API `POST /api/nhan-vien` nhận `vi_tri_ids` (mảng uuid, tối đa 20, giữ thứ tự chọn) và trả
+  thêm `so_vi_tri_to_chuc`, `so_dau_viec_dinh_ky`; hộp thoại kết quả hiển thị số vị trí/đầu việc
+  đã giao.
+- Đây là mối nối để sau này **đánh giá nhân sự** và **phân việc tự động theo vị trí** dùng
+  chung một nguồn: vị trí giữ → đầu việc → mẫu việc định kỳ.
+- Tài liệu: `LUONG-TAO-NHAN-SU-TU-DONG.md`, `TAO-HO-SO-NHAN-SU.md`, `API.md`; test e2e thêm ca
+  gán vị trí + sinh đầu việc + từ chối vị trí không hợp lệ.
+
+
+## [1.129.0] — 2026-10-26
+
+**MỘT luồng nghỉ việc duy nhất — quyết định có ngày là vào quy trình NGAY, chia nhánh theo
+loại hợp đồng.**
+
+Trước bản này có ba đường rời rạc: đơn thôi việc tạo quy trình, quyết định nghỉ việc chỉ được
+hồi tố **sau** ngày làm việc cuối (và lịch đêm còn bị lỗi lồng khối nên gần như không chạy),
+nút nghỉ không bàn giao không để lại quy trình nào. Nay mọi đường dẫn về đúng một
+`quy_trinh_thoi_viec`; **một người chỉ có một quy trình đang mở**.
+
+- **QĐ nghỉ việc phát hành = mở quy trình ngay trong transaction phát hành**: tạo/tái dùng đơn
+  `thoi_viec`, chốt lastday theo QĐ, **giữ mục bàn giao mở** để nhân viên làm trong thời hạn báo
+  trước. QĐ cũ đã quá ngày mới xử lý hồi tố (bỏ qua mục nhân viên kèm lý do).
+- **Nhánh theo loại hợp đồng** (`nhom_quy_trinh`, hàm thuần `thoi_viec/nhanh.ts`):
+  - **Thực tập sinh / học việc**: kết thúc học việc/thực tập — **không** chấm dứt HĐLĐ, **không**
+    BHXH/báo giảm, **không** trợ cấp thôi việc, **không** phép năm, **không** mốc quyết toán 14
+    ngày (Đ.48). Quyết định Cổng 2 mang đúng tiêu đề kết thúc học việc.
+  - **Thử việc**: 0 ngày báo trước (Đ.27), không trợ cấp/phép năm; quyết định kết thúc thử việc.
+  - **Thời vụ**: 3 ngày; **chính thức**: 30/45 ngày; **quản lý doanh nghiệp** (chỉ HĐ xác
+    định/không xác định): 120 ngày (Đ.7 NĐ145/2020).
+  - **Cộng tác viên**: hợp đồng dịch vụ — không BHXH/trợ cấp/phép năm/Đ.48.
+  - Chức danh có chữ "trưởng phòng/quản lý" **không** biến thực tập sinh/thử việc/thời vụ/cộng
+    tác viên thành nhánh quản lý.
+- **Sửa lỗi lịch đêm**: khối `nghi_viec_den_han` bị lồng trong `catch` của job rà soát ra/vào từ
+  19/09 nên gần như không bao giờ chạy. Nay chạy mỗi vòng sau 01:00, quét **mọi** QĐ chưa vào
+  luồng (lưới an toàn + backfill), không lọc theo ngày.
+- **Nút Nghỉ không bàn giao** vẫn khóa tài khoản ngay nhưng ghi một quy trình **đã đóng**
+  (`nguon_tao = nghi_khong_ban_giao`), mọi mục bỏ qua kèm lý do — báo cáo không còn lỗ hổng
+  "nghỉ việc mà không có quy trình".
+- **CSDL (migration 113)**: thêm `nguon_tao`, `nhom_quy_trinh`; partial unique index một quy
+  trình mở/người; dọn các mục không áp dụng khỏi `khuon_checklist` (thực tập sinh không còn bị
+  đòi email BHXH hay sinh giấy báo giảm).
+- **UI**: trang Thôi việc có cột **Nhánh** + **Nguồn tạo**; chi tiết hiện căn cứ pháp lý của
+  nhánh. Nhãn trạng thái QĐ đổi thành "Đã xử lý lúc …" (vi + zh).
+- **Thông báo**: nhân viên nhận chuông theo ngôn ngữ của mình khi QĐ đưa họ vào quy trình; admin
+  nhận chuông để chỉ định người nhận bàn giao.
+- **Test**: `thoi_viec.test.ts` khóa nhánh/ngưỡng báo trước (kể cả thực tập sinh có chức danh
+  quản lý); e2e QĐ phát hành tạo quy trình ngay, gọi lại lịch đêm không tạo trùng, và ca hồi tố
+  bỏ qua mục nhân viên. Thiết kế chi tiết: `tai_lieu/THIET-KE-LUONG-NGHI-VIEC.md`.
+
+## [1.128.0] — 2026-10-26
+
+**Nhân viên mới biết số PIN của mình ngay — không còn ca đầu quẹt "không có số".**
+
+Số PIN do **hệ thống** chọn trong dải của máy thuộc khối, nên cả người lập hồ sơ lẫn người vào
+làm đều không biết trước. Trước bản này số PIN chỉ hiện **một lần** trên màn hình của người lập
+hồ sơ: người đi làm không nhìn thấy, đến máy không biết khai số nào, và bảng công trống — im
+lặng, không có lỗi nào báo.
+
+- **Chuông báo cho chính nhân viên** (`nhan_su/bao_pin.ts`): gửi cho **mọi tài khoản đang hoạt
+  động** của người đó, chia theo `nguoi_dung.ngon_ngu` qua `gui_chuong_ngon_ngu()`. Nội dung nêu
+  đúng số PIN, **tên máy đã nhận lệnh**, và việc phải dùng số đó để đăng ký vân tay / khuôn mặt
+  / thẻ. Thông báo **lưu lại** trong web nên lần đăng nhập đầu là thấy, kể cả chưa cài app.
+- **Nhân viên chưa có tài khoản** thì không có đường nào gửi: phản hồi lưu hồ sơ kèm **cảnh báo
+  nêu đúng số PIN** để người lập hồ sơ báo trực tiếp. Cảnh báo mang số PIN là cố ý — một câu
+  "chưa gửi được thông báo" mà không có số thì người đọc vẫn phải mở hồ sơ ra tra.
+- **Mục 3 của checklist nhập việc mang luôn số PIN** (`Cấp số PIN 1013 + đẩy xuống máy cửa`) —
+  người đi cài máy không phải mở lại hồ sơ. Vì số PIN khác nhau từng người,
+  `tick_pin_may_cua_nhan()` khớp mục này theo **tiền tố** thay vì nguyên văn.
+- Trang **Cá nhân** ghi rõ ô "PIN máy" là *số dùng để đăng ký trên máy chấm công* (vi + zh).
+- Test: `tao_ho_so_e2e.test.ts` thêm 2 ca (chuông mang đúng số PIN + tên máy; người chưa có tài
+  khoản thì có cảnh báo nêu số); `song_ngu.test.ts` khóa nội dung thông báo đủ hai ngôn ngữ và
+  không sót tham số; `nhap_viec.test.ts` khóa tiêu đề mục 3 mang số PIN và khớp theo tiền tố.
+
+## [1.127.0] — 2026-10-26
+
+**Gộp hai luồng thêm nhân sự thành MỘT — Admin chỉ nhận thông báo, không duyệt.**
+
+- **Một lối vào duy nhất: `POST /api/nhan-vien`.** Người có quyền nhân sự (`can_nhan_su`)
+  bấm **+ Thêm nhân viên** là lưu thật — không còn đề nghị chờ duyệt. Tất cả việc khởi tạo vẫn
+  nằm trong **một transaction**: sinh mã, cấp PIN, tài khoản hệ thống, outbox cổng/ERP1/MS365.
+- **Luồng đề nghị cũ bị gỡ**: trang "Đề nghị thêm nhân sự" + `/api/de-nghi-nhan-su*` (tạo,
+  sửa, duyệt, từ chối, danh sách). Bảng `de_nghi_them_nhan_su` và dữ liệu cũ **giữ nguyên**
+  làm lịch sử.
+- **Phần riêng của luồng đề nghị đã gộp vào form thêm nhân viên**: chọn người **Microsoft 365
+  đã có giấy phép** (không tạo lại tài khoản), **Loại hợp đồng** (cho checklist), **Máy cửa**
+  (kiêm đẩy user + cấp PIN theo dải của máy cửa). Danh sách M365 chuyển sang
+  `GET/POST /api/nhan-vien/ms365-da-cap-phep[/dong-bo]`.
+- **Việc "Nhập việc" + 15 mục checklist luôn được sinh** khi tạo hồ sơ (trước đây chỉ luồng
+  đề nghị làm). Chưa khai người phụ trách thì hồ sơ vẫn lưu và trả cảnh báo rõ.
+- **Admin nhận chuông "Có nhân sự mới: <họ tên>"** (mở trang Nhân viên), song ngữ theo
+  `nguoi_dung.ngon_ngu`, gửi sau commit nên không chặn phản hồi. Không còn badge "chờ duyệt".
+  Thông báo "Microsoft 365 có tài khoản mới được cấp phép" cũng chuyển sang mở trang Nhân viên.
+- Phản hồi tạo hồ sơ trả thêm `viec_id` để giao diện đối chiếu.
+- Test: gỡ `de_nghi_e2e.test.ts`; `tao_ho_so_e2e.test.ts` thêm 3 ca (checklist tự sinh,
+  người đã có M365 không tạo lại tài khoản, chuông báo admin).
+
+
+## [1.126.0] — 2026-10-26
+
+**Mã nhân sự do hệ thống sinh — mã mang nghĩa, không tái dùng, và mọi thứ tự đi theo nó.**
+
+Khuôn mới: `NV` + **mã ngắn của khối** + **MMYY (tháng năm vào làm)** + **số thứ tự 4 chữ số**.
+
+```
+NVKHN05260001   Khối Kho Hà Nội, vào tháng 5/2026, người thứ 1
+NVVP10260007    Khối Văn Phòng, vào tháng 10/2026, người thứ 7
+```
+
+- Bảng khối có thêm **`ma_ngan`** (`VP`, `KHN`, `VPLS`, `KTQ`). Mã nhân sự không còn là một
+  dãy số vô nghĩa: đọc mã là biết người đó thuộc khối nào và vào làm tháng nào, vẫn giữ được
+  thứ tự trong tháng của từng khối. Mã **không tái dùng** — bảng `dem_ma_nhan_su` giữ số đã
+  cấp, và `greatest(...)` khi khởi tạo bảo đảm chạy lại trên production không lùi bộ đếm.
+- **Form thêm nhân viên chỉ còn họ tên + khối + email (+ mã ERP1 + chức danh nếu có).** Không
+  còn gõ mã nhân viên, không còn chọn máy chấm công: khai khối là hệ thống tự biết máy nào và
+  dải PIN nào (`thiet_bi.khoi_id`).
+- **Đẩy user + PIN xuống máy chấm công ở CẢ HAI lối vào.** Trước đây chỉ cổng duyệt đề nghị
+  đẩy lệnh; người thêm bằng form không tồn tại trên máy và ca đầu không quẹt được — im lặng,
+  không có gì báo. Nay `tao_ho_so_nhan_su` xếp lệnh `DATA UPDATE USERINFO` cho **mọi máy của
+  khối** trong cùng transaction. Khóa chống trùng thêm serial
+  (`nhap_viec_pin:<nv>:<serial>`) để máy thứ hai không bị chặn bởi khóa của máy thứ nhất.
+- **Giấy phép Microsoft mặc định là Basic** cho mọi tài khoản mới (`MS365_SKU_BASIC`); Standard
+  chỉ khi người có thẩm quyền chọn đích danh qua `sku_id_tuy_chon`. `la_truong_phong()` giữ
+  lại nhưng không còn là quy tắc mặc định.
+- Ổ mã ERP1 trên form: ghi thẳng vào bảng định danh hệ thống `erp1`, nên webhook
+  `erp1.nhan_su.da_tao` tự mang `ma_erp1` mà không phải sửa thân sự kiện.
+- Test mới `ma_nhan_su.test.ts` khóa khuôn mã, phần tháng-năm (kể cả bẫy múi giờ: 18:00 UTC
+  ngày 31/05 là 01/06 giờ máy), và số thứ tự quá 4 chữ số không bị cắt.
+
+
 ## [1.125.1] — 2026-10-25
 
 **Quét nghỉ việc: chỉ kiểm hệ thống đã kết nối.**

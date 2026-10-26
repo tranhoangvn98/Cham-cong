@@ -12,6 +12,8 @@ import { tinh_lai_khoang } from '../cong/tinh_cong.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { cho_nghi_viec } from '../nhan_su/nghi_viec.ts';
+import { dam_bao_quy_trinh_tu_qd } from '../thoi_viec/quy_trinh.ts';
+import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
 import { dong_bo_thu_muc_nhan_vien } from '../ho_so/sap_xep_tep.ts';
 import { PHAM_VI, la_pham_vi, sinh_khoa } from '../bao_mat/khoa_api.ts';
 import { doc_danh_sach_ip } from '../tien_ich/dia_chi_ip.ts';
@@ -166,7 +168,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   // =====================================================================  NHAN VIEN
   // Danh sach khoi (YC 02 phan A) — cho form ho so + trang chinh sach phu cap theo khoi.
   app.get('/khoi', { preHandler: can_dang_nhap }, async () =>
-    truy_van('select id, ma, ten, ghi_chu, dang_bat from khoi order by ma'));
+    truy_van('select id, ma, ma_ngan, ten, ghi_chu, dang_bat from khoi order by ma'));
 
   app.get('/nhan-vien', { preHandler: can_dang_nhap }, async (req) => {
     const q = req.query as Record<string, unknown>;
@@ -204,9 +206,16 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
 
   app.post('/nhan-vien', { preHandler: can_nhan_su }, async (req, res) => {
     const b = than(req.body);
-    const ts = doc_nhan_vien(b, true);
+    const ts = doc_nhan_vien(b, true, false);
+    // Mot luong duy nhat (26/10/2026): nguoi co quyen nhan su tu them, khong qua buoc duyet.
+    // Cac o duoi day la phan con lai cua luong "de nghi" cu, gop thang vao form.
+    const ms365_da_co = luan_ly(b, 'ms365_da_co', false) === true;
+    const serial_may_cua = chuoi(b, 'serial_may_cua', { toi_da: 64 })
+      ?? chuoi(b, 'thiet_bi_serial', { toi_da: 64 });
+    const loai_hop_dong = chuoi(b, 'loai_hop_dong', { toi_da: 120 });
+    const vi_tri_ids = doc_vi_tri_ids(b) ?? [];
     const kq = await tao_ho_so_nhan_su({
-      ma_nv: String(ts[0]),
+      ma_nv: ts[0] === null ? null : String(ts[0]),
       ho_ten: String(ts[1]),
       pin_may: ts[2] === null ? null : String(ts[2]),
       ma_erp: ts[3] === null ? null : String(ts[3]),
@@ -223,13 +232,21 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       vi_tri: ts[14] === null ? null : String(ts[14]),
       cong_chuan_thang: ts[15] === null ? null : Number(ts[15]),
       tu_cap_pin: luan_ly(b, 'tu_cap_pin', false) === true,
-      thiet_bi_serial: chuoi(b, 'thiet_bi_serial', { toi_da: 64 }),
-      tao_tk_ms365: luan_ly(b, 'tao_tk_ms365', false) === true,
+      thiet_bi_serial: serial_may_cua,
+      // Nguoi da co tai khoan Microsoft (chon tu danh sach da cap giay phep) thi khong tao lai:
+      // tao lai se dung do UPN va co the cap nham giay phep cho nguoi khac.
+      tao_tk_ms365: luan_ly(b, 'tao_tk_ms365', false) === true && !ms365_da_co,
+      ms365_da_co,
       tao_tk_he_thong: luan_ly(b, 'tao_tk_he_thong', false) === true,
+      loai_hop_dong,
+      vi_tri_ids,
+      ma_erp1: chuoi(b, 'ma_erp1', { toi_da: 40 }),
+      // Nguoi nhan thong bao tai khoan Microsoft + mat khau khoi tao (de ban giao).
+      nguoi_tao_id: nguoi_dung_hien_tai(req).sub,
     });
 
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'tao_nhan_vien', 'nhan_vien',
-      kq.id, { ma_nv: b['ma_nv'] }, req.ip);
+      kq.id, { ma_nv: kq.ma_nv }, req.ip);
 
     // Phong ban kiem nhiem (neu co): ghi sau khi tao ho so thanh cong.
     const ngon_ngu = await ngon_ngu_hien_tai(req);
@@ -245,12 +262,19 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       );
     }
 
-    const ket_qua: Record<string, unknown> = { id: kq.id };
+    const ket_qua: Record<string, unknown> = {
+      id: kq.id, ma_nv: kq.ma_nv, pin_may: kq.pin_cap, may_da_day: kq.may_da_day,
+      viec_id: kq.viec_id,
+      so_vi_tri_to_chuc: kq.so_vi_tri_to_chuc,
+      so_dau_viec_dinh_ky: kq.so_dau_viec_dinh_ky,
+    };
     if (kq.canh_bao.length > 0) ket_qua['canh_bao'] = kq.canh_bao;
     if (kq.tai_khoan_ms365 !== null) {
       ket_qua['tai_khoan_ms365'] = {
         ...kq.tai_khoan_ms365,
-        ghi_chu: 'Tài khoản sẽ được tạo trong giây lát. Mật khẩu chỉ hiện lần này — hãy bàn giao cho nhân viên.',
+        ghi_chu: 'Tài khoản Microsoft sẽ được tạo trong giây lát. Tên đăng nhập + mật khẩu khởi '
+          + 'tạo đã gửi vào chuông thông báo của bạn (và chỉ hiện ở đây một lần) — bàn giao cho '
+          + 'nhân viên; nhân viên bắt buộc đổi mật khẩu ở lần đăng nhập đầu.',
       };
     }
     if (kq.tai_khoan_he_thong !== null) {
@@ -432,7 +456,47 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const id = lay_id(req);
     const b = than(req.body ?? {});
     const ngay_nghi = ngay(b, 'ngay_nghi_viec');
-    const ket_qua = await trong_giao_dich((khach) => cho_nghi_viec(khach, id, ngay_nghi));
+    const ket_qua = await trong_giao_dich(async (khach) => {
+      const kq = await cho_nghi_viec(khach, id, ngay_nghi);
+      if (kq === null) return null;
+      // MOT LUONG DUY NHAT: nghỉ không bàn giao vẫn đề lại một quy trình ĐÃ ĐÓNG để báo
+      // cáo không còn lỗ hổng "nghỉ việc mà không có quy trình". Mọi mục được bỏ qua kèm
+      // lý do; tài khoản đã khóa ngay ở trên nên không phụ thuộc Cổng 2.
+      try {
+        await khach.query('savepoint quy_trinh_nghi');
+        const ngay_dung = ngay_nghi ?? ngay_dia_phuong(new Date());
+        const qt = await dam_bao_quy_trinh_tu_qd(khach, id, ngay_dung, {
+          hoi_to: true, nguon_tao: 'nghi_khong_ban_giao',
+        });
+        if (qt.quy_trinh_id !== null) {
+          await khach.query(
+            `update muc_checklist
+                set trang_thai = 'bo_qua',
+                    ghi_chu = 'Nghỉ không bàn giao — Nhân sự xác nhận đóng hồ sơ'
+              where quy_trinh_id = $1
+                and loai_tu_dong in ('nhan_vien','tu_dong','script_cuoi')
+                and trang_thai in ('chua','dang')`,
+            [qt.quy_trinh_id],
+          );
+          await khach.query(
+            `update quy_trinh_thoi_viec
+                set trang_thai = 'da_khoa', lastday_da_chot = true,
+                    ngay_lam_viec_cuoi = coalesce(ngay_lam_viec_cuoi, $2::date),
+                    nguon_tao = 'nghi_khong_ban_giao',
+                    admin_duyet2_id = $3, admin_duyet2_luc = now(), cap_nhat_luc = now()
+              where id = $1`,
+            [qt.quy_trinh_id, ngay_dung, nguoi_dung_hien_tai(req).sub],
+          );
+        }
+        await khach.query('release savepoint quy_trinh_nghi');
+      } catch (loi) {
+        // Không để việc ghi nhận quy trình làm hỏng thao tác nghỉ khẩn cấp. Phải rollback
+        // về savepoint, nếu không transaction đã ở trạng thái aborted và COMMIT sẽ hỏng.
+        await khach.query('rollback to savepoint quy_trinh_nghi');
+        req.log.warn({ err: loi }, 'khong ghi duoc quy trinh nghi khong ban giao');
+      }
+      return kq;
+    });
     if (ket_qua === null) throw new LoiKhongTim('Không tìm thấy nhân viên.');
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'cho_nghi_viec', 'nhan_vien', id, null, req.ip);
     return { ok: true };
@@ -536,7 +600,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
   app.get('/thiet-bi', { preHandler: can_dang_nhap }, async () =>
     truy_van(
       `select id, serial, ten, vi_tri, dang_bat, phien_ban_firmware, dia_chi_ip,
-              thay_lan_cuoi, pin_tu, pin_den,
+              thay_lan_cuoi, pin_tu, pin_den, khoi_id,
               (thay_lan_cuoi is not null
                and thay_lan_cuoi > now() - ($1 || ' seconds')::interval) as dang_online,
               (select count(*) from lenh_thiet_bi l
@@ -1504,16 +1568,44 @@ async function ghi_ma_dinh_danh(
     pin_may: chuoi(b, 'pin_may', { toi_da: 32 }),
     ma_erp: chuoi(b, 'ma_erp', { toi_da: 40 }),
     email: chuoi(b, 'email', { toi_da: 200 }),
+    ma_erp1: chuoi(b, 'ma_erp1', { toi_da: 40 }),
   }, 'nguoi_khai');
 }
 
-function doc_nhan_vien(b: Record<string, unknown>, bat_buoc: boolean): unknown[] {
+/**
+ * Doc danh sach id vi tri JD (danh muc To chuc & trach nhiem) tu than yeu cau.
+ *
+ * Khong gui khoa = null (khong gan). Gui mang rong = khong chon vi tri nao. Thu tu trong
+ * mang la thu tu NGUOI DUNG CHON — phan tu dau tien thanh vi tri chinh.
+ */
+function doc_vi_tri_ids(b: Record<string, unknown>): string[] | null {
+  if (!Object.hasOwn(b, 'vi_tri_ids')) return null;
+  const tho = b['vi_tri_ids'];
+  if (!Array.isArray(tho)) throw new LoiDauVao('Danh sách vị trí không hợp lệ.');
+  if (tho.length > 20) throw new LoiDauVao('Chọn tối đa 20 vị trí cho một nhân sự.');
+  const ds: string[] = [];
+  for (const x of tho) {
+    const ma = uuid({ id: x }, 'id', { bat_buoc: true }) as string;
+    if (!ds.includes(ma)) ds.push(ma);
+  }
+  return ds;
+}
+
+/**
+ * Doc cac o cua ho so nhan vien. `ma_nv_bat_buoc` tach khoi `bat_buoc` vi hai duong khac nhau:
+ *
+ *   POST /nhan-vien  — ma do he thong sinh, KHONG bat buoc (bat_buoc=true chi con ap cho ho ten);
+ *   PUT  /nhan-vien  — nguoi dung dang sua mot ho so da co ma, nen van bat buoc.
+ */
+function doc_nhan_vien(
+  b: Record<string, unknown>, bat_buoc: boolean, ma_nv_bat_buoc: boolean = bat_buoc,
+): unknown[] {
   const pin = chuoi(b, 'pin_may', { toi_da: 32 });
   if (pin !== null && !/^[0-9]{1,20}$/.test(pin)) {
     throw new LoiDauVao('PIN máy chỉ gồm chữ số (dùng đúng PIN đã khai trên máy).');
   }
   return [
-    bat_buoc ? chuoi_bat_buoc(b, 'ma_nv', { toi_da: 40 }) : chuoi(b, 'ma_nv', { toi_da: 40 }),
+    ma_nv_bat_buoc ? chuoi_bat_buoc(b, 'ma_nv', { toi_da: 40 }) : chuoi(b, 'ma_nv', { toi_da: 40 }),
     bat_buoc ? chuoi_bat_buoc(b, 'ho_ten', { toi_da: 120 }) : chuoi(b, 'ho_ten', { toi_da: 120 }),
     pin,
     chuoi(b, 'ma_erp', { toi_da: 40 }),

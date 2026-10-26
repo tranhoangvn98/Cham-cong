@@ -32,7 +32,7 @@ import { tuyen_thong_bao_ai } from './tuyen/thong_bao_ai.ts';
 import { tuyen_ho_thu_y_kien } from './tuyen/ho_thu_y_kien.ts';
 import { tuyen_cong_bo_phat_hanh } from './tuyen/cong_bo_phat_hanh.ts';
 import { tuyen_thoi_viec } from './tuyen/thoi_viec.ts';
-import { tuyen_de_nghi } from './nhan_su/de_nghi.ts';
+import { tuyen_nguon_ms365 } from './tuyen/nguon_ms365.ts';
 import { tuyen_de_xuat } from './tuyen/de_xuat.ts';
 import { tuyen_nghi_le_luong } from './tuyen/nghi_le_luong.ts';
 import { tuyen_tich_hop } from './tuyen/tich_hop.ts';
@@ -200,7 +200,8 @@ export async function dung_ung_dung(): Promise<FastifyInstance> {
   // REST API cho webapp va app dien thoai.
   await app.register(tuyen_dang_nhap, { prefix: '/api/xac-thuc' });
   await app.register(tuyen_danh_muc, { prefix: '/api' });
-  await app.register(tuyen_de_nghi, { prefix: '/api' });
+  // Nguon Microsoft 365 da cap giay phep — duong dan /api/nhan-vien/ms365-da-cap-phep.
+  await app.register(tuyen_nguon_ms365, { prefix: '/api' });
   await app.register(tuyen_bang_cong, { prefix: '/api' });
   await app.register(tuyen_so_ngoai_le, { prefix: '/api' });
   await app.register(tuyen_nhap_du_lieu, { prefix: '/api' });

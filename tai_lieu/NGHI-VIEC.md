@@ -1,14 +1,20 @@
 # Quy trình thôi việc tự động (đặc tả kỹ thuật 01/2026/ĐTKT-IT)
 
-Thay cho cơ chế cũ "Quyết định nghỉ việc trên hệ văn bản AI → lịch đêm tự khóa", hệ thống
-chạy **mô hình 2 cổng người + phần giữa tự động**. Chỉ 3 chủ thể: **Admin** (duyệt 2 lần),
-**Nhân viên** (làm checklist), **Hệ thống** (mọi việc còn lại).
+Hệ thống chạy **MỘT luồng nghỉ việc duy nhất** cho mọi trường hợp, chia nhánh theo **loại
+hợp đồng** (đặc tả chi tiết + bảng căn cứ pháp lý: `tai_lieu/THIET-KE-LUONG-NGHI-VIEC.md`).
+Mọi cách vào — đơn nhân viên, quyết định nghỉ việc của công ty, nghỉ không bàn giao khẩn cấp —
+đều tạo/cập nhật đúng một `quy_trinh_thoi_viec`; **một người chỉ có một quy trình đang mở**.
+
+Chỉ 3 chủ thể: **Admin** (duyệt 2 lần), **Nhân viên** (làm checklist), **Hệ thống** (mọi việc
+còn lại).
 
 ## Máy trạng thái
 
 ```
-đơn thôi việc (cho_duyet)
-  └─►[CỔNG 1] Admin duyệt đơn ──► sinh quy_trinh_thoi_viec + phát sinh checklist ──► dang_thuc_hien
+đơn thôi việc (cho_duyet) ─┐
+quyết định nghỉ việc ──────┼─► quy_trinh_thoi_viec (checklist theo loại HĐ) ─► dang_thuc_hien
+nghỉ không bàn giao ───────┘        (quy trình đã đóng, mọi mục bỏ qua kèm lý do)
+
 dang_thuc_hien
   ├─ nhân viên tick mục 'nhan_vien' (trang /thoi-viec/huong-dan)
   ├─ tiến trình nền tự tick mục 'tu_dong' (lương, phép, trợ cấp, hạn báo trước, bàn giao việc)
@@ -23,20 +29,29 @@ Bất biến chống mất dữ liệu: script dừng hoạt động **chỉ ch�
 bắt buộc đã `xong`/`bo_qua` và lastday đã chốt. Không có đường nào cắt truy cập trước khi
 bàn giao xong — điều kiện nằm trong **cả** code (`kiem_dieu_kien_chay`) lẫn ràng buộc CSDL.
 
-## Cổng 1 — Admin duyệt đơn thôi việc
+## Cổng 1 — duyệt đơn thôi việc
 
 Duyệt đơn `thoi_viec` trên trang **Duyệt đơn** như mọi đơn khác. Ngay trong cùng một
 transaction, hệ thống:
 
 1. Sinh 1 bản ghi `quy_trinh_thoi_viec` (unique theo `don_tu_id`), chụp `loai_hop_dong`
    (HĐ đang hiệu lực mới nhất), `chuc_danh`, `ngay_lam_viec_cuoi = don_tu.tu_ngay`.
-2. Phát sinh checklist từ `khuon_checklist` theo **loại hợp đồng** (23 mục, ma trận
-   ● bắt buộc / ○ khi phát sinh / — không áp dụng theo 6 loại HĐ).
+   Nếu người đó đã có quy trình đang mở thì **cập nhật lastday** của quy trình đó, không tạo
+   quy trình thứ hai.
+2. Phát sinh checklist từ `khuon_checklist` theo **loại hợp đồng** — mỗi nhánh chỉ nhận mục
+   thực sự áp dụng (thực tập sinh không có BHXH/trợ cấp/phép năm/Đ.48).
 3. Phát sinh bàn giao từ `khuon_ban_giao` theo **chức danh** (Sale/CSKH, vận hành, thủ tục
    hải quan, thủ kho, kế toán, IT/ERP, quản lý).
 4. Nhân viên nhận chuông báo mở hướng dẫn thủ tục.
 
 Thêm loại HĐ / mục mới / vị trí mới chỉ bằng **seed**, không sửa code luồng.
+
+## Quyết định nghỉ việc của công ty
+
+HR phát hành QĐ nghỉ việc trên hệ văn bản AI (có ngày nghỉ việc). Trong **cùng transaction
+phát hành**, hệ thống tạo (hoặc tái dùng) đơn + quy trình, chốt lastday theo QĐ và **mở ngay
+mục bàn giao** để nhân viên làm trong thời hạn báo trước. QĐ đã quá ngày thì đánh dấu **hồi
+tố**: bỏ qua mục nhân viên kèm lý do, không truy thu thủ tục.
 
 ## Phần giữa — nhân viên + hệ thống
 
@@ -63,12 +78,16 @@ Chỉ mở khi `san_sang_chot`. Admin: (a) duyệt cuối, (b) ấn định `nga
 `lastday_da_chot = true`, (c) bấm **"Chạy dừng hoạt động"**. `chay_dung_hoat_dong()` chạy
 một transaction đúng thứ tự:
 
-1. **Kiểm điều kiện** — mọi mục bắt buộc xong, lastday chốt, email cấu hình đủ. Sai → dừng
-   sạch, báo lý do (REQ-CH-02: thiếu `email_dich_vu_bhxh` thì chặn).
+1. **Kiểm điều kiện** — mọi mục bắt buộc xong, lastday chốt, email cấu hình đủ **cho các mục
+   BHXH/thuế có trong nhánh** (thực tập sinh không có mục BHXH nên không bị đòi email). Sai →
+   dừng sạch, báo lý do (REQ-CH-02: thiếu `email_dich_vu_bhxh` thì chặn).
 2. **Thu giữ dữ liệu** — ghi mốc chuyển quyền OneDrive/SharePoint, xoay mật khẩu dùng chung.
-3. **Sinh & gửi văn bản** — Quyết định chấm dứt HĐLĐ, giấy xác nhận BHXH-BHTN, hồ sơ báo
-   giảm/chốt sổ BHXH (email đơn vị dịch vụ), chứng từ khấu trừ thuế TNCN (NĐ126/2020), bảng
-   quyết toán — lưu hồ sơ nhân viên.
+3. **Sinh & gửi văn bản** — Quyết định kết thúc/chấm dứt **theo nhánh hợp đồng** (thực tập →
+   kết thúc học việc/thực tập; thử việc → kết thúc thử việc; cộng tác viên → chấm dứt hợp đồng
+   dịch vụ; HĐLĐ → chấm dứt HĐLĐ), giấy xác nhận BHXH-BHTN, hồ sơ báo giảm/chốt sổ BHXH (email
+   đơn vị dịch vụ), chứng từ khấu trừ thuế TNCN (NĐ126/2020), bảng quyết toán — lưu hồ sơ nhân
+   viên. Chỉ sinh chứng từ khi mục tương ứng **có trong khuôn của nhánh** (thực tập sinh không
+   có quyết định chấm dứt HĐLĐ, không có giấy BHXH).
 4. **Cắt truy cập (cuối cùng)** — tái dùng `cho_nghi_viec()`: khóa login, thu hồi token,
    sự kiện `nhan_su.nghi_viec` (cổng phân quyền) + `erp1.nhan_su.nghi_viec` + `ms365.nghi_viec`.
 5. Đặt `da_khoa` + nhật ký ai bấm lúc nào.
@@ -83,12 +102,16 @@ không sinh sự kiện trùng.
 
 ## Tới lastday mà chưa chốt
 
-Lịch đêm **KHÔNG tự khóa nữa** (đã bỏ teardown khỏi `nghi_viec_den_han`). Thay vào đó:
+Lịch đêm **KHÔNG tự khóa**. Thay vào đó:
 
 - Cảnh báo đỏ cho Admin mỗi ngày: "Tới ngày nghỉ, bàn giao chưa xong — dữ liệu đang rủi ro".
-- Quyết định nghỉ việc cũ trên hệ văn bản AI (`la_qd_nghi_viec`) được **hồi tố** thành quy
-  trình thôi việc: tạo đơn `thoi_viec` nếu thiếu, chốt lastday theo QĐ, bỏ qua mục `nhan_vien`
-  (không truy thu thủ tục), chờ Admin bấm Cổng 2.
+- Quyết định nghỉ việc đã phát hành nhưng chưa có quy trình (QĐ cũ, lỗi hệ thống, dữ liệu nhập
+  muộn) được **quét lại và đưa vào luồng**: tạo đơn `thoi_viec` nếu thiếu, tạo/tái dùng quy
+  trình. Nếu ngày làm việc cuối đã qua thì đánh dấu **hồi tố**: bỏ qua mục `nhan_vien`, chờ
+  Admin bấm Cổng 2.
+- Nút **Nghỉ không bàn giao** (khẩn cấp) khóa tài khoản ngay nhưng vẫn để lại một quy trình
+  **đã đóng** (nguồn `nghi_khong_ban_giao`), mọi mục còn mở bỏ qua kèm lý do — báo cáo không
+  còn lỗ hổng "nghỉ việc mà không có quy trình".
 
 ## Cấu hình
 

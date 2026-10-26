@@ -6,6 +6,11 @@ import type { PoolClient } from 'pg';
 import { truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { id_tai_khoan_he_thong } from '../bao_mat/tai_khoan_he_thong.ts';
+import { LoiDauVao } from '../tien_ich/kiem_tra.ts';
+import { nhom_quy_trinh, type NhomQuyTrinh } from './nhanh.ts';
+
+/** Nguon sinh ra quy trinh — de bao cao va doi chieu. */
+export type NguonTaoQuyTrinh = 'don_nhan_vien' | 'quyet_dinh' | 'nghi_khong_ban_giao';
 
 /** Mot muc trong checklist cua quy trinh. */
 export interface DongMucThoiViec {
@@ -67,6 +72,8 @@ export interface DongQuyTrinh {
   khong_can_bao_truoc: boolean;
   la_quan_ly_dn: boolean;
   trang_thai: string;
+  nguon_tao: NguonTaoQuyTrinh;
+  nhom_quy_trinh: NhomQuyTrinh;
   ly_do_nghi: string | null;
   admin_duyet1_id: string | null;
   admin_duyet1_ten: string | null;
@@ -86,6 +93,7 @@ const CHON_QT = `
   qt.id, qt.don_tu_id, qt.nhan_vien_id, qt.loai_hop_dong, qt.chuc_danh,
   to_char(qt.ngay_lam_viec_cuoi, 'YYYY-MM-DD') as ngay_lam_viec_cuoi,
   qt.lastday_da_chot, qt.khong_can_bao_truoc, qt.la_quan_ly_dn, qt.trang_thai,
+  qt.nguon_tao, qt.nhom_quy_trinh,
   qt.ly_do_nghi, qt.admin_duyet1_id, qt.admin_duyet1_luc,
   qt.admin_duyet2_id, qt.admin_duyet2_luc,
   to_char(qt.tao_luc, 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM') as tao_luc,
@@ -120,15 +128,46 @@ function la_quan_ly_dn_cua(chuc_danh: string | null): boolean {
 }
 
 /**
+ * Doi ngay lam viec cuoi cua quy trinh va dua cac muc TU DONG ve `chua` de tinh lai.
+ * `chot = null` thi giu nguyen trang thai da chot hay chua.
+ */
+async function dat_lastday_va_tinh_lai(
+  khach: PoolClient, quy_trinh_id: string, ngay: string, chot: boolean | null,
+): Promise<void> {
+  const bo_sung = chot === null ? '' : `, lastday_da_chot = ${chot ? 'true' : 'false'}`;
+  await khach.query(
+    `update quy_trinh_thoi_viec
+        set ngay_lam_viec_cuoi = $2::date, cap_nhat_luc = now()${bo_sung}
+      where id = $1`,
+    [quy_trinh_id, ngay],
+  );
+  await khach.query(
+    `update muc_checklist
+        set trang_thai = 'chua', ket_qua = null, ghi_chu = null, xac_nhan_luc = null
+      where quy_trinh_id = $1 and loai_tu_dong = 'tu_dong'
+        and trang_thai in ('xong','bo_qua')`,
+    [quy_trinh_id],
+  );
+  await khach.query(
+    `update quy_trinh_thoi_viec set trang_thai = 'dang_thuc_hien'
+      where id = $1 and trang_thai = 'san_sang_chot'`,
+    [quy_trinh_id],
+  );
+}
+
+/**
  * Sinh quy trinh thoi viec cho mot don THOI VIEC DA DUYET, kem checklist tu khuon va ban
  * giao theo chuc danh. PHAI chay TRONG transaction cua nguoi goi.
  *
- * Tra id quy trinh (moi hoac da co). `on conflict` chong trung: mot don chi mot quy trinh.
+ * Mot NGUOI chi mot quy trinh mo: neu da co quy trinh `dang_thuc_hien`/`san_sang_chot` thi
+ * cap nhat `ngay_lam_viec_cuoi` cua quy trinh do (va tinh lai muc tu dong), khong tao
+ * quy trinh thu hai. Tra id quy trinh (moi hoac dang mo).
  */
 export async function sinh_quy_trinh_thoi_viec(
   khach: PoolClient,
   don_tu_id: string,
   nguoi_duyet_id: string | null = null,
+  nguon_tao: NguonTaoQuyTrinh = 'don_nhan_vien',
 ): Promise<string | null> {
   const don = await khach.query<{
     nhan_vien_id: string; tu_ngay: string; ly_do: string | null; chuc_danh: string | null;
@@ -145,17 +184,40 @@ export async function sinh_quy_trinh_thoi_viec(
 
   const hd = await loai_hop_dong_hien_hanh(khach, d.nhan_vien_id);
   const quan_ly = la_quan_ly_dn_cua(d.chuc_danh);
+  const nhom = nhom_quy_trinh(hd.loai, quan_ly);
+
+  // Khong co khuon cho loai hop dong thi DUNG lai — mot quy trinh rong khong bao gio duoc
+  // coi la "xong" va se khoa tai khoan ma khong co muc bat buoc nao.
+  const khuon = await khach.query<{ so: number }>(
+    'select count(*)::int as so from khuon_checklist where loai_hop_dong = $1', [hd.loai],
+  );
+  if ((khuon.rows[0]?.so ?? 0) === 0) {
+    throw new LoiDauVao(`Chưa khai khuôn checklist cho loại hợp đồng "${hd.loai}" — `
+      + 'không thể tạo quy trình thôi việc.');
+  }
+
+  // Mot nguoi chi MOT quy trinh mo. Don/QD moi chi cap nhat lastday cua quy trinh dang mo.
+  const mo = await khach.query<{ id: string }>(
+    `select id from quy_trinh_thoi_viec
+      where nhan_vien_id = $1 and trang_thai in ('dang_thuc_hien','san_sang_chot')
+      for update`,
+    [d.nhan_vien_id],
+  );
+  if (mo.rows[0] !== undefined) {
+    await dat_lastday_va_tinh_lai(khach, mo.rows[0].id, d.tu_ngay, null);
+    return mo.rows[0].id;
+  }
 
   const qt = await khach.query<{ id: string }>(
     `insert into quy_trinh_thoi_viec
        (don_tu_id, nhan_vien_id, loai_hop_dong, chuc_danh, ngay_lam_viec_cuoi,
-        ly_do_nghi, la_quan_ly_dn, admin_duyet1_id, admin_duyet1_luc)
+        ly_do_nghi, la_quan_ly_dn, admin_duyet1_id, admin_duyet1_luc, nguon_tao, nhom_quy_trinh)
      values ($1,$2,$3,$4,$5,$6,$7,$8,
-             case when $8::uuid is null then null else now() end)
+             case when $8::uuid is null then null else now() end, $9, $10)
      on conflict (don_tu_id) do nothing
      returning id`,
     [don_tu_id, d.nhan_vien_id, hd.loai, d.chuc_danh, d.tu_ngay, d.ly_do, quan_ly,
-      nguoi_duyet_id],
+      nguoi_duyet_id, nguon_tao, nhom],
   );
   let quy_trinh_id = qt.rows[0]?.id;
   if (quy_trinh_id === undefined) {
@@ -328,60 +390,135 @@ export async function quy_trinh_theo_don(don_tu_id: string): Promise<string | nu
   return qt?.id ?? null;
 }
 
+export interface KetQuaDamBaoQuyTrinh {
+  quy_trinh_id: string | null;
+  tao_moi_don: boolean;
+  tao_moi_qt: boolean;
+  /** Đã có quy trình mở nên chỉ cập nhật ngày cuối (không tạo mới). */
+  dung_lai: boolean;
+}
+
 /**
- * REQ-MIG-01 (hoi to): dam bao quy trinh thoi viec TON TAI cho mot Quyet dinh nghi viec da
- * phat hanh tren he van ban AI. Neu chua co don `thoi_viec` thi tao don da_duyet (tai khoan
- * he thong), neu chua co quy trinh thi sinh + chot lastday theo QD + bo qua muc `nhan_vien`
- * (khong truy thu thu tuc cua nguoi da lam truoc ngay co quy trinh). PHAI chay trong
- * transaction cua nguoi goi.
+ * Bảo đảm quy trình thôi việc TỒN TẠI cho một Quyết định nghỉ việc đã phát hành.
+ *
+ * MỘT LUỒNG DUY NHẤT: người đã có quy trình đang mở (do đơn hoặc QĐ trước) thì chỉ cập nhật
+ * `ngay_lam_viec_cuoi`, KHÔNG tạo quy trình thứ hai. Ngược lại: tìm đơn `thoi_viec` cùng ngày
+ * (đang chờ duyệt thì duyệt luôn theo QĐ), thiếu thì tạo đơn đã duyệt bằng tài khoản hệ thống,
+ * rồi sinh quy trình + checklist theo LOẠI HỢP ĐỒNG đang hiệu lực.
+ *
+ * `hoi_to = true` (ngày làm việc cuối đã qua): bỏ qua mục `nhan_vien` — không truy thu thủ
+ * tục của người đã nghỉ trước khi hệ thống kịp mở quy trình. Còn thời hạn (`hoi_to = false`):
+ * giữ mục nhân viên MỞ để bàn giao được trước lastday.
+ *
+ * PHAI chay trong transaction cua nguoi goi.
  */
 export async function dam_bao_quy_trinh_tu_qd(
   khach: PoolClient, nhan_vien_id: string, ngay_nghi_viec: string,
-): Promise<{ quy_trinh_id: string | null; tao_moi_don: boolean; tao_moi_qt: boolean }> {
-  const don = await khach.query<{ id: string }>(
-    `select id from don_tu
-      where nhan_vien_id = $1 and loai = 'thoi_viec'
-        and trang_thai in ('cho_duyet','da_duyet') and tu_ngay = $2::date
-      limit 1`,
+  tuy_chon: { hoi_to?: boolean; nguon_tao?: NguonTaoQuyTrinh } = {},
+): Promise<KetQuaDamBaoQuyTrinh> {
+  const hoi_to = tuy_chon.hoi_to === true;
+  const nguon_tao = tuy_chon.nguon_tao ?? 'quyet_dinh';
+
+  // Mot nguoi chi MOT quy trinh mo.
+  const mo = await khach.query<{ id: string }>(
+    `select id from quy_trinh_thoi_viec
+      where nhan_vien_id = $1 and trang_thai in ('dang_thuc_hien','san_sang_chot')
+      for update`,
+    [nhan_vien_id],
+  );
+  if (mo.rows[0] !== undefined) {
+    await dat_lastday_va_tinh_lai(khach, mo.rows[0].id, ngay_nghi_viec, true);
+    await ap_che_do_hoi_to(khach, mo.rows[0].id, hoi_to);
+    return { quy_trinh_id: mo.rows[0].id, tao_moi_don: false, tao_moi_qt: false, dung_lai: true };
+  }
+
+  const don = await khach.query<{ id: string; trang_thai: string }>(
+    `select d.id, d.trang_thai from don_tu d
+      where d.nhan_vien_id = $1 and d.loai = 'thoi_viec'
+        and d.trang_thai in ('cho_duyet','da_duyet') and d.tu_ngay = $2::date
+        -- Đơn đã có quy trình ĐÓNG (đã hủy/đã khóa) không được tái dùng: QĐ mới phải mở
+        -- quy trình mới, không được trả về quy trình đã chết.
+        and not exists (
+          select 1 from quy_trinh_thoi_viec q
+           where q.don_tu_id = d.id and q.trang_thai in ('da_huy','da_khoa')
+        )
+      order by d.tao_luc desc limit 1
+      for update`,
     [nhan_vien_id, ngay_nghi_viec],
   );
   let don_id = don.rows[0]?.id;
   let tao_moi_don = false;
+  if (don_id !== undefined && don.rows[0]?.trang_thai === 'cho_duyet') {
+    const nd_he_thong = await id_tai_khoan_he_thong();
+    await khach.query(
+      `update don_tu
+          set trang_thai = 'da_duyet', nguoi_duyet_id = $2, quyet_luc = now(),
+              ghi_chu_duyet = coalesce(nullif(ghi_chu_duyet, ''), $3)
+        where id = $1 and trang_thai = 'cho_duyet'`,
+      [don_id, nd_he_thong, 'Duyệt theo Quyết định nghỉ việc đã ban hành.'],
+    );
+  }
   if (don_id === undefined) {
     tao_moi_don = true;
     const nd_he_thong = await id_tai_khoan_he_thong();
     const kq = await khach.query<{ id: string }>(
       `insert into don_tu(nhan_vien_id, loai, tu_ngay, trang_thai, ly_do, nguoi_duyet_id,
-                          quyet_luc)
-       values ($1,'thoi_viec',$2::date,'da_duyet','Hồi tố từ Quyết định nghỉ việc trên '
-               || 'hệ văn bản', $3, now())
+                          quyet_luc, ghi_chu_duyet)
+       values ($1,'thoi_viec',$2::date,'da_duyet',
+               'Đưa vào quy trình thôi việc từ Quyết định nghỉ việc trên hệ văn bản',
+               $3, now(), 'Duyệt theo Quyết định nghỉ việc đã ban hành.')
        returning id`,
       [nhan_vien_id, ngay_nghi_viec, nd_he_thong],
     );
     don_id = kq.rows[0]?.id;
   }
-  if (don_id === undefined) return { quy_trinh_id: null, tao_moi_don, tao_moi_qt: false };
-
-  const co = await khach.query<{ id: string }>(
-    'select id from quy_trinh_thoi_viec where don_tu_id = $1', [don_id]);
-  if (co.rows[0] !== undefined) {
-    return { quy_trinh_id: co.rows[0].id, tao_moi_don, tao_moi_qt: false };
+  if (don_id === undefined) {
+    return { quy_trinh_id: null, tao_moi_don, tao_moi_qt: false, dung_lai: false };
   }
 
-  const qt_id = await sinh_quy_trinh_thoi_viec(khach, don_id, null);
-  if (qt_id === null) return { quy_trinh_id: null, tao_moi_don, tao_moi_qt: false };
-  // QD da an dinh ngay — coi nhu lastday da chot; cac muc nhan_vien bo qua vi khong the
-  // doi nguoi da nghi truoc ngay co he thong lam lai thu tuc. Admin van phai bam Cong 2.
-  await khach.query(
-    'update quy_trinh_thoi_viec set lastday_da_chot = true where id = $1', [qt_id]);
+  const co = await khach.query<{ id: string }>(
+    `select id from quy_trinh_thoi_viec
+      where don_tu_id = $1 and trang_thai in ('dang_thuc_hien','san_sang_chot')`,
+    [don_id],
+  );
+  if (co.rows[0] !== undefined) {
+    return { quy_trinh_id: co.rows[0].id, tao_moi_don, tao_moi_qt: false, dung_lai: true };
+  }
+
+  const qt_id = await sinh_quy_trinh_thoi_viec(khach, don_id, null, nguon_tao);
+  if (qt_id === null) {
+    return { quy_trinh_id: null, tao_moi_don, tao_moi_qt: false, dung_lai: false };
+  }
+  await dat_lastday_va_tinh_lai(khach, qt_id, ngay_nghi_viec, true);
+  await ap_che_do_hoi_to(khach, qt_id, hoi_to);
+  return { quy_trinh_id: qt_id, tao_moi_don, tao_moi_qt: true, dung_lai: false };
+}
+
+/**
+ * Hồi tố = người đã qua ngày làm việc cuối: bỏ qua mục nhân viên.
+ * Còn thời hạn: mục nhân viên giữ mở; riêng mục xác nhận lastday đánh dấu xong vì QĐ đã ấn định.
+ */
+async function ap_che_do_hoi_to(
+  khach: PoolClient, quy_trinh_id: string, hoi_to: boolean,
+): Promise<void> {
+  if (hoi_to) {
+    await khach.query(
+      `update muc_checklist
+          set trang_thai = 'bo_qua',
+              ghi_chu = 'Hồi tố từ Quyết định nghỉ việc — không truy thu thủ tục'
+        where quy_trinh_id = $1 and loai_tu_dong = 'nhan_vien'
+          and trang_thai in ('chua','dang')`,
+      [quy_trinh_id],
+    );
+    return;
+  }
   await khach.query(
     `update muc_checklist
-        set trang_thai = 'bo_qua',
-            ghi_chu = 'Hồi tố từ Quyết định nghỉ việc — không truy thu thủ tục'
-      where quy_trinh_id = $1 and loai_tu_dong = 'nhan_vien'`,
-    [qt_id],
+        set trang_thai = 'xong', xac_nhan_luc = now(),
+            ghi_chu = 'Ngày làm việc cuối do Quyết định nghỉ việc ấn định'
+      where quy_trinh_id = $1 and ma_muc = 'xac_nhan_lastday' and trang_thai = 'chua'`,
+    [quy_trinh_id],
   );
-  return { quy_trinh_id: qt_id, tao_moi_don, tao_moi_qt: true };
 }
 
 /**

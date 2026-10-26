@@ -31,6 +31,11 @@ import {
 } from '../sharepoint/dong_bo.ts';
 import { thu_ket_noi } from '../sharepoint/khach.ts';
 import { cau_hinh } from '../cau_hinh.ts';
+import { graph_da_cau_hinh } from '../nhan_su/ms365.ts';
+import { kiem_tra_ung_dung_ms365 } from '../nhan_su/kiem_tra_ung_dung_ms365.ts';
+import {
+  ten_ung_dung, type MaUngDung, type NenTang, type TrangThaiUngDung,
+} from '../nhan_su/ung_dung_ms365.ts';
 import {
   chuoi, chuoi_bat_buoc, luan_ly, ngay, ngay_bat_buoc, phan_trang, so_nguyen, so_thuc, than,
   trong_tap, uuid, uuid_bat_buoc,
@@ -718,6 +723,70 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'ho_so.sua_thong_tin_ca_nhan',
       'ho_so_ca_nhan', id, null, req.ip);
     return { ok: true };
+  });
+
+  // ------------------------------------------------------------ ung dung bat buoc M365
+  /**
+   * Anh chup lan kiem tra gan nhat: ung dung bat buoc da duoc dung tren may tinh / dien thoai
+   * chua. Quyen theo nhom `thiet_bi` — nhan su, chinh nguoi do, va truong phong cua phong.
+   *
+   * Tra ve ca `graph_da_cau_hinh` de giao dien biet co hien nut dong bo hay khong, va
+   * `ngay_bao_cao` de nguoi doc biet du lieu Microsoft cu the nao (bao cao cap nhat theo tuan).
+   */
+  app.get('/nhan-vien/:id/ms365-ung-dung', { preHandler: can_dang_nhap }, async (req) => {
+    const nd = nguoi_xem(req);
+    const id = doc_id(req);
+    const { bc } = await nap_boi_canh(nd, id);
+    bat_buoc_doc(nd, 'thiet_bi', bc, 'ứng dụng bắt buộc trên máy tính và điện thoại');
+
+    const dong = await truy_van<{
+      nen_tang: NenTang; ung_dung: MaUngDung; trang_thai: TrangThaiUngDung;
+      lan_hoat_dong: string | null; ngay_bao_cao: string | null;
+      nguon: string; chi_tiet: string | null;
+    }>(
+      `select nen_tang, ung_dung, trang_thai,
+              lan_hoat_dong::text as lan_hoat_dong, ngay_bao_cao::text as ngay_bao_cao,
+              nguon, chi_tiet
+         from ms365_ung_dung_kiem_tra
+        where nhan_vien_id = $1
+        order by case nen_tang when 'may_tinh' then 0 else 1 end,
+                 array_position(
+                   array['outlook','teams','onedrive','authenticator','sharepoint'], ung_dung)`,
+      [id],
+    );
+    const moc = await truy_van_mot<{ dong_bo_luc: string | null; ngay_bao_cao: string | null }>(
+      `select max(dong_bo_luc)::text as dong_bo_luc, max(ngay_bao_cao)::text as ngay_bao_cao
+         from ms365_ung_dung_kiem_tra where nhan_vien_id = $1`,
+      [id],
+    );
+
+    return {
+      danh_sach: dong.map((d) => ({ ...d, ten: ten_ung_dung(d.nen_tang, d.ung_dung) })),
+      dong_bo_luc: moc?.dong_bo_luc ?? null,
+      ngay_bao_cao: moc?.ngay_bao_cao ?? null,
+      graph_da_cau_hinh: graph_da_cau_hinh(),
+    };
+  });
+
+  /** Dong bo lai toan bo anh chup (Graph doc bao cao cua CA tenant). Chi nhan su. */
+  app.post('/nhan-vien/ms365-ung-dung/dong-bo', { preHandler: can_nhan_su }, async (req) => {
+    if (!graph_da_cau_hinh()) {
+      throw new LoiDauVao(
+        'Chưa cấu hình Microsoft Graph (MS_MAIL_TENANT_ID / CLIENT_ID / CLIENT_SECRET) — chưa kiểm tra được ứng dụng bắt buộc.');
+    }
+    let kq;
+    try {
+      kq = await kiem_tra_ung_dung_ms365();
+    } catch (loi) {
+      throw new LoiDauVao(`Không kiểm tra được ứng dụng Microsoft 365: ${(loi as Error).message}`);
+    }
+    await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'dong_bo_ms365_ung_dung',
+      'ms365_ung_dung_kiem_tra', null, {
+        so_nhan_vien: kq.so_nhan_vien,
+        so_nguoi_thieu: kq.so_nguoi_thieu,
+        loi: kq.loi,
+      }, req.ip);
+    return kq;
   });
 
   // ------------------------------------------------------------ checklist tai lieu

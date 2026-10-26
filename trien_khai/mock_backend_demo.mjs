@@ -42,13 +42,13 @@ createServer((req, res) => {
   if (p === '/api/xac-thuc/cau-hinh') {
     return json(res, { dang_nhap_rieng: true, dang_nhap_microsoft: true, cong_sso: null, ms365_tao: { bat: true } });
   }
-  if (p === '/api/de-nghi-nhan-su/ms365-da-cap-phep/dong-bo' && req.method === 'POST') {
+  if (p === '/api/nhan-vien/ms365-da-cap-phep/dong-bo' && req.method === 'POST') {
     return json(res, { tong: m365.length, them_moi: 0, ten_moi: [] });
   }
-  if (p === '/api/de-nghi-nhan-su/ms365-da-cap-phep') {
+  if (p === '/api/nhan-vien/ms365-da-cap-phep') {
     return json(res, { danh_sach: m365, dong_bo_luc: '2026-10-02T05:00:00Z' });
   }
-  if (p === '/api/de-nghi-nhan-su') return json(res, de_nghi);
+  if (p === '/api/nhan-vien') return json(res, de_nghi);
   if (p === '/api/phong-ban') return json(res, [{ id: 'pb1', ten: 'Phòng Kinh doanh' }, { id: 'pb2', ten: 'Phòng Nhân sự' }]);
   if (p === '/api/ca-lam') return json(res, [{ id: 'ca1', ten: 'Hành chính 08:00-17:30', dang_hoat_dong: true }]);
   if (p === '/api/khoi') return json(res, [{ id: 'k1', ma: 'KD', ten: 'Khối Kinh doanh', dang_bat: true }]);

@@ -15,6 +15,7 @@ import {
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon } from '../chon.tsx';
 import { dung_tuyen } from '../dinh_tuyen.tsx';
+import { tra_hien_tai, type ChuoiKhoa } from '../chuoi/chi_muc.tsx';
 
 // ---------------------------------------------------------------- kieu du lieu
 
@@ -66,6 +67,8 @@ interface QuyTrinhThoiViec {
   nhan_vien_id: string;
   loai_hop_dong: string;
   chuc_danh: string | null;
+  nguon_tao: 'don_nhan_vien' | 'quyet_dinh' | 'nghi_khong_ban_giao';
+  nhom_quy_trinh: string | null;
   ngay_lam_viec_cuoi: string | null;
   lastday_da_chot: boolean;
   khong_can_bao_truoc: boolean;
@@ -90,6 +93,47 @@ const TEN_LOAI_HD: Record<string, string> = {
   cong_tac_vien: 'Cộng tác viên',
   quan_ly_dn: 'Quản lý doanh nghiệp (Điều 7 NĐ145/2020)',
 };
+
+/** Nhanh quy trinh — quyet dinh boi loai hop dong + cap quan ly (nhanh.ts). */
+const KHOA_NHANH: Record<string, string> = {
+  thuc_tap: 'tv_nhom_thuc_tap',
+  thu_viec: 'tv_nhom_thu_viec',
+  thoi_vu: 'tv_nhom_thoi_vu',
+  chinh_thuc: 'tv_nhom_chinh_thuc',
+  cong_tac_vien: 'tv_nhom_cong_tac_vien',
+  quan_ly: 'tv_nhom_quan_ly',
+};
+const KHOA_CAN_CU: Record<string, string> = {
+  thuc_tap: 'tv_can_cu_thuc_tap',
+  thu_viec: 'tv_can_cu_thu_viec',
+  thoi_vu: 'tv_can_cu_thoi_vu',
+  chinh_thuc: 'tv_can_cu_chinh_thuc',
+  cong_tac_vien: 'tv_can_cu_cong_tac_vien',
+  quan_ly: 'tv_can_cu_quan_ly',
+};
+const KHOA_NGUON: Record<string, string> = {
+  don_nhan_vien: 'tv_nguon_don',
+  quyet_dinh: 'tv_nguon_quyet_dinh',
+  nghi_khong_ban_giao: 'tv_nguon_khong_ban_giao',
+};
+
+function tra_khoa_dong(khoa: string | undefined, mac_dinh: string): string {
+  return khoa === undefined ? mac_dinh : tra_hien_tai(khoa as ChuoiKhoa);
+}
+
+function nhan_nhanh(nhom: string | null): string {
+  if (nhom === null) return '—';
+  return tra_khoa_dong(KHOA_NHANH[nhom], nhom);
+}
+
+function can_cu_nhanh(nhom: string | null): string {
+  if (nhom === null) return '';
+  return tra_khoa_dong(KHOA_CAN_CU[nhom], '');
+}
+
+function nhan_nguon(nguon: string): string {
+  return tra_khoa_dong(KHOA_NGUON[nguon], nguon);
+}
 
 const NHAN_MUC: Record<string, { nhan: string; mau: 'tot' | 'canh_bao' | 'xau' | 'mo' }> = {
   chua: { nhan: 'Chưa làm', mau: 'mo' },
@@ -197,7 +241,7 @@ function DanhSachQuyTrinh(
             <table>
               <thead>
                 <tr>
-                  <th>Nhân viên</th><th>Loại HĐ</th><th>Lastday</th><th>Trạng thái</th>
+                  <th>Nhân viên</th><th>Loại HĐ</th><th>Nhánh</th><th>Lastday</th><th>Trạng thái</th>
                   <th>Khởi tạo</th><th></th>
                 </tr>
               </thead>
@@ -209,6 +253,12 @@ function DanhSachQuyTrinh(
                       <div className="mo-ta">{d.phong_ban ?? '—'}</div>
                     </td>
                     <td>{TEN_LOAI_HD[d.loai_hop_dong] ?? d.loai_hop_dong}</td>
+                    <td>{
+                      <>
+                        {nhan_nhanh(d.nhom_quy_trinh)}
+                        <div className="mo-ta">{nhan_nguon(d.nguon_tao)}</div>
+                      </>
+                    }</td>
                     <td>{d.ngay_lam_viec_cuoi === null ? '—' : ngay_viet(d.ngay_lam_viec_cuoi)}</td>
                     <td>{nhan_qt(d)}</td>
                     <td>{ngay_gio(d.tao_luc)}</td>
@@ -314,7 +364,12 @@ function ChiTietQuyTrinh({ id, khi_dong }: { id: string; khi_dong: () => void })
           <h2 className="tv-tua">{d.ho_ten} <span className="mo-ta">{d.ma_nv}</span></h2>
           <div className="mo-ta">
             {d.phong_ban ?? '—'} · {TEN_LOAI_HD[d.loai_hop_dong] ?? d.loai_hop_dong}
-            {d.la_quan_ly_dn ? ' · quản lý DN' : ''} · Quy trình tạo lúc {ngay_gio(d.tao_luc)}
+            {d.nhom_quy_trinh === 'quan_ly' ? ' · quản lý DN' : ''} · Quy trình tạo lúc {ngay_gio(d.tao_luc)}
+          </div>
+          <div className="goi-y" style={{ marginTop: 8 }}>
+            <b>{tra_hien_tai('tv_nhanh')}:</b> {nhan_nhanh(d.nhom_quy_trinh)}
+            {can_cu_nhanh(d.nhom_quy_trinh) !== '' && <> — {can_cu_nhanh(d.nhom_quy_trinh)}</>}
+            <span className="mo-ta"> · {tra_hien_tai('tv_nguon_tao')}: {nhan_nguon(d.nguon_tao)}</span>
           </div>
         </div>
         <div className="hang-nut">

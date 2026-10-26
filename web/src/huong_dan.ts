@@ -166,7 +166,10 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     duong_dan: '/nhan-vien',
     tom_tat: 'Hồ sơ nhân sự: thông tin, tài liệu, hợp đồng, mã ở các hệ thống.',
     buoc: [
-      { chu: 'Thêm nhân viên: mã nhân viên + họ tên là bắt buộc, phần còn lại điền dần.', vai_tro: NHAN_SU },
+      { chu: 'Bấm + Thêm nhân viên: khai họ tên + khối + email; mã nhân viên và PIN do hệ thống tự sinh.', vai_tro: NHAN_SU },
+      { chu: 'Nếu người mới ĐÃ CÓ tài khoản Microsoft 365 kèm giấy phép: chọn người đó ở ô "Chọn từ Microsoft 365" — họ tên + email tự điền và hệ thống không tạo lại tài khoản.', vai_tro: NHAN_SU },
+      { chu: 'Chọn Vị trí trong Tổ chức & trách nhiệm ngay khi thêm: hệ thống giao luôn các đầu việc định kỳ của vị trí; vị trí chọn đầu tiên là vị trí chính.', vai_tro: NHAN_SU },
+      { chu: 'Lưu là xong: hệ thống tự tạo tài khoản, đẩy PIN xuống máy, giao việc "Nhập việc" kèm checklist và báo quản trị viên có nhân sự mới. Không có bước duyệt.', vai_tro: NHAN_SU },
       { chu: 'Mở hồ sơ → thẻ Mã ở các hệ thống → Cấp PIN, chọn máy. Hệ thống chọn số còn trống.', vai_tro: NHAN_SU },
       { chu: 'Cài đúng số đó lên máy chấm công, rồi nhân viên đăng ký khuôn mặt/vân tay tại máy.', vai_tro: NHAN_SU },
       { chu: 'Nạp tài liệu vào tab Tài liệu theo checklist.', vai_tro: NHAN_SU },
@@ -175,30 +178,11 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     ],
     luu_y: [
       'ĐỪNG tự nghĩ ra số PIN. Hệ thống cấp số theo dải của từng máy — tự nghĩ số là cách hai văn phòng cùng đánh số 1 và công của người này chạy sang người kia.',
+      'Danh sách Microsoft 365 được quét tự động 08:00 và 13:00 mỗi ngày; bấm "Đồng bộ ngay" trong form để cập nhật lập tức. Chỉ hiện người đang bật tài khoản, có giấy phép và chưa có hồ sơ.',
+      'Chọn máy cửa khi người này cần quẹt ra vào: hệ thống cấp PIN theo dải của máy đó và đẩy user xuống cả máy cửa lẫn máy chấm công của khối.',
       'Cho nghỉ việc giữ nguyên lịch sử chấm công và vô hiệu hóa tài khoản đăng nhập. Xóa hồ sơ là mất bảng công cũ — lần quẹt ở lại nhưng thành vô chủ.',
       'Người đã có phiếu lương thì KHÔNG xóa được, vĩnh viễn. Đã trả lương cho ai thì hồ sơ người đó là chứng từ.',
       'Đổi mã nhân viên hoặc họ tên sẽ đổi luôn tên thư mục kho tệp — bình thường, hệ thống tự dọn.',
-    ],
-  },
-  {
-    duong_dan: '/de-nghi-nhan-su',
-    tom_tat: 'Onboarding: HR đề nghị thêm người, Admin duyệt một bước — hệ thống tự tạo tài khoản Microsoft, ERP1, cổng, cấp PIN máy cửa và giao việc nhập việc.',
-    buoc: [
-      { chu: 'Bấm Đề nghị thêm nhân sự, điền họ tên + chức danh + vị trí; email công ty nếu muốn cấp tài khoản Microsoft.', vai_tro: NHAN_SU },
-      { chu: 'Nếu người mới ĐÃ CÓ tài khoản Microsoft 365 kèm giấy phép: chọn người đó trong ô "Chọn từ Microsoft 365" — họ tên + email tự điền và hệ thống sẽ không tạo lại tài khoản.', vai_tro: NHAN_SU },
-      { chu: 'Trên trang có bảng "Nhân sự từ Microsoft 365" liệt kê người có giấy phép chưa có hồ sơ — bấm "Đề nghị thêm" cạnh tên là form tự điền sẵn người đó.', vai_tro: NHAN_SU },
-      { chu: 'Danh sách Microsoft 365 được quét tự động 08:00 và 13:00 mỗi ngày; bấm "Đồng bộ ngay" cạnh ô chọn để cập nhật lập tức.', vai_tro: NHAN_SU },
-      { chu: 'Chọn máy cửa để hệ thống tự cấp PIN theo dải của máy đó (vân tay/khuôn mặt vẫn phải enroll tại máy).', vai_tro: NHAN_SU },
-      { chu: 'Admin mở Duyệt / từ chối: điền mã nhân viên (nếu trống), sửa chức danh nếu cần, rồi bấm Duyệt & khởi tạo.', vai_tro: ['admin'] },
-      { chu: 'Mật khẩu khởi tạo Microsoft chỉ hiện một lần ngay khi duyệt — chép lại để bàn giao.', vai_tro: ['admin'] },
-      { chu: 'Việc Nhập việc + checklist tự giao cho nhân sự phụ trách (đổi người ở Công việc → Workflow hệ thống).', vai_tro: NHAN_SU },
-    ],
-    luu_y: [
-      'Không khai email công ty thì không cấp được tài khoản Microsoft — email chính là tên đăng nhập (UPN).',
-      'Danh sách Microsoft 365 chỉ hiện người đang bật tài khoản và đã có giấy phép, bỏ người đã có hồ sơ trong hệ thống — không thấy tên thì kiểm tra giấy phép hoặc chọn nhập tay.',
-      'Khi phát hiện tài khoản Microsoft mới được cấp phép, hệ thống báo Nhân sự qua chuông thông báo.',
-      'Chưa khai MS365_SKU_BASIC / MS365_SKU_STANDARD thì Admin bị chặn khi duyệt đề nghị cấp Microsoft — khai xong mới duyệt được.',
-      'Máy cửa offline thì lệnh đẩy PIN nằm chờ, checklist mục PIN chỉ tick khi máy xác nhận — không chặn các việc khác.',
     ],
   },
   {
@@ -229,7 +213,8 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
     luu_y: [
       'Chạy dừng hoạt động là bước KHÔNG đảo ngược được: khóa tài khoản, thu hồi phiên, báo cổng phân quyền + ERP1 + Microsoft 365, và gửi hồ sơ BHXH/thuế. Hệ thống chỉ chạy được khi mọi mục bắt buộc đã xong và lastday đã chốt.',
       'Đến ngày nghỉ mà chưa chốt, hệ thống KHÔNG tự khóa — chỉ bắn cảnh báo đỏ. Teardown chỉ đi qua Cổng 2.',
-      'Quyết định nghỉ việc cũ trên hệ văn bản AI được hồi tố thành quy trình — Admin vẫn phải bấm Cổng 2.',
+      'Quyết định nghỉ việc đưa người vào quy trình NGAY khi phát hành để bàn giao trong thời hạn báo trước; quyết định cũ đã quá ngày mới xử lý hồi tố (bỏ qua mục nhân viên).',
+      'Checklist chia theo loại hợp đồng: thực tập sinh không có báo giảm BHXH, trợ cấp thôi việc, phép năm hay mốc quyết toán 14 ngày; quản lý doanh nghiệp báo trước tới 120 ngày.',
     ],
   },
   {

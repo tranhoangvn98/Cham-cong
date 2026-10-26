@@ -58,6 +58,14 @@ export const CHUOI_VI = {
   // ================================ tro ly
   tl_chua_co_quy_trinh: 'Bạn chưa có quy trình thôi việc đang mở.',
 
+  // ================================ quy trinh thoi viec
+  tv_thong_bao_qd_tieu_de: 'Quyết định nghỉ việc đã ban hành',
+  tv_thong_bao_qd_noi_dung: 'Bạn đã được đưa vào quy trình thôi việc — ngày làm việc cuối '
+    + '{ngay}. Mở Hướng dẫn thôi việc để làm bàn giao trước ngày này.',
+  tv_thong_bao_qt_moi_tieu_de: 'Quy trình thôi việc mới',
+  tv_thong_bao_qt_moi_noi_dung: '{ten} ({ma}) — ngày làm việc cuối {ngay}. Vào Thôi việc để '
+    + 'chỉ định người nhận bàn giao.',
+
   // ================================ email thong bao (khung + chu ky)
   email_chu_de_tien_to: 'Chấm công',
   email_thong_bao_noi_bo: 'THÔNG BÁO NỘI BỘ',
@@ -93,4 +101,25 @@ export const CHUOI_VI = {
   qn_loi_erp1: 'ERP1 chưa khóa',
   qn_loi_m365_mo: 'M365 vẫn đăng nhập được',
   qn_loi_m365_phep: 'M365 còn giấy phép',
+
+  // ================================ bao PIN may cham cong cho nguoi moi
+  pin_tieu_de: 'PIN máy chấm công của bạn: {pin}',
+  pin_noi_dung:
+    'Mã PIN của bạn trên máy chấm công là {pin}{may}. Khi đến máy, chọn "Đăng ký" rồi nhập đúng số này để đăng ký vân tay, khuôn mặt hoặc thẻ. PIN là danh tính chấm công của bạn — không chia sẻ cho người khác, vì mọi lượt quẹt bằng số này đều tính công cho bạn.',
+  pin_noi_dung_may: ' (đã đẩy xuống máy: {may})',
+
+  // ================================ bao quan tri vien: co nhan su moi
+  ns_moi_tieu_de: 'Có nhân sự mới: {ho_ten}',
+  ns_moi_noi_dung:
+    '{ho_ten} ({ma_nv}) vừa được thêm vào hệ thống. Mở trang Nhân viên để xem hồ sơ — không cần duyệt.',
+
+  // ================================ Microsoft 365: nguoi moi duoc cap giay phep
+  m365_moi_tieu_de: 'Microsoft 365 có tài khoản mới được cấp phép',
+  m365_moi_noi_dung:
+    '{danh_sach} vừa có giấy phép Microsoft 365 — mở trang Nhân viên để thêm hồ sơ cho họ.',
+
+  // ================================ gui tai khoan Microsoft khoi tao cho nguoi lap ho so
+  tk365_tieu_de: 'Tài khoản Microsoft 365 của {ho_ten}: {upn}',
+  tk365_noi_dung:
+    'Tên đăng nhập: {upn} — Mật khẩu khởi tạo: {mat_khau}. Hãy bàn giao cho nhân viên và nhắc họ đổi mật khẩu ngay ở lần đăng nhập đầu tiên (Microsoft bắt buộc đổi). Không gửi mật khẩu qua kênh công khai.',
 } as const;

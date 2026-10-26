@@ -127,3 +127,9 @@ test('ten moi thanh chu: toi da 3 ten, thua thi gom "va N nguoi khac"', () => {
   assert.equal(ten_moi_thanh_chu(['A', 'B', 'C']), 'A, B, C');
   assert.equal(ten_moi_thanh_chu(['A', 'B', 'C', 'D', 'E']), 'A, B, C và 2 người khác');
 });
+
+test('ten moi thanh chu: ban tieng Trung noi bang dau lien + "deng N ren"', () => {
+  assert.equal(ten_moi_thanh_chu(['Nguyễn A'], 'zh'), 'Nguyễn A');
+  assert.equal(ten_moi_thanh_chu(['A', 'B', 'C'], 'zh'), 'A、B、C');
+  assert.equal(ten_moi_thanh_chu(['A', 'B', 'C', 'D', 'E'], 'zh'), 'A、B、C等2人');
+});

@@ -24,7 +24,7 @@ import {
   tiep_nhan_attlog, tiep_nhan_rtlog, tiep_nhan_transaction, tiep_nhan_userinfo,
 } from './tiep_nhan.ts';
 import { dong_bo_sau_enroll } from './dong_bo_may.ts';
-import { tick_pin_may_cua_nhan } from '../nhan_su/nhap_viec.ts';
+import { nhan_vien_tu_khoa_lenh_pin, tick_pin_may_cua_nhan } from '../nhan_su/nhap_viec.ts';
 import { ip_duoc_phep } from '../tien_ich/dia_chi_ip.ts';
 
 interface DongThietBi {
@@ -434,10 +434,8 @@ export async function tuyen_adms(app: FastifyInstance): Promise<void> {
       // checklist tuong ung trong cong viec nhap viec (REQ-CL-02 muc 3).
       const lenh_ok = await truy_van_mot<{ khoa_chong_trung: string | null }>(
         'select khoa_chong_trung from lenh_thiet_bi where id = $1', [r.id]);
-      const khoa = lenh_ok?.khoa_chong_trung ?? '';
-      if (khoa.startsWith('nhap_viec_pin:')) {
-        await tick_pin_may_cua_nhan(khoa.slice('nhap_viec_pin:'.length));
-      }
+      const nv_cua_lenh = nhan_vien_tu_khoa_lenh_pin(lenh_ok?.khoa_chong_trung ?? '');
+      if (nv_cua_lenh !== null) await tick_pin_may_cua_nhan(nv_cua_lenh);
     }
     await cham_thiet_bi(sn, null, req.ip);
     return tra_text(res, 'OK\n');

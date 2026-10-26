@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { goi, la_admin, la_nhan_su } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, HopThoaiNhap, TEN_VAI_TRO, Trong,
-  dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_viet,
+  dung_hanh_dong, dung_nap, dung_xac_nhan, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
 import { LienKet } from '../dinh_tuyen.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
@@ -52,7 +52,7 @@ interface NhanVien {
 interface CaLam { id: string; ten: string; dang_hoat_dong: boolean }
 interface PhongBan { id: string; ten: string }
 interface NoiLamViec { id: string; ten: string; lich_nghi_ma: string }
-interface Khoi { id: string; ma: string; ten: string; dang_bat: boolean }
+interface Khoi { id: string; ma: string; ma_ngan: string | null; ten: string; dang_bat: boolean }
 
 interface ThietBi {
   id: string;
@@ -61,6 +61,7 @@ interface ThietBi {
   dang_bat: boolean;
   pin_tu: number | null;
   pin_den: number | null;
+  khoi_id: string | null;
 }
 
 /** Phan hoi cua POST /api/nhan-vien khi co chon tao tai khoan (Microsoft / he thong). */
@@ -73,10 +74,31 @@ interface TaiKhoanHeThong {
 }
 interface KetQuaTaoNhanVien {
   id: string;
+  ma_nv: string;
+  pin_may: string | null;
+  may_da_day: string[];
+  viec_id: string | null;
+  so_vi_tri_to_chuc: number;
+  so_dau_viec_dinh_ky: number;
   canh_bao?: string[];
   tai_khoan_ms365?: TaiKhoanMs;
   tai_khoan_he_thong?: TaiKhoanHeThong;
 }
+
+/** Vi tri JD trong danh muc To chuc & trach nhiem (chi de chon khi them nhan su). */
+interface ViTriToChuc {
+  id: string;
+  ma: string;
+  ten: string;
+  cap_bac: string;
+  dang_hoat_dong: boolean;
+  ten_phong_ban: string | null;
+  so_dau_viec: number;
+}
+
+/** Nguoi Microsoft 365 da co giay phep — chon de dien san ho ten + email. */
+interface NguonMs365 { oid: string; ho_ten: string; upn: string }
+interface KqNguonMs365 { danh_sach: NguonMs365[]; dong_bo_luc: string | null }
 
 /** Bay bac vi tri chon tren form — dong bo voi may_chu/src/nhan_su/vi_tri.ts. */
 export const CAC_VI_TRI = [
@@ -342,6 +364,7 @@ function FormNhanVien(
     ho_ten: nhan_vien?.ho_ten ?? '',
     pin_may: nhan_vien?.pin_may ?? '',
     ma_erp: nhan_vien?.ma_erp ?? '',
+    ma_erp1: '',
     phong_ban_id: nhan_vien?.phong_ban_id ?? '',
     ca_lam_id: nhan_vien?.ca_lam_id ?? '',
     ngay_vao: nhan_vien?.ngay_vao ?? '',
@@ -354,27 +377,96 @@ function FormNhanVien(
     che_do_luong: nhan_vien?.che_do_luong ?? 'vn',
     khoi_id: nhan_vien?.khoi_id ?? '',
     cong_chuan_thang: nhan_vien?.cong_chuan_thang ?? '',
+    loai_hop_dong: '',
+    serial_may_cua: '',
   });
-  const [tu_cap_pin, dat_tu_cap_pin] = useState(tu_dong);
-  const [serial_pin, dat_serial_pin] = useState('');
+  // Ho so moi: mac dinh de he thong cap PIN theo dai cua may thuoc khoi — nguoi lap ho so khong
+  // phai nghi ra so, va cung khong phai chon may.
+  const [tu_cap_pin, dat_tu_cap_pin] = useState(true);
   const [kiem_nhiem, dat_kiem_nhiem] = useState<string[]>(
     nhan_vien?.phong_ban_kiem_nhiem.map((p) => p.id) ?? [],
   );
   const [tao_tk_ms, dat_tao_tk_ms] = useState(tu_dong && ms365_tao_bat);
   const [tao_tk_ht, dat_tao_tk_ht] = useState(true);
+  // Chon nguoi DA co tai khoan Microsoft 365 (da cap giay phep) thay vi nhap tay: he thong
+  // khong tao lai tai khoan, chi khoi tao phan con lai.
+  const [nguon_ms365, dat_nguon_ms365] = useState('');
+  const [ms365_da_co, dat_ms365_da_co] = useState(false);
+  // Vi tri lay tu cau hinh "To chuc & trach nhiem": chon la giao luon dau viec dinh ky cua vi tri.
+  // Thu tu mang = thu tu NGUOI DUNG CHON; phan tu dau tien thanh vi tri chinh.
+  const [vi_tri_to_chuc, dat_vi_tri_to_chuc] = useState<string[]>([]);
+  const ds_vi_tri = dung_nap<ViTriToChuc[]>(
+    nhan_vien === null ? '/api/to-chuc/vi-tri' : null);
+  const nguon = dung_nap<KqNguonMs365>(
+    nhan_vien === null ? '/api/nhan-vien/ms365-da-cap-phep' : null);
   const [ket_qua, dat_ket_qua] = useState<TaiKhoanMs | null>(null);
   const [ket_qua_ht, dat_ket_qua_ht] = useState<TaiKhoanHeThong | null>(null);
+  const [ket_qua_ma, dat_ket_qua_ma] = useState('');
+  const [ket_qua_pin, dat_ket_qua_pin] = useState<string | null>(null);
+  const [ket_qua_may, dat_ket_qua_may] = useState<string[]>([]);
+  const [ket_qua_vt, dat_ket_qua_vt] = useState<{ so_vt: number; so_viec: number } | null>(null);
   const [canh_bao_ket, dat_canh_bao_ket] = useState<string[]>([]);
   const noi = dung_nap<NoiLamViec[]>('/api/noi-lam-viec');
   const khoi = dung_nap<Khoi[]>('/api/khoi');
   const hd = dung_hanh_dong();
+  const db = dung_hanh_dong();
   const xn = dung_xac_nhan();
 
   const doi = (khoa: keyof typeof f, gt: string | boolean): void =>
     dat_f((cu) => ({ ...cu, [khoa]: gt }));
 
+  const khoi_dang_chon = (khoi.du_lieu ?? []).find((k) => k.id === f.khoi_id) ?? null;
+  const may_cua_khoi = cac_may.filter((m) => m.khoi_id !== null && m.khoi_id === f.khoi_id
+    && m.dang_bat);
+  /** Xem truoc khuon ma: khoi + thang nam vao lam. So thu tu chi biet khi luu. */
+  const ma_xem_truoc = ((): string => {
+    const mn = khoi_dang_chon?.ma_ngan;
+    if (mn === null || mn === undefined || mn === '') return '—';
+    const m = /^(\d{4})-(\d{2})-\d{2}$/.exec(f.ngay_vao);
+    const thang = m === null ? 'MMYY' : `${m[2] as string}${(m[1] as string).slice(2)}`;
+    return `NV${mn}${thang}####`;
+  })();
+
   const bat_tat_kiem_nhiem = (id: string): void =>
     dat_kiem_nhiem((cu) => (cu.includes(id) ? cu.filter((x) => x !== id) : [...cu, id]));
+
+  /** Chon/bo vi tri JD. Giu thu tu chon: phan tu dau tien la vi tri chinh. */
+  const bat_tat_vi_tri = (id: string): void =>
+    dat_vi_tri_to_chuc((cu) => (cu.includes(id) ? cu.filter((x) => x !== id) : [...cu, id]));
+
+  /** Chon nguoi co san tai khoan Microsoft 365: dien ho ten + email, bo che do tao moi. */
+  const chon_ms365 = (ma: string): void => {
+    dat_nguon_ms365(ma);
+    if (ma === '') {
+      dat_ms365_da_co(false);
+      dat_tao_tk_ms(tu_dong && ms365_tao_bat);
+      return;
+    }
+    const u = (nguon.du_lieu?.danh_sach ?? []).find((x) => x.oid === ma);
+    if (u === undefined) return;
+    dat_f((cu) => ({ ...cu, ho_ten: u.ho_ten, email: u.upn }));
+    dat_ms365_da_co(true);
+    dat_tao_tk_ms(false);
+  };
+
+  /** Sua email tay sau khi da chon tu danh sach thi bo che do "da co" — email moi co the
+   *  chua co tai khoan Microsoft nao, khong duoc bo qua buoc tao tai khoan. */
+  const doi_email = (gt: string): void => {
+    doi('email', gt);
+    const u = (nguon.du_lieu?.danh_sach ?? []).find((x) => x.oid === nguon_ms365);
+    if (u !== undefined && gt.trim().toLowerCase() !== u.upn.toLowerCase()) {
+      dat_nguon_ms365('');
+      dat_ms365_da_co(false);
+      dat_tao_tk_ms(tu_dong && ms365_tao_bat);
+    }
+  };
+
+  const dong_bo_ngay = async (): Promise<void> => {
+    const ok = await db.chay(() => goi('/api/nhan-vien/ms365-da-cap-phep/dong-bo', {
+      method: 'POST', body: {},
+    }));
+    if (ok) nguon.nap_lai();
+  };
 
   const gui = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -383,6 +475,7 @@ function FormNhanVien(
       ho_ten: f.ho_ten.trim(),
       pin_may: tu_cap_pin ? null : (f.pin_may.trim() === '' ? null : f.pin_may.trim()),
       ma_erp: f.ma_erp.trim() === '' ? null : f.ma_erp.trim(),
+      ma_erp1: f.ma_erp1.trim() === '' ? null : f.ma_erp1.trim(),
       phong_ban_id: f.phong_ban_id === '' ? null : f.phong_ban_id,
       ca_lam_id: f.ca_lam_id === '' ? null : f.ca_lam_id,
       ngay_vao: f.ngay_vao === '' ? null : f.ngay_vao,
@@ -404,21 +497,29 @@ function FormNhanVien(
           body: {
             ...than,
             tu_cap_pin,
-            thiet_bi_serial: tu_cap_pin ? serial_pin : null,
+            serial_may_cua: f.serial_may_cua === '' ? null : f.serial_may_cua,
             tao_tk_ms365: tao_tk_ms,
             tao_tk_he_thong: tao_tk_ht,
+            ms365_da_co,
+            loai_hop_dong: f.loai_hop_dong.trim() === '' ? null : f.loai_hop_dong.trim(),
+            vi_tri_ids: vi_tri_to_chuc,
           },
         }),
       );
       if (kq === null) return;
-      if (kq.tai_khoan_ms365 !== undefined || kq.tai_khoan_he_thong !== undefined) {
-        // Mat khau khoi tao chi hien dung mot lan nay — giu form mo de nhan su chep lai.
-        dat_ket_qua(kq.tai_khoan_ms365 ?? null);
-        dat_ket_qua_ht(kq.tai_khoan_he_thong ?? null);
-        dat_canh_bao_ket(kq.canh_bao ?? []);
-        return;
-      }
-      khi_xong();
+      // Luôn mở hộp thoại kết quả: mã nhân viên và PIN đều do hệ thống sinh nên phải hiện ra
+      // đúng một lần để nhân sự chép lại bàn giao.
+      dat_ket_qua(kq.tai_khoan_ms365 ?? null);
+      dat_ket_qua_ht(kq.tai_khoan_he_thong ?? null);
+      dat_ket_qua_ma(kq.ma_nv);
+      dat_ket_qua_pin(kq.pin_may);
+      dat_ket_qua_may(kq.may_da_day ?? []);
+      dat_ket_qua_vt(
+        kq.so_vi_tri_to_chuc > 0
+          ? { so_vt: kq.so_vi_tri_to_chuc, so_viec: kq.so_dau_viec_dinh_ky }
+          : null,
+      );
+      dat_canh_bao_ket(kq.canh_bao ?? []);
       return;
     }
     const ok = await hd.chay(() =>
@@ -456,7 +557,8 @@ function FormNhanVien(
 
         {nhan_vien === null && tu_dong && (
           <div className="hop-thong-bao hop-tin">
-            Chế độ tự động: hệ thống <strong>tự cấp PIN theo dãy của máy bạn chọn</strong>,
+            Chế độ tự động: hệ thống <strong>tự sinh mã nhân viên</strong>,
+            {' '}<strong>tự cấp PIN theo dãy của máy thuộc khối</strong> và đẩy lên máy,
             {' '}<strong>tự tạo tài khoản hệ thống</strong> (vai trò theo vị trí)
             {ms365_tao_bat
               ? <> và <strong>tự tạo tài khoản Microsoft 365</strong> — mật khẩu khởi tạo chỉ
@@ -466,49 +568,97 @@ function FormNhanVien(
           </div>
         )}
 
-        <div className="luoi luoi-2">
+        {nhan_vien === null && (
+          <div className="hop-thong-bao hop-tin">{tra_hien_tai('nv_hop_nhat_phu')}</div>
+        )}
+
+        {nhan_vien === null && (
           <div className="o-nhap">
-            <label htmlFor="ma">Mã nhân viên *</label>
-            <input id="ma" value={f.ma_nv} onChange={(e) => doi('ma_nv', e.target.value)} required />
+            <label htmlFor="m365">{tra_hien_tai('nv_ms365_chon')}</label>
+            <Chon gia_tri={nguon_ms365} dat_gia_tri={chon_ms365}
+              cac_tuy_chon={(nguon.du_lieu?.danh_sach ?? []).map((u): TuyChonChon => ({
+                ma: u.oid, nhan: `${u.ho_ten} — ${u.upn}`,
+              }))}
+              rong={tra_hien_tai('nv_ms365_chon_rong')} nhan={tra_hien_tai('nv_ms365_chon')} />
+            <div className="hang-nut" style={{ marginTop: 8 }}>
+              <button type="button" className="nut-nho nut-phang"
+                onClick={() => { void dong_bo_ngay(); }} disabled={db.dang_chay}>
+                {db.dang_chay ? tra_hien_tai('nv_dang_dong_bo') : tra_hien_tai('nv_dong_bo_ngay')}
+              </button>
+              <span className="goi-y">
+                {nguon.du_lieu?.dong_bo_luc === null || nguon.du_lieu?.dong_bo_luc === undefined
+                  ? tra_hien_tai('nv_chua_dong_bo')
+                  : tra_hien_tai('nv_dong_bo_luc', { luc: ngay_gio(nguon.du_lieu.dong_bo_luc) })}
+              </span>
+            </div>
+            {ms365_da_co && (
+              <div className="hop-thong-bao hop-tin">{tra_hien_tai('nv_ms365_da_co')}</div>
+            )}
+            {db.loi !== null && <HopLoi loi={db.loi} />}
           </div>
+        )}
+
+        <div className="luoi luoi-2">
+          {nhan_vien === null ? (
+            <div className="o-nhap">
+              <label htmlFor="ma">{tra_hien_tai('nv_ma_tu_sinh')}</label>
+              <input id="ma" value={ma_xem_truoc} readOnly className="chu-ma" />
+              <div className="goi-y">{tra_hien_tai('nv_ma_tu_sinh_phu')}</div>
+            </div>
+          ) : (
+            <div className="o-nhap">
+              <label htmlFor="ma">Mã nhân viên *</label>
+              <input id="ma" value={f.ma_nv} onChange={(e) => doi('ma_nv', e.target.value)} required />
+            </div>
+          )}
           <div className="o-nhap">
             <label htmlFor="ht">Họ tên *</label>
             <input id="ht" value={f.ho_ten} onChange={(e) => doi('ho_ten', e.target.value)} required />
           </div>
         </div>
 
-        <div className="o-nhap">
-          <label htmlFor="pin">PIN trên máy chấm công</label>
-          <input id="pin" value={f.pin_may} onChange={(e) => doi('pin_may', e.target.value)}
-            inputMode="numeric" placeholder="1001" disabled={tu_cap_pin} />
-          <div className="goi-y">
-            Phải trùng đúng số ID đã khai trên máy ZKTeco. Chỉ gồm chữ số.
-            {' '}<strong>Nhiều văn phòng thì dùng CHUNG một số PIN cho cả ba máy</strong> — PIN
-            chính là danh tính, máy nào quẹt cũng ra đúng người. Khai mỗi nơi một số thì hệ thống
-            hiểu thành ba người khác nhau.
-          </div>
-        </div>
-
-        {nhan_vien === null && !tu_dong && (
-          <div className="o-nhap-ngang" style={{ marginBottom: tu_cap_pin ? 0 : 8 }}>
-            <input id="tcp" type="checkbox" checked={tu_cap_pin}
-              onChange={(e) => dat_tu_cap_pin(e.target.checked)} />
-            <label htmlFor="tcp">Tự cấp PIN theo dãy của máy</label>
-          </div>
-        )}
-        {nhan_vien === null && tu_cap_pin && (
+        {nhan_vien === null ? (
+          <>
+            <div className="o-nhap-ngang" style={{ marginBottom: tu_cap_pin ? 0 : 8 }}>
+              <input id="tcp" type="checkbox" checked={tu_cap_pin}
+                onChange={(e) => dat_tu_cap_pin(e.target.checked)} />
+              <label htmlFor="tcp">{tra_hien_tai('nv_pin_tu_khoi')}</label>
+            </div>
+            {tu_cap_pin && (
+              <div className="goi-y" style={{ marginTop: 0, marginBottom: 12 }}>
+                {tra_hien_tai('nv_pin_tu_khoi_phu')}
+                {f.khoi_id !== '' && may_cua_khoi.length === 0 && (
+                  <><br /><strong>{tra_hien_tai('nv_ket_qua_chua_co_may')}</strong></>
+                )}
+              </div>
+            )}
+            {!tu_cap_pin && (
+              <div className="o-nhap">
+                <label htmlFor="pin">{tra_hien_tai('nv_pin_nhap_tay')}</label>
+                <input id="pin" value={f.pin_may} onChange={(e) => doi('pin_may', e.target.value)}
+                  inputMode="numeric" placeholder="1001" />
+                <div className="goi-y">
+                  Phải trùng đúng số ID đã khai trên máy ZKTeco. Chỉ gồm chữ số.
+                  {' '}<strong>Nhiều văn phòng thì dùng CHUNG một số PIN cho cả ba máy</strong> — PIN
+                  chính là danh tính, máy nào quẹt cũng ra đúng người.
+                </div>
+              </div>
+            )}
+            <div className="o-nhap">
+              <label htmlFor="mc">{tra_hien_tai('nv_may_cua')}</label>
+              <Chon gia_tri={f.serial_may_cua} dat_gia_tri={(ma) => doi('serial_may_cua', ma)}
+                cac_tuy_chon={cac_may.map((m): TuyChonChon => ({ ma: m.serial, nhan: m.ten }))}
+                rong={tra_hien_tai('nv_may_cua_rong')} nhan={tra_hien_tai('nv_may_cua')} />
+              <div className="goi-y">{tra_hien_tai('nv_may_cua_phu')}</div>
+            </div>
+          </>
+        ) : (
           <div className="o-nhap">
-            <label htmlFor="maypin">Máy chấm công *</label>
-            <Chon gia_tri={serial_pin}
-              dat_gia_tri={dat_serial_pin}
-              cac_tuy_chon={cac_may.map((m): TuyChonChon => ({
-                ma: m.serial,
-                nhan: m.pin_tu !== null ? `${m.ten} (dải PIN ${m.pin_tu}–${m.pin_den})` : m.ten,
-              }))}
-              rong="— Chọn máy —" nhan="Chọn máy chấm công" />
+            <label htmlFor="pin">PIN trên máy chấm công</label>
+            <input id="pin" value={f.pin_may} onChange={(e) => doi('pin_may', e.target.value)}
+              inputMode="numeric" placeholder="1001" />
             <div className="goi-y">
-              Hệ thống chọn số PIN còn trống đầu tiên trong dải của máy này và ghi vào bảng mã
-              định danh. Nhân sự chỉ cần khai đúng số đó lên máy ZKTeco.
+              Phải trùng đúng số ID đã khai trên máy ZKTeco. Chỉ gồm chữ số.
             </div>
           </div>
         )}
@@ -518,8 +668,8 @@ function FormNhanVien(
           <input id="cd" value={f.chuc_danh} onChange={(e) => doi('chuc_danh', e.target.value)}
             placeholder="Ví dụ: Trưởng phòng Kinh doanh" />
           <div className="goi-y">
-            Dùng để chọn giấy phép Microsoft khi tạo tài khoản: chức danh chứa
-            <strong> trưởng</strong> nhận Standard, còn lại nhận Basic.
+            Tài khoản Microsoft mới nhận giấy phép <strong>Basic</strong>; chỉ cấp Standard khi
+            người có thẩm quyền chọn đích danh lúc duyệt.
           </div>
         </div>
 
@@ -574,6 +724,53 @@ function FormNhanVien(
           </div>
           <div className="goi-y">{tra_hien_tai('nv_phong_ban_kiem_nhiem_phu')}</div>
         </div>
+
+        {nhan_vien === null && (
+          <div className="o-nhap">
+            <label>{tra_hien_tai('nv_vi_tri_to_chuc')}</label>
+            {(ds_vi_tri.du_lieu ?? [])
+              .filter((v) => v.dang_hoat_dong && !v.ma.startsWith('bac.'))
+              .length === 0 ? (
+                <div className="goi-y">{tra_hien_tai('nv_vi_tri_khong_co')}</div>
+              ) : (
+                <div className="vo-bang" style={{ maxHeight: 210, overflowY: 'auto' }}>
+                  <table className="bang-gon">
+                    <tbody>
+                      {(ds_vi_tri.du_lieu ?? [])
+                        .filter((v) => v.dang_hoat_dong && !v.ma.startsWith('bac.'))
+                        .map((v) => (
+                          <tr key={v.id}>
+                            <td style={{ width: 32 }}>
+                              <input type="checkbox" checked={vi_tri_to_chuc.includes(v.id)}
+                                aria-label={`${tra_hien_tai('nv_vi_tri_to_chuc')}: ${v.ten}`}
+                                onChange={() => bat_tat_vi_tri(v.id)} />
+                            </td>
+                            <td>{v.ten}
+                              <div className="mo-ta">
+                                {v.ten_phong_ban ?? 'Toàn công ty'} · {v.so_dau_viec} đầu việc
+                              </div>
+                            </td>
+                            <td className="khong-ngat">
+                              {vi_tri_to_chuc[0] === v.id && (
+                                <span className="nhan nhan-tot">{tra_hien_tai('nv_vi_tri_chinh_nhan')}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            <div className="goi-y">{tra_hien_tai('nv_vi_tri_to_chuc_phu')}</div>
+            {vi_tri_to_chuc.length > 0 && (
+              <div className="goi-y">
+                {tra_hien_tai('nv_vi_tri_chinh', {
+                  ten: (ds_vi_tri.du_lieu ?? []).find((v) => v.id === vi_tri_to_chuc[0])?.ten ?? '',
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="o-nhap">
           <label htmlFor="nlv">Nơi làm việc</label>
@@ -632,22 +829,40 @@ function FormNhanVien(
             <label htmlFor="nv">Ngày vào làm</label>
             <input id="nv" type="date" value={f.ngay_vao} onChange={(e) => doi('ngay_vao', e.target.value)} />
           </div>
+          {nhan_vien === null && (
+            <div className="o-nhap">
+              <label htmlFor="lhd">{tra_hien_tai('nv_loai_hop_dong')}</label>
+              <input id="lhd" value={f.loai_hop_dong}
+                onChange={(e) => doi('loai_hop_dong', e.target.value)}
+                placeholder="HĐLĐ 12 tháng / thử việc" />
+              <div className="goi-y">{tra_hien_tai('nv_loai_hop_dong_phu')}</div>
+            </div>
+          )}
+        </div>
+
+        <div className="luoi luoi-2">
           <div className="o-nhap">
             <label htmlFor="erp">Mã bên ERP</label>
             <input id="erp" value={f.ma_erp} onChange={(e) => doi('ma_erp', e.target.value)}
               placeholder="Để đồng bộ bảng lương" />
           </div>
+          <div className="o-nhap">
+            <label htmlFor="em">Email</label>
+            <input id="em" type="email" value={f.email} onChange={(e) => doi_email(e.target.value)}
+              required={tao_tk_ms} />
+          </div>
         </div>
 
         <div className="luoi luoi-2">
           <div className="o-nhap">
-            <label htmlFor="sdt">Số điện thoại</label>
-            <input id="sdt" value={f.so_dien_thoai} onChange={(e) => doi('so_dien_thoai', e.target.value)} />
+            <label htmlFor="erp1">{tra_hien_tai('nv_ma_erp1')}</label>
+            <input id="erp1" value={f.ma_erp1} onChange={(e) => doi('ma_erp1', e.target.value)}
+              placeholder={tra_hien_tai('nv_ma_erp1_goi_y')} />
+            <div className="goi-y">{tra_hien_tai('nv_ma_erp1_phu')}</div>
           </div>
           <div className="o-nhap">
-            <label htmlFor="em">Email</label>
-            <input id="em" type="email" value={f.email} onChange={(e) => doi('email', e.target.value)}
-              required={tao_tk_ms} />
+            <label htmlFor="sdt">Số điện thoại</label>
+            <input id="sdt" value={f.so_dien_thoai} onChange={(e) => doi('so_dien_thoai', e.target.value)} />
           </div>
         </div>
 
@@ -675,27 +890,26 @@ function FormNhanVien(
           </div>
         )}
 
-        {nhan_vien === null && !tu_dong && (
+        {nhan_vien === null && !tu_dong && !ms365_da_co && (
           <div className="o-nhap-ngang" style={{ marginTop: 8 }}>
             <input id="tkms" type="checkbox" checked={tao_tk_ms} disabled={!ms365_tao_bat}
               onChange={(e) => dat_tao_tk_ms(e.target.checked)} />
             <label htmlFor="tkms">Tạo tài khoản Microsoft 365 + cấp giấy phép</label>
           </div>
         )}
-        {nhan_vien === null && !tu_dong && (
+        {nhan_vien === null && !tu_dong && !ms365_da_co && (
           <div className="goi-y" style={{ marginTop: -8, marginBottom: 12 }}>
             {ms365_tao_bat
               ? <>Email trở thành tên đăng nhập Microsoft. Mật khẩu khởi tạo sẽ <strong>chỉ hiện
                 một lần</strong> ngay sau khi lưu — hãy chép lại rồi bàn giao cho nhân viên.
-                Giấy phép cấp theo chức danh: trưởng phòng nhận Standard, còn lại nhận Basic.</>
+                Giấy phép mặc định là <strong>Business Basic</strong>.</>
               : 'Máy chủ chưa bật tính năng này (MS365_TAO_TAI_KHOAN_BAT) — hỏi quản trị hệ thống.'}
           </div>
         )}
         {nhan_vien === null && tu_dong && (
           <div className="goi-y" style={{ marginBottom: 12 }}>
             <strong>Lưu ý:</strong> điền email công ty (dùng làm tên đăng nhập Microsoft) nếu máy
-            chủ đã bật tạo tài khoản; giấy phép cấp theo chức danh — trưởng phòng nhận Standard,
-            còn lại nhận Basic.
+            chủ đã bật tạo tài khoản; giấy phép mặc định là Business Basic.
           </div>
         )}
 
@@ -712,15 +926,23 @@ function FormNhanVien(
           )}
         </div>
       </form>
-      {(ket_qua !== null || ket_qua_ht !== null) && (
+      {(ket_qua_ma !== '' || ket_qua !== null || ket_qua_ht !== null) && (
         <HopThoaiKetQuaTk
           ho_ten={f.ho_ten.trim()}
+          ma_nv={ket_qua_ma}
+          pin={ket_qua_pin}
+          may_da_day={ket_qua_may}
           ket_qua_ms={ket_qua}
           ket_qua_ht={ket_qua_ht}
+          ket_qua_vt={ket_qua_vt}
           canh_bao={canh_bao_ket}
           khi_xong={() => {
             dat_ket_qua(null);
             dat_ket_qua_ht(null);
+            dat_ket_qua_ma('');
+            dat_ket_qua_pin(null);
+            dat_ket_qua_may([]);
+            dat_ket_qua_vt(null);
             khi_xong();
           }}
         />
@@ -732,17 +954,41 @@ function FormNhanVien(
 
 // ============================================================ ket qua tao tai khoan
 function HopThoaiKetQuaTk(
-  { ho_ten, ket_qua_ms, ket_qua_ht, canh_bao, khi_xong }:
+  { ho_ten, ma_nv, pin, may_da_day, ket_qua_ms, ket_qua_ht, ket_qua_vt, canh_bao, khi_xong }:
   {
     ho_ten: string;
+    ma_nv: string;
+    pin: string | null;
+    may_da_day: string[];
     ket_qua_ms: TaiKhoanMs | null;
     ket_qua_ht: TaiKhoanHeThong | null;
+    ket_qua_vt: { so_vt: number; so_viec: number } | null;
     canh_bao: string[];
     khi_xong: () => void;
   },
 ): ReactNode {
   return (
     <HopThoai tieu_de={`Tài khoản mới — ${ho_ten}`} khi_dong={khi_xong}>
+      {ket_qua_vt !== null && (
+        <div className="hop-thong-bao hop-tot">
+          {tra_hien_tai('nv_ket_qua_vi_tri', {
+            so_vt: ket_qua_vt.so_vt, so_viec: ket_qua_vt.so_viec,
+          })}
+        </div>
+      )}
+      <div className="o-nhap">
+        <label htmlFor="kq-ma">{tra_hien_tai('nv_ket_qua_ma')}</label>
+        <input id="kq-ma" value={ma_nv} readOnly className="chu-ma" />
+      </div>
+      <div className="o-nhap">
+        <label htmlFor="kq-pin">{tra_hien_tai('nv_ket_qua_pin')}</label>
+        <input id="kq-pin" value={pin ?? '—'} readOnly className="chu-ma" />
+        <div className="goi-y">
+          {may_da_day.length > 0
+            ? `${tra_hien_tai('nv_ket_qua_may_day')}: ${may_da_day.join(', ')}`
+            : tra_hien_tai('nv_ket_qua_chua_co_may')}
+        </div>
+      </div>
       {ket_qua_ms !== null && <>
         <div className="hop-thong-bao hop-tin">
           {ket_qua_ms.ghi_chu}

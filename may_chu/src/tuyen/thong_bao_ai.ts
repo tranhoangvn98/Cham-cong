@@ -9,10 +9,12 @@
 import type { FastifyInstance } from 'fastify';
 import { truy_van, truy_van_mot, thuc_thi, trong_giao_dich } from '../csdl/ket_noi.ts';
 import { can_nhan_su, nguoi_dung_hien_tai } from '../bao_mat/xac_thuc.ts';
-import { gui_ngam } from '../su_kien/thong_bao_day.ts';
+import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
+import { gui_chuong_ngon_ngu } from '../su_kien/gui_chuong_ngon_ngu.ts';
 import { gui_email_thong_bao } from '../su_kien/gui_email_thong_bao.ts';
+import { dam_bao_quy_trinh_tu_qd } from '../thoi_viec/quy_trinh.ts';
 import { ghi_nhat_ky } from '../tien_ich/nhat_ky.ts';
-import { ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
+import { ngay_dia_phuong, ngay_viet } from '../tien_ich/thoi_gian.ts';
 import { doc_tep_ho_so, lam_sach_ten, luu_tep_ho_so, luu_van_ban_cong_ty, xoa_tep_ho_so,
   type TepDaLuu } from '../tien_ich/luu_tep.ts';
 import { cau_hinh } from '../cau_hinh.ts';
@@ -600,8 +602,9 @@ export async function ban_hanh_nhap_ai(
   id: string,
   nd: { sub: string; vai_tro: string },
   tuy_chon: { ip?: string; popup?: boolean; gui_email?: boolean } = {},
-): Promise<{ ok: boolean; thong_bao_id: string | null; ma_thong_bao: string | null; so_ky_hieu: string }> {
+): Promise<{ ok: boolean; thong_bao_id: string | null; ma_thong_bao: string | null; so_ky_hieu: string; quy_trinh_id: string | null }> {
   const ip = tuy_chon.ip ?? '';
+  const hom_nay = ngay_dia_phuong(new Date());
   const d = await doc_nhap(id);
 
   if (d.trang_thai === 'dang_lay_y_kien') {
@@ -632,7 +635,7 @@ export async function ban_hanh_nhap_ai(
   let so_ky_hieu = d.so_ky_hieu;
   let so_ban_hanh = d.so_ban_hanh;
   if (so_ky_hieu === null || so_ban_hanh === null) {
-    const nam = Number(ngay_dia_phuong(new Date()).slice(0, 4));
+    const nam = Number(hom_nay.slice(0, 4));
     await thuc_thi(
       `insert into bo_dem_so_vb(loai, nam, gia_tri) values ($1,$2,0)
        on conflict (loai, nam) do nothing`,
@@ -727,6 +730,8 @@ export async function ban_hanh_nhap_ai(
   const bat_popup = tuy_chon.popup === true;
   const bat_gui_email = tuy_chon.gui_email === true;
   let thong_bao: { id: string; ma: string };
+  let quy_trinh_id: string | null = null;
+  let quy_trinh_moi = false;
   try {
     // REQ-21: mot transaction — insert thong_bao + danh dau ban nhap da phat hanh.
     // Tra ve dong vua tao QUA ham de TypeScript khong thay no la `never` o ngoai.
@@ -786,6 +791,32 @@ export async function ban_hanh_nhap_ai(
         );
       }
 
+      // QUYET DINH NGHI VIEC -> MOT LUONG THOI VIEC DUY NHAT, tao NGAY trong transaction
+      // phat hanh: don + quy trinh + checklist theo loai hop dong dang hieu luc. QD con
+      // thoi han bao truoc thi muc ban giao MO NGAY; QD cu (ngay da qua) thi danh dau hoi to.
+      // Khong tao quy trinh cho nguoi da duoc cho nghi bang tay (ho so da dong).
+      if (d.la_qd_nghi_viec && d.nhan_vien_id !== null && d.ngay_nghi_viec !== null) {
+        const nv = await khach.query<{ dang_hoat_dong: boolean }>(
+          'select dang_hoat_dong from nhan_vien where id = $1', [d.nhan_vien_id]);
+        if (nv.rows[0]?.dang_hoat_dong === true) {
+          const kq_qt = await dam_bao_quy_trinh_tu_qd(
+            khach, d.nhan_vien_id, d.ngay_nghi_viec,
+            { hoi_to: d.ngay_nghi_viec < hom_nay },
+          );
+          if (kq_qt.quy_trinh_id === null) {
+            // Khong the phat hanh mot QD nghi viec ma khong co quy trinh ban giao.
+            throw new LoiXungDot('Không tạo được quy trình thôi việc từ quyết định này.');
+          }
+          quy_trinh_id = kq_qt.quy_trinh_id;
+          quy_trinh_moi = kq_qt.tao_moi_qt;
+        }
+        // Danh dau da xu ly de vong quet nen khong lap lai.
+        await khach.query(
+          'update thong_bao_nhap_ai set nghi_viec_da_chay_luc = now() where id = $1',
+          [d.id],
+        );
+      }
+
       return dong;
     });
   } catch (loi) {
@@ -830,6 +861,41 @@ export async function ban_hanh_nhap_ai(
     });
   }
 
+  // Quyet dinh nghi viec vua dua nguoi vao quy trinh: bao rieng cho nguoi nghi (theo ngon
+  // ngu cua chinh ho) va cho admin/HR biet de chi dinh nguoi nhan ban giao. Thong bao la
+  // phan phu — loi o day KHONG duoc bien mot ban hanh da commit thanh HTTP 500.
+  if (quy_trinh_id !== null && quy_trinh_moi && d.nhan_vien_id !== null) {
+    try {
+      const tham_so = {
+        ngay: d.ngay_nghi_viec === null ? '' : ngay_viet(d.ngay_nghi_viec),
+      };
+      await gui_chuong_ngon_ngu({
+        nguoi_dung_ids: await tai_khoan_cua_nhan_vien(d.nhan_vien_id),
+        tieu_de: 'tv_thong_bao_qd_tieu_de',
+        noi_dung: 'tv_thong_bao_qd_noi_dung',
+        tham_so,
+        du_lieu: { man: 'thoi-viec', loai: 'thoi_viec', quy_trinh_id },
+      });
+
+      const nv = await truy_van_mot<{ ho_ten: string; ma_nv: string }>(
+        'select ho_ten, ma_nv from nhan_vien where id = $1', [d.nhan_vien_id]);
+      const admins = await truy_van<{ id: string }>(
+        `select id from nguoi_dung
+          where dang_hoat_dong = true and vai_tro = 'admin'`);
+      if (nv !== null && admins.length > 0) {
+        await gui_chuong_ngon_ngu({
+          nguoi_dung_ids: admins.map((a) => a.id),
+          tieu_de: 'tv_thong_bao_qt_moi_tieu_de',
+          noi_dung: 'tv_thong_bao_qt_moi_noi_dung',
+          tham_so: { ten: nv.ho_ten, ma: nv.ma_nv, ngay: tham_so.ngay },
+          du_lieu: { man: 'thoi-viec', loai: 'thoi_viec', quy_trinh_id },
+        });
+      }
+    } catch (loi) {
+      console.error('[thong_bao_ai] bao quy trinh thoi viec loi:', (loi as Error).message);
+    }
+  }
+
   // Gui email kem DOCX toi dung tap nguoi nhan. Fire-and-forget: khong cho HTTP ra ngoai
   // vao luong request — mat giua chung thi vong quet `quet_email_cho` cua lich_chay bu lai.
   void gui_email_thong_bao(thong_bao.id).catch((loi) => {
@@ -841,5 +907,6 @@ export async function ban_hanh_nhap_ai(
     thong_bao_id: thong_bao?.id ?? null,
     ma_thong_bao: thong_bao?.ma ?? null,
     so_ky_hieu,
+    quy_trinh_id,
   };
 }

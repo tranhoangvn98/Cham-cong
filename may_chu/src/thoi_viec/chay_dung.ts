@@ -20,6 +20,7 @@ import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
 import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { cho_nghi_viec } from '../nhan_su/nghi_viec.ts';
 import { doc_cau_hinh_thoi_viec, quy_trinh_theo_id } from './quy_trinh.ts';
+import { cau_truc_nhanh, nhom_quy_trinh, type NhomQuyTrinh } from './nhanh.ts';
 import { kiem_dieu_kien_chay } from './tinh_toan.ts';
 import { cac_tai_khoan_admin } from './nghiep_vu.ts';
 
@@ -32,6 +33,7 @@ interface QtChoChay {
   chuc_danh: string | null;
   phong_ban: string | null;
   loai_hop_dong: string;
+  la_quan_ly_dn: boolean;
   ngay_lam_viec_cuoi: string;
   ngay_vao: string | null;
   email: string | null;
@@ -61,7 +63,7 @@ export async function chay_dung_hoat_dong(
 
   await trong_giao_dich(async (khach) => {
     const hang = await khach.query<QtChoChay & { trang_thai: string }>(
-      `select qt.id, qt.nhan_vien_id, qt.trang_thai, qt.loai_hop_dong,
+      `select qt.id, qt.nhan_vien_id, qt.trang_thai, qt.loai_hop_dong, qt.la_quan_ly_dn,
               to_char(qt.ngay_lam_viec_cuoi, 'YYYY-MM-DD') as ngay_lam_viec_cuoi,
               to_char(nv.ngay_vao, 'YYYY-MM-DD') as ngay_vao,
               nv.ma_nv, nv.ho_ten, nv.chuc_danh, nv.email,
@@ -86,6 +88,10 @@ export async function chay_dung_hoat_dong(
       throw new LoiDauVao('Quy trình chưa sẵn sàng chốt — còn mục bắt buộc chưa xong.');
     }
 
+    // Nhanh theo loai hop dong: thuc tap / thu viec / thoi vu / chinh thuc / quan ly /
+    // cong tac vien. Quyet dinh + bang quyet toan + BHXH deu theo nhanh nay.
+    const nhom = nhom_quy_trinh(qtc.loai_hop_dong, qtc.la_quan_ly_dn);
+
     // Buoc 2: thu giu du lieu — ghi moc, bao admin IT lam phan can quyen he thong ngoai.
     await danh_dau_muc(khach, quy_trinh_id, 'chuyen_quyen_du_lieu', {
       ghi_chu: 'Yêu cầu chuyển quyền OneDrive/SharePoint đã ghi nhận. Chưa có API tự động '
@@ -97,24 +103,29 @@ export async function chay_dung_hoat_dong(
     });
 
     // Buoc 3: sinh & gui van ban (teo ghi ra dia TRUOC khi dua vao hop thu de outbox gui
-    // kem duoc tep).
-    const bang_quyet_toan_id = await sinh_bang_quyet_toan(khach, qtc);
+    // kem duoc tep). Moi van ban chi sinh khi muc tuong ung CO trong khuon cua loai hop
+    // dong nay — thuc tap sinh khong co quyet dinh cham dut HDLD, khong co giay BHXH.
+    const bang_quyet_toan_id = await sinh_bang_quyet_toan(khach, qtc, nhom);
 
-    const qd_id = await sinh_quyet_dinh_cham_dut(khach, qtc);
-    await danh_dau_muc(khach, quy_trinh_id, 'ra_qd_cham_dut', { tep_id: qd_id });
+    if (await co_muc_ap_dung(khach, quy_trinh_id, 'ra_qd_cham_dut', qtc)) {
+      const qd_id = await sinh_quyet_dinh_cham_dut(khach, qtc, nhom);
+      await danh_dau_muc(khach, quy_trinh_id, 'ra_qd_cham_dut', { tep_id: qd_id });
+    }
 
-    const xac_nhan_id = await sinh_xac_nhan_bhxh(khach, qtc);
-    await danh_dau_muc(khach, quy_trinh_id, 'tra_so_giay_to', { tep_id: xac_nhan_id });
-    if (qtc.email !== null && qtc.email !== '') {
-      await ghi_su_kien('gui_email', {
-        ma_nv: qtc.ma_nv,
-        den: [qtc.email],
-        cc: [],
-        tieu_de: 'Giấy xác nhận quá trình đóng BHXH-BHTN',
-        noi_dung: `<p>Kính gửi ${qtc.ho_ten},</p><p>Công ty gửi kèm giấy xác nhận quá `
-          + 'trình đóng BHXH-BHTN. Vui lòng kiểm tra và phản hồi nếu có sai sót.</p>',
-        tep_ids: [xac_nhan_id],
-      }, khach);
+    if (await co_muc_ap_dung(khach, quy_trinh_id, 'tra_so_giay_to', qtc)) {
+      const xac_nhan_id = await sinh_xac_nhan_bhxh(khach, qtc);
+      await danh_dau_muc(khach, quy_trinh_id, 'tra_so_giay_to', { tep_id: xac_nhan_id });
+      if (qtc.email !== null && qtc.email !== '') {
+        await ghi_su_kien('gui_email', {
+          ma_nv: qtc.ma_nv,
+          den: [qtc.email],
+          cc: [],
+          tieu_de: 'Giấy xác nhận quá trình đóng BHXH-BHTN',
+          noi_dung: `<p>Kính gửi ${qtc.ho_ten},</p><p>Công ty gửi kèm giấy xác nhận quá `
+            + 'trình đóng BHXH-BHTN. Vui lòng kiểm tra và phản hồi nếu có sai sót.</p>',
+          tep_ids: [xac_nhan_id],
+        }, khach);
+      }
     }
 
     if (await co_muc_ap_dung(khach, quy_trinh_id, 'chot_bhxh', qtc)) {
@@ -180,8 +191,7 @@ export async function chay_dung_hoat_dong(
     gui_ngam({
       nguoi_dung_ids: await tai_khoan_cua_nhan_vien(qtc.nhan_vien_id),
       tieu_de: 'Thủ tục thôi việc đã hoàn tất',
-      noi_dung: 'Mọi thủ tục đã hoàn tất. Các giấy tờ (quyết định chấm dứt, xác nhận BHXH) '
-        + 'đã lưu trong hồ sơ của bạn.',
+      noi_dung: 'Mọi thủ tục đã hoàn tất. Các giấy tờ đã được lưu trong hồ sơ của bạn.',
       du_lieu: { man: 'thoi-viec', loai: 'thoi_viec', quy_trinh_id },
     });
 
@@ -249,7 +259,10 @@ async function luu_van_ban_quy_trinh(
 }
 
 /** Bang quyet toan — so lieu tu ket_qua cua cac muc tu dong. */
-async function sinh_bang_quyet_toan(khach: PoolClient, qtc: QtChoChay): Promise<string> {
+async function sinh_bang_quyet_toan(
+  khach: PoolClient, qtc: QtChoChay, nhom: NhomQuyTrinh,
+): Promise<string> {
+  const cau_truc = cau_truc_nhanh(nhom);
   const muc = await khach.query<{ ma_muc: string; ket_qua: Record<string, unknown> | null }>(
     `select ma_muc, ket_qua from muc_checklist
       where quy_trinh_id = $1 and ma_muc in
@@ -266,47 +279,64 @@ async function sinh_bang_quyet_toan(khach: PoolClient, qtc: QtChoChay): Promise<
   const tien = (v: unknown): string =>
     typeof v === 'number' ? new Intl.NumberFormat('vi-VN').format(v) + ' đ' : '—';
 
+  // Chi hien dong CO trong khuon cua nhanh nay: thuc tap sinh khong co phep nam,
+  // khong co tro cap thoi viec, khong co moc 14 ngay theo D.48.
+  const hang: [string, string][] = [
+    ['Lương tháng gần nhất', tien(l?.['thuc_linh_moi_nhat'])],
+    ['Số công tích lũy', so(l?.['so_cong_tich_luy'])],
+  ];
+  if (p !== undefined) {
+    hang.push(['Phép năm còn lại', `${so(p['con_lai'])} ngày`]);
+    hang.push(['Thanh toán phép chưa nghỉ', tien(p['tien_phep'])]);
+  }
+  if (t !== undefined) hang.push(['Trợ cấp thôi việc', tien(t['tro_cap'])]);
+  if (h !== undefined) {
+    hang.push(['Hạn quyết toán', h['han_quyet_toan'] === null || h['han_quyet_toan'] === undefined
+      ? '—' : ngay_viet(String(h['han_quyet_toan']))]);
+  }
+
   return luu_van_ban_quy_trinh(khach, qtc, `Bang-quyet-toan_${qtc.ma_nv}.docx`, [
-    { loai: 'tieu_de', chu: 'BẢNG QUYẾT TOÁN KHI CHẤM DỨT HỢP ĐỒNG LAO ĐỘNG' },
+    { loai: 'tieu_de', chu: cau_truc.tieu_de_bang_quyet_toan },
     { loai: 'doan', chu: `Nhân viên: ${qtc.ho_ten} (${qtc.ma_nv}) — ${qtc.chuc_danh ?? '—'}` },
     { loai: 'doan', chu: `Ngày làm việc cuối: ${ngay_viet(qtc.ngay_lam_viec_cuoi)}` },
-    { loai: 'bang', hang: [
-      ['Lương tháng gần nhất', tien(l?.['thuc_linh_moi_nhat'])],
-      ['Số công tích lũy', so(l?.['so_cong_tich_luy'])],
-      ['Phép năm còn lại', `${so(p?.['con_lai'])} ngày`],
-      ['Thanh toán phép chưa nghỉ', tien(p?.['tien_phep'])],
-      ['Trợ cấp thôi việc', tien(t?.['tro_cap'])],
-      ['Hạn quyết toán', h?.['han_quyet_toan'] === null || h?.['han_quyet_toan'] === undefined
-        ? '—' : ngay_viet(String(h['han_quyet_toan']))],
-    ] },
-    { loai: 'doan', chu: 'Thanh toán mọi khoản trong 14 ngày làm việc kể từ ngày chấm dứt '
-      + 'HĐLĐ (BLLĐ 2019 Điều 48 khoản 1).' },
+    { loai: 'bang', hang },
+    ...(cau_truc.co_dieu_48
+      ? [{ loai: 'doan' as const, chu: 'Thanh toán mọi khoản trong 14 ngày làm việc kể từ '
+        + 'ngày chấm dứt HĐLĐ (BLLĐ 2019 Điều 48 khoản 1).' }]
+      : [{ loai: 'doan' as const, chu: cau_truc.ghi_chu_quyet_toan }]),
   ], 'luong', null);
 }
 
-/** Quyet dinh cham dut HDLD — the thuc theo mau chung cua cong ty. */
-async function sinh_quyet_dinh_cham_dut(khach: PoolClient, qtc: QtChoChay): Promise<string> {
-  return luu_van_ban_quy_trinh(khach, qtc, `Quyet-dinh-cham-dut-HDLD_${qtc.ma_nv}.docx`, [
-    { loai: 'tieu_de', chu: 'QUYẾT ĐỊNH' },
-    { loai: 'doan', chu: 'Về việc chấm dứt hợp đồng lao động', giua: true },
-    { loai: 'doan', chu: 'Căn cứ Bộ luật Lao động 2019 (Điều 34, 35, 46, 48);' },
-    { loai: 'doan', chu: 'Căn cứ đơn xin thôi việc và biên bản bàn giao của nhân viên;' },
+/** Quyet dinh ket thuc — tieu de va can cu theo nhanh hop dong. */
+async function sinh_quyet_dinh_cham_dut(
+  khach: PoolClient, qtc: QtChoChay, nhom: NhomQuyTrinh,
+): Promise<string> {
+  const cau_truc = cau_truc_nhanh(nhom);
+  return luu_van_ban_quy_trinh(khach, qtc, `Quyet-dinh-ket-thuc_${qtc.ma_nv}.docx`, [
+    { loai: 'tieu_de', chu: cau_truc.tieu_de_quyet_dinh },
+    { loai: 'doan', chu: cau_truc.dieu_1, giua: true },
+    { loai: 'doan', chu: cau_truc.can_cu },
+    { loai: 'doan', chu: 'Căn cứ biên bản bàn giao và hồ sơ nhân sự hiện hành;' },
     { loai: 'doan', chu: 'QUYẾT ĐỊNH:' },
-    { loai: 'doan', chu: `Điều 1. Chấm dứt hợp đồng lao động với ông/bà ${qtc.ho_ten} `
+    { loai: 'doan', chu: `Điều 1. ${cau_truc.dieu_1} với ông/bà ${qtc.ho_ten} `
       + `(mã nhân viên ${qtc.ma_nv}) kể từ ngày ${ngay_viet(qtc.ngay_lam_viec_cuoi)}.` },
-    { loai: 'doan', chu: 'Điều 2. Quyền lợi của người lao động được thanh toán theo quy '
-      + 'định tại Điều 48 Bộ luật Lao động 2019, gồm tiền lương, phép năm chưa nghỉ, trợ '
-      + 'cấp thôi việc, và xác nhận quá trình đóng BHXH-BHTN.' },
-    { loai: 'doan', chu: 'Điều 3. Các bộ phận liên quan và người lao động có trách nhiệm '
+    { loai: 'doan', chu: cau_truc.co_dieu_48
+      ? 'Điều 2. Quyền lợi của người lao động được thanh toán theo quy định tại Điều 48 '
+        + 'Bộ luật Lao động 2019, gồm tiền lương, phép năm chưa nghỉ, trợ cấp thôi việc, '
+        + 'và xác nhận quá trình đóng BHXH-BHTN.'
+      : 'Điều 2. Các khoản còn lại được thanh toán theo thỏa thuận trong hợp đồng và '
+        + 'bảng quyết toán đính kèm.' },
+    { loai: 'doan', chu: 'Điều 3. Các bộ phận liên quan và các bên có trách nhiệm '
       + 'thi hành quyết định này.' },
     { loai: 'bang', hang: [
       ['Họ và tên', qtc.ho_ten],
       ['Mã nhân viên', qtc.ma_nv],
       ['Phòng ban', qtc.phong_ban ?? '—'],
       ['Chức danh', qtc.chuc_danh ?? '—'],
-      ['Ngày chấm dứt', ngay_viet(qtc.ngay_lam_viec_cuoi)],
+      ['Ngày kết thúc', ngay_viet(qtc.ngay_lam_viec_cuoi)],
     ] },
-  ], 'tai_lieu', 'qd_cham_dut_hd');
+  ], 'tai_lieu',
+  cau_truc.nhom === 'thuc_tap' || cau_truc.nhom === 'cong_tac_vien' ? null : 'qd_cham_dut_hd');
 }
 
 /** Giay xac nhan qua trinh dong BHXH-BHTN. */

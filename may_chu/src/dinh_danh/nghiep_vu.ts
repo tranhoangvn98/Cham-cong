@@ -242,7 +242,14 @@ export async function gan_ma_am_tham(
  */
 export async function gan_bo_ma_nhan_su(
   nhan_vien_id: string,
-  gia_tri: { ma_nv?: string | null; pin_may?: string | null; ma_erp?: string | null; email?: string | null },
+  gia_tri: {
+    ma_nv?: string | null;
+    pin_may?: string | null;
+    ma_erp?: string | null;
+    email?: string | null;
+    /** Ma ben ERP1 — khai tren form ho so khi nguoi tao da biet ma do ben ERP1. */
+    ma_erp1?: string | null;
+  },
   nguon: NguonMa = 'nguoi_khai',
   bo?: BoChay,
 ): Promise<string[]> {
@@ -251,6 +258,7 @@ export async function gan_bo_ma_nhan_su(
     ['noi_bo', gia_tri.ma_nv],
     ['may_cham_cong', gia_tri.pin_may],
     ['erp_cu_ma', gia_tri.ma_erp],
+    ['erp1', gia_tri.ma_erp1],
     ['microsoft_email', gia_tri.email],
   ];
   for (const [he_thong, v] of cap) {

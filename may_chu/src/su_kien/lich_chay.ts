@@ -27,7 +27,10 @@ import { dong_bo_hang_ngay, GIO_DONG_BO_MAY } from '../adms/dong_bo_may.ts';
 import { nhac_bo_sung } from '../ho_so/bo_sung.ts';
 import { cap_nhat_email_nhan_su } from '../nhan_su/dong_bo_email.ts';
 import { quet_nghi_viec_chua_khoa } from '../nhan_su/quet_nghi_viec.ts';
-import { cong_ngay, khoang_thang, ngay_dia_phuong } from '../tien_ich/thoi_gian.ts';
+import { kiem_tra_ung_dung_ms365 } from '../nhan_su/kiem_tra_ung_dung_ms365.ts';
+import { gui_chuong_ngon_ngu } from './gui_chuong_ngon_ngu.ts';
+import { tai_khoan_cua_nhan_vien } from './thong_bao_day.ts';
+import { cong_ngay, khoang_thang, ngay_dia_phuong, ngay_viet } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. Khai duoc trong .env. */
 const CHU_KY_PHUT = cau_hinh.lich_chu_ky_phut;
@@ -37,6 +40,14 @@ const GIO_CHAY = 1;
 
 /** Gio (theo mui gio may cham cong) gui email nhac loi ky luat — mac dinh 17h, cau hinh duoc. */
 const GIO_NHAC = cau_hinh.ky_luat.gio_nhac;
+
+/**
+ * Gio kiem tra ung dung bat buoc M365: hai cua so moi ngay, giong lich quet giay phep.
+ *
+ * Bao cao Microsoft cap nhat theo tuan chu khong theo gio, nen chay buoi sang la du. Cua so
+ * thu hai de mot lan loi mang/quyen tam thoi khong lam mat ca ngay du lieu.
+ */
+const GIO_KIEM_TRA_UNG_DUNG = [8, 13];
 
 let bo_hen: NodeJS.Timeout | null = null;
 
@@ -128,7 +139,11 @@ async function dong_bo_sharepoint(
 }
 
 /**
- * Quet quyet dinh nghi viec den han: khoa tai khoan sau ngay nghi viec ghi trong quyet dinh.
+ * Quet quyet dinh nghi viec CHUA vao quy trinh: tao quy trinh thoi viec ngay khi phat hien.
+ *
+ * Khong con cho den `ngay_nghi_viec`: QD co the phat hanh truoc han bao truoc ca thang, va
+ * nhan vien phai co checklist ban giao NGAY trong thoi han do — khong phai doi den sau lastday.
+ * `hoi_to = ngay_nghi_viec < hom_nay` (QD cu / he thong tung loi) thi bo qua muc nhan vien.
  *
  * Nhan viec NGUYEN TU cho TUNG quyet dinh bang mot UPDATE danh dau `nghi_viec_dang_chay_luc`
  * (for update skip locked) — nhieu instance chay song song khong xu ly trung, va neu may chet
@@ -136,7 +151,7 @@ async function dong_bo_sharepoint(
  * Chi khi xong moi dat `nghi_viec_da_chay_luc`; that bai thi nha danh dau de vong sau thu lai.
  */
 export async function nghi_viec_den_han(
-  hom_qua: string, ghi_log: (s: string, ...t: unknown[]) => void,
+  hom_nay: string, ghi_log: (s: string, ...t: unknown[]) => void,
 ): Promise<void> {
   const dong = await truy_van<{
     id: string; ma: string; nhan_vien_id: string | null; ngay_nghi_viec: string;
@@ -147,7 +162,6 @@ export async function nghi_viec_den_han(
         select id from thong_bao_nhap_ai
          where la_qd_nghi_viec
            and trang_thai = 'da_phat_hanh'
-           and ngay_nghi_viec <= $1::date
            and nghi_viec_da_chay_luc is null
            and (nghi_viec_dang_chay_luc is null
                 or nghi_viec_dang_chay_luc < now() - interval '5 minutes')
@@ -155,7 +169,7 @@ export async function nghi_viec_den_han(
          for update skip locked
       )
       returning id, ma, nhan_vien_id, ngay_nghi_viec::text`,
-    [hom_qua],
+    [],
   );
 
   for (const d of dong) {
@@ -180,12 +194,20 @@ export async function nghi_viec_den_han(
           'select dang_hoat_dong from nhan_vien where id = $1', [nhan_vien_id])).rows[0];
         if (nv === undefined) return { loai: 'thieu_nhan_vien' as const };
         if (!nv.dang_hoat_dong) return { loai: 'da_chay_truoc' as const };
-        // REQ-G2-05: lich dem KHONG tu khoa nua — teardown chi di qua Cong 2 cua quy trinh
-        // thoi viec. Thay vao do DAM BAO quy trinh ton tai (hoi to tu QD nghi viec) de ca
-        // dang do khong bi lot; canh bao do cho Admin do tien trinh quet_quy_trinh_thoi_viec
-        // ban moi chu ky (toi da 1 lan/ngay).
-        const qt = await dam_bao_quy_trinh_tu_qd(khach, nhan_vien_id, d.ngay_nghi_viec);
-        return { loai: 'da_tao_quy_trinh' as const, quy_trinh_id: qt.quy_trinh_id };
+        // Mot luong duy nhat: QD phat hanh la dua nguoi vao quy trinh thoi viec NGAY, kem
+        // checklist ban giao. Ngay da qua thi danh dau hoi to (bo qua muc nhan vien).
+        const qt = await dam_bao_quy_trinh_tu_qd(khach, nhan_vien_id, d.ngay_nghi_viec, {
+          hoi_to: d.ngay_nghi_viec < hom_nay,
+        });
+        if (qt.quy_trinh_id === null) {
+          // Khong tao duoc thi KHONG danh dau da xu ly — vong sau thu lai.
+          throw new Error('khong tao duoc quy trinh thoi viec tu quyet dinh');
+        }
+        return {
+          loai: 'da_tao_quy_trinh' as const,
+          quy_trinh_id: qt.quy_trinh_id,
+          moi: qt.tao_moi_qt,
+        };
       });
       await thuc_thi(
         `update thong_bao_nhap_ai
@@ -194,8 +216,19 @@ export async function nghi_viec_den_han(
         [d.id],
       );
       if (kq.loai === 'da_tao_quy_trinh') {
-        ghi_log(`[lich] nghi viec ${d.ma}: khong tu khoa (Cong 2 quyet dinh) — quy trinh `
-          + `${kq.quy_trinh_id ?? 'khong tao duoc'}`);
+        ghi_log(`[lich] nghi viec ${d.ma}: dua vao quy trinh thoi viec — `
+          + `${kq.quy_trinh_id ?? 'khong tao duoc'} (lastday ${d.ngay_nghi_viec})`);
+        // Quyet dinh cu (phat hanh truoc khi co luong, hoac he thong tung loi): bao cho
+        // nhan vien de ho biet mo Huong dan thoi viec va lam ban giao.
+        if (kq.moi && kq.quy_trinh_id !== null) {
+          await gui_chuong_ngon_ngu({
+            nguoi_dung_ids: await tai_khoan_cua_nhan_vien(nhan_vien_id),
+            tieu_de: 'tv_thong_bao_qd_tieu_de',
+            noi_dung: 'tv_thong_bao_qd_noi_dung',
+            tham_so: { ngay: ngay_viet(d.ngay_nghi_viec) },
+            du_lieu: { man: 'thoi-viec', loai: 'thoi_viec', quy_trinh_id: kq.quy_trinh_id },
+          });
+        }
       } else if (kq.loai === 'da_chay_truoc') {
         ghi_log(`[lich] nghi viec ${d.ma}: nguoi nay da duoc cho nghi truoc do, bo qua`);
       } else {
@@ -284,6 +317,36 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
         } catch (loi) {
           await nha_viec(ma_quet);
           ghi_log(`[lich] LOI khi quet giay phep MS365: ${(loi as Error).message}`);
+        }
+      }
+    }
+  }
+
+  // ------------------------------------------------------------ kiem tra ung dung bat buoc M365
+  // 08:00 va 13:00 (gio may cham cong): doc bao cao su dung M365 (ky 30 ngay) + bao cao OneDrive
+  // va ghi anh chup "da dung / chua thay" cho tung nguoi. Nguon duy nhat hien co de kiem tra
+  // ung dung bat buoc ma khong can Intune — xem ghi chu dau `nhan_su/ung_dung_ms365.ts`.
+  //
+  // Loi mang/quyen KHONG xoa khoa: giu ket qua loi trong `cong_viec_da_chay` va de cua so sau
+  // (hoac nut "Dong bo ngay") thu lai, thay vi goi Graph moi 15 phut.
+  if (graph_da_cau_hinh()) {
+    for (const gio_quet of GIO_KIEM_TRA_UNG_DUNG) {
+      if (gio_may < gio_quet) continue;
+      const ma_ud = `kiem_tra_ung_dung_ms365:${hom_nay}:${String(gio_quet)}`;
+      if (await nhan_viec(ma_ud)) {
+        try {
+          const kq = await kiem_tra_ung_dung_ms365();
+          await ghi_ket_qua(ma_ud,
+            `kiem tra ${String(kq.so_nhan_vien)} nguoi, ${String(kq.so_nguoi_thieu)} nguoi thieu, `
+            + `bao cao den ${kq.ngay_bao_cao ?? '?'}`
+            + (kq.loi.length === 0 ? '' : ` · loi: ${kq.loi.join(' | ')}`));
+          if (kq.so_nguoi_thieu > 0 || kq.loi.length > 0) {
+            ghi_log(`[lich] ung dung M365: ${String(kq.so_nguoi_thieu)} nguoi thieu ung dung`
+              + (kq.loi.length === 0 ? '' : ` · ${String(kq.loi.length)} nguon loi`));
+          }
+        } catch (loi) {
+          await ghi_ket_qua(ma_ud, `loi: ${(loi as Error).message}`);
+          ghi_log(`[lich] LOI khi kiem tra ung dung M365: ${(loi as Error).message}`);
         }
       }
     }
@@ -475,16 +538,16 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     } catch (loi) {
       await nha_viec(ma_ra_vao);
       ghi_log(`[lich] LOI khi xu ly canh bao ra/vao ${hom_qua}: ${(loi as Error).message}`);
-   
+    }
+  }
 
-  // Quyet dinh nghi viec den han: khoa tai khoan sau ngay nghi viec ghi trong quyet dinh.
-  // Chay cung khung gio cuoi ngay vi phai cho HET ngay lam viec cuoi (hom qua) moi khoa —
-  // khoa som thi nguoi do mat quyen truy cap vao ngay lam viec cuoi cua ho.
+  // Quyet dinh nghi viec: dua MOI QD da phat hanh vao quy trinh thoi viec ngay khi phat
+  // hien (khong cho den ngay nghi viec). Chay MOI VONG — chi quet QD chua danh dau nen re.
+  // TRUOC DAY khoi nay bi long trong `catch` cua job ra/vao nen gan nhu khong bao gio chay.
   try {
-    await nghi_viec_den_han(hom_qua, ghi_log);
+    await nghi_viec_den_han(hom_nay, ghi_log);
   } catch (loi) {
     ghi_log(`[lich] LOI khi quet nghi viec den han: ${(loi as Error).message}`);
-  } }
   }
 
   // Nhac han hop dong, moi ngay mot lan.

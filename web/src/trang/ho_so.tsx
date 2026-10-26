@@ -17,6 +17,7 @@ import { dung_chuoi } from '../chuoi/chi_muc.tsx';
 import { dung_dat_tieu_de } from '../tieu_de_trang.tsx';
 import { NhanCachTrich } from './hop_dong.tsx';
 import { TheMaDinhDanh } from './ma_dinh_danh.tsx';
+import { TheUngDungMs365 } from './ung_dung_ms365.tsx';
 
 // ==================================================================== kieu du lieu
 
@@ -316,7 +317,7 @@ export function TrangHoSo({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode
       </div>
 
       {dang_mo === 'thong_tin' ? (
-        <PanelThongTin nhan_vien_id={nhan_vien_id} />
+        <PanelThongTin nhan_vien_id={nhan_vien_id} dang_hoat_dong={nv['dang_hoat_dong'] !== false} />
       ) : dang_mo === 'tai_lieu' ? (
         <PanelTaiLieu nhan_vien_id={nhan_vien_id} khi_doi={() => tq.nap_lai()} />
       ) : dang_mo !== null && (
@@ -1467,7 +1468,9 @@ const KHOI_THONG_TIN: { tieu_de: string; o: { ten: string; nhan: string; kieu?: 
   },
 ];
 
-function PanelThongTin({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {
+function PanelThongTin(
+  { nhan_vien_id, dang_hoat_dong }: { nhan_vien_id: string; dang_hoat_dong: boolean },
+): ReactNode {
   const duong = `/api/nhan-vien/${nhan_vien_id}/thong-tin`;
   const { du_lieu, dang_tai, loi, nap_lai } = dung_nap<KetQuaThongTin>(duong, [nhan_vien_id]);
   const [dang_sua, dat_dang_sua] = useState(false);
@@ -1541,6 +1544,10 @@ function PanelThongTin({ nhan_vien_id }: { nhan_vien_id: string }): ReactNode {
       <div style={{ marginTop: 12 }}>
         <TheMaDinhDanh nhan_vien_id={nhan_vien_id} sua_duoc={du_lieu?.sua_duoc === true} />
       </div>
+
+      {/* Chi hien voi nguoi con dang lam: bang kiem tra chi giu dong cua nguoi dang hoat dong,
+          nen ho so da nghi se luon trong va de hieu nham la "chua kiem tra". */}
+      {dang_hoat_dong && <TheUngDungMs365 nhan_vien_id={nhan_vien_id} />}
 
       {dang_sua && (
         <FormThongTin

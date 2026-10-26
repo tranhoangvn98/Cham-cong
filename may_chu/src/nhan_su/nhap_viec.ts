@@ -15,17 +15,50 @@ export function khoa_nhap_viec(nhan_vien_id: string): string {
   return `nhap_viec:${nhan_vien_id}`;
 }
 
-/** Khoa chong trung cho lenh day user+PIN xuong may cua cua mot nhan vien moi. */
-export function khoa_lenh_pin(nhan_vien_id: string): string {
-  return `nhap_viec_pin:${nhan_vien_id}`;
+/**
+ * Khoa chong trung cho lenh day user+PIN xuong mot may.
+ *
+ * Gom ca serial: mot nguoi co mat o nhieu may (cong vao, cong ra, may cua khoi) thi moi may mot
+ * lenh. Khoa chi theo nhan vien thi may thu hai khong bao gio nhan duoc lenh.
+ */
+export function khoa_lenh_pin(nhan_vien_id: string, serial: string): string {
+  return `nhap_viec_pin:${nhan_vien_id}:${serial}`;
 }
 
-/** Ten muc checklist so 3 — doi chieu de tick khi may cua xac nhan lenh. */
-export const TEN_MUC_PIN_MAY_CUA = 'Cấp số PIN + đẩy xuống máy cửa';
+/**
+ * Doc lai id nhan vien tu khoa lenh — nua con lai cua `khoa_lenh_pin`.
+ *
+ * Nam canh ham sinh khoa de doi dinh dang thi chi phai sua mot cho: may xac nhan lenh la luc
+ * duy nhat biet duoc "lenh nay da chay", va doc sai o day nghia la muc checklist khong bao gio
+ * duoc tick.
+ */
+export function nhan_vien_tu_khoa_lenh_pin(khoa: string): string | null {
+  const m = /^nhap_viec_pin:([^:]+)/.exec(khoa);
+  return m === null ? null : (m[1] as string);
+}
+
+/**
+ * Tien to cua muc checklist so 3. Tick theo TIEN TO chu khong theo ten day du: ten day du co
+ * kem so PIN he thong vua cap, ma so do khac nhau tung nguoi — khop tuyet doi thi muc nay
+ * khong bao gio duoc tick.
+ */
+export const TIEN_TO_MUC_PIN = 'Cấp số PIN';
+
+/** Ten muc checklist so 3 khi khong cap PIN tu dong (nguoi da co PIN tren may). */
+export const TEN_MUC_PIN_MAY_CUA = `${TIEN_TO_MUC_PIN} + đẩy xuống máy cửa`;
 
 export interface MucChecklist {
   ten: string;
   xong: boolean;
+}
+
+/**
+ * Tieu de muc 3 — kem so PIN de nguoi di cai may biet ngay phai khai so nao, khong phai mo lai
+ * ho so. So PIN do he thong cap nen nguoi lap ho so khong tu biet truoc.
+ */
+export function ten_muc_pin(pin: string | null | undefined): string {
+  const so = (pin ?? '').trim();
+  return so === '' ? TEN_MUC_PIN_MAY_CUA : `${TIEN_TO_MUC_PIN} ${so} + đẩy xuống máy cửa`;
 }
 
 /**
@@ -37,6 +70,7 @@ export function danh_sach_checklist_nhap_viec(
   cap_ms365: boolean,
   loai_hop_dong: string | null,
   email_bhxh: string,
+  pin_may: string | null = null,
 ): MucChecklist[] {
   const loai_hd = (loai_hop_dong ?? '').trim();
   const ten_hd = loai_hd === '' ? 'đã khai báo' : loai_hd;
@@ -44,7 +78,7 @@ export function danh_sach_checklist_nhap_viec(
   return [
     { ten: 'Tạo tài khoản MS365 + cấp giấy phép', xong: cap_ms365 },
     { ten: 'Tạo tài khoản ERP1', xong: true },
-    { ten: TEN_MUC_PIN_MAY_CUA, xong: false },
+    { ten: ten_muc_pin(pin_may), xong: false },
     { ten: 'Enroll vân tay/khuôn mặt/thẻ tại máy chấm công & máy cửa', xong: false },
     { ten: 'Thu thập & số hóa hồ sơ (CCCD, bằng cấp, sơ yếu, ảnh)', xong: false },
     { ten: `Ký HĐLĐ/thử việc đúng loại (${ten_hd})`, xong: false },
@@ -97,6 +131,7 @@ export async function tao_viec_nhap_viec_trong(
   cap_ms365: boolean,
   loai_hop_dong: string | null,
   email_bhxh: string,
+  pin_may: string | null = null,
 ): Promise<string | null> {
   const kq = await khach.query<{ id: string }>(
     `insert into cong_viec
@@ -117,7 +152,7 @@ export async function tao_viec_nhap_viec_trong(
   const id = kq.rows[0]?.id;
   if (id === undefined) return null;
 
-  const muc = danh_sach_checklist_nhap_viec(cap_ms365, loai_hop_dong, email_bhxh);
+  const muc = danh_sach_checklist_nhap_viec(cap_ms365, loai_hop_dong, email_bhxh, pin_may);
   for (const [i, m] of muc.entries()) {
     await khach.query(
       `insert into cong_viec_hanh_dong(cong_viec_id, ten, xong, thu_tu)
@@ -134,8 +169,8 @@ export async function tick_pin_may_cua_nhan(nhan_vien_id: string): Promise<void>
     `update cong_viec_hanh_dong
         set xong = true, xong_luc = now()
       where cong_viec_id = (select id from cong_viec where khoa_chong_trung = $1)
-        and ten = $2
+        and ten like $2 || '%'
         and not xong`,
-    [khoa_nhap_viec(nhan_vien_id), TEN_MUC_PIN_MAY_CUA],
+    [khoa_nhap_viec(nhan_vien_id), TIEN_TO_MUC_PIN],
   );
 }

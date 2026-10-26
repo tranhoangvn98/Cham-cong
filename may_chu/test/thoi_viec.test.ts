@@ -46,6 +46,43 @@ test('nguoi quan ly DN toi 120 ngay (D.7 ND145/2020)', () => {
   assert.equal(nguong_bao_truoc(KHUON, 'khong_xac_dinh', null, true), 120);
 });
 
+test('thuc tap sinh va cong tac vien KHONG lay muc 120 ngay du chuc danh quan ly', () => {
+  // Chuc danh co chu "truong phong" khong bien hoc viec / hop dong dich vu thanh HDLD.
+  assert.equal(nguong_bao_truoc(KHUON, 'hoc_viec', null, true), null);
+  assert.equal(nguong_bao_truoc(KHUON, 'cong_tac_vien', null, true), null);
+  // Thu viec cua mot chuc danh quan ly van la 0 ngay: hop dong ngan, khong the bao 120 ngay.
+  assert.equal(nguong_bao_truoc(KHUON, 'thu_viec', null, true), 0);
+});
+
+// ---------------------------------------------------------------- nhanh quy trinh
+
+const { nhom_quy_trinh, cau_truc_nhanh, la_hop_dong_lao_dong } =
+  await import('../src/thoi_viec/nhanh.ts');
+
+test('nhanh quy trinh theo loai hop dong, quan ly chi khi co HDLD', () => {
+  assert.equal(nhom_quy_trinh('hoc_viec', false), 'thuc_tap');
+  assert.equal(nhom_quy_trinh('thu_viec', false), 'thu_viec');
+  assert.equal(nhom_quy_trinh('thoi_vu', false), 'thoi_vu');
+  assert.equal(nhom_quy_trinh('xac_dinh', false), 'chinh_thuc');
+  assert.equal(nhom_quy_trinh('khong_xac_dinh', false), 'chinh_thuc');
+  assert.equal(nhom_quy_trinh('cong_tac_vien', false), 'cong_tac_vien');
+  assert.equal(nhom_quy_trinh('khong_xac_dinh', true), 'quan_ly');
+  assert.equal(nhom_quy_trinh('thu_viec', true), 'thu_viec');
+  assert.equal(nhom_quy_trinh('thoi_vu', true), 'thoi_vu');
+  assert.equal(nhom_quy_trinh('hoc_viec', true), 'thuc_tap');
+  assert.equal(nhom_quy_trinh('cong_tac_vien', true), 'cong_tac_vien');
+});
+
+test('chi HDLD moi ap dung D.48 va quyet dinh cham dut HDLD', () => {
+  assert.equal(la_hop_dong_lao_dong('hoc_viec'), false);
+  assert.equal(la_hop_dong_lao_dong('cong_tac_vien'), false);
+  assert.equal(la_hop_dong_lao_dong('thu_viec'), true);
+  const thuc_tap = cau_truc_nhanh('thuc_tap');
+  assert.equal(thuc_tap.co_dieu_48, false);
+  assert.equal(thuc_tap.tieu_de_quyet_dinh.includes('HỌC VIỆC'), true);
+  assert.equal(cau_truc_nhanh('quan_ly').co_dieu_48, true);
+});
+
 // ---------------------------------------------------------------- ngay lam viec
 
 const LA_NGAY_LAM = (ngay: string): boolean => {

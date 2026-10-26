@@ -10,7 +10,9 @@
 import { randomInt } from 'node:crypto';
 import { cau_hinh } from '../cau_hinh.ts';
 import { trong_giao_dich } from '../csdl/ket_noi.ts';
-import { gui_ngam, tai_khoan_nhan_su } from '../su_kien/thong_bao_day.ts';
+import { tai_khoan_nhan_su } from '../su_kien/thong_bao_day.ts';
+import { gui_chuong_ngon_ngu } from '../su_kien/gui_chuong_ngon_ngu.ts';
+import { type NgonNgu } from '../chuoi/chi_muc.ts';
 import { lay_token_graph } from '../su_kien/gui_email.ts';
 
 const HET_GIO_MS = 30_000;
@@ -27,11 +29,14 @@ export function ms365_tao_bat(): boolean {
 }
 
 /**
- * Chuc danh co duoc cap giay phep STANDARD hay khong.
+ * Chuc danh co phai cap truong hay khong — dung khi Admin chon giay phep STANDARD cho mot nguoi
+ * cu the.
  *
- * Quy tac chu cong ty chot: truong phong nhan Microsoft 365 Standard, nhan su con lai nhan
- * Basic. Khop chuoi chua "trưởng" (trưởng phòng, trưởng bộ phận, trưởng nhóm...) tru
- * "phó" (phó trưởng phòng van nhan Basic).
+ * LUU Y: day KHONG con la quy tac mac dinh. Tu 10/2026 moi tai khoan moi nhan Basic; Standard chi
+ * khi nguoi tao chon dich danh (`sku_id_tuy_chon`), va luc do ham nay chi de goi y tren giao dien.
+ *
+ * Khop chuoi chua "trưởng" (trưởng phòng, trưởng bộ phận, trưởng nhóm...) tru "phó" (phó trưởng
+ * phòng van nhan Basic).
  */
 export function la_truong_phong(chuc_danh: string | null): boolean {
   const c = (chuc_danh ?? '').toLowerCase().trim();
@@ -388,12 +393,18 @@ export interface KetQuaDongBoMs365 {
 /**
  * Gom ho ten nguoi moi thanh mot cau nguoi doc duoc cho thong bao.
  *
- * Ham THUAN de unit test: toi da 3 ten, thua thi "... va N nguoi khac".
+ * Ham THUAN de unit test: toi da 3 ten, thua thi "... va N nguoi khac" (tieng Trung noi bang
+ * dau lien va "等N人").
  */
-export function ten_moi_thanh_chu(ten: string[]): string | null {
+export function ten_moi_thanh_chu(ten: string[], ngon_ngu: NgonNgu = 'vi'): string | null {
   if (ten.length === 0) return null;
-  const dau = ten.slice(0, 3).join(', ');
-  return ten.length > 3 ? `${dau} và ${ten.length - 3} người khác` : dau;
+  const dau = ten.slice(0, 3);
+  if (ngon_ngu === 'zh') {
+    const noi = dau.join('、');
+    return ten.length > 3 ? `${noi}等${String(ten.length - 3)}人` : noi;
+  }
+  const noi = dau.join(', ');
+  return ten.length > 3 ? `${noi} và ${String(ten.length - 3)} người khác` : noi;
 }
 
 /**
@@ -438,13 +449,14 @@ export async function dong_bo_nguoi_ms365_da_cap_phep(): Promise<KetQuaDongBoMs3
   });
 
   if (ten_moi.length > 0) {
-    const chu = ten_moi_thanh_chu(ten_moi) ?? '';
-    gui_ngam({
+    // Mot luong tao nhan su duy nhat: khong con "de nghi", nguoi nhan su mo thang trang
+    // Nhan vien de them ho so. Noi dung qua tu dien song ngu theo ngon ngu nguoi nhan.
+    await gui_chuong_ngon_ngu({
       nguoi_dung_ids: await tai_khoan_nhan_su(),
-      tieu_de: 'Microsoft 365 có tài khoản mới được cấp phép',
-      noi_dung: `${chu} vừa có giấy phép Microsoft 365 — mở "Đề nghị thêm nhân sự" `
-        + 'để tạo đề nghị.',
-      du_lieu: { man: 'de-nghi-nhan-su' },
+      tieu_de: 'm365_moi_tieu_de',
+      noi_dung: 'm365_moi_noi_dung',
+      tham_so: (nn) => ({ danh_sach: ten_moi_thanh_chu(ten_moi, nn) ?? '' }),
+      du_lieu: { man: 'nhan-vien' },
     });
   }
   return { tong: ds.length, them_moi: ten_moi.length, ten_moi };

@@ -1,5 +1,13 @@
 # Onboarding nhân sự mới tự động (DTKT 02/2026/ĐTKT-IT)
 
+> **TÀI LIỆU LỊCH SỬ — đã thay thế từ 26/10/2026 (v1.127.0).**
+>
+> Luồng "đề nghị → Admin duyệt một bước" đã được **gộp vào luồng tạo hồ sơ duy nhất**
+> (`POST /api/nhan-vien`): người có quyền nhân sự tự thêm hồ sơ, Admin **không duyệt** mà chỉ
+> nhận thông báo "có nhân sự mới". Xem [`LUONG-TAO-NHAN-SU-TU-DONG.md`](LUONG-TAO-NHAN-SU-TU-DONG.md).
+> Bảng `de_nghi_them_nhan_su` và dữ liệu cũ được giữ nguyên làm lịch sử; các API
+> `/api/de-nghi-nhan-su*` đã bị gỡ.
+
 > Trạng thái: **ĐÃ TRIỂN KHAI** (1.109.0) — 2026-09-26
 >
 > HR/quản lý tạo **đề nghị thêm nhân sự** → Admin duyệt **đúng 1 bước** → hệ thống tự chạy
@@ -37,8 +45,12 @@ HR/quản lý                                Admin                            H�
 | `POST /api/de-nghi-nhan-su/:id/duyet` | **admin** | Duyệt → chạy khởi tạo; nhận thêm `ma_nv`, `pin_may`, `chuc_danh`, `sku_id`, `serial_may_cua` (REQ-G-01) |
 | `POST /api/de-nghi-nhan-su/:id/tu-choi` | **admin** | Từ chối + lý do bắt buộc |
 
-Phản hồi duyệt gồm `nhan_vien_id`, `pin_may`, `viec_id`, `tai_khoan_ms365` (mật khẩu khởi
-tạo **chỉ hiện một lần**, REQ-SC-07), `tai_khoan_he_thong`, `canh_bao`.
+`ma_nv` khi duyệt là **tuỳ chọn**: bỏ trống thì hệ thống tự sinh theo khuôn
+`NV + mã khối + MMYY + số thứ tự` (xem [`LUONG-TAO-NHAN-SU-TU-DONG.md`](LUONG-TAO-NHAN-SU-TU-DONG.md)).
+`sku_id` cũng tuỳ chọn — bỏ trống là Basic.
+
+Phản hồi duyệt gồm `nhan_vien_id`, `ma_nv`, `pin_may`, `viec_id`, `tai_khoan_ms365` (mật khẩu
+khởi tạo **chỉ hiện một lần**, REQ-SC-07), `tai_khoan_he_thong`, `canh_bao`.
 
 Kiểm trước khi chạy (REQ-G-03): email/UPN hợp lệ; `cap_ms365=true` mà chưa khai SKU thì
 **chặn duyệt** với lỗi rõ — khác luồng thêm nhân viên tay (ở đó chỉ cảnh báo).
@@ -119,12 +131,19 @@ checklist của nhân sự (mục 4). Trước khi lệnh chạy được trên 
 
 ```bash
 npm test                                   # đơn vị: nhap_viec.test.ts (checklist + khuôn lệnh máy)
-npm --workspace may_chu run test_e2e       # de_nghi_e2e.test.ts: 9 tình huống REQ-TEST-01..06
+npm --workspace may_chu run test_e2e       # de_nghi_e2e.test.ts: REQ-TEST-01..06 + tao_ho_so_e2e.test.ts
 ```
 
-E2E bao phủ: duyệt → nhân viên + 3 sự kiện + PIN + lệnh máy + việc nhập việc; trưởng phòng
-→ SKU Standard; `cap_ms365=false`; dải PIN còn 1 số; thiếu email chặn duyệt; duyệt trùng
-chỉ 1 lần; từ chối + phân quyền admin; workflow ưu tiên hơn env.
+E2E bao phủ: duyệt → nhân viên + 3 sự kiện + PIN + lệnh máy + việc nhập việc; giấy phép mặc
+định Basic **kể cả** chức danh trưởng phòng (Standard chỉ khi chọn đích danh `sku_id`);
+`cap_ms365=false`; dải PIN còn 1 số; thiếu email chặn duyệt; duyệt trùng chỉ 1 lần; từ chối +
+phân quyền admin; workflow ưu tiên hơn env.
+
+Luồng **thêm nhân viên bằng form** có bộ e2e riêng (`tao_ho_so_e2e.test.ts`): mã nhân sự sinh
+tự động theo khuôn `NV + mã khối + MMYY + số thứ tự`, số thứ tự tăng theo (khối, tháng), khai
+khối là đủ để cấp PIN + đẩy lệnh xuống máy, mã ERP1 vào bảng định danh, và hai lỗi cấu hình
+(khối chưa có mã ngắn / khối chưa gắn máy) báo rõ ràng. Xem
+[`LUONG-TAO-NHAN-SU-TU-DONG.md`](LUONG-TAO-NHAN-SU-TU-DONG.md).
 
 ## 7. Ghi chú bảo mật
 

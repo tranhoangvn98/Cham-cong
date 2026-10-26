@@ -1,36 +1,58 @@
 # Tạo hồ sơ nhân sự mới — tự cấp PIN, tự cấp tài khoản hệ thống + Microsoft, báo cổng + ERP1
 
+> Tệp này mô tả luồng **đang chạy**. Từ 26/10/2026 đây là **luồng DUY NHẤT** — form
+> "+ Thêm nhân viên" gộp cả phần của luồng đề nghị cũ (checklist nhập việc, máy cửa, chọn
+> người Microsoft 365 đã có giấy phép); không còn bước "đề nghị — Admin duyệt". Chi tiết mã
+> nhân sự và cấu hình: [`LUONG-TAO-NHAN-SU-TU-DONG.md`](LUONG-TAO-NHAN-SU-TU-DONG.md).
+
 Khi nhân sự bấm **+ Thêm nhân viên** (trang Nhân viên) và lưu, hệ thống thực hiện trọn một
 chuỗi tích hợp mà không cần thao tác tay thêm:
 
-1. **Lưu hồ sơ** (mã NV, họ tên, chức danh, vị trí, phòng ban, ca làm, email, …).
-2. **Tự cấp PIN máy chấm công** (nếu đánh dấu "Tự cấp PIN theo dãy của máy").
-3. **Tạo tài khoản hệ thống** (`nguoi_dung`, đăng nhập app điện thoại) — vai trò tự suy từ
+1. **Sinh mã nhân viên** — `NV` + mã ngắn khối + MMYY + số thứ tự (`NVKHN05260001`). Không
+   nhập tay.
+2. **Lưu hồ sơ** (họ tên, chức danh, vị trí, phòng ban, ca làm, email, …).
+3. **Tự cấp PIN máy chấm công** theo dải của máy thuộc **khối** đã chọn.
+4. **Tạo tài khoản hệ thống** (`nguoi_dung`, đăng nhập app điện thoại) — vai trò tự suy từ
    ô **Vị trí**.
-4. **Báo cổng phân quyền** — sự kiện `nhan_su.da_tao` (đã có sẵn từ trước): cổng tự tạo bản
+5. **Báo cổng phân quyền** — sự kiện `nhan_su.da_tao` (đã có sẵn từ trước): cổng tự tạo bản
    ghi danh tính cho người này.
-5. **Báo ERP1** — sự kiện `erp1.nhan_su.da_tao` kèm chức danh + phòng ban: ERP1 nhận và tự
+6. **Báo ERP1** — sự kiện `erp1.nhan_su.da_tao` kèm chức danh + phòng ban: ERP1 nhận và tự
    thiết lập tài khoản, tự phân quyền theo vị trí.
-6. **Tạo tài khoản Microsoft 365** (nếu đánh dấu): tạo user Entra với UPN = email + cấp giấy
-   phép theo chức danh.
+7. **Tạo tài khoản Microsoft 365** (nếu đánh dấu): tạo user Entra với UPN = email + cấp giấy
+   phép **Basic**. Chọn người từ danh sách M365 đã có giấy phép thì **không tạo lại** tài khoản
+   (`ms365_da_co`). **Người lập hồ sơ nhận chuông "Tài khoản Microsoft 365 của <họ tên>: <UPN>"
+   kèm mật khẩu khởi tạo** để bàn giao; nhân viên **bắt buộc đổi mật khẩu** ở lần đăng nhập
+   Microsoft đầu tiên (`forceChangePasswordNextSignIn`).
+8. **Giao việc "Nhập việc" + 15 mục checklist** cho người phụ trách nhân sự
+   (workflow `nhap_viec_nhan_su` hoặc `NHAP_VIEC_NHAN_SU_ID`) — cùng transaction.
+9. **Báo quản trị viên** qua chuông "Có nhân sự mới: <họ tên>" (`gui_ngam`, màn Nhân viên).
+   Đây là thông báo, **không phải yêu cầu duyệt** — hồ sơ đã hoàn tất khi lưu.
+10. **Gán vị trí trong Tổ chức & trách nhiệm** (nếu người lập chọn): ghi `nhan_vien_vi_tri`,
+    vị trí chọn đầu tiên thành **vị trí chính** (điền chức danh nếu ô đó trống), và **sinh mẫu
+    việc định kỳ** từ các `dau_viec` của vị trí — tất cả trong cùng transaction. Bỏ trống nếu
+    chưa khai cấu hình; có thể gán/gỡ sau ở trang Tổ chức & trách nhiệm.
 
-Bước 3 được tạo **ngay cùng transaction** với dòng nhân viên; các bước báo ra ngoài (4, 5, 6)
+Bước 4 được tạo **ngay cùng transaction** với dòng nhân viên; các bước báo ra ngoài (5, 6, 7)
 đi qua bảng `hop_thu_di` **cùng transaction** rồi tiến trình nền đẩy đi với cơ chế thử lại
 (backoff). Nghĩa là: dù cổng, ERP1 hay Microsoft đang chết, sự kiện vẫn nằm chờ và sẽ đi khi
 hệ thống kia sống lại — không mất.
 
 ---
 
-## 1. Tự cấp PIN
+## 1. Mã nhân sự và PIN
 
-- Trên form chọn máy chấm công (danh sách máy đang bật). Hệ thống chọn **số PIN còn trống đầu
-  tiên trong dải** của máy đó (`pin_tu`–`pin_den`, xem trang Thiết bị), ghi vào bảng mã định
-  danh (`ma_dinh_danh`) và vào cột `nhan_vien.pin_may`.
+- **Mã nhân sự do hệ thống sinh**: `NV` + mã ngắn khối + `MMYY` (tháng năm vào làm) + số thứ tự
+  4 chữ số, ví dụ `NVKHN05260001`. Số thứ tự đếm theo (khối, tháng) và **không tái dùng**. Mã
+  cũ khai tay vẫn được giữ nguyên — chỉ hồ sơ mới mới sinh tự động.
+- Trên form chọn **khối** — hệ thống tự biết máy chấm công nào phục vụ khối đó
+  (`thiet_bi.khoi_id`) và chọn **số PIN còn trống đầu tiên trong dải** của máy
+  (`pin_tu`–`pin_den`, xem trang Thiết bị), ghi vào bảng mã định danh (`ma_dinh_danh`) và vào
+  cột `nhan_vien.pin_may`.
 - Hai nhân sự bấm cùng lúc được gợi ý cùng một số: unique index chặn người thứ hai, hệ thống
   **tự thử lại với số kế tiếp** (tối đa 5 lần) thay vì báo lỗi.
-- Nhân sự vẫn phải khai đúng số PIN đó lên máy ZKTeco (như trước — hệ thống chỉ chọn số, không
-  tự cài lên máy).
-- Để trống tùy chọn này thì nhập PIN bằng tay như cũ.
+- **Lệnh `DATA UPDATE USERINFO` được xếp cho mọi máy đang bật của khối ngay trong transaction**
+  — nhân sự không phải khai tay PIN lên máy nữa (vân tay/khuôn mặt vẫn phải enroll tại máy).
+- Muốn nhập PIN có sẵn trên máy thì tắt ô "Tự cấp PIN theo dãy của máy thuộc khối" và gõ số.
 
 ## 2. Tài khoản hệ thống (đăng nhập app điện thoại)
 
@@ -38,7 +60,8 @@ Khi đánh dấu **Tạo tài khoản hệ thống** (chế độ "Thêm nhân v
 tạo luôn tài khoản `nguoi_dung` **cùng transaction** với hồ sơ:
 
 - **Tên đăng nhập** sinh từ mã nhân viên (hạ chữ thường, bỏ dấu, chỉ giữ chữ/số/`. _ -`),
-  ví dụ `NV0156` → `nv0156`. Trùng tên đăng nhập đã có thì báo lỗi rõ, không đè lên.
+  ví dụ `NVKHN05260001` → `nvkhn05260001`. Trùng tên đăng nhập đã có thì báo lỗi rõ, không đè
+  lên.
 - **Mật khẩu khởi tạo 12 ký tự** đủ 4 nhóm (hoa/thường/số/ký tự đặc biệt), chỉ hiện **một
   lần** ngay sau khi lưu kèm nút sao chép. Nhân viên buộc đổi mật khẩu ở lần đăng nhập đầu.
 - **Vai trò tự suy từ ô Vị trí** (7 bậc chọn sẵn):
@@ -71,15 +94,13 @@ test khóa — muốn đổi quy tắc thì sửa ở đó kèm test.
 - Sau khi tài khoản được tạo thành công, mật khẩu bị **xóa khỏi bảng `hop_thu_di`** (không nằm
   lại trong dữ liệu).
 
-### 2.2 Giấy phép theo chức danh
+### 2.2 Giấy phép
 
-| Chức danh | Giấy phép |
-| --- | --- |
-| chứa **trưởng** (trưởng phòng, trưởng bộ phận…) và không chứa **phó** | `MS365_SKU_STANDARD` |
-| còn lại | `MS365_SKU_BASIC` |
+Tài khoản Microsoft mới nhận **Business Basic** (`MS365_SKU_BASIC`) — chốt 10/2026. Standard chỉ
+khi người có thẩm quyền chọn đích danh lúc duyệt đề nghị (`sku_id_tuy_chon`).
 
-Quy tắc nằm trong hàm thuần `la_truong_phong()` (`may_chu/src/nhan_su/ms365.ts`), có test khóa
-— muốn đổi quy tắc thì sửa ở đó kèm test.
+Hàm `la_truong_phong()` (`may_chu/src/nhan_su/ms365.ts`) chỉ còn để gợi ý trên giao diện khi
+Admin chọn Standard thủ công; nó **không** còn là quy tắc mặc định.
 
 ### 2.3 Cấu hình
 
@@ -120,17 +141,20 @@ với thân:
 {
   "su_kien_id": "chamcong-21991",
   "loai_su_kien": "erp1.nhan_su.da_tao",
-  "ma_nv": "NV0156",
+  "ma_nv": "NVKHN05260001",
   "ma_erp": "THVN-0789",
   "email": "tranthib@tranhoangvietnam.com",
   "ho_ten": "Trần Thị Bình",
   "so_dien_thoai": "0912345678",
-  "ngay_vao": "2026-09-22",
+  "ngay_vao": "2026-05-22",
   "pin_may": "1013",
   "chuc_danh": "Trưởng phòng Kinh doanh",
   "phong_ban": "Kinh doanh"
 }
 ```
+
+`ma_erp1` (mã bên ERP1) được đọc từ bảng mã định danh **lúc gửi**, nên chỉ cần khai ô
+"Mã nhân viên bên ERP1" trên form là webhook mang theo — không phải sửa thân sự kiện.
 
 `chuc_danh` + `phong_ban` (tên phòng) kèm theo để ERP1 **tự phân quyền theo vị trí** thay vì
 nhân sự thao tác tay bên ERP1. Trường trống trả `null`. Chữ ký HMAC và chống trùng

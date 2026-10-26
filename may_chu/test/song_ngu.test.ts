@@ -31,6 +31,22 @@ test('la_ngon_ngu / chuan_ngon_ngu: chi nhan vi hoac zh', () => {
   assert.equal(chuan_ngon_ngu(null), 'vi');
 });
 
+test('thong bao PIN may cham cong: du hai ngon ngu va lap dung so PIN', () => {
+  for (const nn of ['vi', 'zh'] as const) {
+    const tieu_de = tra_chuoi(nn, 'pin_tieu_de', { pin: '1013' });
+    const noi_dung = tra_chuoi(nn, 'pin_noi_dung', { pin: '1013', may: '' });
+    assert.ok(tieu_de.includes('1013'), `${nn}: tieu de phai co so PIN`);
+    assert.ok(noi_dung.includes('1013'), `${nn}: noi dung phai co so PIN`);
+    // Khong duoc con placeholder chua lap — thieu tham so thi `tra_chuoi` giu nguyen {khoa}.
+    assert.ok(!/\{[a-z_]+\}/.test(tieu_de), `${nn}: tieu de con placeholder`);
+    assert.ok(!/\{[a-z_]+\}/.test(noi_dung), `${nn}: noi dung con placeholder`);
+  }
+  // Co ten may thi chen them ve may; khong co thi khong de lai manh rong.
+  assert.match(tra_chuoi('vi', 'pin_noi_dung', {
+    pin: '1013', may: tra_chuoi('vi', 'pin_noi_dung_may', { may: 'VP Hà Nội' }),
+  }), /VP Hà Nội/);
+});
+
 test('tra_chuoi: lap tham so {khoa}, thieu tham so thi giu nguyen mau', () => {
   // Dung khoa co san de kiem co che lap (khoa that cua tu dien se duoc them theo tinh nang).
   const goc = tra_chuoi('vi', 'ngon_ngu_da_doi');

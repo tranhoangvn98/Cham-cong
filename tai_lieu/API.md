@@ -111,6 +111,23 @@ curl -X POST http://localhost:8080/api/xac-thuc/dang-nhap \
 | PUT | `/nhan-vien/:id` | nhan_su |
 | POST | `/nhan-vien/:id/nghi-viec` | nhan_su |
 | DELETE | `/nhan-vien/:id` | nhan_su |
+| GET | `/nhan-vien/ms365-da-cap-phep` | nhan_su |
+| POST | `/nhan-vien/ms365-da-cap-phep/dong-bo` | nhan_su |
+
+`POST /nhan-vien` là **luồng tạo hồ sơ duy nhất** (từ 26/10/2026): lưu là khởi tạo thật, không
+có bước duyệt. Nhận thêm `loai_hop_dong` (cho checklist nhập việc), `serial_may_cua` (máy cửa),
+`ms365_da_co` (người đã có tài khoản Microsoft 365 — không tạo lại tài khoản) và `vi_tri_ids`
+(mảng uuid vị trí trong **Tổ chức & trách nhiệm** — gán luôn + sinh đầu việc định kỳ; phần tử
+đầu tiên thành vị trí chính). Phản hồi có `viec_id`, `so_vi_tri_to_chuc`, `so_dau_viec_dinh_ky`;
+quản trị viên nhận chuông báo có nhân sự mới.
+
+Khi tạo tài khoản Microsoft 365, **người gọi API nhận chuông** "Tài khoản Microsoft 365 của
+<họ tên>: <UPN>" kèm **mật khẩu khởi tạo** để bàn giao (chỉ tài khoản đó đọc được). Nhân viên
+bắt buộc đổi mật khẩu ở lần đăng nhập Microsoft đầu tiên
+(`forceChangePasswordNextSignIn: true`).
+
+Hai route `ms365-da-cap-phep` trả/đồng bộ danh sách người Microsoft 365 đã có giấy phép (chưa
+có hồ sơ) để form chọn — không tạo đề nghị.
 
 `pin_may` là **khóa nối máy chấm công với nhân viên** — chỉ chữ số, phải khớp User ID
 trên máy. Không có PIN thì log về không map được vào ai.
@@ -251,6 +268,8 @@ Hai nhóm có hình dạng riêng, không theo khuôn trên:
 | GET / PUT | `/nhan-vien/:id/thong-tin` | Bản ghi 1–1; GET trả bản **đã che** nếu không đủ quyền |
 | GET | `/nhan-vien/:id/tai-lieu` | Checklist đầy đủ + tiến độ |
 | PUT | `/nhan-vien/:id/tai-lieu/:ma` | Cập nhật một dòng checklist |
+| GET | `/nhan-vien/:id/ms365-ung-dung` | Ảnh chụp ứng dụng bắt buộc (quyền nhóm `thiet_bi`) |
+| POST | `/nhan-vien/ms365-ung-dung/dong-bo` | Quét lại toàn bộ (nhân sự); xem `M365-UNG-DUNG-BAT-BUOC.md` |
 | GET | `/danh-muc-tai-lieu` | Danh mục tài liệu dùng chung |
 
 ### Bảng phân quyền
