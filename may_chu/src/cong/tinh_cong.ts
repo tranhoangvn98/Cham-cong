@@ -104,18 +104,10 @@ export async function tinh_lai_ngay(
     return null;
   }
 
-  // NGAY TUONG LAI khong co gi de tinh: nguoi di lam chua quet thi khong the la "vang".
-  // Truoc day mot lan tinh lai theo khoang (script sua du lieu chon ca thang) sinh dong 'vang'
-  // cho nhung ngay chua toi, va bang cong thang hien mot thang day vang.
-  if (ngay > ngay_dia_phuong(new Date())) {
-    await trong_giao_dich(async (khach) => {
-      await khach.query(
-        'delete from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2 and da_chot = false',
-        [nhan_vien_id, ngay],
-      );
-    });
-    return null;
-  }
+  // NGAY TUONG LAI: chua the ket luan VANG (nguoi di lam chua quet thi chua phai vang). Mot lan
+  // tinh lai theo khoang cu sinh dong 'vang' cho ca thang chua toi. Nhung ngay le / nghi phep
+  // cua ngay tuong lai VAN ghi binh thuong — duyet don nghi phep som thi bang cong phai thay.
+  const ngay_tuong_lai = ngay > ngay_dia_phuong(new Date());
 
   // --- LAM BU (YC-03): ngay nay la NGAY NGUON duoc nghi? Cong cua no = 0 — da PHAN BO ve cac
   // BUOI lam bu tren cac ngay_bu (vd 31/8 phan ve chieu T7 22/8 + 29/8). Khong tu cong o day,
@@ -293,13 +285,16 @@ export async function tinh_lai_ngay(
     ngoai_le,
   });
 
-  // --- MIEN CHAM CONG: khong co mat thi khong phai VANG.
+  // --- MIEN CHAM CONG + NGAY TUONG LAI: khong ket luan VANG.
   //
   // Khoi VP Lang Son / tai khoan he thong khong quet may, nen moi ngay deu bi ket luan 'vang':
   // 27 ngay vang mot thang, mot phieu vi pham mot thang, mot ho so ky luat mot thang — tat ca
-  // deu la rac sinh tu mot gia dinh sai. Chi bo dong VANG; giu ngay le / nghi tuan / nghi phep
-  // vi do la su that cua lich va ngay le dang duoc tra luong.
-  if (nv.mien_cham_cong && kq.trang_thai === 'vang') {
+  // deu la rac sinh tu mot gia dinh sai. Ngay TUONG LAI cung vay: chua het ngay thi chua the
+  // noi ai vang, ma mot lan tinh lai theo khoang cu sinh ca thang day vang.
+  //
+  // Chi bo dong VANG; giu ngay le / nghi tuan / nghi phep vi do la su that cua lich va ngay le
+  // dang duoc tra luong.
+  if (kq.trang_thai === 'vang' && (nv.mien_cham_cong || ngay_tuong_lai)) {
     await trong_giao_dich(async (khach) => {
       await khach.query(
         `delete from bang_cong_ngay
@@ -484,10 +479,9 @@ export async function tinh_lai_nhieu(
  * Tinh lai toan bo nhan vien dang hoat dong trong khoang ngay.
  * Dung khi nhan su doi ca / them ngay le / duyet don hang loat.
  *
- * Lay them nguoi DA NGHI nhung con dong cong trong khoang: lich chay dem chi tinh nguoi dang
- * hoat dong, nen khi mot nguoi nghi viec thi dong 'vang' cu cua ho nam lai vinh vien va van
- * duoc dem vao bang cong thang. Tinh lai chinh ho la cach duy nhat de `ngay_ngoai_thoi_gian_
- * lam_viec` xoa cac dong do.
+ * KHONG lay nguoi da nghi viec: mot nguoi bi danh dau nghi NHAM van con quet may va con dong
+ * cong trong ky — dong do la bang chung de tra luong, va `tinh_lai_ngay` se xoa no vi nam sau
+ * `ngay_nghi_viec`. Dong 'vang' mo coi cua nguoi da nghi duoc don ngay tai `cho_nghi_viec`.
  */
 export async function tinh_lai_khoang(
   tu: string,
@@ -498,13 +492,7 @@ export async function tinh_lai_khoang(
   const ds_ngay = danh_sach_ngay(tu, den);
   const nv = nhan_vien_id !== undefined
     ? await truy_van<{ id: string }>('select id from nhan_vien where id = $1', [nhan_vien_id])
-    : await truy_van<{ id: string }>(
-      `select id from nhan_vien where dang_hoat_dong = true
-       union
-       select distinct nhan_vien_id as id from bang_cong_ngay
-        where ngay >= $1::date and ngay <= $2::date`,
-      [tu, den],
-    );
+    : await truy_van<{ id: string }>('select id from nhan_vien where dang_hoat_dong = true');
 
   const cap: { nhan_vien_id: string; ngay: string }[] = [];
   for (const n of nv) for (const ng of ds_ngay) cap.push({ nhan_vien_id: n.id, ngay: ng });

@@ -14,17 +14,20 @@ chuyện thay vì báo động giả.**
   **Cài đặt → Khối**, ô tick trong hồ sơ nhân viên.
 - **Danh sách vắng và số liệu dashboard lọc `dang_hoat_dong`**: trước đây ô “Vắng” và danh sách
   bấm ra vẫn đếm người đã nghỉ việc (3 người/ngày), có lúc vượt cả tổng nhân viên.
-- **Lịch đêm tính lại cả người đã nghỉ còn dòng cũ** — trước đây chỉ tính người đang hoạt động
-  nên dòng `vang` của người vừa nghỉ nằm lại vĩnh viễn. Nay `tinh_lai_khoang` lấy thêm ai còn
-  dòng công trong khoảng, và `ngay_ngoai_thoi_gian_lam_viec` xóa được chúng.
-- **Chặn tính công cho NGÀY TƯƠNG LAI**: một lần tính lại theo khoảng đã sinh 60 dòng `vang`/ngày
-  cho 27–31/10, làm bảng công tháng hiện một tháng đầy vắng.
+- **Nghỉ việc dọn luôn dòng vắng còn lại**: trước đây lịch đêm chỉ tính người đang hoạt động nên
+  dòng `vang` của người vừa nghỉ (3 người, từ 10/10) nằm lại vĩnh viễn và vẫn hiện trong bảng
+  công tháng. Nay `cho_nghi_viec` xóa dòng `vang` chưa chốt của những ngày sau ngày làm việc
+  cuối — **giữ** dòng `co_mat` (bằng chứng người bị đánh dấu nghỉ nhầm vẫn đi làm).
+- **Chặn trạng thái VẮNG cho NGÀY TƯƠNG LAI**: một lần tính lại theo khoảng đã sinh 60 dòng
+  `vang`/ngày cho 27–31/10, làm bảng công tháng hiện một tháng đầy vắng. Ngày lễ / nghỉ phép
+  của ngày tương lai vẫn ghi bình thường (duyệt đơn nghỉ phép sớm thấy ngay trên bảng công).
 - **Đối chiếu user máy**: so tên chịu được tên viết tắt trên máy (`Thuyhang`, `Lankt`,
   `Maianhkd`) — 42/44 cảnh báo “PIN lệch” trước đây là báo động giả. Tách 4 nhóm: **trùng
   người**, **có quẹt mà chưa gán** (nặng), **chưa gán không ai quẹt** (dọn dẹp), **người đã
   nghỉ**. Đếm **theo PIN** chứ không theo dòng nên hai máy VP không còn nhân đôi con số.
 - **Script dọn dữ liệu**: `trien_khai/don_vang_mien_cham_cong.mjs` (chạy thử mặc định) xóa dòng
-  `vang` cũ của nhóm miễn, dòng công ngày tương lai, vi phạm và hồ sơ kỷ luật tự động chưa gửi.
+  `vang` cũ của nhóm miễn, dòng công ngày tương lai, dòng `vang` sau ngày nghỉ việc, vi phạm và
+  hồ sơ kỷ luật tự động chưa gửi.
 - Tài liệu: `API.md` (`GET /khoi`, `PATCH /khoi/:id`, `mien_cham_cong`).
 
 ## [1.134.1] — 2026-10-26

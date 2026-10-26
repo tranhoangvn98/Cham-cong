@@ -60,6 +60,19 @@ export async function cho_nghi_viec(
   // Don phong ban kiem nhiem — nguoi da roi khoi cong ty khong nhan thong bao phong ban nao.
   await khach.query('delete from phong_ban_kiem_nhiem where nhan_vien_id = $1', [nhan_vien_id]);
 
+  // Dong 'vang' cua nhung ngay SAU ngay lam viec cuoi: khong con la nguoi cua cong ty thi
+  // khong the "vang". Lich chay dem chi tinh lai nguoi dang hoat dong, nen neu khong don o day
+  // thi cac dong nay nam lai vinh vien va van hien trong bang cong thang.
+  //
+  // Chi xoa trang thai 'vang' cua ngay CHUA CHOT: dong da chot thuoc so da len luong. Nguoi bi
+  // danh dau nghi NHAM van con dong 'co_mat' (do chinh ho quet ra) — do la bang chung de tra
+  // luong, khong duoc dung toi.
+  await khach.query(
+    `delete from bang_cong_ngay
+      where nhan_vien_id = $1 and ngay > $2::date and trang_thai = 'vang' and da_chot = false`,
+    [nhan_vien_id, dong.ngay_nghi_viec],
+  );
+
   // Bao cong phan quyen: ben do doi `nhan_su.trang_thai`, vo hieu hoa tai khoan cong VA
   // thu hoi moi phien dang song. Buoc cuoi la buoc quan trong nhat — `vo_hieu_hoa` chan
   // duoc dang nhap lai nhung khong chan duoc tab dang mo.
