@@ -336,7 +336,7 @@ export function HopThoai({
   }, [khi_dong]);
 
   return (
-    <div className="man-mo" onClick={khi_dong} role="presentation">
+    <div className="man-mo" onDoubleClick={khi_dong} role="presentation">
       <div
         className={[
           'hop-thoai',
@@ -344,6 +344,7 @@ export function HopThoai({
           lop_them ?? '',
         ].filter((x) => x !== '').join(' ')}
         onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={tieu_de}

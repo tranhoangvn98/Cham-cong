@@ -511,6 +511,13 @@ export async function goi<T = unknown>(duong_dan: string, tc: TuyChonGoi = {}): 
       const t_moi = doc_token_cong();
       if (t_moi !== null && t_moi !== token_da_gui) res = await gui();
       if (res.status === 401) {
+        // 401 co the do cong / may chu vua khoi dong lai trong luc trien khai, hoac do mang
+        // chap chon — thu lai MOT lan sau 700ms truoc khi da nguoi dung ra trang dang nhap
+        // (ra khoi trang la mat sach form dang go).
+        await new Promise((cho) => setTimeout(cho, 700));
+        res = await gui();
+      }
+      if (res.status === 401) {
         di_cong_dang_nhap();
         throw new LoiApi(401, 'Phiên đã hết hạn. Đang chuyển về cổng đăng nhập.');
       }

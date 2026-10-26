@@ -238,6 +238,18 @@ Dùng `dung_xac_nhan()` / `dung_nhap_chu()` trong `thanh_phan.tsx`. Hai quy tắ
 Có bài kiểm chặn `window.confirm|alert|prompt` quay lại (bỏ qua phần ghi chú, để chính đoạn giải
 thích này không tự làm đỏ bài kiểm).
 
+### 8.1. Hộp thoại: chỉ đóng khi bấm ĐÚP ra ngoài
+
+`HopThoai` (`web/src/thanh_phan.tsx`) đóng bằng **nút ✕**, **Esc** hoặc **bấm đúp** ra vùng nền —
+**một** cú bấm ra ngoài **không** đóng. Lý do (sự cố 27/10/2026): người dùng đang điền form dài,
+bấm chọn trong droplist mà trượt ra ngoài một chút → hộp thoại đóng, mất sạch nội dung. Cú bấm đó
+giờ chỉ dùng để đóng droplist.
+
+Kèm theo, các form dài phải **giữ bản nháp** để mất phiên đăng nhập hay đóng nhầm cũng không mất
+dữ liệu — mẫu chuẩn: form thêm nhân viên (`web/src/trang/nhan_vien.tsx`) lưu vào `sessionStorage`
+(đóng tab là sạch, không để dữ liệu nhân sự nằm lại trên máy dùng chung), khi mở lại hiện banner
+"Đã khôi phục nội dung đang nhập dở" + nút **Bỏ bản nháp**.
+
 ---
 
 ## 9. Gợi ý: biểu tượng ⓘ, không bày mô tả dài

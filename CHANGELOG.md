@@ -2,6 +2,22 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.137.4] — 2026-10-27
+
+**Không mất việc đang làm: hộp thoại chỉ đóng khi bấm đúp ra ngoài, form nhân viên giữ bản nháp,
+và không bị đá ra trang đăng nhập chỉ vì một lần máy chủ trả 401.**
+
+- **Hộp thoại**: một cú bấm ra vùng nền **không** đóng nữa (đang chọn trong droplist mà trượt ra
+  ngoài là mất sạch form). Đóng bằng **✕**, **Esc**, hoặc **bấm đúp** ra ngoài.
+- **Bản nháp form thêm nhân viên**: mọi thay đổi được lưu vào `sessionStorage` của tab đang mở;
+  mất phiên đăng nhập / tải lại trang / đóng nhầm hộp thoại thì mở lại vẫn còn, kèm banner
+  "Đã khôi phục nội dung đang nhập dở" và nút **Bỏ bản nháp**. Đóng tab là sạch — không để dữ liệu
+  nhân sự nằm lại trên máy dùng chung. Tạo hồ sơ xong thì xóa bản nháp.
+- **401 không còn đá ra ngay**: gặp 401 ở cổng SSO, ứng dụng **thử lại một lần** sau 700ms trước
+  khi chuyển về trang đăng nhập — máy chủ vừa khởi động lại trong lúc triển khai không còn làm
+  người dùng mất phiên oan.
+- Quy ước ghi ở `tai_lieu/THIET-KE.md` mục 8.1.
+
 ## [1.137.3] — 2026-10-27
 
 **Lệnh cấp lại mã: bản chạy thử phải tính cả `--khoi-mac-dinh`.**

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { goi, la_admin, la_nhan_su } from '../api.ts';
 import {
   DangTai, HopLoi, HopThoai, HopThoaiNhap, TEN_VAI_TRO, Trong,
@@ -376,10 +376,90 @@ interface FormProps {
   khi_xong: () => void;
 }
 
+// ------------------------------------------------- ban nhap form them nhan vien
+//
+// Mat phien (SSO het han, may chu khoi dong lai khi dang trien khai, mang chap chon) hoac dong
+// nham hop thoai deu lam mat sach nhung gi da go tren form dai nay. Giu BAN NHAP trong
+// sessionStorage cua dung TAB dang mo: tai lai trang hay dang nhap lai van con, dong tab thi
+// sach (khong de du lieu nhan su nam lai tren may dung chung).
+const KHOA_BAN_NHAP = 'cham_cong_nhap_nhan_vien';
+
+/** Cac truong cua form them/sua nhan vien (mot o = mot khoa). */
+interface TruongFormNhanVien {
+  ma_nv: string; ho_ten: string; pin_may: string; ma_erp: string; ma_erp1: string;
+  phong_ban_id: string; ca_lam_id: string; ngay_vao: string; so_dien_thoai: string;
+  email: string; chuc_danh: string; vi_tri: string;
+  duoc_cham_cong_dien_thoai: boolean; mien_cham_cong: boolean; noi_lam_viec_id: string;
+  che_do_luong: 'vn' | 'tq' | 'khong'; khoi_id: string; cong_chuan_thang: string;
+  loai_hop_dong: string; serial_may_cua: string;
+}
+
+/** Gia tri trong cua form — dung khi mo form them moi va khi bo ban nhap. */
+const FORM_TRONG: TruongFormNhanVien = {
+  ma_nv: '', ho_ten: '', pin_may: '', ma_erp: '', ma_erp1: '', phong_ban_id: '',
+  ca_lam_id: '', ngay_vao: '', so_dien_thoai: '', email: '', chuc_danh: '', vi_tri: '',
+  duoc_cham_cong_dien_thoai: false, mien_cham_cong: false, noi_lam_viec_id: '',
+  che_do_luong: 'vn', khoi_id: '', cong_chuan_thang: '', loai_hop_dong: '', serial_may_cua: '',
+};
+
+interface BanNhapNhanVien {
+  f: Partial<TruongFormNhanVien>;
+  kiem_nhiem: string[];
+  vi_tri_to_chuc: string[];
+  tu_cap_pin: boolean;
+  tao_tk_ms: boolean;
+  tao_tk_ht: boolean;
+  nguon_ms365: string;
+  ms365_da_co: boolean;
+}
+
+function doc_ban_nhap(): BanNhapNhanVien | null {
+  try {
+    const raw = sessionStorage.getItem(KHOA_BAN_NHAP);
+    if (raw === null) return null;
+    const j = JSON.parse(raw) as Partial<BanNhapNhanVien> | null;
+    if (j === null || typeof j !== 'object') return null;
+    if (typeof j.f !== 'object' || j.f === null) return null;
+    const chuoi = (x: unknown): string[] =>
+      Array.isArray(x) ? x.filter((v): v is string => typeof v === 'string') : [];
+    return {
+      f: j.f,
+      kiem_nhiem: chuoi(j.kiem_nhiem),
+      vi_tri_to_chuc: chuoi(j.vi_tri_to_chuc),
+      tu_cap_pin: j.tu_cap_pin !== false,
+      tao_tk_ms: j.tao_tk_ms === true,
+      tao_tk_ht: j.tao_tk_ht !== false,
+      nguon_ms365: typeof j.nguon_ms365 === 'string' ? j.nguon_ms365 : '',
+      ms365_da_co: j.ms365_da_co === true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function luu_ban_nhap(b: BanNhapNhanVien): void {
+  try {
+    sessionStorage.setItem(KHOA_BAN_NHAP, JSON.stringify(b));
+  } catch {
+    /* trinh duyet chan sessionStorage (che do rieng tu) — khong co ban nhap cung khong sao */
+  }
+}
+
+function xoa_ban_nhap(): void {
+  try {
+    sessionStorage.removeItem(KHOA_BAN_NHAP);
+  } catch {
+    /* nhu tren */
+  }
+}
+
 function FormNhanVien(
   { nhan_vien, tu_dong, cac_ca, cac_phong, cac_may, ms365_tao_bat, khi_dong, khi_xong }: FormProps,
 ): ReactNode {
-  const [f, dat_f] = useState({
+  // Ban nhap chi dung cho form THEM MOI: sua ho so thi du lieu that da co trong CSDL.
+  const [ban_nhap] = useState(() => (nhan_vien === null ? doc_ban_nhap() : null));
+  const [giu_ban_nhap, dat_giu_ban_nhap] = useState(ban_nhap !== null);
+  const [f, dat_f] = useState<TruongFormNhanVien>(() => ({
     ma_nv: nhan_vien?.ma_nv ?? '',
     ho_ten: nhan_vien?.ho_ten ?? '',
     pin_may: nhan_vien?.pin_may ?? '',
@@ -400,22 +480,25 @@ function FormNhanVien(
     cong_chuan_thang: nhan_vien?.cong_chuan_thang ?? '',
     loai_hop_dong: '',
     serial_may_cua: '',
-  });
+    ...(ban_nhap?.f ?? {}),
+  }));
   // Ho so moi: mac dinh de he thong cap PIN theo dai cua may thuoc khoi — nguoi lap ho so khong
   // phai nghi ra so, va cung khong phai chon may.
-  const [tu_cap_pin, dat_tu_cap_pin] = useState(true);
+  const [tu_cap_pin, dat_tu_cap_pin] = useState(ban_nhap?.tu_cap_pin ?? true);
   const [kiem_nhiem, dat_kiem_nhiem] = useState<string[]>(
-    nhan_vien?.phong_ban_kiem_nhiem.map((p) => p.id) ?? [],
+    ban_nhap?.kiem_nhiem ?? nhan_vien?.phong_ban_kiem_nhiem.map((p) => p.id) ?? [],
   );
-  const [tao_tk_ms, dat_tao_tk_ms] = useState(tu_dong && ms365_tao_bat);
-  const [tao_tk_ht, dat_tao_tk_ht] = useState(true);
+  const [tao_tk_ms, dat_tao_tk_ms] = useState(
+    ban_nhap?.tao_tk_ms ?? (tu_dong && ms365_tao_bat),
+  );
+  const [tao_tk_ht, dat_tao_tk_ht] = useState(ban_nhap?.tao_tk_ht ?? true);
   // Chon nguoi DA co tai khoan Microsoft 365 (da cap giay phep) thay vi nhap tay: he thong
   // khong tao lai tai khoan, chi khoi tao phan con lai.
-  const [nguon_ms365, dat_nguon_ms365] = useState('');
-  const [ms365_da_co, dat_ms365_da_co] = useState(false);
+  const [nguon_ms365, dat_nguon_ms365] = useState(ban_nhap?.nguon_ms365 ?? '');
+  const [ms365_da_co, dat_ms365_da_co] = useState(ban_nhap?.ms365_da_co ?? false);
   // Vi tri lay tu cau hinh "To chuc & trach nhiem": chon la giao luon dau viec dinh ky cua vi tri.
   // Thu tu mang = thu tu NGUOI DUNG CHON; phan tu dau tien thanh vi tri chinh.
-  const [vi_tri_to_chuc, dat_vi_tri_to_chuc] = useState<string[]>([]);
+  const [vi_tri_to_chuc, dat_vi_tri_to_chuc] = useState<string[]>(ban_nhap?.vi_tri_to_chuc ?? []);
   const ds_vi_tri = dung_nap<ViTriToChuc[]>('/api/to-chuc/vi-tri');
   const nguon = dung_nap<KqNguonMs365>(
     nhan_vien === null ? '/api/nhan-vien/ms365-da-cap-phep' : null);
@@ -432,8 +515,31 @@ function FormNhanVien(
   const db = dung_hanh_dong();
   const xn = dung_xac_nhan();
 
+  // Tu luu ban nhap (chi form THEM MOI): mat phien dang nhap hay dong nham hop thoai van con.
+  useEffect(() => {
+    if (nhan_vien !== null) return;
+    luu_ban_nhap({
+      f, kiem_nhiem, vi_tri_to_chuc, tu_cap_pin, tao_tk_ms, tao_tk_ht, nguon_ms365, ms365_da_co,
+    });
+  }, [f, kiem_nhiem, vi_tri_to_chuc, tu_cap_pin, tao_tk_ms, tao_tk_ht, nguon_ms365,
+    ms365_da_co, nhan_vien]);
+
   const doi = (khoa: keyof typeof f, gt: string | boolean): void =>
     dat_f((cu) => ({ ...cu, [khoa]: gt }));
+
+  /** Bo ban nhap: xoa ban luu va tra form ve trang thai trong. */
+  const bo_ban_nhap = (): void => {
+    xoa_ban_nhap();
+    dat_giu_ban_nhap(false);
+    dat_f({ ...FORM_TRONG });
+    dat_kiem_nhiem([]);
+    dat_vi_tri_to_chuc([]);
+    dat_tu_cap_pin(true);
+    dat_tao_tk_ms(tu_dong && ms365_tao_bat);
+    dat_tao_tk_ht(true);
+    dat_nguon_ms365('');
+    dat_ms365_da_co(false);
+  };
 
   /** Lao dong outsource: hop dong dich vu — khong thuoc bang luong, khong can chi tiet cham cong. */
   const la_outsource = f.loai_hop_dong === 'cong_tac_vien';
@@ -582,6 +688,9 @@ function FormNhanVien(
           : null,
       );
       dat_canh_bao_ket(kq.canh_bao ?? []);
+      // Da tao xong: ban nhap khong con y nghia.
+      xoa_ban_nhap();
+      dat_giu_ban_nhap(false);
       return;
     }
     const ok = await hd.chay(() =>
@@ -618,6 +727,16 @@ function FormNhanVien(
     >
       <form onSubmit={gui}>
         <HopLoi loi={hd.loi} />
+
+        {giu_ban_nhap && (
+          <div className="hop-thong-bao hop-luu-y">
+            Đã khôi phục nội dung đang nhập dở của lần trước (mất phiên đăng nhập hoặc đóng nhầm
+            hộp thoại).{' '}
+            <button type="button" className="nut-nho nut-phang" onClick={bo_ban_nhap}>
+              Bỏ bản nháp
+            </button>
+          </div>
+        )}
 
         {nhan_vien === null && tu_dong && (
           <div className="hop-thong-bao hop-tin">
