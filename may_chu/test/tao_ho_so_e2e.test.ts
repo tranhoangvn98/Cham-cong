@@ -81,6 +81,7 @@ before(async () => {
     'cong_viec', 'cong_viec_hanh_dong', 'cong_viec_workflow', 'thong_bao_rieng',
     'cong_viec_mau_dinh_ky', 'dau_viec', 'vi_tri', 'nhom_trach_nhiem',
     'nhan_vien_vi_tri',
+    'hop_dong_lao_dong',
     'nhat_ky_thao_tac', 'nguoi_dung', 'nhan_vien', 'thiet_bi',
   ]) {
     await thuc_thi(`truncate table ${b} restart identity cascade`);
@@ -289,7 +290,7 @@ test('luu ho so la tu sinh viec "Nhap viec" + 15 muc checklist', async () => {
   const r = await goi({
     ho_ten: 'Trịnh Văn Checklist', khoi_id: khoi_vp, ngay_vao: '2026-05-31',
     tu_cap_pin: true, tao_tk_he_thong: false,
-    loai_hop_dong: 'HĐLĐ 24 tháng',
+    loai_hop_dong: 'xac_dinh', thoi_han_thang: 12,
   });
   assert.equal(r.ma, 201, JSON.stringify(r.than));
   const nv_id = String(r.than['id']);
@@ -308,7 +309,7 @@ test('luu ho so la tu sinh viec "Nhap viec" + 15 muc checklist', async () => {
   assert.equal(muc.length, 15, 'checklist phai du 15 muc');
   assert.equal(muc[0]?.xong, false, 'khong tao tai khoan Microsoft thi muc MS365 chua tick');
   assert.equal(muc[1]?.xong, true, 'muc ERP1 luon tick san');
-  assert.ok((muc[5]?.ten ?? '').includes('24 tháng'), 'checklist ky HD dung loai');
+  assert.ok((muc[5]?.ten ?? '').includes('1 năm'), 'checklist ky HD dung loai + ki han');
 });
 
 test('chon nguoi da co Microsoft 365: khong tao lai tai khoan, checklist tick san', async () => {
@@ -412,6 +413,50 @@ test('vi tri khong ton tai: 400 va KHONG tao ho so nao', async () => {
   assert.match(String(r.than['loi']), /vị trí/i);
   const sau = await truy_van_mot<{ so: number }>('select count(*)::int as so from nhan_vien');
   assert.equal(sau?.so, truoc?.so, 'giao dich phai cuon lai — khong tao ho so nua vời');
+});
+
+// ================================================================ hop dong lao dong khi tao ho so
+test('chon loai hop dong: tao hop_dong_lao_dong dung loai + ngay het han', async () => {
+  const r = await goi({
+    ho_ten: 'Đặng Thị Hợp Đồng', khoi_id: khoi_vp, ngay_vao: '2026-05-31',
+    tu_cap_pin: true, tao_tk_he_thong: false,
+    loai_hop_dong: 'xac_dinh', thoi_han_thang: 6,
+  });
+  assert.equal(r.ma, 201, JSON.stringify(r.than));
+  const hd = await truy_van_mot<{
+    loai: string; hieu_luc_tu: string; hieu_luc_den: string | null; trang_thai: string;
+  }>(
+    `select loai, to_char(hieu_luc_tu, 'YYYY-MM-DD') as hieu_luc_tu,
+            to_char(hieu_luc_den, 'YYYY-MM-DD') as hieu_luc_den, trang_thai
+       from hop_dong_lao_dong where nhan_vien_id = $1`, [String(r.than['id'])]);
+  assert.equal(hd?.loai, 'xac_dinh');
+  assert.equal(hd?.hieu_luc_tu, '2026-05-31', 'ngay vao lam la ngay hieu luc');
+  assert.equal(hd?.hieu_luc_den, '2026-11-30', '6 thang tinh tu 31/05, thang 11 chi co 30 ngay');
+  assert.equal(hd?.trang_thai, 'hieu_luc');
+});
+
+test('hop dong khong xac dinh ki han: khong dat hieu_luc_den; thieu ki han thi 400', async () => {
+  const r = await goi({
+    ho_ten: 'Bùi Văn Vô Hạn', khoi_id: khoi_vp, ngay_vao: '2026-05-31',
+    tu_cap_pin: true, tao_tk_he_thong: false,
+    loai_hop_dong: 'khong_xac_dinh',
+  });
+  assert.equal(r.ma, 201, JSON.stringify(r.than));
+  const hd = await truy_van_mot<{ hieu_luc_den: string | null }>(
+    `select to_char(hieu_luc_den, 'YYYY-MM-DD') as hieu_luc_den
+       from hop_dong_lao_dong where nhan_vien_id = $1`, [String(r.than['id'])]);
+  assert.equal(hd?.hieu_luc_den, null);
+
+  const truoc = await truy_van_mot<{ so: number }>('select count(*)::int as so from nhan_vien');
+  const sai = await goi({
+    ho_ten: 'Thiếu Kì Hạn', khoi_id: khoi_vp, ngay_vao: '2026-05-31',
+    tu_cap_pin: true, tao_tk_he_thong: false,
+    loai_hop_dong: 'xac_dinh',
+  });
+  assert.equal(sai.ma, 400, JSON.stringify(sai.than));
+  assert.match(String(sai.than['loi']), /6 tháng hoặc 1 năm/);
+  const sau = await truy_van_mot<{ so: number }>('select count(*)::int as so from nhan_vien');
+  assert.equal(sau?.so, truoc?.so, 'khong duoc tao ho so khi hop dong thieu ki han');
 });
 
 // ================================================================ tai khoan Microsoft cho nguoi lap ho so

@@ -126,6 +126,11 @@ Khi tạo tài khoản Microsoft 365, **người gọi API nhận chuông** "Tà
 bắt buộc đổi mật khẩu ở lần đăng nhập Microsoft đầu tiên
 (`forceChangePasswordNextSignIn: true`).
 
+Chọn `loai_hop_dong` (`hoc_viec` · `cong_tac_vien` · `thu_viec` · `xac_dinh` ·
+`khong_xac_dinh`) là hệ thống tạo luôn **hợp đồng lao động** trong cùng transaction:
+`hieu_luc_tu` = ngày vào làm; `xac_dinh` bắt buộc kèm `thoi_han_thang` 6 hoặc 12, `hieu_luc_den`
+= +6/+12 tháng - 1 ngày; các loại khác để trống hạn. Outsource dùng mã `cong_tac_vien`.
+
 Hai route `ms365-da-cap-phep` trả/đồng bộ danh sách người Microsoft 365 đã có giấy phép (chưa
 có hồ sơ) để form chọn — không tạo đề nghị.
 

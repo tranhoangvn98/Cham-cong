@@ -470,6 +470,16 @@ function FormNhanVien(
 
   const gui = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+    // Ma tren form la "ma chon" (xac_dinh_6 / xac_dinh_12 / ...) — tach thanh loai + ki han
+    // dung hop dong_lao_dong.loai (CHECK migration 009).
+    const hop_dong_gui = ((): { loai: string | null; thang: number | null } => {
+      const ma = f.loai_hop_dong;
+      if (ma === '') return { loai: null, thang: null };
+      if (ma.startsWith('xac_dinh_')) {
+        return { loai: 'xac_dinh', thang: Number(ma.slice('xac_dinh_'.length)) };
+      }
+      return { loai: ma, thang: null };
+    })();
     const than = {
       ma_nv: f.ma_nv.trim(),
       ho_ten: f.ho_ten.trim(),
@@ -501,7 +511,8 @@ function FormNhanVien(
             tao_tk_ms365: tao_tk_ms,
             tao_tk_he_thong: tao_tk_ht,
             ms365_da_co,
-            loai_hop_dong: f.loai_hop_dong.trim() === '' ? null : f.loai_hop_dong.trim(),
+            loai_hop_dong: hop_dong_gui.loai,
+            thoi_han_thang: hop_dong_gui.thang,
             vi_tri_ids: vi_tri_to_chuc,
           },
         }),
@@ -551,6 +562,8 @@ function FormNhanVien(
         ? (tu_dong ? 'Thêm nhân viên tự động' : 'Thêm nhân viên')
         : `Sửa: ${nhan_vien.ho_ten}`}
       khi_dong={khi_dong}
+      rong
+      lop_them="hop-thoai-form-nhan-vien"
     >
       <form onSubmit={gui}>
         <HopLoi loi={hd.loi} />
@@ -832,9 +845,17 @@ function FormNhanVien(
           {nhan_vien === null && (
             <div className="o-nhap">
               <label htmlFor="lhd">{tra_hien_tai('nv_loai_hop_dong')}</label>
-              <input id="lhd" value={f.loai_hop_dong}
-                onChange={(e) => doi('loai_hop_dong', e.target.value)}
-                placeholder="HĐLĐ 12 tháng / thử việc" />
+              <Chon gia_tri={f.loai_hop_dong}
+                dat_gia_tri={(ma) => doi('loai_hop_dong', ma)}
+                cac_tuy_chon={[
+                  { ma: 'hoc_viec', nhan: tra_hien_tai('nv_hd_hoc_viec') },
+                  { ma: 'cong_tac_vien', nhan: tra_hien_tai('nv_hd_outsource') },
+                  { ma: 'thu_viec', nhan: tra_hien_tai('nv_hd_thu_viec') },
+                  { ma: 'xac_dinh_6', nhan: tra_hien_tai('nv_hd_chinh_thuc_6') },
+                  { ma: 'xac_dinh_12', nhan: tra_hien_tai('nv_hd_chinh_thuc_12') },
+                  { ma: 'khong_xac_dinh', nhan: tra_hien_tai('nv_hd_khong_xac_dinh') },
+                ]}
+                rong={tra_hien_tai('nv_hd_chua_chon')} nhan={tra_hien_tai('nv_loai_hop_dong')} />
               <div className="goi-y">{tra_hien_tai('nv_loai_hop_dong_phu')}</div>
             </div>
           )}

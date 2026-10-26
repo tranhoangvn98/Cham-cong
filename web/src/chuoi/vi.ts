@@ -311,7 +311,15 @@ export const CHUOI_VI = {
   nv_dong_bo_luc: 'Đồng bộ lần cuối: {luc}',
   nv_chua_dong_bo: 'Chưa đồng bộ lần nào',
   nv_loai_hop_dong: 'Loại hợp đồng',
-  nv_loai_hop_dong_phu: 'Dùng để checklist nhập việc nhắc đúng loại hợp đồng cần ký.',
+  nv_loai_hop_dong_phu:
+    'Chọn đúng loại + kì hạn: hệ thống tạo luôn hợp đồng lao động (ngày vào làm là ngày hiệu lực) và checklist nhập việc nhắc đúng loại cần ký. Outsource lưu là hợp đồng dịch vụ (cộng tác viên).',
+  nv_hd_chua_chon: '— Chưa chọn —',
+  nv_hd_hoc_viec: 'Học việc',
+  nv_hd_outsource: 'Outsource (cộng tác viên)',
+  nv_hd_thu_viec: 'Thử việc',
+  nv_hd_chinh_thuc_6: 'Chính thức — 6 tháng',
+  nv_hd_chinh_thuc_12: 'Chính thức — 1 năm',
+  nv_hd_khong_xac_dinh: 'Chính thức — Không xác định kì hạn',
   nv_may_cua: 'Máy cửa (kiểm soát ra vào)',
   nv_may_cua_rong: '— Dùng máy chấm công của khối —',
   nv_may_cua_phu:

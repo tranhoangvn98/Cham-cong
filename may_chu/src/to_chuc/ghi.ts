@@ -385,9 +385,9 @@ export async function gan_vi_tri_khi_tao_ho_so(
   nhan_vien_id: string,
   vi_tri_ids: readonly string[],
   chuc_danh_nhap: string | null,
-): Promise<{ so_vi_tri: number; so_dau_viec: number }> {
+): Promise<{ so_vi_tri: number; so_dau_viec: number; ten_vi_tri_chinh: string | null }> {
   const ds = [...new Set(vi_tri_ids.filter((x) => x.trim() !== ''))];
-  if (ds.length === 0) return { so_vi_tri: 0, so_dau_viec: 0 };
+  if (ds.length === 0) return { so_vi_tri: 0, so_dau_viec: 0, ten_vi_tri_chinh: null };
 
   const dong = await khach.query<{ id: string; ten: string }>(
     `select id, ten from vi_tri
@@ -437,7 +437,7 @@ export async function gan_vi_tri_khi_tao_ho_so(
       if (dv.dang_bat && tu_dong_sinh_duoc(dv.tan_suat)) so_dau_viec += 1;
     }
   }
-  return { so_vi_tri: ds.length, so_dau_viec };
+  return { so_vi_tri: ds.length, so_dau_viec, ten_vi_tri_chinh: ten_chinh };
 }
 
 /**

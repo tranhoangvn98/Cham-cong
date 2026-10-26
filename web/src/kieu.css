@@ -856,6 +856,8 @@ input[type="checkbox"] {
   padding: 20px;
 }
 .hop-thoai-rong { max-width: 760px; }
+/* Form them/sua nhan vien: rat nhieu truong, mo rong de dung it thanh cuon hon. */
+.hop-thoai-form-nhan-vien { max-width: 880px; max-height: 94vh; }
 /* Gan het man hinh — cho bang nhieu cot (bang luong chi tiet) co cho tho. */
 .hop-thoai-toan-man { max-width: 96vw; width: 96vw; max-height: 94vh; }
 
@@ -1029,7 +1031,7 @@ input[type="checkbox"] {
   thead th, tbody td { padding-left: 9px; padding-right: 9px; }
   /* Hop thoai chiem gan het man hinh de con cho ban phim ao. */
   .man-mo { padding: 10px; align-items: start; }
-  .hop-thoai, .hop-thoai-rong { max-width: none; max-height: 92vh; padding: 16px; }
+  .hop-thoai, .hop-thoai-rong, .hop-thoai-form-nhan-vien { max-width: none; max-height: 92vh; padding: 16px; }
   .dau-trang { margin-bottom: 12px; }
   .dau-app-phu { display: none; }
   .dau-app-tieu-de { font-size: 15.5px; }

@@ -313,7 +313,15 @@ export const CHUOI_ZH = {
   nv_dong_bo_luc: '上次同步：{luc}',
   nv_chua_dong_bo: '尚未同步',
   nv_loai_hop_dong: '合同类型',
-  nv_loai_hop_dong_phu: '用于入职清单提醒应签订的合同类型。',
+  nv_loai_hop_dong_phu:
+    '请选择正确的类型与期限：系统会同时创建劳动合同（入职日为生效日），并在入职清单中提醒签署正确类型。Outsource 按服务合同（合作人员）保存。',
+  nv_hd_chua_chon: '— 未选择 —',
+  nv_hd_hoc_viec: '见习',
+  nv_hd_outsource: '外包（合作人员）',
+  nv_hd_thu_viec: '试用',
+  nv_hd_chinh_thuc_6: '正式 — 6 个月',
+  nv_hd_chinh_thuc_12: '正式 — 1 年',
+  nv_hd_khong_xac_dinh: '正式 — 无固定期限',
   nv_may_cua: '门禁设备（出入管理）',
   nv_may_cua_rong: '— 使用部门考勤设备 —',
   nv_may_cua_phu:

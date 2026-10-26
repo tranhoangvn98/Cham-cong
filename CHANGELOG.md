@@ -2,6 +2,26 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.133.0] — 2026-10-26
+
+**Form thêm nhân viên: chọn loại + kì hạn hợp đồng, hệ thống tạo hợp đồng lao động ngay.**
+
+- Ô “Loại hợp đồng” từ chỗ gõ tự do nay là **danh mục chọn**: Học việc · **Outsource (cộng tác
+  viên)** · Thử việc · Chính thức **6 tháng / 1 năm / không xác định kì hạn**. Outsource lưu
+  theo mã `cong_tac_vien` (hợp đồng dịch vụ) vì bảng `hop_dong_lao_dong` không có mã riêng.
+- Chọn loại là hệ thống **tạo `hop_dong_lao_dong` trong cùng transaction** với hồ sơ:
+  `hieu_luc_tu` = ngày vào làm; chính thức 6/12 tháng có `hieu_luc_den` = +6/+12 tháng - 1 ngày
+  (cuối tháng không có ngày tương ứng thì lấy ngày cuối tháng, kể cả năm nhuận); không xác định
+  kì hạn/thử việc/học việc/outsource để trống hạn. Hợp đồng lưu chức danh + nơi làm việc + ghi
+  chú “Tạo tự động khi thêm nhân sự”.
+- Checklist “Nhập việc” nhắc đúng loại + kì hạn (vd “Chính thức 1 năm”). Thiếu kì hạn khi chọn
+  chính thức → **400 và không tạo hồ sơ**.
+- Popup thêm nhân viên **rộng 880px, cao 94vh** (thêm thuộc tính `lop_them` cho `HopThoai`) —
+  ít phải cuộn hơn; trên màn hẹp vẫn full chiều ngang.
+- Test: `hop_dong_khoi_tao.test.ts` (mã loại, nhãn, tính ngày cuối tháng/năm nhuận, chặn thiếu
+  kì hạn) + e2e tạo hợp đồng 6 tháng/không xác định hạn.
+
+
 ## [1.132.1] — 2026-10-26
 
 **Kiểm tra ứng dụng M365: không nhầm “không có giấy phép” với “không dùng”.**

@@ -28,6 +28,7 @@ import { CAC_HE_THONG, MA_CAC_HE_THONG } from '../dinh_danh/he_thong.ts';
 import { cap_pin, doc_dai_pin, goi_y_pin } from '../dinh_danh/cap_pin.ts';
 import { doi_chieu_may } from '../dinh_danh/doi_chieu_may.ts';
 import { tao_ho_so_nhan_su } from '../nhan_su/tao_ho_so.ts';
+import { LOAI_HOP_DONG_KHOI_TAO, kiem_hop_dong_khoi_tao } from '../nhan_su/hop_dong_khoi_tao.ts';
 import { MA_VI_TRI } from '../nhan_su/vi_tri.ts';
 import { dong_bo_vi_tri_ho_so } from '../to_chuc/ghi.ts';
 import { lich_cua_may } from '../ra_vao/khoa_cua.ts';
@@ -212,7 +213,11 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     const ms365_da_co = luan_ly(b, 'ms365_da_co', false) === true;
     const serial_may_cua = chuoi(b, 'serial_may_cua', { toi_da: 64 })
       ?? chuoi(b, 'thiet_bi_serial', { toi_da: 64 });
-    const loai_hop_dong = chuoi(b, 'loai_hop_dong', { toi_da: 120 });
+    const loai_hop_dong = trong_tap(b, 'loai_hop_dong', LOAI_HOP_DONG_KHOI_TAO, { bat_buoc: false });
+    const thoi_han_nhap = so_nguyen(b, 'thoi_han_thang', { min: 1, max: 60 });
+    kiem_hop_dong_khoi_tao(loai_hop_dong, thoi_han_nhap);
+    // Chi hop dong chinh thuc moi co ki han; cac loai khac bo qua so nguoi dung gui len.
+    const thoi_han_thang = loai_hop_dong === 'xac_dinh' ? thoi_han_nhap : null;
     const vi_tri_ids = doc_vi_tri_ids(b) ?? [];
     const kq = await tao_ho_so_nhan_su({
       ma_nv: ts[0] === null ? null : String(ts[0]),
@@ -239,6 +244,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       ms365_da_co,
       tao_tk_he_thong: luan_ly(b, 'tao_tk_he_thong', false) === true,
       loai_hop_dong,
+      thoi_han_thang,
       vi_tri_ids,
       ma_erp1: chuoi(b, 'ma_erp1', { toi_da: 40 }),
       // Nguoi nhan thong bao tai khoan Microsoft + mat khau khoi tao (de ban giao).

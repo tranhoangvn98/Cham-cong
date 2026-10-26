@@ -169,6 +169,7 @@ export const HUONG_DAN: readonly HuongDanTrang[] = [
       { chu: 'Bấm + Thêm nhân viên: khai họ tên + khối + email; mã nhân viên và PIN do hệ thống tự sinh.', vai_tro: NHAN_SU },
       { chu: 'Nếu người mới ĐÃ CÓ tài khoản Microsoft 365 kèm giấy phép: chọn người đó ở ô "Chọn từ Microsoft 365" — họ tên + email tự điền và hệ thống không tạo lại tài khoản.', vai_tro: NHAN_SU },
       { chu: 'Chọn Vị trí trong Tổ chức & trách nhiệm ngay khi thêm: hệ thống giao luôn các đầu việc định kỳ của vị trí; vị trí chọn đầu tiên là vị trí chính.', vai_tro: NHAN_SU },
+      { chu: 'Chọn Loại hợp đồng + kì hạn (học việc/Outsource/thử việc/chính thức 6 tháng, 1 năm hoặc không xác định): hệ thống tạo hợp đồng lao động với ngày hiệu lực là ngày vào làm.', vai_tro: NHAN_SU },
       { chu: 'Lưu là xong: hệ thống tự tạo tài khoản, đẩy PIN xuống máy, giao việc "Nhập việc" kèm checklist và báo quản trị viên có nhân sự mới. Không có bước duyệt.', vai_tro: NHAN_SU },
       { chu: 'Mở hồ sơ → thẻ Mã ở các hệ thống → Cấp PIN, chọn máy. Hệ thống chọn số còn trống.', vai_tro: NHAN_SU },
       { chu: 'Cài đúng số đó lên máy chấm công, rồi nhân viên đăng ký khuôn mặt/vân tay tại máy.', vai_tro: NHAN_SU },

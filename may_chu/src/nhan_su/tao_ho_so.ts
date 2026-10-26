@@ -22,6 +22,10 @@ import { bao_pin_cho_nhan_vien } from './bao_pin.ts';
 import { nguoi_nhan_nhap_viec, tao_viec_nhap_viec_trong } from './nhap_viec.ts';
 import { bao_nhan_su_moi } from './bao_nhan_su_moi.ts';
 import { bao_tai_khoan_ms365 } from './bao_tai_khoan_ms365.ts';
+import {
+  kiem_hop_dong_khoi_tao, nhan_hop_dong, ngay_het_han,
+  type LoaiHopDongKhoiTao,
+} from './hop_dong_khoi_tao.ts';
 import { ms365_tao_bat, sinh_mat_khau_khoi_tao } from './ms365.ts';
 import { sinh_ten_dang_nhap, vai_tro_theo_vi_tri } from './vi_tri.ts';
 import { dong_bo_vi_tri_ho_so, gan_vi_tri_khi_tao_ho_so } from '../to_chuc/ghi.ts';
@@ -56,8 +60,10 @@ export interface DauVaoTaoHoSo {
    */
   ms365_da_co?: boolean;
   tao_tk_he_thong: boolean;
-  /** Loai hop dong — chi de checklist nhap viec nhac dung loai can ky (khong luu o nhan_vien). */
-  loai_hop_dong?: string | null;
+  /** Loai hop dong — tao luon `hop_dong_lao_dong` + checklist nhac dung loai can ky. */
+  loai_hop_dong?: LoaiHopDongKhoiTao | null;
+  /** Ky han hop dong chinh thuc (6 hoac 12 thang); cac loai khac bo qua. */
+  thoi_han_thang?: number | null;
   /**
    * Vi tri JD lay tu danh muc "To chuc & trach nhiem". Chon o day = giao luon cac dau viec
    * dinh ky cua vi tri; vi tri dau tien thanh vi tri CHINH. Rong = khong gan.
@@ -114,6 +120,7 @@ export interface KetQuaTaoHoSo {
 export async function tao_ho_so_nhan_su(
   v: DauVaoTaoHoSo,
 ): Promise<KetQuaTaoHoSo> {
+  kiem_hop_dong_khoi_tao(v.loai_hop_dong ?? null, v.thoi_han_thang ?? null);
   // Ma nhan su do he thong sinh khi nguoi dung khong khai — ma ghep tu ma ngan cua khoi va
   // thang vao lam, nen thieu khoi thi khong sinh duoc.
   const ma_nv_nhap = (v.ma_nv ?? '').trim();
@@ -242,6 +249,29 @@ export async function tao_ho_so_nhan_su(
           );
           so_vi_tri_to_chuc = gan_vt.so_vi_tri;
           so_dau_viec_dinh_ky = gan_vt.so_dau_viec;
+          // Hop dong lao dong: tao luon trong CUNG transaction khi nguoi lap ho so chon loai.
+          // Nho vay tinh luong / thoi viec / nhac het han doc cung mot nguon thay vi chu tu do.
+          if (v.loai_hop_dong !== null && v.loai_hop_dong !== undefined) {
+            const tu_ngay = v.ngay_vao ?? ngay_dia_phuong(new Date());
+            const den_ngay = ngay_het_han(tu_ngay, v.loai_hop_dong, v.thoi_han_thang ?? null);
+            let noi_ten: string | null = null;
+            if (v.noi_lam_viec_id !== null) {
+              const nlv = await khach.query<{ ten: string }>(
+                'select ten from noi_lam_viec where id = $1', [v.noi_lam_viec_id]);
+              noi_ten = nlv.rows[0]?.ten ?? null;
+            }
+            const chuc_danh_hd = (v.chuc_danh ?? '').trim() !== ''
+              ? v.chuc_danh
+              : gan_vt.ten_vi_tri_chinh;
+            await khach.query(
+              `insert into hop_dong_lao_dong
+                 (nhan_vien_id, loai, chuc_danh, noi_lam_viec, hieu_luc_tu, hieu_luc_den,
+                  trang_thai, ghi_chu)
+               values ($1,$2,$3,$4,$5,$6,'hieu_luc',$7)`,
+              [moi.id, v.loai_hop_dong, chuc_danh_hd, noi_ten, tu_ngay, den_ngay,
+                'Tạo tự động khi thêm nhân sự'],
+            );
+          }
           // Cong phan quyen: tu tao ban ghi danh tinh (nhan_su.da_tao da co tu truoc).
           await ghi_su_kien('nhan_su.da_tao', { ma_nv, ho_ten: v.ho_ten }, khach);
           // ERP1: thiet lap tai khoan cho nhan su moi. Kem chuc danh + ten phong ban de
@@ -287,7 +317,8 @@ export async function tao_ho_so_nhan_su(
             const han = v.ngay_vao ?? ngay_dia_phuong(new Date());
             viec_id = await tao_viec_nhap_viec_trong(
               khach, nguoi_nhan, { id: moi.id, ho_ten: v.ho_ten, ma_nv }, han,
-              v.tao_tk_ms365 || v.ms365_da_co === true, v.loai_hop_dong ?? null,
+              v.tao_tk_ms365 || v.ms365_da_co === true,
+              nhan_hop_dong(v.loai_hop_dong ?? null, v.thoi_han_thang ?? null),
               cau_hinh.nhap_viec.email_bhxh, pin_gui,
             );
             if (viec_id === null) {

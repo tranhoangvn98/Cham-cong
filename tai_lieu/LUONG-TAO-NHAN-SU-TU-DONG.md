@@ -77,6 +77,7 @@ Hệ thống, TRONG MỘT TRANSACTION:
   7. outbox          nhan_su.da_tao · erp1.nhan_su.da_tao · ms365.tao_tai_khoan
   8. công việc       "Nhập việc" + 15 mục checklist → người phụ trách nhân sự
   9. vị trí JD       gán nhan_vien_vi_tri + sinh mẫu việc định kỳ từ đầu việc của vị trí
+ 10. hợp đồng        hop_dong_lao_dong: loại + kì hạn (6/12 tháng / không xác định), hiệu lực từ ngày vào
 ─────────────────────────────────────────────────────────────────────────────────
 Sau khi commit (không chặn phản hồi):
   · chuông cho MỌI tài khoản admin: "Có nhân sự mới: <họ tên>" (không phải yêu cầu duyệt)
@@ -201,6 +202,7 @@ của khối kho phải gán tay ở trang Thiết bị.
 | Chọn máy theo khối + đẩy lệnh | `may_chu/src/nhan_su/day_pin_may.ts` |
 | Luồng tạo hồ sơ (kể cả việc nhập việc) | `may_chu/src/nhan_su/tao_ho_so.ts` |
 | Gán vị trí Tổ chức & trách nhiệm khi tạo | `may_chu/src/to_chuc/ghi.ts` (`gan_vi_tri_khi_tao_ho_so`) |
+| Loại/kì hạn hợp đồng + tính ngày hết hạn | `may_chu/src/nhan_su/hop_dong_khoi_tao.ts` |
 | Checklist nhập việc | `may_chu/src/nhan_su/nhap_viec.ts` |
 | Chuông "có nhân sự mới" | `may_chu/src/nhan_su/bao_nhan_su_moi.ts` |
 | Chuông "PIN của bạn là …" | `may_chu/src/nhan_su/bao_pin.ts` |

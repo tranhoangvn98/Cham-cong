@@ -31,6 +31,9 @@ chuỗi tích hợp mà không cần thao tác tay thêm:
     vị trí chọn đầu tiên thành **vị trí chính** (điền chức danh nếu ô đó trống), và **sinh mẫu
     việc định kỳ** từ các `dau_viec` của vị trí — tất cả trong cùng transaction. Bỏ trống nếu
     chưa khai cấu hình; có thể gán/gỡ sau ở trang Tổ chức & trách nhiệm.
+11. **Tạo hợp đồng lao động** khi chọn Loại hợp đồng: `hoc_viec` · `cong_tac_vien` (Outsource)
+    · `thu_viec` · `xac_dinh` (bắt buộc kì hạn 6/12 tháng) · `khong_xac_dinh`. Hiệu lực từ ngày
+    vào làm; chính thức có hạn = +6/+12 tháng - 1 ngày. Checklist nhập việc nhắc đúng loại.
 
 Bước 4 được tạo **ngay cùng transaction** với dòng nhân viên; các bước báo ra ngoài (5, 6, 7)
 đi qua bảng `hop_thu_di` **cùng transaction** rồi tiến trình nền đẩy đi với cơ chế thử lại
