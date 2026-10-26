@@ -755,7 +755,7 @@ export async function tuyen_ho_so(app: FastifyInstance): Promise<void> {
       [id],
     );
     const moc = await truy_van_mot<{ dong_bo_luc: string | null; ngay_bao_cao: string | null }>(
-      `select max(dong_bo_luc)::text as dong_bo_luc, max(ngay_bao_cao)::text as ngay_bao_cao
+      `select max(dong_bo_luc)::text as dong_bo_luc, min(ngay_bao_cao)::text as ngay_bao_cao
          from ms365_ung_dung_kiem_tra where nhan_vien_id = $1`,
       [id],
     );

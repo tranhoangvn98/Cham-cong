@@ -29,7 +29,7 @@ export interface KetQuaKiemTraUngDung {
   so_dong: number;
   /** So nguoi con thieu it nhat MOT ung dung CO THE kiem tra duoc. */
   so_nguoi_thieu: number;
-  /** Ngay bao cao mới nhất trong anh chup (null khi khong co dong nao). */
+  /** Ngay bao cao CU NHAT trong anh chup (null khi khong co dong nao). */
   ngay_bao_cao: string | null;
   /** Loi tung nguon — rong nghia la ca hai bao cao doc duoc. */
   loi: string[];
@@ -135,7 +135,7 @@ export async function kiem_tra_ung_dung_ms365(): Promise<KetQuaKiemTraUngDung> {
   const nguon: string[] = [];
   const chiTiet: (string | null)[] = [];
   let soNguoiThieu = 0;
-  let ngayMoiNhat: string | null = null;
+  let ngayCuNhat: string | null = null;
 
   for (const n of theoNguoi) {
     if (n.dong.some((d) => la_thieu(d.trang_thai))) soNguoiThieu += 1;
@@ -148,8 +148,8 @@ export async function kiem_tra_ung_dung_ms365(): Promise<KetQuaKiemTraUngDung> {
       ngayBaoCao.push(d.ngay_bao_cao);
       nguon.push(d.nguon);
       chiTiet.push(d.chi_tiet);
-      if (d.ngay_bao_cao !== null && (ngayMoiNhat === null || d.ngay_bao_cao > ngayMoiNhat)) {
-        ngayMoiNhat = d.ngay_bao_cao;
+      if (d.ngay_bao_cao !== null && (ngayCuNhat === null || d.ngay_bao_cao < ngayCuNhat)) {
+        ngayCuNhat = d.ngay_bao_cao;
       }
     }
   }
@@ -174,7 +174,7 @@ export async function kiem_tra_ung_dung_ms365(): Promise<KetQuaKiemTraUngDung> {
     so_nhan_vien: ds.length,
     so_dong: id.length,
     so_nguoi_thieu: soNguoiThieu,
-    ngay_bao_cao: ngayMoiNhat,
+    ngay_bao_cao: ngayCuNhat,
     loi,
   };
 }
