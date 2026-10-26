@@ -2,6 +2,36 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.136.0] — 2026-10-26
+
+**Cấp lại mã nhân sự cho người đã có hồ sơ — hết cảnh gõ tay rồi bịa trùng.**
+
+Người vào trước còn mã kiểu cũ (`ERP69`, `NV0156`, `TAM14`, `BGD`…). Ô `ma_nv` trên form cho gõ
+tay, nhưng gõ tay nghĩa là người lập hồ sơ phải **tự bịa số** và sẽ bịa trùng. Nay mã do hệ
+thống sinh lại theo đúng khuôn `NV + mã ngắn khối + MMYY + số thứ tự`.
+
+- **Trang Nhân viên**: banner "Nhân sự còn dùng mã cũ" kèm danh sách (mã cũ, khối, **mã dự
+  kiến**) và mỗi dòng một nút **Cấp lại**. Chỉ đọc phần danh sách —
+  `GET /api/nhan-vien/ma-cu`.
+- **Form sửa hồ sơ**: nút **Cấp lại mã** ngay cạnh ô mã, có hộp thoại xác nhận và nêu rõ hệ quả.
+  `POST /api/nhan-vien/:id/cap-lai-ma`.
+- **Mã cũ được đóng lại, không xóa** trong `ma_dinh_danh`: câu hỏi "lần quẹt tháng 6 bằng mã
+  `ERP69` là của ai" vẫn trả lời được. Cột `nhan_vien.ma_nv` đổi theo.
+- **Tên thư mục kho tệp đổi theo** mã mới. Đổi thất bại **không** cuộn mã vừa cấp —
+  `ho_so_tep.ten_luu` vẫn trỏ đúng chỗ cũ nên tệp vẫn mở được, lần quét định kỳ sửa tên sau.
+- **Cảnh báo lệch cổng**: bản ghi bên cổng phân quyền vẫn mang mã cũ (hợp đồng với cổng không có
+  động từ đổi mã). Hệ thống **không** bịa sự kiện: `da_tao` với mã mới sẽ tạo bản ghi mồ côi,
+  `nghi_viec` + `da_tao` thì đá người ta ra khỏi cổng — cả hai đã cân nhắc và bỏ.
+- **Ngày sinh phần `MMYY`**: `ngay_vao` → thiếu thì ngày **tạo hồ sơ** → thiếu nữa mới lấy hôm
+  nay (giờ máy chấm công). Lấy "hôm nay" khi còn `tao_luc` sẽ làm mã mang tháng của lúc cấp lại.
+- **Không có nút "cấp lại tất cả"**: cấp lại mã là đổi danh tính (đổi tên thư mục, lệch mã bên
+  cổng, chứng từ đã in mang mã cũ) — mỗi người một lần bấm, khi người phụ trách sẵn sàng đối
+  chiếu bên cổng.
+- Người **chưa gán khối** bị chặn với lỗi rõ ràng; khối chưa khai `ma_ngan` thì danh sách hiện
+  `—` thay vì đoán ra một mã sai.
+- Test: `cap_lai_ma.test.ts` (5 ca — khuôn mã, chọn ngày, mã dự kiến) và 5 ca e2e trong
+  `tao_ho_so_e2e.test.ts` (mã cũ đóng lại, `ma_nv` đổi, số thứ tự tăng, chặn khi thiếu khối).
+
 ## [1.135.0] — 2026-10-26
 
 **Vắng hằng ngày không còn đếm người đã nghỉ / người không cần quẹt máy; cảnh báo PIN nói đúng
@@ -14,17 +44,20 @@ chuyện thay vì báo động giả.**
   **Cài đặt → Khối**, ô tick trong hồ sơ nhân viên.
 - **Danh sách vắng và số liệu dashboard lọc `dang_hoat_dong`**: trước đây ô “Vắng” và danh sách
   bấm ra vẫn đếm người đã nghỉ việc (3 người/ngày), có lúc vượt cả tổng nhân viên.
-- **Lịch đêm tính lại cả người đã nghỉ còn dòng cũ** — trước đây chỉ tính người đang hoạt động
-  nên dòng `vang` của người vừa nghỉ nằm lại vĩnh viễn. Nay `tinh_lai_khoang` lấy thêm ai còn
-  dòng công trong khoảng, và `ngay_ngoai_thoi_gian_lam_viec` xóa được chúng.
-- **Chặn tính công cho NGÀY TƯƠNG LAI**: một lần tính lại theo khoảng đã sinh 60 dòng `vang`/ngày
-  cho 27–31/10, làm bảng công tháng hiện một tháng đầy vắng.
+- **Nghỉ việc dọn luôn dòng vắng còn lại**: trước đây lịch đêm chỉ tính người đang hoạt động nên
+  dòng `vang` của người vừa nghỉ (3 người, từ 10/10) nằm lại vĩnh viễn và vẫn hiện trong bảng
+  công tháng. Nay `cho_nghi_viec` xóa dòng `vang` chưa chốt của những ngày sau ngày làm việc
+  cuối — **giữ** dòng `co_mat` (bằng chứng người bị đánh dấu nghỉ nhầm vẫn đi làm).
+- **Chặn trạng thái VẮNG cho NGÀY TƯƠNG LAI**: một lần tính lại theo khoảng đã sinh 60 dòng
+  `vang`/ngày cho 27–31/10, làm bảng công tháng hiện một tháng đầy vắng. Ngày lễ / nghỉ phép
+  của ngày tương lai vẫn ghi bình thường (duyệt đơn nghỉ phép sớm thấy ngay trên bảng công).
 - **Đối chiếu user máy**: so tên chịu được tên viết tắt trên máy (`Thuyhang`, `Lankt`,
   `Maianhkd`) — 42/44 cảnh báo “PIN lệch” trước đây là báo động giả. Tách 4 nhóm: **trùng
   người**, **có quẹt mà chưa gán** (nặng), **chưa gán không ai quẹt** (dọn dẹp), **người đã
   nghỉ**. Đếm **theo PIN** chứ không theo dòng nên hai máy VP không còn nhân đôi con số.
 - **Script dọn dữ liệu**: `trien_khai/don_vang_mien_cham_cong.mjs` (chạy thử mặc định) xóa dòng
-  `vang` cũ của nhóm miễn, dòng công ngày tương lai, vi phạm và hồ sơ kỷ luật tự động chưa gửi.
+  `vang` cũ của nhóm miễn, dòng công ngày tương lai, dòng `vang` sau ngày nghỉ việc, vi phạm và
+  hồ sơ kỷ luật tự động chưa gửi.
 - Tài liệu: `API.md` (`GET /khoi`, `PATCH /khoi/:id`, `mien_cham_cong`).
 
 ## [1.134.1] — 2026-10-26

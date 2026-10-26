@@ -1116,16 +1116,12 @@ test('mien cham cong: khong sinh dong vang, khong hien trong danh sach vang', as
   await goi('POST', '/api/bang-cong/tinh-lai', {
     token: token_admin, body: { tu: NGAY_CU, den: NGAY_CU, nhan_vien_id: id_mien },
   });
-  await goi('POST', '/api/bang-cong/tinh-lai', {
-    token: token_admin, body: { tu: NGAY_CU, den: NGAY_CU, nhan_vien_id: id_nghi },
-  });
 
   const con = await truy_van<{ nhan_vien_id: string }>(
-    `select nhan_vien_id from bang_cong_ngay
-      where ngay = $1 and nhan_vien_id = any($2::uuid[])`,
-    [NGAY_CU, [id_mien, id_nghi]],
+    `select nhan_vien_id from bang_cong_ngay where ngay = $1 and nhan_vien_id = $2`,
+    [NGAY_CU, id_mien],
   );
-  assert.deepEqual(con, [], 'dong vang cu cua nguoi mien cham cong va nguoi da nghi phai bi xoa');
+  assert.deepEqual(con, [], 'nguoi mien cham cong khong duoc co dong vang');
 
   const r = await goi('GET', `/api/dashboard/danh-sach?loai=vang&ngay=${NGAY_CU}`,
     { token: token_admin });
@@ -1135,6 +1131,31 @@ test('mien cham cong: khong sinh dong vang, khong hien trong danh sach vang', as
     'nguoi mien cham cong khong duoc nam trong danh sach vang');
   assert.equal(ds.some((d) => d.nhan_vien_id === id_nghi), false,
     'nguoi da nghi viec khong duoc nam trong danh sach vang');
+});
+
+test('nghi viec: don dong vang cua ngay SAU ngay lam viec cuoi', async () => {
+  const tao = await goi('POST', '/api/nhan-vien', {
+    token: token_admin,
+    body: { ma_nv: 'NV-MOI-NGHI', ho_ten: 'Người Mới Nghỉ' },
+  });
+  assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+  const id = tao.body['id'] as string;
+
+  await thuc_thi(
+    `insert into bang_cong_ngay (nhan_vien_id, ngay, trang_thai, so_cong)
+     values ($1, '2026-09-20', 'vang', 0), ($1, '2026-09-21', 'co_mat', 1)`,
+    [id],
+  );
+
+  const r = await goi('POST', `/api/nhan-vien/${id}/nghi-viec`, {
+    token: token_admin, body: { ngay_nghi_viec: '2026-09-20' },
+  });
+  assert.equal(r.ma, 200, JSON.stringify(r.body));
+
+  const con = await truy_van<{ ngay: string }>(
+    'select ngay::text from bang_cong_ngay where nhan_vien_id = $1 order by ngay', [id]);
+  assert.deepEqual(con.map((d) => d.ngay), ['2026-09-21'],
+    'chi xoa dong vang sau ngay lam viec cuoi, giu dong co_mat (bang chung nghi nham)');
 });
 
 test('tu choi khoang ngay qua dai (chong truy van keo sap CSDL)', async () => {  const r = await goi('GET', '/api/bang-cong?tu=2020-01-01&den=2026-12-31', { token: token_admin });
