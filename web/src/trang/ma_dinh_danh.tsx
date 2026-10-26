@@ -78,15 +78,18 @@ export function TheMaDinhDanh(
           <h4 className="mdh-nhom-ten">{nh}</h4>
           {(du_lieu ?? []).filter((n) => n.nhom === nh).map((n) => (
             <div key={n.he_thong} className="mdh-hst">
-              <div className="mdh-hst-dau">
-                <span className="mdh-hst-ten">{n.ten_he_thong}</span>
-                {n.on_dinh && (
-                  <span className="nhan" title="Mã không đổi, tin được để khớp người">ổn định</span>
-                )}
-                {/* Nút thao tác của hệ thống dồn hết sang PHẢI hàng tiêu đề — không còn
-                    một hàng nút riêng bên dưới. */}
+              {/* Moi hang la luoi 2 cot: noi dung trai, COT NUT PHAI rong co dinh. Nho vay
+                  moi nut (Cấp PIN / + Thêm / Đổi / Đóng) cung be ngang, cung chieu cao va
+                  thang mot cot — khong con nut nhay xuong hang duoi lech nhau. */}
+              <div className="mdh-hang">
+                <div className="mdh-nhan">
+                  <span className="mdh-hst-ten">{n.ten_he_thong}</span>
+                  {n.on_dinh && (
+                    <span className="nhan" title="Mã không đổi, tin được để khớp người">ổn định</span>
+                  )}
+                </div>
                 {sua_duoc && (
-                  <div className="mdh-hd">
+                  <div className="mdh-nut-cot">
                     {n.he_thong === 'may_cham_cong' && (
                       <button type="button" className="nut-nho nut-chinh"
                         onClick={() => dat_dang_cap_pin(true)}
@@ -109,33 +112,35 @@ export function TheMaDinhDanh(
               </div>
 
               {n.cac_ma.length === 0 ? (
-                <div className="mdh-trong">Chưa có mã</div>
+                <div className="mdh-hang">
+                  <div className="mdh-trong">Chưa có mã</div>
+                </div>
               ) : (
-                <div className="mdh-ds">
-                  {n.cac_ma.map((m) => (
-                    <div key={m.id} className="mdh-dong">
-                      <div className="mdh-chinh">
-                        <div className="mdh-ma-hang">
-                          <code className="mdh-ma">{m.ma}</code>
-                          {m.hieu_luc_den === null
-                            ? <span className="nhan-tot">đang dùng</span>
-                            : <span className="nhan">đã đóng {ngay_gio(m.hieu_luc_den)}</span>}
-                        </div>
-                        {m.ghi_chu !== null && <div className="mdh-phu">{m.ghi_chu}</div>}
+                n.cac_ma.map((m) => (
+                  <div key={m.id} className="mdh-hang">
+                    <div className="mdh-chinh">
+                      <div className="mdh-ma-hang">
+                        <code className="mdh-ma">{m.ma}</code>
+                        {m.hieu_luc_den === null
+                          ? <span className="nhan-tot">đang dùng</span>
+                          : <span className="nhan">đã đóng {ngay_gio(m.hieu_luc_den)}</span>}
                       </div>
-                      {sua_duoc && m.hieu_luc_den === null && (
+                      {m.ghi_chu !== null && <div className="mdh-phu">{m.ghi_chu}</div>}
+                    </div>
+                    {sua_duoc && m.hieu_luc_den === null && (
+                      <div className="mdh-nut-cot">
                         <button
                           type="button"
-                          className="nut-nho mdh-nut"
+                          className="nut-nho"
                           disabled={hd.dang_chay}
                           onClick={thu_hoi(m)}
                         >
                           Đóng
                         </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                      </div>
+                    )}
+                  </div>
+                ))
               )}
             </div>
           ))}

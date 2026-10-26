@@ -993,7 +993,12 @@ function LoiChao({ du_lieu, nap_lai }: { du_lieu: HomNay; nap_lai: () => void })
         <div className="cn-hero-tien-do">
           <div className="cn-tien-do">
             <div className="cn-tien-do-day" style={{ width: `${phan_tram}%` }} />
-            <div className="cn-tien-do-num" style={{ left: `${phan_tram}%` }} />
+            {/* Chấm tròn rộng 22px, tâm ở `phan_tram%`: giữ cả chấm trong thanh để không
+                tràn ra ngoài khung (100% từng đẩy 11px ra ngoài mép phải). */}
+            <div
+              className="cn-tien-do-num"
+              style={{ left: `clamp(0px, calc(${phan_tram}% - 11px), calc(100% - 22px))` }}
+            />
           </div>
           <div className="cn-tien-do-nhan">
             <span>{gio_hh_mm(nv?.ca_gio_vao)} {tra('cn_vao_ca')}</span>

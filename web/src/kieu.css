@@ -3050,6 +3050,18 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .chon-muc-chon { background: var(--chinh-nhat); color: var(--chinh-dam); font-weight: 600; }
 .chon-rong { padding: 10px; color: var(--chu-mo); font-size: 13px; text-align: center; }
 
+/* Nut chua CAU CHU (khong phai nhan ngan) phai xuong dong duoc: `button` mac dinh
+   `white-space: nowrap` nen chu dai tran ra ngoai khung — tung thay o nut "Don khac"
+   (mo ta dai), hai nut chan bang cong ca nhan, va ten cong viec trong bang dang the. */
+.cn-nut-hanh-dong,
+.cn-nut-hanh-dong-phu,
+.cn-nut-phang-rong { white-space: normal; }
+.bang-di-dong tbody td button { white-space: normal; }
+/* Nut bao CA MOT HANG noi dung (ten + mo ta + han) cung phai cho chu xuong dong; quy tac
+   `button { white-space: nowrap }` truyen xuong moi span con nen chu bi day tran ngang. */
+.cn-cty-lien-ket,
+.vt-dong { white-space: normal; }
+
 /* ---------------------------------------------------------------- mã định danh trên hồ sơ
    Danh sách gọn thay cho bảng 3 cột: mỗi hệ thống là một khối, bên trong là các mã (mã +
    trạng thái + nguồn), và nút thao tác của cả hệ thống gom về MỘT hàng cuối khối. Bảng cũ
@@ -3079,23 +3091,26 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   color: var(--chu-mo);
 }
 .mdh-hst + .mdh-hst { margin-top: 14px; }
-.mdh-hst-dau {
+/* Moi hang: noi dung trai + cot nut PHAI rong co dinh. Nut nao cung rong bang cot, cao
+   bang nhau -> thang hang doc, khong con nut nhay xuong hang duoi lech co. */
+.mdh-hang {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px;
+  gap: 12px;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--vien);
+}
+.mdh-hst > .mdh-hang:last-child { border-bottom: 0; }
+.mdh-nhan {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 .mdh-hst-ten { font-size: 13.5px; font-weight: 600; }
-.mdh-ds { margin-top: 4px; }
-.mdh-dong {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 7px 0;
-  border-bottom: 1px dashed var(--vien);
-}
-.mdh-dong:last-child { border-bottom: 0; }
-.mdh-chinh { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mdh-chinh { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .mdh-ma-hang { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .mdh-ma { font-size: 13px; }
 .mdh-phu {
@@ -3103,14 +3118,13 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   color: var(--chu-mo);
   overflow-wrap: anywhere;
 }
-.mdh-trong { font-size: 12.5px; color: var(--chu-mo); padding: 4px 0; }
-.mdh-nut { flex: none; }
-/* Nut thao tac cua he thong: day het sang PHAI hang tieu de. */
-.mdh-hd {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-left: auto;
+.mdh-trong { font-size: 12.5px; color: var(--chu-mo); }
+.mdh-nut-cot { display: flex; flex-direction: column; gap: 6px; }
+.mdh-nut-cot > button {
+  width: 100%;
+  justify-content: center;
+  min-height: 32px;
+  padding: 5px 8px;
 }
 
 /* ============================================================================
@@ -3175,6 +3189,14 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
     overflow-x: auto;
     max-width: 100%;
   }
+  /* Dải chỉ số dùng margin âm để tràn sát viền thẻ — thẻ KHÔNG có overflow hidden ở trang
+     Hợp đồng và Đồng bộ ERP nên nó đẩy cả trang rộng ra 8px. Màn hẹp bỏ margin âm. */
+  .ho-so-chi-so { margin-left: 0; margin-right: 0; }
+  /* Hàng "Công việc của tôi": tên việc + hạn + bước không đủ chỗ trên một dòng — cho xuống
+     dòng, và cho hạn/bước co lại thay vì đẩy cả hàng rộng 750px. */
+  .vt-dong { flex-wrap: wrap; }
+  .vt-han,
+  .vt-buoc { flex: 0 1 auto; }
 }
 
 @media (max-width: 768px) {
