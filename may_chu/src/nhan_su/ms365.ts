@@ -3,8 +3,11 @@
 //
 // Dung Graph app-only (client_credentials), cung creds voi module gui_email — token lay
 // tu `lay_token_graph` trong su_kien/gui_email.ts. App Entra phai duoc cap quyen ung dung:
-//   User.ReadWrite.All          — PATCH accountEnabled + POST /users + assignLicense
-//   User.RevokeSessions.All     — revokeSignInSessions (nghi viec)
+//   User.ReadWrite.All            — PATCH accountEnabled + POST /users + assignLicense
+//   User.RevokeSessions.All       — revokeSignInSessions (nghi viec)
+//   User-PasswordProfile.ReadWrite.All — PATCH passwordProfile (cap lai mat khau). THIEU quyen
+//                                   nay thi Graph tra 403 "Insufficient privileges" du
+//                                   User.ReadWrite.All da co (gap that 27/10/2026).
 //
 // Ham thuan `dung_than_*` tach payload ra de unit test ma khong can goi Graph that.
 import { randomInt } from 'node:crypto';

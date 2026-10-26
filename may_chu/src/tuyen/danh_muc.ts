@@ -219,7 +219,11 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
     if (!graph_da_cau_hinh()) {
       throw new LoiDauVao('Máy chủ chưa cấu hình Microsoft 365 (thiếu MS_TENANT_ID/CLIENT/SECRET).');
     }
-    const kq = await dat_lai_mat_khau_ms365(email);
+    const kq = await dat_lai_mat_khau_ms365(email).catch((loi: unknown) => {
+      // Loi tu Graph (403 thieu quyen, 404 khong co tai khoan, 400 mat khau khong hop le…) —
+      // nem thang thong diep that de nguoi lam ho so biet duong xu ly, khong tra "Lỗi hệ thống".
+      throw new LoiDauVao((loi as Error).message);
+    });
     const nv = await truy_van_mot<{ id: string; ho_ten: string }>(
       'select id, ho_ten from nhan_vien where lower(email) = lower($1) limit 1', [email]);
     await ghi_nhat_ky(nguoi_dung_hien_tai(req).sub, 'cap_lai_mat_khau_ms365', 'nhan_vien',
