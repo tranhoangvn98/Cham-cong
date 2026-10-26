@@ -1229,8 +1229,9 @@ input[type="checkbox"] {
 @media (max-width: 520px) {
   .hs-chi-so { grid-template-columns: 1fr; }
   /* Man dien thoai: xep nut thanh cot, rong bang the — de bam hon la ba nut nho chen nhau
-     mot hang. */
-  .hs-hanh-dong { margin-left: 0; flex-direction: column; align-items: stretch; }
+     mot hang. Phai dat flex-basis 100% cho CA NHOM: neu khong, nhom la flex item tu co lai
+     theo noi dung va cac nut chi rong ~200px. */
+  .hs-hanh-dong { margin-left: 0; flex: 1 1 100%; flex-direction: column; align-items: stretch; }
   .hs-hanh-dong > * { justify-content: center; }
 }
 
@@ -3048,3 +3049,155 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .chon-muc:hover { background: var(--chinh-nhat); }
 .chon-muc-chon { background: var(--chinh-nhat); color: var(--chinh-dam); font-weight: 600; }
 .chon-rong { padding: 10px; color: var(--chu-mo); font-size: 13px; text-align: center; }
+
+/* ============================================================================
+   ĐIỆN THOẠI — bỏ thanh cuộn và hiển thị VỪA KHUNG
+   Nguyên tắc: trên màn hẹp không có thanh cuộn nào hiện ra (vẫn cuộn được bằng cảm ứng), và
+   nội dung phải vừa bề ngang màn hình — không bắt người dùng cuộn ngang để đọc.
+
+   Ba nhóm sửa:
+   1. Thanh cuộn: ẩn ở màn <= 1023px hoặc thiết bị cảm ứng.
+   2. Bảng dữ liệu: mỗi dòng thành một KHỐI "nhãn cột | giá trị" (nhãn do
+      web/src/bang_di_dong.ts gắn vào `data-nhan`). Bảng thuộc tính không có tiêu đề cột thì
+      xếp dọc nhãn trên / giá trị dưới.
+   3. Thanh tab chân "Khu vực của tôi": 5 tab chính + nút "Thêm" — nhãn cắt ellipsis trong
+      từng tab nên chữ không bao giờ tràn ra đè lên tab bên cạnh.
+   ============================================================================ */
+
+@media (max-width: 1023px), (pointer: coarse) {
+  html,
+  body { scrollbar-width: none; }
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+  *::-webkit-scrollbar { width: 0; height: 0; }
+}
+
+/* Nút "Thêm" và danh sách màn trong hộp thoại chọn màn (vỏ cá nhân). */
+.cn-them-ds { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.cn-them-muc {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--vien);
+  border-radius: var(--tron);
+  background: var(--nen-the);
+  color: var(--chu);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+}
+.cn-them-muc:hover { background: var(--nen-mo); }
+.cn-them-muc .bt { font-size: 18px; color: var(--chinh-dam); }
+.cn-them-muc-so {
+  margin-left: auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--canh-bao);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+@media (max-width: 768px) {
+  /* Lưới an toàn: bảng KHÔNG nằm trong `.vo-bang` (bảng kỳ lương, bảng khoản trong hộp
+     thoại...) tự cuộn trong khung của nó thay vì đẩy cả trang rộng ra. Ở <= 640px các bảng
+     này chuyển hẳn sang dạng thẻ nên không còn cuộn. */
+  table:not(.vo-bang table) {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  /* --- bảng dữ liệu thành "thẻ" --- */
+  .bang-di-dong { display: block; width: 100%; }
+  .bang-di-dong thead { display: none; }
+  .bang-di-dong tbody { display: block; }
+  .bang-di-dong tbody tr {
+    display: block;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--vien);
+  }
+  .bang-di-dong tbody tr:last-child { border-bottom: 0; }
+  .bang-di-dong tbody tr:hover { background: none; }
+  .bang-di-dong tbody td {
+    display: grid;
+    grid-template-columns: minmax(92px, 36%) minmax(0, 1fr);
+    gap: 10px;
+    align-items: baseline;
+    padding: 4px 0;
+    border-bottom: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .bang-di-dong tbody td::before {
+    content: attr(data-nhan);
+    color: var(--chu-nhat);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.45;
+  }
+  /* Cột không có tiêu đề (thường là cột nút thao tác): không vẽ nhãn, nút nằm trọn một dòng. */
+  .bang-di-dong tbody td[data-nhan=''] { display: block; padding-top: 6px; }
+  .bang-di-dong tbody td[data-nhan='']::before { content: none; }
+  .bang-di-dong tbody td.canh-phai { text-align: left; }
+  /* Cột đầu (mã / tên) in đậm nhẹ để mắt bám được dòng khi đọc dạng khối. */
+  .bang-di-dong tbody td:first-child { font-weight: 600; }
+  /* Bảng neo cột đầu không cần dính cột khi đã thành khối. */
+  .bang-di-dong.bang-neo-cot-dau thead th:first-child,
+  .bang-di-dong.bang-neo-cot-dau tbody td:first-child { position: static; }
+
+  /* --- bảng thuộc tính (không có tiêu đề cột): nhãn trên, giá trị dưới --- */
+  .bang-khong-dau,
+  .bang-thuoc-tinh,
+  .bang-khong-dau tbody,
+  .bang-thuoc-tinh tbody,
+  .bang-khong-dau tr,
+  .bang-thuoc-tinh tr,
+  .bang-khong-dau td,
+  .bang-thuoc-tinh td { display: block; width: auto !important; }
+  .bang-khong-dau tbody tr,
+  .bang-thuoc-tinh tbody tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--vien);
+  }
+  .bang-khong-dau tbody tr:last-child,
+  .bang-thuoc-tinh tbody tr:last-child { border-bottom: 0; }
+  .bang-khong-dau tbody td,
+  .bang-thuoc-tinh tbody td {
+    padding: 2px 0;
+    border-bottom: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .bang-khong-dau tbody td:first-child,
+  .bang-thuoc-tinh tbody td:first-child {
+    color: var(--chu-nhat);
+    font-size: 12.5px;
+    padding-bottom: 5px;
+  }
+
+  /* --- thanh tab chân: 5 tab + "Thêm", không tràn chữ --- */
+  .cn-tab-chan-nut { min-width: 0; padding: 0 2px; }
+  .cn-tab-chan-nut > span:last-child {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* --- nút trợ lý nổi: nhấc lên trên thanh tab chân, không che tab --- */
+  body:has(.cn-tab-chan) .troly-nut { bottom: 88px; }
+  body:has(.cn-tab-chan) .troly-nut-tv { bottom: 164px; }
+  body:has(.cn-tab-chan) .troly-panel {
+    bottom: 80px;
+    height: min(560px, calc(100dvh - 96px));
+  }
+}
