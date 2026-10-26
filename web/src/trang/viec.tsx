@@ -789,6 +789,7 @@ export function ManGantt(): ReactNode {
         </span>
       </div>
       {dang_tai ? <XuongBang /> : loi !== null ? <HopLoi loi={loi} /> : (
+        <>
         <div className="cv-gantt">
           <div
             className="cv-gantt-dau"
@@ -833,6 +834,64 @@ export function ManGantt(): ReactNode {
             })}
           </div>
         </div>
+
+        {/* ĐIỆN THOẠI: lưới ngày 26px × ~29 cột không thể đọc trong 390px — chỉ thấy 5 ngày
+            và tên việc bị cắt. Màn hẹp chuyển sang danh sách dọc: mỗi việc một thẻ có tên
+            ĐẦY ĐỦ, khoảng ngày, và thanh thời gian theo tỉ lệ cả cửa sổ (vạch xanh = hôm nay). */}
+        <div className="cv-gantt-mb">
+          <div className="cv-gantt-mb-dau">
+            <span>{ngay_viet(tu)}</span>
+            <span>Hôm nay {ngay_viet(hom_nay_str)}</span>
+            <span>{ngay_viet(den)}</span>
+          </div>
+          {(du_lieu ?? []).map((v) => {
+            const bat = (v.bat_dau ?? v.tao_luc ?? '').slice(0, 10);
+            const han = (v.han ?? v.tao_luc ?? '').slice(0, 10);
+            let i0 = ngay.indexOf(bat);
+            let i1 = ngay.indexOf(han);
+            if (i0 < 0) i0 = 0;
+            if (i1 < 0) i1 = ngay.length - 1;
+            if (i1 < i0) i1 = i0;
+            const vi_tri_hom_nay = ngay.indexOf(hom_nay_str);
+            const qua_han = han < hom_nay_str
+              && v.trang_thai !== 'hoan_thanh' && v.trang_thai !== 'huy';
+            return (
+              <div key={`mb-${v.id}`} className="cv-gantt-mb-dong">
+                <div className="cv-gantt-mb-hang">
+                  <span className="cv-gantt-mb-ten">
+                    <b>{v.ho_ten ?? '—'}</b> · {v.tieu_de}
+                  </span>
+                  <span className={`nhan ${MAU_TT[v.trang_thai] ?? 'nhan-mo'}`}>
+                    {NHAN_TT[v.trang_thai] ?? v.trang_thai}
+                  </span>
+                </div>
+                <div className={qua_han ? 'cv-gantt-mb-ngay cv-gantt-mb-qua-han' : 'cv-gantt-mb-ngay'}>
+                  {ngay_viet(bat)} → {ngay_viet(han)}
+                  {qua_han && <span className="cv-gantt-mb-qua-han-chu">Quá hạn</span>}
+                  <span className={`cv-nguon ${LOP_NGUON[v.nguon] ?? ''}`}>
+                    {NHAN_NGUON[v.nguon] ?? v.nguon}
+                  </span>
+                </div>
+                <div className="cv-gantt-mb-thanh">
+                  <div
+                    className={`cv-gantt-mb-o ${LOP_NGUON[v.nguon] ?? ''}`}
+                    style={{
+                      left: `${(i0 / ngay.length) * 100}%`,
+                      width: `${((i1 - i0 + 1) / ngay.length) * 100}%`,
+                    }}
+                  />
+                  {vi_tri_hom_nay >= 0 && (
+                    <div
+                      className="cv-gantt-mb-homnay"
+                      style={{ left: `${((vi_tri_hom_nay + 0.5) / ngay.length) * 100}%` }}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        </>
       )}
     </div>
   );

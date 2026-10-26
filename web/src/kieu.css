@@ -2931,7 +2931,75 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
 .cv-gantt-ten { position: sticky; left: 0; background: var(--nen-the); color: var(--chu); padding: 4px 8px; font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; gap: 6px; align-items: center; }
 .cv-gantt-o { display: contents; }
 .cv-gantt-thanh { height: 18px; border-radius: 4px; opacity: 0.85; margin: 2px 0; }
-.cv-gantt-chu-thich { display: flex; gap: 8px; align-items: center; font-size: 0.8rem; }
+.cv-gantt-chu-thich { display: flex; gap: 8px; align-items: center; font-size: 0.8rem; flex-wrap: wrap; }
+
+/* Gantt cho ĐIỆN THOẠI: lưới ngày 26px × ~29 cột chỉ hiện được 5 ngày trong 390px và tên
+   việc bị cắt bằng dấu "…". Màn hẹp ẩn lưới, hiện danh sách dọc: tên đầy đủ, khoảng ngày,
+   thanh thời gian theo tỉ lệ cả cửa sổ, vạch xanh = hôm nay. */
+.cv-gantt-mb { display: none; }
+@media (max-width: 768px) {
+  .cv-gantt { display: none; }
+  .cv-gantt-mb { display: flex; flex-direction: column; gap: 8px; }
+  .cv-gantt-mb-dau {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 2px;
+    font-size: 12px;
+    color: var(--chu-mo);
+    font-variant-numeric: tabular-nums;
+  }
+  .cv-gantt-mb-dong {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 12px;
+    border: 1px solid var(--vien);
+    border-radius: var(--tron);
+    background: var(--nen-the);
+  }
+  .cv-gantt-mb-hang { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .cv-gantt-mb-ten {
+    min-width: 0;
+    font-size: 13.5px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  .cv-gantt-mb-ten b { font-weight: 600; }
+  .cv-gantt-mb-ngay {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--chu-nhat);
+    font-variant-numeric: tabular-nums;
+  }
+  .cv-gantt-mb-qua-han { color: var(--xau); }
+  .cv-gantt-mb-qua-han-chu { font-size: 11px; font-weight: 700; }
+  .cv-gantt-mb-thanh {
+    position: relative;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--nen-mo);
+  }
+  .cv-gantt-mb-o {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    min-width: 8px;
+    border-radius: 999px;
+  }
+  .cv-gantt-mb-homnay {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background: var(--chinh-dam);
+  }
+}
 
 .cv-workflow { border: 1px solid var(--vien, #e2e8f0); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
 .cv-workflow-ten { font-weight: 700; margin-bottom: 4px; }
