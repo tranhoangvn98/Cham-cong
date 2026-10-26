@@ -3136,6 +3136,10 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
     text-align: left;
     white-space: normal;
     overflow-wrap: anywhere;
+    /* Bảng dùng `.bang-gon` có luật `td:first-child { width: 1%; white-space: nowrap }`
+       (dành cho bảng tra cứu một hàng) — trong dạng thẻ, luật đó bóp ô đầu còn vài px và
+       cấm xuống dòng, đẩy chữ tràn ra ngoài. Trả lại bề ngang tự nhiên. */
+    width: auto !important;
   }
   .bang-di-dong tbody td::before {
     content: attr(data-nhan);
@@ -3149,7 +3153,7 @@ textarea.cn-nhap { padding: 12px; resize: vertical; min-height: auto; }
   .bang-di-dong tbody td[data-nhan='']::before { content: none; }
   .bang-di-dong tbody td.canh-phai { text-align: left; }
   /* Cột đầu (mã / tên) in đậm nhẹ để mắt bám được dòng khi đọc dạng khối. */
-  .bang-di-dong tbody td:first-child { font-weight: 600; }
+  .bang-di-dong tbody td:first-child { font-weight: 600; white-space: normal; }
   /* Bảng neo cột đầu không cần dính cột khi đã thành khối. */
   .bang-di-dong.bang-neo-cot-dau thead th:first-child,
   .bang-di-dong.bang-neo-cot-dau tbody td:first-child { position: static; }
