@@ -713,7 +713,9 @@ function KhoiHeThong({ ht }: { ht: HeThong }): ReactNode {
       )}
       {ht.pin.da_nghi > 0 && (
         <p className="mo-ta" style={{ marginTop: 6 }}>
-          {ht.pin.da_nghi} PIN của người đã nghỉ việc vẫn còn trên máy — hệ thống tự khóa khi đủ điều kiện.
+          {ht.pin.da_nghi} PIN của người đã nghỉ việc vẫn còn trên máy. Máy dòng att tự khóa khi
+          đủ điều kiện; máy dòng acc và máy đang mất kết nối thì phải xóa trên chính máy đó —
+          xem <LienKet den="/cai-dat/thiet-bi">Máy chấm công</LienKet> → “Đối chiếu user máy”.
         </p>
       )}
       {ht.thiet_bi.length === 0 && (
