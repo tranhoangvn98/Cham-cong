@@ -14,7 +14,8 @@ import {
 
 /** Ai/cai gi tao dong dinh danh. Trung voi cot `nguon` cua bang. */
 export type NguonMa =
-  | 'di_tru' | 'nguoi_khai' | 'dong_bo_erp' | 'dang_nhap_microsoft' | 'gop_ho_so' | 'nhap_csv';
+  | 'di_tru' | 'nguoi_khai' | 'dong_bo_erp' | 'dang_nhap_microsoft' | 'gop_ho_so' | 'nhap_csv'
+  | 'tu_dong';
 
 /** Bo chay truy van: pool dung chung, hoac mot khach trong giao dich dang mo. */
 export interface BoChay {

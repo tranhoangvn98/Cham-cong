@@ -27,9 +27,10 @@ import { dong_bo_hang_ngay, GIO_DONG_BO_MAY } from '../adms/dong_bo_may.ts';
 import { nhac_bo_sung } from '../ho_so/bo_sung.ts';
 import { cap_nhat_email_nhan_su } from '../nhan_su/dong_bo_email.ts';
 import { quet_nghi_viec_chua_khoa } from '../nhan_su/quet_nghi_viec.ts';
+import { bo_sung_ma_tu_dong } from '../dinh_danh/bo_sung_ma.ts';
 import { kiem_tra_ung_dung_ms365 } from '../nhan_su/kiem_tra_ung_dung_ms365.ts';
 import { gui_chuong_ngon_ngu } from './gui_chuong_ngon_ngu.ts';
-import { tai_khoan_cua_nhan_vien } from './thong_bao_day.ts';
+import { tai_khoan_cua_nhan_vien, tai_khoan_nhan_su } from './thong_bao_day.ts';
 import { cong_ngay, khoang_thang, ngay_dia_phuong, ngay_viet } from '../tien_ich/thoi_gian.ts';
 
 /** Chu ky kiem tra. Khong dung cron: chi can do dung ngay/gio moi vong. Khai duoc trong .env. */
@@ -407,6 +408,46 @@ async function chay_mot_vong(ghi_log: (s: string, ...t: unknown[]) => void): Pro
     } catch (loi) {
       await nha_viec(ma_email);
       ghi_log(`[lich] LOI khi cap nhat email nhan su: ${(loi as Error).message}`);
+    }
+  }
+
+  // ------------------------------------------------------------ bo sung ma dinh danh
+  // MOT LAN MOI NGAY, chay SAU viec bu email (de email vua bu kip vao bang ma trong cung luot).
+  // Mot so duong van chi ghi cot cu tren ho so (email khi tao ho so/nhap CSV, pin_may khi khai
+  // tay) — nguoi do co ma that nhung trang "Ma o cac he thong" van hien "Chua co ma". Job nay
+  // chep cot cu sang bang ma (mot chieu) roi bao HR ai con thieu PIN / email.
+  const ma_bs = `bo_sung_ma_dinh_danh:${hom_nay}`;
+  if (await nhan_viec(ma_bs)) {
+    try {
+      const kq = await bo_sung_ma_tu_dong(ghi_log);
+      await ghi_ket_qua(ma_bs,
+        `bo sung ${String(kq.so_bu)} ma, con thieu ${String(kq.con_thieu.length)} nguoi, `
+        + `xung dot ${String(kq.xung_dot.length)}`);
+      if (kq.so_bu > 0 || kq.con_thieu.length > 0) {
+        ghi_log(`[lich] ma dinh danh: bo sung ${String(kq.so_bu)} ma, `
+          + `${String(kq.con_thieu.length)} nguoi con thieu, `
+          + `${String(kq.so_thieu_erp1)} nguoi thieu ma ERP1`);
+      }
+      if (kq.con_thieu.length > 0) {
+        const nhan = await tai_khoan_nhan_su();
+        const ds = kq.con_thieu.slice(0, 15)
+          .map((n) => `${n.ma_nv} (${n.thieu.join(', ')})`).join('; ');
+        if (nhan.length > 0) {
+          await gui_chuong_ngon_ngu({
+            nguoi_dung_ids: nhan,
+            tieu_de: 'ma_bs_tieu_de',
+            noi_dung: 'ma_bs_noi_dung',
+            tham_so: {
+              so: kq.con_thieu.length,
+              danh_sach: kq.con_thieu.length > 15 ? `${ds}…` : ds,
+            },
+            du_lieu: { man: 'ma-dinh-danh' },
+          });
+        }
+      }
+    } catch (loi) {
+      await nha_viec(ma_bs);
+      ghi_log(`[lich] LOI khi bo sung ma dinh danh: ${(loi as Error).message}`);
     }
   }
 

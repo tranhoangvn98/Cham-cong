@@ -102,6 +102,11 @@ export const CHUOI_VI = {
   qn_loi_m365_mo: 'M365 vẫn đăng nhập được',
   qn_loi_m365_phep: 'M365 còn giấy phép',
 
+  // ================================ bo sung ma dinh danh
+  ma_bs_tieu_de: 'Có nhân sự còn thiếu mã định danh',
+  ma_bs_noi_dung:
+    '{so} nhân sự còn thiếu PIN máy chấm công hoặc email Microsoft: {danh_sach}. Vào Hồ sơ nhân sự → Mã ở các hệ thống để bổ sung.',
+
   // ================================ bao PIN may cham cong cho nguoi moi
   pin_tieu_de: 'PIN máy chấm công của bạn: {pin}',
   pin_noi_dung:

@@ -252,6 +252,14 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
                           from phong_ban_kiem_nhiem pbk
                           join phong_ban pb2 on pb2.id = pbk.phong_ban_id
                          where pbk.nhan_vien_id = nv.id), '[]') as phong_ban_kiem_nhiem,
+              -- Mã ở các hệ thống (mã mới nhất mỗi hệ thống) — danh sách cần thấy ngay ai còn
+              -- thiếu mã ERP1 / mã ERP cũ, thay vì phải mở từng hồ sơ.
+              coalesce((select jsonb_object_agg(x.he_thong, x.ma)
+                          from (select distinct on (h.he_thong) h.he_thong, h.ma
+                                  from ma_dinh_danh h
+                                 where h.nhan_vien_id = nv.id and h.hieu_luc_den is null
+                                 order by h.he_thong, h.hieu_luc_tu desc) x), '{}'::jsonb)
+                as ma_he_thong,
               (nd.id is not null) as co_tai_khoan
          from nhan_vien nv
          left join phong_ban pb on pb.id = nv.phong_ban_id

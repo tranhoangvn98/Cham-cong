@@ -2,6 +2,28 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.138.0] — 2026-10-28
+
+**Tự bổ sung mã định danh từ cột cũ (1 lần/ngày) + danh sách nhân viên hiện mã ERP1.**
+
+Trước đây bảng `ma_dinh_danh` chỉ được ghi khi có người bấm, nên người **đã có** email hoặc PIN ở
+cột cũ trên hồ sơ vẫn hiện "Chưa có mã" ở trang Mã ở các hệ thống, và báo cáo đối soát báo lệch.
+
+- **Job `bo_sung_ma_dinh_danh:<ngày>`** trong lịch chạy (1 lần/ngày, chạy sau bước bù email): chép
+  `nhan_vien.email` → mã `microsoft_email` và `nhan_vien.pin_may` → mã `may_cham_cong`. Chỉ đi MỘT
+  CHIỀU (cột cũ → bảng mã), **không** tự lấy mã đang thuộc người khác (báo lại để người quyết
+  định), và **không** tự sinh mã ERP1 (không có nguồn). Còn người thiếu PIN/email thì gửi chuông
+  cho nhân sự/admin kèm danh sách (song ngữ vi+zh).
+- Quy tắc tách thành hàm thuần `ke_hoach_bo_sung(nguoi, ma)` + 5 bài kiểm (email khác hoa/thường,
+  PIN có khoảng trắng, mã thuộc người khác, cột trống, thứ tự ổn định).
+- **Danh sách nhân viên**: thêm cột **Mã ERP1** (hiện `— chưa có` khi trống để thấy ngay ai còn
+  thiếu) và dòng phụ **ERP cũ** dưới mã NV; cột PIN lấy thêm từ bảng mã khi cột cũ trống. API
+  `GET /api/nhan-vien` trả thêm `ma_he_thong` (mã đang hiệu lực mỗi hệ thống).
+- Thêm nguồn mã `tu_dong` cho các dòng do job ghi.
+- **Dữ liệu (28/10)**: khai dải PIN cho 2 máy VP `8116254600435/440` = **1000–2999** (trước đây
+  chưa khai nên hệ thống cấp số từ 1, dễ trùng PIN cũ còn trên máy). Không giao dải với Kho HN
+  4000–4999, SG 3001–3999, Kho TQ 5000–5999; số 1000–1003 đã dùng nên PIN cấp mới là 1004.
+
 ## [1.137.9] — 2026-10-27
 
 **Bấm Lưu mà hồ sơ đã có → tự mở hồ sơ đó (khi đã cấp lại mật khẩu trước đó).**

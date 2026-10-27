@@ -52,6 +52,8 @@ interface NhanVien {
   khoi: string | null;
   cong_chuan_thang: string | null;
   co_tai_khoan: boolean;
+  /** Mã đang hiệu lực ở từng hệ thống (khóa = `he_thong` trong bảng mã định danh). */
+  ma_he_thong?: Record<string, string>;
 }
 
 interface CaLam { id: string; ten: string; dang_hoat_dong: boolean }
@@ -137,7 +139,9 @@ export function TrangNhanVien(): ReactNode {
   const may = dung_nap<ThietBi[]>('/api/thiet-bi');
   const ch_may_chu = dung_nap<{ ms365_tao?: { bat: boolean } }>('/api/xac-thuc/cau-hinh');
 
-  const chua_co_pin = (du_lieu ?? []).filter((n) => n.pin_may === null && n.dang_hoat_dong);
+  const chua_co_pin = (du_lieu ?? [])
+    .filter((n) => n.dang_hoat_dong && n.pin_may === null
+      && n.ma_he_thong?.may_cham_cong === undefined);
   const chua_co_ca = (du_lieu ?? []).filter((n) => n.ca_lam_id === null && n.dang_hoat_dong);
 
   const { ds_xem, bo_phan_trang } = dung_phan_trang(du_lieu ?? []);
@@ -201,6 +205,7 @@ export function TrangNhanVien(): ReactNode {
               <thead>
                 <tr>
                   <th>Mã NV</th>
+                  <th>Mã ERP1</th>
                   <th>Họ tên</th>
                   <th>PIN máy</th>
                   <th>Phòng ban</th>
@@ -214,7 +219,17 @@ export function TrangNhanVien(): ReactNode {
               <tbody>
                 {ds_xem.map((n) => (
                   <tr key={n.id} style={n.dang_hoat_dong ? undefined : { opacity: 0.55 }}>
-                    <td className="so">{n.ma_nv}</td>
+                    <td className="so">
+                      {n.ma_nv}
+                      {(n.ma_he_thong?.erp_cu_ma ?? n.ma_he_thong?.erp_cu) !== undefined && (
+                        <div className="mo-ta">
+                          ERP cũ: {n.ma_he_thong?.erp_cu_ma ?? n.ma_he_thong?.erp_cu}
+                        </div>
+                      )}
+                    </td>
+                    <td className="so">
+                      {n.ma_he_thong?.erp1 ?? <span className="mo-ta">— chưa có</span>}
+                    </td>
                     <td>
                       <LienKet den={`/nhan-vien/${n.id}`} tieu_de="Mở hồ sơ nhân sự"
                         lop="lk-nhan-vien">
@@ -241,7 +256,8 @@ export function TrangNhanVien(): ReactNode {
                       )}
                     </td>
                     <td className="so">
-                      {n.pin_may ?? <span className="nhan nhan-xau">chưa có</span>}
+                      {n.pin_may ?? n.ma_he_thong?.may_cham_cong
+                        ?? <span className="nhan nhan-xau">chưa có</span>}
                     </td>
                     <td>{n.phong_ban ?? '—'}
                       {n.phong_ban_kiem_nhiem.length > 0 && (

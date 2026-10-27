@@ -101,6 +101,11 @@ export const CHUOI_ZH = {
   qn_loi_m365_mo: 'M365 仍可登录',
   qn_loi_m365_phep: 'M365 仍持有许可证',
 
+  // ================================ bo sung ma dinh danh
+  ma_bs_tieu_de: '有员工缺少系统编号',
+  ma_bs_noi_dung:
+    '有 {so} 名员工缺少考勤机 PIN 或微软邮箱：{danh_sach}。请进入员工档案 → 各系统编号 补全。',
+
   // ================================ bao PIN may cham cong cho nguoi moi
   pin_tieu_de: '您的考勤机 PIN：{pin}',
   pin_noi_dung:
