@@ -247,7 +247,15 @@ export interface CongTy {
   tinh_hinh: TinhHinhNgay;
   di_muon_hom_nay: DiMuon[];
   cho_duyet: { nghi_phep: number; giai_trinh: number; quet_mobile: number };
-  bay_ngay: { ngay: string; co_mat: number; di_muon: number; vang: number; phut_ot: number }[];
+  /**
+   * Moi dong = mot ngay. `tong` la so nguoi PHAI di lam ngay hom do (co mat + vang + nghi
+   * phep + nghi khong luong); cot tren bieu do chi ve 3 nhom dau nen thieu `tong` thi nguoi
+   * xem tuong bieu do "mat nguoi" vao nhung ngay dong nghiep nghi phep hoac thu Bay.
+   */
+  bay_ngay: {
+    ngay: string; co_mat: number; di_muon: number; vang: number; phut_ot: number;
+    nghi_phep: number; nghi_khong_luong: number; tong: number;
+  }[];
 }
 
 export async function toan_cong_ty(hom_nay: string): Promise<CongTy> {
@@ -285,12 +293,20 @@ export async function toan_cong_ty(hom_nay: string): Promise<CongTy> {
            where d.trang_thai = 'cho_duyet')::int as giai_trinh,
          (select count(*) from lan_quet where trang_thai_duyet = 'cho_duyet')::int as quet_mobile`,
     ),
-    truy_van<{ ngay: string; co_mat: number; di_muon: number; vang: number; phut_ot: number }>(
+    truy_van<{
+      ngay: string; co_mat: number; di_muon: number; vang: number; phut_ot: number;
+      nghi_phep: number; nghi_khong_luong: number; tong: number;
+    }>(
       `select bc.ngay,
-              count(*) filter (where bc.trang_thai = 'co_mat')::int as co_mat,
-              count(*) filter (where bc.phut_muon > 0)::int         as di_muon,
-              count(*) filter (where bc.trang_thai = 'vang')::int   as vang,
-              coalesce(sum(bc.phut_ot), 0)::int                     as phut_ot
+              count(*) filter (where bc.trang_thai = 'co_mat')::int            as co_mat,
+              count(*) filter (where bc.phut_muon > 0)::int                   as di_muon,
+              count(*) filter (where bc.trang_thai = 'vang')::int             as vang,
+              count(*) filter (where bc.trang_thai = 'nghi_phep')::int        as nghi_phep,
+              count(*) filter (where bc.trang_thai = 'nghi_khong_luong')::int as nghi_khong_luong,
+              -- Nguoi phai di lam = co dong cong KHONG phai nghi tuan / ngay le.
+              count(*) filter (where bc.trang_thai in
+                ('co_mat','vang','nghi_phep','nghi_khong_luong'))::int        as tong,
+              coalesce(sum(bc.phut_ot), 0)::int                               as phut_ot
          from bang_cong_ngay bc
          join nhan_vien nv on nv.id = bc.nhan_vien_id and nv.dang_hoat_dong
         where bc.ngay > $1::date - 7 and bc.ngay <= $1::date

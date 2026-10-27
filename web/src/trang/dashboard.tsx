@@ -46,6 +46,10 @@ interface NgayBieuDo {
   di_muon: number;
   vang: number;
   phut_ot: number;
+  nghi_phep: number;
+  nghi_khong_luong: number;
+  /** So nguoi phai di lam ngay do (co mat + vang + nghi phep + nghi khong luong). */
+  tong: number;
 }
 
 interface CongCuaToi {
@@ -471,6 +475,9 @@ function BieuDoBayNgay({ ct }: { ct: CongTy }): ReactNode {
               const co_mat = Number(d.co_mat);
               const muon = Number(d.di_muon);
               const vang = Number(d.vang);
+              const nghi_phep = Number(d.nghi_phep);
+              const nghi_khong_luong = Number(d.nghi_khong_luong);
+              const tong = Number(d.tong);
               // Cot 'co mat' tach rieng phan di muon de thay ngay ty le muon.
               const dung_gio = Math.max(0, co_mat - muon);
               const ty = (n: number): string => `${(n / cao_nhat) * 100}%`;
@@ -491,6 +498,14 @@ function BieuDoBayNgay({ ct }: { ct: CongTy }): ReactNode {
                         Đi muộn: <strong>{muon}</strong></div>
                       <div><i className="o-mau" style={{ background: 'var(--xau)' }} />
                         Vắng: <strong>{vang}</strong></div>
+                      <div className="bieu-do-mach-nghi">
+                        Nghỉ phép: <strong>{nghi_phep}</strong></div>
+                      {nghi_khong_luong > 0 && (
+                        <div className="bieu-do-mach-nghi">
+                          Nghỉ không lương: <strong>{nghi_khong_luong}</strong></div>
+                      )}
+                      <div className="bieu-do-mach-tong">
+                        Tổng phải chấm công: <strong>{tong}</strong></div>
                       <div className="bieu-do-mach-phu">OT {phut_thanh_chu(Number(d.phut_ot))}</div>
                     </div>
                   )}

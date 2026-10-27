@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.138.2] — 2026-10-28
+
+**Biểu đồ "7 ngày gần nhất" giải thích được vì sao cột mỗi ngày một khác.**
+
+Cột chỉ vẽ 3 nhóm — đúng giờ, đi muộn, vắng — nên ngày nào có người nghỉ phép hoặc rơi vào thứ
+Bảy (một số bộ phận nghỉ tuần) thì cột thấp hơn, dù không ai "mất tích". Nhìn biểu đồ không tự
+suy ra được, phải mở bảng công mới hiểu.
+
+- **Bong gợi ý thêm hai dòng**: `Nghỉ phép` (kèm `Nghỉ không lương` khi có) và
+  `Tổng phải chấm công` — tổng này đúng bằng đúng giờ + đi muộn + vắng + nghỉ, nên cột thấp là
+  tự giải thích.
+- `GET /api/dashboard` trả thêm `bay_ngay[].nghi_phep`, `nghi_khong_luong`, `tong`. `tong` đếm
+  người **phải đi làm** ngày đó (có dòng công, trừ `nghi_tuan` và `ngay_le`).
+- Bong gợi ý rộng hơn (132px → 168px) cho vừa nhãn mới.
+
 ## [1.138.1] — 2026-10-28
 
 **Cảnh báo PIN trên máy chấm công: chỉ báo việc phải làm, và tự dọn PIN của người đã nghỉ.**

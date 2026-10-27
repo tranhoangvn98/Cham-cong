@@ -1057,7 +1057,7 @@ input[type="checkbox"] {
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
-  min-width: 132px;
+  min-width: 168px;
   padding: 8px 10px;
   background: var(--nen-the);
   border: 1px solid var(--vien-dam);
@@ -1072,6 +1072,8 @@ input[type="checkbox"] {
 .bieu-do-mach div { display: flex; align-items: center; gap: 5px; }
 .bieu-do-mach-ngay { font-weight: 600; margin-bottom: 2px; color: var(--chu); }
 .bieu-do-mach-phu { color: var(--chu-mo); margin-top: 2px; }
+.bieu-do-mach-tong { border-top: 1px solid var(--vien); margin-top: 3px; padding-top: 3px; }
+.bieu-do-mach-nghi { color: var(--chu-nhat); }
 .bieu-do-mach strong { margin-left: auto; }
 
 .chu-giai { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--chu-nhat); margin-top: 10px; }
