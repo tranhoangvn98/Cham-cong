@@ -22,7 +22,16 @@ lại là tên gọi tắt do nhân sự tự đặt (`Sep`, `Tanh`, `Ta`, `Kly`
   khi có lịch sử quẹt làm bằng chứng, nên PIN đã đổi chủ rồi cả hai người đều nghỉ thì user nằm
   lại trên máy vĩnh viễn. Nay lấy thêm người giữ PIN theo mapping toàn cục; PIN không thuộc ai
   vẫn giữ nguyên (xóa nhầm là mất khuôn mặt của người sắp vào).
+- **Giới hạn đã biết**: máy dòng **acc** (Kho Hà Nội `NYU7261300256`) chỉ hiểu cú pháp
+  `tablename=user` cho **đọc**; lệnh `DATA DELETE USERINFO` của dòng att bị máy bỏ qua (không trả
+  mã). User rác trên máy đó vẫn phải xóa **trên máy** — cảnh báo sẽ còn cho tới lúc đó, và đó là
+  thông tin đúng chứ không phải lỗi hiển thị.
 - 5 bài kiểm cho `khop_ten_manh` + 3 bài cho `chon_nguoi_da_nghi` với mapping toàn cục.
+- **Dữ liệu (28/10)**: dọn 50 user rác trên 2 máy VP + Kho Hà Nội (script
+  `trien_khai/don_pin_rac_20261028.mjs`, chạy thử mặc định); đồng bộ lại dải PIN Kho Trung Quốc
+  theo đúng tên đang enroll trên máy (`5001` Vân Anh, `5002` Huang Shu Ping, `5005` XIAZIFENG) —
+  trước đó hệ thống còn giữ phương án cũ nên lượt quẹt tiếp theo sẽ bị gán sai người; và sửa một
+  lượt quẹt 26/10 đang bị gán cho nhân viên VP đã nghỉ.
 
 ## [1.138.0] — 2026-10-28
 
