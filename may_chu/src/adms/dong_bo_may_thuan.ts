@@ -86,8 +86,15 @@ export function tinh_thieu_giua_hai_may(tu: AnhChupMay, den: AnhChupMay): DongCa
  *
  * Bang chung KHONG phai ten tren may (may VP ghi ten rut gon "Kien", "Huyenkd" — khong ghep
  * duoc voi ho ten), ma la LICH SU QUET: lan quet gan nhat cua chinh PIN do tren chinh may do
- * da duoc he thong map cho ai — nguoi do la chu nhan duy nhat dang tin cua PIN. PIN chua tung
- * quet (chua co bang chung) thi giu nguyen, khong doan.
+ * da duoc he thong map cho ai — nguoi do la chu nhan duy nhat dang tin cua PIN.
+ *
+ * `chu_pin` = nguoi giu PIN theo MAPPING TOAN CUC (ma_dinh_danh dang mo + nhan_vien.pin_may).
+ * Dung khi PIN chua tung quet tren may nay: khong co bang chung lich su, nhung PIN van thuoc
+ * mot nguoi da nghi — vd PIN 2 tren may VP: nguoi cu quet den 05/2026, PIN duoc gan lai cho
+ * nguoi khac roi nguoi do cung nghi, nen khong con lan quet nao mang ten ho. Khong co buoc
+ * nay thi user do nam tren may VINH VIEN va canh bao "PIN cua nguoi da nghi" khong bao gio tat.
+ * PIN khong thuoc ai (chu_pin khong co) thi VAN giu nguyen: do la user ky thuat chua gan, xoa
+ * nham la mat khuon mat cua nguoi sap vao.
  *
  * `con_quet` = nguoi con luot quet gan day (3 ngay): chua chac da nghi that (tien le cho
  * nghi NHAM roi van di lam) nen giu nguyen, de HR ra lai.
@@ -97,12 +104,13 @@ export function chon_nguoi_da_nghi(
   chu_nhan: ReadonlyMap<string, string>, // "serial|pin" -> id nhan vien (chu lan quet gan nhat)
   da_nghi: ReadonlySet<string>,
   con_quet: ReadonlySet<string>,
+  chu_pin: ReadonlyMap<string, string> = new Map(), // pin -> id nguoi giu PIN toan cuc
 ): DongCanKhoa[] {
   const ra: DongCanKhoa[] = [];
   for (const d of may) {
     if (d.pin === '' || d.pin === '0') continue;
-    const id = chu_nhan.get(`${d.serial}|${d.pin}`);
-    if (id === undefined) continue;   // chua tung quet -> khong co bang chung chu nhan
+    const id = chu_nhan.get(`${d.serial}|${d.pin}`) ?? chu_pin.get(d.pin);
+    if (id === undefined) continue;   // khong ai giu PIN -> user ky thuat, khong doan
     if (!da_nghi.has(id)) continue;   // chu nhan con lam -> giu nguyen
     if (con_quet.has(id)) continue;   // con quet gan day -> chua chac da nghi that
     ra.push({ serial: d.serial, pin: d.pin, ten_may: d.ten_may });

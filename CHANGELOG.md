@@ -2,6 +2,28 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.138.1] — 2026-10-28
+
+**Cảnh báo PIN trên máy chấm công: chỉ báo việc phải làm, và tự dọn PIN của người đã nghỉ.**
+
+Bảng điều khiển đang báo **"7 PIN bị gán sai"** trong khi thực tế chỉ **1** là đáng sửa; phần còn
+lại là tên gọi tắt do nhân sự tự đặt (`Sep`, `Tanh`, `Ta`, `Kly`) và user trên hai máy **đã tắt**
+(Kho Trung Quốc).
+
+- **Luật so tên chặt hơn**: chỉ báo "LỆCH" khi tên trên máy là **của một nhân viên khác** —
+  nhận diện bằng cách ghép tên máy từ các từ của họ tên **theo đúng thứ tự** và ăn hết tên máy
+  (`ThanThiVanAnh` → Thân Thị Vân Anh, `NguyenNganHa` → Nguyễn Ngân Hà). Tên gọi tắt không giống
+  ai (`Sep`, `Tanh`) chuyển sang nhóm riêng **"Tên gọi tắt trên máy"** — vẫn hiện trong hộp thoại
+  đối chiếu nhưng không còn kêu đỏ. Bản trước dùng quy tắc "bắt đầu bằng một từ của họ tên", khiến
+  `Nguyen Ngan Ha` khớp với **19 người họ Nguyễn**.
+- **Chỉ tính máy đang bật**: máy đã tắt thì không gửi được lượt quẹt nào, nên user trên đó không
+  còn là rủi ro gán nhầm. Bật máy lại thì cảnh báo hiện lại — đúng lúc cần dọn.
+- **Tự dọn PIN của người đã nghỉ kể cả khi PIN chưa từng được quẹt**: trước đây lịch chạy chỉ xóa
+  khi có lịch sử quẹt làm bằng chứng, nên PIN đã đổi chủ rồi cả hai người đều nghỉ thì user nằm
+  lại trên máy vĩnh viễn. Nay lấy thêm người giữ PIN theo mapping toàn cục; PIN không thuộc ai
+  vẫn giữ nguyên (xóa nhầm là mất khuôn mặt của người sắp vào).
+- 5 bài kiểm cho `khop_ten_manh` + 3 bài cho `chon_nguoi_da_nghi` với mapping toàn cục.
+
 ## [1.138.0] — 2026-10-28
 
 **Tự bổ sung mã định danh từ cột cũ (1 lần/ngày) + danh sách nhân viên hiện mã ERP1.**

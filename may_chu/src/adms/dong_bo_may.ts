@@ -153,9 +153,10 @@ export async function dong_bo_giua_hai_may(ghi_log: GhiLog): Promise<number> {
 /**
  * Khoa (xoa user) tren moi may dang bat nhung nguoi da nghi viec it nhat
  * `CHO_NGHI_IT_NHAT_NGAY` ngay. Bang chung chu nhan cua PIN la LICH SU QUET (lan quet gan nhat
- * cua PIN do tren chinh may do da map cho ai), khong phai ten tren may — ten may VP rut gon
- * khong ghep duoc voi ho ten. PIN chua tung quet (khong co bang chung) thi giu nguyen; chu
- * nhan con quet trong 3 ngay gan nhat thi cung giu (tien le cho nghi NHAM van di lam).
+ * cua PIN do tren chinh may do da map cho ai); chua co lich su quet thi lay nguoi giu PIN theo
+ * mapping toan cuc — PIN van thuoc mot nguoi da nghi thi van phai don. PIN khong thuoc ai thi
+ * giu nguyen (user ky thuat chua gan, xoa nham la mat khuon mat). Chu nhan con quet trong 3
+ * ngay gan nhat thi cung giu (tien le cho nghi NHAM van di lam).
  * Tra danh sach da xep lenh khoa.
  */
 export async function khoa_nguoi_da_nghi(
@@ -186,6 +187,18 @@ export async function khoa_nguoi_da_nghi(
   const chu_nhan = new Map<string, string>();
   for (const d of ls) chu_nhan.set(`${d.serial}|${d.pin}`, d.id);
 
+  // Nguoi giu moi PIN theo mapping TOAN CUC — dung khi PIN chua tung quet tren may nay (xem
+  // `chon_nguoi_da_nghi`). Chi lay dong dang MO: dong da dong la lich su, khong con hieu luc.
+  const giu = await truy_van<{ pin: string; id: string }>(
+    `select ma_chuan as pin, nhan_vien_id::text as id
+       from ma_dinh_danh
+      where he_thong = 'may_cham_cong' and hieu_luc_den is null
+     union
+     select pin_may as pin, id::text from nhan_vien
+      where pin_may is not null and btrim(pin_may) <> ''`);
+  const chu_pin = new Map<string, string>();
+  for (const d of giu) chu_pin.set(d.pin, d.id);
+
   const cac_may = await truy_van<{ serial: string }>(
     'select serial from thiet_bi where dang_bat = true order by serial');
   const ra: { serial: string; pin: string; ten_may: string }[] = [];
@@ -200,6 +213,7 @@ export async function khoa_nguoi_da_nghi(
       chu_nhan,
       da_nghi,
       con_quet,
+      chu_pin,
     );
     for (const c of chon) {
       const id = await xep_cuc_bo(serial, `DATA DELETE USERINFO PIN=${c.pin}`, `dx:${serial}:${c.pin}`);

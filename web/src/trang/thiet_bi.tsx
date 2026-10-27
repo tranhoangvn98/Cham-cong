@@ -749,7 +749,7 @@ interface UserMay {
   ma_nv: string | null;
   ho_ten: string | null;
   quet_7_ngay: number;
-  khop: 'khop' | 'lech' | 'co_quet_chua_gan' | 'chua_gan' | 'da_nghi' | 'khong_ten';
+  khop: 'khop' | 'lech' | 'ten_khac' | 'co_quet_chua_gan' | 'chua_gan' | 'da_nghi' | 'khong_ten';
 }
 const NHAN_KHOP: Record<UserMay['khop'], { ten: string; lop: string }> = {
   khop: { ten: 'Khớp', lop: 'nhan-tot' },
@@ -757,6 +757,7 @@ const NHAN_KHOP: Record<UserMay['khop'], { ten: string; lop: string }> = {
   co_quet_chua_gan: { ten: 'CÓ QUẸT — chưa gán ai', lop: 'nhan-xau' },
   chua_gan: { ten: 'Chưa gán (không ai quẹt)', lop: 'nhan-canh-bao' },
   da_nghi: { ten: 'Người đã nghỉ việc', lop: 'nhan-mo' },
+  ten_khac: { ten: 'Tên gọi tắt trên máy', lop: 'nhan-mo' },
   khong_ten: { ten: 'Máy không gửi tên', lop: 'nhan-mo' },
 };
 
@@ -778,7 +779,8 @@ function DoiChieuNguoiDung(
         thống</strong>. Tên trên máy thường là tên viết tắt nên hệ thống chấp nhận cả dạng rút
         gọn. Dòng <span className="nhan-xau">LỆCH</span> /{' '}
         <span className="nhan-xau">CÓ QUẸT</span> = lượt quẹt bị gán nhầm hoặc bị bỏ, cần sửa
-        ngay.
+        ngay. Dòng <span className="nhan-mo">Tên gọi tắt trên máy</span> chỉ là nhãn hiển thị —
+        đúng người, không cần sửa.
       </p>
 
       <div className="hang-nut" style={{ marginBottom: 12 }}>

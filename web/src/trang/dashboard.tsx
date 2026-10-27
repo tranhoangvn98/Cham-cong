@@ -104,7 +104,9 @@ interface HeThong {
    * PIN trên máy có vấn đề. `trung_nguoi` = lượt quẹt sẽ bị gán nhầm hoặc bị bỏ (nặng);
    * `chua_gan` = user cũ không ai quẹt (dọn dẹp); `da_nghi` = PIN người đã nghỉ còn trên máy.
    */
-  pin: { trung_nguoi: number; chua_gan: number; da_nghi: number; can_xu_ly: number };
+  pin: {
+    trung_nguoi: number; chua_gan: number; da_nghi: number; ten_khac: number; can_xu_ly: number;
+  };
 }
 
 interface DiemNongNguoi {

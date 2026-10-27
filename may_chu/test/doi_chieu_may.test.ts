@@ -7,7 +7,7 @@
 import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { xep_khop } from '../src/dinh_danh/doi_chieu_may.ts';
+import { khop_ten_manh, xep_khop } from '../src/dinh_danh/doi_chieu_may.ts';
 
 const KHONG_QUET = 0;
 const CO_QUET = 12;
@@ -58,4 +58,36 @@ test('PIN cua nguoi da nghi viec khong bi coi la trung nguoi', () => {
 test('may khong gui ten nhung PIN da gan thi bao khong ten, khong bao lech', () => {
   assert.equal(xep_khop('', 'id', 'Phan Song Hào', true, KHONG_QUET), 'khong_ten');
   assert.equal(xep_khop(null, 'id', 'Phan Song Hào', true, KHONG_QUET), 'khong_ten');
+});
+
+// Ten goi tat (`Sep`, `Tanh`, `Kly`) khong phai gan nham — chi bao "lech" khi ten tren may la
+// cua MOT nhan vien khac. `khop_ten_manh` la phep so dung cho viec do: phai ghep duoc tu cac
+// tu cua ho ten THEO THU TU va an het ten may.
+test('khop_ten_manh: ten may ghep duoc ho ten day du', () => {
+  const dung: [string, string][] = [
+    ['ThanThiVanAnh', 'Thân Thị Vân Anh'],
+    ['NguyenNganHa', 'Nguyễn Ngân Hà'],
+    ['XiaZiFeng', 'XIAZIFENG'],
+    ['Tien', 'Lê Thị Thủy Tiên'],
+  ];
+  for (const [may, he_thong] of dung) {
+    assert.equal(khop_ten_manh(may, he_thong), true, `${may} ~ ${he_thong}`);
+  }
+});
+
+test('khop_ten_manh: khong buoc toi ai chi vi ho hay ten dem', () => {
+  // `Nguyen Ngan Ha` tung khop voi 19 nguoi ho Nguyen khi dung quy tac "bat dau bang mot tu".
+  const sai: [string, string][] = [
+    ['Nguyen Ngan Ha', 'Nguyễn Quỳnh Anh'],
+    ['Nguyen Ngan Ha', 'Nguyễn Hải Yến'],
+    ['Nguyen Ngan Ha', 'Nguyễn Thị Hoàng Anh'],
+    ['Nguyen Ngan Ha', 'Nguyễn Tuấn Anh'],
+    ['Sep', 'Trần Đức Hoàng'],
+    ['Tanh', 'Nguyễn Tuấn Anh'],
+    ['Ta', 'Nguyễn Tuấn Anh'],
+    ['Kly', 'Trần Khánh Ly'],
+  ];
+  for (const [may, he_thong] of sai) {
+    assert.equal(khop_ten_manh(may, he_thong), false, `${may} KHONG duoc khop ${he_thong}`);
+  }
 });

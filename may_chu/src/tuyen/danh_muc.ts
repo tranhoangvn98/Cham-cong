@@ -918,6 +918,7 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       so_lech: dem('lech') + dem('co_quet_chua_gan'),
       so_chua_gan: dem('chua_gan'),
       so_da_nghi: dem('da_nghi'),
+      so_ten_khac: dem('ten_khac'),
       danh_sach,
     };
   });

@@ -109,3 +109,36 @@ test('chon_nguoi_da_nghi: PIN duoc gan lai cho nguoi con lam thi khong khoa', ()
   const ra = chon_nguoi_da_nghi(may, chu_nhan, new Set(['NV1']), new Set());
   assert.equal(ra.length, 0);
 });
+
+// PIN chua tung quet tren may nay thi khong co bang chung lich su. Truoc day vi vay ma user
+// nam lai vinh vien: PIN 2 tren may VP quet den 05/2026, PIN duoc gan lai cho nguoi khac roi
+// nguoi do cung nghi — khong con lan quet nao mang ten ho, va canh bao "PIN cua nguoi da nghi"
+// khong bao gio tat. Nay lay nguoi giu PIN theo mapping toan cuc.
+test('chon_nguoi_da_nghi: khong co lich su quet nhung PIN thuoc nguoi da nghi -> van khoa', () => {
+  const may = [{ serial: 'MAY-A', pin: '2', ten_may: 'Nguyen Ngan Ha' }];
+  const chu_pin = new Map([['2', 'NV1']]);
+  const ra = chon_nguoi_da_nghi(may, new Map(), new Set(['NV1']), new Set(), chu_pin);
+  assert.deepEqual(ra, [{ serial: 'MAY-A', pin: '2', ten_may: 'Nguyen Ngan Ha' }]);
+});
+
+test('chon_nguoi_da_nghi: PIN khong thuoc ai thi VAN giu (user ky thuat chua gan)', () => {
+  // Xoa nham la mat khuon mat cua nguoi sap vao lam — chi xoa khi biet chac chu nhan da nghi.
+  const may = [{ serial: 'MAY-A', pin: '77', ten_may: 'Ky thuat' }];
+  const ra = chon_nguoi_da_nghi(may, new Map(), new Set(['NV1']), new Set(), new Map());
+  assert.equal(ra.length, 0);
+});
+
+test('chon_nguoi_da_nghi: nguoi giu PIN toan cuc con lam thi giu nguyen', () => {
+  const may = [{ serial: 'MAY-A', pin: '2', ten_may: 'Ai do' }];
+  const chu_pin = new Map([['2', 'NV2']]);
+  const ra = chon_nguoi_da_nghi(may, new Map(), new Set(['NV1']), new Set(), chu_pin);
+  assert.equal(ra.length, 0);
+});
+
+test('chon_nguoi_da_nghi: lich su quet thang mapping toan cuc khi hai ben noi khac nhau', () => {
+  // Lan quet gan nhat tren may nay la nguoi con lam thi tin bang chung tai cho, khong khoa.
+  const may = [{ serial: 'MAY-A', pin: '2', ten_may: 'Ai do' }];
+  const ra = chon_nguoi_da_nghi(may, new Map([['MAY-A|2', 'NV2']]), new Set(['NV1']),
+    new Set(), new Map([['2', 'NV1']]));
+  assert.equal(ra.length, 0);
+});
