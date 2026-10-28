@@ -15,7 +15,7 @@ nhưng không ai đọc ra được là gói nào, mà đây là việc cần ng
   vào đó trả **403** (`Authorization_RequestDenied`, đã thử 28/10/2026). Bảng tên nhỏ trong mã là
   phương án tạm; ngày nào cấp thêm `Organization.Read.All` thì thay bằng phép đọc thật.
 - 1 bài kiểm cho việc đổi tên gói.
-- **Dữ liệu (28/10)**: hai sự kiện tạo tài khoản kẹt 43 và 55 lần đã đi qua hết — `huyen@` đã có
+- **Dữ liệu (29/10)**: hai sự kiện tạo tài khoản kẹt 43 và 55 lần đã đi qua hết — `huyen@` đã có
   sẵn Business Basic nên không cấp lại, `phuong.kt@` đang dùng Business Standard nên **không**
   bị cấp chồng Basic; đã gửi lại chuông cho nhân sự đọc đúng tên gói.
 
