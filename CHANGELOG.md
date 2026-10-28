@@ -2,6 +2,29 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.138.6] — 2026-10-29
+
+**ĐÍNH CHÍNH: chị Trần Thị Minh Phương chưa từng dùng Business Standard — chuông báo ở 1.138.4
+ghi sai tên gói. Nay tên gói đọc thẳng từ tenant, không còn bảng chép tay.**
+
+Bản 1.138.4 ghi cứng hai `skuId` trong mã, và ghi **sai**: `e0dfc8b9-…` thực tế là
+`Microsoft_Teams_Exploratory_Dept` (miễn phí) chứ không phải Business Standard;
+`f30db892-…` tưởng là Standard nhưng là `FLOW_FREE`. Hệ quả: chuông “tài khoản đã có giấy phép
+khác” gửi cho nhân sự một thông tin **sai**, trong khi sự thật là chị Phương chỉ có Teams
+Exploratory miễn phí.
+
+- **`ten_goi_giay_phep()` nay hỏi tenant**: `GET /subscribedSkus` (quyền ứng dụng mới
+  `Organization.Read.All`), đọc một lần rồi giữ trong tiến trình; không đọc được thì hiện mã
+  `skuId` — thà thế còn hơn đoán ra một cái tên sai.
+- **Đã cấp hai quyền ứng dụng cho app `9d4adda5-7174-4862-b7e0-eed2758c2943`** (admin consent):
+  `LicenseAssignment.ReadWrite.All` và `Organization.Read.All`. Trước đó `assignLicense` trả 403
+  dù token có `User.ReadWrite.All` — đó là lí do **mọi** lần cấp giấy phép tự động đều không chạy.
+- `trien_khai/doi_giay_phep_ve_basic.mjs` chạy được rồi (đổi gói trong **một** lần `assignLicense`).
+- **Dữ liệu (29/10)**: đã cấp **Microsoft 365 Business Basic** cho `phuong.kt@`
+  (`NVVP10260003`). Chị ấy vẫn còn `Microsoft_Teams_Exploratory_Dept` (miễn phí, không tốn tiền).
+- Ghi chú chi phí: gói `O365_BUSINESS_PREMIUM` của tenant đang **dùng 13 / mua 10** — nhiều hơn
+  số ghế đã trả tiền, nên rà lại danh sách người được gán.
+
 ## [1.138.5] — 2026-10-29
 
 **Cấp giấy phép tự động vẫn chưa chạy được vì ứng dụng Graph thiếu một quyền — nay hệ thống

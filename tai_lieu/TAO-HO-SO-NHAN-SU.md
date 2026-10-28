@@ -143,6 +143,10 @@ Dùng **chung tài khoản ứng dụng** với email (`MS_MAIL_*`) như bước
 - `LicenseAssignment.ReadWrite.All` — `assignLicense` (cấp/rút giấy phép). Thiếu quyền này thì
   Graph trả **403** `Insufficient privileges` dù `User.ReadWrite.All` đã có trong token (đã kiểm
   29/10/2026: PATCH user trả 204 nhưng `assignLicense` vẫn 403).
+- `Organization.Read.All` — `GET /subscribedSkus`, chỉ để đổi `skuId` ra **tên gói** trong thông
+  báo. Thiếu thì thông báo hiện mã `skuId`, không hỏng gì — nhưng **đừng** thay bằng bảng tên
+  chép tay trong mã: bản 1.138.4 đã chép sai (`e0dfc8b9-…` ghi là Business Standard, thực tế là
+  `Microsoft_Teams_Exploratory_Dept`).
 
 Xem thêm `tai_lieu/DANG-NHAP-MICROSOFT.md` mục 3.
 

@@ -8,6 +8,8 @@
 //                                   Graph tra 403 "Insufficient privileges" du User.ReadWrite.All
 //                                   da co trong token (gap that 29/10/2026: PATCH user tra 204
 //                                   nhung assignLicense van 403).
+//   Organization.Read.All        — GET /subscribedSkus, chi de doi skuId ra TEN GOI trong thong
+//                                   bao. Thieu thi thong bao hien ma skuId (khong hong gi).
 //   User.RevokeSessions.All       — revokeSignInSessions (nghi viec)
 //   User-PasswordProfile.ReadWrite.All — PATCH passwordProfile (cap lai mat khau). THIEU quyen
 //                                   nay thi Graph tra 403 "Insufficient privileges" du
@@ -499,22 +501,55 @@ export async function tao_tai_khoan_va_cap_giay_phep(
 }
 
 /**
- * Ten goi giay phep theo skuId, de thong bao nguoi doc hieu ngay.
+ * Bang ten goi giay phep cua tenant, doc mot lan roi giu trong tien trinh.
  *
- * Doc tu Graph `GET /subscribedSkus` moi la duong dung, nhung app hien tai chi duoc cap
- * `User.ReadWrite.All` — goi do tra **403** (da thu 28/10/2026), nên giu bang nho nay. Ngay nao
- * quan tri cap them `Organization.Read.All` thi thay bang phep doc that.
+ * VI SAO KHONG DUNG BANG CUNG TRONG MA: ban 1.138.4 tung khai cung hai skuId va **khai sai** —
+ * `e0dfc8b9-...` bi ghi la "Business Standard" trong khi thuc te la `Microsoft_Teams_Exploratory_Dept`
+ * (mien phi), va `f30db892-...` tuong la Standard thuc ra la `FLOW_FREE`. Mot bang chep tay khong
+ * doi chieu duoc voi tenant thi chi sinh ra thong bao SAI — te hon la hien ma skuId.
  *
- * Khong thay skuId trong bang thi tra ve chinh skuId: van hon la doan bua mot cai ten.
+ * Doi quyen ung dung `Organization.Read.All` (da cap 29/10/2026). Doc hong thi tra ve bang rong,
+ * ben goi tu lui ve hien skuId.
  */
-const TEN_GOI_GIAY_PHEP: Record<string, string> = {
-  '3b555118-da6a-4418-894f-7df1e2096870': 'Microsoft 365 Business Basic',
-  'e0dfc8b9-9531-4ec8-94b4-9fec23b05fc8': 'Microsoft 365 Business Standard',
-};
+let bang_ten_goi: Promise<Map<string, string>> | null = null;
 
-export function ten_goi_giay_phep(sku_id: string): string {
+async function doc_bang_ten_goi(): Promise<Map<string, string>> {
+  const trong = new Map<string, string>();
+  try {
+    const token = await lay_token_graph();
+    const res = await fetch(`${GOC_GRAPH()}/subscribedSkus?$select=skuId,skuPartNumber`, {
+      headers: { authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(HET_GIO_MS),
+    });
+    if (!res.ok) {
+      console.warn(`[ms365] khong doc duoc danh sach giay phep (HTTP ${String(res.status)})`);
+      return trong;
+    }
+    const kq = (await res.json().catch(() => ({}))) as {
+      value?: { skuId?: string; skuPartNumber?: string }[];
+    };
+    for (const s of kq.value ?? []) {
+      if (typeof s.skuId === 'string' && s.skuId !== '') {
+        trong.set(s.skuId.toLowerCase(), s.skuPartNumber ?? s.skuId);
+      }
+    }
+    return trong;
+  } catch (loi) {
+    console.warn(`[ms365] khong doc duoc danh sach giay phep: ${(loi as Error).message}`);
+    return trong;
+  }
+}
+
+/** Ten goi theo skuId; khong biet thi tra ve chinh skuId (thon hon la doan bua). */
+export function ten_trong_bang(bang: Map<string, string>, sku_id: string): string {
   const s = sku_id.trim();
-  return TEN_GOI_GIAY_PHEP[s.toLowerCase()] ?? s;
+  return bang.get(s.toLowerCase()) ?? s;
+}
+
+/** Ten goi giay phep cua tenant (doc mot lan, giu trong tien trinh). */
+export async function ten_goi_giay_phep(sku_id: string): Promise<string> {
+  bang_ten_goi ??= doc_bang_ten_goi();
+  return ten_trong_bang(await bang_ten_goi, sku_id);
 }
 
 /**
@@ -530,6 +565,7 @@ export async function bao_giay_phep_da_co_khac(
   upn: string, ho_ten: string, ma_nv: string, dang_co: string[], mong_muon: string,
 ): Promise<void> {
   try {
+    const ten = await Promise.all(dang_co.map((s) => ten_goi_giay_phep(s)));
     await gui_chuong_ngon_ngu({
       nguoi_dung_ids: await tai_khoan_nhan_su(),
       tieu_de: 'm365_phep_khac_tieu_de',
@@ -538,8 +574,8 @@ export async function bao_giay_phep_da_co_khac(
         ho_ten,
         ma_nv,
         upn,
-        giay_phep: dang_co.map(ten_goi_giay_phep).join(', '),
-        giay_phep_mong_muon: ten_goi_giay_phep(mong_muon),
+        giay_phep: ten.join(', '),
+        giay_phep_mong_muon: await ten_goi_giay_phep(mong_muon),
       },
       du_lieu: { man: 'nhan-vien' },
     });
