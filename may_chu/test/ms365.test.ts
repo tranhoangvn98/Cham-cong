@@ -12,6 +12,7 @@ const {
   dung_than_chan_dang_nhap, dung_than_rut_giay_phep,
   dung_than_tao_tai_khoan, dung_than_cap_giay_phep,
   dung_than_dat_lai_mat_khau, dung_than_dat_quoc_gia, quyet_dinh_giay_phep,
+  ten_goi_giay_phep,
   la_truong_phong, sinh_mat_khau_khoi_tao, loc_nguoi_da_cap_phep,
   ten_moi_thanh_chu,
 } = await import('../src/nhan_su/ms365.ts');
@@ -75,6 +76,14 @@ test('giay phep: dang dung goi KHAC thi khong cap chong, tra ve danh sach dang c
   assert.deepEqual(
     quyet_dinh_giay_phep(['sku-standard'], 'sku-basic'),
     { viec: 'khac', dang_co: ['sku-standard'] });
+});
+
+test('ten goi giay phep: hai goi cua cong ty co ten doc duoc, sku la thi tra nguyen ma', () => {
+  assert.equal(
+    ten_goi_giay_phep('3B555118-da6a-4418-894f-7df1e2096870'), 'Microsoft 365 Business Basic');
+  assert.equal(
+    ten_goi_giay_phep('e0dfc8b9-9531-4ec8-94b4-9fec23b05fc8'), 'Microsoft 365 Business Standard');
+  assert.equal(ten_goi_giay_phep('sku-la-hoac'), 'sku-la-hoac');
 });
 
 test('chuc danh: truong phong duoc giay phep Standard, nhan su con lai dung Basic', () => {

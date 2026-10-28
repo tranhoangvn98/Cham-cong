@@ -475,6 +475,25 @@ export async function tao_tai_khoan_va_cap_giay_phep(
 }
 
 /**
+ * Ten goi giay phep theo skuId, de thong bao nguoi doc hieu ngay.
+ *
+ * Doc tu Graph `GET /subscribedSkus` moi la duong dung, nhung app hien tai chi duoc cap
+ * `User.ReadWrite.All` — goi do tra **403** (da thu 28/10/2026), nên giu bang nho nay. Ngay nao
+ * quan tri cap them `Organization.Read.All` thi thay bang phep doc that.
+ *
+ * Khong thay skuId trong bang thi tra ve chinh skuId: van hon la doan bua mot cai ten.
+ */
+const TEN_GOI_GIAY_PHEP: Record<string, string> = {
+  '3b555118-da6a-4418-894f-7df1e2096870': 'Microsoft 365 Business Basic',
+  'e0dfc8b9-9531-4ec8-94b4-9fec23b05fc8': 'Microsoft 365 Business Standard',
+};
+
+export function ten_goi_giay_phep(sku_id: string): string {
+  const s = sku_id.trim();
+  return TEN_GOI_GIAY_PHEP[s.toLowerCase()] ?? s;
+}
+
+/**
  * Bao nhan su khi tai khoan da co giay phep KHAC nen he thong khong cap chong.
  *
  * Khong bao thi nguoi lap ho so tuong la da cap xong, trong khi nguoi do dung goi khac — mot
@@ -495,8 +514,8 @@ export async function bao_giay_phep_da_co_khac(
         ho_ten,
         ma_nv,
         upn,
-        giay_phep: dang_co.join(', '),
-        giay_phep_mong_muon: mong_muon,
+        giay_phep: dang_co.map(ten_goi_giay_phep).join(', '),
+        giay_phep_mong_muon: ten_goi_giay_phep(mong_muon),
       },
       du_lieu: { man: 'nhan-vien' },
     });

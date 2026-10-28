@@ -2,6 +2,23 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.138.4] — 2026-10-29
+
+**Chuông "tài khoản đã có giấy phép khác" gọi tên được gói, không phải mã GUID.**
+
+Bản 1.138.3 gửi nhân sự câu *"đang dùng giấy phép e0dfc8b9-9531-4ec8-94b4-9fec23b05fc8"* — đúng
+nhưng không ai đọc ra được là gói nào, mà đây là việc cần người quyết.
+
+- `ten_goi_giay_phep()` đổi `skuId` ra tên gói; không biết gói nào thì trả lại chính `skuId`
+  (thà thế còn hơn đoán bừa một cái tên).
+- Đường đúng là `GET /subscribedSkus`, nhưng ứng dụng chỉ được cấp `User.ReadWrite.All` — gọi
+  vào đó trả **403** (`Authorization_RequestDenied`, đã thử 28/10/2026). Bảng tên nhỏ trong mã là
+  phương án tạm; ngày nào cấp thêm `Organization.Read.All` thì thay bằng phép đọc thật.
+- 1 bài kiểm cho việc đổi tên gói.
+- **Dữ liệu (28/10)**: hai sự kiện tạo tài khoản kẹt 43 và 55 lần đã đi qua hết — `huyen@` đã có
+  sẵn Business Basic nên không cấp lại, `phuong.kt@` đang dùng Business Standard nên **không**
+  bị cấp chồng Basic; đã gửi lại chuông cho nhân sự đọc đúng tên gói.
+
 ## [1.138.3] — 2026-10-29
 
 **Tạo nhân sự mới đã cấp được giấy phép Microsoft 365 tự động trở lại.**
