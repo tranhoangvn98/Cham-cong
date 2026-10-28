@@ -2,6 +2,25 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.138.5] — 2026-10-29
+
+**Cấp giấy phép tự động vẫn chưa chạy được vì ứng dụng Graph thiếu một quyền — nay hệ thống
+nói thẳng điều đó.**
+
+Sau khi 1.138.3/1.138.4 đi qua được bước tạo tài khoản, bước `assignLicense` lộ ra lỗi thứ hai:
+Graph trả **403** `Insufficient privileges` **dù token đã có `User.ReadWrite.All`**. Đã kiểm bằng
+phép ghi thật: `PATCH /users/{upn}` trả **204** (quyền `User.ReadWrite.All` hoạt động) nhưng
+`assignLicense` vẫn 403 — tức là thiếu **`LicenseAssignment.ReadWrite.All`** (quyền ỨNG DỤNG,
+phải Grant admin consent trong Entra).
+
+- 403 khi cấp/rút giấy phép giờ kèm câu chỉ đúng quyền còn thiếu và chỗ cấp, thay vì
+  "Insufficient privileges" trơ trọi — lỗi này lặp lại vô hạn trong outbox nên líu nhíu mãi.
+- Đầu tệp `ms365.ts` và hai tài liệu (`TAO-HO-SO-NHAN-SU.md` §2.3,
+  `LUONG-TAO-NHAN-SU-TU-DONG.md` §3.3) ghi rõ danh sách quyền ứng dụng phải consent.
+- Thêm `trien_khai/doi_giay_phep_ve_basic.mjs`: đổi giấy phép của một UPN về Business Basic
+  trong **một** lần gọi `assignLicense` (thêm Basic + rút gói cũ cùng lúc, không để khoảng trống
+  không có giấy phép), có ghi `nhat_ky_thao_tac`.
+
 ## [1.138.4] — 2026-10-29
 
 **Chuông "tài khoản đã có giấy phép khác" gọi tên được gói, không phải mã GUID.**

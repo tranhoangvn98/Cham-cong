@@ -3,7 +3,11 @@
 //
 // Dung Graph app-only (client_credentials), cung creds voi module gui_email — token lay
 // tu `lay_token_graph` trong su_kien/gui_email.ts. App Entra phai duoc cap quyen ung dung:
-//   User.ReadWrite.All            — PATCH accountEnabled + POST /users + assignLicense
+//   User.ReadWrite.All            — PATCH accountEnabled + POST /users
+//   LicenseAssignment.ReadWrite.All — assignLicense (cap/rut giay phep). THIEU quyen nay thi
+//                                   Graph tra 403 "Insufficient privileges" du User.ReadWrite.All
+//                                   da co trong token (gap that 29/10/2026: PATCH user tra 204
+//                                   nhung assignLicense van 403).
 //   User.RevokeSessions.All       — revokeSignInSessions (nghi viec)
 //   User-PasswordProfile.ReadWrite.All — PATCH passwordProfile (cap lai mat khau). THIEU quyen
 //                                   nay thi Graph tra 403 "Insufficient privileges" du
@@ -208,6 +212,20 @@ export async function dat_lai_mat_khau_ms365(
 }
 
 /**
+ * Goi y sua khi Graph tu choi vi thieu quyen cap/rut giay phep.
+ *
+ * 403 `Authorization_RequestDenied` khong noi thieu quyen NAO, nen nguoi truc chi thay
+ * "Insufficient privileges" roi doan sai huong. Da kiem that 29/10/2026: token CO
+ * `User.ReadWrite.All` (PATCH user tra 204) nhung `assignLicense` van 403 — phai cap them
+ * quyen UNG DUNG `LicenseAssignment.ReadWrite.All` roi Grant admin consent.
+ */
+const GOI_Y_QUYEN_CAP_PHEP =
+  ' — ứng dụng Microsoft Graph thiếu quyền cấp/rút giấy phép. Vào Entra admin center →'
+  + ' App registrations → ứng dụng của hệ thống → API permissions → thêm quyền ỨNG DỤNG'
+  + ' "LicenseAssignment.ReadWrite.All" rồi bấm Grant admin consent. Quyền User.ReadWrite.All'
+  + ' một mình KHÔNG đủ cho assignLicense (đã kiểm 29/10/2026).';
+
+/**
  * Doc than phan hoi loi cua Graph de ghi vao `loi_cuoi` cua hop thu di.
  *
  * Khong co no thi loi chi con "HTTP 400" — dung cau khong ai chan doan duoc (gap that
@@ -218,6 +236,11 @@ async function doc_than_loi(res: Response): Promise<string> {
   const than = await res.text().catch(() => '');
   const gon = than.replace(/\s+/g, ' ').trim();
   return gon === '' ? '' : `: ${gon.slice(0, 300)}`;
+}
+
+/** Chi them goi y khi dung la 403 — cac ma loi khac co nguyen nhan khac han. */
+function goi_y_quyen(status: number): string {
+  return status === 403 ? GOI_Y_QUYEN_CAP_PHEP : '';
 }
 
 /** Doc danh sach skuId giay phep dang gan cua mot tai khoan Entra. */
@@ -342,7 +365,8 @@ export async function chan_dang_nhap_va_rut_giay_phep(upn: string): Promise<void
       signal: AbortSignal.timeout(HET_GIO_MS),
     });
     if (!rut.ok) {
-      throw new Error(`Graph từ chối rút giấy phép ${upn} (HTTP ${rut.status})`);
+      throw new Error(
+        `Graph từ chối rút giấy phép ${upn} (HTTP ${rut.status})${goi_y_quyen(rut.status)}`);
     }
   }
 }
@@ -469,7 +493,7 @@ export async function tao_tai_khoan_va_cap_giay_phep(
   });
   if (!cap.ok) {
     throw new Error(
-      `Graph từ chối cấp giấy phép ${upn} (HTTP ${cap.status})${await doc_than_loi(cap)}`);
+      `Graph từ chối cấp giấy phép ${upn} (HTTP ${cap.status})${await doc_than_loi(cap)}${goi_y_quyen(cap.status)}`);
   }
   return { da_tao, giay_phep: 'da_cap', giay_phep_dang_co: [] };
 }

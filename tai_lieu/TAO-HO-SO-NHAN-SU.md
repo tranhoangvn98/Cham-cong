@@ -137,9 +137,12 @@ MS365_QUOC_GIA=VN
 Lấy `skuId` bằng Graph `GET /subscribedSkus` hoặc trang **Giấy phép** trong Entra admin center.
 
 Dùng **chung tài khoản ứng dụng** với email (`MS_MAIL_*`) như bước nghỉ việc — ứng dụng đó phải
-được admin Entra consent thêm quyền ứng dụng:
+được admin Entra consent thêm các quyền ứng dụng:
 
-- `User.ReadWrite.All` — `POST /users` (tạo tài khoản) + `assignLicense` (cấp giấy phép)
+- `User.ReadWrite.All` — `POST /users` (tạo tài khoản)
+- `LicenseAssignment.ReadWrite.All` — `assignLicense` (cấp/rút giấy phép). Thiếu quyền này thì
+  Graph trả **403** `Insufficient privileges` dù `User.ReadWrite.All` đã có trong token (đã kiểm
+  29/10/2026: PATCH user trả 204 nhưng `assignLicense` vẫn 403).
 
 Xem thêm `tai_lieu/DANG-NHAP-MICROSOFT.md` mục 3.
 

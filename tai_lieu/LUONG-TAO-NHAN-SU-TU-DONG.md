@@ -148,8 +148,14 @@ thì không có gì để chép; đó chính là lỗ mà bước 3.2 bịt.
      theo `MS365_QUOC_GIA` (mặc định `VN`) nếu tài khoản chưa có.
   3. Tài khoản **đã dùng gói khác** (ví dụ Business Standard) thì **không cấp chồng** Basic —
      cấp chồng là trả tiền hai lần cho một người. Hệ thống gửi chuông cho nhân sự để họ quyết.
+- **Quyền ứng dụng bắt buộc**: `User.ReadWrite.All` cho `POST /users` và
+  **`LicenseAssignment.ReadWrite.All`** cho `assignLicense`. Thiếu quyền thứ hai thì Graph trả
+  **403** `Insufficient privileges` dù `User.ReadWrite.All` đã có trong token (đã kiểm 29/10/2026:
+  PATCH user trả 204, `assignLicense` vẫn 403) — và đó chính là kiểu "thêm nhân sự xong mà không
+  có giấy phép".
 - Thất bại thì `loi_cuoi` trong `hop_thu_di` ghi **kèm thân phản hồi của Graph** (300 ký tự);
-  chỉ có "HTTP 400" là câu không ai chẩn đoán được.
+  chỉ có "HTTP 400" là câu không ai chẩn đoán được. Riêng 403 thì kèm luôn câu chỉ đúng quyền
+  còn thiếu và nơi cấp.
 
 ### 3.4. Mã ERP1
 
