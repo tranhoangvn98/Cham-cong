@@ -8,6 +8,7 @@ import { pool, truy_van, truy_van_mot, thuc_thi } from '../csdl/ket_noi.ts';
 import { doc_tep_ho_so } from '../tien_ich/luu_tep.ts';
 import { email_bat, gui_email, type DinhKemMail } from './gui_email.ts';
 import {
+  bao_giay_phep_da_co_khac,
   chan_dang_nhap_va_rut_giay_phep,
   tao_tai_khoan_va_cap_giay_phep,
 } from '../nhan_su/ms365.ts';
@@ -307,7 +308,13 @@ async function gui_sang_ms365(d: DongOutbox): Promise<void> {
     const sku_id = typeof du['sku_id'] === 'string' ? du['sku_id'] : '';
     if (upn === '' || !upn.includes('@')) throw new Error(`su kien ${d.id} upn sai dang`);
     if (mat_khau === '') throw new Error(`su kien ${d.id} thieu mat_khau`);
-    await tao_tai_khoan_va_cap_giay_phep(upn, ho_ten, mat_khau, sku_id);
+    const kq = await tao_tai_khoan_va_cap_giay_phep(upn, ho_ten, mat_khau, sku_id);
+    // Tai khoan da co giay phep KHAC: he thong khong cap chong (tranh tra tien hai lan) nen
+    // phai bao nguoi that biet — im lang o day la nguoi lap ho so tuong da cap xong.
+    if (kq.giay_phep === 'khac') {
+      const ma_nv = typeof du['ma_nv'] === 'string' ? du['ma_nv'] : '';
+      await bao_giay_phep_da_co_khac(upn, ho_ten, ma_nv, kq.giay_phep_dang_co, sku_id);
+    }
     await thuc_thi(
       `update hop_thu_di set du_lieu = du_lieu - 'mat_khau' where id = $1`, [d.id]);
     return;

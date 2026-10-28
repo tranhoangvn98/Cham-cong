@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 const {
   dung_than_chan_dang_nhap, dung_than_rut_giay_phep,
   dung_than_tao_tai_khoan, dung_than_cap_giay_phep,
-  dung_than_dat_lai_mat_khau,
+  dung_than_dat_lai_mat_khau, dung_than_dat_quoc_gia, quyet_dinh_giay_phep,
   la_truong_phong, sinh_mat_khau_khoi_tao, loc_nguoi_da_cap_phep,
   ten_moi_thanh_chu,
 } = await import('../src/nhan_su/ms365.ts');
@@ -53,6 +53,28 @@ test('cap giay phep: dung mot skuId trong addLicenses', () => {
   assert.deepEqual(dung_than_cap_giay_phep('sku-basic'), {
     addLicenses: [{ skuId: 'sku-basic' }], removeLicenses: [],
   });
+});
+
+test('quoc gia su dung: Graph doi chuoi ma nuoc, viet thuong cung nhan', () => {
+  assert.deepEqual(dung_than_dat_quoc_gia('vn'), { usageLocation: 'VN' });
+  assert.deepEqual(dung_than_dat_quoc_gia(' VN '), { usageLocation: 'VN' });
+});
+
+test('giay phep: chua co giay phep nao thi cap', () => {
+  assert.deepEqual(quyet_dinh_giay_phep([], 'sku-basic'), { viec: 'cap' });
+  assert.deepEqual(quyet_dinh_giay_phep([''], 'sku-basic'), { viec: 'cap' });
+});
+
+test('giay phep: da co dung SKU dich thi khong cap lai (outbox gui lai)', () => {
+  assert.deepEqual(quyet_dinh_giay_phep(['sku-basic'], 'sku-basic'), { viec: 'da_co' });
+  assert.deepEqual(
+    quyet_dinh_giay_phep(['sku-e3', 'sku-basic'], 'sku-basic'), { viec: 'da_co' });
+});
+
+test('giay phep: dang dung goi KHAC thi khong cap chong, tra ve danh sach dang co', () => {
+  assert.deepEqual(
+    quyet_dinh_giay_phep(['sku-standard'], 'sku-basic'),
+    { viec: 'khac', dang_co: ['sku-standard'] });
 });
 
 test('chuc danh: truong phong duoc giay phep Standard, nhan su con lai dung Basic', () => {

@@ -127,8 +127,8 @@ thì không có gì để chép; đó chính là lỗ mà bước 3.2 bịt.
 
 ### 3.3. Microsoft 365 — mặc định Basic
 
-- Điều kiện: hồ sơ có **email hợp lệ**; email **chính là** UPN; không trùng người khác (trùng
-  thì Graph trả 409 và có thể cấp giấy phép nhầm người).
+- Điều kiện: hồ sơ có **email hợp lệ**; email **chính là** UPN; không trùng người khác đang làm
+  việc (mỗi email một hồ sơ — trùng thì chặn ngay ở bước lưu, kèm nút mở hồ sơ đã có).
 - **Giấy phép mặc định: `MS365_SKU_BASIC`** cho mọi tài khoản mới. Standard chỉ khi người có
   thẩm quyền chọn đích danh (`sku_id_tuy_chon`).
 - Mật khẩu khởi tạo 16 ký tự đủ 4 nhóm, **chỉ hiện một lần**, `forceChangePasswordNextSignIn`
@@ -139,6 +139,17 @@ thì không có gì để chép; đó chính là lỗ mà bước 3.2 bịt.
   kênh công khai.
 - Đi qua outbox `ms365.tao_tai_khoan`: chưa bật `MS365_TAO_TAI_KHOAN_BAT` hoặc chưa khai
   `MS365_SKU_BASIC` thì **hồ sơ vẫn lưu**, sự kiện nằm chờ và tự đi khi cấu hình đủ.
+- **Ba chốt chặn của bước cấp giấy phép** (mỗi cái đều từng làm hỏng luồng thật, 28/10/2026):
+  1. Tài khoản **đã tồn tại** không phải lỗi. Entra trả **HTTP 400** khi trùng UPN, **không**
+     phải 409 — bản cũ chỉ bắt 409 nên sự kiện quay vòng vô hạn và giấy phép không bao giờ
+     được cấp (hai sự kiện đã thử 43 và 55 lần). Nay hệ thống **đọc lại tài khoản** để khẳng
+     định "đã tồn tại" thay vì đoán theo mã lỗi.
+  2. `usageLocation` phải có **trước** `assignLicense`, không thì Graph trả 400. Hệ thống đặt
+     theo `MS365_QUOC_GIA` (mặc định `VN`) nếu tài khoản chưa có.
+  3. Tài khoản **đã dùng gói khác** (ví dụ Business Standard) thì **không cấp chồng** Basic —
+     cấp chồng là trả tiền hai lần cho một người. Hệ thống gửi chuông cho nhân sự để họ quyết.
+- Thất bại thì `loi_cuoi` trong `hop_thu_di` ghi **kèm thân phản hồi của Graph** (300 ký tự);
+  chỉ có "HTTP 400" là câu không ai chẩn đoán được.
 
 ### 3.4. Mã ERP1
 

@@ -123,6 +123,11 @@ export const CHUOI_VI = {
   m365_moi_noi_dung:
     '{danh_sach} vừa có giấy phép Microsoft 365 — mở trang Nhân viên để thêm hồ sơ cho họ.',
 
+  // ================================ Microsoft 365: tai khoan da co giay phep khac
+  m365_phep_khac_tieu_de: 'Tài khoản Microsoft có giấy phép khác — chưa cấp tự động',
+  m365_phep_khac_noi_dung:
+    '{ho_ten} ({ma_nv}) — {upn} đang dùng giấy phép {giay_phep}. Hệ thống không cấp thêm {giay_phep_mong_muon} để tránh trả tiền hai lần cho cùng một người; mở trung tâm quản trị Microsoft 365 đối chiếu rồi cấp tay nếu cần.',
+
   // ================================ gui tai khoan Microsoft khoi tao cho nguoi lap ho so
   tk365_tieu_de: 'Tài khoản Microsoft 365 của {ho_ten}: {upn}',
   tk365_noi_dung:

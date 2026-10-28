@@ -453,6 +453,11 @@ export const cau_hinh = {
     bat: chu('MS365_TAO_TAI_KHOAN_BAT', '0') === '1',
     sku_basic: chu('MS365_SKU_BASIC', ''),
     sku_standard: chu('MS365_SKU_STANDARD', ''),
+    /**
+     * Quoc gia su dung gan cho tai khoan moi. Graph BAT BUOC co `usageLocation` truoc khi cap
+     * giay phep; thieu thi `assignLicense` tra 400 va su kien quay vong mai.
+     */
+    quoc_gia: chu('MS365_QUOC_GIA', 'VN'),
   },
 
   /**

@@ -123,6 +123,42 @@ export function dung_than_cap_giay_phep(sku_id: string): Record<string, unknown>
 }
 
 /**
+ * Payload PATCH /users/{id}: dat quoc gia su dung.
+ *
+ * Graph BAT BUOC co `usageLocation` truoc khi `assignLicense`, khong thi tra 400. Tai khoan do
+ * chinh he thong tao khong co truong nay (payload POST /users o tren khong dat), nen buoc cap
+ * giay phep phai dat truoc — thieu no la ca hai buoc deu that bai va su kien quay vong mai.
+ */
+export function dung_than_dat_quoc_gia(quoc_gia: string): Record<string, unknown> {
+  return { usageLocation: quoc_gia.trim().toUpperCase() };
+}
+
+/** Viec phai lam o buoc cap giay phep, quyet dinh tu danh sach SKU dang co. */
+export type QuyetDinhGiayPhep =
+  | { viec: 'cap' }
+  | { viec: 'da_co' }
+  | { viec: 'khac'; dang_co: string[] };
+
+/**
+ * Co nen cap them giay phep khong — ham THUAN de unit test.
+ *
+ * Ba truong hop phai phan biet ro, vi ca ba deu tung lam hong luong that:
+ *  - Chua co giay phep nao -> cap.
+ *  - Da co dung SKU dich -> xong (lan gui lai cua outbox khong duoc cap trung).
+ *  - Da co giay phep KHAC -> KHONG cap chong. Mot nguoi dang dung Business Standard ma cap
+ *    them Basic la tra tien hai lan cho cung mot nguoi; viec chon goi la cua nguoi quan tri,
+ *    he thong chi bao lai de ho quyet.
+ */
+export function quyet_dinh_giay_phep(
+  dang_co: readonly string[], sku_id: string,
+): QuyetDinhGiayPhep {
+  const ds = dang_co.filter((s) => s !== '');
+  if (ds.includes(sku_id)) return { viec: 'da_co' };
+  if (ds.length > 0) return { viec: 'khac', dang_co: ds };
+  return { viec: 'cap' };
+}
+
+/**
  * Payload PATCH /users/{id}: dat lai mat khau khoi tao cho tai khoan DA CO (ban giao lai).
  *
  * Bat buoc `forceChangePasswordNextSignIn: true` — nguoi nhan mat khau tam phai doi ngay o lan
@@ -169,6 +205,19 @@ export async function dat_lai_mat_khau_ms365(
     throw new Error(`Graph từ chối đặt lại mật khẩu ${upn} (HTTP ${sua.status})`);
   }
   return { mat_khau, dang_bi_khoa: !dang_bat };
+}
+
+/**
+ * Doc than phan hoi loi cua Graph de ghi vao `loi_cuoi` cua hop thu di.
+ *
+ * Khong co no thi loi chi con "HTTP 400" — dung cau khong ai chan doan duoc (gap that
+ * 28/10/2026: hai su kien tao tai khoan quay vong 43 va 55 lan ma khong biet vi sao). Cat 300
+ * ky tu va gop khoang trang vi than loi cua Graph thuong rat dai.
+ */
+async function doc_than_loi(res: Response): Promise<string> {
+  const than = await res.text().catch(() => '');
+  const gon = than.replace(/\s+/g, ' ').trim();
+  return gon === '' ? '' : `: ${gon.slice(0, 300)}`;
 }
 
 /** Doc danh sach skuId giay phep dang gan cua mot tai khoan Entra. */
@@ -298,17 +347,64 @@ export async function chan_dang_nhap_va_rut_giay_phep(upn: string): Promise<void
   }
 }
 
+/** Ket qua buoc tao tai khoan + cap giay phep (xem `tao_tai_khoan_va_cap_giay_phep`). */
+export interface KetQuaTaoTaiKhoanMs365 {
+  /** true = vua tao; false = tai khoan da co tu truoc. */
+  da_tao: boolean;
+  /** 'da_cap' = vua cap; 'da_co' = da co dung SKU; 'khac' = dang co giay phep khac, khong cap chong. */
+  giay_phep: 'da_cap' | 'da_co' | 'khac';
+  /** Cac SKU dang co khi `giay_phep === 'khac'` (rong o hai truong hop con lai). */
+  giay_phep_dang_co: string[];
+}
+
+/**
+ * Tai khoan Entra theo UPN: co hay khong, quoc gia su dung va cac SKU dang gan.
+ * Khong co (404) tra `co: false` — day la phep Kiem tra ton tai dung de phan biet "trung UPN"
+ * voi "payload sai".
+ */
+async function doc_tai_khoan(
+  token: string, upn: string,
+): Promise<{ co: boolean; quoc_gia: string; giay_phep: string[] }> {
+  const res = await fetch(
+    `${GOC_GRAPH()}/users/${encodeURIComponent(upn)}?$select=id,usageLocation,assignedLicenses`,
+    { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(HET_GIO_MS) },
+  );
+  if (res.status === 404) return { co: false, quoc_gia: '', giay_phep: [] };
+  if (!res.ok) {
+    throw new Error(
+      `Graph từ chối đọc tài khoản ${upn} (HTTP ${res.status})${await doc_than_loi(res)}`);
+  }
+  const kq = (await res.json().catch(() => ({}))) as {
+    usageLocation?: string;
+    assignedLicenses?: { skuId?: string }[];
+  };
+  return {
+    co: true,
+    quoc_gia: (kq.usageLocation ?? '').trim(),
+    giay_phep: (kq.assignedLicenses ?? []).map((l) => l.skuId ?? '').filter((s) => s !== ''),
+  };
+}
+
 /**
  * Tao tai khoan Entra moi va cap giay phep theo SKU da chon.
  *
- * An toan khi goi lai (outbox gui lai sau khi mat phan hoi): neu tai khoan da ton tai
- * (Graph tra 409) thi KHONG coi la loi, van cap giay phep tiep — buoc cap giay phep idempotent.
+ * An toan khi goi lai (outbox gui lai sau khi mat phan hoi, hoac quan tri da tao tay tai trung
+ * tam quan tri Microsoft 365): tai khoan da ton tai thi KHONG coi la loi, di tiep buoc cap giay
+ * phep — buoc do idempotent va khong cap chong.
  *
- * NEM loi ro rang khi that bai de outbox giu lai dong va thu lai theo backoff.
+ * VI SAO KHONG THE DUA VAO 409: Entra tra **400** (`Request_BadRequest`, "Another object with
+ * the same value for property userPrincipalName already exists") khi UPN da ton tai, khong phai
+ * 409. Ban cu chi bat 409 nen moi lan gui lai deu nem loi, su kien quay vong vo han va giay phep
+ * KHONG BAO GIO duoc cap — dung trieu chung "them nhan su moi khong duoc gan giay phep tu dong"
+ * (gap that 28/10/2026: hai su kien da thu 43 va 55 lan). Nay khang dinh "da ton tai" bang mot
+ * phep doc lai tai khoan, khong doan theo ma loi cua chuoi.
+ *
+ * NEM loi ro rang kem than phan hoi cua Graph khi that bai de outbox giu lai dong va thu lai theo
+ * backoff; khong co than phan hoi thi `loi_cuoi` chi con "HTTP 400" — khong ai chan doan duoc.
  */
 export async function tao_tai_khoan_va_cap_giay_phep(
   upn: string, ho_ten: string, mat_khau: string, sku_id: string,
-): Promise<void> {
+): Promise<KetQuaTaoTaiKhoanMs365> {
   if (!ms365_tao_bat()) {
     throw new Error('MS365_TAO_TAI_KHOAN_BAT chưa bật — sự kiện ms365 nằm lại hộp thư chờ');
   }
@@ -316,33 +412,96 @@ export async function tao_tai_khoan_va_cap_giay_phep(
     throw new Error(`Chưa khai SKU Microsoft cho tài khoản ${upn} — sự kiện ms365 nằm lại hộp thư chờ`);
   }
   const token = await lay_token_graph();
+  const dau = { authorization: `Bearer ${token}` };
 
-  // 1. Tao tai khoan. 409 = UPN da ton tai (lan gui lai) — khong phai loi.
+  // 1. Tao tai khoan. "Da ton tai" (UPN trung) khong phai loi.
+  let da_tao = false;
   const tao = await fetch(`${GOC_GRAPH()}/users`, {
     method: 'POST',
-    headers: {
-      authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-    },
+    headers: { ...dau, 'content-type': 'application/json' },
     body: JSON.stringify(dung_than_tao_tai_khoan(upn, ho_ten, mat_khau)),
     signal: AbortSignal.timeout(HET_GIO_MS),
   });
-  if (!tao.ok && tao.status !== 409) {
-    throw new Error(`Graph từ chối tạo tài khoản ${upn} (HTTP ${tao.status})`);
+  if (tao.ok) {
+    da_tao = true;
+  } else {
+    const than = await doc_than_loi(tao);
+    // Khang dinh bang phep doc lai thay vi tin vao ma loi: 400 cua Entra khi trung UPN va 400
+    // khi payload sai khong phan biet duoc neu chi nhin con so.
+    const hien = await doc_tai_khoan(token, upn);
+    if (!hien.co) {
+      throw new Error(`Graph từ chối tạo tài khoản ${upn} (HTTP ${tao.status})${than}`);
+    }
+    console.info(`[ms365] tai khoan ${upn} da co san — di tiep buoc cap giay phep`);
   }
 
-  // 2. Cap giay phep theo SKU.
+  // 2. usageLocation: Graph bat buoc truoc khi cap giay phep, tai khoan he thong tao ra khong co.
+  const sau = await doc_tai_khoan(token, upn);
+  if (!sau.co) {
+    throw new Error(`Vừa tạo nhưng Graph không đọc lại được tài khoản ${upn} — thử lại sau`);
+  }
+  if (sau.quoc_gia === '') {
+    const dat = await fetch(`${GOC_GRAPH()}/users/${encodeURIComponent(upn)}`, {
+      method: 'PATCH',
+      headers: { ...dau, 'content-type': 'application/json' },
+      body: JSON.stringify(dung_than_dat_quoc_gia(cau_hinh.ms365_tao.quoc_gia)),
+      signal: AbortSignal.timeout(HET_GIO_MS),
+    });
+    if (!dat.ok) {
+      throw new Error(
+        `Graph từ chối đặt quốc gia sử dụng cho ${upn} (HTTP ${dat.status})${await doc_than_loi(dat)}`);
+    }
+  }
+
+  // 3. Cap giay phep — khong bao gio cap chong.
+  const quyet_dinh = quyet_dinh_giay_phep(sau.giay_phep, sku_id);
+  if (quyet_dinh.viec === 'da_co') {
+    return { da_tao, giay_phep: 'da_co', giay_phep_dang_co: [] };
+  }
+  if (quyet_dinh.viec === 'khac') {
+    return { da_tao, giay_phep: 'khac', giay_phep_dang_co: quyet_dinh.dang_co };
+  }
   const cap = await fetch(`${GOC_GRAPH()}/users/${encodeURIComponent(upn)}/assignLicense`, {
     method: 'POST',
-    headers: {
-      authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-    },
+    headers: { ...dau, 'content-type': 'application/json' },
     body: JSON.stringify(dung_than_cap_giay_phep(sku_id)),
     signal: AbortSignal.timeout(HET_GIO_MS),
   });
   if (!cap.ok) {
-    throw new Error(`Graph từ chối cấp giấy phép ${upn} (HTTP ${cap.status})`);
+    throw new Error(
+      `Graph từ chối cấp giấy phép ${upn} (HTTP ${cap.status})${await doc_than_loi(cap)}`);
+  }
+  return { da_tao, giay_phep: 'da_cap', giay_phep_dang_co: [] };
+}
+
+/**
+ * Bao nhan su khi tai khoan da co giay phep KHAC nen he thong khong cap chong.
+ *
+ * Khong bao thi nguoi lap ho so tuong la da cap xong, trong khi nguoi do dung goi khac — mot
+ * su that can nguoi quyet, khong phai viec cua ma.
+ *
+ * KHONG chan luong: thong bao hong thi ghi log va thoi, su kien van duoc danh da gui (neu nem
+ * loi o day thi outbox gui lai mai mai va moi lan mot thong bao).
+ */
+export async function bao_giay_phep_da_co_khac(
+  upn: string, ho_ten: string, ma_nv: string, dang_co: string[], mong_muon: string,
+): Promise<void> {
+  try {
+    await gui_chuong_ngon_ngu({
+      nguoi_dung_ids: await tai_khoan_nhan_su(),
+      tieu_de: 'm365_phep_khac_tieu_de',
+      noi_dung: 'm365_phep_khac_noi_dung',
+      tham_so: {
+        ho_ten,
+        ma_nv,
+        upn,
+        giay_phep: dang_co.join(', '),
+        giay_phep_mong_muon: mong_muon,
+      },
+      du_lieu: { man: 'nhan-vien' },
+    });
+  } catch (loi) {
+    console.warn(`[ms365] khong bao duoc giay phep khac cua ${upn}: ${(loi as Error).message}`);
   }
 }
 

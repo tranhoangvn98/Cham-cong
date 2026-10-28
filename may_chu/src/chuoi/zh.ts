@@ -120,6 +120,11 @@ export const CHUOI_ZH = {
   m365_moi_tieu_de: 'Microsoft 365 有新账号获得许可证',
   m365_moi_noi_dung: '{danh_sach} 刚获得 Microsoft 365 许可证——请打开“员工”页面为其添加档案。',
 
+  // ================================ Microsoft 365: tai khoan da co giay phep khac
+  m365_phep_khac_tieu_de: 'Microsoft 账号已有其他许可证——未自动分配',
+  m365_phep_khac_noi_dung:
+    '{ho_ten}（{ma_nv}）——{upn} 当前使用 {giay_phep} 许可证。系统不再分配 {giay_phep_mong_muon}，以免同一人重复计费；请在 Microsoft 365 管理中心核对后按需手动分配。',
+
   // ================================ 向创建人发送 Microsoft 初始账号
   tk365_tieu_de: '{ho_ten} 的 Microsoft 365 账号：{upn}',
   tk365_noi_dung:

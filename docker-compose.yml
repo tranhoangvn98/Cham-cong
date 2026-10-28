@@ -116,9 +116,13 @@ services:
       # Tao tai khoan Microsoft 365 + cap giay phep khi tao ho so nhan su moi.
       # 1 = bat; 0 (mac dinh) = su kien nam lai trong hop_thu_di cho. Xem tai_lieu/TAO-HO-SO-NHAN-SU.md.
       MS365_TAO_TAI_KHOAN_BAT: ${MS365_TAO_TAI_KHOAN_BAT:-0}
-      # skuId giay phep theo chuc danh: truong phong nhan STANDARD, con lai nhan BASIC.
+      # skuId giay phep: moi tai khoan moi nhan BASIC (chot 10/2026); STANDARD chi khi nguoi tao
+      # chon dich danh.
       MS365_SKU_BASIC: ${MS365_SKU_BASIC:-}
       MS365_SKU_STANDARD: ${MS365_SKU_STANDARD:-}
+      # Quoc gia su dung gan cho tai khoan moi (mac dinh VN) — Graph bat buoc co truoc khi cap
+      # giay phep, thieu thi assignLicense tra 400.
+      MS365_QUOC_GIA: ${MS365_QUOC_GIA:-VN}
       # Onboarding nhan su moi (DTKT 02/2026): nguoi phu trach nhan su nhan viec nhap viec
       # (uuid nhan_vien hoac ma_nv) + serial may cua mac dinh de day user+PIN xuong may.
       # Xem tai_lieu/ONBOARDING-NHAN-SU-MOI.md.

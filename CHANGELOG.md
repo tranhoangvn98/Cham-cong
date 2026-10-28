@@ -2,6 +2,35 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.138.3] — 2026-10-29
+
+**Tạo nhân sự mới đã cấp được giấy phép Microsoft 365 tự động trở lại.**
+
+Hai hồ sơ tạo ngày 26–27/10 (`huyen@`, `phuong.kt@`) nằm kẹt trong hộp thư đi với **43 và 55 lần
+thử**, lần nào cũng `Graph từ chối tạo tài khoản ... (HTTP 400)` — và giấy phép thì chưa bao giờ
+được cấp. Nguyên nhân không nằm ở cấu hình: **Entra trả HTTP 400, không phải 409, khi UPN đã tồn
+tại**; mã cũ chỉ coi 409 là "đã có tài khoản", nên mọi lần gửi lại đều tính là lỗi và dừng trước
+bước cấp giấy phép.
+
+- **"Đã tồn tại" khẳng định bằng cách đọc lại tài khoản**, không đoán theo mã lỗi: POST lỗi thì
+  `GET /users/{upn}` — có tài khoản là đi tiếp bước cấp giấy phép, không có mới là lỗi thật. Nhờ
+  vậy hồ sơ do quản trị tạo tay trong trung tâm quản trị cũng đi nốt được phần còn lại.
+- **Đặt `usageLocation` trước khi cấp giấy phép.** Graph bắt buộc có trường này, tài khoản do hệ
+  thống tạo thì không có — thiếu nó là `assignLicense` trả 400 và sự kiện quay vòng tiếp. Nay đặt
+  theo `MS365_QUOC_GIA` (mặc định `VN`) nếu tài khoản chưa có.
+- **Không cấp chồng giấy phép.** Tài khoản đã dùng gói khác (ví dụ `phuong.kt@` đang có Business
+  Standard) thì **không** thêm Basic — cấp chồng là trả tiền hai lần cho một người. Hệ thống gửi
+  chuông cho nhân sự (`m365_phep_khac_*`, đủ hai ngôn ngữ) để người thật quyết. Đã có đúng SKU
+  đích thì coi như xong, nên gửi lại bao nhiêu lần cũng an toàn.
+- **Lỗi ghi kèm thân phản hồi của Graph** (300 ký tự) vào `loi_cuoi` — trước đây chỉ còn
+  "HTTP 400", đủ để không ai chẩn đoán được.
+- `tao_tai_khoan_va_cap_giay_phep` trả `{ da_tao, giay_phep: 'da_cap' | 'da_co' | 'khac' }` thay
+  vì `void`, để bên gọi biết có phải báo người thật hay không.
+- 5 bài kiểm mới cho `quyet_dinh_giay_phep` và `dung_than_dat_quoc_gia`. Cấu hình mới
+  `MS365_QUOC_GIA` (mặc định `VN`) trong `docker-compose.yml` và `.env.example`.
+- Tài liệu: `tai_lieu/LUONG-TAO-NHAN-SU-TU-DONG.md` §3.3 và `tai_lieu/TAO-HO-SO-NHAN-SU.md` §2.2
+  — bỏ câu sai "trùng thì Graph trả 409", thêm ba chốt chặn của bước cấp giấy phép.
+
 ## [1.138.2] — 2026-10-28
 
 **Biểu đồ "7 ngày gần nhất" giải thích được vì sao cột mỗi ngày một khác.**

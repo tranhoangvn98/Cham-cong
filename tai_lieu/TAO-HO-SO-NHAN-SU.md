@@ -108,6 +108,18 @@ test khóa — muốn đổi quy tắc thì sửa ở đó kèm test.
 Tài khoản Microsoft mới nhận **Business Basic** (`MS365_SKU_BASIC`) — chốt 10/2026. Standard chỉ
 khi người có thẩm quyền chọn đích danh lúc duyệt đề nghị (`sku_id_tuy_chon`).
 
+Hai điều kiện bắt buộc để bước cấp giấy phép chạy được (thiếu là sự kiện nằm chờ mãi):
+
+- **`usageLocation`** phải có trước khi `assignLicense` — hệ thống tự đặt theo `MS365_QUOC_GIA`
+  (mặc định `VN`) cho tài khoản chưa có.
+- **Tài khoản chưa có giấy phép nào khác.** Đang dùng gói khác (ví dụ Business Standard) thì hệ
+  thống **không** cấp chồng Basic mà gửi chuông cho nhân sự biết để quyết — cấp chồng là trả
+  tiền hai lần cho cùng một người.
+
+Tài khoản **đã tồn tại** (quản trị tạo tay trong trung tâm quản trị, hoặc lần trước đứt giữa
+chừng) không phải lỗi: hệ thống đọc lại tài khoản rồi đi tiếp bước cấp giấy phép. Entra trả
+**HTTP 400** (không phải 409) khi trùng UPN — đừng dựa vào mã 409.
+
 Hàm `la_truong_phong()` (`may_chu/src/nhan_su/ms365.ts`) chỉ còn để gợi ý trên giao diện khi
 Admin chọn Standard thủ công; nó **không** còn là quy tắc mặc định.
 
@@ -118,6 +130,8 @@ Admin chọn Standard thủ công; nó **không** còn là quy tắc mặc đị
 MS365_TAO_TAI_KHOAN_BAT=1
 MS365_SKU_BASIC=<skuId Business Basic>
 MS365_SKU_STANDARD=<skuId Business Standard>
+# Quốc gia sử dụng gán cho tài khoản mới — Graph bắt buộc có trước khi cấp giấy phép.
+MS365_QUOC_GIA=VN
 ```
 
 Lấy `skuId` bằng Graph `GET /subscribedSkus` hoặc trang **Giấy phép** trong Entra admin center.
