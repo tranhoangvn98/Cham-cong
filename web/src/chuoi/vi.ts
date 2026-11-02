@@ -46,6 +46,7 @@ export const CHUOI_VI = {
   cho_duyet_chua_co: 'Vẫn chưa được cấp quyền. Thử lại sau khi nhân sự báo đã xong.',
   cho_duyet_dang_kiem: 'Đang kiểm tra…',
   cho_duyet_kiem_lai: 'Tôi đã được cấp quyền — kiểm tra lại',
+  loi_cong_kiem_lai: 'Kiểm tra lại',
 
   // ================================ quan ly tai khoan
   nd_ho_so_nhan_vien: 'Hồ sơ nhân viên',

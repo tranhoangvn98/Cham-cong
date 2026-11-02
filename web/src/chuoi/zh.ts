@@ -49,6 +49,7 @@ export const CHUOI_ZH = {
   cho_duyet_chua_co: '权限尚未分配。请在人事部门确认后重试。',
   cho_duyet_dang_kiem: '正在检查…',
   cho_duyet_kiem_lai: '已获权限——重新检查',
+  loi_cong_kiem_lai: '重新检查',
 
   // ================================ 账号管理
   nd_ho_so_nhan_vien: '员工档案',

@@ -301,6 +301,43 @@ export async function cau_hinh_dang_nhap(): Promise<CauHinhDangNhap> {
 }
 
 /**
+ * Xin cong cap token truy cap moi bang cookie phien (HttpOnly).
+ *
+ * Token cua cong song 8 gio. Vai tro duoc cap SAU lan dang nhap cu khong co trong token do,
+ * va may chu tra `403 chua_cap_quyen` — khac 401 nen tang goi nao cung khong tu lam moi. Nguoi
+ * dung se ket o man hinh "chua duoc cap quyen" toi khi token het han (toi 8 gio).
+ *
+ * Ham nay goi dung duong lam moi cua cong (cookie HttpOnly, khong can token lam moi trong JS),
+ * roi ghi lai `cong_phien` theo dung dang ma cong dang dung.
+ */
+async function lam_moi_token_cong(): Promise<
+  { token: string } | { het_phien: true } | null
+> {
+  const c = cau_hinh_cong;
+  if (c === null) return null;
+  let res: Response;
+  try {
+    res = await fetch(`${c.goc_dang_nhap}/api/lam-moi`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+  } catch {
+    return null;
+  }
+  if (res.status === 401) return { het_phien: true };
+  if (!res.ok) return null;
+  const j = (await res.json().catch(() => ({}))) as { token_truy_cap?: unknown };
+  const token = typeof j.token_truy_cap === 'string' ? j.token_truy_cap : null;
+  if (token === null) return null;
+  try {
+    localStorage.setItem('cong_phien', JSON.stringify({ token_truy_cap: token }));
+  } catch {
+    // Trinh duyet chan localStorage — token trong bo nho cua lan nay van dung.
+  }
+  return { token };
+}
+
+/**
  * Nap thong tin nguoi dung bang token cua cong. Tra ve thong diep loi, hoac null neu xong.
  *
  * Vai tro KHONG doc tu token o phia client — doc tu `/api/xac-thuc/toi`, tuc la tu may chu sau
@@ -308,27 +345,45 @@ export async function cau_hinh_dang_nhap(): Promise<CauHinhDangNhap> {
  * duoc trong DevTools.
  */
 export async function nap_phien_cong(): Promise<string | null> {
-  const t = doc_token_cong();
+  let t = doc_token_cong();
   if (t === null) return null;
-  let res: Response;
-  try {
-    res = await fetch(`${GOC}/api/xac-thuc/toi`, {
-      headers: { authorization: `Bearer ${t}`, ...DAU_PB },
-    });
-  } catch {
-    return 'Không kết nối được máy chủ chấm công.';
+
+  // Lan 1 co the gap 403 chi vi token dang cam duoc phat TRUOC khi admin cap quyen. Xin token
+  // moi bang cookie roi thu lai DUNG MOT lan — khong vong lap, va van tu choi neu token moi
+  // cung khong co quyen.
+  for (let lan = 0; lan < 2; lan += 1) {
+    let res: Response;
+    try {
+      res = await fetch(`${GOC}/api/xac-thuc/toi`, {
+        headers: { authorization: `Bearer ${t}`, ...DAU_PB },
+      });
+    } catch {
+      return 'Không kết nối được máy chủ chấm công.';
+    }
+    if (res.status === 403) {
+      const j = (await res.json().catch(() => ({}))) as { loi?: string };
+      if (lan === 0) {
+        const moi = await lam_moi_token_cong();
+        if (moi !== null && 'token' in moi) {
+          t = moi.token;
+          continue;
+        }
+        if (moi !== null && 'het_phien' in moi) {
+          try { localStorage.removeItem('cong_phien'); } catch { /* bo qua */ }
+          return null; // de tang goi chuyen huong sang cong dang nhap lai
+        }
+      }
+      return j.loi ?? 'Tài khoản của bạn chưa được cấp quyền ở phân hệ Chấm công.';
+    }
+    if (!res.ok) return null; // 401: token het han -> tang goi se chuyen huong
+    const nd = (await res.json()) as NguoiDung & { mui_gio_offset_gio?: number };
+    // Giu trong BO NHO thoi, khong ghi localStorage: cong la chu so huu token.
+    phien = {
+      token_truy_cap: t, token_lam_moi: '',
+      mui_gio_offset_gio: nd.mui_gio_offset_gio, nguoi_dung: nd,
+    };
+    return null;
   }
-  if (res.status === 403) {
-    const j = (await res.json().catch(() => ({}))) as { loi?: string };
-    return j.loi ?? 'Tài khoản của bạn chưa được cấp quyền ở phân hệ Chấm công.';
-  }
-  if (!res.ok) return null; // 401: token het han -> tang goi se chuyen huong
-  const nd = (await res.json()) as NguoiDung & { mui_gio_offset_gio?: number };
-  // Giu trong BO NHO thoi, khong ghi localStorage: cong la chu so huu token.
-  phien = {
-    token_truy_cap: t, token_lam_moi: '',
-    mui_gio_offset_gio: nd.mui_gio_offset_gio, nguoi_dung: nd,
-  };
   return null;
 }
 

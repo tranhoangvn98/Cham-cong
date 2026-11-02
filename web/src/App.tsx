@@ -659,6 +659,11 @@ function NoiDungApp(): ReactNode {
         <div className="the-dang-nhap">
           <h1>{tra('menu_cham_cong')}</h1>
           <div className="hop-luu-y" style={{ marginTop: 16 }}>{loi_cong}</div>
+          <div className="hang-nut" style={{ justifyContent: 'center', marginTop: 16 }}>
+            <button type="button" className="nut-chinh" onClick={() => window.location.reload()}>
+              {tra('loi_cong_kiem_lai')}
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.138.8] — 2026-11-02
+
+**Sửa lỗi người đã được cấp quyền vẫn bị chặn: token cổng cũ (hạn 8 giờ) mang quyền rỗng,
+Chấm công trả 403 mà giao diện chỉ làm mới token khi gặp 401.**
+
+- `web/src/api.ts`: thêm `lam_moi_token_cong()` gọi `POST /cong/api/lam-moi` kèm cookie phiên
+  để lấy token cổng mới; gặp 403 ở lần gọi đầu thì tự làm mới token rồi gọi lại, hết phiên thì
+  xóa `cong_phien` và chuyển về cổng đăng nhập.
+- Màn hình lỗi cổng có thêm nút **Kiểm tra lại** để tải lại trang mà không phải xóa dữ liệu
+  trình duyệt; chuỗi mới có đủ bản tiếng Trung.
+
 ## [1.138.7] — 2026-11-02
 
 **Sửa lỗi tài khoản cổng không vào được Chấm công: tự nối lại hồ sơ nhân viên, dùng UPN alias
