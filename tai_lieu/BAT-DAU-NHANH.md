@@ -206,6 +206,36 @@ phút làm thật ra đúng **0,5 công** (thông lệ 5,5 công/tuần); muốn
 Ca qua đêm không dùng được cơ chế này — giờ ra thuộc ngày hôm sau nên "thứ" của khung giờ
 không xác định được một cách không nhập nhằng.
 
+### Một người vào làm muộn hơn giờ chung
+
+Công ty có người được duyệt vào **09:00** hoặc **08:30** thay vì 08:00, giờ tan ca vẫn 17:30 và
+mọi quy tắc khác y như ca chung. Cách làm: **Ca làm việc → Tạo ca mới**, chép đúng cấu hình ca
+chung rồi chỉ đổi **Giờ vào**, sau đó gán ca đó cho người ấy ở trang **Nhân viên**.
+
+Chỉ đổi giờ vào là chưa đủ — phải hạ cả ô **"Đủ công (phút)"**, nếu không người đó mất oan nửa
+công. Quy tắc giữ nguyên "độ dễ dãi" của ca chung: **đủ công = số phút tối đa của ca − 60**.
+
+| Ca | Phút tối đa (đã trừ nghỉ trưa) | Đủ công |
+|---|---|---|
+| 08:00–17:30 (ca chung) | 480 | 420 |
+| **08:30**–17:30 | 450 | **390** |
+| **09:00**–17:30 | 420 | **360** |
+
+Để nguyên 420 cho ca 09:00 thì buổi sáng chỉ còn 180 phút, dưới nửa ngưỡng (210) nên làm cả
+buổi sáng vẫn ra **0 công** thay vì 0,5. Khung thứ Bảy cũng phải khai riêng (`09:00–12:00`,
+`08:30–12:00`) vì giờ ra 12:00 giữ nguyên.
+
+Mọi mốc khác tự chạy theo ca, không phải sửa mã nguồn:
+
+- Đi muộn tính từ **giờ vào + dung sai 10 phút** → 09:11 và 08:41 mới bắt đầu tính.
+- Đi muộn quá **30 phút thô** thì mất nửa ngày công buổi sáng → quá 09:30 (hoặc quá 09:00 với ca
+  08:30) là còn 0,5 công.
+- Nếu bật lại phạt tiền đi muộn (`phat_di_muon_bat`), phải khai thêm **mốc phạt riêng** trong hồ
+  sơ nhân sự, nếu không người ta bị phạt từ 08:11 — xem `nhan_vien.di_muon_moc_50k`.
+
+Sau khi gán ca: bấm **Tính lại bảng công** cho khoảng ngày cần đổi. Migration `117` đã làm sẵn
+việc này cho ba người đang áp dụng.
+
 ## Sự cố thường gặp
 
 | Hiện tượng | Nguyên nhân |

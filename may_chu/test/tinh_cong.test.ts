@@ -935,3 +935,86 @@ test('ngoai le mien vang: nguoi co quet van tinh cong theo gio quet nhu thuong',
   assert.equal(kq.trang_thai, 'co_mat');
   assert.equal(kq.so_cong, 1);
 });
+
+// ==================================================================================
+// CA VAO LAM MUON HON GIO CHUNG (migration 117, 02/11/2026). Ba nguoi duoc duyet vao 09:00 /
+// 08:30 nhung GIO TAN CA VAN 17:30, moi thu khac y het ca chuan.
+//
+// Nguong du cong cua ca moi = so phut toi da - 60, giu dung do de cua ca chuan
+// (08:00-17:30 nghi 90 phut = 480, dang khai 420):
+//   09:00 -> 420 - 60 = 360 | 08:30 -> 450 - 60 = 390.
+// De nguyen 420 thi buoi sang cua ca 09:00 (180 phut) tut xuong 0 cong thay vi 0,5.
+// ==================================================================================
+
+const CA_0830 = {
+  ...CA_HC, gio_vao: '08:30', gio_ra: '17:30',
+  dung_sai_muon_phut: 10, phut_du_cong: 390, cac_ngay_lam: [1, 2, 3, 4, 5, 6],
+} satisfies CaLam;
+const CA_0900 = {
+  ...CA_HC, gio_vao: '09:00', gio_ra: '17:30',
+  dung_sai_muon_phut: 10, phut_du_cong: 360, cac_ngay_lam: [1, 2, 3, 4, 5, 6],
+} satisfies CaLam;
+
+test('ca 09:00: du ca ngay van 1 cong', () => {
+  const kq = tinh_cong_ngay(co_ban(T5_T9, CA_0900, q(T5_T9, '09:00', '17:30')));
+  assert.equal(kq.phut_lam, 420);
+  assert.equal(kq.phut_muon, 0);
+  assert.equal(kq.so_cong, 1);
+});
+
+test('ca 09:00: 09:10 chua tinh muon, 09:11 bat dau tinh', () => {
+  assert.equal(
+    tinh_cong_ngay(co_ban(T5_T9, CA_0900, q(T5_T9, '09:10', '17:30'))).phut_muon, 0,
+    '09:10 van trong dung sai 10 phut',
+  );
+  assert.equal(
+    tinh_cong_ngay(co_ban(T5_T9, CA_0900, q(T5_T9, '09:11', '17:30'))).phut_muon, 1,
+    'tu 09:11 bat dau tinh di muon',
+  );
+});
+
+test('ca 09:00: dung 09:30 van du cong, 09:31 mat nua ngay', () => {
+  assert.equal(
+    tinh_cong_ngay(co_ban(T5_T9, CA_0900, q(T5_T9, '09:30', '17:30'))).so_cong, 1,
+    'muon dung 30 phut chua mat cong',
+  );
+  const mat = tinh_cong_ngay(co_ban(T5_T9, CA_0900, q(T5_T9, '09:31', '17:30')));
+  assert.equal(mat.so_cong, 0.5, 'qua 09:30 mat nua ngay cong buoi sang');
+  assert.match(mat.ghi_chu ?? '', /Mất nửa ngày công buổi sáng/);
+});
+
+test('ca 08:30: 08:40 chua tinh muon, 08:41 bat dau tinh', () => {
+  assert.equal(
+    tinh_cong_ngay(co_ban(T5_T9, CA_0830, q(T5_T9, '08:40', '17:30'))).phut_muon, 0,
+  );
+  assert.equal(
+    tinh_cong_ngay(co_ban(T5_T9, CA_0830, q(T5_T9, '08:41', '17:30'))).phut_muon, 1,
+  );
+});
+
+test('ca 08:30: dung 09:00 van du cong, 09:01 mat nua ngay', () => {
+  assert.equal(
+    tinh_cong_ngay(co_ban(T5_T9, CA_0830, q(T5_T9, '09:00', '17:30'))).so_cong, 1,
+  );
+  const mat = tinh_cong_ngay(co_ban(T5_T9, CA_0830, q(T5_T9, '09:01', '17:30')));
+  assert.equal(mat.so_cong, 0.5);
+  assert.match(mat.ghi_chu ?? '', /Mất nửa ngày công buổi sáng/);
+});
+
+test('ca 09:00: chi lam buoi sang van 0,5 cong (nguong da ha theo ca)', () => {
+  const kq = tinh_cong_ngay(co_ban(T5_T9, CA_0900, q(T5_T9, '09:00', '12:00')));
+  assert.equal(kq.so_cong, 0.5, 'de nguong 420 thi 180 phut se ra 0 cong');
+});
+
+test('ca 09:00: sang thu Bay 09:00-12:00 la nua cong, khong bi coi la ve som', () => {
+  const T7_T9 = '2026-09-05';
+  const ca_t7 = {
+    ...CA_0900,
+    theo_thu: [
+      { thu: 6, gio_vao: '09:00', gio_ra: '12:00', nghi_tu: null, nghi_den: null, phut_du_cong: 360 },
+    ],
+  } satisfies CaLam;
+  const kq = tinh_cong_ngay(co_ban(T7_T9, ca_t7, q(T7_T9, '09:00', '12:00')));
+  assert.equal(kq.phut_ve_som, 0);
+  assert.equal(kq.so_cong, 0.5);
+});
