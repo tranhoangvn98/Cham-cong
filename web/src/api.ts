@@ -309,6 +309,10 @@ export async function cau_hinh_dang_nhap(): Promise<CauHinhDangNhap> {
  *
  * Ham nay goi dung duong lam moi cua cong (cookie HttpOnly, khong can token lam moi trong JS),
  * roi ghi lai `cong_phien` theo dung dang ma cong dang dung.
+ *
+ * Dung `iss` (goc CUA CONG, vd `https://.../cong`) de dung duong dan, KHONG dung
+ * `goc_dang_nhap`: truong do la goc ten mien (`https://.../`) de chuyen huong ve trang dang
+ * nhap, noi vao se ra `//api/lam-moi` va an 404.
  */
 async function lam_moi_token_cong(): Promise<
   { token: string } | { het_phien: true } | null
@@ -317,9 +321,12 @@ async function lam_moi_token_cong(): Promise<
   if (c === null) return null;
   let res: Response;
   try {
-    res = await fetch(`${c.goc_dang_nhap}/api/lam-moi`, {
+    res = await fetch(`${c.iss}/api/lam-moi`, {
       method: 'POST',
       credentials: 'include',
+      // Cong khai bao than JSON cho tuyen nay: thieu header la 415, khong phai 401.
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
     });
   } catch {
     return null;
