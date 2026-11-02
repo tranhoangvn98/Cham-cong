@@ -1,5 +1,5 @@
 // Quan ly tai khoan dang nhap va nhat ky thao tac. Chi vai tro admin.
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { goi, nguoi_dung_hien_tai } from '../api.ts';
 import {
   DangTai, HopLoi, HopTot, HopThoai, TEN_VAI_TRO, Trong,
@@ -9,6 +9,7 @@ import type { NhanVien } from './nhan_vien.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 import { Chon, type TuyChonChon } from '../chon.tsx';
 import { GoiY } from '../goi_y.tsx';
+import { dung_chuoi } from '../chuoi/chi_muc.tsx';
 
 interface TaiKhoan {
   id: string;
@@ -544,11 +545,31 @@ function FormPhanQuyen(
     tai_khoan.vai_tro === 'cho_duyet' ? 'nhan_vien' : tai_khoan.vai_tro,
   );
   const hd = dung_hanh_dong();
+  const { tra } = dung_chuoi();
+  // Giu dong bo voi VAI_TRO_CAN_HO_SO cua may chu (tuyen/danh_muc.ts).
+  const can_ho_so = ['nhan_vien', 'truong_phong', 'truong_phong_nhan_su'].includes(vai_tro);
+  const [ds_ho_so, dat_ds_ho_so] = useState<NhanVien[] | null>(null);
+  const [nhan_vien_id, dat_nhan_vien_id] = useState(tai_khoan.nhan_vien_id ?? '');
+
+  // Tai khoan da noi ho so thi khong can danh sach; chi tai khi sap gan.
+  useEffect(() => {
+    if (!can_ho_so || tai_khoan.nhan_vien_id !== null) return;
+    let con = true;
+    void goi<NhanVien[]>('/api/nhan-vien').then(
+      (ds) => { if (con) dat_ds_ho_so(ds.filter((nv) => nv.dang_hoat_dong)); },
+      () => { if (con) dat_ds_ho_so([]); },
+    );
+    return () => { con = false; };
+  }, [can_ho_so, tai_khoan.nhan_vien_id]);
 
   const gui = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+    const body: Record<string, unknown> = { vai_tro };
+    if (can_ho_so && tai_khoan.nhan_vien_id === null && nhan_vien_id !== '') {
+      body['nhan_vien_id'] = nhan_vien_id;
+    }
     const ok = await hd.chay(
-      () => goi(`/api/nguoi-dung/${tai_khoan.id}`, { method: 'PATCH', body: { vai_tro } }),
+      () => goi(`/api/nguoi-dung/${tai_khoan.id}`, { method: 'PATCH', body }),
       'Đã cấp quyền. Người dùng đăng nhập lại là vào được.',
     );
     if (ok) setTimeout(khi_xong, 900);
@@ -586,15 +607,24 @@ function FormPhanQuyen(
           ))}
         </div>
 
-        {tai_khoan.nhan_vien_id === null
-          && (vai_tro === 'nhan_vien' || vai_tro === 'truong_phong'
-            || vai_tro === 'truong_phong_nhan_su') && (
-          <div className="hop-thong-bao hop-luu-y">
-            Tài khoản này chưa gắn hồ sơ nhân viên. Hai vai trò này cần một hồ sơ để biết
-            người đó được xem dữ liệu của ai. Hãy tạo nhân viên ở trang{' '}
-            <strong>Nhân viên</strong> với email đúng bằng{' '}
-            <strong>{tai_khoan.ten_dang_nhap}</strong>, rồi cấp quyền lại — hệ thống sẽ tự
-            nối hai bên.
+        {can_ho_so && tai_khoan.nhan_vien_id === null && (
+          <div className="o-nhap">
+            <label>{tra('nd_ho_so_nhan_vien')}</label>
+            {ds_ho_so === null ? (
+              <div className="goi-y giu-hien">{tra('nd_dang_tai_ho_so')}</div>
+            ) : (
+              <Chon
+                gia_tri={nhan_vien_id}
+                dat_gia_tri={dat_nhan_vien_id}
+                cac_tuy_chon={ds_ho_so.map((nv): TuyChonChon => ({
+                  ma: nv.id,
+                  nhan: `${nv.ma_nv} — ${nv.ho_ten}`,
+                }))}
+                rong={tra('nd_tu_noi_theo_email')}
+                nhan={tra('nd_ho_so_nhan_vien')}
+              />
+            )}
+            <GoiY>{tra('nd_ho_so_goi_y')}</GoiY>
           </div>
         )}
 

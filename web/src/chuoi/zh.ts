@@ -50,6 +50,12 @@ export const CHUOI_ZH = {
   cho_duyet_dang_kiem: '正在检查…',
   cho_duyet_kiem_lai: '已获权限——重新检查',
 
+  // ================================ 账号管理
+  nd_ho_so_nhan_vien: '员工档案',
+  nd_tu_noi_theo_email: '— 按邮箱自动关联 —',
+  nd_dang_tai_ho_so: '正在加载档案列表…',
+  nd_ho_so_goi_y: '当系统无法按邮箱自动关联时，请选择员工档案。仅适用于尚未关联档案的账号。',
+
   // ================================ loi / trang trong
   khong_co_quyen: '无权限',
   khong_co_quyen_mo_ta: '您的账号无权查看此页面。',

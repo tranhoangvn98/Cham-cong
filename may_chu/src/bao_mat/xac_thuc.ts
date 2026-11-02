@@ -106,8 +106,13 @@ async function xac_minh(req: FastifyRequest): Promise<KetQuaDoc> {
   const phien = await phien_tu_token_cong(cong);
   switch (phien.loai) {
     case 'ok': return { ok: true, nd: phien.nguoi_dung };
-    case 'chua_cap_quyen': return { ok: false, ma: 403, than: LOI_CHUA_CAP_QUYEN };
+    case 'chua_cap_quyen':
+      req.log.warn({ sub: cong.sub, email: cong.email, quyen: cong.quyen },
+        'cong-sso: chua duoc cap quyen module chamcong');
+      return { ok: false, ma: 403, than: LOI_CHUA_CAP_QUYEN };
     case 'chua_noi_ho_so':
+      req.log.warn({ sub: cong.sub, email: cong.email },
+        'cong-sso: tai khoan chua noi ho so nhan vien');
       return { ok: false, ma: 403, than: loi_chua_noi_ho_so(phien.email) };
     case 'vo_hieu_hoa': return { ok: false, ma: 403, than: LOI_VO_HIEU_HOA };
   }

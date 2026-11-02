@@ -47,6 +47,12 @@ export const CHUOI_VI = {
   cho_duyet_dang_kiem: 'Đang kiểm tra…',
   cho_duyet_kiem_lai: 'Tôi đã được cấp quyền — kiểm tra lại',
 
+  // ================================ quan ly tai khoan
+  nd_ho_so_nhan_vien: 'Hồ sơ nhân viên',
+  nd_tu_noi_theo_email: '— Tự nối theo email —',
+  nd_dang_tai_ho_so: 'Đang tải danh sách hồ sơ…',
+  nd_ho_so_goi_y: 'Chọn hồ sơ khi hệ thống không tự nối được theo email. Chỉ áp dụng cho tài khoản chưa gắn hồ sơ.',
+
   // ================================ loi / trang trong
   khong_co_quyen: 'Không có quyền',
   khong_co_quyen_mo_ta: 'Tài khoản của bạn không được xem trang này.',

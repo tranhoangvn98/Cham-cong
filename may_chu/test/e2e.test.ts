@@ -9027,6 +9027,90 @@ test('cong: email khop ho so nhan vien thi noi vao dung nguoi', async () => {
   assert.equal(dong?.vai_tro, 'nhan_vien');
 });
 
+test('cong: tai khoan cho_duyet TU NOI lai khi nhan su bo sung email sau do', async () => {
+  const { xoa_dem_phien_cong } = await import('../src/bao_mat/cong_phien.ts');
+  const ma_nv = 'NV-CONG-TU-NOI';
+  const email = 'cong-tu-noi@tranhoangvietnam.com';
+  const sub = 'cong-tk-tu-noi';
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien(ma_nv, ho_ten) values ($1, 'Ho So Kiem Thu')
+     on conflict (ma_nv) do update set ho_ten = excluded.ho_ten, email = null
+     returning id`, [ma_nv]);
+  assert.ok(nv !== null);
+  await thuc_thi('delete from nguoi_dung where cong_sub = $1', [sub]);
+  await thuc_thi(
+    `insert into nguoi_dung(ten_dang_nhap, mat_khau_hash, vai_tro, email_microsoft, cong_sub)
+     values ($1, $2, 'cho_duyet', $3, $4)`,
+    [email, await bam_mat_khau('MatKhauKiemThu123'), email, sub]);
+  try {
+    xoa_dem_phien_cong();
+    const truoc = await goi('GET', '/api/toi/hom-nay', {
+      token: token_cong({ sub, email, quyen: { chamcong: ['nhan_vien'] } }),
+    });
+    assert.equal(truoc.ma, 403, JSON.stringify(truoc.body));
+    assert.equal(truoc.body['chua_noi_ho_so'], true, JSON.stringify(truoc.body));
+
+    // Nhan su bo sung email SAU khi tai khoan da duoc tao (truong hop Mon/Dat/Hoang Anh).
+    await thuc_thi('update nhan_vien set email = $2 where id = $1', [nv.id, email]);
+    xoa_dem_phien_cong();
+    const sau = await goi('GET', '/api/toi/hom-nay', {
+      token: token_cong({ sub, email, quyen: { chamcong: ['nhan_vien'] } }),
+    });
+    assert.equal(sau.ma, 200, JSON.stringify(sau.body));
+    const dong = await truy_van_mot<{ nhan_vien_id: string | null }>(
+      'select nhan_vien_id from nguoi_dung where cong_sub = $1', [sub]);
+    assert.equal(dong?.nhan_vien_id, nv.id, 'tai khoan cu khong tu noi lai');
+  } finally {
+    await thuc_thi('delete from nguoi_dung where cong_sub = $1', [sub]);
+    await thuc_thi('delete from ma_dinh_danh where nhan_vien_id = $1', [nv.id]);
+    await thuc_thi('delete from nhan_vien where id = $1', [nv.id]);
+    xoa_dem_phien_cong();
+  }
+});
+
+test('cong: UPN alias trong so ma dinh danh duoc dung de noi ho so va dien email', async () => {
+  const { xoa_dem_phien_cong } = await import('../src/bao_mat/cong_phien.ts');
+  const ma_nv = 'NV-CONG-ALIAS';
+  const email = 'cong-alias@tranhoangvietnam.com';
+  const sub = 'cong-tk-alias';
+  await thuc_thi('delete from ma_dinh_danh where he_thong = $1 and ma_chuan = $2',
+    ['microsoft_email', email]);
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien(ma_nv, ho_ten) values ($1, 'Ho So Kiem Thu Alias')
+     on conflict (ma_nv) do update set ho_ten = excluded.ho_ten, email = null
+     returning id`, [ma_nv]);
+  assert.ok(nv !== null);
+  // Alias da co trong so ma dinh danh, nhung cot `nhan_vien.email` con trong — dung kieu du
+  // lieu cu (truoc khi co bang ma dinh danh).
+  await thuc_thi(
+    `insert into ma_dinh_danh(nhan_vien_id, he_thong, ma, ma_chuan, nguon)
+     values ($1, 'microsoft_email', $2, lower($2), 'nguoi_khai')`,
+    [nv.id, email]);
+  await thuc_thi('delete from nguoi_dung where cong_sub = $1', [sub]);
+  await thuc_thi(
+    `insert into nguoi_dung(ten_dang_nhap, mat_khau_hash, vai_tro, email_microsoft, cong_sub)
+     values ($1, $2, 'cho_duyet', $3, $4)`,
+    [email, await bam_mat_khau('MatKhauKiemThu123'), email, sub]);
+  try {
+    xoa_dem_phien_cong();
+    const r = await goi('GET', '/api/toi/hom-nay', {
+      token: token_cong({ sub, email, quyen: { chamcong: ['nhan_vien'] } }),
+    });
+    assert.equal(r.ma, 200, JSON.stringify(r.body));
+    const dong = await truy_van_mot<{ nhan_vien_id: string | null; email: string | null }>(
+      `select nd.nhan_vien_id, nv.email
+         from nguoi_dung nd join nhan_vien nv on nv.id = nd.nhan_vien_id
+        where nd.cong_sub = $1`, [sub]);
+    assert.equal(dong?.nhan_vien_id, nv.id);
+    assert.equal(dong?.email, email, 'phai dien nhan_vien.email tu alias');
+  } finally {
+    await thuc_thi('delete from nguoi_dung where cong_sub = $1', [sub]);
+    await thuc_thi('delete from ma_dinh_danh where nhan_vien_id = $1', [nv.id]);
+    await thuc_thi('delete from nhan_vien where id = $1', [nv.id]);
+    xoa_dem_phien_cong();
+  }
+});
+
 test('cong: vai tro nhan_vien ma chua co ho so thi 403 chua_noi_ho_so, khong phai 200 rong', async () => {
   // Neu cho qua voi `nv = null` thi moi duong /api/toi/* tra ve rong — trong nhu he thong mat
   // du lieu, va nguoi dung khong co cach nao biet phai goi ai.

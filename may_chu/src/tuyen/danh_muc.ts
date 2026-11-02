@@ -1341,14 +1341,39 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
       if (hien === null) throw new LoiKhongTim('Không tìm thấy tài khoản.');
 
       if (hien.nhan_vien_id === null) {
-        // Cho phep chi dinh thang, hoac tu doi chieu theo email — dung cach he thong van
-        // noi tai khoan Microsoft voi ho so nhan vien luc tao.
+        // Cho phep chi dinh thang ho so (o chon trong hop thoai Phan quyen), hoac tu doi
+        // chieu theo email/alias trong so ma dinh danh — dung cach he thong van noi tai khoan
+        // Microsoft voi ho so nhan vien luc tao.
         nhan_vien_gan = uuid(b, 'nhan_vien_id');
-        if (nhan_vien_gan === null) {
+        if (nhan_vien_gan !== null) {
+          const nv = await truy_van_mot<{ id: string }>(
+            'select id from nhan_vien where id = $1 and dang_hoat_dong = true',
+            [nhan_vien_gan]);
+          if (nv === null) {
+            throw new LoiDauVao('Không tìm thấy hồ sơ nhân viên đang làm việc với mã này.');
+          }
+          const da_gan = await truy_van_mot<{ ten_dang_nhap: string }>(
+            'select ten_dang_nhap from nguoi_dung where nhan_vien_id = $1 and id <> $2',
+            [nhan_vien_gan, id]);
+          if (da_gan !== null) {
+            throw new LoiXungDot(
+              `Hồ sơ nhân viên này đã gắn với tài khoản "${da_gan.ten_dang_nhap}". `
+              + 'Gỡ liên kết ở tài khoản đó trước khi gắn sang tài khoản này.');
+          }
+        } else {
           const theo_email = await truy_van_mot<{ id: string }>(
-            `select id from nhan_vien
-              where dang_hoat_dong = true
-                and lower(email) in (lower($1), lower(coalesce($2, '')))
+            `select distinct nv.id
+               from nhan_vien nv
+              where nv.dang_hoat_dong = true
+                and (
+                  lower(nv.email) in (lower($1), lower(coalesce($2, '')))
+                  or exists (
+                    select 1 from ma_dinh_danh md
+                     where md.nhan_vien_id = nv.id and md.hieu_luc_den is null
+                       and md.he_thong = 'microsoft_email'
+                       and md.ma_chuan in (lower($1), lower(coalesce($2, '')))
+                  )
+                )
               limit 1`,
             [hien.ten, hien.email_ms],
           );
@@ -1357,8 +1382,8 @@ export async function tuyen_danh_muc(app: FastifyInstance): Promise<void> {
         if (nhan_vien_gan === null) {
           throw new LoiDauVao(
             'Vai trò này cần một hồ sơ nhân viên để biết người đó được xem dữ liệu của ai. '
-            + `Hãy tạo nhân viên ở trang Nhân viên với email đúng bằng "${hien.ten}", `
-            + 'rồi cấp quyền lại — hệ thống sẽ tự nối.',
+            + 'Hãy chọn hồ sơ trong ô bên dưới, hoặc tạo nhân viên ở trang Nhân viên với '
+            + `email đúng bằng "${hien.ten}" rồi cấp quyền lại.`,
           );
         }
       }

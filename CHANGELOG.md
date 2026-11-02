@@ -2,6 +2,22 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.138.7] — 2026-11-02
+
+**Sửa lỗi tài khoản cổng không vào được Chấm công: tự nối lại hồ sơ nhân viên, dùng UPN alias
+và Object ID Entra, bổ sung email còn thiếu, và cho phép chọn hồ sơ khi phân quyền.**
+
+- `bao_mat/cong_phien.ts`: tài khoản đã tạo theo `cong_sub` mà chưa có hồ sơ **tự nối lại** khi
+  nhân sự bổ sung email sau đó; đối chiếu thêm `microsoft_oid` và alias `microsoft_email` trong
+  `ma_dinh_danh`; ghi ngược UPN/Object ID về sổ mã định danh và điền `nhan_vien.email` khi trống.
+- `tuyen/danh_muc.ts`: `PATCH /api/nguoi-dung/:id` nhận hồ sơ chỉ định, kiểm hồ sơ đang làm và
+  không bị tài khoản khác giữ; tự dò alias khi không chỉ định.
+- Web Quản lý tài khoản: hộp thoại Phân quyền có ô chọn hồ sơ nhân viên thay vì bắt nhân sự sửa
+  email trước.
+- `bao_mat/xac_thuc.ts`: ghi log khi cổng từ chối vì chưa cấp quyền / chưa nối hồ sơ.
+- Test e2e: tài khoản `cho_duyet` tự nối sau khi bổ sung email; UPN alias trong sổ mã định danh
+  vừa nối đúng hồ sơ vừa điền được `nhan_vien.email`.
+
 ## [1.138.6] — 2026-10-29
 
 **ĐÍNH CHÍNH: chị Trần Thị Minh Phương chưa từng dùng Business Standard — chuông báo ở 1.138.4

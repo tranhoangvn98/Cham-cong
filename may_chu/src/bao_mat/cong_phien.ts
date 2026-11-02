@@ -23,6 +23,7 @@ import type { NoiDungToken, VaiTro } from './jwt.ts';
 import { vai_tro_tu_quyen, type NoiDungCong } from './cong_sso.ts';
 import { bam_mat_khau } from './mat_khau.ts';
 import { sinh_chuoi_ngau_nhien } from './microsoft.ts';
+import { gan_ma_am_tham } from '../dinh_danh/nghiep_vu.ts';
 
 /** Vai tro KHONG doi hoi ho so nhan vien (xem rang buoc `nguoi_dung_phai_gan_nhan_vien`). */
 const KHONG_CAN_HO_SO: readonly VaiTro[] = ['admin', 'nhan_su'];
@@ -47,6 +48,11 @@ interface DongToiThieu {
   vai_tro: string;
   ho_ten: string | null;
   ten_dang_nhap: string;
+}
+
+interface DongHoSo {
+  id: string;
+  ho_ten: string;
 }
 
 const CAU_CHON = `select nd.id, nd.nhan_vien_id, nd.dang_hoat_dong, nd.vai_tro,
@@ -85,15 +91,110 @@ function dat_dem(sub: string, dong: DongToiThieu): void {
 // ---------------------------------------------------------------- tim / tao tai khoan
 
 /**
+ * Tim ho so nhan vien theo danh tinh Microsoft DA XAC MINH.
+ *
+ * Thu tu: `microsoft_oid` (khong bao gio doi) -> `microsoft_email` dang hieu luc -> cot
+ * `nhan_vien.email` (du lieu cu chua co dong trong so ma dinh danh). Tra `null` khi khong
+ * co ho so dang lam viec nao khop.
+ */
+async function tim_ho_so_theo_danh_tinh(nd: NoiDungCong): Promise<DongHoSo | null> {
+  if (nd.oid !== null) {
+    const theo_oid = await truy_van_mot<DongHoSo>(
+      `select nv.id, nv.ho_ten
+         from ma_dinh_danh md
+         join nhan_vien nv on nv.id = md.nhan_vien_id
+        where md.he_thong = 'microsoft_oid' and md.ma_chuan = lower($1)
+          and md.hieu_luc_den is null and nv.dang_hoat_dong = true`,
+      [nd.oid]);
+    if (theo_oid !== null) return theo_oid;
+  }
+
+  if (nd.email === null) return null;
+  const theo_alias = await truy_van_mot<DongHoSo>(
+    `select nv.id, nv.ho_ten
+       from ma_dinh_danh md
+       join nhan_vien nv on nv.id = md.nhan_vien_id
+      where md.he_thong = 'microsoft_email' and md.ma_chuan = lower($1)
+        and md.hieu_luc_den is null and nv.dang_hoat_dong = true`,
+    [nd.email]);
+  if (theo_alias !== null) return theo_alias;
+
+  return truy_van_mot<DongHoSo>(
+    'select id, ho_ten from nhan_vien where lower(email) = lower($1) and dang_hoat_dong = true',
+    [nd.email]);
+}
+
+/**
+ * Noi tai khoan dang nhap voi ho so nhan vien, CHI khi tai khoan chua tro ai.
+ *
+ * Tai khoan da tro mot nguoi khac la quyet dinh cua nguoi that (xem `ghi_nho_sub`); doi anh xa
+ * am tham la mo duong chiem tai khoan.
+ */
+async function noi_ho_so(dong: DongToiThieu, nv: DongHoSo): Promise<DongToiThieu> {
+  if (dong.nhan_vien_id !== null) return dong;
+  const so = await thuc_thi(
+    'update nguoi_dung set nhan_vien_id = $2 where id = $1 and nhan_vien_id is null',
+    [dong.id, nv.id]);
+  if (so === 0) return dong;
+  return { ...dong, nhan_vien_id: nv.id, ho_ten: nv.ho_ten };
+}
+
+/**
+ * Ghi email/UPN va object id cua lan dang nhap nay vao so ma dinh danh.
+ *
+ * Nho vay: (a) ho so thieu email duoc bo sung ngay lan dau dang nhap, (b) lan sau doi UPN van
+ * tim duoc nho `microsoft_oid`, (c) trang ma dinh danh hien dung email. Nuot loi va chi ghi
+ * log — mot lan ghi ma that bai khong duoc lam nguoi dung khong vao duoc he thong.
+ */
+async function ghi_nhan_danh_tinh(nvId: string, nd: NoiDungCong): Promise<void> {
+  const ghi = async (he_thong: 'microsoft_oid' | 'microsoft_email', ma: string):
+    Promise<boolean> => {
+    const canh_bao = await gan_ma_am_tham(nvId, he_thong, ma, 'dang_nhap_microsoft');
+    if (canh_bao !== null) {
+      console.warn(`[cong-sso] khong ghi duoc ${he_thong} cho ${nvId}: ${canh_bao}`);
+      return false;
+    }
+    return true;
+  };
+  try {
+    if (nd.oid !== null) await ghi('microsoft_oid', nd.oid);
+    if (nd.email !== null && await ghi('microsoft_email', nd.email)) {
+      // `gan_ma` tra `da_co` khi email da nam trong so ma dinh danh nhung cot `nhan_vien.email`
+      // van trong — truong hop alias duoc khai truoc. Dien not o cot, chi khi dang trong.
+      await thuc_thi(
+        `update nhan_vien set email = $2, cap_nhat_luc = now()
+          where id = $1 and coalesce(trim(email), '') = ''`,
+        [nvId, nd.email]);
+    }
+  } catch (loi) {
+    console.error(`[cong-sso] loi ghi ma dinh danh cho ${nvId}: ${(loi as Error).message}`);
+  }
+}
+
+/**
  * Tim tai khoan cham cong ung voi mot tai khoan cong.
  *
- * Thu tu: `cong_sub` da ghi nho -> email da gan o tai khoan -> email cua ho so nhan vien ->
- * tao moi. Khop duoc bang email thi ghi `cong_sub` lai ngay, de lan sau khong phai doan.
+ * Thu tu: `cong_sub` da ghi nho -> email da gan o tai khoan -> email cua ho so nhan vien -> tao
+ * moi. Khop duoc thi ghi `cong_sub` lai ngay, de lan sau khong phai doan.
+ *
+ * Tai khoan tim thay theo `cong_sub` VAN duoc thu noi ho so (truoc day tra ve luon): nguoi dang
+ * nhap lan dau truoc khi nhan su khai email se ket mai o trang thai `cho_duyet`, du sau do ho
+ * so da duoc bo sung.
  */
 async function tim_hoac_tao(nd: NoiDungCong): Promise<DongToiThieu | null> {
   const theo_sub = await truy_van_mot<DongToiThieu>(
     `${CAU_CHON} where nd.cong_sub = $1`, [nd.sub]);
-  if (theo_sub !== null) return theo_sub;
+  if (theo_sub !== null) {
+    if (theo_sub.nhan_vien_id === null) {
+      const nv = await tim_ho_so_theo_danh_tinh(nd);
+      if (nv !== null) {
+        const da_noi = await noi_ho_so(theo_sub, nv);
+        await ghi_nhan_danh_tinh(nv.id, nd);
+        return da_noi;
+      }
+    }
+    return theo_sub;
+  }
 
   const email = nd.email;
   if (email !== null) {
@@ -102,17 +203,16 @@ async function tim_hoac_tao(nd: NoiDungCong): Promise<DongToiThieu | null> {
       [email]);
     if (theo_email !== null) {
       await ghi_nho_sub(theo_email.id, nd.sub);
-      // Tai khoan da co nhung chua noi ho so: thu noi theo email. Rat hay gap — nguoi ta dang
-      // nhap lan dau truoc khi nhan su kip khai ho so.
+      // Tai khoan da co nhung chua noi ho so: thu noi theo danh tinh da xac minh.
       if (theo_email.nhan_vien_id === null) {
-        const nv = await truy_van_mot<{ id: string; ho_ten: string }>(
-          'select id, ho_ten from nhan_vien where lower(email) = lower($1) and dang_hoat_dong = true',
-          [email]);
+        const nv = await tim_ho_so_theo_danh_tinh(nd);
         if (nv !== null) {
-          await thuc_thi('update nguoi_dung set nhan_vien_id = $2 where id = $1',
-            [theo_email.id, nv.id]);
-          return { ...theo_email, nhan_vien_id: nv.id, ho_ten: nv.ho_ten };
+          const da_noi = await noi_ho_so(theo_email, nv);
+          await ghi_nhan_danh_tinh(nv.id, nd);
+          return da_noi;
         }
+      } else {
+        await ghi_nhan_danh_tinh(theo_email.nhan_vien_id, nd);
       }
       return theo_email;
     }
@@ -121,6 +221,9 @@ async function tim_hoac_tao(nd: NoiDungCong): Promise<DongToiThieu | null> {
       `${CAU_CHON} where lower(nv.email) = lower($1) and nv.dang_hoat_dong = true`, [email]);
     if (theo_nhan_vien !== null) {
       await ghi_nho_sub(theo_nhan_vien.id, nd.sub);
+      if (theo_nhan_vien.nhan_vien_id !== null) {
+        await ghi_nhan_danh_tinh(theo_nhan_vien.nhan_vien_id, nd);
+      }
       return theo_nhan_vien;
     }
   }
@@ -146,9 +249,7 @@ async function ghi_nho_sub(id: string, sub: string): Promise<void> {
  * khong ai — ke ca quan tri — biet chuoi do de dung duong mat khau.
  */
 async function tao_moi(nd: NoiDungCong): Promise<DongToiThieu | null> {
-  const nv = nd.email === null ? null : await truy_van_mot<{ id: string; ho_ten: string }>(
-    'select id, ho_ten from nhan_vien where lower(email) = lower($1) and dang_hoat_dong = true',
-    [nd.email]);
+  const nv = await tim_ho_so_theo_danh_tinh(nd);
 
   const ten_dang_nhap = nd.email ?? `cong:${nd.sub}`;
   const moi = await truy_van_mot<{ id: string }>(
@@ -162,8 +263,13 @@ async function tao_moi(nd: NoiDungCong): Promise<DongToiThieu | null> {
   );
   // `do nothing` cham: hai request cua cung mot nguoi den cung luc. Doc lai ban ghi kia.
   if (moi === null) {
-    return truy_van_mot<DongToiThieu>(`${CAU_CHON} where nd.cong_sub = $1`, [nd.sub]);
+    const dong = await truy_van_mot<DongToiThieu>(`${CAU_CHON} where nd.cong_sub = $1`, [nd.sub]);
+    if (dong !== null && nv !== null) {
+      return noi_ho_so(dong, nv);
+    }
+    return dong;
   }
+  if (nv !== null) await ghi_nhan_danh_tinh(nv.id, nd);
   return {
     id: moi.id,
     nhan_vien_id: nv?.id ?? null,
