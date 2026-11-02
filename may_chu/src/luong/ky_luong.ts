@@ -9,7 +9,7 @@ import { tinh_phieu_luong, type BacThue, type ThamSoLuong } from './tinh_luong.t
 import { tach_phut_ot, type NgayOt } from './tach_phut_ot.ts';
 import type { CachTinhKhoan, LoaiKhoan } from './khoan.ts';
 import { khoan_tu_chinh_sach, gop_chinh_sach, type DongChinhSach } from './chinh_sach.ts';
-import { tinh_phat_di_muon, gio_sang_phut, type CauHinhDiMuon } from './phat_di_muon.ts';
+import { tinh_phat_di_muon, gio_sang_phut, nop_truoc_han, type CauHinhDiMuon } from './phat_di_muon.ts';
 
 /** Mot dong chinh sach doc tu CSDL — them `nhan_vien_id` de nhom lai. */
 interface DongChinhSachDb extends DongChinhSach {
@@ -46,6 +46,13 @@ export interface ChinhSachTra {
  * So sanh chuoi 'YYYY-MM' — dung truc tiep vi dinh dang co dinh, khop thu tu thoi gian.
  */
 const THANG_BAT_BUOC_DON_DI_MUON = '2026-11';
+
+/**
+ * Tu thang nay tro di, di muon / ve som QUA 30 phut da bi tru NUA NGAY CONG o bang cong
+ * (`quy_tac_tinh_cong`). Vi vay khoan tru tien `tru_nua_ngay` KHONG duoc sinh nua — sinh them
+ * la tru hai lan mot loi.
+ */
+const THANG_NUA_NGAY_DA_TRU_TRONG_CONG = '2026-09';
 
 /** Tham so phap ly co hieu luc tai ngay dau cua ky. */
 export async function tham_so_cho_thang(thang: string): Promise<
@@ -233,6 +240,10 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
   // He so cong thu Bay: 0,5 neu cong ty bat `t7_nua_cong`, con lai 1. Dung o CA HAI ve —
   // tu so (sum cong thuc duoi day) va mau so (`ngay_cong_chuan`) — de ty le khong lech.
   const he_so_t7 = ts.cs.t7_nua_cong ? HE_SO_T7_NUA_CONG : 1;
+
+  // Di muon qua 30 phut da mat nua ngay CONG tu thang 9/2026 -> khong sinh khoan tru tien
+  // `tru_nua_ngay` nua (tru hai lan mot loi).
+  const nua_ngay_da_tru_trong_cong = thang >= THANG_NUA_NGAY_DA_TRU_TRONG_CONG;
 
   // Ngay le theo TUNG LICH (vn/tq...): mot ngay co the la le o lich nay ma khong phai lich kia.
   // Nhan vien lam o VN dung lich VN, lam o TQ dung lich TQ (theo noi lam viec).
@@ -444,32 +455,43 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
   };
 
   // ------------------------------------------------------------ ngay di muon cua ca cong ty
-  // Doc mot lan moi ngay co gio vao trong ky, kem co / khong co don di muon da duyet gui truoc
-  // han. Quy gio vao ve gio may cham cong (OFFSET_MAY_MS) roi phan tang o buoc tinh phat.
-  const han_don = ts.cs.di_muon_han_don_phut;
-  const han_don_chuoi =
-    `${String(Math.floor(han_don / 60)).padStart(2, '0')}:${String(han_don % 60).padStart(2, '0')}`;
+  // Doc mot lan moi ngay co gio vao trong ky, kem moc NOP DON (som nhat). Quy gio vao ve gio
+  // may cham cong (OFFSET_MAY_MS) roi phan tang o buoc tinh phat.
+  //
+  // Moc nop don lay `min(tao_luc)` cua cac don da duyet: don gui nhieu lan thi ban SOM NHAT quyet
+  // dinh — cung nghia voi truy van `exists` cu (co it nhat mot don truoc han).
+  const han_don_phut = ts.cs.di_muon_han_don_phut;
   const muon_ngay = ts.cs.di_muon.bat
     ? await truy_van<{
-        nhan_vien_id: string; ngay: string; gio_vao: Date; co_don: boolean; ca_nghi_tu: string | null;
+        nhan_vien_id: string; ngay: string; gio_vao: Date;
+        don_tao_luc: Date | null; ca_nghi_tu: string | null;
       }>(
         `select bc.nhan_vien_id, to_char(bc.ngay, 'YYYY-MM-DD') as ngay, bc.gio_vao,
                 to_char(cl.nghi_tu, 'HH24:MI') as ca_nghi_tu,
-                exists(
-                  select 1 from don_tu dt
-                   where dt.nhan_vien_id = bc.nhan_vien_id
-                     and dt.loai = 'di_muon' and dt.trang_thai = 'da_duyet'
-                     and dt.tu_ngay = bc.ngay
-                     and ((dt.tao_luc + make_interval(hours => $3))::time) <= $4::time
-                ) as co_don
+                (select min(dt.tao_luc) from don_tu dt
+                  where dt.nhan_vien_id = bc.nhan_vien_id
+                    and dt.loai = 'di_muon' and dt.trang_thai = 'da_duyet'
+                    and dt.tu_ngay = bc.ngay) as don_tao_luc
            from bang_cong_ngay bc
            left join ca_lam cl on cl.id = bc.ca_lam_id
           where bc.ngay >= $1 and bc.ngay <= $2 and bc.gio_vao is not null
             -- CHI xet di muon cho ngay CO MAT. Ngay nghi_phep / nghi_khong_luong / nghi_tuan /
             -- ngay_le du co quet the (vao lam not nua ngay, hoac quet le ngay nghi) KHONG phai
             -- di muon -> loai ra, khoi bi tru nua ngay oan (Loi 2, BC so 02).
-            and bc.trang_thai = 'co_mat'`,
-        [tu, den, cau_hinh.device_tz_offset_hours, han_don_chuoi],
+            and bc.trang_thai = 'co_mat'
+            -- SO NGOAI LE mien di muon (ngay bao, su kien bat kha khang): khong phat tien.
+            -- Ban ghi 01/09/2026 dang tat phat nen truoc day cho nay khong can; bat lai phat
+            -- thi phai ton trong so ngoai le, neu khong nguoi di lam trong ngay bao van bi
+            -- tru 50.000d oan.
+            and not exists (
+              select 1 from so_ngoai_le s
+               where s.ngay = bc.ngay and s.mien_di_muon = true
+                 and (s.loai = 'tat_ca'
+                      or exists (select 1 from so_ngoai_le_nhan_vien snv
+                                  where snv.so_ngoai_le_id = s.id
+                                    and snv.nhan_vien_id = bc.nhan_vien_id))
+            )`,
+        [tu, den],
       )
     : [];
   // THU VIEC — mien phat di muon 3 NGAY CONG DAU tinh tu ngay vao (mien HOAN TOAN: ca 50k lan
@@ -509,8 +531,13 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
     // truoc day quet dau buoi chieu (vd 14:00) bi coi la "di muon >= 08:30" va phat oan nua ngay.
     const nghi_phut = m.ca_nghi_tu === null ? null : gio_sang_phut(m.ca_nghi_tu);
     if (nghi_phut !== null && phut >= nghi_phut) continue;
+    // Don gui TRUOC HAN cua NGAY DI MUON: don gui toi hom truoc luon hop le, don gui trong
+    // ngay phai truoc 07:30. Truoc day chi so gio trong ngay nen don gui 22h hom truoc bi coi
+    // la "sau han" — xem `nop_truoc_han`.
+    const co_don = m.don_tao_luc !== null
+      && nop_truoc_han(m.don_tao_luc, m.ngay, cau_hinh.device_tz_offset_hours, han_don_phut);
     const ds_m = muon_theo_nguoi.get(m.nhan_vien_id) ?? [];
-    ds_m.push({ phut_trong_ngay: phut, co_don_truoc_han: m.co_don });
+    ds_m.push({ phut_trong_ngay: phut, co_don_truoc_han: co_don });
     muon_theo_nguoi.set(m.nhan_vien_id, ds_m);
   }
 
@@ -665,7 +692,11 @@ export async function tinh_ky_luong(ky_luong_id: string, thang: string): Promise
           don_gia: ts.cs.di_muon.muc_50k, so_tien: muon.tien_50k,
         });
       }
-      if (muon.so_lan_nua_ngay > 0 && !go_tay.has('tru_nua_ngay')) {
+      // Tu ky luong 2026-09: di muon / ve som QUA 30 phut da bi tru NUA NGAY CONG ngay trong
+      // bang cong (`quy_tac_tinh_cong`, so_cong = 0,5 hoac 0) — sinh them khoan `tru_nua_ngay`
+      // nua la TRU DOI nua ngay luong. Chi giu tang 50k o day; so_lan_nua_ngay van duoc dem de
+      // bao cao nhung khong quy ra tien.
+      if (!nua_ngay_da_tru_trong_cong && muon.so_lan_nua_ngay > 0 && !go_tay.has('tru_nua_ngay')) {
         // `nua_ngay_luong`: so tien tinh lai theo luong ngay o tinh_phieu_luong; day chi can so_luong.
         sinh.push({
           khoan_ma: 'tru_nua_ngay', so_luong: muon.so_lan_nua_ngay, don_gia: null, so_tien: 0,

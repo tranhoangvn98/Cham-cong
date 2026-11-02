@@ -45,3 +45,20 @@ test('tach phut OT: gop nhieu ngay, le theo dung lich cua nguoi do', () => {
 test('tach phut OT: danh sach rong -> tat ca ve 0', () => {
   assert.deepEqual(tach_phut_ot([], new Set(['2026-09-02'])), { thuong: 0, nghi_tuan: 0, le: 0 });
 });
+
+// ============================================================ OT cua nguoi MIEN CHAM CONG
+// Loi 02/11/2026: nguoi mien cham cong khong quet may -> ket qua 'vang' -> `tinh_cong.ts` xoa
+// dong, xoa luon `phut_ot` — OT da duyet khong bao gio vao luong. Nay co OT thi GIU dong.
+const { giu_ot_ngay_mien_cham_cong } = await import('../src/cong/quy_tac_tinh_cong.ts');
+
+test('mien cham cong + co OT da duyet -> giu dong de OT vao luong', () => {
+  assert.equal(giu_ot_ngay_mien_cham_cong(true, 240), true);
+});
+
+test('mien cham cong + khong co OT -> van bo dong vang rac', () => {
+  assert.equal(giu_ot_ngay_mien_cham_cong(true, 0), false);
+});
+
+test('khong mien cham cong -> khong ap dung (dong vang ghi binh thuong)', () => {
+  assert.equal(giu_ot_ngay_mien_cham_cong(false, 240), false);
+});

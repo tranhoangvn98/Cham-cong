@@ -10,6 +10,7 @@
 import { truy_van_mot } from '../csdl/ket_noi.ts';
 import { cau_hinh } from '../cau_hinh.ts';
 import { quyet_don } from './nghiep_vu.ts';
+import { nop_truoc_han, gio_sang_phut } from '../luong/phat_di_muon.ts';
 import { id_tai_khoan_he_thong } from '../bao_mat/tai_khoan_he_thong.ts';
 import { gui_ngam, tai_khoan_cua_nhan_vien } from '../su_kien/thong_bao_day.ts';
 import { gui_email, email_bat } from '../su_kien/gui_email.ts';
@@ -23,8 +24,9 @@ export interface KetQuaDiMuon {
 }
 
 interface DongXet {
-  nhan_vien_id: string; tu_ngay: string; truoc_han: boolean;
+  nhan_vien_id: string; tu_ngay: string; tao_luc: Date;
   phat_bat: boolean; mien: number; so_da_duyet: number; ho_ten: string; email: string | null;
+  han_don: string;
 }
 
 function than_email_di_muon(ho_ten: string, ngay: string, kq: KetQuaDiMuon): { tieu_de: string; html: string } {
@@ -55,11 +57,10 @@ function than_email_di_muon(ho_ten: string, ngay: string, kq: KetQuaDiMuon): { t
  */
 export async function tu_dong_quyet_di_muon(don_id: string): Promise<KetQuaDiMuon | null> {
   const d = await truy_van_mot<DongXet>(
-    `select d.nhan_vien_id, to_char(d.tu_ngay,'YYYY-MM-DD') as tu_ngay,
-            ((d.tao_luc + make_interval(hours => $2))::time
-              <= coalesce(ts.di_muon_han_don, '07:30'::time)) as truoc_han,
+    `select d.nhan_vien_id, to_char(d.tu_ngay,'YYYY-MM-DD') as tu_ngay, d.tao_luc,
             coalesce(ts.phat_di_muon_bat, false) as phat_bat,
             coalesce(ts.di_muon_mien_moi_thang, 3) as mien,
+            coalesce(ts.di_muon_han_don, '07:30'::time)::text as han_don,
             (select count(*) from don_tu x
               where x.nhan_vien_id = d.nhan_vien_id and x.loai = 'di_muon'
                 and x.trang_thai = 'da_duyet'
@@ -72,9 +73,15 @@ export async function tu_dong_quyet_di_muon(don_id: string): Promise<KetQuaDiMuo
           order by hieu_luc_tu desc limit 1
        ) ts on true
       where d.id = $1 and d.loai = 'di_muon' and d.trang_thai = 'cho_duyet'`,
-    [don_id, cau_hinh.device_tz_offset_hours],
+    [don_id],
   );
   if (d === null) return null;
+
+  // Han nop don la gio cua CHINH NGAY DI MUON (07:30) — phai so sanh ca NGAY lan GIO, neu
+  // khong don gui toi hom truoc se bi coi la "sau han". Xem `nop_truoc_han`.
+  const truoc_han = nop_truoc_han(
+    d.tao_luc, d.tu_ngay, cau_hinh.device_tz_offset_hours, gio_sang_phut(d.han_don),
+  );
 
   let quyet: 'da_duyet' | 'tu_choi';
   let ly_do: string;
@@ -82,9 +89,9 @@ export async function tu_dong_quyet_di_muon(don_id: string): Promise<KetQuaDiMuo
     // Chua bat phat di muon -> don chi mang tinh ghi nhan, duyet.
     quyet = 'da_duyet';
     ly_do = 'Đã duyệt.';
-  } else if (!d.truoc_han) {
+  } else if (!truoc_han) {
     quyet = 'tu_choi';
-    ly_do = 'Đơn gửi sau 7h30 nên không được miễn phạt đi muộn.';
+    ly_do = `Đơn gửi sau ${d.han_don.slice(0, 5)} của ngày đi muộn nên không được miễn phạt đi muộn.`;
   } else if (d.so_da_duyet >= d.mien) {
     quyet = 'tu_choi';
     ly_do = `Đã dùng hết ${String(d.mien)} lần miễn đi muộn trong tháng.`;

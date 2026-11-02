@@ -7,6 +7,7 @@ import {
   khoang_lay_quet,
   tinh_cong_ngay,
   buoi_lam_bu_da_lam,
+  giu_ot_ngay_mien_cham_cong,
   ngay_ngoai_thoi_gian_lam_viec,
   type CaLam,
   type CaTheoThu,
@@ -294,15 +295,30 @@ export async function tinh_lai_ngay(
   //
   // Chi bo dong VANG; giu ngay le / nghi tuan / nghi phep vi do la su that cua lich va ngay le
   // dang duoc tra luong.
+  //
+  // NGOAI LE (loi OT khong vao luong, 02/11/2026): nguoi MIEN CHAM CONG van co the co OT da
+  // duyet (don + ket qua OT duoc TBKS/Admin duyet, kem anh minh chung). Ket qua OT da duyet CHINH
+  // LA bang chung lam viec, khong duoc xoa — truoc day dong 'vang' bi xoa nen `phut_ot` bien mat
+  // va OT khong bao gio vao bang luong cua khoi VP Lang Son. Nay: co OT thi GIU dong, chuyen
+  // trang thai sang 'co_mat' voi 0 cong (khong ket luan cong vi khong quet may) — so_cong = 0
+  // nen khong doi tien luong; `phut_ot` di tiep vao phieu luong; khong bi dem la VANG nen khong
+  // sinh vi pham / ky luat oan.
   if (kq.trang_thai === 'vang' && (nv.mien_cham_cong || ngay_tuong_lai)) {
-    await trong_giao_dich(async (khach) => {
-      await khach.query(
-        `delete from bang_cong_ngay
-          where nhan_vien_id = $1 and ngay = $2 and da_chot = false`,
-        [nhan_vien_id, ngay],
-      );
-    });
-    return null;
+    if (giu_ot_ngay_mien_cham_cong(nv.mien_cham_cong, kq.phut_ot)) {
+      kq.trang_thai = 'co_mat';
+      kq.phut_lam = kq.phut_ot;
+      const them = 'Chi ghi nhan OT da duyet (nguoi mien cham cong, khong quet may)';
+      kq.ghi_chu = kq.ghi_chu === null || kq.ghi_chu === '' ? them : `${kq.ghi_chu}; ${them}`;
+    } else {
+      await trong_giao_dich(async (khach) => {
+        await khach.query(
+          `delete from bang_cong_ngay
+            where nhan_vien_id = $1 and ngay = $2 and da_chot = false`,
+          [nhan_vien_id, ngay],
+        );
+      });
+      return null;
+    }
   }
 
   // --- LAM BU (YC-03): ngay nay la NGAY BU (thu Bay duoc chi dinh bu cho mot ngay nguon)?

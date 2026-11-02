@@ -303,6 +303,19 @@ const RONG: Omit<KetQuaTinhCong, 'trang_thai' | 'so_cong' | 'ghi_chu'> = {
   co_dieu_chinh: false,
 };
 
+/**
+ * Ngay KHONG co luot quet, ket qua la 'vang', nhung nguoi nay MIEN CHAM CONG va co OT DA DUYET:
+ * phai GIU dong de `phut_ot` di tiep vao bang luong.
+ *
+ * Vi sao: khoi VP Lang Son / tai khoan he thong khong quet may — `tinh_cong.ts` bo dong 'vang'
+ * de khong sinh 27 ngay vang rac moi thang. Nhung don + ket qua OT da duoc TBKS/Admin duyet kem
+ * anh minh chung la bang chung lam viec; xoa dong la xoa luon phut OT, OT khong bao gio vao
+ * luong (loi phat hien 02/11/2026).
+ */
+export function giu_ot_ngay_mien_cham_cong(mien_cham_cong: boolean, phut_ot: number): boolean {
+  return mien_cham_cong && phut_ot > 0;
+}
+
 export function tinh_cong_ngay(dv: DauVaoTinhCong): KetQuaTinhCong {
   // Ap khung gio rieng cua thu (neu ca co khai) TRUOC moi phep tinh phia duoi.
   const ca = ca_cua_ngay(dv.ca, dv.ngay);

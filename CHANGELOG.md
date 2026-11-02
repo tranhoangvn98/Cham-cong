@@ -2,6 +2,52 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.139.0] — 2026-11-02
+
+**Duyệt OT phải vào lương · bật lại phạt đi muộn từ 01/11 (miễn 3 lần/tháng).**
+
+Ba lỗi do nhân sự báo, đều đã đối chiếu trên dữ liệu thật của production.
+
+**1. Người miễn chấm công mất sạch OT đã duyệt.**
+
+- Người thuộc diện không quẹt máy (Khối VP Lạng Sơn…) có đơn + kết quả OT được duyệt nhưng
+  phút OT **không bao giờ vào bảng công**: `tinh_lai_ngay` xoá dòng `vang` của ngày không quẹt
+  máy, mà dòng đó cũng là chỗ chứa `phut_ot`. Tháng 10/2026: 2 người Lạng Sơn có 7 đơn OT đã
+  duyệt, tất cả ra 0 phút.
+- Nay ngày không quẹt máy mà **có OT đã duyệt** thì GIỮ dòng (trạng thái `Có mặt`, **0 công**,
+  phút OT giữ nguyên) thay vì xoá. Không đổi tiền lương ngày công, không sinh vi phạm "vắng"
+  oan, và phút OT đi tiếp vào phiếu lương.
+- Màn duyệt hết báo sai "ngày đã chốt bảng công" cho trường hợp này.
+
+**2. Chưa trừ đi muộn sau 3 lần miễn — phạt đang bị TẮT.**
+
+- Bản ghi `tham_so_luong` hiệu lực 01/09/2026 đặt `phat_di_muon_bat = false`, nên toàn bộ cơ
+  chế "miễn 3 lần/tháng" không chạy: kỳ 9 và 10 không có đồng nào `tru_di_muon`, đơn xin đi
+  muộn được duyệt vô hạn (tháng 10 có người 4 đơn).
+- Migration **118** tạo bản ghi tham số hiệu lực **01/11/2026** bật lại phạt — kỳ 10 (còn
+  `nhap`) **không** bị áp hồi tố. Mức áp dụng: vào 08:11–08:29 phạt 50.000đ/lần, miễn tối đa
+  3 lần/tháng khi có **đơn duyệt trước 07:30**; từ 08:30 trở đi vẫn là "mất nửa ngày công".
+
+**3. Hai lỗi kỹ thuật đi kèm cơ chế phạt.**
+
+- **Hạn nộp đơn so sánh sai**: mã cũ chỉ so *giờ trong ngày* (`22:16 <= 07:30` → sai), nên đơn
+  gửi **tối hôm trước** bị coi là nộp muộn và bị từ chối. Nay so cả **ngày + giờ** của ngày đi
+  muộn (`nop_truoc_han`). Đo trên dữ liệu tháng 10: 14 đơn hợp lệ thay vì 11.
+- **Trừ đôi nửa ngày**: từ 1/9, đi muộn quá 30 phút đã bị trừ nửa ngày **công** (`so_cong`).
+  Nếu bật lại phạt mà vẫn sinh khoản `tru_nua_ngay` thì cùng một lỗi bị trừ hai lần. Nay từ kỳ
+  9/2026 chỉ sinh khoản **50.000đ/lần**; số lần vượt 30 phút vẫn được đếm để báo cáo.
+- **Sổ ngoại lệ được tôn trọng**: ngày có mục "miễn đi muộn" (bão, sự kiện bất khả kháng)
+  không bị phạt 50.000đ — trước đây điều kiện này chưa cần vì phạt đang tắt.
+- Test thêm 7 ca: `nop_truoc_han` (đơn tối hôm trước, đúng hạn 07:30, gửi sau ngày) và
+  `giu_ot_ngay_mien_cham_cong`.
+
+**Cần nhân sự xử lý (không phải lỗi mã):**
+
+- Kỳ lương 10/2026 của 4 người Khối VP Lạng Sơn ra **0đ** vì phiếu không được tích "ép đủ
+  công" (tháng 9 có tích). Tích lại rồi bấm "Tính lương".
+- Đơn OT tháng 10 đã duyệt nhưng **chưa ai nộp kết quả OT** — quy định từ 1.93.0 là phải nộp
+  và được duyệt kết quả thì OT mới vào lương (giữ nguyên quy định này).
+
 ## [1.138.8] — 2026-11-02
 
 **Sửa lỗi người đã được cấp quyền vẫn bị chặn: token cổng cũ (hạn 8 giờ) mang quyền rỗng,

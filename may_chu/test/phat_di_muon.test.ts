@@ -4,7 +4,7 @@ import './moi_truong_kiem_thu.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { tinh_phat_di_muon, gio_sang_phut } from '../src/luong/phat_di_muon.ts';
+import { tinh_phat_di_muon, gio_sang_phut, nop_truoc_han } from '../src/luong/phat_di_muon.ts';
 
 // 08:00 vao chuan; 08:10 bat dau 50k; 08:30 bat dau nua ngay.
 const CH = {
@@ -141,4 +141,37 @@ test('gio_sang_phut doc chuoi PG', () => {
   assert.equal(gio_sang_phut('08:30'), 510);
   assert.equal(gio_sang_phut('07:30:00'), 450);
   assert.equal(gio_sang_phut('bậy'), 0);
+});
+
+// ============================================================ han nop don
+// Gio may cham cong = +7. tao_luc la UTC nen phai tru 7 gio khi dung moc gio VN.
+
+test('nop_truoc_han: don gui trong ngay phai truoc 07:30', () => {
+  const ngay = '2026-10-24';
+  // 07:29 VN = 00:29 UTC; 07:30 dung han = 00:30 UTC; 07:31 = 00:31 UTC.
+  assert.equal(nop_truoc_han(new Date('2026-10-24T00:29:00Z'), ngay, 7, 450), true);
+  assert.equal(nop_truoc_han(new Date('2026-10-24T00:30:00Z'), ngay, 7, 450), true);
+  assert.equal(nop_truoc_han(new Date('2026-10-24T00:31:00Z'), ngay, 7, 450), false);
+  // Gui 06:00 sang cung ngay -> hop le.
+  assert.equal(nop_truoc_han(new Date('2026-10-23T23:00:00Z'), ngay, 7, 450), true);
+});
+
+test('nop_truoc_han: don gui TOI HOM TRUOC luon hop le (loi so sanh gio tran)', () => {
+  // Ca that: don ngay 24/10 gui 23/10 22:16 gio VN = 23/10 15:16 UTC. Cach tinh cu
+  // ((tao_luc + 7h)::time = 22:16 <= 07:30 -> sai) tu choi don nay.
+  assert.equal(nop_truoc_han(new Date('2026-10-23T15:16:00Z'), '2026-10-24', 7, 450), true);
+  // Gui 20 giay truoc nua dem cung van hop le.
+  assert.equal(nop_truoc_han(new Date('2026-10-23T16:59:40Z'), '2026-10-24', 7, 450), true);
+});
+
+test('nop_truoc_han: don gui SAU ngay di muon thi khong hop le', () => {
+  // 24/10 23:59 VN (= 24/10 16:59 UTC) cho ngay 24/10 -> cung ngay, sau han -> sai.
+  assert.equal(nop_truoc_han(new Date('2026-10-24T16:59:00Z'), '2026-10-24', 7, 450), false);
+  // Gui 25/10 cho ngay 24/10 -> sau ngay -> sai.
+  assert.equal(nop_truoc_han(new Date('2026-10-25T01:00:00Z'), '2026-10-24', 7, 450), false);
+});
+
+test('nop_truoc_han: doi mui gio may = 0 van dung', () => {
+  assert.equal(nop_truoc_han(new Date('2026-10-24T07:20:00Z'), '2026-10-24', 0, 450), true);
+  assert.equal(nop_truoc_han(new Date('2026-10-24T07:40:00Z'), '2026-10-24', 0, 450), false);
 });

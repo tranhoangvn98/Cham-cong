@@ -4,11 +4,16 @@
 // nen tach ra de kiem duoc bang bang so.
 //
 // Quy tac (ban giam doc chot):
-//   - Gio vao chuan 08:00. Vao trong [moc_50k, moc_nua_ngay) (08:10–08:29) -> phat muc_50k/lan.
-//   - Vao tu moc_nua_ngay tro di (>= 08:30) -> tru NUA ngay luong cung/lan.
+//   - Gio vao chuan 08:00. Vao trong [moc_50k, moc_nua_ngay) (08:11–08:29) -> phat muc_50k/lan.
+//   - Vao tu moc_nua_ngay tro di (>= 08:30) -> tang "nua ngay".
 //   - Moi nguoi duoc mien `mien_moi_thang` lan/thang NEU co don di muon gui truoc han (07:30)
-//     va vao <= moc_nua_ngay (08:30). Vi tang 50k la [08:10, 08:30) nen dieu kien "<= 08:30"
+//     va vao <= moc_nua_ngay (08:30). Vi tang 50k la [08:11, 08:30) nen dieu kien "<= 08:30"
 //     luon dung cho tang nay; tang nua ngay (>= 08:30) KHONG bao gio duoc mien.
+//
+// LUU Y (tu ky luong 2026-09): tang "nua ngay" KHONG con quy ra TIEN o day — bang cong da tru
+// nua ngay CONG (`quy_tac_tinh_cong`, so_cong 0,5) theo dung luat "di muon qua 30 phut mat nua
+// ngay cong". `so_lan_nua_ngay` van duoc dem de bao cao; `ky_luong.ts` chi sinh khoan tru tien
+// cho tang 50k (sinh them khoan `tru_nua_ngay` nua la tru hai lan mot loi).
 
 /** Mot ngay di muon da quy ve gio dia phuong (phut tính từ 00:00) + co don hop le hay khong. */
 export interface NgayDiMuon {
@@ -44,7 +49,7 @@ export interface KetQuaDiMuon {
   so_lan_50k: number;
   /** So lan tang 50k THUC BI PHAT (da tru phan duoc mien). */
   so_lan_50k_phat: number;
-  /** So lan tang nua ngay (khong bao gio duoc mien). */
+  /** So lan tang nua ngay (khong bao gio duoc mien, chi de BAO CAO — bang cong tu tru cong). */
   so_lan_nua_ngay: number;
   /** So lan da duoc mien. */
   so_lan_mien: number;
@@ -93,4 +98,29 @@ export function gio_sang_phut(gio: string): number {
   const m = /^(\d{1,2}):(\d{2})/.exec(gio);
   if (m === null) return 0;
   return Number(m[1]) * 60 + Number(m[2]);
+}
+
+/**
+ * Don xin di muon co nop TRUOC HAN cua NGAY DI MUON hay khong.
+ *
+ * Han la gio `han_phut` (mac dinh 07:30) cua chinh ngay di muon, theo gio may cham cong
+ * (`offset_gio` = DEVICE_TZ_OFFSET_HOURS).
+ *
+ * Vi sao phai so sanh ca NGAY lan GIO: truoc day chi so `(tao_luc + offset)::time <= han` nen
+ * mot don gui TU TOI HOM TRUOC (vd 22:16 ngay 23/10 cho ngay 24/10) bi coi la "gui sau 07:30"
+ * va bi tu choi — nguoi nop don truoc gan mot ngay van bi tinh la di muon khong phep.
+ *
+ * Don gui sau ngay di muon (ngay gui > ngay di muon) KHONG hop le: xin phep truoc moi co nghia.
+ */
+export function nop_truoc_han(
+  tao_luc: Date,
+  tu_ngay: string,
+  offset_gio: number,
+  han_phut: number,
+): boolean {
+  const dia = new Date(tao_luc.getTime() + offset_gio * 3_600_000);
+  const ngay = dia.toISOString().slice(0, 10);
+  if (ngay < tu_ngay) return true;
+  if (ngay > tu_ngay) return false;
+  return dia.getUTCHours() * 60 + dia.getUTCMinutes() <= han_phut;
 }
