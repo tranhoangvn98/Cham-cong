@@ -2,6 +2,32 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.139.1] — 2026-11-02
+
+**Gán PIN máy chấm công thì tự nhận lại các lượt quẹt có sẵn của PIN đó.**
+
+Nhân viên mới thường được enroll trên máy **trước** khi nhân sự lập hồ sơ. Các lượt quẹt trong
+khoảng đó về máy chủ khi chưa có dòng `ma_dinh_danh` nào trỏ tới PIN, nên được ghi với
+`nhan_vien_id = null`; khi nhân sự gán PIN xong thì chúng **nằm im ở đó vĩnh viễn** và người đó bị
+ghi VẮNG ở mọi ngày dù ngày nào cũng quẹt.
+
+Đã xảy ra 6 lần chỉ trong tháng 10–11/2026: Nguyễn Linh Đan (mất 42 lượt), Vũ Thùy Linh (64),
+Trần Thị Minh Phương (20), Trần Thị Mỹ Duyên (9), Lê Trần Khánh An (6), Nguyễn Thiên Trang (28).
+Mỗi lần đều phải sửa tay bằng SQL.
+
+- **Lấy lại dữ liệu từ máy KHÔNG chữa được lỗi này**: khóa chống trùng của `lan_quet` làm bản ghi
+  trùng bị bỏ qua (`on conflict do nothing`), nên lần đẩy thứ hai không sửa dòng đã nằm đó.
+- **Tự hút khi gán PIN**: sau khi ghi mã định danh, hệ thống kéo mốc `hieu_luc_tu` về đúng lượt
+  quẹt đầu tiên còn treo, gán các lượt đó cho chủ PIN rồi **tính lại công** những ngày liên quan.
+  Giao diện hồ sơ báo lại số lượt đã nhận được.
+- **Hai chặn để không gán nhầm** (sai là trả lương cho người không đi làm): chỉ nhìn lại **90 ngày**,
+  và chỉ lấy lượt quẹt **sau mốc kết thúc của người giữ PIN trước**. PIN dùng lại sau vài năm không
+  hút được lượt quẹt của người cũ; PIN đổi chủ giữa tháng không nuốt lượt quẹt của chủ trước.
+- 6 bài kiểm cho `ke_hoach_hut` (quy tắc chọn lượt quẹt nào được hút, hàm thuần).
+- **Dữ liệu (02/11)**: gán lại 9 lượt quẹt cho Trần Thị Mỹ Duyên + Lê Trần Khánh An và 28 lượt cho
+  Nguyễn Thiên Trang (hồ sơ ghi PIN 74 nhưng trên máy chỉ có PIN 71 `Trangxnk` — đã sửa hồ sơ về
+  71). Hiện không còn lượt quẹt nào chưa gán trong tháng 10–11.
+
 ## [1.139.0] — 2026-11-02
 
 **Duyệt OT phải vào lương · bật lại phạt đi muộn từ 01/11 (miễn 3 lần/tháng).**

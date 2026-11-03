@@ -11,6 +11,7 @@ import { LoiDauVao, LoiKhongTim, LoiXungDot } from '../tien_ich/kiem_tra.ts';
 import {
   CAC_HE_THONG, chuan_ma, dac_ta_he_thong, type DacTaHeThong, type MaHeThong,
 } from './he_thong.ts';
+import { hut_lan_quet_chua_gan } from './hut_lan_quet.ts';
 
 /** Ai/cai gi tao dong dinh danh. Trung voi cot `nguon` cua bang. */
 export type NguonMa =
@@ -266,6 +267,21 @@ export async function gan_bo_ma_nhan_su(
     if (v === null || v === undefined || v.trim() === '') continue;
     const cb = await gan_ma_am_tham(nhan_vien_id, he_thong, v, nguon, bo);
     if (cb !== null) canh_bao.push(cb);
+  }
+
+  // Gan PIN may xong thi hut luon cac luot quet da ve may chu TRUOC khi co dong ma dinh danh —
+  // xem `hut_lan_quet.ts` de biet vi sao thieu buoc nay thi nguoi do bi ghi VANG oan.
+  // Chi chay khi KHONG nam trong transaction cua nguoi goi: ham hut doc lai qua pool rieng nen
+  // trong transaction se khong thay dong ma vua ghi.
+  const pin = gia_tri.pin_may?.trim() ?? '';
+  if (bo === undefined && pin !== '') {
+    const hut = await hut_lan_quet_chua_gan(pin);
+    if (hut.so_luot > 0) {
+      canh_bao.push(
+        `Đã nhận ${hut.so_luot} lượt quẹt có sẵn của PIN ${pin} cho nhân viên này `
+        + `(${hut.cac_ngay.join(', ')}).`,
+      );
+    }
   }
   return canh_bao;
 }
