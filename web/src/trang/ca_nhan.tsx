@@ -1753,7 +1753,10 @@ function buoc_don(d: DonGop): { ten: string; lop: string }[] {
     if (d.trang_thai === 'tu_choi' && i === 1) return { ten, lop: 'cn-buoc-xau' };
     if (d.trang_thai === 'da_duyet') return { ten, lop: 'cn-buoc-tot' };
     if (i === 0) return { ten, lop: 'cn-buoc-tot' };
-    if (d.trang_thai === 'cho_duyet' && i === 1) return { ten, lop: 'cn-buoc-cho' };
+    if ((d.trang_thai === 'cho_duyet' || d.trang_thai === 'cho_giam_doc'
+         || d.trang_thai === 'cho_duyet_2') && i === 1) {
+      return { ten, lop: 'cn-buoc-cho' };
+    }
     return { ten, lop: 'cn-buoc-mo' };
   });
 }
@@ -1766,7 +1769,8 @@ function TheDon({ d, khi_huy }: { d: DonGop; khi_huy: () => void }): ReactNode {
 
   // Don giai trinh KHONG co duong huy tu phia nhan vien (xem may_chu/src/tuyen/toi.ts) —
   // muon rut lai thi nho nhan su xu ly.
-  const huy_duoc = d.nhom !== 'giai_trinh' && d.trang_thai === 'cho_duyet';
+  const huy_duoc = d.nhom !== 'giai_trinh'
+    && (d.trang_thai === 'cho_duyet' || d.trang_thai === 'cho_giam_doc');
 
   const huy = async (): Promise<void> => {
     const dong_y = await xac_nhan.hoi({
@@ -1817,6 +1821,12 @@ function TheDon({ d, khi_huy }: { d: DonGop; khi_huy: () => void }): ReactNode {
       {d.loai === 'lam_them' && d.trang_thai === 'cho_duyet_2' && (
         <div className="hop-thong-bao hop-tin">
           {tra('cn_duyet_cap_1')}
+        </div>
+      )}
+
+      {d.loai === 'lam_them' && d.trang_thai === 'cho_giam_doc' && (
+        <div className="hop-thong-bao hop-tin">
+          {tra('cn_duyet_giam_doc')}
         </div>
       )}
 

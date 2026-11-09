@@ -78,8 +78,10 @@ test('thong bao cong ty: lay duoc id chi khi man dung', () => {
 test('nhan trang thai va con xu ly', () => {
   assert.equal(NHAN_TRANG_THAI['cho_duyet'], 'Chờ duyệt');
   assert.equal(NHAN_TRANG_THAI['cho_duyet_2'], 'Chờ duyệt cấp 2');
+  assert.equal(NHAN_TRANG_THAI['cho_giam_doc'], 'Chờ Giám đốc duyệt');
   assert.equal(NHAN_TRANG_THAI['da_duyet'], 'Đã duyệt');
   assert.equal(con_xu_ly('cho_duyet'), true);
+  assert.equal(con_xu_ly('cho_giam_doc'), true);
   assert.equal(con_xu_ly('moi'), true);
   assert.equal(con_xu_ly('dang_xem'), true);
   assert.equal(con_xu_ly('cho_giai_trinh'), true);

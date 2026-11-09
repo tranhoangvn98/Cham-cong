@@ -1329,6 +1329,10 @@ test('OT: chi tinh khi don du HAI CAP va KET QUA da duyet', async () => {
   });
   assert.equal(d2.ma, 200, JSON.stringify(d2.body));
   assert.equal(d2.body['trang_thai'], 'da_duyet');
+  // Duyet DON khong duoc dung vao bang cong lan bang luong: so phut OT chi vao khi KET QUA
+  // OT duoc duyet (yeu cau 1, 09/11/2026).
+  assert.equal(d2.body['so_ngay_da_tinh_lai'], 0, 'duyet don OT khong tinh lai bang cong');
+  assert.equal(d2.body['da_tinh_lai_ky_luong'], false);
 
   // (3) Don du HAI CAP nhung CHUA co ket qua duyet -> OT van phai = 0. Day la dieu kien
   // moi: don duyet xong moi chi la "duoc dang ky", chua duoc tra tien.
@@ -1498,6 +1502,95 @@ test('OT: nhan vien dinh kem tai lieu, nop ket qua bang anh, tbks duyet', async 
     token: token_nhan_vien, body: {},
   });
   assert.equal(huy.ma, 409, 'don co ket qua da duyet phai khong huy duoc');
+});
+
+// ============================================================ OT: nguoi duyet tu lap don
+//
+// Truong bo phan tu lap don OT thi khong ai duyet duoc cap 1: `chan_tu_duyet` chan chinh ho,
+// con admin/tbks bi cam duyet cap 1 de mot nguoi khong quyet ca hai cap. Don phai chuyen sang
+// buoc `cho_giam_doc`. Bai nay kiem ca chieu "duyet don KHONG tinh lai bang cong/luong".
+test('OT: truong bo phan tu lap don -> chuyen Giam doc duyet, khong tinh lai luong', async () => {
+  const NGAY_OT = cong_ngay(NGAY, -100);
+  const pb = await truy_van_mot<{ id: string }>(
+    `insert into phong_ban(ten) values ('Phòng Kiểm thử OT') returning id`);
+  const nv_tp = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien(ma_nv, ho_ten, vi_tri, phong_ban_id)
+     values ('OTTP01', 'Trưởng phòng kiểm thử', 'truong_phong', $1) returning id`,
+    [pb!.id]);
+  await thuc_thi('update phong_ban set truong_phong_id = $2 where id = $1', [pb!.id, nv_tp!.id]);
+  const nv_gd = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien(ma_nv, ho_ten, vi_tri)
+     values ('OTGD01', 'Giám đốc kiểm thử', 'giam_doc') returning id`);
+  const tk_tp = await truy_van_mot<{ id: string }>(
+    `insert into nguoi_dung(ten_dang_nhap, mat_khau_hash, vai_tro, nhan_vien_id)
+     values ('ot.tp', '!', 'truong_phong', $1) returning id`, [nv_tp!.id]);
+  const tk_gd = await truy_van_mot<{ id: string }>(
+    `insert into nguoi_dung(ten_dang_nhap, mat_khau_hash, vai_tro, nhan_vien_id)
+     values ('ot.gd', '!', 'nhan_su', $1) returning id`, [nv_gd!.id]);
+  const token_tp = tao_token_truy_cap({
+    sub: tk_tp!.id, vai_tro: 'truong_phong', nv: nv_tp!.id, ten: 'ot.tp',
+  }).token;
+  const token_gd = tao_token_truy_cap({
+    sub: tk_gd!.id, vai_tro: 'nhan_su', nv: nv_gd!.id, ten: 'ot.gd',
+  }).token;
+
+  let don_id = '';
+  try {
+    const tao = await goi('POST', '/api/toi/don', {
+      token: token_tp,
+      body: {
+        loai: 'lam_them', tu_ngay: NGAY_OT,
+        gio_bat_dau: '18:00', gio_ket_thuc: '20:00', ly_do: 'Kiểm thử luồng Giám đốc',
+      },
+    });
+    assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+    assert.equal(tao.body['trang_thai'], 'cho_giam_doc',
+      'nguoi lap chinh la truong phong cua minh -> phai chuyen Giam doc');
+    don_id = String(tao.body['id']);
+
+    // Khong ai duoc tu duyet don cua minh.
+    const tu_duyet = await goi('POST', `/api/duyet/don/${don_id}/quyet`, {
+      token: token_tp, body: { quyet_dinh: 'da_duyet' },
+    });
+    assert.equal(tu_duyet.ma, 403, JSON.stringify(tu_duyet.body));
+
+    // Da co tai khoan Giam doc dang hoat dong thi admin KHONG duyet thay buoc nay.
+    const admin_thay = await goi('POST', `/api/duyet/don/${don_id}/quyet`, {
+      token: token_admin, body: { quyet_dinh: 'da_duyet' },
+    });
+    assert.equal(admin_thay.ma, 404, JSON.stringify(admin_thay.body));
+
+    // Giam doc duyet buoc 1 -> sang cap 2, va KHONG tinh lai bang cong/luong.
+    const gd = await goi('POST', `/api/duyet/don/${don_id}/quyet`, {
+      token: token_gd, body: { quyet_dinh: 'da_duyet' },
+    });
+    assert.equal(gd.ma, 200, JSON.stringify(gd.body));
+    assert.equal(gd.body['trang_thai'], 'cho_duyet_2');
+    assert.equal(gd.body['so_ngay_da_tinh_lai'], 0);
+    assert.equal(gd.body['da_tinh_lai_ky_luong'], false);
+
+    // TBKS/Admin chot cap 2 — van khong dung vao bang cong/luong.
+    const cap2 = await goi('POST', `/api/duyet/don/${don_id}/quyet`, {
+      token: token_admin, body: { quyet_dinh: 'da_duyet' },
+    });
+    assert.equal(cap2.ma, 200, JSON.stringify(cap2.body));
+    assert.equal(cap2.body['trang_thai'], 'da_duyet');
+    assert.equal(cap2.body['so_ngay_da_tinh_lai'], 0);
+    assert.equal(cap2.body['da_tinh_lai_ky_luong'], false);
+
+    // Duyet don la "dang ky truoc": chua co KET QUA OT duyet thi phut OT van 0.
+    const bc = await truy_van_mot<{ phut_ot: number }>(
+      'select phut_ot from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
+      [nv_tp!.id, NGAY_OT]);
+    assert.equal(bc?.phut_ot ?? 0, 0, 'duyet don OT khong duoc sinh phut OT');
+  } finally {
+    if (don_id !== '') await thuc_thi('delete from don_tu where id = $1', [don_id]);
+    await thuc_thi('delete from nguoi_dung where id = any($1::uuid[])',
+      [[tk_tp!.id, tk_gd!.id]]);
+    await thuc_thi('update phong_ban set truong_phong_id = null where id = $1', [pb!.id]);
+    await thuc_thi('delete from nhan_vien where id = any($1::uuid[])', [[nv_tp!.id, nv_gd!.id]]);
+    await thuc_thi('delete from phong_ban where id = $1', [pb!.id]);
+  }
 });
 
 test('nhan vien KHONG duoc goi API quan tri', async () => {

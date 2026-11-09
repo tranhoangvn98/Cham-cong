@@ -226,6 +226,21 @@ export function phut_lam_them(d: Pick<DonTu, 'loai' | 'gio_bat_dau' | 'gio_ket_t
   return Math.max(0, phut(d.gio_ket_thuc) - phut(d.gio_bat_dau));
 }
 
+/**
+ * Duyet don loai nay co LAM DOI bang cong khong.
+ *
+ * Ba loai doi truc tiep trang thai ngay cong (`cong_tac`, `lam_remote`, `ve_som`) nen duyet
+ * xong phai tinh lai bang cong. `lam_them` CHI la dang ky truoc — so phut OT tren bang cong chi
+ * xuat hien khi ket qua OT duoc duyet (`cong/tinh_cong.ts` giao voi `ket_qua_ot`), nen duyet don
+ * khong duoc phep dung vao bang cong lan bang luong.
+ *
+ * Ham nam o day (module thuan) de bai kiem don vi khoa duoc quy tac nay: them mot loai don moi
+ * ma quen khai y dinh thi test do ngay, thay vi phat hien sau khi bang luong da lech.
+ */
+export function co_doi_bang_cong(loai: MaLoaiDon): boolean {
+  return loai === 'cong_tac' || loai === 'lam_remote' || loai === 've_som';
+}
+
 // ---------------------------------------------------------------- canh bao phap ly
 
 /** Tran lam them theo BLLD 2019 Dieu 107: 40 gio mot thang. */

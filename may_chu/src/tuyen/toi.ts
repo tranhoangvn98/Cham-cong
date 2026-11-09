@@ -8,7 +8,9 @@ import { cau_hinh } from '../cau_hinh.ts';
 import { tinh_lai_khoang, tinh_lai_ngay } from '../cong/tinh_cong.ts';
 import { sql_ngay_khong_mien_vang } from '../cong/so_ngoai_le.ts';
 import { ghi_su_kien } from '../su_kien/hop_thu_di.ts';
-import { gui_ngam, tai_khoan_duyet_ot_cap_1, tai_khoan_duyet_ot_cap_2, tai_khoan_nguoi_duyet } from '../su_kien/thong_bao_day.ts';
+import { gui_ngam, tai_khoan_cua_nhan_vien, tai_khoan_duyet_ot_cap_1, tai_khoan_duyet_ot_cap_2,
+  tai_khoan_nguoi_duyet } from '../su_kien/thong_bao_day.ts';
+import { tai_khoan_giam_doc } from '../don_tu/nguoi_duyet_ot.ts';
 import { trong_phong_ban } from '../su_kien/pham_vi_nhan.ts';
 import { do_geofence, type DiaDiem } from '../tien_ich/dia_ly.ts';
 import { doc_anh_selfie, luu_anh_selfie } from '../tien_ich/luu_anh.ts';
@@ -1664,13 +1666,19 @@ export async function tuyen_toi(app: FastifyInstance): Promise<void> {
       if (r !== null) return res.code(201).send({ ...kq, trang_thai: r.quyet, tu_dong: true });
     }
 
-    // Don OT di theo chuoi rieng: truong bo phan (cap 1) roi TBKS/admin (cap 2). Ban ghi
-    // tao ra da biet no dang cho cap nao roi (`cho_duyet` / `cho_duyet_2`).
-    const nguoi_duyet_ids = loai === 'lam_them'
-      ? (kq.trang_thai === 'cho_duyet_2'
-          ? await tai_khoan_duyet_ot_cap_2()
-          : await tai_khoan_duyet_ot_cap_1(nv_id))
-      : await tai_khoan_nguoi_duyet(nv_id);
+    // Don OT di theo chuoi rieng: truong bo phan (cap 1) -> Giam doc (khi nguoi lap chinh la
+    // truong bo phan) -> TBKS/admin (cap 2). Ban ghi tao ra da biet no dang cho buoc nao.
+    // Tai khoan cua chinh nguoi lap bi loai khoi danh sach nhan: ho la nguoi lam don, khong
+    // phai nguoi duyet (va neu co thi cung bi chan tu duyet).
+    const cua_nguoi_lap = await tai_khoan_cua_nhan_vien(nv_id);
+    const nguoi_duyet_ids = (loai === 'lam_them'
+      ? (kq.trang_thai === 'cho_giam_doc'
+          ? await tai_khoan_giam_doc()
+          : kq.trang_thai === 'cho_duyet_2'
+            ? await tai_khoan_duyet_ot_cap_2()
+            : await tai_khoan_duyet_ot_cap_1(nv_id))
+      : await tai_khoan_nguoi_duyet(nv_id))
+      .filter((x) => !cua_nguoi_lap.includes(x));
     gui_ngam({
       nguoi_dung_ids: nguoi_duyet_ids,
       tieu_de: `${dt.ten} chờ duyệt`,

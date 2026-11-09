@@ -389,6 +389,7 @@ export const CHUOI_VI = {
   cn_da_huy_don: 'Đã hủy đơn.',
   cn_ly_do_x: 'Lý do: {n}',
   cn_duyet_cap_1: 'Đã duyệt cấp 1 (trưởng phòng) — đang chờ TBKS/Admin duyệt cấp 2. Duyệt xong, bạn nộp kết quả OT bằng ảnh.',
+  cn_duyet_giam_doc: 'Đơn làm thêm giờ của bạn đang chờ Giám đốc duyệt (vì bạn là trưởng bộ phận của chính mình). Giám đốc duyệt xong sẽ chuyển TBKS/Admin duyệt cấp 2.',
   cn_nop_ket_qua_ot: 'Nộp kết quả OT',
   cn_don_giai_trinh_khong_huy: 'Đơn giải trình không tự hủy được — nhờ nhân sự xử lý.',
   cn_loai_nghi: 'LOẠI NGHỈ',
@@ -964,6 +965,9 @@ export const CHUOI_VI = {
 
   // ================================ nhan dung chung (thanh_phan.tsx)
   thp_cho_duyet_2: 'Chờ TBKS/Admin',
+  thp_cho_giam_doc: 'Chờ Giám đốc duyệt',
+  dd_tab_ot_giam_doc: 'OT chờ Giám đốc',
+  dd_nut_duyet_giam_doc: 'Duyệt (Giám đốc)',
   thp_tu_dong: 'Tự động',
   thp_nguon_may: 'Máy chấm công',
   thp_nguon_dien_thoai: 'Điện thoại',

@@ -35,6 +35,7 @@ export const CHUOI_VI = {
   // ================================ nhan trang thai trong chuong bao
   tt_cho_duyet: 'Chờ duyệt',
   tt_cho_duyet_2: 'Chờ duyệt cấp 2',
+  tt_cho_giam_doc: 'Chờ Giám đốc duyệt',
   tt_da_duyet: 'Đã duyệt',
   tt_tu_choi: 'Đã từ chối',
   tt_da_huy: 'Đã hủy',

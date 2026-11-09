@@ -17,6 +17,7 @@ import {
   canh_bao_cho_don, dem_cho_duyet, dem_cho_duyet_cap_2, don_cho_nguoi_duyet, don_theo_id,
   quyet_don,
 } from '../don_tu/nghiep_vu.ts';
+import { la_giam_doc } from '../don_tu/nguoi_duyet_ot.ts';
 import { sinh_quy_trinh_thoi_viec } from '../thoi_viec/quy_trinh.ts';
 import {
   dem_ket_qua_cho_duyet, ket_qua_cho_tbks, quyet_ket_qua,
@@ -474,7 +475,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     const nd = nguoi_dung_hien_tai(req);
     const q = than(req.query);
     let trang_thai = trong_tap(q, 'trang_thai',
-      ['cho_duyet', 'cho_duyet_2', 'da_duyet', 'tu_choi', 'da_huy'] as const,
+      ['cho_duyet', 'cho_duyet_2', 'cho_giam_doc', 'da_duyet', 'tu_choi', 'da_huy'] as const,
       { mac_dinh: 'cho_duyet' }) as string;
     let loai = trong_tap(q, 'loai', MA_LOAI_DON, {}) as MaLoaiDon | null;
 
@@ -485,10 +486,20 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
       if (trang_thai === 'cho_duyet') trang_thai = 'cho_duyet_2';
     }
 
+    // Buoc Giam doc: chi Giam doc (hoac admin duyet thay khi chua khai duoc Giam doc) thay
+    // danh sach. Nguoi khac nhan danh sach rong chu khong phai 403 — khong tiet lo don.
+    if (trang_thai === 'cho_giam_doc' && !(await la_giam_doc(nd))) {
+      return { danh_sach: [] };
+    }
+
     return {
       danh_sach: await don_cho_nguoi_duyet(
         trang_thai, loai,
-        (xem_duoc_tat_ca(nd) || nd.vai_tro === 'tbks') ? null : nd.nv),
+        // Buoc Giam doc khong loc theo phong: nguoi duyet la Giam doc toan cong ty, khong
+        // phai truong phong cua mot phong.
+        trang_thai === 'cho_giam_doc'
+          ? null
+          : (xem_duoc_tat_ca(nd) || nd.vai_tro === 'tbks') ? null : nd.nv),
     };
   });
 
@@ -496,7 +507,9 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
    * Duyet hoac tu choi.
    *
    * Don lam them di qua HAI CAP: cap 1 (truong bo phan) dua don sang `cho_duyet_2`; cap 2
-   * (tbks/admin) moi chot `da_duyet`. Cac loai khac giu nguyen mot cap nhu truoc.
+   * (tbks/admin) moi chot `da_duyet`. Rieng don cua chinh truong bo phan thi buoc 1 la
+   * `cho_giam_doc` — Giam doc duyet thay, vi khong ai duoc tu duyet don cua minh. Cac loai
+   * khac giu nguyen mot cap nhu truoc.
    *
    * Duyet xong thi: (1) tinh lai bang cong neu la don cong tac, (2) sinh ban don DOCX vao kho
    * ho so khi don CHOT `da_duyet`. Thu tu do la co y — ban don ghi lai trang thai SAU khi moi
@@ -517,7 +530,16 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     await chan_tu_duyet(nd, truoc.nhan_vien_id);
 
     const la_cap_2 = truoc.trang_thai === 'cho_duyet_2';
-    if (la_cap_2) {
+    const la_buoc_giam_doc = truoc.trang_thai === 'cho_giam_doc';
+    if (la_buoc_giam_doc) {
+      // Buoc Giam doc: khong loc theo phong ban — Giam doc quyet dinh toan cong ty.
+      // Ngoai le hep: chinh tai khoan admin lap don thi admin duoc tu duyet buoc nay, neu
+      // khong don cua ho se khong con ai duyet (admin la cap cao nhat he thong).
+      const admin_tu_duyet = la_quan_tri(nd.vai_tro) && nd.nv === truoc.nhan_vien_id;
+      if (!(await la_giam_doc(nd)) && !admin_tu_duyet) {
+        throw new LoiKhongTim('Không tìm thấy đơn thuộc phạm vi của bạn.');
+      }
+    } else if (la_cap_2) {
       // Cap 2 chi danh cho tbks/admin. Nhan su va truong phong khong thay duoc buoc nay.
       if (!la_tbks(nd.vai_tro) && !la_quan_tri(nd.vai_tro)) {
         throw new LoiKhongTim('Không tìm thấy đơn thuộc phạm vi của bạn.');
@@ -537,8 +559,11 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     // Cong 1 cua quy trinh thoi viec (REQ-G1): duyet don THOI VIEC la khoi dong quy trinh.
     // Sinh quy trinh + phat sinh checklist CUNG MOT transaction voi quyet dinh — khong bao
     // gio co quyet dinh da duyet ma thieu quy trinh, nguoc lai cung vay.
+    // Nguoi duyet buoc Giam doc ma cung duoc duyet cap 2 (tbks/admin) thi don chot luon:
+    // mot nguoi khong duoc quyet ca hai cap cua cung mot don.
+    const chot_luon = la_buoc_giam_doc && (la_tbks(nd.vai_tro) || la_quan_tri(nd.vai_tro));
     const kq = await trong_giao_dich(async (khach) => {
-      const kq = await quyet_don(id, quyet, nd.sub, ghi_chu, la_cap_2 ? 2 : 1, khach);
+      const kq = await quyet_don(id, quyet, nd.sub, ghi_chu, la_cap_2 ? 2 : 1, khach, chot_luon);
       if (kq.loai === 'thoi_viec' && kq.trang_thai === 'da_duyet') {
         await sinh_quy_trinh_thoi_viec(khach, id, nd.sub);
       }
@@ -574,15 +599,18 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
 
     if (kq.trang_thai === 'da_duyet') await ban_don_am_tham('khac', id);
 
-    await ghi_nhat_ky(nd.sub, `don_${kq.loai}_${quyet}_cap_${la_cap_2 ? '2' : '1'}`,
+    const buoc = la_cap_2 ? '2' : la_buoc_giam_doc ? 'giam_doc' : '1';
+    await ghi_nhat_ky(nd.sub, `don_${kq.loai}_${quyet}_cap_${buoc}`,
       'don_tu', id, { ghi_chu }, req.ip);
 
     const dt = dac_ta(kq.loai);
     const nguoi_lam_don = await tai_khoan_cua_nhan_vien(truoc.nhan_vien_id);
     if (truoc.loai === 'lam_them' && kq.trang_thai === 'cho_duyet_2') {
-      // Truong phong vua chuyen don len cap 2 -> bao cho tbks/admin.
+      // Truong phong / Giam doc vua chuyen don len cap 2 -> bao cho tbks/admin. Bo tai khoan
+      // cua chinh nguoi lap don: nguoi duyet cap 2 cung co the la nguoi lap (vd tbks).
       gui_ngam({
-        nguoi_dung_ids: await tai_khoan_duyet_ot_cap_2(),
+        nguoi_dung_ids: (await tai_khoan_duyet_ot_cap_2())
+          .filter((x) => !nguoi_lam_don.includes(x)),
         tieu_de: 'Có đơn làm thêm giờ chờ duyệt cấp 2',
         noi_dung: `${truoc.ho_ten} (${truoc.ma_nv}) — ${dt.nhan_tu_ngay}: ${ngay_viet(truoc.tu_ngay)}`,
         du_lieu: { man: 'duyet-ot', loai: kq.loai, don_id: id },

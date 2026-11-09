@@ -512,6 +512,7 @@ export function NhanNgay({ trang_thai }: { trang_thai: string }): ReactNode {
 const NHAN_DON: Record<string, { khoa: ChuoiKhoa; lop: string }> = {
   cho_duyet: { khoa: 'cn_tt_cho_duyet', lop: 'nhan-canh-bao' },
   cho_duyet_2: { khoa: 'thp_cho_duyet_2', lop: 'nhan-canh-bao' },
+  cho_giam_doc: { khoa: 'thp_cho_giam_doc', lop: 'nhan-canh-bao' },
   da_duyet: { khoa: 'cn_tt_da_duyet', lop: 'nhan-tot' },
   tu_choi: { khoa: 'cn_tt_tu_choi', lop: 'nhan-xau' },
   da_huy: { khoa: 'cn_tt_da_huy', lop: 'nhan-mo' },

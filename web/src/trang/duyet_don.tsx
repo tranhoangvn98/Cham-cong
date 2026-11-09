@@ -8,7 +8,7 @@ import { tra_hien_tai } from '../chuoi/chi_muc.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
 
 type Tab = 'nghi_phep' | 'giai_trinh' | 'quet_dien_thoai' | 'don_khac' | 'de_xuat'
-  | 'ot_cap_2' | 'ket_qua_ot';
+  | 'ot_cap_2' | 'ot_giam_doc' | 'ket_qua_ot';
 
 interface DeXuatDuyet {
   id: string; ma: string | null; ten_loai: string; tieu_de: string; noi_dung: string;
@@ -131,6 +131,10 @@ export function TrangDuyetDon(): ReactNode {
   const ot2 = dung_nap<{ danh_sach: DonKhac[] }>(
     '/api/duyet/don?trang_thai=cho_duyet_2&loai=lam_them');
   const dem_ot2 = dung_nap<Record<string, number>>('/api/duyet/ot-cap-2/dem');
+  // Buoc Giam doc: may chu tra danh sach rong khi nguoi xem khong phai Giam doc, nen cu goi
+  // ma khong can biet vai tro — khong lo du lieu cho nguoi khac.
+  const ot_gd = dung_nap<{ danh_sach: DonKhac[] }>(
+    '/api/duyet/don?trang_thai=cho_giam_doc&loai=lam_them');
   const ket_qua = dung_nap<{ danh_sach: DongKetQuaOt[] }>(
     `/api/duyet/ot-ket-qua?trang_thai=${chi_cho_duyet ? 'cho_duyet' : 'da_duyet'}`);
   const dem_ket_qua = dung_nap<{ so: number }>('/api/duyet/ot-ket-qua/dem');
@@ -170,6 +174,7 @@ export function TrangDuyetDon(): ReactNode {
     dem_khac.nap_lai();
     ot2.nap_lai();
     dem_ot2.nap_lai();
+    ot_gd.nap_lai();
   };
 
   const quyet_ket_qua = async (
@@ -196,7 +201,9 @@ export function TrangDuyetDon(): ReactNode {
       <div className="dau-trang">
         <div>
           <p className="mo-ta">
-            Duyệt xong hệ thống tự tính lại bảng công của những ngày liên quan.
+            Duyệt xong hệ thống tự tính lại bảng công của những ngày liên quan. Đơn làm thêm
+            giờ chỉ là đăng ký trước — duyệt đơn không đụng bảng công/bảng lương; phút OT chỉ
+            vào khi kết quả OT được duyệt.
           </p>
         </div>
         <div className="o-nhap-ngang" style={{ marginBottom: 0 }}>
@@ -237,7 +244,23 @@ export function TrangDuyetDon(): ReactNode {
             </button>
           </>
         )}
+        {la_nhan_su()
+          && ((ot_gd.du_lieu?.danh_sach ?? []).length > 0 || tab === 'ot_giam_doc') && (
+          <button className={tab === 'ot_giam_doc' ? 'dang-chon' : ''}
+            onClick={() => dat_tab('ot_giam_doc')}>
+            {tra_hien_tai('dd_tab_ot_giam_doc')} {dem((ot_gd.du_lieu?.danh_sach ?? []).length)}
+          </button>
+        )}
       </div>
+
+      {tab === 'ot_giam_doc' && (
+        <BangDonKhac
+          nap={ot_gd}
+          loai_don={loai_don.du_lieu?.danh_sach ?? []}
+          dang_chay={hd.dang_chay}
+          quyet={(id, qd, gc) => quyet('don', id, qd, gc)}
+        />
+      )}
 
       {tab === 'ot_cap_2' && (
         <BangDonKhac
@@ -822,7 +845,8 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                 </td>
                 <td><NhanDon trang_thai={d.trang_thai} /></td>
                 <td>
-                  {d.trang_thai === 'cho_duyet' || d.trang_thai === 'cho_duyet_2' ? (
+                  {d.trang_thai === 'cho_duyet' || d.trang_thai === 'cho_duyet_2'
+                   || d.trang_thai === 'cho_giam_doc' ? (
                     // Admin khong duyet cap 1 cua OT de giu su tach bach hai cap: mot nguoi
                     // khong duoc quyet ca hai cap cua cung mot don.
                     d.loai === 'lam_them' && d.trang_thai === 'cho_duyet' && la_admin() ? (
@@ -834,7 +858,11 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                           disabled={dang_chay}
                           onClick={() => quyet(d.id, 'da_duyet')}
                         >
-                          {d.trang_thai === 'cho_duyet_2' ? 'Duyệt cấp 2' : 'Duyệt'}
+                          {d.trang_thai === 'cho_duyet_2'
+                            ? 'Duyệt cấp 2'
+                            : d.trang_thai === 'cho_giam_doc'
+                              ? tra_hien_tai('dd_nut_duyet_giam_doc')
+                              : 'Duyệt'}
                         </button>
                         <button
                           className="nut-nho nut-nguy"

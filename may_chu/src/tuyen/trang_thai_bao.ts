@@ -12,6 +12,7 @@ import type { ChuoiKhoa } from '../chuoi/chi_muc.ts';
 export const NHAN_TRANG_THAI: Record<string, string> = {
   cho_duyet: 'Chờ duyệt',
   cho_duyet_2: 'Chờ duyệt cấp 2',
+  cho_giam_doc: 'Chờ Giám đốc duyệt',
   da_duyet: 'Đã duyệt',
   tu_choi: 'Đã từ chối',
   da_huy: 'Đã hủy',
@@ -36,6 +37,7 @@ export const NHAN_TRANG_THAI: Record<string, string> = {
 export const KHOA_TRANG_THAI: Record<string, ChuoiKhoa> = {
   cho_duyet: 'tt_cho_duyet',
   cho_duyet_2: 'tt_cho_duyet_2',
+  cho_giam_doc: 'tt_cho_giam_doc',
   da_duyet: 'tt_da_duyet',
   tu_choi: 'tt_tu_choi',
   da_huy: 'tt_da_huy',
@@ -64,7 +66,7 @@ export const KHOA_TRANG_THAI_HO_THU: Record<string, ChuoiKhoa> = {
 };
 
 /** Trang thai con cho nguoi dung hanh dong — giao dien hien nhan "chua xu ly" mau cam. */
-const CON_XU_LY = new Set(['cho_duyet', 'cho_duyet_2', 'moi', 'dang_xem', 'cho_giai_trinh']);
+const CON_XU_LY = new Set(['cho_duyet', 'cho_duyet_2', 'cho_giam_doc', 'moi', 'dang_xem', 'cho_giai_trinh']);
 
 export function con_xu_ly(trang_thai: string | null): boolean {
   return trang_thai !== null && CON_XU_LY.has(trang_thai);

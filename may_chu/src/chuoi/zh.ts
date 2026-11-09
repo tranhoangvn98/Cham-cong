@@ -36,6 +36,7 @@ export const CHUOI_ZH = {
   // ================================ 通知铃状态标签
   tt_cho_duyet: '待审批',
   tt_cho_duyet_2: '待二级审批',
+  tt_cho_giam_doc: '待总经理审批',
   tt_da_duyet: '已批准',
   tt_tu_choi: '已拒绝',
   tt_da_huy: '已取消',

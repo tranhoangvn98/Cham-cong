@@ -2,6 +2,39 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.140.0] — 2026-11-09
+
+**Duyệt OT: đơn của chính người duyệt chuyển Giám đốc · duyệt đơn không đụng bảng lương.**
+
+**1. Trưởng bộ phận tự lập đơn OT không còn bị treo.**
+
+- Trước đây đơn OT của chính trưởng bộ phận rơi vào `cho_duyet`, mà người duyệt cấp 1 duy nhất
+  lại là chính họ — `chan_tu_duyet` chặn tự duyệt, còn admin/tbks bị cấm duyệt cấp 1.
+  Đơn nằm im, không ai xử lý được.
+- Nay người lập **chính là** `phong_ban.truong_phong_id` của mình thì đơn vào trạng thái mới
+  **`cho_giam_doc`**: Giám đốc duyệt trước, sau đó mới sang TBKS/Admin duyệt cấp 2.
+- Giám đốc xác định theo hồ sơ (`nhan_vien.vi_tri` = Giám đốc/Tổng Giám đốc) hoặc theo vị trí
+  tổ chức cấp cao (`vi_tri.cap_bac = 'cap_cao'`). Chưa khai được ai thì tài khoản `admin` duyệt
+  thay, để đơn không bị treo.
+- Nếu người duyệt bước Giám đốc cũng là `admin`/`tbks` thì đơn **chốt luôn** — một người không
+  quyết hai cấp của cùng một đơn.
+- Migration **119** chuyển các đơn OT đang kẹt ở `cho_duyet` mà người lập là trưởng phòng của
+  mình sang `cho_giam_doc`; không phải sửa tay trên production.
+
+**2. Khẳng định lại: duyệt ĐƠN OT không tự tính lại bảng công/bảng lương.**
+
+- Đơn `lam_them` chỉ là **đăng ký trước**; phút OT chỉ vào bảng công khi **kết quả OT** được
+  TBKS/Admin duyệt. Duyệt đơn (kể cả bước Giám đốc) trả `so_ngay_da_tinh_lai = 0` và
+  `da_tinh_lai_ky_luong = false`.
+- Quy tắc "loại đơn nào đổi ngày công thì duyệt mới tính lại" gom vào một hàm thuần
+  (`co_doi_bang_cong`), khoá bằng test đơn vị và test e2e.
+
+**3. Giao diện.**
+
+- Trang Duyệt đơn có tab **"OT chờ Giám đốc"** (chỉ hiện khi có đơn); nút **"Duyệt (Giám đốc)"**.
+- Nhân viên thấy gợi ý "đang chờ Giám đốc duyệt" và vẫn hủy được đơn ở bước này.
+- Nhãn **"Chờ Giám đốc duyệt"** (`待总经理审批`) chạy qua từ điển vi + zh ở web, app và chuông thông báo.
+
 ## [1.139.1] — 2026-11-02
 
 **Gán PIN máy chấm công thì tự nhận lại các lượt quẹt có sẵn của PIN đó.**

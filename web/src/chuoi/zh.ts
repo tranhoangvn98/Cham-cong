@@ -390,6 +390,7 @@ export const CHUOI_ZH = {
   cn_da_huy_don: '已撤销申请。',
   cn_ly_do_x: '事由：{n}',
   cn_duyet_cap_1: '已通过一级审批（部门主管）——等待审计委员会主任/管理员二级审批。审批完成后，请以照片提交加班成果。',
+  cn_duyet_giam_doc: '您的加班申请正在等待总经理审批（因为您是本人所属部门的主管）。总经理审批后将转交审计委员会主任/管理员二级审批。',
   cn_nop_ket_qua_ot: '提交加班成果',
   cn_don_giai_trinh_khong_huy: '补卡说明无法自行撤销——请联系人事处理。',
   cn_loai_nghi: '请假类型',
@@ -965,6 +966,9 @@ export const CHUOI_ZH = {
 
   // ================================ 公共标签（thanh_phan.tsx）
   thp_cho_duyet_2: '待审计委员会主任/管理员',
+  thp_cho_giam_doc: '待总经理审批',
+  dd_tab_ot_giam_doc: '待总经理审批的加班',
+  dd_nut_duyet_giam_doc: '审批（总经理）',
   thp_tu_dong: '自动',
   thp_nguon_may: '考勤机',
   thp_nguon_dien_thoai: '手机',

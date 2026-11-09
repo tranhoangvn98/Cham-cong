@@ -244,6 +244,7 @@ export function NhanNgay({ trang_thai, chu }: { trang_thai: string; chu: string 
 
 const MAU_TRANG_THAI_DON: Record<string, 'tot' | 'xau' | 'canh_bao' | 'lanh' | 'mo'> = {
   cho_duyet: 'canh_bao', da_duyet: 'tot', tu_choi: 'xau', da_huy: 'mo', tu_dong: 'tot',
+  cho_duyet_2: 'canh_bao', cho_giam_doc: 'canh_bao',
 };
 
 export function NhanDon({ trang_thai, chu }: { trang_thai: string; chu: string }): ReactNode {

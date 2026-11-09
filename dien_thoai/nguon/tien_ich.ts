@@ -89,6 +89,7 @@ export const TEN_TRANG_THAI_NGAY: Record<string, string> = {
 export const TEN_TRANG_THAI_DON: Record<string, string> = {
   cho_duyet: 'Chờ duyệt',
   cho_duyet_2: 'Chờ TBKS/Admin',
+  cho_giam_doc: 'Chờ Giám đốc duyệt',
   da_duyet: 'Đã duyệt',
   tu_choi: 'Từ chối',
   da_huy: 'Đã hủy',

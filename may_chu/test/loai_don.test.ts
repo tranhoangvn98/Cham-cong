@@ -8,8 +8,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  CAC_LOAI, MA_LOAI_DON, PHUT_OT_TOI_DA_THANG, canh_bao_bao_truoc, canh_bao_tran_ot, dac_ta,
-  ngay_bao_truoc_toi_thieu, phut_lam_them, so_gio_lam_them,
+  CAC_LOAI, MA_LOAI_DON, PHUT_OT_TOI_DA_THANG, canh_bao_bao_truoc, canh_bao_tran_ot,
+  co_doi_bang_cong, dac_ta, ngay_bao_truoc_toi_thieu, phut_lam_them, so_gio_lam_them,
 } from '../src/don_tu/loai_don.ts';
 
 // ================================================================ dang ky
@@ -64,6 +64,20 @@ test('dang ky: ve_som va lam_remote co nhan dung nghiep vu', () => {
   assert.match(dac_ta('lam_remote').nhan_tu_ngay, /Từ ngày/);
   assert.equal(dac_ta('ve_som').tien_to_tep, 'Don-xin-ve-som');
   assert.equal(dac_ta('lam_remote').tien_to_tep, 'Don-xin-lam-remote');
+});
+
+// ================================================================ duyet co doi bang cong khong
+
+test('chi ba loai don doi trang thai ngay cong thi duyet moi tinh lai bang cong', () => {
+  // Yeu cau 1: don `lam_them` la DANG KY TRUOC — duyet xong khong duoc dung vao bang cong
+  // lan bang luong. So phut OT chi vao khi KET QUA OT duoc duyet (xem cong/tinh_cong.ts).
+  assert.equal(co_doi_bang_cong('lam_them'), false);
+  assert.equal(co_doi_bang_cong('doi_ca'), false);
+  assert.equal(co_doi_bang_cong('di_muon'), false);
+  assert.equal(co_doi_bang_cong('thoi_viec'), false);
+  assert.equal(co_doi_bang_cong('cong_tac'), true);
+  assert.equal(co_doi_bang_cong('lam_remote'), true);
+  assert.equal(co_doi_bang_cong('ve_som'), true);
 });
 
 // ================================================================ so gio lam them

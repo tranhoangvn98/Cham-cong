@@ -467,18 +467,24 @@ Duyệt xong hệ thống **tự tính lại** bảng công của những ngày 
 quyết được đơn của nhân viên trong phòng mình — ngoài phạm vi trả **404** (không tiết lộ
 đơn đó tồn tại). Đơn đã xử lý không quyết lại được (400).
 
+Riêng đơn `lam_them` thì duyệt **không** đụng bảng công lẫn bảng lương: đơn chỉ là đăng ký
+trước, phút OT chỉ vào bảng công khi **kết quả OT** được duyệt.
+
 ### Duyệt đơn làm thêm giờ — hai cấp
 
 Đơn `lam_them` đi qua **hai cấp** (các loại đơn khác giữ nguyên một cấp):
 
 | Bước | Trạng thái | Ai duyệt |
 |---|---|---|
-| Tạo đơn | `cho_duyet` (phòng có trưởng phòng) hoặc `cho_duyet_2` (phòng chưa gán trưởng phòng → bỏ qua cấp 1) | — |
+| Tạo đơn | `cho_duyet` (phòng có trưởng phòng) · `cho_giam_doc` (người lập **chính là** trưởng phòng của mình) · `cho_duyet_2` (phòng chưa gán trưởng phòng → bỏ qua cấp 1) | — |
 | Cấp 1 | `cho_duyet` → `cho_duyet_2` | `truong_phong` (phòng mình), `truong_phong_nhan_su`, `nhan_su` |
+| Cấp Giám đốc | `cho_giam_doc` → `cho_duyet_2` / `tu_choi` | Giám đốc: `nhan_vien.vi_tri` = `giam_doc`/`tong_giam_doc`, hoặc giữ vị trí tổ chức `cap_bac = 'cap_cao'`. Chưa khai được ai → tài khoản `admin` duyệt thay |
 | Cấp 2 | `cho_duyet_2` → `da_duyet` / `tu_choi` | `tbks`, `admin` |
 
 `admin`/`tbks` **không** duyệt cấp 1 (400) để giữ tách bạch — một người không quyết cả hai
-cấp của cùng một đơn. Duyệt cấp 2 xong mới sinh bản đơn DOCX (in đủ hai người duyệt).
+cấp của cùng một đơn. Cấp Giám đốc là ngoại lệ có chủ đích: nếu chính người duyệt bước này
+cũng là `admin`/`tbks` thì đơn **chốt luôn** (`da_duyet`), không bắt họ quyết thêm cấp 2.
+Duyệt cấp 2 xong mới sinh bản đơn DOCX (in đủ người duyệt).
 
 ### Duyệt kết quả OT
 

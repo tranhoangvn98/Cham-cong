@@ -269,7 +269,8 @@ export default function ManDonTu(): ReactNode {
                           style={kieu.nut_nho}
                         />
                       )}
-                      {(d.trang_thai === 'cho_duyet' || d.trang_thai === 'da_duyet') && (
+                      {(d.trang_thai === 'cho_duyet' || d.trang_thai === 'cho_giam_doc'
+                        || d.trang_thai === 'da_duyet') && (
                         <Nut
                           chu="Hủy"
                           kieu_nut="phang"
