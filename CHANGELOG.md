@@ -2,6 +2,21 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.140.2] — 2026-11-09
+
+**Duyệt đơn OT có thể tích "Không cần kết quả OT".**
+
+- Trang Duyệt đơn: đơn làm thêm ở bước chốt (cấp 2, hoặc bước Giám đốc do TBKS/Admin chốt) có
+  ô tích **"Không cần kết quả OT"**. Tích rồi bấm Duyệt thì hệ thống tạo luôn một bản ghi kết quả
+  OT **đã duyệt** thay cho bước nhân viên nộp ảnh minh chứng, rồi tính lại bảng công và kỳ lương
+  còn `nhap` — phút OT vào ngay, không phải chờ nộp kết quả.
+- Bản ghi kết quả tạo tự động ghi rõ "Duyệt OT không cần kết quả OT" kèm lý do duyệt và người
+  duyệt, nên vẫn tra được ai đã bỏ qua bước minh chứng.
+- Chỉ `tbks`/`admin` dùng được cờ này (đúng người duyệt bước chốt); nhật ký ghi
+  `bo_qua_ket_qua: true`; chuông cho nhân viên báo "OT đã ghi nhận, không cần nộp kết quả OT".
+- Không tích thì giữ nguyên quy trình cũ: duyệt đơn không đụng bảng công, phút OT chỉ vào khi
+  kết quả OT được duyệt. Có test e2e riêng cho luồng tích.
+
 ## [1.140.1] — 2026-11-09
 
 **Nói rõ vì sao duyệt đơn OT mà phút OT vẫn 0 (không phải lỗi tính công).**

@@ -311,7 +311,7 @@ export interface KetQuaQuyet {
  */
 export async function quyet_don(
   id: string, quyet: 'da_duyet' | 'tu_choi', nguoi_duyet_id: string, ghi_chu: string | null,
-  cap: 1 | 2 = 1, khach?: PoolClient, chot_luon = false,
+  cap: 1 | 2 = 1, khach?: PoolClient, chot_luon = false, bo_qua_ket_qua = false,
 ): Promise<KetQuaQuyet> {
   // Moi quyet dinh phai co nguoi duyet ro rang. Duyet tu dong (khong co nguoi bam) phai truyen id
   // tai khoan he thong (id_tai_khoan_he_thong), KHONG duoc de NULL/rong — mot don da_duyet ma
@@ -380,7 +380,30 @@ export async function quyet_don(
   // Don OT: duyet don KHONG tu tao ra phut OT (xem ghi chu dau ham). NHUNG khi KET QUA OT da
   // duoc duyet TU TRUOC (HR duyet ket qua thay, hoac don nhieu ngay co ket qua cu), bang cong
   // phai tinh lai — bo qua buoc nay tung lam phut OT khong bao gio vao luong.
-  const ot_da_co_ket_qua = d.loai === 'lam_them' && d.ket_qua_trang_thai === 'da_duyet';
+  //
+  // `bo_qua_ket_qua` (YC 09/11/2026): nguoi duyet cap chot duoc quyen chot luon OT ma khong
+  // doi nhan vien nop anh minh chung. He thong tu tao mot ban ghi ket qua OT DA DUYET thay cho
+  // buoc nop, ghi ro AI da bo qua buoc minh chung — nho vay phut OT vao bang cong ngay ma van
+  // con dau vet de ra soat. Chi ap dung khi don that su chot `da_duyet`.
+  let da_bo_qua_ket_qua = false;
+  if (bo_qua_ket_qua && d.loai === 'lam_them' && trang_thai_moi === 'da_duyet') {
+    const ly_do = ghi_chu === null || ghi_chu === ''
+      ? 'Duyệt OT không cần kết quả OT'
+      : `Duyệt OT không cần kết quả OT — ${ghi_chu}`;
+    await chay(
+      `insert into ket_qua_ot(don_tu_id, trang_thai, ghi_chu, ghi_chu_duyet, nguoi_duyet_id, quyet_luc)
+       values ($1, 'da_duyet', $2, $2, $3, now())
+       on conflict (don_tu_id) do update
+         set trang_thai = 'da_duyet', ghi_chu = excluded.ghi_chu,
+             ghi_chu_duyet = excluded.ghi_chu_duyet,
+             nguoi_duyet_id = excluded.nguoi_duyet_id, quyet_luc = now()`,
+      [id, ly_do, nguoi_duyet_id],
+    );
+    da_bo_qua_ket_qua = true;
+  }
+
+  const ot_da_co_ket_qua = d.loai === 'lam_them'
+    && (da_bo_qua_ket_qua || d.ket_qua_trang_thai === 'da_duyet');
 
   return {
     loai: d.loai,

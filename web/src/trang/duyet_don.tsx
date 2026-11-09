@@ -161,18 +161,23 @@ export function TrangDuyetDon(): ReactNode {
     quyet_dinh: 'da_duyet' | 'tu_choi',
     ghi_chu?: string,
     loai_don_quyet?: string,
+    bo_qua_ket_qua?: boolean,
   ): Promise<void> => {
     // Don OT (lam_them) chi la DANG KY: duyet don khong tao ra phut OT, va khong tinh lai bang
     // cong. Noi "bang cong da tinh lai" o day tung lam nguoi duyet tuong OT da vao luong.
+    // Tru khi nguoi duyet tich "khong can ket qua OT" — luc do may chu tao ket qua OT da duyet
+    // thay cho buoc nop anh, nen OT vao bang cong ngay.
     const thong_bao = quyet_dinh === 'tu_choi'
       ? 'Đã từ chối.'
       : loai_don_quyet === 'lam_them'
-        ? tra_hien_tai('dd_duyet_don_ot')
+        ? (bo_qua_ket_qua === true
+          ? tra_hien_tai('dd_duyet_don_ot_bo_qua')
+          : tra_hien_tai('dd_duyet_don_ot'))
         : 'Đã duyệt. Bảng công của ngày liên quan đã được tính lại.';
     await hd.chay(
       () => goi(`/api/duyet/${nhom}/${id}/quyet`, {
         method: 'POST',
-        body: { quyet_dinh, ghi_chu: ghi_chu ?? null },
+        body: { quyet_dinh, ghi_chu: ghi_chu ?? null, bo_qua_ket_qua: bo_qua_ket_qua === true },
       }),
       thong_bao,
     );
@@ -749,10 +754,13 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
   nap: { du_lieu: { danh_sach: DonKhac[] } | null; dang_tai: boolean; loi: unknown };
   loai_don: LoaiDon[];
   dang_chay: boolean;
-  quyet: (id: string, qd: 'da_duyet' | 'tu_choi', ghi_chu?: string, loai?: string) => void;
+  quyet: (id: string, qd: 'da_duyet' | 'tu_choi', ghi_chu?: string, loai?: string,
+    bo_qua_ket_qua?: boolean) => void;
 }): ReactNode {
   const [loc_loai, dat_loc_loai] = useState('');
   const [canh_bao, dat_canh_bao] = useState<Record<string, string[]>>({});
+  // Don OT da o buoc chot: nguoi duyet co the tich "khong can ket qua OT".
+  const [bo_qua_ket_qua, dat_bo_qua_ket_qua] = useState<Record<string, boolean>>({});
   const nc = dung_nhap_chu();
 
   const ten_loai = (ma: string): string => loai_don.find((l) => l.ma === ma)?.ten ?? ma;
@@ -869,11 +877,28 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                     d.loai === 'lam_them' && d.trang_thai === 'cho_duyet' && la_admin() ? (
                       <span className="mo-ta">Chờ trưởng bộ phận duyệt cấp 1</span>
                     ) : (
-                      <div className="hang-nut">
+                      <div>
+                        {d.loai === 'lam_them' && la_duyet_ot_cap_2()
+                          && d.ket_qua_id === null
+                          && (d.trang_thai === 'cho_duyet_2' || d.trang_thai === 'cho_giam_doc') && (
+                          <div className="o-nhap-ngang">
+                            <input
+                              id={`bq-${d.id}`}
+                              type="checkbox"
+                              checked={bo_qua_ket_qua[d.id] === true}
+                              onChange={(e) => dat_bo_qua_ket_qua((c) => ({
+                                ...c, [d.id]: e.target.checked,
+                              }))}
+                            />
+                            <label htmlFor={`bq-${d.id}`}>{tra_hien_tai('dd_bo_qua_ket_qua')}</label>
+                          </div>
+                        )}
+                        <div className="hang-nut">
                         <button
                           className="nut-nho nut-chinh"
                           disabled={dang_chay}
-                          onClick={() => quyet(d.id, 'da_duyet', undefined, d.loai)}
+                          onClick={() => quyet(d.id, 'da_duyet', undefined, d.loai,
+                            bo_qua_ket_qua[d.id] === true)}
                         >
                           {d.trang_thai === 'cho_duyet_2'
                             ? 'Duyệt cấp 2'
@@ -901,6 +926,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                         >
                           Từ chối
                         </button>
+                        </div>
                       </div>
                     )
                   ) : (

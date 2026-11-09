@@ -1593,6 +1593,55 @@ test('OT: truong bo phan tu lap don -> chuyen Giam doc duyet, khong tinh lai luo
   }
 });
 
+test('OT: duyet cap 2 tich "khong can ket qua OT" -> tao ket qua da duyet va tinh lai ngay', async () => {
+  const NGAY_OT = cong_ngay(NGAY, -101);
+  // Nhan vien KHONG thuoc phong nao -> don OT vao thang buoc cap 2 (khong co truong phong).
+  const nv = await truy_van_mot<{ id: string }>(
+    `insert into nhan_vien(ma_nv, ho_ten)
+     values ('OTBQ01', 'Nhân viên bỏ qua kết quả OT') returning id`);
+  const tk = await truy_van_mot<{ id: string }>(
+    `insert into nguoi_dung(ten_dang_nhap, mat_khau_hash, vai_tro, nhan_vien_id)
+     values ('ot.bq', '!', 'nhan_vien', $1) returning id`, [nv!.id]);
+  const token_nv = tao_token_truy_cap({
+    sub: tk!.id, vai_tro: 'nhan_vien', nv: nv!.id, ten: 'ot.bq',
+  }).token;
+
+  let don_id = '';
+  try {
+    const tao = await goi('POST', '/api/toi/don', {
+      token: token_nv,
+      body: {
+        loai: 'lam_them', tu_ngay: NGAY_OT,
+        gio_bat_dau: '18:00', gio_ket_thuc: '20:00', ly_do: 'Kiểm thử bỏ qua kết quả OT',
+      },
+    });
+    assert.equal(tao.ma, 201, JSON.stringify(tao.body));
+    assert.equal(tao.body['trang_thai'], 'cho_duyet_2',
+      'khong co truong phong -> don vao thang cap 2');
+    don_id = String(tao.body['id']);
+
+    const duyet = await goi('POST', `/api/duyet/don/${don_id}/quyet`, {
+      token: token_admin,
+      body: { quyet_dinh: 'da_duyet', bo_qua_ket_qua: true },
+    });
+    assert.equal(duyet.ma, 200, JSON.stringify(duyet.body));
+    assert.equal(duyet.body['trang_thai'], 'da_duyet');
+    assert.equal(duyet.body['so_ngay_da_tinh_lai'], 1,
+      'tich bo qua ket qua OT thi phai tinh lai ngay do');
+
+    const kq = await truy_van_mot<{ trang_thai: string; ghi_chu_duyet: string | null }>(
+      'select trang_thai, ghi_chu_duyet from ket_qua_ot where don_tu_id = $1', [don_id]);
+    assert.equal(kq?.trang_thai, 'da_duyet',
+      'bo qua ket qua OT phai sinh mot ban ghi ket qua DA DUYET');
+    assert.ok((kq?.ghi_chu_duyet ?? '').includes('không cần kết quả OT'),
+      'phai ghi ro da bo qua buoc minh chung');
+  } finally {
+    if (don_id !== '') await thuc_thi('delete from don_tu where id = $1', [don_id]);
+    await thuc_thi('delete from nguoi_dung where id = $1', [tk!.id]);
+    await thuc_thi('delete from nhan_vien where id = $1', [nv!.id]);
+  }
+});
+
 test('nhan vien KHONG duoc goi API quan tri', async () => {
   const r = await goi('POST', '/api/thiet-bi', {
     token: token_nhan_vien,

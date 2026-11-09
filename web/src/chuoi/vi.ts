@@ -970,6 +970,8 @@ export const CHUOI_VI = {
   dd_nut_duyet_giam_doc: 'Duyệt (Giám đốc)',
   dd_ot_chua_ket_qua: 'Chưa nộp kết quả OT — chưa tính vào bảng công',
   dd_duyet_don_ot: 'Đã duyệt đơn làm thêm. Phút OT chỉ vào bảng công sau khi nhân viên nộp kết quả OT và TBKS/Admin duyệt.',
+  dd_bo_qua_ket_qua: 'Không cần kết quả OT',
+  dd_duyet_don_ot_bo_qua: 'Đã duyệt đơn làm thêm và ghi nhận OT trực tiếp (không cần kết quả OT). Bảng công đã tính lại.',
   thp_tu_dong: 'Tự động',
   thp_nguon_may: 'Máy chấm công',
   thp_nguon_dien_thoai: 'Điện thoại',

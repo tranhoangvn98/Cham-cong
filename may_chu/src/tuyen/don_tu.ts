@@ -522,6 +522,9 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     const quyet = trong_tap(b, 'quyet_dinh', ['da_duyet', 'tu_choi'] as const,
       { bat_buoc: true }) as 'da_duyet' | 'tu_choi';
     const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
+    // Chot OT ma KHONG doi nhan vien nop ket qua OT (anh minh chung). Chi tbks/admin duoc dung
+    // — do chinh la nguoi duyet buoc chot cuoi cua quy trinh OT.
+    const xin_bo_qua_ket_qua = b['bo_qua_ket_qua'] === true;
 
     const truoc = await don_theo_id(id);
     if (truoc === null) throw new LoiKhongTim('Không tìm thấy đơn.');
@@ -562,8 +565,11 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     // Nguoi duyet buoc Giam doc ma cung duoc duyet cap 2 (tbks/admin) thi don chot luon:
     // mot nguoi khong duoc quyet ca hai cap cua cung mot don.
     const chot_luon = la_buoc_giam_doc && (la_tbks(nd.vai_tro) || la_quan_tri(nd.vai_tro));
+    const bo_qua_ket_qua = xin_bo_qua_ket_qua && quyet === 'da_duyet'
+      && (la_tbks(nd.vai_tro) || la_quan_tri(nd.vai_tro));
     const kq = await trong_giao_dich(async (khach) => {
-      const kq = await quyet_don(id, quyet, nd.sub, ghi_chu, la_cap_2 ? 2 : 1, khach, chot_luon);
+      const kq = await quyet_don(id, quyet, nd.sub, ghi_chu, la_cap_2 ? 2 : 1, khach, chot_luon,
+        bo_qua_ket_qua);
       if (kq.loai === 'thoi_viec' && kq.trang_thai === 'da_duyet') {
         await sinh_quy_trinh_thoi_viec(khach, id, nd.sub);
       }
@@ -601,7 +607,7 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
 
     const buoc = la_cap_2 ? '2' : la_buoc_giam_doc ? 'giam_doc' : '1';
     await ghi_nhat_ky(nd.sub, `don_${kq.loai}_${quyet}_cap_${buoc}`,
-      'don_tu', id, { ghi_chu }, req.ip);
+      'don_tu', id, { ghi_chu, bo_qua_ket_qua }, req.ip);
 
     const dt = dac_ta(kq.loai);
     const nguoi_lam_don = await tai_khoan_cua_nhan_vien(truoc.nhan_vien_id);
@@ -619,7 +625,10 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
       gui_ngam({
         nguoi_dung_ids: nguoi_lam_don,
         tieu_de: quyet === 'da_duyet'
-          ? (truoc.loai === 'lam_them' ? `${dt.ten} đã được duyệt — hãy nộp kết quả`
+          ? (truoc.loai === 'lam_them'
+            ? (bo_qua_ket_qua && kq.trang_thai === 'da_duyet'
+              ? `${dt.ten} đã được duyệt — OT đã ghi nhận, không cần nộp kết quả OT`
+              : `${dt.ten} đã được duyệt — hãy nộp kết quả`)
             : (truoc.loai === 'thoi_viec'
               ? 'Đơn thôi việc đã duyệt — mở hướng dẫn thủ tục'
               : `${dt.ten} đã được duyệt`))
