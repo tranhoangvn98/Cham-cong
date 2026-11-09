@@ -2,6 +2,20 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.140.1] — 2026-11-09
+
+**Nói rõ vì sao duyệt đơn OT mà phút OT vẫn 0 (không phải lỗi tính công).**
+
+- Trang Duyệt đơn: đơn làm thêm đã duyệt mà **chưa có kết quả OT** nay hiện nhãn
+  "Chưa nộp kết quả OT — chưa tính vào bảng công". Bấm "Duyệt" xong, thông báo đổi thành
+  "Đã duyệt đơn làm thêm. Phút OT chỉ vào bảng công sau khi nhân viên nộp kết quả OT và
+  TBKS/Admin duyệt" — trước đây câu "Bảng công đã được tính lại" khiến người duyệt tưởng
+  OT đã vào lương.
+- `quyet_don`: đơn `lam_them` chốt `da_duyet` mà **kết quả OT đã duyệt từ trước** thì tính lại
+  ngày đó (trước đây luôn trả `tinh_lai = null`, nên phút OT có sẵn cũng không vào bảng công).
+  Đơn chưa có kết quả OT vẫn không đụng bảng công/bảng lương.
+- Khóa từ điển mới `dd_ot_chua_ket_qua`, `dd_duyet_don_ot` (vi + zh).
+
 ## [1.140.0] — 2026-11-09
 
 **Duyệt OT: đơn của chính người duyệt chuyển Giám đốc · duyệt đơn không đụng bảng lương.**

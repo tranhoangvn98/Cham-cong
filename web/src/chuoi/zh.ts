@@ -969,6 +969,8 @@ export const CHUOI_ZH = {
   thp_cho_giam_doc: '待总经理审批',
   dd_tab_ot_giam_doc: '待总经理审批的加班',
   dd_nut_duyet_giam_doc: '审批（总经理）',
+  dd_ot_chua_ket_qua: '尚未提交加班结果 — 未计入考勤',
+  dd_duyet_don_ot: '加班申请已审批。只有在员工提交加班结果并由审计委员会主任/管理员审批后，加班分钟数才计入考勤。',
   thp_tu_dong: '自动',
   thp_nguon_may: '考勤机',
   thp_nguon_dien_thoai: '手机',

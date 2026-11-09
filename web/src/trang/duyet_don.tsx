@@ -45,6 +45,9 @@ interface DonKhac {
   tao_luc: string;
   nguoi_duyet: string | null;
   nguoi_duyet_2: string | null;
+  /** Co ket qua OT chua — don OT da duyet ma thieu cot nay thi CHUA duoc tinh phut OT. */
+  ket_qua_id: string | null;
+  ket_qua_trang_thai: string | null;
 }
 
 /** Ket qua OT (anh minh chung) cho tbks/admin duyet. */
@@ -157,15 +160,21 @@ export function TrangDuyetDon(): ReactNode {
     id: string,
     quyet_dinh: 'da_duyet' | 'tu_choi',
     ghi_chu?: string,
+    loai_don_quyet?: string,
   ): Promise<void> => {
+    // Don OT (lam_them) chi la DANG KY: duyet don khong tao ra phut OT, va khong tinh lai bang
+    // cong. Noi "bang cong da tinh lai" o day tung lam nguoi duyet tuong OT da vao luong.
+    const thong_bao = quyet_dinh === 'tu_choi'
+      ? 'Đã từ chối.'
+      : loai_don_quyet === 'lam_them'
+        ? tra_hien_tai('dd_duyet_don_ot')
+        : 'Đã duyệt. Bảng công của ngày liên quan đã được tính lại.';
     await hd.chay(
       () => goi(`/api/duyet/${nhom}/${id}/quyet`, {
         method: 'POST',
         body: { quyet_dinh, ghi_chu: ghi_chu ?? null },
       }),
-      quyet_dinh === 'da_duyet'
-        ? 'Đã duyệt. Bảng công của ngày liên quan đã được tính lại.'
-        : 'Đã từ chối.',
+      thong_bao,
     );
     nghi.nap_lai();
     giai.nap_lai();
@@ -740,7 +749,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
   nap: { du_lieu: { danh_sach: DonKhac[] } | null; dang_tai: boolean; loi: unknown };
   loai_don: LoaiDon[];
   dang_chay: boolean;
-  quyet: (id: string, qd: 'da_duyet' | 'tu_choi', ghi_chu?: string) => void;
+  quyet: (id: string, qd: 'da_duyet' | 'tu_choi', ghi_chu?: string, loai?: string) => void;
 }): ReactNode {
   const [loc_loai, dat_loc_loai] = useState('');
   const [canh_bao, dat_canh_bao] = useState<Record<string, string[]>>({});
@@ -843,7 +852,15 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                     </div>
                   )}
                 </td>
-                <td><NhanDon trang_thai={d.trang_thai} /></td>
+                <td>
+                  <NhanDon trang_thai={d.trang_thai} />
+                  {d.loai === 'lam_them' && d.trang_thai === 'da_duyet'
+                    && d.ket_qua_id === null && (
+                    <div className="hop-luu-y">
+                      {tra_hien_tai('dd_ot_chua_ket_qua')}
+                    </div>
+                  )}
+                </td>
                 <td>
                   {d.trang_thai === 'cho_duyet' || d.trang_thai === 'cho_duyet_2'
                    || d.trang_thai === 'cho_giam_doc' ? (
@@ -856,7 +873,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                         <button
                           className="nut-nho nut-chinh"
                           disabled={dang_chay}
-                          onClick={() => quyet(d.id, 'da_duyet')}
+                          onClick={() => quyet(d.id, 'da_duyet', undefined, d.loai)}
                         >
                           {d.trang_thai === 'cho_duyet_2'
                             ? 'Duyệt cấp 2'
@@ -879,7 +896,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                           }).then((gc) => {
                             // `null` = nguoi dung huy hop thoai, khong phai "ly do rong".
                             if (gc === null) return;
-                            quyet(d.id, 'tu_choi', gc === '' ? undefined : gc);
+                            quyet(d.id, 'tu_choi', gc === '' ? undefined : gc, d.loai);
                           })}
                         >
                           Từ chối

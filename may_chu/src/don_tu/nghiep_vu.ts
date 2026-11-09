@@ -377,10 +377,15 @@ export async function quyet_don(
     ? 'tu_choi'
     : (d.loai === 'lam_them' && cap === 1 && !chot_o_giam_doc ? 'cho_duyet_2' : 'da_duyet');
 
+  // Don OT: duyet don KHONG tu tao ra phut OT (xem ghi chu dau ham). NHUNG khi KET QUA OT da
+  // duoc duyet TU TRUOC (HR duyet ket qua thay, hoac don nhieu ngay co ket qua cu), bang cong
+  // phai tinh lai — bo qua buoc nay tung lam phut OT khong bao gio vao luong.
+  const ot_da_co_ket_qua = d.loai === 'lam_them' && d.ket_qua_trang_thai === 'da_duyet';
+
   return {
     loai: d.loai,
     trang_thai: trang_thai_moi,
-    tinh_lai: co_doi_bang_cong(d.loai) && quyet === 'da_duyet'
+    tinh_lai: quyet === 'da_duyet' && (co_doi_bang_cong(d.loai) || ot_da_co_ket_qua)
       ? { tu_ngay: d.tu_ngay, den_ngay: d.den_ngay ?? d.tu_ngay }
       : null,
   };
