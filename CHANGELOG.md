@@ -2,6 +2,20 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.140.4] — 2026-11-10
+
+**Duyệt đơn OT là TÍNH OT ngay — không phải tích ô nữa.**
+
+- Trước đây phải tích "Không cần kết quả OT" mới tính; thực tế người duyệt bỏ qua ô (và tab
+  mở từ trước lúc phát hành còn không có ô) nên duyệt xong OT vẫn 0 phút.
+- Nay **mặc định TÍNH**: chốt duyệt cấp 2 đơn làm thêm là hệ thống tạo bản ghi kết quả OT
+  đã duyệt (ghi rõ "Duyệt OT không cần kết quả OT" + người duyệt) rồi tính lại bảng công và
+  kỳ lương còn `nhap` — phút OT vào ngay.
+- Muốn giữ quy trình nộp ảnh minh chứng: **bỏ tích** ô "Không cần kết quả OT" (mặc định tích
+  sẵn); khi đó có hộp xác nhận "phút OT sẽ KHÔNG vào bảng công".
+- API: `bo_qua_ket_qua` mặc định `true` — chỉ bỏ qua khi client gửi rõ `false`, nên bản giao
+  diện cũ cũng tự tính OT đúng.
+
 ## [1.140.3] — 2026-11-10
 
 **Chặn lỗi "duyệt OT mà OT không vào lương": hỏi lại khi duyệt đơn OT chưa có kết quả OT.**

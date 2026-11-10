@@ -759,7 +759,8 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
 }): ReactNode {
   const [loc_loai, dat_loc_loai] = useState('');
   const [canh_bao, dat_canh_bao] = useState<Record<string, string[]>>({});
-  // Don OT da o buoc chot: nguoi duyet co the tich "khong can ket qua OT".
+  // Don OT da o buoc chot: MAC DINH tich "khong can ket qua OT" (duyet la OT vao bang cong),
+  // nguoi duyet BO TICH neu muon doi nhan vien nop anh minh chung truoc.
   const [bo_qua_ket_qua, dat_bo_qua_ket_qua] = useState<Record<string, boolean>>({});
   const nc = dung_nhap_chu();
   const xn = dung_xac_nhan();
@@ -910,7 +911,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                             <input
                               id={`bq-${d.id}`}
                               type="checkbox"
-                              checked={bo_qua_ket_qua[d.id] === true}
+                              checked={bo_qua_ket_qua[d.id] !== false}
                               onChange={(e) => dat_bo_qua_ket_qua((c) => ({
                                 ...c, [d.id]: e.target.checked,
                               }))}
@@ -922,7 +923,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                         <button
                           className="nut-nho nut-chinh"
                           disabled={dang_chay}
-                          onClick={() => hoi_duyet_ot(d, bo_qua_ket_qua[d.id] === true)}
+                          onClick={() => hoi_duyet_ot(d, bo_qua_ket_qua[d.id] !== false)}
                         >
                           {d.trang_thai === 'cho_duyet_2'
                             ? 'Duyệt cấp 2'

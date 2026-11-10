@@ -524,7 +524,12 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
     // Chot OT ma KHONG doi nhan vien nop ket qua OT (anh minh chung). Chi tbks/admin duoc dung
     // — do chinh la nguoi duyet buoc chot cuoi cua quy trinh OT.
-    const xin_bo_qua_ket_qua = b['bo_qua_ket_qua'] === true;
+    //
+    // MAC DINH = TINH (YC 10/11/2026): nguoi duyet chi can bam Duyet la OT vao bang cong.
+    // Truoc day mac dinh la KHONG tinh, phai tich o — thuc te nguoi duyet bo qua o (va ban
+    // giao dien cu con khong co o) nen OT khong vao luong suot. Chi khi client gui RO RANG
+    // `false` moi bo qua (giao dien moi: bo tich o "Khong can ket qua OT").
+    const xin_bo_qua_ket_qua = b['bo_qua_ket_qua'] !== false;
 
     const truoc = await don_theo_id(id);
     if (truoc === null) throw new LoiKhongTim('Không tìm thấy đơn.');

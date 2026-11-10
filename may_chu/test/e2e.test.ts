@@ -1324,8 +1324,10 @@ test('OT: chi tinh khi don du HAI CAP va KET QUA da duyet', async () => {
   );
 
   // (2) TBKS/admin duyet cap 2 qua duong API that.
+  // Gui `bo_qua_ket_qua: false` de giu kich ban CU (chua nop ket qua OT -> OT van 0);
+  // mac dinh moi la TINH OT ngay khi duyet.
   const d2 = await goi('POST', `/api/duyet/don/${don!.id}/quyet`, {
-    token: token_admin, body: { quyet_dinh: 'da_duyet' },
+    token: token_admin, body: { quyet_dinh: 'da_duyet', bo_qua_ket_qua: false },
   });
   assert.equal(d2.ma, 200, JSON.stringify(d2.body));
   assert.equal(d2.body['trang_thai'], 'da_duyet');
@@ -1442,7 +1444,7 @@ test('OT: nhan vien dinh kem tai lieu, nop ket qua bang anh, tbks duyet', async 
 
   // TBKS/admin duyet cap 2.
   const q = await goi('POST', `/api/duyet/don/${don_id}/quyet`, {
-    token: token_admin, body: { quyet_dinh: 'da_duyet' },
+    token: token_admin, body: { quyet_dinh: 'da_duyet', bo_qua_ket_qua: false },
   });
   assert.equal(q.ma, 200, JSON.stringify(q.body));
 
@@ -1571,7 +1573,7 @@ test('OT: truong bo phan tu lap don -> chuyen Giam doc duyet, khong tinh lai luo
 
     // TBKS/Admin chot cap 2 — van khong dung vao bang cong/luong.
     const cap2 = await goi('POST', `/api/duyet/don/${don_id}/quyet`, {
-      token: token_admin, body: { quyet_dinh: 'da_duyet' },
+      token: token_admin, body: { quyet_dinh: 'da_duyet', bo_qua_ket_qua: false },
     });
     assert.equal(cap2.ma, 200, JSON.stringify(cap2.body));
     assert.equal(cap2.body['trang_thai'], 'da_duyet');
