@@ -1561,12 +1561,12 @@ test('OT: truong bo phan tu lap don -> chuyen Giam doc duyet, khong tinh lai luo
       'select trang_thai from ket_qua_ot where don_tu_id = $1', [don_id]);
     assert.equal(kq_ot?.trang_thai, 'da_duyet', 'he thong tu tao ket qua OT da duyet');
 
-    // Ngay kiem thu nay KHONG co luot quet nao -> bang cong la 'vang' va bi don, nen khong
-    // co phut OT tren bang cong. Kiem tra phan TU TAO ket qua OT o tren moi la cot loi.
+    // Ngay kiem thu nay KHONG co luot quet nao -> phut OT tinh theo GIO DANG KY (18:00-20:00
+    // = 120 phut), dung nhu quy tac "ket qua OT da duyet la bang chung lam viec".
     const bc = await truy_van_mot<{ phut_ot: number }>(
       'select phut_ot from bang_cong_ngay where nhan_vien_id = $1 and ngay = $2',
       [nv_tp!.id, NGAY_OT]);
-    assert.equal(bc?.phut_ot ?? 0, 0, 'ngay vang khong co luot quet thi khong co phut OT');
+    assert.equal(bc?.phut_ot ?? 0, 120, 'OT tinh theo gio dang ky vi ngay do khong quet the');
   } finally {
     if (don_id !== '') await thuc_thi('delete from don_tu where id = $1', [don_id]);
     await thuc_thi('delete from nguoi_dung where id = any($1::uuid[])',
@@ -3934,19 +3934,9 @@ test('luong: duyet ket qua OT tu cap nhat phieu luong dang nhap (Loi 2)', async 
     token: token_admin, body: { quyet_dinh: 'da_duyet' },
   });
   assert.equal(d2.ma, 200, JSON.stringify(d2.body));
-
-  const kq = await truy_van_mot<{ id: string }>(
-    `insert into ket_qua_ot(don_tu_id, ghi_chu) values ($1, 'Da hoan thanh') returning id`,
-    [don!.id],
-  );
-  assert.notEqual(kq, null);
-
-  const dk = await goi('POST', `/api/duyet/ot-ket-qua/${kq!.id}/quyet`, {
-    token: token_admin, body: { quyet_dinh: 'da_duyet' },
-  });
-  assert.equal(dk.ma, 200, JSON.stringify(dk.body));
-  assert.equal(dk.body['da_tinh_lai'], true);
-  assert.equal(dk.body['da_tinh_lai_ky_luong'], true,
+  // Tu 10/11/2026: duyet chot don OT la he thong tu tao ket qua OT da duyet va tinh lai CA
+  // ky luong dang nhap — khong con buoc nop/duyet ket qua rieng.
+  assert.equal(d2.body['da_tinh_lai_ky_luong'], true,
     'ky luong dang nhap phai tu tinh lai sau khi OT vao bang cong');
 
   const p = await truy_van_mot<{ phut_ot: number }>(
