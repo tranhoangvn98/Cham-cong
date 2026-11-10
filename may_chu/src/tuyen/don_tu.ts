@@ -522,14 +522,12 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     const quyet = trong_tap(b, 'quyet_dinh', ['da_duyet', 'tu_choi'] as const,
       { bat_buoc: true }) as 'da_duyet' | 'tu_choi';
     const ghi_chu = chuoi(b, 'ghi_chu', { toi_da: 500 });
-    // Chot OT ma KHONG doi nhan vien nop ket qua OT (anh minh chung). Chi tbks/admin duoc dung
-    // — do chinh la nguoi duyet buoc chot cuoi cua quy trinh OT.
-    //
-    // MAC DINH = TINH (YC 10/11/2026): nguoi duyet chi can bam Duyet la OT vao bang cong.
-    // Truoc day mac dinh la KHONG tinh, phai tich o — thuc te nguoi duyet bo qua o (va ban
-    // giao dien cu con khong co o) nen OT khong vao luong suot. Chi khi client gui RO RANG
-    // `false` moi bo qua (giao dien moi: bo tich o "Khong can ket qua OT").
-    const xin_bo_qua_ket_qua = b['bo_qua_ket_qua'] !== false;
+    // Chot don OT: LUON ghi nhan OT ngay (YC 10/11/2026 — "duyet la phai vao luong").
+    // Khong doc bat cu truong nao tu client: truoc day phu thuoc o tich "khong can ket qua OT"
+    // va nguoi duyet bo qua o (hoac tab con chay ma cu khong co o) nen OT khong vao luong suot.
+    // Chi tbks/admin duoc duyet buoc chot nay (da kiem o tren).
+    const bo_qua_ket_qua = quyet === 'da_duyet'
+      && (la_tbks(nd.vai_tro) || la_quan_tri(nd.vai_tro));
 
     const truoc = await don_theo_id(id);
     if (truoc === null) throw new LoiKhongTim('Không tìm thấy đơn.');
@@ -570,8 +568,6 @@ export async function tuyen_don_tu(app: FastifyInstance): Promise<void> {
     // Nguoi duyet buoc Giam doc ma cung duoc duyet cap 2 (tbks/admin) thi don chot luon:
     // mot nguoi khong duoc quyet ca hai cap cua cung mot don.
     const chot_luon = la_buoc_giam_doc && (la_tbks(nd.vai_tro) || la_quan_tri(nd.vai_tro));
-    const bo_qua_ket_qua = xin_bo_qua_ket_qua && quyet === 'da_duyet'
-      && (la_tbks(nd.vai_tro) || la_quan_tri(nd.vai_tro));
     const kq = await trong_giao_dich(async (khach) => {
       const kq = await quyet_don(id, quyet, nd.sub, ghi_chu, la_cap_2 ? 2 : 1, khach, chot_luon,
         bo_qua_ket_qua);

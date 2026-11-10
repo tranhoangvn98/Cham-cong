@@ -2,6 +2,18 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.140.5] — 2026-11-10
+
+**Bỏ hẳn ô tích: duyệt chốt đơn OT là LUÔN ghi nhận OT.**
+
+- Bản 1.140.4 vẫn để giao diện cũ gửi `bo_qua_ket_qua: false` được — thực tế người duyệt vẫn
+  gửi `false` (tab mở trước lúc phát hành/tự bỏ tích) nên OT tiếp tục 0 phút.
+- Nay máy chủ **không đọc cờ này nữa**: `tbks`/`admin` duyệt chốt đơn làm thêm thì hệ thống tự
+  tạo bản ghi kết quả OT đã duyệt (ghi rõ "Duyệt OT không cần kết quả OT" + người duyệt) và
+  tính lại bảng công + kỳ lương đang `nhap`. Không phụ thuộc bất kỳ trạng thái giao diện nào.
+- Web: bỏ ô tích và hộp xác nhận; thay bằng dòng gợi ý "Duyệt là phút OT được ghi nhận ngay".
+- Cập nhật test e2e theo luồng mới (đơn OT chốt là có kết quả OT + tính lại ngày).
+
 ## [1.140.4] — 2026-11-10
 
 **Duyệt đơn OT là TÍNH OT ngay — không phải tích ô nữa.**
