@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { goi, la_admin, la_duyet_ot_cap_2, la_nhan_su, tai_anh, tai_anh_tu, tai_tep } from '../api.ts';
 import {
   DangTai, HopLoi, HopTot, HopThoai, NhanDon, TEN_LOAI_NGHI, Trong,
-  dung_hanh_dong, dung_nap, dung_nhap_chu, gio_ngan, khoa_tinh, ngay_gio, ngay_viet,
+  dung_hanh_dong, dung_nap, dung_nhap_chu, dung_xac_nhan, gio_ngan, khoa_tinh, ngay_gio, ngay_viet,
 } from '../thanh_phan.tsx';
 import { tra_hien_tai } from '../chuoi/chi_muc.tsx';
 import { dung_phan_trang } from '../phan_trang.tsx';
@@ -762,6 +762,31 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
   // Don OT da o buoc chot: nguoi duyet co the tich "khong can ket qua OT".
   const [bo_qua_ket_qua, dat_bo_qua_ket_qua] = useState<Record<string, boolean>>({});
   const nc = dung_nhap_chu();
+  const xn = dung_xac_nhan();
+
+  /**
+   * Bam Duyet mot don OT ma CHUA co ket qua OT va KHONG tich "khong can ket qua": duyet luon
+   * se ra don `da_duyet` voi 0 phut OT — nguoi duyet tuong OT da vao luong (loi da gap 10/11).
+   * Hoi mot cau truoc khi duyet thay vi de ho phat hien sau.
+   */
+  const hoi_duyet_ot = (d: DonKhac, bo_qua: boolean): void => {
+    if (d.loai !== 'lam_them' || d.ket_qua_id !== null || bo_qua) {
+      quyet(d.id, 'da_duyet', undefined, d.loai, bo_qua);
+      return;
+    }
+    void xn.hoi({
+      tieu_de: tra_hien_tai('dd_cb_chua_kq_td'),
+      chu_dong_y: tra_hien_tai('dd_cb_van_duyet'),
+      nguy_hiem: true,
+      mo_ta: (
+        <>
+          <div>{tra_hien_tai('dd_cb_chua_kq_mt', { ten: d.ho_ten, ngay: ngay_viet(d.tu_ngay) })}</div>
+        </>
+      ),
+    }).then((dong_y) => {
+      if (dong_y) quyet(d.id, 'da_duyet', undefined, d.loai, bo_qua);
+    });
+  };
 
   const ten_loai = (ma: string): string => loai_don.find((l) => l.ma === ma)?.ten ?? ma;
 
@@ -897,8 +922,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
                         <button
                           className="nut-nho nut-chinh"
                           disabled={dang_chay}
-                          onClick={() => quyet(d.id, 'da_duyet', undefined, d.loai,
-                            bo_qua_ket_qua[d.id] === true)}
+                          onClick={() => hoi_duyet_ot(d, bo_qua_ket_qua[d.id] === true)}
                         >
                           {d.trang_thai === 'cho_duyet_2'
                             ? 'Duyệt cấp 2'
@@ -944,6 +968,7 @@ function BangDonKhac({ nap, loai_don, dang_chay, quyet }: {
         {bo_phan_trang}
       </div>
       {nc.hop_thoai}
+      {xn.hop_thoai}
     </>
   );
 }

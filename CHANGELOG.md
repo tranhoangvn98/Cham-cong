@@ -2,6 +2,17 @@
 
 Theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.140.3] — 2026-11-10
+
+**Chặn lỗi "duyệt OT mà OT không vào lương": hỏi lại khi duyệt đơn OT chưa có kết quả OT.**
+
+- Thực tế 10/11: 4 đơn OT của Nguyễn Ngọc Vinh được duyệt cấp 2 nhưng **không tích** "Không cần
+  kết quả OT" và cũng chưa có kết quả OT → phút OT = 0, người duyệt từng nghĩ đã xong.
+- Nay bấm Duyệt đơn OT mà chưa có kết quả OT và không tích ô, hệ thống mở hộp xác nhận nói rõ
+  **"phút OT sẽ KHÔNG vào bảng công"** và chỉ cách bấm; nút đồng ý đổi thành
+  "Vẫn duyệt (chưa tính OT)" để không ai lỡ tay.
+- 4 đơn trên đã được đưa về chờ duyệt cấp 2 để duyệt lại (nhật ký `ot_rollback_chua_ket_qua`).
+
 ## [1.140.2] — 2026-11-09
 
 **Duyệt đơn OT có thể tích "Không cần kết quả OT".**
